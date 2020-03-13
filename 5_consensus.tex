@@ -9,7 +9,7 @@ When a collaborator wants to update the state and commit to a new version, the d
 In the following section, the pre-commit and commit is described. A user does not need to use a pre-commit and can commit a document state immediately. However this has drawbacks if there are byzantine nodes.
 
 \subsubsection{Consensus Protocol}
-Each collaborator, an identity $I$, is found in the P2P network and the new state is transmitted with a request to provide a signature. We define the user who initiates the state update as $\iota$ and collaborators $c_n$.
+Each collaborator, an identity $I$, is found in the P2P network and the new state is transmitted with a request to provide a signature. We define the user who initiates the state update as $\iota$ and collaborators as $c_n$.
 \begin{eqnarray}
 \iota,c \in I\\
      d_{\mathtt{collaborators}} = (\iota, c_{[0]}, ..., c_{[n]})
@@ -40,23 +40,43 @@ The user then pre-commits to the state and gets signatures from all the collabor
 \begin{split}
 s & \xleftarrow[]{\text{P2P}} \mathsf{requestSignature}(d', c) \qquad \qquad \qquad \\
 d'_{\mathtt{signatures}[c_{\mathtt{DID}}]} & =  \begin{cases}
-  s, \quad \quad \text{if} \quad \mathsf{validateSignature}(c, R_{\mathtt{signing}}, s)  = 1 \\      
+  s, \quad \quad \text{if} \quad \mathsf{validateSignature}(c, (R_{\mathtt{signing}}+d'_t), s)  = 1 \\      
   \emptyset,  \quad\quad\text{else} \\
 \end{cases} \textcolor{white}{x}\forall c \in d_{\mathtt{collaborators}} \backslash \{\iota\}
 %TODO: replace whitespace
 \end{split}
 \end{equation}
-If a collaborator refuses to sign, is unreachable or returns an invalid signature, it is not added to $d'_{\mathtt{signatures}}$. 
+If a collaborator refuses to sign, is unreachable or returns an invalid signature, it is not added to $d'_{\mathtt{signatures}}$. \\
+The component $d'_t$ is the Signature transition flag that is explained in the following section.
 \begin{comment}
 \begin{eqnarray}
     R_{\mathtt{doc-root}} = \mathsf{calculateDocumentRoot}(d') \\
     \mathsf{commit}(d'_{\mathtt{next-img}}, R_{\mathtt{doc-root}},M_{\texttt{proofs}}) \xrightarrow[]{\text{ETH}} \mathsf{AnchorRepository}
 \end{eqnarray}
 \end{comment}
+\subsubsection{Signature transition flag}
+During the life span of a document, every version can be shared with a different set of collaborators, for example, having a document $d$, with two versions $d_0$ and $d_1$: \\
+\begin{eqnarray}
+    d_0 & \xrightarrow[]{\text{P2P}} [c_0, c_1] \\
+    d_1 & \xrightarrow[]{\text{P2P}} [c_0, c_1, c_2]
+\end{eqnarray}
+In this scenario, $c_0$ and $c_1$ can validate the state transition between version $d_0$ and $d_1$, since they have access to both versions. \\
+On the other hand, $c_2$ will only have access to version $d_1$ of the document and will not be able to validate a transition. Although, $c_2$ can still check that the current version is valid (more details in section \ref{sec:doc_validation}), and therefore be part of the document consensus flow. \\
+It is important for the protocol and upstream applications to know when a particular collaborator was able to validate a transition, so more restrictive or critical logic can be built on top. \\
+To address this, we added a flag that will be appended to the signature payload described below:
+\begin{equation}
+\begin{split}
+d'_{t} & =  \begin{cases}
+  1, \quad \quad \text{if} \quad \mathsf{validate}(d, d')  = 1 \\      
+  \emptyset,  \quad\quad\text{else} \\
+\end{cases}
+\end{split}
+\end{equation}
+
 \subsubsection{Receiving a signature request}
 The collaborator $c$ that receives the signature request first validates the update by comparing the proposed updated document to the previous version of the document that it has in store. 
 \begin{eqnarray}
-   d' & \xleftarrow[]{\text{P2P}} & \mathsf{recieve}(\iota) \\
+   d' & \xleftarrow[]{\text{P2P}} & \mathsf{receive}(\iota) \\
     d & = &\mathsf{load}(c, {d'}_{\mathtt{prev}}) \\
     \mathsf{validate}(d, d') & = & 1 
 \end{eqnarray}
@@ -68,7 +88,7 @@ The collaborator then verifies that there is a valid signature by the sender, $\
     R_{\mathtt{signing}} & = & \mathsf{calculateSigningRoot}(d')\\
     A_{\mathtt{signing-root}} = R_{\mathtt{signing}} &\lor & A_{\mathtt{signing-root}} = \emptyset \\
     \mathsf{validateSignature}(\iota, R_{\mathtt{signing}}, {d'}_{\mathtt{signatures}[\iota]}) & = & 1\\
-    \mathsf{sign}(c_{\mathtt{k.sign}}, R_{\mathtt{signing}}) & = & s \\
+    \mathsf{sign}(c_{\mathtt{k.sign}}, (R_{\mathtt{signing}}+d'_{t})) & = & s \\
     \mathsf{sendSignature}(s) &\xrightarrow[]{\text{P2P}}& \iota
 \end{eqnarray}
 

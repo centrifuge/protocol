@@ -19,7 +19,7 @@ A_{\texttt{anchor-blockheight}} & = & \texttt{block.number}
 The anchor id of a new document $d_{[i]{\texttt{current}}}$ is defined by the previous document $d_{[i-1]\texttt{next-img}}$. The same image is stored in the current 
 document in $d_{[i]\texttt{current-img}}$. The hash of the $d_{[i]\texttt{current-img}}$ defines the current document identifier and the anchor id.
 \begin{eqnarray}
-d_{[i]\texttt{current}}& = & \mathtt{sha256}(d_{[i-1]\texttt{next-img}})\\
+d_{[i]\texttt{current}}& = & \mathtt{blake2b}(d_{[i-1]\texttt{next-img}})\\
 A_{\texttt{anchor-id}}& = & d_{[i]\texttt{current}}
 \end{eqnarray}
 The \texttt{block.number} contains the Ethereum block number the transaction got mined and acts as a timestamp for the anchor.

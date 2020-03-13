@@ -57,10 +57,10 @@ A node which performs a document update defines the the next version identifier 
 d_{[i]\texttt{next-img}} = \texttt{RAND(32)}
 \end{equation}
 \begin{equation}
-d_{[i]\texttt{next}} = \mathtt{sha256}(d_{[i]\texttt{next-img}})
+d_{[i]\texttt{next}} = \mathtt{blake2b}(d_{[i]\texttt{next-img}})
 \end{equation}
 \newline
-The field $d_{\texttt{next-img}}$ is needed to prevent malicious anchoring of documents by non-collaborators. The value therefore must be kept secret from any non-collaborators. The function $\texttt{RAND(32)}$ is a cryptographically secure random function and returns a byte 32 array. The function $\mathtt{sha256}$ denotes hash function SHA-2 256. 
+The field $d_{\texttt{next-img}}$ is needed to prevent malicious anchoring of documents by non-collaborators. The value therefore must be kept secret from any non-collaborators. The function $\texttt{RAND(32)}$ is a cryptographically secure random function and returns a byte 32 array. The function $\mathtt{blake2b}$ denotes hash function blake2b-256. 
 
 By referencing the previous root each state $d$, the history becomes an immutable attribute committed to in each version. To traverse the history $H$, one can follow the $d_{\mathtt{prev-root}}$ and $d_{\mathtt{prev}}$. To move forward in the list of history, $H$, one can go from $d_{\mathtt{next}}$ to $d_{\mathtt{current}}$.
 \begin{figure}[thpb]

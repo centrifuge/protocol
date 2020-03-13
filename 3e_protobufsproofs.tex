@@ -41,10 +41,10 @@ In this paper, we refer to the fields by their human readable name using JavaScr
 When proving, the hash of the sibling of the field is revealed. A salt is therefore added to the value of the leaves in order to avoid a rainbow table attack on sibling leaves revealed in a proof. The salt $F_{\mathsf{salt}}$ is stored in a special field on the \textit{CoreDocument} protobuf message called \texttt{salt} in form of a map where a salt is stored for each field by the property $p_F$.
 
 \subsubsection{Construction of the tree}
-For each leaf, $\lambda$, the name $P$, the salt $S$ and the value $v$ are appended and then hashed with $\mathtt{sha256}$.
+For each leaf, $\lambda$, the name $P$, the salt $S$ and the value $v$ are appended and then hashed with $\mathtt{sha3-keccak}$.
 
 \begin{eqnarray}
-\lambda = \mathtt{sha256}(p_{F} \parallel F_{\texttt{value}} \parallel	 F_{\texttt{salt}})\\
+\lambda = \mathtt{keccak}(p_{F} \parallel F_{\texttt{value}} \parallel	 F_{\texttt{salt}})\\
 \mathrm{T}(\mathrm{D}) = \mathcal{M}({\lambda_{1} \parallel \lambda_{2} \parallel ... \parallel \lambda_{n}})
 \end{eqnarray}
 
