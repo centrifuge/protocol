@@ -1,6 +1,71 @@
 [profile.default]
-src = "src"
-out = "out"
-libs = ["lib"]
+src = 'src'
+out = 'out'
+libs = ['lib']
+no_match_contract = "CryticTester"
 
-# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
+solc_version = "0.8.27"
+evm_version = "cancun"
+
+optimizer = true
+optimizer_runs = 500
+verbosity = 3
+
+ffi = true
+fs_permissions = [{ access = "read-write", path = ".forge-snapshots/"}]
+
+[profile.default.fuzz]
+runs = 100
+max_test_rejects = 1_000_000 # Number of times `vm.assume` can fail
+
+[profile.default.invariant]
+runs           = 10
+depth          = 100
+call_override  = false
+fail_on_revert = false
+
+[profile.ci.fuzz]
+runs = 1000
+max_test_rejects = 1_000_000 # Number of times `vm.assume` can fail
+
+[profile.ci.invariant]
+runs           = 100
+depth          = 1000
+call_override  = false
+fail_on_revert = false
+
+[profile.smt.model_checker]
+  engine = "chc" # constrained Horn clauses
+  invariants = ["contract", "reentrancy"]
+  show_unproved = true
+  timeout = 100_000 # in milliseconds, per solving query
+  targets = [
+    "assert",
+    "constantCondition",
+    "divByZero",
+    "outOfBounds",
+    "overflow",
+    "underflow",
+  ]
+
+[profile.smt.model_checker.contracts]
+
+[doc]
+  ignore = ["**/*.t.sol", "**/*.s.sol"]
+  out = "docs"
+  repository = "https://github.com/centrifuge/asset-pools"
+
+[fmt]
+  line_length = 120
+  tab_width = 4
+  bracket_spacing = false
+  int_types = "long"
+  multiline_func_header = "attributes_first"
+  quote_style = "double"
+  number_underscore = "preserve"
+  wrap_comments = true
+  ignore = ["test/*.sol"]
+
+[rpc_endpoints]
+ethereum-mainnet = "https://mainnet.infura.io/v3/${INFURA_API_KEY}"
+polygon-mainnet = "https://polygon-mainnet.infura.io/v3/${INFURA_API_KEY}" 
