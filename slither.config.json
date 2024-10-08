@@ -1,0 +1,11 @@
+{
+  "detectors_to_exclude": "naming-convention,reentrancy-events,solc-version,timestamp,name-reused,arbitrary-send-erc20",
+  "fail_high": true,
+  "fail_pedantic": false,
+  "exclude_optimization": true,
+  "exclude_informational": true,
+  "exclude_low": true,
+  "exclude_medium": true,
+  "filter_paths": "(lib|test)",
+  "solc_remaps": ["forge-std/=lib/forge-std/src/"]
+}
