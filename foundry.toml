@@ -12,7 +12,6 @@ optimizer_runs = 500
 verbosity = 3
 
 ffi = true
-fs_permissions = [{ access = "read-write", path = ".forge-snapshots/"}]
 
 [profile.default.fuzz]
 runs = 100
