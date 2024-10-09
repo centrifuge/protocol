@@ -4,7 +4,7 @@ out = 'out'
 libs = ['lib']
 no_match_contract = "CryticTester"
 
-solc_version = "0.8.27"
+solc_version = "0.8.28"
 evm_version = "cancun"
 
 optimizer = true
