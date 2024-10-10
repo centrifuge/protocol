@@ -33,7 +33,6 @@ struct Collateral {
 }
 
 function collateralGlobalId(Collateral memory collateral) pure returns (address) {
-    // QUESTION: Could we have collisions in 20 bytes?
     return address(uint160(uint256(keccak256(abi.encode(collateral.source, collateral.id)))));
 }
 
@@ -49,7 +48,7 @@ struct ItemInfo {
     /// Usually for Price valued items it will be > 1. Other valuations will normally set this value from 0-1.
     Decimal18 quantity;
     /// Valuation method
-    IERC7726 valuation;
+    IERC7726 valuationMethod;
     /// Unix timestamp measured in secs
     uint64 maturity;
 }
@@ -57,8 +56,6 @@ struct ItemInfo {
 struct Item {
     /// Base info of this item
     ItemInfo info;
-    /// Unix timestamp measured in secs
-    uint64 originationDate;
     /// Total amount decreased by `decreaseDebt`. Measured in pool currency denomination
     uint128 totalDecreasedDebt;
     /// Total amount increased by `increaseDebt`. Measured in pool currency denomination
@@ -100,7 +97,7 @@ contract Portfolio {
         require(ok, "Collateral can not be transfered to the contract");
 
         ItemId itemId = ItemId.wrap(itemNonces[poolId]++);
-        items[poolId][itemId] = Item(info, uint64(block.timestamp), 0, 0, 0, d18(0));
+        items[poolId][itemId] = Item(info, 0, 0, 0, d18(0));
 
         emit Create(poolId, itemId);
     }
@@ -111,14 +108,8 @@ contract Portfolio {
 
         uint128 price = this.getPrice(poolId, itemId);
 
-        uint128 maxIncreaseAmount = item.info.quantity.mulInt(price) - item.totalIncreasedDebt;
-        uint128 increaseAmount = quantity.mulInt(price);
-
-        require(maxIncreaseAmount >= increaseAmount);
-
-        item.originationDate = uint64(block.timestamp);
         item.outstandingQuantity = item.outstandingQuantity + quantity;
-        item.totalIncreasedDebt += increaseAmount;
+        item.totalIncreasedDebt += quantity.mulInt(price);
 
         emit DebtIncreased(poolId, itemId);
     }
@@ -132,8 +123,7 @@ contract Portfolio {
     }
 
     function close(PoolId poolId, ItemId itemId) external {
-        Item storage item = items[poolId][itemId];
-        require(item.outstandingQuantity.inner() == 0, "The item must not have outstanding quantity");
+        require(items[poolId][itemId].outstandingQuantity.inner() == 0, "The item must not have outstanding quantity");
 
         delete items[poolId][itemId];
 
@@ -144,15 +134,25 @@ contract Portfolio {
     function getPrice(PoolId poolId, ItemId itemId) external view returns (uint128 value) {
         Item storage item = items[poolId][itemId];
 
-        address base = collateralGlobalId(item.info.collateral);
-        address quote = poolRegistry.currencyOfPool(poolId);
+        if (address(item.info.valuationMethod) != address(0)) {
+            address base = collateralGlobalId(item.info.collateral);
+            address quote = poolRegistry.currencyOfPool(poolId);
 
-        return item.info.valuation.getQuote(1, base, quote).toUint128();
+            return item.info.valuationMethod.getQuote(1, base, quote).toUint128();
+        } else {
+            //THINK: should I compute the debt per quantity unit or per item?
+            // Right now, as it is, is per quantity. Does it makes sense?
+            return computeDebt(poolId, itemId);
+        }
     }
 
     /// The valuation of this item
     function valuation(PoolId poolId, ItemId itemId) external view returns (uint128 value) {
         uint128 price = this.getPrice(poolId, itemId);
         return items[poolId][itemId].outstandingQuantity.mulInt(price);
+    }
+
+    function computeDebt(PoolId poolId, ItemId itemId) public view returns (uint128 value) {
+        //TODO
     }
 }
