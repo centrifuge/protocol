@@ -4,3 +4,6 @@
 [submodule "lib/forge-gas-snapshot"]
 	path = lib/forge-gas-snapshot
 	url = https://github.com/marktoda/forge-gas-snapshot
+[submodule "lib/liquidity-pools"]
+	path = lib/liquidity-pools
+	url = https://github.com/centrifuge/liquidity-pools
