@@ -2,7 +2,7 @@
 src = 'src'
 out = 'out'
 libs = ['lib']
-no_match_contract = "CryticTester"
+# no_match_contract = "CryticTester" # This should be active when we integrate invariant testing
 
 solc_version = "0.8.28"
 evm_version = "cancun"
