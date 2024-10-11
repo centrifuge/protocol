@@ -12,12 +12,22 @@ interface IERC7726 {
     function getQuote(uint256 baseAmount, address base, address quote) external view returns (uint256 quoteAmount);
 }
 
-interface IAccessControl {
-    function hasRole(bytes32 role, address account) external view returns (bool);
-}
-
 interface IPoolRegistry {
     function currencyOfPool(PoolId poolId) external view returns (address currency);
+}
+
+interface ILinearAccrual {
+    function increaseNormalizedDebt(bytes32 rateId, uint128 prevNormalizedDebt, uint128 increment)
+        external
+        returns (uint128 newNormalizedDebt);
+
+    function decreaseNormalizedDebt(bytes32 rateId, uint128 prevNormalizedDebt, uint128 decrement)
+        external
+        returns (uint128 newNormalizedDebt);
+
+    function renormalizeDebt(bytes32 rateId, uint256 newRateId, uint128 prevNormalizedDebt)
+        external
+        returns (uint128 newNormalizedDebt);
 }
 
 type PoolId is uint64;
@@ -32,39 +42,39 @@ struct Collateral {
     uint256 id;
 }
 
-function collateralGlobalId(Collateral memory collateral) pure returns (address) {
+function globalId(Collateral memory collateral) pure returns (address) {
     return address(uint160(uint256(keccak256(abi.encode(collateral.source, collateral.id)))));
 }
 
+using {globalId} for Collateral;
+
 /// Struct used for user inputs and "static" item data
 struct ItemInfo {
-    /// The account to able to act over this item
-    address owner;
     /// The RWA used for this item as a collateral
     Collateral collateral;
     /// Fixed point rate
-    Decimal18 interestRate;
+    bytes32 rateId;
     /// Fixed point number with the amount of asset hold by this item.
     /// Usually for Price valued items it will be > 1. Other valuations will normally set this value from 0-1.
     Decimal18 quantity;
     /// Valuation method
-    IERC7726 valuationMethod;
-    /// Unix timestamp measured in secs
-    uint64 maturity;
+    IERC7726 valuation;
 }
 
 struct Item {
     /// Base info of this item
     ItemInfo info;
-    /// Total amount decreased by `decreaseDebt`. Measured in pool currency denomination
-    uint128 totalDecreasedDebt;
-    /// Total amount increased by `increaseDebt`. Measured in pool currency denomination
-    uint128 totalIncreasedDebt;
-    /// Total interest paid. Measured in pool currency denomination.
-    uint128 totalInterestPaid;
+    /// A representation of the debt used by LinealAccrual to obtain the real debt
+    uint128 normalizedDebt;
     /// Outstanding quantity
     Decimal18 outstandingQuantity;
 }
+
+function exists(Item storage item) view returns (bool) {
+    return address(item.info.collateral.source) != address(0);
+}
+
+using {exists} for Item;
 
 contract Portfolio {
     using MathLib for uint256;
@@ -73,49 +83,56 @@ contract Portfolio {
 
     // TODO: extend with more properties
     event Create(PoolId, ItemId);
-    event DebtIncreased(PoolId, ItemId);
-    event DebtDecreased(PoolId, ItemId);
-    event TransferDebt(PoolId, ItemId from, ItemId to);
+    event DebtIncreased(PoolId, ItemId, Decimal18 quantity);
+    event DebtDecreased(PoolId, ItemId, Decimal18 quantity, uint128 interest);
+    event TransferDebt(PoolId, ItemId from, ItemId to, Decimal18 quantity, uint128 interest);
     event Closed(PoolId, ItemId);
 
     mapping(PoolId => uint32 nonce) public itemNonces;
     mapping(PoolId => mapping(ItemId => Item)) public items;
 
-    IAccessControl poolAdmin;
     IPoolRegistry poolRegistry;
+    ILinearAccrual linearAccrual;
 
-    constructor(IAccessControl _poolAdmin, IPoolRegistry _poolRegistry) {
-        poolAdmin = _poolAdmin;
+    constructor(IPoolRegistry _poolRegistry, ILinearAccrual _linearAccrual) {
         poolRegistry = _poolRegistry;
+        linearAccrual = _linearAccrual;
     }
 
     function create(PoolId poolId, ItemInfo calldata info) external {
-        bytes32 poolAdminRole = bytes32(uint256(PoolId.unwrap(poolId)));
-        require(poolAdmin.hasRole(poolAdminRole, msg.sender), "The creator should be the pool admin");
-
         bool ok = info.collateral.source.transfer(address(this), info.collateral.id, 1);
         require(ok, "Collateral can not be transfered to the contract");
 
         ItemId itemId = ItemId.wrap(itemNonces[poolId]++);
-        items[poolId][itemId] = Item(info, 0, 0, 0, d18(0));
+        items[poolId][itemId] = Item(info, 0, d18(0));
 
         emit Create(poolId, itemId);
     }
 
     function increaseDebt(PoolId poolId, ItemId itemId, Decimal18 quantity) external {
         Item storage item = items[poolId][itemId];
-        require(item.info.owner == msg.sender, "Only the owner of the item can modify it");
+        require(item.exists(), "The item must exists");
 
         uint128 price = this.getPrice(poolId, itemId);
+        uint128 amount = quantity.mulInt(price);
 
+        item.normalizedDebt = linearAccrual.increaseNormalizedDebt(item.info.rateId, item.normalizedDebt, amount);
         item.outstandingQuantity = item.outstandingQuantity + quantity;
-        item.totalIncreasedDebt += quantity.mulInt(price);
 
-        emit DebtIncreased(poolId, itemId);
+        emit DebtIncreased(poolId, itemId, quantity);
     }
 
-    function decreaseDebt(PoolId poolId, ItemId itemId, Decimal18 principal, uint128 interest) external {
-        //TODO: opposite to increaseDebt
+    function decreaseDebt(PoolId poolId, ItemId itemId, Decimal18 principalQuantity, uint128 interest) external {
+        Item storage item = items[poolId][itemId];
+        require(item.exists(), "The item must exists");
+
+        uint128 price = this.getPrice(poolId, itemId);
+        uint128 amount = principalQuantity.mulInt(price) + interest;
+
+        item.normalizedDebt = linearAccrual.decreaseNormalizedDebt(item.info.rateId, item.normalizedDebt, amount);
+        item.outstandingQuantity = item.outstandingQuantity - principalQuantity;
+
+        emit DebtDecreased(poolId, itemId, principalQuantity, interest);
     }
 
     function transferDebt(PoolId poolId, ItemId from, ItemId to, Decimal18 principal, uint128 interestPaid) external {
@@ -123,7 +140,9 @@ contract Portfolio {
     }
 
     function close(PoolId poolId, ItemId itemId) external {
-        require(items[poolId][itemId].outstandingQuantity.inner() == 0, "The item must not have outstanding quantity");
+        Item storage item = items[poolId][itemId];
+        require(item.exists(), "The item must exists");
+        require(item.outstandingQuantity.inner() == 0, "The item must not have outstanding quantity");
 
         delete items[poolId][itemId];
 
@@ -134,25 +153,24 @@ contract Portfolio {
     function getPrice(PoolId poolId, ItemId itemId) external view returns (uint128 value) {
         Item storage item = items[poolId][itemId];
 
-        if (address(item.info.valuationMethod) != address(0)) {
-            address base = collateralGlobalId(item.info.collateral);
-            address quote = poolRegistry.currencyOfPool(poolId);
+        address base = item.info.collateral.globalId();
+        address quote = poolRegistry.currencyOfPool(poolId);
 
-            return item.info.valuationMethod.getQuote(1, base, quote).toUint128();
-        } else {
-            //THINK: should I compute the debt per quantity unit or per item?
-            // Right now, as it is, is per quantity. Does it makes sense?
-            return computeDebt(poolId, itemId);
-        }
+        return item.info.valuation.getQuote(1, base, quote).toUint128();
     }
 
     /// The valuation of this item
-    function valuation(PoolId poolId, ItemId itemId) external view returns (uint128 value) {
+    function itemValue(PoolId poolId, ItemId itemId) external view returns (uint128 value) {
         uint128 price = this.getPrice(poolId, itemId);
         return items[poolId][itemId].outstandingQuantity.mulInt(price);
     }
 
-    function computeDebt(PoolId poolId, ItemId itemId) public view returns (uint128 value) {
-        //TODO
+    function nav(PoolId poolId) external view returns (uint128 value) {
+        for (uint32 i = 0; i < itemNonces[poolId]; i++) {
+            ItemId itemId = ItemId.wrap(i);
+            require(items[poolId][itemId].exists(), "The item must exists");
+
+            value += this.itemValue(poolId, itemId);
+        }
     }
 }
