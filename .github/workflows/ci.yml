@@ -108,6 +108,7 @@ jobs:
       - name: Filter directories
         run: |
           sudo apt update && sudo apt install -y lcov
+          lcov --help
           lcov --remove lcov.info 'test/*' 'script/*' 'src/libraries/*' --output-file lcov.info --rc lcov_branch_coverage=1 --ignore-errors empty --ignore-errors unused
 
       # This step posts a detailed coverage report as a comment and deletes previous comments on
@@ -124,12 +125,12 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }} # Adds a coverage summary comment to the PR.
 
       - name: Verify minimum coverage
-        if: github.event_name == 'pull_request' 
+        if: github.event_name == 'pull_request'
         uses: zgosalvez/github-actions-report-lcov@v2
         with:
           coverage-files: ./lcov.info
           minimum-coverage: 60 # Set coverage threshold.
-    
+
   # slither-analyze:
   #   runs-on: "ubuntu-latest"
   #   permissions:
@@ -155,7 +156,7 @@ jobs:
   #       uses: github/codeql-action/upload-sarif@v2
   #       with:
   #         sarif_file: ${{ steps.slither.outputs.sarif }}
-      
+
   #     - name: "Add Slither summary"
   #       run: |
   #         echo "## Slither result" >> $GITHUB_STEP_SUMMARY
