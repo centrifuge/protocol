@@ -79,9 +79,10 @@ using {exists} for Item;
 contract Portfolio {
     using MathLib for uint256;
 
-    // TODO: add custom errors
+    error ItemNotFound();
+    error ItemCanNotBeClosed();
+    error CollateralCanNotBeTransfered();
 
-    // TODO: extend with more properties
     event Create(PoolId, ItemId);
     event DebtIncreased(PoolId, ItemId, Decimal18 quantity);
     event DebtDecreased(PoolId, ItemId, Decimal18 quantity, uint128 interest);
@@ -101,7 +102,7 @@ contract Portfolio {
 
     function create(PoolId poolId, ItemInfo calldata info) external {
         bool ok = info.collateral.source.transfer(address(this), info.collateral.id, 1);
-        require(ok, "Collateral can not be transfered to the contract");
+        require(ok, CollateralCanNotBeTransfered());
 
         ItemId itemId = ItemId.wrap(itemNonces[poolId]++);
         items[poolId][itemId] = Item(info, 0, d18(0));
@@ -111,7 +112,7 @@ contract Portfolio {
 
     function increaseDebt(PoolId poolId, ItemId itemId, Decimal18 quantity) external {
         Item storage item = items[poolId][itemId];
-        require(item.exists(), "The item must exists");
+        require(item.exists(), ItemNotFound());
 
         uint128 price = this.getPrice(poolId, itemId);
         uint128 amount = quantity.mulInt(price);
@@ -124,7 +125,7 @@ contract Portfolio {
 
     function decreaseDebt(PoolId poolId, ItemId itemId, Decimal18 principalQuantity, uint128 interest) external {
         Item storage item = items[poolId][itemId];
-        require(item.exists(), "The item must exists");
+        require(item.exists(), ItemNotFound());
 
         uint128 price = this.getPrice(poolId, itemId);
         uint128 amount = principalQuantity.mulInt(price) + interest;
@@ -141,9 +142,10 @@ contract Portfolio {
 
     function close(PoolId poolId, ItemId itemId) external {
         Item storage item = items[poolId][itemId];
-        require(item.exists(), "The item must exists");
-        require(item.outstandingQuantity.inner() == 0, "The item must not have outstanding quantity");
+        require(item.exists(), ItemNotFound());
+        require(item.outstandingQuantity.inner() == 0, ItemCanNotBeClosed());
 
+        // TODO: transfer back the collateral.
         delete items[poolId][itemId];
 
         emit Closed(poolId, itemId);
@@ -168,9 +170,9 @@ contract Portfolio {
     function nav(PoolId poolId) external view returns (uint128 value) {
         for (uint32 i = 0; i < itemNonces[poolId]; i++) {
             ItemId itemId = ItemId.wrap(i);
-            require(items[poolId][itemId].exists(), "The item must exists");
-
-            value += this.itemValue(poolId, itemId);
+            if (items[poolId][itemId].exists()) {
+                value += this.itemValue(poolId, itemId);
+            }
         }
     }
 }
