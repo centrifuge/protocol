@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {ILinearAccrual} from "./ILinearAccrual.sol";
 import {Compounding, CompoundingPeriod} from "./Compounding.sol";
+import {Math} from "./Math.sol";
 
 /// @dev Represents the rate accumulator and the timestamp of the last rate update
 struct Rate {
@@ -25,8 +26,8 @@ contract LinearAccrual is ILinearAccrual {
     mapping(bytes32 rateId => Group group) public groups;
 
     modifier onlyUpdatedRate(bytes32 rateId) {
-        require(rates[rateId].accumulatedRate != 0, "rate-group-not-initialized");
-        require(rates[rateId].lastUpdated == block.timestamp, "rate-group-not-updated");
+        require(rates[rateId].accumulatedRate != 0, "rate-not-initialized");
+        require(rates[rateId].lastUpdated == block.timestamp, "rate-not-updated");
         _;
     }
 
@@ -34,7 +35,7 @@ contract LinearAccrual is ILinearAccrual {
     function getRateId(uint128 rate, CompoundingPeriod period) public returns (bytes32 rateId) {
         Group memory group = Group(rate, period);
 
-        // TODO: Discuss how to be future-proof if Group is altered
+        // TODO(@review): Discuss how to be future-proof if Group is altered
         rateId = keccak256(abi.encode(group));
         if (groups[rateId].ratePerPeriod == 0) {
             groups[rateId] = group;
@@ -72,7 +73,7 @@ contract LinearAccrual is ILinearAccrual {
         returns (uint128 newNormalizedDebt)
     {
         uint256 _debt = debt(oldRateId, prevNormalizedDebt);
-        // TODO: Ensure casting uint256 -> uint128 is feasible
+        // TODO(@review): Ensure casting uint256 -> uint128 is feasible
         return uint128(_debt / rates[newRateId].accumulatedRate);
     }
 
@@ -84,18 +85,27 @@ contract LinearAccrual is ILinearAccrual {
         return normalizedDebt * rates[rateId].accumulatedRate;
     }
 
-    /// @notice Updates the accumulated rate of the corresponding identifier based on the current timestamp
+    /// @notice Updates the accumulated rate of the corresponding identifier based on the periods which have passed
+    /// since the last update
     /// @param rateId the id of the interest rate group
     function drip(bytes32 rateId) public {
         Rate storage rate = rates[rateId];
-        require(rate.accumulatedRate != 0, "rate-group-not-initialized");
+        require(rate.accumulatedRate != 0, "rate-not-initialized");
         Group memory group = groups[rateId];
-        // TODO: Improve error names
         require(group.ratePerPeriod != 0, "group-not-initialized");
 
         // Determine number of full compounding periods passed since last update
         uint256 periodsPassed = Compounding.getPeriodsPassed(group.period, rate.lastUpdated);
 
-        // TODO: Apply rpow
+        if (periodsPassed > 0) {
+            // TODO(@review): Discuss casting and desired precision (10 ** 27 taken from tinlake)
+            // TODO(@wischli): Use mulDiv from
+            // https://github.com/centrifuge/liquidity-pools/blob/main/src/libraries/MathLib.sol#L20
+            rate.accumulatedRate =
+                uint128((Math.rpow(group.ratePerPeriod, periodsPassed, 10 ** 27)) * rate.accumulatedRate / 10 ** 27);
+        }
+        rate.lastUpdated = uint64(block.timestamp);
+
+        // TODO(@wischli): Emit aggregation event
     }
 }
