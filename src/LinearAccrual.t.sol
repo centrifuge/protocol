@@ -3,7 +3,7 @@ pragma solidity ^0.8.28;
 
 import "forge-std/Test.sol";
 import "./LinearAccrual.sol";
-import "./ILinearAccrual.sol";
+import "./interfaces/ILinearAccrual.sol";
 import "./Compounding.sol";
 
 contract TestLinearAccrual is Test {
