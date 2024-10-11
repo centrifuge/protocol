@@ -108,7 +108,7 @@ jobs:
       - name: Filter directories
         run: |
           sudo apt update && sudo apt install -y lcov
-          lcov --remove lcov.info 'test/*' 'script/*' 'src/libraries/*' --output-file lcov.info --rc lcov_branch_coverage=1 --ignore-errors empty --ignore-errors unused
+          lcov --remove lcov.info 'test/*' 'script/*' 'src/libraries/*' --output-file lcov.info --rc branch_coverage=1 --ignore-errors empty --ignore-errors unused
 
       # This step posts a detailed coverage report as a comment and deletes previous comments on
       # each push. The below step is used to fail coverage if the specified coverage threshold is
@@ -125,9 +125,9 @@ jobs:
 
       - name: Verify minimum coverage
         if: github.event_name == 'pull_request' 
-        uses: zgosalvez/github-actions-report-lcov@v2
+        uses: zgosalvez/github-actions-report-lcov@v3
         with:
-          coverage-files: ./lcov.info
+          coverage-files: ./lcov.info --ignore-errors empty --ignore-errors unused
           minimum-coverage: 60 # Set coverage threshold.
     
   # slither-analyze:
