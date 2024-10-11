@@ -108,9 +108,9 @@ jobs:
       - name: Filter directories
         run: |
           sudo apt update && sudo apt install -y lcov
-          lcov --help
-          lcov --remove lcov.info 'test/*' 'script/*' 'src/libraries/*' --output-file lcov.info --rc lcov_branch_coverage=1 --ignore-errors empty --ignore-errors unused
-
+          if [ -s diff.txt ]; then
+            lcov --remove lcov.info 'test/*' 'script/*' 'src/libraries/*' --output-file lcov.info --rc lcov_branch_coverage=1 --ignore-errors empty --ignore-errors unused
+          fi
       # This step posts a detailed coverage report as a comment and deletes previous comments on
       # each push. The below step is used to fail coverage if the specified coverage threshold is
       # not met. The below step can post a comment (when it's `github-token` is specified) but it's
