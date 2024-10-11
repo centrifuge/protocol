@@ -18,9 +18,7 @@ library Compounding {
     ///
     /// @dev    In finance, one year is composed of 12 months of 30 days such that 360 days
     ///         represent a commercial year.
-    function getSeconds(
-        CompoundingPeriod period
-    ) public pure returns (uint256) {
+    function getSeconds(CompoundingPeriod period) public pure returns (uint256) {
         if (period == CompoundingPeriod.Secondly) return 1;
         if (period == CompoundingPeriod.Daily) return SECONDS_PER_DAY;
         if (period == CompoundingPeriod.Quarterly) return SECONDS_PER_YEAR / 4; // 3 months
@@ -32,11 +30,9 @@ library Compounding {
     /// @notice Returns the number of full compounding periods that have passed since a given timestamp.
     ///
     /// @dev    In finance, one year is composed of 12 months of 30 days such that 360 days
-    ///         represent a commercial year. Uses 0am UTC as the cutoff time for daily, quarterly, biannually, and annually.
-    function getPeriodsPassed(
-        CompoundingPeriod period,
-        uint256 startTimestamp
-    ) public view returns (uint256) {
+    ///         represent a commercial year. Uses 0am UTC as the cutoff time for daily, quarterly, biannually, and
+    /// annually.
+    function getPeriodsPassed(CompoundingPeriod period, uint256 startTimestamp) public view returns (uint256) {
         // TODO: Discuss revert vs. return
         if (startTimestamp >= block.timestamp) return 0;
 
@@ -47,16 +43,11 @@ library Compounding {
             uint256 nowDay = block.timestamp / SECONDS_PER_DAY;
             return nowDay - startDay;
         } else if (
-            period == CompoundingPeriod.Quarterly ||
-            period == CompoundingPeriod.Biannually ||
-            period == CompoundingPeriod.Annually
+            period == CompoundingPeriod.Quarterly || period == CompoundingPeriod.Biannually
+                || period == CompoundingPeriod.Annually
         ) {
-            (uint256 startYear, uint256 startMonth) = getYearAndMonth(
-                startTimestamp
-            );
-            (uint256 nowYear, uint256 nowMonth) = getYearAndMonth(
-                block.timestamp
-            );
+            (uint256 startYear, uint256 startMonth) = getYearAndMonth(startTimestamp);
+            (uint256 nowYear, uint256 nowMonth) = getYearAndMonth(block.timestamp);
 
             if (period == CompoundingPeriod.Quarterly) {
                 uint256 startQuarter = startMonth / 3;
@@ -75,9 +66,7 @@ library Compounding {
 
     /// @dev Get the year and month from a timestamp (approximate)
     ///      Based on a commercial year of 360 days, with 12 months of 30 days each.
-    function getYearAndMonth(
-        uint256 timestamp
-    ) internal pure returns (uint256 year, uint256 month) {
+    function getYearAndMonth(uint256 timestamp) internal pure returns (uint256 year, uint256 month) {
         year = (timestamp / SECONDS_PER_YEAR);
         uint256 daysIntoYear = (timestamp % SECONDS_PER_YEAR) / SECONDS_PER_DAY;
         month = daysIntoYear / 30;

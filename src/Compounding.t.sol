@@ -13,36 +13,34 @@ contract TestCompounding is Test {
         _testGetSeconds(CompoundingPeriod.Biannually, 15552000);
         _testGetSeconds(CompoundingPeriod.Annually, 31104000);
     }
+
     function testGetPeriodsPassedSecondly() public {
         _testGetPeriodsPassed(CompoundingPeriod.Secondly, 47, 100);
     }
+
     function testGetPeriodsPassedDaily() public {
         _testGetPeriodsPassed(CompoundingPeriod.Daily, 3, 10);
     }
+
     function testGetPeriodsPassedQuarterly() public {
         _testGetPeriodsPassed(CompoundingPeriod.Quarterly, 2, 123);
     }
+
     function testGetPeriodsPassedBiannually() public {
         _testGetPeriodsPassed(CompoundingPeriod.Biannually, 2, 1000);
     }
+
     function testGetPeriodsPassedAnnually() public {
         _testGetPeriodsPassed(CompoundingPeriod.Annually, 2, 12312);
     }
 
-    function _testGetSeconds(
-        CompoundingPeriod period,
-        uint256 expectedSeconds
-    ) internal pure {
+    function _testGetSeconds(CompoundingPeriod period, uint256 expectedSeconds) internal pure {
         uint256 compoundingSeconds = Compounding.getSeconds(period);
         require(
             compoundingSeconds == expectedSeconds,
             string(
                 abi.encodePacked(
-                    "getSeconds should return ",
-                    expectedSeconds,
-                    " for ",
-                    _periodToString(period),
-                    " compounding"
+                    "getSeconds should return ", expectedSeconds, " for ", _periodToString(period), " compounding"
                 )
             )
         );
@@ -54,10 +52,7 @@ contract TestCompounding is Test {
         uint256 intervalMultiplierEnd
     ) internal {
         require(intervalMultiplierStart > 1, "multiplier > 1 required");
-        require(
-            intervalMultiplierEnd > intervalMultiplierStart,
-            "end must be greater than start"
-        );
+        require(intervalMultiplierEnd > intervalMultiplierStart, "end must be greater than start");
         uint256 periodLength = Compounding.getSeconds(period);
 
         // Test case: start in future
@@ -113,14 +108,9 @@ contract TestCompounding is Test {
 
         // Test case: within interval between period and end of 10th interval
         vm.warp(intervalMultiplierEnd * periodLength - 1 seconds);
-        uint256 expectedPeriods = intervalMultiplierEnd -
-            intervalMultiplierStart -
-            1;
+        uint256 expectedPeriods = intervalMultiplierEnd - intervalMultiplierStart - 1;
         require(
-            Compounding.getPeriodsPassed(
-                period,
-                intervalMultiplierStart * periodLength
-            ) == expectedPeriods,
+            Compounding.getPeriodsPassed(period, intervalMultiplierStart * periodLength) == expectedPeriods,
             string(
                 abi.encodePacked(
                     "getPeriodsPassed should return ",
@@ -133,9 +123,7 @@ contract TestCompounding is Test {
         );
     }
 
-    function _periodToString(
-        CompoundingPeriod period
-    ) internal pure returns (string memory) {
+    function _periodToString(CompoundingPeriod period) internal pure returns (string memory) {
         if (period == CompoundingPeriod.Secondly) return "Secondly";
         if (period == CompoundingPeriod.Daily) return "Daily";
         if (period == CompoundingPeriod.Quarterly) return "Quarterly";

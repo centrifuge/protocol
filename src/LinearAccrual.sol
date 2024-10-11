@@ -25,22 +25,13 @@ contract LinearAccrual is ILinearAccrual {
     mapping(bytes32 rateId => Group group) public groups;
 
     modifier onlyUpdatedRate(bytes32 rateId) {
-        require(
-            rates[rateId].accumulatedRate != 0,
-            "rate-group-not-initialized"
-        );
-        require(
-            rates[rateId].lastUpdated == block.timestamp,
-            "rate-group-not-updated"
-        );
+        require(rates[rateId].accumulatedRate != 0, "rate-group-not-initialized");
+        require(rates[rateId].lastUpdated == block.timestamp, "rate-group-not-updated");
         _;
     }
 
     /// @inheritdoc ILinearAccrual
-    function getRateId(
-        uint128 rate,
-        CompoundingPeriod period
-    ) public returns (bytes32 rateId) {
+    function getRateId(uint128 rate, CompoundingPeriod period) public returns (bytes32 rateId) {
         Group memory group = Group(rate, period);
 
         // TODO: Discuss how to be future-proof if Group is altered
@@ -53,41 +44,27 @@ contract LinearAccrual is ILinearAccrual {
     }
 
     /// @inheritdoc ILinearAccrual
-    function increaseNormalizedDebt(
-        bytes32 rateId,
-        uint128 prevNormalizedDebt,
-        uint128 debtIncrease
-    )
+    function increaseNormalizedDebt(bytes32 rateId, uint128 prevNormalizedDebt, uint128 debtIncrease)
         external
         view
         onlyUpdatedRate(rateId)
         returns (uint128 newNormalizedDebt)
     {
-        return
-            prevNormalizedDebt + debtIncrease / rates[rateId].accumulatedRate;
+        return prevNormalizedDebt + debtIncrease / rates[rateId].accumulatedRate;
     }
 
     /// @inheritdoc ILinearAccrual
-    function decreaseNormalizedDebt(
-        bytes32 rateId,
-        uint128 prevNormalizedDebt,
-        uint128 debtDecrease
-    )
+    function decreaseNormalizedDebt(bytes32 rateId, uint128 prevNormalizedDebt, uint128 debtDecrease)
         external
         view
         onlyUpdatedRate(rateId)
         returns (uint128 newNormalizedDebt)
     {
-        return
-            prevNormalizedDebt - debtDecrease / rates[rateId].accumulatedRate;
+        return prevNormalizedDebt - debtDecrease / rates[rateId].accumulatedRate;
     }
 
     /// @inheritdoc ILinearAccrual
-    function renormalizeDebt(
-        bytes32 oldRateId,
-        bytes32 newRateId,
-        uint128 prevNormalizedDebt
-    )
+    function renormalizeDebt(bytes32 oldRateId, bytes32 newRateId, uint128 prevNormalizedDebt)
         external
         view
         onlyUpdatedRate(oldRateId)
@@ -99,13 +76,11 @@ contract LinearAccrual is ILinearAccrual {
         return uint128(_debt / rates[newRateId].accumulatedRate);
     }
 
-    /// @notice     Returns the current debt without normalization based on actual block.timestamp (now) and the accumulated rate.
+    /// @notice     Returns the current debt without normalization based on actual block.timestamp (now) and the
+    /// accumulated rate.
     /// @param      rateId Identifier of the rate group
     /// @param      normalizedDebt Normalized debt from which we derive the debt
-    function debt(
-        bytes32 rateId,
-        uint128 normalizedDebt
-    ) public view onlyUpdatedRate(rateId) returns (uint256) {
+    function debt(bytes32 rateId, uint128 normalizedDebt) public view onlyUpdatedRate(rateId) returns (uint256) {
         return normalizedDebt * rates[rateId].accumulatedRate;
     }
 
@@ -118,11 +93,8 @@ contract LinearAccrual is ILinearAccrual {
         // TODO: Improve error names
         require(group.ratePerPeriod != 0, "group-not-initialized");
 
-        // Determine numbert of full compounding periods passed since last update
-        uint256 compoundingIntervals = Compounding.getPeriodsPassed(
-            group.period,
-            rate.lastUpdated
-        );
+        // Determine number of full compounding periods passed since last update
+        uint256 periodsPassed = Compounding.getPeriodsPassed(group.period, rate.lastUpdated);
 
         // TODO: Apply rpow
     }
