@@ -1,3 +1,5 @@
 @chimera/=lib/liquidity-pools/lib/chimera/src/
+chimera/=lib/liquidity-pools/lib/chimera/src/
+ds-test/=lib/liquidity-pools/lib/forge-std/lib/ds-test/src/
 forge-std/=lib/forge-std/src/
-liquidity-pools/=lib/liquidity-pools/src/
+liquidity-pools/=lib/liquidity-pools/
