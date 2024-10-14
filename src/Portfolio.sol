@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {Decimal18, d18} from "src/libraries/Decimal18.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
+import {Auth} from "src/Auth.sol";
 
 interface IERC6909 {
     function transfer(address receiver, uint256 id, uint256 amount) external returns (bool success);
@@ -90,7 +91,7 @@ enum PricingMode {
     Indicative
 }
 
-contract Portfolio {
+contract Portfolio is Auth {
     using MathLib for uint256;
 
     error ItemNotFound();
@@ -111,14 +112,14 @@ contract Portfolio {
     IPoolRegistry poolRegistry;
     ILinearAccrual linearAccrual;
 
-    constructor(IPoolRegistry _poolRegistry, ILinearAccrual _linearAccrual) {
+    constructor(address owner, IPoolRegistry _poolRegistry, ILinearAccrual _linearAccrual) Auth(owner) {
         poolRegistry = _poolRegistry;
         linearAccrual = _linearAccrual;
     }
 
     /// Creates a new item based of a collateral.
     /// The owner of the collateral will be this contract until close is called.
-    function create(PoolId poolId, ItemInfo calldata info) external {
+    function create(PoolId poolId, ItemInfo calldata info) external auth {
         bool ok = info.collateral.source.transferFrom(info.creator, address(this), info.collateral.id, 1);
         require(ok, CollateralCanNotBeTransfered());
 
@@ -129,7 +130,7 @@ contract Portfolio {
     }
 
     /// Update the rateId used by this item
-    function updateRate(PoolId poolId, ItemId itemId, bytes32 rateId) external {
+    function updateRate(PoolId poolId, ItemId itemId, bytes32 rateId) external auth {
         Item storage item = items[poolId][itemId];
         require(item.exists(), ItemNotFound());
 
@@ -140,7 +141,7 @@ contract Portfolio {
     }
 
     /// Update the valuation contract address used for this item
-    function updateValuation(PoolId poolId, ItemId itemId, IERC7726 valuation) external {
+    function updateValuation(PoolId poolId, ItemId itemId, IERC7726 valuation) external auth {
         Item storage item = items[poolId][itemId];
         require(item.exists(), ItemNotFound());
 
@@ -150,7 +151,7 @@ contract Portfolio {
     }
 
     /// Increase the debt of an item
-    function increaseDebt(PoolId poolId, ItemId itemId, uint128 amount) external {
+    function increaseDebt(PoolId poolId, ItemId itemId, uint128 amount) external auth {
         Item storage item = items[poolId][itemId];
         require(item.exists(), ItemNotFound());
 
@@ -163,7 +164,7 @@ contract Portfolio {
     }
 
     /// Decrease the debt of an item
-    function decreaseDebt(PoolId poolId, ItemId itemId, uint128 principal, uint128 interest) external {
+    function decreaseDebt(PoolId poolId, ItemId itemId, uint128 principal, uint128 interest) external auth {
         Item storage item = items[poolId][itemId];
         require(item.exists(), ItemNotFound());
 
@@ -177,7 +178,7 @@ contract Portfolio {
     }
 
     /// Transfer debt `from` an item `to` another item.
-    function transferDebt(PoolId poolId, ItemId from, ItemId to, uint128 principal, uint128 interest) external {
+    function transferDebt(PoolId poolId, ItemId from, ItemId to, uint128 principal, uint128 interest) external auth {
         this.decreaseDebt(poolId, from, principal, interest);
         this.increaseDebt(poolId, to, principal + interest);
     }
