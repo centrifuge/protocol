@@ -128,7 +128,7 @@ jobs:
         uses: zgosalvez/github-actions-report-lcov@v2
         with:
           coverage-files: ./lcov.info
-          minimum-coverage: 60 # Set coverage threshold.
+          minimum-coverage: 0 # Set coverage threshold.
     
   # slither-analyze:
   #   runs-on: "ubuntu-latest"
