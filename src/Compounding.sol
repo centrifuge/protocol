@@ -14,10 +14,10 @@ library Compounding {
     uint256 constant SECONDS_PER_YEAR = 31104000; // 360 days for a commercial year (360 * 86400)
     uint256 constant SECONDS_PER_MONTH = SECONDS_PER_YEAR / 12;
 
-    /// @notice Returns the amount of seconds for the given compounding period.
+    /// @notice Returns the amount of seconds for the given compounding period based on a commercial year.
     ///
-    /// @dev    In finance, one year is composed of 12 months of 30 days such that 360 days
-    ///         represent a commercial year.
+    /// @dev    A commercial year consists of 360 days, i.e. 12 months of each 30 days. For more information, see
+    ///         https://en.wikipedia.org/wiki/360-day_calendar#Financial_use
     function getSeconds(CompoundingPeriod period) public pure returns (uint256) {
         if (period == CompoundingPeriod.Secondly) return 1;
         if (period == CompoundingPeriod.Daily) return SECONDS_PER_DAY;
@@ -27,11 +27,8 @@ library Compounding {
         revert("invalid-compounding-period");
     }
 
-    /// @notice Returns the number of full compounding periods that have passed since a given timestamp.
-    ///
-    /// @dev    In finance, one year is composed of 12 months of 30 days such that 360 days
-    ///         represent a commercial year. Uses 0am UTC as the cutoff time for daily, quarterly, biannually, and
-    /// annually.
+    /// @notice Returns the number of full compounding periods that have passed since a given timestamp based on a
+    ///         commercial 360-day year.
     function getPeriodsPassed(CompoundingPeriod period, uint256 startTimestamp) public view returns (uint256) {
         // TODO: Discuss revert vs. return
         if (startTimestamp >= block.timestamp) return 0;
@@ -64,8 +61,8 @@ library Compounding {
         revert("invalid-compounding-period");
     }
 
-    /// @dev Get the year and month from a timestamp (approximate)
-    ///      Based on a commercial year of 360 days, with 12 months of 30 days each.
+    /// @dev    Get the year and month from a timestamp
+    ///         Based on a commercial year of 360 days with 12 months of 30 days each.
     function getYearAndMonth(uint256 timestamp) internal pure returns (uint256 year, uint256 month) {
         year = (timestamp / SECONDS_PER_YEAR);
         uint256 daysIntoYear = (timestamp % SECONDS_PER_YEAR) / SECONDS_PER_DAY;
