@@ -13,6 +13,10 @@ interface IERC6909 {
 
 interface IERC7726 {
     function getQuote(uint256 baseAmount, address base, address quote) external view returns (uint256 quoteAmount);
+    function getIndicativeQuote(uint256 baseAmount, address base, address quote)
+        external
+        view
+        returns (uint256 quoteAmount);
 }
 
 interface IPoolRegistry {
@@ -80,6 +84,11 @@ function exists(Item storage item) view returns (bool) {
 }
 
 using {exists} for Item;
+
+enum PricingMode {
+    Real,
+    Indicative
+}
 
 contract Portfolio {
     using MathLib for uint256;
@@ -196,29 +205,38 @@ contract Portfolio {
     }
 
     /// The pool currency amount for some item quantity.
-    function _getValue(PoolId poolId, Item storage item, Decimal18 quantity) private view returns (uint128 amount) {
+    function _getValue(PoolId poolId, Item storage item, Decimal18 quantity, PricingMode mode)
+        private
+        view
+        returns (uint128 amount)
+    {
         address base = item.info.collateral.globalId();
         address quote = poolRegistry.currencyOfPool(poolId);
 
-        return item.info.valuation.getQuote(quantity.inner(), base, quote).toUint128();
+        if (mode == PricingMode.Real) {
+            return item.info.valuation.getQuote(quantity.inner(), base, quote).toUint128();
+        } else {
+            // mode == PricingMode.Indicative
+            return item.info.valuation.getIndicativeQuote(quantity.inner(), base, quote).toUint128();
+        }
     }
 
     /// Return the valuation of an item in the portfolio
-    function itemValuation(PoolId poolId, ItemId itemId) external view returns (uint128 value) {
+    function itemValuation(PoolId poolId, ItemId itemId, PricingMode mode) external view returns (uint128 value) {
         Item storage item = items[poolId][itemId];
         require(item.exists(), ItemNotFound());
 
-        return _getValue(poolId, item, item.outstandingQuantity);
+        return _getValue(poolId, item, item.outstandingQuantity, mode);
     }
 
-    /// Return the valuation of all items in the portfolio
-    function nav(PoolId poolId) external view returns (uint128 value) {
+    /// Return the Net Asset Value of all items in the portfolio
+    function nav(PoolId poolId, PricingMode mode) external view returns (uint128 value) {
         for (uint32 i = 0; i < itemNonces[poolId]; i++) {
             ItemId itemId = ItemId.wrap(i);
             Item storage item = items[poolId][itemId];
 
             if (item.exists()) {
-                value += _getValue(poolId, item, item.outstandingQuantity);
+                value += _getValue(poolId, item, item.outstandingQuantity, mode);
             }
         }
     }
