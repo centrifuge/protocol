@@ -4,89 +4,20 @@ pragma solidity 0.8.28;
 import {Decimal18, d18} from "src/libraries/Decimal18.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {Auth} from "src/Auth.sol";
+import {IPortfolio} from "src/interfaces/IPortfolio.sol";
+import {IERC7726, IERC6909, IPoolRegistry, ILinearAccrual} from "src/interfaces/Common.sol";
 
-interface IERC6909 {
-    function transfer(address receiver, uint256 id, uint256 amount) external returns (bool success);
-    function transferFrom(address sender, address receiver, uint256 id, uint256 amount)
-        external
-        returns (bool success);
-}
-
-interface IERC7726 {
-    function getQuote(uint256 baseAmount, address base, address quote) external view returns (uint256 quoteAmount);
-    function getIndicativeQuote(uint256 baseAmount, address base, address quote)
-        external
-        view
-        returns (uint256 quoteAmount);
-}
-
-interface IPoolRegistry {
-    function currencyOfPool(uint64 poolId) external view returns (address currency);
-}
-
-interface ILinearAccrual {
-    function increaseNormalizedDebt(bytes32 rateId, uint128 prevNormalizedDebt, uint128 increment)
-        external
-        returns (uint128 newNormalizedDebt);
-
-    function decreaseNormalizedDebt(bytes32 rateId, uint128 prevNormalizedDebt, uint128 decrement)
-        external
-        returns (uint128 newNormalizedDebt);
-
-    function renormalizeDebt(bytes32 rateId, bytes32 newRateId, uint128 prevNormalizedDebt)
-        external
-        returns (uint128 newNormalizedDebt);
-}
-
-/// Required data to locate the collateral
-struct Collateral {
-    /// Contract where the collateral exists
-    IERC6909 source;
-    /// Identification of the collateral in that contract
-    uint256 id;
-}
-
-/// Struct used for user inputs and "static" item data
-struct ItemInfo {
-    /// The RWA used for this item as a collateral
-    Collateral collateral;
-    /// Fixed point rate
-    bytes32 rateId;
-    /// Fixed point number with the amount of asset hold by this item.
-    /// Usually for Price valued items it will be > 1. Other valuations will normally set this value from 0-1.
-    Decimal18 quantity;
-    /// Valuation method
-    IERC7726 valuation;
-}
-
-struct Item {
-    /// Base info of this item
-    ItemInfo info;
-    /// A representation of the debt used by LinealAccrual to obtain the real debt
-    uint128 normalizedDebt;
-    /// Outstanding quantity
-    Decimal18 outstandingQuantity;
-}
-
-enum PricingMode {
-    Real,
-    Indicative
-}
-
-contract Portfolio is Auth {
+contract Portfolio is Auth, IPortfolio {
     using MathLib for uint256;
 
-    error ItemNotFound();
-    error ItemCanNotBeClosed();
-    error CollateralCanNotBeTransfered();
-
-    event Create(uint64 poolId, uint32 itemId);
-    event ValuationUpdated(uint64 poolId, uint32 itemId, IERC7726);
-    event RateUpdated(uint64 poolId, uint32 itemId, bytes32 rateId);
-    event DebtIncreased(uint64 poolId, uint32 itemId, uint128 amount);
-    event DebtDecreased(uint64 poolId, uint32 itemId, uint128 amount, uint128 interest);
-    event TransferDebt(uint64 poolId, uint32 fromItemId, uint32 toItemId, Decimal18 quantity, uint128 interest);
-    event Closed(uint64 poolId, uint32 itemId);
+    struct Item {
+        /// Base info of this item
+        ItemInfo info;
+        /// A representation of the debt used by LinealAccrual to obtain the real debt
+        uint128 normalizedDebt;
+        /// Outstanding quantity
+        Decimal18 outstandingQuantity;
+    }
 
     /// Latest incremental item identifier per pool.
     mapping(uint64 poolId => uint32 nonce) public itemNonces;
@@ -172,7 +103,7 @@ contract Portfolio is Auth {
     }
 
     /// Close a non-outstanding item returning the collateral to the creator of the item
-    function close(uint64 poolId, uint32 itemId, address creator) external {
+    function close(uint64 poolId, uint32 itemId, address creator) external auth {
         Item storage item = items[poolId][itemId];
         require(_doItemExists(item), ItemNotFound());
         require(item.outstandingQuantity.inner() == 0, ItemCanNotBeClosed());
