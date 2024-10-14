@@ -21,7 +21,7 @@ interface IERC7726 {
 }
 
 interface IPoolRegistry {
-    function currencyOfPool(PoolId poolId) external view returns (address currency);
+    function currencyOfPool(uint64 poolId) external view returns (address currency);
 }
 
 interface ILinearAccrual {
@@ -37,10 +37,6 @@ interface ILinearAccrual {
         external
         returns (uint128 newNormalizedDebt);
 }
-
-type PoolId is uint64;
-
-type ItemId is uint32;
 
 /// Required data to locate the collateral
 struct Collateral {
@@ -98,16 +94,19 @@ contract Portfolio is Auth {
     error ItemCanNotBeClosed();
     error CollateralCanNotBeTransfered();
 
-    event Create(PoolId, ItemId);
-    event ValuationUpdated(PoolId, ItemId, IERC7726);
-    event RateUpdated(PoolId, ItemId, bytes32 rateId);
-    event DebtIncreased(PoolId, ItemId, uint128 amount);
-    event DebtDecreased(PoolId, ItemId, uint128 amount, uint128 interest);
-    event TransferDebt(PoolId, ItemId from, ItemId to, Decimal18 quantity, uint128 interest);
-    event Closed(PoolId, ItemId);
+    event Create(uint64 poolId, uint32 itemId);
+    event ValuationUpdated(uint64 poolId, uint32 itemId, IERC7726);
+    event RateUpdated(uint64 poolId, uint32 itemId, bytes32 rateId);
+    event DebtIncreased(uint64 poolId, uint32 itemId, uint128 amount);
+    event DebtDecreased(uint64 poolId, uint32 itemId, uint128 amount, uint128 interest);
+    event TransferDebt(uint64 poolId, uint32 fromItemId, uint32 toItemId, Decimal18 quantity, uint128 interest);
+    event Closed(uint64 poolId, uint32 itemId);
 
-    mapping(PoolId => uint32 nonce) public itemNonces;
-    mapping(PoolId => mapping(ItemId => Item)) public items;
+    /// Latest incremental item identifier per pool.
+    mapping(uint64 poolId => uint32 nonce) public itemNonces;
+
+    /// A list of items (a portfolio) per pool.
+    mapping(uint64 poolId => Item[]) public items;
 
     IPoolRegistry poolRegistry;
     ILinearAccrual linearAccrual;
@@ -119,18 +118,18 @@ contract Portfolio is Auth {
 
     /// Creates a new item based of a collateral.
     /// The owner of the collateral will be this contract until close is called.
-    function create(PoolId poolId, ItemInfo calldata info) external auth {
+    function create(uint64 poolId, ItemInfo calldata info) external auth {
         bool ok = info.collateral.source.transferFrom(info.creator, address(this), info.collateral.id, 1);
         require(ok, CollateralCanNotBeTransfered());
 
-        ItemId itemId = ItemId.wrap(itemNonces[poolId]++);
+        uint32 itemId = itemNonces[poolId]++;
         items[poolId][itemId] = Item(info, 0, d18(0));
 
         emit Create(poolId, itemId);
     }
 
     /// Update the rateId used by this item
-    function updateRate(PoolId poolId, ItemId itemId, bytes32 rateId) external auth {
+    function updateRate(uint64 poolId, uint32 itemId, bytes32 rateId) external auth {
         Item storage item = items[poolId][itemId];
         require(item.exists(), ItemNotFound());
 
@@ -141,7 +140,7 @@ contract Portfolio is Auth {
     }
 
     /// Update the valuation contract address used for this item
-    function updateValuation(PoolId poolId, ItemId itemId, IERC7726 valuation) external auth {
+    function updateValuation(uint64 poolId, uint32 itemId, IERC7726 valuation) external auth {
         Item storage item = items[poolId][itemId];
         require(item.exists(), ItemNotFound());
 
@@ -151,7 +150,7 @@ contract Portfolio is Auth {
     }
 
     /// Increase the debt of an item
-    function increaseDebt(PoolId poolId, ItemId itemId, uint128 amount) external auth {
+    function increaseDebt(uint64 poolId, uint32 itemId, uint128 amount) external auth {
         Item storage item = items[poolId][itemId];
         require(item.exists(), ItemNotFound());
 
@@ -164,7 +163,7 @@ contract Portfolio is Auth {
     }
 
     /// Decrease the debt of an item
-    function decreaseDebt(PoolId poolId, ItemId itemId, uint128 principal, uint128 interest) external auth {
+    function decreaseDebt(uint64 poolId, uint32 itemId, uint128 principal, uint128 interest) external auth {
         Item storage item = items[poolId][itemId];
         require(item.exists(), ItemNotFound());
 
@@ -178,13 +177,16 @@ contract Portfolio is Auth {
     }
 
     /// Transfer debt `from` an item `to` another item.
-    function transferDebt(PoolId poolId, ItemId from, ItemId to, uint128 principal, uint128 interest) external auth {
-        this.decreaseDebt(poolId, from, principal, interest);
-        this.increaseDebt(poolId, to, principal + interest);
+    function transferDebt(uint64 poolId, uint32 fromItemId, uint32 toItemId, uint128 principal, uint128 interest)
+        external
+        auth
+    {
+        this.decreaseDebt(poolId, fromItemId, principal, interest);
+        this.increaseDebt(poolId, toItemId, principal + interest);
     }
 
     /// Close a non-outstanding item returning the collateral to the creator of the item
-    function close(PoolId poolId, ItemId itemId) external {
+    function close(uint64 poolId, uint32 itemId) external {
         Item storage item = items[poolId][itemId];
         require(item.exists(), ItemNotFound());
         require(item.outstandingQuantity.inner() == 0, ItemCanNotBeClosed());
@@ -198,7 +200,7 @@ contract Portfolio is Auth {
     }
 
     /// The item quantity for a pool currency amount
-    function _getQuantity(PoolId poolId, Item storage item, uint128 amount) private view returns (Decimal18 quantity) {
+    function _getQuantity(uint64 poolId, Item storage item, uint128 amount) private view returns (Decimal18 quantity) {
         address base = poolRegistry.currencyOfPool(poolId);
         address quote = item.info.collateral.globalId();
 
@@ -206,7 +208,7 @@ contract Portfolio is Auth {
     }
 
     /// The pool currency amount for some item quantity.
-    function _getValue(PoolId poolId, Item storage item, Decimal18 quantity, PricingMode mode)
+    function _getValue(uint64 poolId, Item storage item, Decimal18 quantity, PricingMode mode)
         private
         view
         returns (uint128 amount)
@@ -223,7 +225,7 @@ contract Portfolio is Auth {
     }
 
     /// Return the valuation of an item in the portfolio
-    function itemValuation(PoolId poolId, ItemId itemId, PricingMode mode) external view returns (uint128 value) {
+    function itemValuation(uint64 poolId, uint32 itemId, PricingMode mode) external view returns (uint128 value) {
         Item storage item = items[poolId][itemId];
         require(item.exists(), ItemNotFound());
 
@@ -231,9 +233,8 @@ contract Portfolio is Auth {
     }
 
     /// Return the Net Asset Value of all items in the portfolio
-    function nav(PoolId poolId, PricingMode mode) external view returns (uint128 value) {
-        for (uint32 i = 0; i < itemNonces[poolId]; i++) {
-            ItemId itemId = ItemId.wrap(i);
+    function nav(uint64 poolId, PricingMode mode) external view returns (uint128 value) {
+        for (uint32 itemId = 0; itemId < itemNonces[poolId]; itemId++) {
             Item storage item = items[poolId][itemId];
 
             if (item.exists()) {
