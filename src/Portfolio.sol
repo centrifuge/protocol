@@ -46,16 +46,8 @@ struct Collateral {
     uint256 id;
 }
 
-function globalId(Collateral memory collateral) pure returns (address) {
-    return address(uint160(uint256(keccak256(abi.encode(collateral.source, collateral.id)))));
-}
-
-using {globalId} for Collateral;
-
 /// Struct used for user inputs and "static" item data
 struct ItemInfo {
-    /// Issuer of this item
-    address creator;
     /// The RWA used for this item as a collateral
     Collateral collateral;
     /// Fixed point rate
@@ -75,12 +67,6 @@ struct Item {
     /// Outstanding quantity
     Decimal18 outstandingQuantity;
 }
-
-function exists(Item storage item) view returns (bool) {
-    return address(item.info.collateral.source) != address(0);
-}
-
-using {exists} for Item;
 
 enum PricingMode {
     Real,
@@ -108,18 +94,18 @@ contract Portfolio is Auth {
     /// A list of items (a portfolio) per pool.
     mapping(uint64 poolId => Item[]) public items;
 
-    IPoolRegistry poolRegistry;
-    ILinearAccrual linearAccrual;
+    IPoolRegistry public poolRegistry;
+    ILinearAccrual public linearAccrual;
 
-    constructor(address owner, IPoolRegistry _poolRegistry, ILinearAccrual _linearAccrual) Auth(owner) {
-        poolRegistry = _poolRegistry;
-        linearAccrual = _linearAccrual;
+    constructor(address owner, IPoolRegistry poolRegistry_, ILinearAccrual linearAccrual_) Auth(owner) {
+        poolRegistry = poolRegistry_;
+        linearAccrual = linearAccrual_;
     }
 
     /// Creates a new item based of a collateral.
     /// The owner of the collateral will be this contract until close is called.
-    function create(uint64 poolId, ItemInfo calldata info) external auth {
-        bool ok = info.collateral.source.transferFrom(info.creator, address(this), info.collateral.id, 1);
+    function create(uint64 poolId, ItemInfo calldata info, address creator) external auth {
+        bool ok = info.collateral.source.transferFrom(creator, address(this), info.collateral.id, 1);
         require(ok, CollateralCanNotBeTransfered());
 
         uint32 itemId = itemNonces[poolId]++;
@@ -131,7 +117,7 @@ contract Portfolio is Auth {
     /// Update the rateId used by this item
     function updateRate(uint64 poolId, uint32 itemId, bytes32 rateId) external auth {
         Item storage item = items[poolId][itemId];
-        require(item.exists(), ItemNotFound());
+        require(_doItemExists(item), ItemNotFound());
 
         item.normalizedDebt = linearAccrual.renormalizeDebt(item.info.rateId, rateId, item.normalizedDebt);
         item.info.rateId = rateId;
@@ -142,7 +128,7 @@ contract Portfolio is Auth {
     /// Update the valuation contract address used for this item
     function updateValuation(uint64 poolId, uint32 itemId, IERC7726 valuation) external auth {
         Item storage item = items[poolId][itemId];
-        require(item.exists(), ItemNotFound());
+        require(_doItemExists(item), ItemNotFound());
 
         item.info.valuation = valuation;
 
@@ -150,9 +136,9 @@ contract Portfolio is Auth {
     }
 
     /// Increase the debt of an item
-    function increaseDebt(uint64 poolId, uint32 itemId, uint128 amount) external auth {
+    function increaseDebt(uint64 poolId, uint32 itemId, uint128 amount) public auth {
         Item storage item = items[poolId][itemId];
-        require(item.exists(), ItemNotFound());
+        require(_doItemExists(item), ItemNotFound());
 
         Decimal18 quantity = _getQuantity(poolId, item, amount);
 
@@ -163,14 +149,14 @@ contract Portfolio is Auth {
     }
 
     /// Decrease the debt of an item
-    function decreaseDebt(uint64 poolId, uint32 itemId, uint128 principal, uint128 interest) external auth {
+    function decreaseDebt(uint64 poolId, uint32 itemId, uint128 principal, uint128 interest) public auth {
         Item storage item = items[poolId][itemId];
-        require(item.exists(), ItemNotFound());
+        require(_doItemExists(item), ItemNotFound());
 
         Decimal18 quantity = _getQuantity(poolId, item, principal);
-        uint128 amount = principal + interest;
 
-        item.normalizedDebt = linearAccrual.decreaseNormalizedDebt(item.info.rateId, item.normalizedDebt, amount);
+        item.normalizedDebt =
+            linearAccrual.decreaseNormalizedDebt(item.info.rateId, item.normalizedDebt, principal + interest);
         item.outstandingQuantity = item.outstandingQuantity - quantity;
 
         emit DebtDecreased(poolId, itemId, principal, interest);
@@ -181,39 +167,52 @@ contract Portfolio is Auth {
         external
         auth
     {
-        this.decreaseDebt(poolId, fromItemId, principal, interest);
-        this.increaseDebt(poolId, toItemId, principal + interest);
+        decreaseDebt(poolId, fromItemId, principal, interest);
+        increaseDebt(poolId, toItemId, principal + interest);
     }
 
     /// Close a non-outstanding item returning the collateral to the creator of the item
-    function close(uint64 poolId, uint32 itemId) external {
+    function close(uint64 poolId, uint32 itemId, address creator) external {
         Item storage item = items[poolId][itemId];
-        require(item.exists(), ItemNotFound());
+        require(_doItemExists(item), ItemNotFound());
         require(item.outstandingQuantity.inner() == 0, ItemCanNotBeClosed());
 
-        bool ok = item.info.collateral.source.transfer(item.info.creator, item.info.collateral.id, 1);
-        require(ok, CollateralCanNotBeTransfered());
-
         delete items[poolId][itemId];
+
+        bool ok = item.info.collateral.source.transfer(creator, item.info.collateral.id, 1);
+        require(ok, CollateralCanNotBeTransfered());
 
         emit Closed(poolId, itemId);
     }
 
+    function _globalId(Collateral storage collateral) internal view returns (address) {
+        return address(uint160(uint256(keccak256(abi.encode(collateral.source, collateral.id)))));
+    }
+
+    /// Definition of a non-null item
+    function _doItemExists(Item storage item) internal view returns (bool) {
+        return address(item.info.collateral.source) != address(0);
+    }
+
     /// The item quantity for a pool currency amount
-    function _getQuantity(uint64 poolId, Item storage item, uint128 amount) private view returns (Decimal18 quantity) {
+    function _getQuantity(uint64 poolId, Item storage item, uint128 amount)
+        internal
+        view
+        returns (Decimal18 quantity)
+    {
         address base = poolRegistry.currencyOfPool(poolId);
-        address quote = item.info.collateral.globalId();
+        address quote = _globalId(item.info.collateral);
 
         return d18(item.info.valuation.getQuote(amount, base, quote).toUint128());
     }
 
     /// The pool currency amount for some item quantity.
     function _getValue(uint64 poolId, Item storage item, Decimal18 quantity, PricingMode mode)
-        private
+        internal
         view
         returns (uint128 amount)
     {
-        address base = item.info.collateral.globalId();
+        address base = _globalId(item.info.collateral);
         address quote = poolRegistry.currencyOfPool(poolId);
 
         if (mode == PricingMode.Real) {
@@ -227,7 +226,7 @@ contract Portfolio is Auth {
     /// Return the valuation of an item in the portfolio
     function itemValuation(uint64 poolId, uint32 itemId, PricingMode mode) external view returns (uint128 value) {
         Item storage item = items[poolId][itemId];
-        require(item.exists(), ItemNotFound());
+        require(_doItemExists(item), ItemNotFound());
 
         return _getValue(poolId, item, item.outstandingQuantity, mode);
     }
@@ -237,7 +236,7 @@ contract Portfolio is Auth {
         for (uint32 itemId = 0; itemId < itemNonces[poolId]; itemId++) {
             Item storage item = items[poolId][itemId];
 
-            if (item.exists()) {
+            if (_doItemExists(item)) {
                 value += _getValue(poolId, item, item.outstandingQuantity, mode);
             }
         }
