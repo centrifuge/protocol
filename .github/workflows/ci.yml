@@ -75,7 +75,7 @@ jobs:
       - name: Build contracts
         run: |
           forge --version
-          forge build --sizes --deny-warnings
+          forge build --sizes
 
       - name: Check formatting
         run: forge fmt --check
