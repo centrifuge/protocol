@@ -7,12 +7,12 @@ import "src/libraries/MathLib.sol";
 contract MathLibTest is Test {
     using MathLib for uint256;
 
-    function testRpow(uint256 x, uint256 n) public pure {
-        vm.assume(x > 1);
-        vm.assume(x <= 10 ** 12);
-        vm.assume(n <= 10 ** 4);
+    function testRpow(uint256 x, uint256 n, uint8 exp) public pure {
+        x = uint256(bound(x, 1, 10 ** 14));
+        n = uint256(bound(n, 0, 10 ** 4));
+        exp = uint8(bound(exp, 17, 20));
+        uint256 base = 10 ** exp;
 
-        uint256 base = 10 ** 18;
         uint256 result = MathLib.rpow(x, n, base);
 
         uint256 expected = base;

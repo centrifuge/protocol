@@ -34,9 +34,9 @@ contract TestCompounding is Test {
 
     function testGetPeriodsIntervals(uint8 period, uint256 start, uint256 end) public {
         vm.assume(period < uint8(CompoundingPeriod.Annually));
-        vm.assume(start > 1);
         vm.assume(start < end);
-        vm.assume(end < type(uint128).max / Compounding.getSeconds(CompoundingPeriod.Annually));
+        start = uint256(bound(start, 2, type(uint128).max / Compounding.getSeconds(CompoundingPeriod.Annually)));
+        end = uint256(bound(end, start + 1, type(uint128).max / Compounding.getSeconds(CompoundingPeriod.Annually)));
         _testGetPeriodsPassed(CompoundingPeriod(period), start, end);
     }
 
