@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.27;
+pragma solidity 0.8.28;
 
 import {Decimal18, d18} from "src/libraries/Decimal18.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
@@ -91,8 +91,8 @@ contract Portfolio {
     event Create(PoolId, ItemId);
     event ValuationUpdated(PoolId, ItemId, IERC7726);
     event RateUpdated(PoolId, ItemId, bytes32 rateId);
-    event DebtIncreased(PoolId, ItemId, Decimal18 quantity);
-    event DebtDecreased(PoolId, ItemId, Decimal18 quantity, uint128 interest);
+    event DebtIncreased(PoolId, ItemId, uint128 amount);
+    event DebtDecreased(PoolId, ItemId, uint128 amount, uint128 interest);
     event TransferDebt(PoolId, ItemId from, ItemId to, Decimal18 quantity, uint128 interest);
     event Closed(PoolId, ItemId);
 
@@ -107,6 +107,8 @@ contract Portfolio {
         linearAccrual = _linearAccrual;
     }
 
+    /// Creates a new item based of a collateral.
+    /// The owner of the collateral will be this contract until close is called.
     function create(PoolId poolId, ItemInfo calldata info) external {
         bool ok = info.collateral.source.transferFrom(info.creator, address(this), info.collateral.id, 1);
         require(ok, CollateralCanNotBeTransfered());
@@ -117,8 +119,10 @@ contract Portfolio {
         emit Create(poolId, itemId);
     }
 
+    /// Update the rateId used by this item
     function updateRate(PoolId poolId, ItemId itemId, bytes32 rateId) external {
         Item storage item = items[poolId][itemId];
+        require(item.exists(), ItemNotFound());
 
         item.normalizedDebt = linearAccrual.renormalizeDebt(item.info.rateId, rateId, item.normalizedDebt);
         item.info.rateId = rateId;
@@ -126,43 +130,50 @@ contract Portfolio {
         emit RateUpdated(poolId, itemId, rateId);
     }
 
+    /// Update the valuation contract address used for this item
     function updateValuation(PoolId poolId, ItemId itemId, IERC7726 valuation) external {
         Item storage item = items[poolId][itemId];
+        require(item.exists(), ItemNotFound());
+
         item.info.valuation = valuation;
 
         emit ValuationUpdated(poolId, itemId, valuation);
     }
 
-    function increaseDebt(PoolId poolId, ItemId itemId, Decimal18 quantity) external {
+    /// Increase the debt of an item
+    function increaseDebt(PoolId poolId, ItemId itemId, uint128 amount) external {
         Item storage item = items[poolId][itemId];
         require(item.exists(), ItemNotFound());
 
-        uint128 price = this.getPrice(poolId, itemId);
-        uint128 amount = quantity.mulInt(price);
+        Decimal18 quantity = _getQuantity(poolId, item, amount);
 
         item.normalizedDebt = linearAccrual.increaseNormalizedDebt(item.info.rateId, item.normalizedDebt, amount);
         item.outstandingQuantity = item.outstandingQuantity + quantity;
 
-        emit DebtIncreased(poolId, itemId, quantity);
+        emit DebtIncreased(poolId, itemId, amount);
     }
 
-    function decreaseDebt(PoolId poolId, ItemId itemId, Decimal18 principalQuantity, uint128 interest) external {
+    /// Decrease the debt of an item
+    function decreaseDebt(PoolId poolId, ItemId itemId, uint128 principal, uint128 interest) external {
         Item storage item = items[poolId][itemId];
         require(item.exists(), ItemNotFound());
 
-        uint128 price = this.getPrice(poolId, itemId);
-        uint128 amount = principalQuantity.mulInt(price) + interest;
+        Decimal18 quantity = _getQuantity(poolId, item, principal);
+        uint128 amount = principal + interest;
 
         item.normalizedDebt = linearAccrual.decreaseNormalizedDebt(item.info.rateId, item.normalizedDebt, amount);
-        item.outstandingQuantity = item.outstandingQuantity - principalQuantity;
+        item.outstandingQuantity = item.outstandingQuantity - quantity;
 
-        emit DebtDecreased(poolId, itemId, principalQuantity, interest);
+        emit DebtDecreased(poolId, itemId, principal, interest);
     }
 
-    function transferDebt(PoolId poolId, ItemId from, ItemId to, Decimal18 principal, uint128 interestPaid) external {
-        //TODO: decreaseDebt(from) + increaseDebt(to)
+    /// Transfer debt `from` an item `to` another item.
+    function transferDebt(PoolId poolId, ItemId from, ItemId to, uint128 principal, uint128 interest) external {
+        this.decreaseDebt(poolId, from, principal, interest);
+        this.increaseDebt(poolId, to, principal + interest);
     }
 
+    /// Close a non-outstanding item returning the collateral to the creator of the item
     function close(PoolId poolId, ItemId itemId) external {
         Item storage item = items[poolId][itemId];
         require(item.exists(), ItemNotFound());
@@ -176,28 +187,38 @@ contract Portfolio {
         emit Closed(poolId, itemId);
     }
 
-    /// The price for one element of this item.
-    function getPrice(PoolId poolId, ItemId itemId) external view returns (uint128 value) {
-        Item storage item = items[poolId][itemId];
+    /// The item quantity for a pool currency amount
+    function _getQuantity(PoolId poolId, Item storage item, uint128 amount) private view returns (Decimal18 quantity) {
+        address base = poolRegistry.currencyOfPool(poolId);
+        address quote = item.info.collateral.globalId();
 
+        return d18(item.info.valuation.getQuote(amount, base, quote).toUint128());
+    }
+
+    /// The pool currency amount for some item quantity.
+    function _getValue(PoolId poolId, Item storage item, Decimal18 quantity) private view returns (uint128 amount) {
         address base = item.info.collateral.globalId();
         address quote = poolRegistry.currencyOfPool(poolId);
 
-        return item.info.valuation.getQuote(1, base, quote).toUint128();
+        return item.info.valuation.getQuote(quantity.inner(), base, quote).toUint128();
     }
 
-    /// The valuation of this item
-    function itemValue(PoolId poolId, ItemId itemId) external view returns (uint128 value) {
-        uint128 price = this.getPrice(poolId, itemId);
-        return items[poolId][itemId].outstandingQuantity.mulInt(price);
+    /// Return the valuation of an item in the portfolio
+    function itemValuation(PoolId poolId, ItemId itemId) external view returns (uint128 value) {
+        Item storage item = items[poolId][itemId];
+        require(item.exists(), ItemNotFound());
+
+        return _getValue(poolId, item, item.outstandingQuantity);
     }
 
-    /// Return the valuation of all items of the portfolio
+    /// Return the valuation of all items in the portfolio
     function nav(PoolId poolId) external view returns (uint128 value) {
         for (uint32 i = 0; i < itemNonces[poolId]; i++) {
             ItemId itemId = ItemId.wrap(i);
-            if (items[poolId][itemId].exists()) {
-                value += this.itemValue(poolId, itemId);
+            Item storage item = items[poolId][itemId];
+
+            if (item.exists()) {
+                value += _getValue(poolId, item, item.outstandingQuantity);
             }
         }
     }
