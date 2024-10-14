@@ -6,6 +6,9 @@ import {MathLib} from "src/libraries/MathLib.sol";
 
 interface IERC6909 {
     function transfer(address receiver, uint256 id, uint256 amount) external returns (bool success);
+    function transferFrom(address sender, address receiver, uint256 id, uint256 amount)
+        external
+        returns (bool success);
 }
 
 interface IERC7726 {
@@ -25,7 +28,7 @@ interface ILinearAccrual {
         external
         returns (uint128 newNormalizedDebt);
 
-    function renormalizeDebt(bytes32 rateId, uint256 newRateId, uint128 prevNormalizedDebt)
+    function renormalizeDebt(bytes32 rateId, bytes32 newRateId, uint128 prevNormalizedDebt)
         external
         returns (uint128 newNormalizedDebt);
 }
@@ -50,6 +53,8 @@ using {globalId} for Collateral;
 
 /// Struct used for user inputs and "static" item data
 struct ItemInfo {
+    /// Issuer of this item
+    address creator;
     /// The RWA used for this item as a collateral
     Collateral collateral;
     /// Fixed point rate
@@ -84,6 +89,8 @@ contract Portfolio {
     error CollateralCanNotBeTransfered();
 
     event Create(PoolId, ItemId);
+    event ValuationUpdated(PoolId, ItemId, IERC7726);
+    event RateUpdated(PoolId, ItemId, bytes32 rateId);
     event DebtIncreased(PoolId, ItemId, Decimal18 quantity);
     event DebtDecreased(PoolId, ItemId, Decimal18 quantity, uint128 interest);
     event TransferDebt(PoolId, ItemId from, ItemId to, Decimal18 quantity, uint128 interest);
@@ -101,13 +108,29 @@ contract Portfolio {
     }
 
     function create(PoolId poolId, ItemInfo calldata info) external {
-        bool ok = info.collateral.source.transfer(address(this), info.collateral.id, 1);
+        bool ok = info.collateral.source.transferFrom(info.creator, address(this), info.collateral.id, 1);
         require(ok, CollateralCanNotBeTransfered());
 
         ItemId itemId = ItemId.wrap(itemNonces[poolId]++);
         items[poolId][itemId] = Item(info, 0, d18(0));
 
         emit Create(poolId, itemId);
+    }
+
+    function updateRate(PoolId poolId, ItemId itemId, bytes32 rateId) external {
+        Item storage item = items[poolId][itemId];
+
+        item.normalizedDebt = linearAccrual.renormalizeDebt(item.info.rateId, rateId, item.normalizedDebt);
+        item.info.rateId = rateId;
+
+        emit RateUpdated(poolId, itemId, rateId);
+    }
+
+    function updateValuation(PoolId poolId, ItemId itemId, IERC7726 valuation) external {
+        Item storage item = items[poolId][itemId];
+        item.info.valuation = valuation;
+
+        emit ValuationUpdated(poolId, itemId, valuation);
     }
 
     function increaseDebt(PoolId poolId, ItemId itemId, Decimal18 quantity) external {
@@ -145,7 +168,9 @@ contract Portfolio {
         require(item.exists(), ItemNotFound());
         require(item.outstandingQuantity.inner() == 0, ItemCanNotBeClosed());
 
-        // TODO: transfer back the collateral.
+        bool ok = item.info.collateral.source.transfer(item.info.creator, item.info.collateral.id, 1);
+        require(ok, CollateralCanNotBeTransfered());
+
         delete items[poolId][itemId];
 
         emit Closed(poolId, itemId);
@@ -167,6 +192,7 @@ contract Portfolio {
         return items[poolId][itemId].outstandingQuantity.mulInt(price);
     }
 
+    /// Return the valuation of all items of the portfolio
     function nav(PoolId poolId) external view returns (uint128 value) {
         for (uint32 i = 0; i < itemNonces[poolId]; i++) {
             ItemId itemId = ItemId.wrap(i);
