@@ -35,12 +35,12 @@ contract LinearAccrual is ILinearAccrual {
     function getRateId(uint128 rate, CompoundingPeriod period) public returns (bytes32 rateId) {
         Group memory group = Group(rate, period);
 
-        // TODO(@review): Discuss how to be future-proof if Group is altered
+        // TODO(@review): Discuss how to be future-proof if Group is altered which would lead to new hash
         rateId = keccak256(abi.encode(group));
         if (groups[rateId].ratePerPeriod == 0) {
             groups[rateId] = group;
             rates[rateId] = Rate(rate, uint64(block.timestamp));
-            emit NewRateId(rate, period, rateId);
+            emit NewRateId(rateId, rate, period);
         }
     }
 
@@ -73,8 +73,7 @@ contract LinearAccrual is ILinearAccrual {
         returns (uint128 newNormalizedDebt)
     {
         uint256 _debt = debt(oldRateId, prevNormalizedDebt);
-        // TODO(@review): Ensure casting uint256 -> uint128 is feasible
-        return uint128(_debt / rates[newRateId].accumulatedRate);
+        return MathLib.toUint128(_debt / rates[newRateId].accumulatedRate);
     }
 
     /// @notice     Returns the current debt without normalization based on actual block.timestamp (now) and the
@@ -82,12 +81,13 @@ contract LinearAccrual is ILinearAccrual {
     /// @param      rateId Identifier of the rate group
     /// @param      normalizedDebt Normalized debt from which we derive the debt
     function debt(bytes32 rateId, uint128 normalizedDebt) public view onlyUpdatedRate(rateId) returns (uint256) {
-        return normalizedDebt * rates[rateId].accumulatedRate;
+        // TODO(@review): Discuss desired precision (10 ** 27 taken from tinlake)
+        return MathLib.mulDiv(normalizedDebt, rates[rateId].accumulatedRate, MathLib.One27);
     }
 
-    /// @notice Updates the accumulated rate of the corresponding identifier based on the periods which have passed
+    /// @notice     Updates the accumulated rate of the corresponding identifier based on the periods which have passed
     /// since the last update
-    /// @param rateId the id of the interest rate group
+    /// @param      rateId the id of the interest rate group
     function drip(bytes32 rateId) public {
         Rate storage rate = rates[rateId];
         require(rate.accumulatedRate != 0, "rate-not-initialized");
@@ -98,15 +98,15 @@ contract LinearAccrual is ILinearAccrual {
         uint256 periodsPassed = Compounding.getPeriodsPassed(group.period, rate.lastUpdated);
 
         if (periodsPassed > 0) {
-            // TODO(@review): Discuss casting and desired precision (10 ** 27 taken from tinlake)
-            // TODO(@review): Discuss desired rounding method, i.e. re-use
-            // https://github.com/centrifuge/liquidity-pools/blob/main/src/libraries/MathLib.sol#L20 ?
-            rate.accumulatedRate = uint128(
-                (MathLib.rpow(group.ratePerPeriod, periodsPassed, MathLib.One27)) * rate.accumulatedRate / MathLib.One27
+            // TODO(@review): Discuss desired precision (10 ** 27 taken from tinlake)
+            rate.accumulatedRate = MathLib.toUint128(
+                MathLib.mulDiv(
+                    MathLib.rpow(group.ratePerPeriod, periodsPassed, MathLib.One27), rate.accumulatedRate, MathLib.One27
+                )
             );
-        }
-        rate.lastUpdated = uint64(block.timestamp);
 
-        // TODO(@wischli): Emit aggregation event
+            emit RateAccumulated(rateId, rate.accumulatedRate, periodsPassed);
+            rate.lastUpdated = uint64(block.timestamp);
+        }
     }
 }

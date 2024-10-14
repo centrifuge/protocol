@@ -4,8 +4,8 @@ pragma solidity 0.8.28;
 import {CompoundingPeriod} from "../Compounding.sol";
 
 interface ILinearAccrual {
-    event NewRateId(uint128 rate, CompoundingPeriod period, bytes32 rateId);
-    // event RateAccumulated(uint128 rate, CompoundingPeriod period, bytes32 rateId);
+    event NewRateId(bytes32 rateId, uint128 rate, CompoundingPeriod period);
+    event RateAccumulated(bytes32 rateId, uint128 rate, uint256 periodsPassed);
 
     /// @notice     Returns the rate identifier for the given rate and compound period.
     ///
