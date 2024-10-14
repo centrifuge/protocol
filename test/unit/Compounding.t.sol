@@ -4,8 +4,17 @@ pragma solidity ^0.8.0;
 import {Test} from "forge-std/Test.sol";
 import "src/Compounding.sol";
 
-// TODO: Add fuzz testing
 contract TestCompounding is Test {
+    /// @dev    Using `uint8` over real type `CompoundingPeriod` since fuzzer exceeds bounds if using real type, even if
+    ///         limited assumption.
+    uint8[5] public fixturePeriod = [
+        uint8(CompoundingPeriod.Secondly),
+        uint8(CompoundingPeriod.Daily),
+        uint8(CompoundingPeriod.Quarterly),
+        uint8(CompoundingPeriod.Biannually),
+        uint8(CompoundingPeriod.Annually)
+    ];
+
     function testGetSeconds() public pure {
         _testGetSeconds(CompoundingPeriod.Secondly, 1);
         _testGetSeconds(CompoundingPeriod.Daily, 86400);
@@ -14,24 +23,80 @@ contract TestCompounding is Test {
         _testGetSeconds(CompoundingPeriod.Annually, 31104000);
     }
 
-    function testGetPeriodsPassedSecondly() public {
-        _testGetPeriodsPassed(CompoundingPeriod.Secondly, 47, 100);
+    function testGetPeriodsSimple() public {
+        for (uint8 i = 0; i < fixturePeriod.length; i++) {
+            _testGetPeriodsZero(CompoundingPeriod(i));
+            _testGetPeriodsOne(CompoundingPeriod(i));
+            _testGetPeriodsFuture(CompoundingPeriod(i));
+            _testGetPeriodsBeforePeriodIncrement(CompoundingPeriod(i));
+        }
     }
 
-    function testGetPeriodsPassedDaily() public {
-        _testGetPeriodsPassed(CompoundingPeriod.Daily, 3, 10);
+    function testGetPeriodsIntervals(uint8 period, uint256 start, uint256 end) public {
+        vm.assume(period < uint8(CompoundingPeriod.Annually));
+        vm.assume(start > 1);
+        vm.assume(start < end);
+        vm.assume(end < type(uint128).max / Compounding.getSeconds(CompoundingPeriod.Annually));
+        _testGetPeriodsPassed(CompoundingPeriod(period), start, end);
     }
 
-    function testGetPeriodsPassedQuarterly() public {
-        _testGetPeriodsPassed(CompoundingPeriod.Quarterly, 2, 123);
+    function _testGetPeriodsZero(CompoundingPeriod period) internal view {
+        require(
+            Compounding.getPeriodsPassed(period, block.timestamp) == 0,
+            string(
+                abi.encodePacked(
+                    "getPeriodsPassed should return 0 for ",
+                    _periodToString(period),
+                    " compounding at current timestamp"
+                )
+            )
+        );
     }
 
-    function testGetPeriodsPassedBiannually() public {
-        _testGetPeriodsPassed(CompoundingPeriod.Biannually, 2, 1000);
+    function _testGetPeriodsOne(CompoundingPeriod period) internal {
+        uint256 periodLength = Compounding.getSeconds(period);
+
+        vm.warp(periodLength);
+        require(
+            Compounding.getPeriodsPassed(period, periodLength - 1) == 1,
+            string(
+                abi.encodePacked(
+                    "getPeriodsPassed should return 1 for ",
+                    _periodToString(period),
+                    " compounding at one second before new period"
+                )
+            )
+        );
     }
 
-    function testGetPeriodsPassedAnnually() public {
-        _testGetPeriodsPassed(CompoundingPeriod.Annually, 2, 12312);
+    function _testGetPeriodsFuture(CompoundingPeriod period) internal {
+        vm.warp(0);
+        require(
+            Compounding.getPeriodsPassed(period, 1) == 0,
+            string(
+                abi.encodePacked(
+                    "getPeriodsPassed should return 0 for ",
+                    _periodToString(period),
+                    " compounding if start is in future"
+                )
+            )
+        );
+    }
+
+    function _testGetPeriodsBeforePeriodIncrement(CompoundingPeriod period) internal {
+        uint256 periodLength = Compounding.getSeconds(period);
+
+        vm.warp(periodLength - 1);
+        require(
+            Compounding.getPeriodsPassed(period, 0) == 0,
+            string(
+                abi.encodePacked(
+                    "getPeriodsPassed should return 0 for ",
+                    _periodToString(period),
+                    " compounding if less than a period has passed"
+                )
+            )
+        );
     }
 
     function _testGetSeconds(CompoundingPeriod period, uint256 expectedSeconds) internal pure {
@@ -46,71 +111,14 @@ contract TestCompounding is Test {
         );
     }
 
-    function _testGetPeriodsPassed(
-        CompoundingPeriod period,
-        uint256 intervalMultiplierStart,
-        uint256 intervalMultiplierEnd
-    ) internal {
-        require(intervalMultiplierStart > 1, "multiplier > 1 required");
-        require(intervalMultiplierEnd > intervalMultiplierStart, "end must be greater than start");
+    function _testGetPeriodsPassed(CompoundingPeriod period, uint256 start, uint256 end) internal {
+        require(end > start, "end must be greater than start");
         uint256 periodLength = Compounding.getSeconds(period);
 
-        // Test case: start in future
-        vm.warp(0);
+        vm.warp(end * periodLength - 1 seconds);
+        uint256 expectedPeriods = end - start - 1;
         require(
-            Compounding.getPeriodsPassed(period, 1) == 0,
-            string(
-                abi.encodePacked(
-                    "getPeriodsPassed should return 0 for ",
-                    _periodToString(period),
-                    " compounding if start is in future"
-                )
-            )
-        );
-
-        // Test case: current timestamp
-        require(
-            Compounding.getPeriodsPassed(period, block.timestamp) == 0,
-            string(
-                abi.encodePacked(
-                    "getPeriodsPassed should return 0 for ",
-                    _periodToString(period),
-                    " compounding at current timestamp"
-                )
-            )
-        );
-
-        // Test case: now minus one second
-        vm.warp(periodLength - 1);
-        require(
-            Compounding.getPeriodsPassed(period, 0) == 0,
-            string(
-                abi.encodePacked(
-                    "getPeriodsPassed should return 0 for ",
-                    _periodToString(period),
-                    " compounding if less than a period has passed"
-                )
-            )
-        );
-
-        // Test case: warp to exact periodLength and check
-        vm.warp(periodLength);
-        require(
-            Compounding.getPeriodsPassed(period, periodLength - 1) == 1,
-            string(
-                abi.encodePacked(
-                    "getPeriodsPassed should return 1 for ",
-                    _periodToString(period),
-                    " compounding at one second before new period"
-                )
-            )
-        );
-
-        // Test case: within interval between period and end of 10th interval
-        vm.warp(intervalMultiplierEnd * periodLength - 1 seconds);
-        uint256 expectedPeriods = intervalMultiplierEnd - intervalMultiplierStart - 1;
-        require(
-            Compounding.getPeriodsPassed(period, intervalMultiplierStart * periodLength) == expectedPeriods,
+            Compounding.getPeriodsPassed(period, start * periodLength) == expectedPeriods,
             string(
                 abi.encodePacked(
                     "getPeriodsPassed should return ",

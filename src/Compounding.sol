@@ -30,7 +30,7 @@ library Compounding {
     /// @notice Returns the number of full compounding periods that have passed since a given timestamp based on a
     ///         commercial 360-day year.
     function getPeriodsPassed(CompoundingPeriod period, uint256 startTimestamp) public view returns (uint256) {
-        // TODO: Discuss revert vs. return
+        // TODO(@review): Discuss revert vs. return
         if (startTimestamp >= block.timestamp) return 0;
 
         if (period == CompoundingPeriod.Secondly) {
@@ -49,11 +49,11 @@ library Compounding {
             if (period == CompoundingPeriod.Quarterly) {
                 uint256 startQuarter = startMonth / 3;
                 uint256 nowQuarter = nowMonth / 3;
-                return 4 * (nowYear - startYear) - startQuarter + nowQuarter;
+                return 4 * (nowYear - startYear) + nowQuarter - startQuarter;
             } else if (period == CompoundingPeriod.Biannually) {
                 uint256 startHalf = startMonth / 6;
                 uint256 nowHalf = nowMonth / 6;
-                return (nowYear - startYear) * 2 + (nowHalf - startHalf);
+                return 2 * (nowYear - startYear) + nowHalf - startHalf;
             } else if (period == CompoundingPeriod.Annually) {
                 return nowYear - startYear;
             }
