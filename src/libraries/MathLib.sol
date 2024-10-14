@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 library MathLib {
-    uint256 public constant One27 = 10 ** 27;
+    uint256 public constant One18 = 10 ** 18;
     /// @notice Returns x^n with rounding precision of base
     ///
     /// @dev Source: https://github.com/makerdao/dss/blob/fa4f6630afb0624d04a003e920b0d71a00331d98/src/jug.sol#L62

@@ -6,11 +6,11 @@ import "src/LinearAccrual.sol";
 import "src/interfaces/ILinearAccrual.sol";
 import "src/Compounding.sol";
 
-contract TestLinearAccrual is Test {
+contract LinearAccrualTest is Test {
     LinearAccrual linearAccrual;
     // TODO: Explore replacing with random rate
     /// @dev 1.9753462 with 27 decimal precision
-    uint128 constant RATE_128 = 19_753_462 * 10 ** 20;
+    uint128 constant RATE_128 = 19_753_462 * 10 ** 11;
     /// @dev 1.9753462 with 27 decimal precision
     uint256 constant RATE_256 = uint256(RATE_128);
 
@@ -83,7 +83,7 @@ contract TestLinearAccrual is Test {
     }
 
     function testDebtCalculation() public {
-        uint128 precision = 10 ** 27;
+        uint128 precision = 10 ** 18;
         uint128 rate = 5 * precision;
         // Compounding schedule irrelevant since test does not require dripping
         bytes32 rateId = linearAccrual.getRateId(rate, CompoundingPeriod.Quarterly);
@@ -107,7 +107,7 @@ contract TestLinearAccrual is Test {
         // Pass one period
         (, uint64 initialLastUpdated) = linearAccrual.rates(rateId);
         vm.warp(initialLastUpdated + 1 seconds);
-        uint256 rateSquare = MathLib.mulDiv(RATE_256, RATE_256, MathLib.One27);
+        uint256 rateSquare = MathLib.mulDiv(RATE_256, RATE_256, MathLib.One18);
         vm.expectEmit(true, true, true, true);
         emit RateAccumulated(rateId, uint128(rateSquare), 1);
         linearAccrual.drip(rateId);
@@ -117,11 +117,9 @@ contract TestLinearAccrual is Test {
         // Pass 3 more periods
         vm.warp(block.timestamp + 3 seconds);
         uint256 ratePow5 = MathLib.mulDiv(
-            MathLib.mulDiv(MathLib.mulDiv(rateSquare, RATE_256, MathLib.One27), RATE_256, MathLib.One27),
+            MathLib.mulDiv(MathLib.mulDiv(rateSquare, RATE_256, MathLib.One18), RATE_256, MathLib.One18),
             RATE_256,
-            MathLib.One27,
-            // TODO(@review): Discuss whether rounding up here accepted to fix being one off
-            MathLib.Rounding.Up
+            MathLib.One18
         );
         vm.expectEmit(true, true, true, true);
         emit RateAccumulated(rateId, uint128(ratePow5), 3);

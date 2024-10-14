@@ -81,8 +81,7 @@ contract LinearAccrual is ILinearAccrual {
     /// @param      rateId Identifier of the rate group
     /// @param      normalizedDebt Normalized debt from which we derive the debt
     function debt(bytes32 rateId, uint128 normalizedDebt) public view onlyUpdatedRate(rateId) returns (uint256) {
-        // TODO(@review): Discuss desired precision (10 ** 27 taken from tinlake)
-        return MathLib.mulDiv(normalizedDebt, rates[rateId].accumulatedRate, MathLib.One27);
+        return MathLib.mulDiv(normalizedDebt, rates[rateId].accumulatedRate, MathLib.One18);
     }
 
     /// @notice     Updates the accumulated rate of the corresponding identifier based on the periods which have passed
@@ -98,10 +97,9 @@ contract LinearAccrual is ILinearAccrual {
         uint256 periodsPassed = Compounding.getPeriodsPassed(group.period, rate.lastUpdated);
 
         if (periodsPassed > 0) {
-            // TODO(@review): Discuss desired precision (10 ** 27 taken from tinlake)
             rate.accumulatedRate = MathLib.toUint128(
                 MathLib.mulDiv(
-                    MathLib.rpow(group.ratePerPeriod, periodsPassed, MathLib.One27), rate.accumulatedRate, MathLib.One27
+                    MathLib.rpow(group.ratePerPeriod, periodsPassed, MathLib.One18), rate.accumulatedRate, MathLib.One18
                 )
             );
 
