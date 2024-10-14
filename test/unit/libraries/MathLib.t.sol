@@ -2,7 +2,7 @@
 pragma solidity ^0.8.28;
 
 import "forge-std/Test.sol";
-import "./Math.sol";
+import "src/libraries/MathLib.sol";
 
 contract TestMath is Test {
     // TODO(@wischli): Fuzzing
@@ -11,7 +11,7 @@ contract TestMath is Test {
         uint256 x = 2 * 10 ** 27;
         uint256 n = 3;
 
-        uint256 result = Math.rpow(x, n, base);
+        uint256 result = MathLib.rpow(x, n, base);
         uint256 expected = 8 * 10 ** 27; // 2^3 = 8, scaled by base
 
         assertEq(result, expected, "Incorrect rpow calculation");

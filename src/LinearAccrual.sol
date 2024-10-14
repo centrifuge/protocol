@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
-import {ILinearAccrual} from "./interfaces/ILinearAccrual.sol";
-import {Compounding, CompoundingPeriod} from "./Compounding.sol";
-import {Math} from "./Math.sol";
+import {ILinearAccrual} from "src/interfaces/ILinearAccrual.sol";
+import {Compounding, CompoundingPeriod} from "src/Compounding.sol";
+import {MathLib} from "src/libraries/MathLib.sol";
 
 /// @dev Represents the rate accumulator and the timestamp of the last rate update
 struct Rate {
@@ -99,10 +99,11 @@ contract LinearAccrual is ILinearAccrual {
 
         if (periodsPassed > 0) {
             // TODO(@review): Discuss casting and desired precision (10 ** 27 taken from tinlake)
-            // TODO(@wischli): Use mulDiv from
-            // https://github.com/centrifuge/liquidity-pools/blob/main/src/libraries/MathLib.sol#L20
-            rate.accumulatedRate =
-                uint128((Math.rpow(group.ratePerPeriod, periodsPassed, 10 ** 27)) * rate.accumulatedRate / 10 ** 27);
+            // TODO(@review): Discuss desired rounding method, i.e. re-use
+            // https://github.com/centrifuge/liquidity-pools/blob/main/src/libraries/MathLib.sol#L20 ?
+            rate.accumulatedRate = uint128(
+                (MathLib.rpow(group.ratePerPeriod, periodsPassed, MathLib.One27)) * rate.accumulatedRate / MathLib.One27
+            );
         }
         rate.lastUpdated = uint64(block.timestamp);
 

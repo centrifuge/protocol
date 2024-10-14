@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {Test} from "forge-std/Test.sol";
-import "./Compounding.sol";
+import "src/Compounding.sol";
 
 // TODO: Add fuzz testing
 contract TestCompounding is Test {
