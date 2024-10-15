@@ -71,11 +71,8 @@ interface IPortfolio is IValuation {
     /// @notice Dispatched when the item debt has been decreased.
     event DebtDecreased(uint64 indexed poolId, uint32 itemId, uint128 amount, uint128 interest);
 
-    /// @notice Dispatched when the debt has been transfered from an item to another one.
-    event TransferDebt(uint64 indexed poolId, uint32 fromItemId, uint32 toItemId, Decimal18 quantity, uint128 interest);
-
     /// @notice Dispatched when the item lifetime ends
-    event Closed(uint64 indexed poolId, uint32 itemId);
+    event Closed(uint64 indexed poolId, uint32 itemId, address creator);
 
     /// @notice Creates a new item based of a collateral.
     /// The owner of the collateral will be this contract until close is called.

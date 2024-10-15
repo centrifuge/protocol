@@ -73,11 +73,19 @@ contract TestPortfolio is Test {
 
     function testCreate() public {
         vm.expectEmit();
-
         emit IPortfolio.Create(POOL_A, 0, collateral);
         emit IPortfolio.Create(POOL_A, 1, collateral); // Increasing Item ID for the second creation
 
         portfolio.create(POOL_A, IPortfolio.ItemInfo(collateral, INTEREST_RATE_A, d18(10), valuation), CREATOR);
         portfolio.create(POOL_A, IPortfolio.ItemInfo(collateral, INTEREST_RATE_A, d18(10), valuation), CREATOR);
+    }
+
+    function testCloseAfterCreate() public {
+        portfolio.create(POOL_A, IPortfolio.ItemInfo(collateral, INTEREST_RATE_A, d18(10), valuation), CREATOR);
+
+        vm.expectEmit();
+        emit IPortfolio.Closed(POOL_A, 0, CREATOR);
+
+        portfolio.close(POOL_A, 0, CREATOR);
     }
 }

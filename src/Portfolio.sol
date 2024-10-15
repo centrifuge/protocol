@@ -105,12 +105,14 @@ contract Portfolio is Auth, IPortfolio {
         require(_doItemExists(item), ItemNotFound());
         require(item.outstandingQuantity.inner() == 0, ItemCanNotBeClosed());
 
+        Collateral memory collateral = item.info.collateral;
+
         delete items[poolId][itemId];
 
-        bool ok = item.info.collateral.source.transfer(creator, item.info.collateral.id, 1);
+        bool ok = collateral.source.transfer(creator, collateral.id, 1);
         require(ok, CollateralCanNotBeTransfered());
 
-        emit Closed(poolId, itemId);
+        emit Closed(poolId, itemId, creator);
     }
 
     function _globalId(Collateral storage collateral) internal view returns (address) {
