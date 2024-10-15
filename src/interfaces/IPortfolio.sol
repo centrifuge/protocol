@@ -72,12 +72,12 @@ interface IPortfolio is IValuation {
     event DebtDecreased(uint64 indexed poolId, uint32 itemId, uint128 amount, uint128 interest);
 
     /// @notice Dispatched when the item lifetime ends
-    event Closed(uint64 indexed poolId, uint32 itemId, address creator);
+    event Closed(uint64 indexed poolId, uint32 itemId, address collateralOwner);
 
     /// @notice Creates a new item based of a collateral.
     /// The owner of the collateral will be this contract until close is called.
-    /// @param creator address from where transfer the asser to this contract.
-    function create(uint64 poolId, ItemInfo calldata info, address creator) external;
+    /// @param collateralOwner address from where transfer the asser to this contract.
+    function create(uint64 poolId, ItemInfo calldata info, address collateralOwner) external;
 
     /// @notice Update the interest rate used by this item
     /// @param rateId Interest rate identification
@@ -103,7 +103,7 @@ interface IPortfolio is IValuation {
     function transferDebt(uint64 poolId, uint32 fromItemId, uint32 toItemId, uint128 principal, uint128 interest)
         external;
 
-    /// @notice Close a non-outstanding item returning the collateral to the creator of the item
-    /// @param creator address where to transfer back the collateral used
-    function close(uint64 poolId, uint32 itemId, address creator) external;
+    /// @notice Close a non-outstanding item returning the collateral to the `collateralOwner`
+    /// @param collateralOwner address where to transfer back the collateral used
+    function close(uint64 poolId, uint32 itemId, address collateralOwner) external;
 }

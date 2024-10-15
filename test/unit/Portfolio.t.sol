@@ -61,7 +61,7 @@ contract TestPortfolio is Test {
     MockPoolRegistry poolRegistry = new MockPoolRegistry();
     MockLinearAccrual linearAccrual = new MockLinearAccrual();
 
-    address constant CREATOR = address(1);
+    address constant OWNER = address(1);
     uint64 constant POOL_A = 42;
     bytes32 constant INTEREST_RATE_A = bytes32(uint256(1));
 
@@ -76,16 +76,16 @@ contract TestPortfolio is Test {
         emit IPortfolio.Create(POOL_A, 0, collateral);
         emit IPortfolio.Create(POOL_A, 1, collateral); // Increasing Item ID for the second creation
 
-        portfolio.create(POOL_A, IPortfolio.ItemInfo(collateral, INTEREST_RATE_A, d18(10), valuation), CREATOR);
-        portfolio.create(POOL_A, IPortfolio.ItemInfo(collateral, INTEREST_RATE_A, d18(10), valuation), CREATOR);
+        portfolio.create(POOL_A, IPortfolio.ItemInfo(collateral, INTEREST_RATE_A, d18(10), valuation), OWNER);
+        portfolio.create(POOL_A, IPortfolio.ItemInfo(collateral, INTEREST_RATE_A, d18(10), valuation), OWNER);
     }
 
     function testCloseAfterCreate() public {
-        portfolio.create(POOL_A, IPortfolio.ItemInfo(collateral, INTEREST_RATE_A, d18(10), valuation), CREATOR);
+        portfolio.create(POOL_A, IPortfolio.ItemInfo(collateral, INTEREST_RATE_A, d18(10), valuation), OWNER);
 
         vm.expectEmit();
-        emit IPortfolio.Closed(POOL_A, 0, CREATOR);
+        emit IPortfolio.Closed(POOL_A, 0, OWNER);
 
-        portfolio.close(POOL_A, 0, CREATOR);
+        portfolio.close(POOL_A, 0, OWNER);
     }
 }

@@ -31,8 +31,8 @@ contract Portfolio is Auth, IPortfolio {
     }
 
     /// @inheritdoc IPortfolio
-    function create(uint64 poolId, ItemInfo calldata info, address creator) external auth {
-        bool ok = info.collateral.source.transferFrom(creator, address(this), info.collateral.id, 1);
+    function create(uint64 poolId, ItemInfo calldata info, address collateralOwner) external auth {
+        bool ok = info.collateral.source.transferFrom(collateralOwner, address(this), info.collateral.id, 1);
         require(ok, CollateralCanNotBeTransfered());
 
         uint32 itemId = uint32(items[poolId].length);
@@ -100,7 +100,7 @@ contract Portfolio is Auth, IPortfolio {
     }
 
     /// @inheritdoc IPortfolio
-    function close(uint64 poolId, uint32 itemId, address creator) external auth {
+    function close(uint64 poolId, uint32 itemId, address collateralOwner) external auth {
         Item storage item = items[poolId][itemId];
         require(_doItemExists(item), ItemNotFound());
         require(item.outstandingQuantity.inner() == 0, ItemCanNotBeClosed());
@@ -109,10 +109,10 @@ contract Portfolio is Auth, IPortfolio {
 
         delete items[poolId][itemId];
 
-        bool ok = collateral.source.transfer(creator, collateral.id, 1);
+        bool ok = collateral.source.transfer(collateralOwner, collateral.id, 1);
         require(ok, CollateralCanNotBeTransfered());
 
-        emit Closed(poolId, itemId, creator);
+        emit Closed(poolId, itemId, collateralOwner);
     }
 
     function _globalId(Collateral storage collateral) internal view returns (address) {
