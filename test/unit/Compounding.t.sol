@@ -2,42 +2,39 @@
 pragma solidity ^0.8.0;
 
 import {Test} from "forge-std/Test.sol";
-import "src/Compounding.sol";
+import {Compounding, CompoundingPeriod} from "src/Compounding.sol";
 
 contract TestCompounding is Test {
-    /// @dev    Using `uint8` over real type `CompoundingPeriod` since fuzzer exceeds bounds if using real type, even if
-    ///         limited assumption.
-    uint8[5] public fixturePeriod = [
-        uint8(CompoundingPeriod.Secondly),
-        uint8(CompoundingPeriod.Daily),
-        uint8(CompoundingPeriod.Quarterly),
-        uint8(CompoundingPeriod.Biannually),
-        uint8(CompoundingPeriod.Annually)
-    ];
-
     function testGetSeconds() public pure {
         _testGetSeconds(CompoundingPeriod.Secondly, 1);
         _testGetSeconds(CompoundingPeriod.Daily, 86400);
-        _testGetSeconds(CompoundingPeriod.Quarterly, 7776000);
-        _testGetSeconds(CompoundingPeriod.Biannually, 15552000);
-        _testGetSeconds(CompoundingPeriod.Annually, 31104000);
     }
 
-    function testGetPeriodsSimple() public {
-        for (uint8 i = 0; i < fixturePeriod.length; i++) {
-            _testGetPeriodsZero(CompoundingPeriod(i));
-            _testGetPeriodsOne(CompoundingPeriod(i));
-            _testGetPeriodsFuture(CompoundingPeriod(i));
-            _testGetPeriodsBeforePeriodIncrement(CompoundingPeriod(i));
-        }
+    function testGetPeriodsSimpleSecondly() public {
+        CompoundingPeriod period = CompoundingPeriod.Secondly;
+
+        _testGetPeriodsZero(period);
+        _testGetPeriodsOne(period);
+        _testGetPeriodsFuture(period);
+        _testGetPeriodsBeforePeriodIncrement(period);
     }
 
-    function testGetPeriodsIntervals(uint8 period, uint256 start, uint256 end) public {
-        vm.assume(period < uint8(CompoundingPeriod.Annually));
+    function testGetPeriodsSimpleDaily() public {
+        CompoundingPeriod period = CompoundingPeriod.Daily;
+
+        _testGetPeriodsZero(period);
+        _testGetPeriodsOne(period);
+        _testGetPeriodsFuture(period);
+        _testGetPeriodsBeforePeriodIncrement(period);
+    }
+
+    function testGetPeriodsIntervals(uint8 periodInt, uint256 start, uint256 end) public {
         vm.assume(start < end);
-        start = uint256(bound(start, 2, type(uint128).max / Compounding.getSeconds(CompoundingPeriod.Annually)));
-        end = uint256(bound(end, start + 1, type(uint128).max / Compounding.getSeconds(CompoundingPeriod.Annually)));
-        _testGetPeriodsPassed(CompoundingPeriod(period), start, end);
+        CompoundingPeriod period =
+            CompoundingPeriod(bound(periodInt, uint8(CompoundingPeriod.Secondly), uint8(CompoundingPeriod.Daily)));
+        start = uint256(bound(start, 2, type(uint128).max / Compounding.getSeconds(CompoundingPeriod.Daily)));
+        end = uint256(bound(end, start + 1, type(uint128).max / Compounding.getSeconds(CompoundingPeriod.Daily)));
+        _testGetPeriodsPassed(period, start, end);
     }
 
     function _testGetPeriodsZero(CompoundingPeriod period) internal view {
@@ -133,10 +130,7 @@ contract TestCompounding is Test {
 
     function _periodToString(CompoundingPeriod period) internal pure returns (string memory) {
         if (period == CompoundingPeriod.Secondly) return "Secondly";
-        if (period == CompoundingPeriod.Daily) return "Daily";
-        if (period == CompoundingPeriod.Quarterly) return "Quarterly";
-        if (period == CompoundingPeriod.Biannually) return "Biannually";
-        if (period == CompoundingPeriod.Annually) return "Annually";
-        return "Unknown";
+        else if (period == CompoundingPeriod.Daily) return "Daily";
+        else return "Unknown";
     }
 }
