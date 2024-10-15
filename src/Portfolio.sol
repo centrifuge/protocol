@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {Decimal18, d18} from "src/libraries/Decimal18.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {Auth} from "src/Auth.sol";
-import {IPortfolio} from "src/interfaces/IPortfolio.sol";
+import {IPortfolio, IValuation} from "src/interfaces/IPortfolio.sol";
 import {IERC7726, IERC6909, IPoolRegistry, ILinearAccrual} from "src/interfaces/Common.sol";
 
 contract Portfolio is Auth, IPortfolio {
@@ -33,8 +33,7 @@ contract Portfolio is Auth, IPortfolio {
         linearAccrual = linearAccrual_;
     }
 
-    /// Creates a new item based of a collateral.
-    /// The owner of the collateral will be this contract until close is called.
+    /// @inheritdoc IPortfolio
     function create(uint64 poolId, ItemInfo calldata info, address creator) external auth {
         bool ok = info.collateral.source.transferFrom(creator, address(this), info.collateral.id, 1);
         require(ok, CollateralCanNotBeTransfered());
@@ -42,21 +41,21 @@ contract Portfolio is Auth, IPortfolio {
         uint32 itemId = itemNonces[poolId]++;
         items[poolId][itemId] = Item(info, 0, d18(0));
 
-        emit Create(poolId, itemId);
+        emit Create(poolId, itemId, info.collateral);
     }
 
-    /// Update the rateId used by this item
-    function updateRate(uint64 poolId, uint32 itemId, bytes32 rateId) external auth {
+    /// @inheritdoc IPortfolio
+    function updateInterestRate(uint64 poolId, uint32 itemId, bytes32 rateId) external auth {
         Item storage item = items[poolId][itemId];
         require(_doItemExists(item), ItemNotFound());
 
-        item.normalizedDebt = linearAccrual.renormalizeDebt(item.info.rateId, rateId, item.normalizedDebt);
-        item.info.rateId = rateId;
+        item.normalizedDebt = linearAccrual.renormalizeDebt(item.info.interestRateId, rateId, item.normalizedDebt);
+        item.info.interestRateId = rateId;
 
-        emit RateUpdated(poolId, itemId, rateId);
+        emit InterestRateUpdated(poolId, itemId, rateId);
     }
 
-    /// Update the valuation contract address used for this item
+    /// @inheritdoc IPortfolio
     function updateValuation(uint64 poolId, uint32 itemId, IERC7726 valuation) external auth {
         Item storage item = items[poolId][itemId];
         require(_doItemExists(item), ItemNotFound());
@@ -66,20 +65,21 @@ contract Portfolio is Auth, IPortfolio {
         emit ValuationUpdated(poolId, itemId, valuation);
     }
 
-    /// Increase the debt of an item
+    /// @inheritdoc IPortfolio
     function increaseDebt(uint64 poolId, uint32 itemId, uint128 amount) public auth {
         Item storage item = items[poolId][itemId];
         require(_doItemExists(item), ItemNotFound());
 
         Decimal18 quantity = _getQuantity(poolId, item, amount);
 
-        item.normalizedDebt = linearAccrual.increaseNormalizedDebt(item.info.rateId, item.normalizedDebt, amount);
+        item.normalizedDebt =
+            linearAccrual.increaseNormalizedDebt(item.info.interestRateId, item.normalizedDebt, amount);
         item.outstandingQuantity = item.outstandingQuantity + quantity;
 
         emit DebtIncreased(poolId, itemId, amount);
     }
 
-    /// Decrease the debt of an item
+    /// @inheritdoc IPortfolio
     function decreaseDebt(uint64 poolId, uint32 itemId, uint128 principal, uint128 interest) public auth {
         Item storage item = items[poolId][itemId];
         require(_doItemExists(item), ItemNotFound());
@@ -87,13 +87,13 @@ contract Portfolio is Auth, IPortfolio {
         Decimal18 quantity = _getQuantity(poolId, item, principal);
 
         item.normalizedDebt =
-            linearAccrual.decreaseNormalizedDebt(item.info.rateId, item.normalizedDebt, principal + interest);
+            linearAccrual.decreaseNormalizedDebt(item.info.interestRateId, item.normalizedDebt, principal + interest);
         item.outstandingQuantity = item.outstandingQuantity - quantity;
 
         emit DebtDecreased(poolId, itemId, principal, interest);
     }
 
-    /// Transfer debt `from` an item `to` another item.
+    /// @inheritdoc IPortfolio
     function transferDebt(uint64 poolId, uint32 fromItemId, uint32 toItemId, uint128 principal, uint128 interest)
         external
         auth
@@ -102,7 +102,7 @@ contract Portfolio is Auth, IPortfolio {
         increaseDebt(poolId, toItemId, principal + interest);
     }
 
-    /// Close a non-outstanding item returning the collateral to the creator of the item
+    /// @inheritdoc IPortfolio
     function close(uint64 poolId, uint32 itemId, address creator) external auth {
         Item storage item = items[poolId][itemId];
         require(_doItemExists(item), ItemNotFound());
@@ -154,7 +154,7 @@ contract Portfolio is Auth, IPortfolio {
         }
     }
 
-    /// Return the valuation of an item in the portfolio
+    /// @inheritdoc IValuation
     function itemValuation(uint64 poolId, uint32 itemId, PricingMode mode) external view returns (uint128 value) {
         Item storage item = items[poolId][itemId];
         require(_doItemExists(item), ItemNotFound());
@@ -162,7 +162,7 @@ contract Portfolio is Auth, IPortfolio {
         return _getValue(poolId, item, item.outstandingQuantity, mode);
     }
 
-    /// Return the Net Asset Value of all items in the portfolio
+    /// @inheritdoc IValuation
     function nav(uint64 poolId, PricingMode mode) external view returns (uint128 value) {
         for (uint32 itemId = 0; itemId < itemNonces[poolId]; itemId++) {
             Item storage item = items[poolId][itemId];
