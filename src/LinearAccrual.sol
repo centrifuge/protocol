@@ -26,7 +26,7 @@ contract LinearAccrual is ILinearAccrual {
     mapping(bytes32 rateId => Group group) public groups;
 
     modifier onlyUpdatedRate(bytes32 rateId) {
-        require(rates[rateId].accumulatedRate != 0, RateIdMissing(rateId));
+        require(rates[rateId].lastUpdated != 0, RateIdMissing(rateId));
         require(rates[rateId].lastUpdated == block.timestamp, RateIdOutdated(rateId, rates[rateId].lastUpdated));
         _;
     }
@@ -38,6 +38,7 @@ contract LinearAccrual is ILinearAccrual {
         return keccak256(abi.encode(group));
     }
     /// @inheritdoc ILinearAccrual
+
     function registerRateId(uint128 ratePerPeriod, CompoundingPeriod period) public returns (bytes32 rateId) {
         Group memory group = Group(ratePerPeriod, period);
 
