@@ -7,14 +7,13 @@ import "src/libraries/MathLib.sol";
 contract MathLibTest is Test {
     using MathLib for uint256;
 
-    function testRpow(uint256 x, uint256 n, uint8 exp) public pure {
+    function testRpowNonZeroX(uint256 x, uint256 n, uint8 exp) public pure {
         x = uint256(bound(x, 1, 10 ** 14));
         n = uint256(bound(n, 0, 10 ** 4));
         exp = uint8(bound(exp, 17, 20));
         uint256 base = 10 ** exp;
 
         uint256 result = MathLib.rpow(x, n, base);
-
         uint256 expected = base;
         for (uint256 i = 0; i < n; i++) {
             require(expected <= type(uint256).max / x, "Expected value overflow");
@@ -22,6 +21,15 @@ contract MathLibTest is Test {
         }
 
         assertEq(result, expected, "Incorrect rpow calculation");
+    }
+
+    function testRpowZeroX(uint256 n, uint8 exp) public pure {
+        n = uint256(bound(n, 1, 10 ** 4));
+        exp = uint8(bound(exp, 17, 20));
+        uint256 base = 10 ** exp;
+
+        assertEq(MathLib.rpow(0, 0, base), base);
+        assertEq(MathLib.rpow(0, n, base), 0);
     }
 
     function testMulDivDown(uint256 x, uint256 y, uint256 denominator) public pure {
