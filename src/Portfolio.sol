@@ -19,9 +19,6 @@ contract Portfolio is Auth, IPortfolio {
         Decimal18 outstandingQuantity;
     }
 
-    /// Latest incremental item identifier per pool.
-    mapping(uint64 poolId => uint32 nonce) public itemNonces;
-
     /// A list of items (a portfolio) per pool.
     mapping(uint64 poolId => Item[]) public items;
 
@@ -38,8 +35,8 @@ contract Portfolio is Auth, IPortfolio {
         bool ok = info.collateral.source.transferFrom(creator, address(this), info.collateral.id, 1);
         require(ok, CollateralCanNotBeTransfered());
 
-        uint32 itemId = itemNonces[poolId]++;
-        items[poolId][itemId] = Item(info, 0, d18(0));
+        uint32 itemId = uint32(items[poolId].length);
+        items[poolId].push(Item(info, 0, d18(0)));
 
         emit Create(poolId, itemId, info.collateral);
     }
@@ -164,7 +161,7 @@ contract Portfolio is Auth, IPortfolio {
 
     /// @inheritdoc IValuation
     function nav(uint64 poolId, PricingMode mode) external view returns (uint128 value) {
-        for (uint32 itemId = 0; itemId < itemNonces[poolId]; itemId++) {
+        for (uint32 itemId = 0; itemId < items[poolId].length; itemId++) {
             Item storage item = items[poolId][itemId];
 
             if (_doItemExists(item)) {

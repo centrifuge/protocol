@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import "forge-std/Test.sol";
 import "src/Portfolio.sol";
+import "src/interfaces/IPortfolio.sol";
 
 contract MockERC6909 is IERC6909 {
     function transfer(address, uint256, uint256) external pure returns (bool success) {
@@ -60,11 +61,23 @@ contract TestPortfolio is Test {
     MockPoolRegistry poolRegistry = new MockPoolRegistry();
     MockLinearAccrual linearAccrual = new MockLinearAccrual();
 
-    Portfolio portfolio;
+    address constant CREATOR = address(1);
+    uint64 constant POOL_A = 42;
+    bytes32 constant INTEREST_RATE_A = bytes32(uint256(1));
 
-    function setUp() public {
-        portfolio = new Portfolio(address(1), poolRegistry, linearAccrual);
+    MockERC6909 collection = new MockERC6909();
+    MockERC7726 valuation = new MockERC7726();
+    IPortfolio.Collateral collateral = IPortfolio.Collateral(collection, 1);
+
+    Portfolio portfolio = new Portfolio(address(this), poolRegistry, linearAccrual);
+
+    function testCreate() public {
+        vm.expectEmit();
+
+        emit IPortfolio.Create(POOL_A, 0, collateral);
+        emit IPortfolio.Create(POOL_A, 1, collateral); // Increasing Item ID for the second creation
+
+        portfolio.create(POOL_A, IPortfolio.ItemInfo(collateral, INTEREST_RATE_A, d18(10), valuation), CREATOR);
+        portfolio.create(POOL_A, IPortfolio.ItemInfo(collateral, INTEREST_RATE_A, d18(10), valuation), CREATOR);
     }
-
-    function testCreate() public {}
 }
