@@ -4,16 +4,27 @@ pragma solidity 0.8.28;
 import {CompoundingPeriod} from "../Compounding.sol";
 
 interface ILinearAccrual {
-    event NewRateId(bytes32 rateId, uint128 rate, CompoundingPeriod period);
+    /// Events
+    event NewRateId(bytes32 rateId, uint128 ratePerPeriod, CompoundingPeriod period);
     event RateAccumulated(bytes32 rateId, uint128 rate, uint256 periodsPassed);
+
+    /// Errors
+    error RateIdExists(bytes32 rateId, uint128 ratePerPeriod, CompoundingPeriod period);
+    error RateIdMissing(bytes32 rateId);
+    error RateIdOutdated(bytes32 rateId, uint64 lastUpdated);
+    error GroupMissing(bytes32 rateId);
 
     /// @notice     Returns the rate identifier for the given rate and compound period.
     ///
-    /// @dev        Initializes storage if the rate identifier has not existed yet.
-    ///
-    /// @param      rate Rate
+    /// @param      ratePerPeriod Rate per compound period
     /// @param      period Compounding schedule
-    function getRateId(uint128 rate, CompoundingPeriod period) external returns (bytes32 rateId);
+    function getRateId(uint128 ratePerPeriod, CompoundingPeriod period) external pure returns (bytes32 rateId);
+
+    /// @notice     Registers the rate identifier for the given rate and compound period and returns it.
+    ///
+    /// @param      ratePerPeriod Rate per compound period
+    /// @param      period Compounding schedule
+    function registerRateId(uint128 ratePerPeriod, CompoundingPeriod period) external returns (bytes32 rateId);
 
     /// @notice     Returns the sum of the current normalized debt and the normalized increment.
     ///

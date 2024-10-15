@@ -26,21 +26,29 @@ contract LinearAccrual is ILinearAccrual {
     mapping(bytes32 rateId => Group group) public groups;
 
     modifier onlyUpdatedRate(bytes32 rateId) {
-        require(rates[rateId].accumulatedRate != 0, "rate-not-initialized");
-        require(rates[rateId].lastUpdated == block.timestamp, "rate-not-updated");
+        require(rates[rateId].accumulatedRate != 0, RateIdMissing(rateId));
+        require(rates[rateId].lastUpdated == block.timestamp, RateIdOutdated(rateId, rates[rateId].lastUpdated));
         _;
     }
 
     /// @inheritdoc ILinearAccrual
-    function getRateId(uint128 rate, CompoundingPeriod period) public returns (bytes32 rateId) {
+    function getRateId(uint128 rate, CompoundingPeriod period) public pure returns (bytes32) {
         Group memory group = Group(rate, period);
 
-        // TODO(@review): Discuss how to be future-proof if Group is altered which would lead to new hash
+        return keccak256(abi.encode(group));
+    }
+    /// @inheritdoc ILinearAccrual
+    function registerRateId(uint128 ratePerPeriod, CompoundingPeriod period) public returns (bytes32 rateId) {
+        Group memory group = Group(ratePerPeriod, period);
+
         rateId = keccak256(abi.encode(group));
         if (groups[rateId].ratePerPeriod == 0) {
             groups[rateId] = group;
-            rates[rateId] = Rate(rate, uint64(block.timestamp));
-            emit NewRateId(rateId, rate, period);
+            // TODO(@wischli): Some source stated another timestamp should be used instead of block.timestamp
+            rates[rateId] = Rate(ratePerPeriod, uint64(block.timestamp));
+            emit NewRateId(rateId, ratePerPeriod, period);
+        } else {
+            revert RateIdExists(rateId, ratePerPeriod, period);
         }
     }
 
@@ -51,6 +59,7 @@ contract LinearAccrual is ILinearAccrual {
         onlyUpdatedRate(rateId)
         returns (uint128 newNormalizedDebt)
     {
+        // TODO(@review): Discuss if precions better if we do (prev * rate + debtIncrease) / rate
         return prevNormalizedDebt + debtIncrease / rates[rateId].accumulatedRate;
     }
 
@@ -89,9 +98,16 @@ contract LinearAccrual is ILinearAccrual {
     /// @param      rateId the id of the interest rate group
     function drip(bytes32 rateId) public {
         Rate storage rate = rates[rateId];
-        require(rate.accumulatedRate != 0, "rate-not-initialized");
+        require(rate.accumulatedRate != 0, RateIdMissing(rateId));
+
+        // Short circuit to save gas
+        if (rate.lastUpdated == uint64(block.timestamp)) {
+            return;
+        }
+
+        // Infallible since group storage exists iff rate storage exists
         Group memory group = groups[rateId];
-        require(group.ratePerPeriod != 0, "group-not-initialized");
+        require(group.ratePerPeriod != 0, GroupMissing(rateId));
 
         // Determine number of full compounding periods passed since last update
         uint256 periodsPassed = Compounding.getPeriodsPassed(group.period, rate.lastUpdated);
