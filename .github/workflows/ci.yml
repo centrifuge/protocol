@@ -124,12 +124,12 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }} # Adds a coverage summary comment to the PR.
 
       - name: Verify minimum coverage
-        if: github.event_name == 'pull_request' 
+        if: github.event_name == 'pull_request'
         uses: zgosalvez/github-actions-report-lcov@v2
         with:
           coverage-files: ./lcov.info
           minimum-coverage: 0 # Set coverage threshold.
-    
+
   # slither-analyze:
   #   runs-on: "ubuntu-latest"
   #   permissions:
@@ -155,7 +155,7 @@ jobs:
   #       uses: github/codeql-action/upload-sarif@v2
   #       with:
   #         sarif_file: ${{ steps.slither.outputs.sarif }}
-      
+
   #     - name: "Add Slither summary"
   #       run: |
   #         echo "## Slither result" >> $GITHUB_STEP_SUMMARY
