@@ -28,8 +28,6 @@ interface ILinearAccrual {
 
     /// @notice     Returns the sum of the current normalized debt and the normalized increment.
     ///
-    /// @dev        Initializes storage if the rate identifier has not existed yet.
-    ///
     /// @param      rateId Identifier of the rate group
     /// @param      prevNormalizedDebt Normalized debt before decreasing
     /// @param      debtIncrease The amount by which we increase the debt
@@ -39,8 +37,6 @@ interface ILinearAccrual {
         returns (uint128 newNormalizedDebt);
 
     /// @notice     Returns the difference of the current normalized debt and the normalized decrement.
-    ///
-    /// @dev        Initializes storage if the rate identifier has not existed yet.
     ///
     /// @param      rateId Identifier of the rate group
     /// @param      prevNormalizedDebt Normalized debt before decreasing
@@ -52,8 +48,6 @@ interface ILinearAccrual {
 
     /// @notice     Returns the renormalized debt based on the current rate group after transitioning normalization from
     /// the previous one.
-    ///
-    /// @dev        Initializes storage if the rate identifier has not existed yet.
     ///
     /// @param      oldRateId Identifier of the previous rate group
     /// @param      newRateId Identifier of the current rate group
