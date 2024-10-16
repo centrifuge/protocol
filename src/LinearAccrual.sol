@@ -86,10 +86,7 @@ contract LinearAccrual is ILinearAccrual {
         return MathLib.toUint128(_debt / rates[newRateId].accumulatedRate);
     }
 
-    /// @notice     Returns the current debt without normalization based on actual block.timestamp (now) and the
-    /// accumulated rate.
-    /// @param      rateId Identifier of the rate group
-    /// @param      normalizedDebt Normalized debt from which we derive the debt
+    /// @inheritdoc ILinearAccrual
     function debt(bytes32 rateId, uint128 normalizedDebt) public view onlyUpdatedRate(rateId) returns (uint256) {
         return MathLib.mulDiv(normalizedDebt, rates[rateId].accumulatedRate, MathLib.One18);
     }

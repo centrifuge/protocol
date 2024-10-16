@@ -56,4 +56,10 @@ interface ILinearAccrual {
         external
         view
         returns (uint128 newNormalizedDebt);
+
+    /// @notice     Returns the current debt without normalization based on actual block.timestamp (now) and the
+    /// accumulated rate.
+    /// @param      rateId Identifier of the rate group
+    /// @param      normalizedDebt Normalized debt from which we derive the debt
+    function debt(bytes32 rateId, uint128 normalizedDebt) external view returns (uint256);
 }
