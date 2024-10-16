@@ -25,12 +25,6 @@ contract LinearAccrual is ILinearAccrual {
     mapping(bytes32 rateId => Rate rate) public rates;
     mapping(bytes32 rateId => Group group) public groups;
 
-    modifier onlyUpdatedRate(bytes32 rateId) {
-        require(rates[rateId].lastUpdated != 0, RateIdMissing(rateId));
-        require(rates[rateId].lastUpdated == block.timestamp, RateIdOutdated(rateId, rates[rateId].lastUpdated));
-        _;
-    }
-
     /// @inheritdoc ILinearAccrual
     function getRateId(uint128 rate, CompoundingPeriod period) public pure returns (bytes32) {
         Group memory group = Group(rate, period);
@@ -57,9 +51,10 @@ contract LinearAccrual is ILinearAccrual {
     function increaseNormalizedDebt(bytes32 rateId, uint128 prevNormalizedDebt, uint128 debtIncrease)
         external
         view
-        onlyUpdatedRate(rateId)
         returns (uint128 newNormalizedDebt)
     {
+        _requireUpdatedRateId(rateId);
+
         // TODO(@review): Discuss if precions better if we do (prev * rate + debtIncrease) / rate
         return prevNormalizedDebt + debtIncrease / rates[rateId].accumulatedRate;
     }
@@ -68,9 +63,10 @@ contract LinearAccrual is ILinearAccrual {
     function decreaseNormalizedDebt(bytes32 rateId, uint128 prevNormalizedDebt, uint128 debtDecrease)
         external
         view
-        onlyUpdatedRate(rateId)
         returns (uint128 newNormalizedDebt)
     {
+        _requireUpdatedRateId(rateId);
+
         return prevNormalizedDebt - debtDecrease / rates[rateId].accumulatedRate;
     }
 
@@ -78,16 +74,19 @@ contract LinearAccrual is ILinearAccrual {
     function renormalizeDebt(bytes32 oldRateId, bytes32 newRateId, uint128 prevNormalizedDebt)
         external
         view
-        onlyUpdatedRate(oldRateId)
-        onlyUpdatedRate(newRateId)
         returns (uint128 newNormalizedDebt)
     {
+        _requireUpdatedRateId(oldRateId);
+        _requireUpdatedRateId(newRateId);
+
         uint256 _debt = debt(oldRateId, prevNormalizedDebt);
         return MathLib.toUint128(_debt / rates[newRateId].accumulatedRate);
     }
 
     /// @inheritdoc ILinearAccrual
-    function debt(bytes32 rateId, uint128 normalizedDebt) public view onlyUpdatedRate(rateId) returns (uint256) {
+    function debt(bytes32 rateId, uint128 normalizedDebt) public view returns (uint256) {
+        _requireUpdatedRateId(rateId);
+
         return MathLib.mulDiv(normalizedDebt, rates[rateId].accumulatedRate, MathLib.One18);
     }
 
@@ -120,5 +119,10 @@ contract LinearAccrual is ILinearAccrual {
             emit RateAccumulated(rateId, rate.accumulatedRate, periodsPassed);
             rate.lastUpdated = uint64(block.timestamp);
         }
+    }
+
+    function _requireUpdatedRateId(bytes32 rateId) internal view {
+        require(rates[rateId].lastUpdated != 0, RateIdMissing(rateId));
+        require(rates[rateId].lastUpdated == block.timestamp, RateIdOutdated(rateId, rates[rateId].lastUpdated));
     }
 }
