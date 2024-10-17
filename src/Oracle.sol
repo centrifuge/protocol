@@ -6,6 +6,8 @@ import {IERC20} from "forge-std/interfaces/IERC20.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 
 contract Oracle is IERC7726 {
+    uint8 public constant DEFAULT_DECIMALS = 18;
+
     /// @notice Dispatched when the action is not performed by the required feeder.
     error NotValidFeeder();
 
@@ -63,13 +65,13 @@ contract Oracle is IERC7726 {
     /// - Otherwise we assume 18 decimals
     function _extractDecimals(address assetId) internal view returns (uint8) {
         if (assetId.code.length == 0) {
-            return 18;
+            return DEFAULT_DECIMALS;
         } else {
             (bool ok, bytes memory data) = assetId.staticcall(abi.encodeWithSelector(IERC20.decimals.selector));
             if (ok) {
                 return abi.decode(data, (uint8));
             } else {
-                return 18;
+                return DEFAULT_DECIMALS;
             }
         }
     }
