@@ -11,12 +11,3 @@ interface IERC7726 {
     /// @param baseAmount An amount of base in quote terms
     function getQuote(uint256 baseAmount, address base, address quote) external view returns (uint256 quoteAmount);
 }
-
-/// Extension for IERC7726
-interface IERC7726Ext is IERC7726 {
-    /// @notice extension function that acts as `getQuote()` but provides an indicative value instead.
-    function getIndicativeQuote(uint256 baseAmount, address base, address quote)
-        external
-        view
-        returns (uint256 quoteAmount);
-}

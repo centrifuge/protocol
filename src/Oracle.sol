@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity = 0.8.28;
 
-import {IERC7726, IERC7726Ext} from "src/interfaces/IERC7726.sol";
+import {IERC7726, IERC7726} from "src/interfaces/IERC7726.sol";
 import {IERC165} from "forge-std/interfaces/IERC165.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
+import {MathLib} from "src/libraries/MathLib.sol";
 
-contract Oracle is IERC7726Ext {
+contract Oracle is IERC7726 {
     error NotValidFeeder();
     error ValueNotFound();
 
@@ -45,15 +46,28 @@ contract Oracle is IERC7726Ext {
         Value storage quoteValue = values[base][quote];
         require(quoteValue.referenceTime > 0, ValueNotFound());
 
-        return baseAmount * quoteValue.amount;
+        return MathLib.mulDiv(baseAmount, quoteValue.amount, 1 ** _extractDecimals(base));
     }
 
-    /// @inheritdoc IERC7726Ext
-    function getIndicativeQuote(uint256 baseAmount, address base, address quote)
-        external
-        view
-        returns (uint256 quoteAmount)
-    {
-        //TODO
+    /// @dev extract the decimals used for the assetId
+    /// - If the asset is an ERC20, then we ask the contract for its decimals
+    /// - Otherwise we assume 18 decimals
+    function _extractDecimals(address assetId) internal view returns (uint8) {
+        if (IERC165(assetId).supportsInterface(type(IERC20).interfaceId)) {
+            IERC20 erc20 = IERC20(assetId);
+            return erc20.decimals();
+        } else {
+            return 18;
+        }
+    }
+}
+
+contract OracleFactory {
+    event NewOracle(address where);
+
+    function build(address feeder) external {
+        address deployed = address(new Oracle(feeder));
+
+        emit NewOracle(deployed);
     }
 }
