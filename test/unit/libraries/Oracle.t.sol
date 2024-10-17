@@ -60,4 +60,16 @@ contract TestOracle is Test {
 
         assertEq(oracle.getQuote(5 * 10 ** 18, CURR_C, CURR_A), 500);
     }
+
+    function testNonFeeder() public {
+        Oracle oracle = factory.deploy(FEEDER, SALT);
+        vm.expectRevert(abi.encodeWithSelector(Oracle.NotValidFeeder.selector));
+        oracle.setQuote(CURR_A, CURR_B, 100);
+    }
+
+    function testNeverFed() public {
+        Oracle oracle = factory.deploy(FEEDER, SALT);
+        vm.expectRevert(abi.encodeWithSelector(Oracle.NeverFed.selector));
+        oracle.getQuote(1, CURR_A, CURR_B);
+    }
 }
