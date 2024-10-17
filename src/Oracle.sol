@@ -17,7 +17,7 @@ contract Oracle is IERC7726 {
     /// @notice Emitted when the contract is feed with a new quote amount.
     event Fed(address indexed base, address indexed quote, uint256 quoteAmount, uint64 referenceTime);
 
-    struct Value {
+    struct Quote {
         /// @notice Price of one base in quote denomination
         uint256 amount;
         /// @notice Timestamp when the value was fed
@@ -25,10 +25,10 @@ contract Oracle is IERC7726 {
     }
 
     /// @notice Owner of the contract able to feed new values
-    address feeder;
+    address public feeder;
 
     /// @notice All fed values.
-    mapping(address base => mapping(address quote => Value)) public values;
+    mapping(address base => mapping(address quote => Quote)) public values;
 
     /// @dev check that only the feeder perform the action
     modifier onlyFeeder() {
@@ -47,14 +47,14 @@ contract Oracle is IERC7726 {
     /// @param quoteAmount The amount of 1 wei of base amount represented as quote units.
     function setQuote(address base, address quote, uint256 quoteAmount) external onlyFeeder {
         uint64 referenceTime = uint64(block.timestamp);
-        values[base][quote] = Value(quoteAmount, referenceTime);
+        values[base][quote] = Quote(quoteAmount, referenceTime);
 
         emit Fed(base, quote, quoteAmount, referenceTime);
     }
 
     /// @inheritdoc IERC7726
     function getQuote(uint256 baseAmount, address base, address quote) external view returns (uint256 quoteAmount) {
-        Value storage quoteValue = values[base][quote];
+        Quote storage quoteValue = values[base][quote];
         require(quoteValue.referenceTime > 0, NeverFed());
 
         return MathLib.mulDiv(baseAmount, quoteValue.amount, 10 ** _extractDecimals(base));
