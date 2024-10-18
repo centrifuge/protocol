@@ -1,0 +1,109 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity >=0.5.0;
+
+import {IERC7726, IERC6909} from "src/interfaces/Common.sol";
+import {Decimal18} from "src/libraries/Decimal18.sol";
+
+/// @notice Defines a set of items that can be valued
+interface IValuation {
+    /// @notice Dispatched when the item can not be found.
+    error ItemNotFound();
+
+    /// @notice How the price is used to value each item.
+    enum PricingMode {
+        /// @dev Underlaying call to `ERC6909.getQuote()`
+        Real,
+        /// @dev Underlaying call to `ERC6909.getIndicativeQuote()`
+        Indicative
+    }
+
+    /// @notice Return the valuation of an item in the portfolio
+    /// @param mode How the item is valued
+    function itemValuation(uint64 poolId, uint32 itemId, PricingMode mode) external view returns (uint128 value);
+
+    /// @notice Return the Net Asset Value of all items in the portfolio
+    /// @param mode How the items are valued
+    function nav(uint64 poolId, PricingMode mode) external view returns (uint128 value);
+}
+
+/// @notice Defines methods to interact with the items of a portfolio
+interface IPortfolio is IValuation {
+    /// @notice Required data to locate the collateral used in the item
+    struct Collateral {
+        /// @notice Contract where the collateral exists.
+        IERC6909 source;
+        /// @notice Identification of the collateral in ERC6909 contract
+        uint256 id;
+    }
+
+    /// @notice Struct used for user inputs and "static" item data
+    struct ItemInfo {
+        /// @notice The asset used for this item as a collateral.
+        Collateral collateral;
+        /// @notice Rate identification to compute the interest.
+        bytes32 interestRateId;
+        /// @notice Fixed point number with the amount of asset hold by this item.
+        /// Usually for Price valued items it will be > 1.
+        /// Other valuations will normally set this value from 0-1.
+        Decimal18 quantity;
+        /// @notice Valuation used for this item.
+        IERC7726 valuation;
+    }
+
+    /// @notice Dispatched when the item can not be closed yet.
+    error ItemCanNotBeClosed();
+
+    /// @notice Dispatched when the collateral asset can not be transfered to/from this contract.
+    error CollateralCanNotBeTransfered();
+
+    /// @notice Dispatched after the creation of an item.
+    event Create(uint64 indexed poolId, uint32 itemId, Collateral collateral);
+
+    /// @notice Dispatched when the item valuation has been updated.
+    event ValuationUpdated(uint64 indexed poolId, uint32 itemId, IERC7726);
+
+    /// @notice Dispatched when the interest rate has been updated.
+    event InterestRateUpdated(uint64 indexed poolId, uint32 itemId, bytes32 rateId);
+
+    /// @notice Dispatched when the item debt has been increased.
+    event DebtIncreased(uint64 indexed poolId, uint32 itemId, uint128 amount);
+
+    /// @notice Dispatched when the item debt has been decreased.
+    event DebtDecreased(uint64 indexed poolId, uint32 itemId, uint128 principal, uint128 interest);
+
+    /// @notice Dispatched when the item lifetime ends
+    event Closed(uint64 indexed poolId, uint32 itemId, address collateralOwner);
+
+    /// @notice Creates a new item based of a collateral.
+    /// The owner of the collateral will be this contract until close is called.
+    /// @param collateralOwner address from where transfer the assert to this contract.
+    function create(uint64 poolId, ItemInfo calldata info, address collateralOwner) external;
+
+    /// @notice Update the interest rate used by this item
+    /// @param rateId Interest rate identification
+    function updateInterestRate(uint64 poolId, uint32 itemId, bytes32 rateId) external;
+
+    /// @notice Update the valuation contract address used for this item
+    function updateValuation(uint64 poolId, uint32 itemId, IERC7726 valuation) external;
+
+    /// @notice Increase the debt of an item.
+    /// Depending on the configured interest rate, the debt will increase over the time based on the amount given.
+    function increaseDebt(uint64 poolId, uint32 itemId, uint128 amount) external;
+
+    /// @notice Decrease the debt of an item
+    /// @param principal Amount used to decrease the base debt amount from where the interest is accrued.
+    /// @param interest Amount used to decrease the pending interest accrued in this item.
+    function decreaseDebt(uint64 poolId, uint32 itemId, uint128 principal, uint128 interest) external;
+
+    /// @notice Transfer debt `from` an item `to` another item.
+    /// @param fromItemId The item from which to decrease the debt.
+    /// @param toItemId The item from which to increase the debt.
+    /// @param principal Amount used to decrease the base debt amount from where the interest is accrued.
+    /// @param interest Amount used to decrease the pending interest accrued in this item.
+    function transferDebt(uint64 poolId, uint32 fromItemId, uint32 toItemId, uint128 principal, uint128 interest)
+        external;
+
+    /// @notice Close a non-outstanding item returning the collateral to the `collateralOwner`
+    /// @param collateralOwner address where to transfer back the collateral used
+    function close(uint64 poolId, uint32 itemId, address collateralOwner) external;
+}
