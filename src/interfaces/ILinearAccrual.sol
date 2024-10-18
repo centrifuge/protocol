@@ -12,7 +12,6 @@ interface ILinearAccrual {
     error RateIdExists(bytes32 rateId, uint128 ratePerPeriod, CompoundingPeriod period);
     error RateIdMissing(bytes32 rateId);
     error RateIdOutdated(bytes32 rateId, uint64 lastUpdated);
-    error GroupMissing(bytes32 rateId);
 
     /// @notice     Returns the rate identifier for the given rate and compound period.
     ///

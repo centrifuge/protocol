@@ -8,6 +8,8 @@ import {ILinearAccrual} from "src/interfaces/ILinearAccrual.sol";
 import "src/Compounding.sol";
 
 contract LinearAccrualTest is Test {
+    using MathLib for uint256;
+
     LinearAccrual linearAccrual;
 
     function setUp() public {
@@ -172,7 +174,7 @@ contract LinearAccrualTest is Test {
     }
 
     function testDebt(uint128 rate, uint128 normalizedDebt, uint8 periodInt) public {
-        uint128 precision = MathLib.toUint128(MathLib.One18);
+        uint128 precision = MathLib.One18.toUint128();
         rate = uint128(bound(rate, 10 ** 10, 10 ** 20));
         CompoundingPeriod period = CompoundingPeriod(bound(periodInt, 0, 1));
 
@@ -214,23 +216,23 @@ contract LinearAccrualTest is Test {
         // Pass one period
         (, uint64 initialLastUpdated) = linearAccrual.rates(rateId);
         vm.warp(initialLastUpdated + 1 seconds);
-        uint256 rateSquare = MathLib.mulDiv(uint256(rate), uint256(rate), MathLib.One18);
+        uint256 rateSquare = uint256(rate).mulDiv(uint256(rate), MathLib.One18);
         vm.expectEmit(true, true, true, true);
-        emit ILinearAccrual.RateAccumulated(rateId, uint128(rateSquare), 1);
+        emit ILinearAccrual.RateAccumulated(rateId, rateSquare.toUint128(), 1);
         linearAccrual.drip(rateId);
         (uint128 rateAfterTwoPeriods,) = linearAccrual.rates(rateId);
         assertEq(uint256(rateAfterTwoPeriods), rateSquare, "Rate should be ^2 after one passed period");
 
         // Pass 2 more periods
         vm.warp(block.timestamp + 2 seconds);
-        uint256 ratePow4 = MathLib.mulDiv(rateSquare, rateSquare, MathLib.One18);
+        uint256 ratePow4 = rateSquare.mulDiv(rateSquare, MathLib.One18);
         linearAccrual.drip(rateId);
         (uint128 rateAfter4Periods,) = linearAccrual.rates(rateId);
         assertApproxEqAbs(uint256(rateAfter4Periods), ratePow4, 10 ** 4, "Rate should be ^4 after 3 passed periods");
     }
 
     function testDripReverts(uint128 rate) public {
-        rate = uint128(bound(rate, MathLib.One18 / 1000, MathLib.One18 * 100));
+        rate = uint128(bound(rate, MathLib.One18 / 1000, MathLib.One18 * 1000));
         CompoundingPeriod period = CompoundingPeriod.Secondly;
         bytes32 rateId = linearAccrual.getRateId(rate, period);
 

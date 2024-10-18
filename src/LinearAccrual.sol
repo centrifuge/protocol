@@ -22,6 +22,9 @@ struct Group {
 }
 
 contract LinearAccrual is ILinearAccrual {
+    using MathLib for uint128;
+    using MathLib for uint256;
+
     mapping(bytes32 rateId => Rate rate) public rates;
     mapping(bytes32 rateId => Group group) public groups;
 
@@ -79,15 +82,15 @@ contract LinearAccrual is ILinearAccrual {
         _requireUpdatedRateId(oldRateId);
         _requireUpdatedRateId(newRateId);
 
-        uint256 _debt = debt(oldRateId, prevNormalizedDebt);
-        return MathLib.toUint128(_debt / rates[newRateId].accumulatedRate);
+        uint256 debt_ = debt(oldRateId, prevNormalizedDebt);
+        return (debt_ / rates[newRateId].accumulatedRate).toUint128();
     }
 
     /// @inheritdoc ILinearAccrual
     function debt(bytes32 rateId, uint128 normalizedDebt) public view returns (uint256) {
         _requireUpdatedRateId(rateId);
 
-        return MathLib.mulDiv(normalizedDebt, rates[rateId].accumulatedRate, MathLib.One18);
+        return normalizedDebt.mulDiv(rates[rateId].accumulatedRate, MathLib.One18);
     }
 
     /// @notice     Updates the accumulated rate of the corresponding identifier based on the periods which have passed
@@ -104,17 +107,15 @@ contract LinearAccrual is ILinearAccrual {
 
         // Infallible since group storage exists iff rate storage exists
         Group memory group = groups[rateId];
-        require(group.ratePerPeriod != 0, GroupMissing(rateId));
+        require(group.ratePerPeriod != 0, "group-missing");
 
         // Determine number of full compounding periods passed since last update
         uint256 periodsPassed = Compounding.getPeriodsPassed(group.period, rate.lastUpdated);
 
         if (periodsPassed > 0) {
-            rate.accumulatedRate = MathLib.toUint128(
-                MathLib.mulDiv(
-                    MathLib.rpow(group.ratePerPeriod, periodsPassed, MathLib.One18), rate.accumulatedRate, MathLib.One18
-                )
-            );
+            rate.accumulatedRate = group.ratePerPeriod.rpow(periodsPassed, MathLib.One18).mulDiv(
+                rate.accumulatedRate, MathLib.One18
+            ).toUint128();
 
             emit RateAccumulated(rateId, rate.accumulatedRate, periodsPassed);
             rate.lastUpdated = uint64(block.timestamp);
