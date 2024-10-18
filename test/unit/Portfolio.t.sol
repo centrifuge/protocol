@@ -55,6 +55,10 @@ contract MockLinearAccrual is ILinearAccrual {
     {
         return prevNormalizedDebt;
     }
+
+    function debt(bytes32, uint128 normalizedDebt) external pure returns (uint128) {
+        return normalizedDebt;
+    }
 }
 
 contract TestPortfolio is Test {
@@ -80,6 +84,25 @@ contract TestPortfolio is Test {
         portfolio.create(POOL_A, IPortfolio.ItemInfo(collateral, INTEREST_RATE_A, d18(10), valuation), OWNER);
     }
 
+    function testIncrease() public {
+        portfolio.create(POOL_A, IPortfolio.ItemInfo(collateral, INTEREST_RATE_A, d18(10), valuation), OWNER);
+
+        vm.expectEmit();
+        emit IPortfolio.DebtIncreased(POOL_A, 0, 100);
+
+        portfolio.increaseDebt(POOL_A, 0, 100);
+    }
+
+    function testDecrease() public {
+        portfolio.create(POOL_A, IPortfolio.ItemInfo(collateral, INTEREST_RATE_A, d18(10), valuation), OWNER);
+        portfolio.increaseDebt(POOL_A, 0, 100);
+
+        vm.expectEmit();
+        emit IPortfolio.DebtDecreased(POOL_A, 0, 100, 0);
+
+        portfolio.decreaseDebt(POOL_A, 0, 100, 0);
+    }
+
     function testCloseAfterCreate() public {
         portfolio.create(POOL_A, IPortfolio.ItemInfo(collateral, INTEREST_RATE_A, d18(10), valuation), OWNER);
 
@@ -87,5 +110,8 @@ contract TestPortfolio is Test {
         emit IPortfolio.Closed(POOL_A, 0, OWNER);
 
         portfolio.close(POOL_A, 0, OWNER);
+
+        (IPortfolio.ItemInfo memory info,,) = portfolio.items(POOL_A, 0);
+        assertEq(address(info.collateral.source), address(0));
     }
 }

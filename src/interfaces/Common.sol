@@ -34,4 +34,6 @@ interface ILinearAccrual {
     function renormalizeDebt(bytes32 rateId, bytes32 newRateId, uint128 prevNormalizedDebt)
         external
         returns (uint128 newNormalizedDebt);
+
+    function debt(bytes32 rateId, uint128 normalizedDebt) external view returns (uint128 debt);
 }

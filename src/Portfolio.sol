@@ -25,9 +25,20 @@ contract Portfolio is Auth, IPortfolio {
     IPoolRegistry public poolRegistry;
     ILinearAccrual public linearAccrual;
 
+    event File(bytes32, address);
+
     constructor(address owner, IPoolRegistry poolRegistry_, ILinearAccrual linearAccrual_) Auth(owner) {
         poolRegistry = poolRegistry_;
         linearAccrual = linearAccrual_;
+    }
+
+    /// @notice Updates a contract parameter
+    /// @param what Accepts a bytes32 representation of 'poolRegistry', 'linearAccrual'
+    function file(bytes32 what, address data) external auth {
+        if (what == "poolRegistry") poolRegistry = IPoolRegistry(data);
+        else if (what == "linearAccrual") linearAccrual = ILinearAccrual(data);
+        else revert("Portfolio/file-unrecognized-param");
+        emit File(what, data);
     }
 
     /// @inheritdoc IPortfolio
@@ -35,7 +46,7 @@ contract Portfolio is Auth, IPortfolio {
         bool ok = info.collateral.source.transferFrom(collateralOwner, address(this), info.collateral.id, 1);
         require(ok, CollateralCanNotBeTransfered());
 
-        uint32 itemId = uint32(items[poolId].length);
+        uint32 itemId = items[poolId].length.toUint32();
         items[poolId].push(Item(info, 0, d18(0)));
 
         emit Create(poolId, itemId, info.collateral);
@@ -83,6 +94,18 @@ contract Portfolio is Auth, IPortfolio {
 
         Decimal18 quantity = _getQuantity(poolId, item, principal);
 
+        /*
+        uint128 debt = linearAccrual.debt(item.info.interestRateId, item.normalizedDebt);
+
+        if (principal - quantity) {
+            OverDecreasedPrincipal();
+        }
+
+        if (principal + interest > debt) {
+            OverDecreasedInterest();
+        }
+        */
+
         item.normalizedDebt =
             linearAccrual.decreaseNormalizedDebt(item.info.interestRateId, item.normalizedDebt, principal + interest);
         item.outstandingQuantity = item.outstandingQuantity - quantity;
@@ -103,7 +126,8 @@ contract Portfolio is Auth, IPortfolio {
     function close(uint64 poolId, uint32 itemId, address collateralOwner) external auth {
         Item storage item = items[poolId][itemId];
         require(_doItemExists(item), ItemNotFound());
-        require(item.outstandingQuantity.inner() == 0, ItemCanNotBeClosed());
+        require(item.outstandingQuantity.inner() == 0, ItemCanNotBeClosed()); // TODO: Can be removed?
+        require(linearAccrual.debt(item.info.interestRateId, item.normalizedDebt) == 0, ItemCanNotBeClosed());
 
         Collateral memory collateral = item.info.collateral;
 
@@ -115,16 +139,17 @@ contract Portfolio is Auth, IPortfolio {
         emit Closed(poolId, itemId, collateralOwner);
     }
 
+    /// @dev Returns the identification of the collateral
     function _globalId(Collateral storage collateral) internal view returns (address) {
         return address(uint160(uint256(keccak256(abi.encode(collateral.source, collateral.id)))));
     }
 
-    /// Definition of a non-null item
+    /// @dev Definition of a non-null item
     function _doItemExists(Item storage item) internal view returns (bool) {
         return address(item.info.collateral.source) != address(0);
     }
 
-    /// The item quantity for a pool currency amount
+    /// @dev The item quantity for a pool currency amount
     function _getQuantity(uint64 poolId, Item storage item, uint128 amount)
         internal
         view
@@ -136,7 +161,7 @@ contract Portfolio is Auth, IPortfolio {
         return d18(item.info.valuation.getQuote(amount, base, quote).toUint128());
     }
 
-    /// The pool currency amount for some item quantity.
+    /// @dev The pool currency amount for some item quantity.
     function _getValue(uint64 poolId, Item storage item, Decimal18 quantity, PricingMode mode)
         internal
         view
@@ -151,6 +176,12 @@ contract Portfolio is Auth, IPortfolio {
             // mode == PricingMode.Indicative
             return item.info.valuation.getIndicativeQuote(quantity.inner(), base, quote).toUint128();
         }
+    }
+
+    /// @notice returns the debt of an item
+    function debt(uint64 poolId, uint32 itemId) external view returns (uint128 debtValue) {
+        Item storage item = items[poolId][itemId];
+        return linearAccrual.debt(item.info.interestRateId, item.normalizedDebt);
     }
 
     /// @inheritdoc IValuation

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >=0.8.0;
+pragma solidity >=0.5.0;
 
 import {IERC7726, IERC6909} from "src/interfaces/Common.sol";
 import {Decimal18} from "src/libraries/Decimal18.sol";
@@ -69,14 +69,14 @@ interface IPortfolio is IValuation {
     event DebtIncreased(uint64 indexed poolId, uint32 itemId, uint128 amount);
 
     /// @notice Dispatched when the item debt has been decreased.
-    event DebtDecreased(uint64 indexed poolId, uint32 itemId, uint128 amount, uint128 interest);
+    event DebtDecreased(uint64 indexed poolId, uint32 itemId, uint128 principal, uint128 interest);
 
     /// @notice Dispatched when the item lifetime ends
     event Closed(uint64 indexed poolId, uint32 itemId, address collateralOwner);
 
     /// @notice Creates a new item based of a collateral.
     /// The owner of the collateral will be this contract until close is called.
-    /// @param collateralOwner address from where transfer the asser to this contract.
+    /// @param collateralOwner address from where transfer the assert to this contract.
     function create(uint64 poolId, ItemInfo calldata info, address collateralOwner) external;
 
     /// @notice Update the interest rate used by this item
