@@ -8,6 +8,8 @@ interface ICashAccount {
     // TODO: Does it make sense to replicate events such as Create from Portfolio? Then we would emit two events for a
     // new CashAccount Item
 
+    error NotOwner(uint64 poolId, uint32 itemId);
+
     // TODO TBD: Initiates item with no collateral, zero interest rate, valuation as address(0) and zero quantity as
     /// quantity is increased when depositing.
     /// @notice Creates a new item and links it to the provided owner
