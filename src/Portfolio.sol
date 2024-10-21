@@ -43,7 +43,12 @@ contract Portfolio is Auth, IPortfolio {
 
     /// @inheritdoc IPortfolio
     function create(uint64 poolId, ItemInfo calldata info, address collateralOwner) external auth {
-        bool ok = info.collateral.source.transferFrom(collateralOwner, address(this), info.collateral.id, 1);
+        bool ok = info.collateral.source.transferFrom(
+            collateralOwner,
+            address(this),
+            info.collateral.id,
+            10 ** info.collateral.source.decimals(info.collateral.id)
+        );
         require(ok, CollateralCanNotBeTransfered());
 
         uint32 itemId = items[poolId].length.toUint32();

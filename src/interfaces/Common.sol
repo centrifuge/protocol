@@ -8,6 +8,7 @@ interface IERC6909 {
     function transferFrom(address sender, address receiver, uint256 id, uint256 amount)
         external
         returns (bool success);
+    function decimals(uint256 tokenId) external view returns (uint8);
 }
 
 interface IERC7726 {
