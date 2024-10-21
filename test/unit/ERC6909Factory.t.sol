@@ -31,7 +31,7 @@ contract ERC6909FactoryTest is Test {
     function testDeterminism() public {
         bytes32 salt = keccak256("deterministic");
         address owner = address(this);
-        address predefinedOne = 0x8c30B4f243B935cbd88b8c77C0bA204FC4FFdBB4;
+        address predefinedOne = 0x9259F3F63A6c52434E79609577DF7e230d1Dd11a;
         assertEq(predefinedOne, factory.previewAddress(owner, salt));
     }
 }
