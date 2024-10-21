@@ -9,6 +9,8 @@ contract ERC6909 is IERC6909, IERC165 {
     mapping(address owner => mapping(address operator => bool isOperator)) public isOperator;
     mapping(address owner => mapping(address spender => mapping(uint256 id => uint256 amount))) public allowance;
 
+    error InsufficientBalance(address owner, uint256 id, uint256 balance, uint256 amount);
+
     /// @inheritdoc IERC6909
     function transfer(address receiver, uint256 id, uint256 amount) external returns (bool) {
         return _transfer(msg.sender, receiver, id, amount);
@@ -26,10 +28,11 @@ contract ERC6909 is IERC6909, IERC165 {
 
     /// @inheritdoc IERC6909
     function approve(address spender, uint256 id, uint256 amount) external returns (bool) {
-        allowance[msg.sender][spender][id] = amount;
+        if (allowance[msg.sender][spender][id] != amount) {
+            allowance[msg.sender][spender][id] = amount;
 
-        emit Approval(msg.sender, spender, id, amount);
-
+            emit Approval(msg.sender, spender, id, amount);
+        }
         return true;
     }
 
@@ -48,6 +51,9 @@ contract ERC6909 is IERC6909, IERC165 {
     }
 
     function _transfer(address sender, address receiver, uint256 id, uint256 amount) internal returns (bool) {
+        uint256 balance = balanceOf[sender][id];
+        require(balance >= amount, InsufficientBalance(sender, id, balance, amount));
+
         balanceOf[sender][id] -= amount;
 
         balanceOf[receiver][id] += amount;

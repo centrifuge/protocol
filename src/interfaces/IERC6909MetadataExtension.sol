@@ -9,7 +9,10 @@ interface IERC6909MetadataExtension {
     error MissingDecimals(uint256 tokenId);
 
     /// Functions ///
+    /// TODO
     function name(uint256 tokenId) external view returns (string memory);
+    /// TODO
     function symbol(uint256 tokenId) external view returns (string memory);
+    /// TODO
     function decimals(uint256 tokenId) external view returns (uint8);
 }
