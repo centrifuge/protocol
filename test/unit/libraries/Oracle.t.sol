@@ -34,7 +34,7 @@ contract TestOracle is Test {
 
         vm.expectEmit();
         vm.warp(1 days);
-        emit Oracle.Fed(CURR_A, CURR_B, 100, 1 days);
+        emit Oracle.NewQuoteSet(CURR_A, CURR_B, 100, 1 days);
 
         vm.prank(FEEDER);
         oracle.setQuote(CURR_A, CURR_B, 100);
@@ -69,7 +69,7 @@ contract TestOracle is Test {
 
     function testNeverFed() public {
         Oracle oracle = factory.deploy(FEEDER, SALT);
-        vm.expectRevert(abi.encodeWithSelector(Oracle.NeverFed.selector));
+        vm.expectRevert(abi.encodeWithSelector(Oracle.NoQuote.selector));
         oracle.getQuote(1, CURR_A, CURR_B);
     }
 }
