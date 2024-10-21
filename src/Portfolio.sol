@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {Decimal18, d18} from "src/libraries/Decimal18.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {Auth} from "src/Auth.sol";
+import {RwaEscrow} from "src/RwaEscrow.sol";
 import {IPortfolio, IValuation} from "src/interfaces/IPortfolio.sol";
 import {IERC7726, IERC6909, IPoolRegistry, ILinearAccrual} from "src/interfaces/Common.sol";
 
@@ -14,16 +15,10 @@ struct Item {
     uint128 normalizedDebt;
     /// Outstanding quantity
     Decimal18 outstandingQuantity;
+    /// Identifiation of the RWA used for this item
+    uint160 rwaId;
     /// Existence flag
     bool isValid;
-}
-
-/// Absolute item itendification
-struct ItemLocation {
-    /// Identifiction of a pool
-    uint64 poolId;
-    /// Identifiction of an item inside of the pool
-    uint32 itemId;
 }
 
 contract Portfolio is Auth, IPortfolio {
@@ -31,18 +26,19 @@ contract Portfolio is Auth, IPortfolio {
 
     IPoolRegistry public poolRegistry;
     ILinearAccrual public linearAccrual;
+    RwaEscrow public rwaEscrow;
 
     /// A list of items (a portfolio) per pool.
     mapping(uint64 poolId => Item[]) public items;
 
-    /// A list of collateral with an item associated.
-    mapping(uint160 collateralId => ItemLocation) public usedCollaterals;
-
     event File(bytes32, address);
 
-    constructor(address owner, IPoolRegistry poolRegistry_, ILinearAccrual linearAccrual_) Auth(owner) {
+    constructor(address owner, IPoolRegistry poolRegistry_, ILinearAccrual linearAccrual_, RwaEscrow rwaEscrow_)
+        Auth(owner)
+    {
         poolRegistry = poolRegistry_;
         linearAccrual = linearAccrual_;
+        rwaEscrow = rwaEscrow_;
     }
 
     /// @notice Updates a contract parameter
@@ -54,41 +50,18 @@ contract Portfolio is Auth, IPortfolio {
         emit File(what, data);
     }
 
-    function lock(IERC6909 source, uint256 tokenId, address from) external auth returns (uint160) {
-        uint160 collateralId = _globalId(source, tokenId);
-
-        // The token was already locked.
-        require(source.balanceOf(address(this), tokenId) == 0, CollateralCanNotBeTransfered());
-
-        bool ok = source.transferFrom(from, address(this), tokenId, 10 ** source.decimals(tokenId));
-        require(ok, CollateralCanNotBeTransfered());
-
-        emit Locked(source, tokenId, collateralId);
-
-        return collateralId;
-    }
-
-    function unlock(IERC6909 source, uint256 tokenId, address to) external auth {
-        bool ok = source.transferFrom(address(this), to, tokenId, 10 ** source.decimals(tokenId));
-
-        emit Unlocked(source, tokenId);
-
-        require(ok, CollateralCanNotBeTransfered());
-    }
-
     /// @inheritdoc IPortfolio
-    function create(uint64 poolId, ItemInfo calldata info) external auth {
+    function create(uint64 poolId, ItemInfo calldata info, IERC6909 source, uint256 tokenId) external auth {
         uint32 itemId = items[poolId].length.toUint32() + 1;
 
-        if (info.collateralId != 0) {
-            // TODO: Should we check if the collateral is locked?
-            require(usedCollaterals[info.collateralId].itemId == 0, CollateralCanNotBeTransfered());
-            usedCollaterals[info.collateralId] = ItemLocation(poolId, itemId);
+        uint160 rwaId = 0;
+        if (address(source) != address(0)) {
+            rwaId = rwaEscrow.attach(source, tokenId, itemId);
         }
 
-        items[poolId].push(Item(info, 0, d18(0), true));
+        items[poolId].push(Item(info, 0, d18(0), rwaId, true));
 
-        emit Create(poolId, itemId, info.collateralId);
+        emit Create(poolId, itemId, source, tokenId);
     }
 
     /// @inheritdoc IPortfolio
@@ -163,11 +136,13 @@ contract Portfolio is Auth, IPortfolio {
         require(item.outstandingQuantity.inner() == 0, ItemCanNotBeClosed()); // TODO: Can be removed?
         require(linearAccrual.debt(item.info.interestRateId, item.normalizedDebt) == 0, ItemCanNotBeClosed());
 
-        if (item.info.collateralId != 0) {
-            delete usedCollaterals[item.info.collateralId];
-        }
+        uint160 rwaId = item.rwaId;
 
         delete items[poolId][itemId];
+
+        if (rwaId != 0) {
+            rwaEscrow.deattach(rwaId, itemId);
+        }
 
         emit Closed(poolId, itemId);
     }
@@ -203,11 +178,6 @@ contract Portfolio is Auth, IPortfolio {
         return item;
     }
 
-    /// @dev Returns the identification of the collateral
-    function _globalId(IERC6909 source, uint256 tokenId) internal pure returns (uint160) {
-        return uint160(uint256(keccak256(abi.encode(source, tokenId))));
-    }
-
     /// @dev The item quantity for a pool currency amount
     function _getQuantity(uint64 poolId, Item storage item, uint128 amount)
         internal
@@ -215,7 +185,7 @@ contract Portfolio is Auth, IPortfolio {
         returns (Decimal18 quantity)
     {
         address base = poolRegistry.currencyOfPool(poolId);
-        address quote = address(item.info.collateralId);
+        address quote = address(item.rwaId);
 
         return d18(item.info.valuation.getQuote(amount, base, quote).toUint128());
     }
@@ -226,7 +196,7 @@ contract Portfolio is Auth, IPortfolio {
         view
         returns (uint128 amount)
     {
-        address base = address(item.info.collateralId);
+        address base = address(item.rwaId);
         address quote = poolRegistry.currencyOfPool(poolId);
 
         if (mode == PricingMode.Real) {
