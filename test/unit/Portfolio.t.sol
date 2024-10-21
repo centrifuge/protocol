@@ -13,6 +13,10 @@ contract MockERC6909 is IERC6909 {
     function transferFrom(address, address, uint256, uint256) external pure returns (bool success) {
         return true;
     }
+
+    function balanceOf(address owner, uint256 id) external returns (uint256 amount) {
+        return 1;
+    }
 }
 
 contract MockERC7726 is IERC7726 {

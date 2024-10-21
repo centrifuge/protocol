@@ -9,6 +9,7 @@ interface IERC6909 {
         external
         returns (bool success);
     function decimals(uint256 tokenId) external view returns (uint8);
+    function balanceOf(address owner, uint256 id) external returns (uint256 amount);
 }
 
 interface IERC7726 {

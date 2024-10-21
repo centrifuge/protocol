@@ -57,16 +57,21 @@ contract Portfolio is Auth, IPortfolio {
     function lock(IERC6909 source, uint256 tokenId, address from) external auth returns (uint160) {
         uint160 collateralId = _globalId(source, tokenId);
 
+        // The token was already locked.
+        require(source.balanceOf(address(this), tokenId) == 0, CollateralCanNotBeTransfered());
+
         bool ok = source.transferFrom(from, address(this), tokenId, 10 ** source.decimals(tokenId));
         require(ok, CollateralCanNotBeTransfered());
+
+        emit Locked(source, tokenId, collateralId);
 
         return collateralId;
     }
 
     function unlock(IERC6909 source, uint256 tokenId, address to) external auth {
-        _globalId(source, tokenId);
-
         bool ok = source.transferFrom(address(this), to, tokenId, 10 ** source.decimals(tokenId));
+
+        emit Unlocked(source, tokenId);
 
         require(ok, CollateralCanNotBeTransfered());
     }
@@ -76,6 +81,7 @@ contract Portfolio is Auth, IPortfolio {
         uint32 itemId = items[poolId].length.toUint32() + 1;
 
         if (info.collateralId != 0) {
+            // TODO: Should we check if the collateral is locked?
             require(usedCollaterals[info.collateralId].itemId == 0, CollateralCanNotBeTransfered());
             usedCollaterals[info.collateralId] = ItemLocation(poolId, itemId);
         }

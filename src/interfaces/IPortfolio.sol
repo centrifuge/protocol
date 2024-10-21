@@ -48,6 +48,12 @@ interface IPortfolio is IValuation {
     /// @notice Dispatched when the collateral asset can not be transfered to/from this contract.
     error CollateralCanNotBeTransfered();
 
+    /// @notice The collateral was locked and can be identified by `collateralId`
+    event Locked(IERC6909 source, uint256 tokenId, uint160 collateralId);
+
+    /// @notice The collateral was unlocked
+    event Unlocked(IERC6909 source, uint256 tokenId);
+
     /// @notice Dispatched after the creation of an item.
     event Create(uint64 indexed poolId, uint32 itemId, uint160 collateralId);
 
@@ -65,6 +71,14 @@ interface IPortfolio is IValuation {
 
     /// @notice Dispatched when the item lifetime ends
     event Closed(uint64 indexed poolId, uint32 itemId);
+
+    /// @notice Lock a collateral transfering one token to the contract.
+    /// @param from Address allowed to transfer one token.
+    function lock(IERC6909 source, uint256 tokenId, address from) external returns (uint160);
+
+    /// @notice Lock a collateral transfering the token from the contract.
+    /// @param to Address where the token will be transfered to.
+    function unlock(IERC6909 source, uint256 tokenId, address to) external;
 
     /// @notice Creates a new item based of a collateral.
     /// The owner of the collateral will be this contract until close is called.
