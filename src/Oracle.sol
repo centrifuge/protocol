@@ -5,24 +5,15 @@ import {IERC7726, IERC7726} from "src/interfaces/IERC7726.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 
+struct Quote {
+    /// @notice Price of one base in quote denomination
+    uint256 amount;
+    /// @notice Timestamp when the value was fed
+    uint64 referenceTime;
+}
+
 contract Oracle is IERC7726 {
     uint8 public constant DEFAULT_DECIMALS = 18;
-
-    /// @notice Dispatched when the action is not performed by the required feeder.
-    error NotValidFeeder();
-
-    /// @notice Dispatched when the base/quote pair has never been feed.
-    error NeverFed();
-
-    /// @notice Emitted when the contract is feed with a new quote amount.
-    event Fed(address indexed base, address indexed quote, uint256 quoteAmount, uint64 referenceTime);
-
-    struct Quote {
-        /// @notice Price of one base in quote denomination
-        uint256 amount;
-        /// @notice Timestamp when the value was fed
-        uint64 referenceTime;
-    }
 
     /// @notice Owner of the contract able to feed new values
     address public feeder;
@@ -30,14 +21,23 @@ contract Oracle is IERC7726 {
     /// @notice All fed values.
     mapping(address base => mapping(address quote => Quote)) public values;
 
+    /// @notice Dispatched when the action is not performed by the required feeder.
+    error NotValidFeeder();
+
+    /// @notice Dispatched when the base/quote pair has never been fed.
+    error NoQuote();
+
+    /// @notice Emitted when the contract is fed with a new quote amount.
+    event NewQuoteSet(address indexed base, address indexed quote, uint256 quoteAmount, uint64 referenceTime);
+
+    constructor(address feeder_) {
+        feeder = feeder_;
+    }
+
     /// @dev check that only the feeder perform the action
     modifier onlyFeeder() {
         require(msg.sender == feeder, NotValidFeeder());
         _;
-    }
-
-    constructor(address feeder_) {
-        feeder = feeder_;
     }
 
     /// @notice Feed the contract with a new base -> quote relation.
@@ -49,13 +49,13 @@ contract Oracle is IERC7726 {
         uint64 referenceTime = uint64(block.timestamp);
         values[base][quote] = Quote(quoteAmount, referenceTime);
 
-        emit Fed(base, quote, quoteAmount, referenceTime);
+        emit NewQuoteSet(base, quote, quoteAmount, referenceTime);
     }
 
     /// @inheritdoc IERC7726
     function getQuote(uint256 baseAmount, address base, address quote) external view returns (uint256 quoteAmount) {
         Quote storage quoteValue = values[base][quote];
-        require(quoteValue.referenceTime > 0, NeverFed());
+        require(quoteValue.referenceTime > 0, NoQuote());
 
         return MathLib.mulDiv(baseAmount, quoteValue.amount, 10 ** _extractDecimals(base));
     }
