@@ -28,18 +28,10 @@ interface IValuation {
 
 /// @notice Defines methods to interact with the items of a portfolio
 interface IPortfolio is IValuation {
-    /// @notice Required data to locate the collateral used in the item
-    struct Collateral {
-        /// @notice Contract where the collateral exists.
-        IERC6909 source;
-        /// @notice Identification of the collateral in ERC6909 contract
-        uint256 id;
-    }
-
     /// @notice Struct used for user inputs and "static" item data
     struct ItemInfo {
-        /// @notice The asset used for this item as a collateral.
-        Collateral collateral;
+        /// Identification of the collateral used. If 0, no collateral will be used.
+        uint160 collateralId;
         /// @notice Rate identification to compute the interest.
         bytes32 interestRateId;
         /// @notice Fixed point number with the amount of asset hold by this item.
@@ -57,7 +49,7 @@ interface IPortfolio is IValuation {
     error CollateralCanNotBeTransfered();
 
     /// @notice Dispatched after the creation of an item.
-    event Create(uint64 indexed poolId, uint32 itemId, Collateral collateral);
+    event Create(uint64 indexed poolId, uint32 itemId, uint160 collateralId);
 
     /// @notice Dispatched when the item valuation has been updated.
     event ValuationUpdated(uint64 indexed poolId, uint32 itemId, IERC7726);
@@ -72,12 +64,11 @@ interface IPortfolio is IValuation {
     event DebtDecreased(uint64 indexed poolId, uint32 itemId, uint128 principal, uint128 interest);
 
     /// @notice Dispatched when the item lifetime ends
-    event Closed(uint64 indexed poolId, uint32 itemId, address collateralOwner);
+    event Closed(uint64 indexed poolId, uint32 itemId);
 
     /// @notice Creates a new item based of a collateral.
     /// The owner of the collateral will be this contract until close is called.
-    /// @param collateralOwner address from where transfer the assert to this contract.
-    function create(uint64 poolId, ItemInfo calldata info, address collateralOwner) external;
+    function create(uint64 poolId, ItemInfo calldata info) external;
 
     /// @notice Update the interest rate used by this item
     /// @param rateId Interest rate identification
@@ -104,6 +95,5 @@ interface IPortfolio is IValuation {
         external;
 
     /// @notice Close a non-outstanding item returning the collateral to the `collateralOwner`
-    /// @param collateralOwner address where to transfer back the collateral used
-    function close(uint64 poolId, uint32 itemId, address collateralOwner) external;
+    function close(uint64 poolId, uint32 itemId) external;
 }
