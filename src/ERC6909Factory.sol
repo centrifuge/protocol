@@ -7,7 +7,7 @@ import {ERC6909Collateral} from "src/ERC6909Collateral.sol";
 contract ERC6909Factory is Auth {
     constructor(address _owner) Auth(_owner) {}
 
-    function newCollateral(address owner, string calldata baseURI, bytes32 salt) public returns (address collateral) {
-        collateral = address(new ERC6909Collateral{salt: salt}(owner, baseURI));
+    function newCollateral(address owner, bytes32 salt) public returns (address collateral) {
+        collateral = address(new ERC6909Collateral{salt: salt}(owner));
     }
 }
