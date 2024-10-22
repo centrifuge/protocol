@@ -73,6 +73,15 @@ contract TestUnlock is TestCommon {
         escrow.unlock(nfts, TOKEN_ID, OWNER);
     }
 
+    function testErrUnlockAlreadyAttached() public {
+        _mockEscrowBalance(1);
+        escrow.attach(nfts, TOKEN_ID, ELEMENT_ID);
+
+        vm.expectRevert(abi.encodeWithSelector(INftEscrow.AlreadyAttached.selector));
+
+        escrow.unlock(nfts, TOKEN_ID, OWNER);
+    }
+
     function testErrUnlockCanNotBeTransferred() public {
         _mockTransfer(address(escrow), OWNER, false);
         vm.expectRevert(abi.encodeWithSelector(INftEscrow.CanNotBeTransferred.selector));

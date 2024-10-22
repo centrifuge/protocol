@@ -26,6 +26,9 @@ contract NftEscrow is Auth, INftEscrow {
 
     /// @inheritdoc INftEscrow
     function unlock(IERC6909 source, uint256 tokenId, address to) external auth {
+        uint160 nftId = computeNftId(source, tokenId);
+        require(associations[nftId] == 0, AlreadyAttached());
+
         bool ok = source.transferFrom(address(this), to, tokenId, 10 ** source.decimals(tokenId));
         require(ok, CanNotBeTransferred());
 
