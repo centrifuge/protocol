@@ -13,6 +13,29 @@ contract ERC6909CollateralTest is Test {
 
     string constant EMPTY = "";
 
+    function testAuthorizations(address owner) public {
+        vm.assume(owner != address(0));
+        ERC6909Collateral collateral = new ERC6909Collateral(owner);
+        assertEq(collateral.wards(owner), 1);
+
+        vm.expectRevert("Auth/not-authorized");
+        collateral.rely(address(this));
+
+        vm.prank(owner);
+        collateral.rely(address(this));
+
+        assertEq(collateral.wards(owner), 1);
+        assertEq(collateral.wards(address(this)), 1);
+
+        collateral.deny(owner);
+        assertEq(collateral.wards(owner), 0);
+        assertEq(collateral.wards(address(this)), 1);
+
+        vm.expectRevert("Auth/not-authorized");
+        vm.prank(owner);
+        collateral.deny(address(this));
+    }
+
     function testMintingNewItem(address owner, uint256 amount, string calldata URI) public {
         vm.assume(owner != address(0));
         vm.assume(!URI.isEmpty());
