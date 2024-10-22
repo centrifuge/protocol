@@ -2,17 +2,6 @@
 pragma solidity 0.8.28;
 
 interface IERC6909URIExtension {
-    /// Errors ///
-
-    /// @notice         Thrown when trying to set the contract URI to empty string
-    error MissingContractURI();
-
-    /// @notice         Thrown when there is a missing URI for the tokenId
-    ///                 being added.
-    /// @dev            Could be used to be thrown when a non-existing tokenId is queried
-    /// @param tokenId  The token id being added to the collection
-    error MissingTokenURI(uint256 tokenId);
-
     /// Events ///
     event TokenURI(uint256 indexed tokenId, string uri);
     event ContractURI(address indexed target, string uri);

@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
-import {ERC6909Factory} from "src/ERC6909Factory.sol";
+import {ERC6909Factory} from "src/ERC6909/ERC6909Factory.sol";
 
 contract ERC6909FactoryTest is Test {
     ERC6909Factory factory;

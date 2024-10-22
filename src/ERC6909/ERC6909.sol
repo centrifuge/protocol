@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
-import {IERC6909} from "src/interfaces/IERC6909.sol";
+import {ERC6909_Transfer_InsufficientBalance} from "src/ERC6909/ERC6909Errors.sol";
+import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
 import {IERC165} from "src/interfaces/IERC165.sol";
 
 contract ERC6909 is IERC6909, IERC165 {
     mapping(address owner => mapping(uint256 id => uint256 amount)) public balanceOf;
     mapping(address owner => mapping(address operator => bool isOperator)) public isOperator;
     mapping(address owner => mapping(address spender => mapping(uint256 id => uint256 amount))) public allowance;
-
-    error InsufficientBalance(address owner, uint256 id, uint256 balance, uint256 amount);
 
     /// @inheritdoc IERC6909
     function transfer(address receiver, uint256 id, uint256 amount) external returns (bool) {
@@ -52,7 +51,7 @@ contract ERC6909 is IERC6909, IERC165 {
 
     function _transfer(address sender, address receiver, uint256 id, uint256 amount) internal returns (bool) {
         uint256 balance = balanceOf[sender][id];
-        require(balance >= amount, InsufficientBalance(sender, id, balance, amount));
+        require(balance >= amount, ERC6909_Transfer_InsufficientBalance(sender, id));
 
         balanceOf[sender][id] -= amount;
 

@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/Auth.sol";
-import {ERC6909Collateral} from "src/ERC6909Collateral.sol";
+import {ERC6909Collateral} from "src/ERC6909/ERC6909Collateral.sol";
 import {Deterministic} from "src/Deterministic.sol";
 
 contract ERC6909Factory is Auth, Deterministic {
