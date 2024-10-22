@@ -5,14 +5,14 @@ import "forge-std/Test.sol";
 import "src/libraries/StringLib.sol";
 
 contract StringLibTest is Test {
-    function testStringIsEmpty(string memory nonEmptyString) public {
+    function testStringIsEmpty(string memory nonEmptyString) public pure {
         vm.assume(keccak256(abi.encodePacked(nonEmptyString)) != StringLib.EMPTY_STRING);
         assertTrue(StringLib.isEmpty(""));
 
         assertFalse(StringLib.isEmpty(nonEmptyString));
     }
 
-    function testConversionToString() public {
+    function testConversionToString() public pure {
         uint256 aNumber = 12345;
         assertEq(StringLib.toString(aNumber), "12345");
 

@@ -11,7 +11,7 @@ contract ERC6909FactoryTest is Test {
         factory = new ERC6909Factory(address(this));
     }
 
-    function testAuthorizationRestriction() public {
+    function testAuthorizationRestriction() public view {
         assertEq(factory.wards(address(this)), 1);
     }
 
