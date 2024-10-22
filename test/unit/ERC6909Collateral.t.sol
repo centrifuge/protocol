@@ -162,7 +162,7 @@ contract ERC6909CollateralTest is Test {
         collateral.setDecimals(tokenId, decimals);
         assertEq(collateral.decimals(tokenId), decimals);
 
-        decimals = decimals - 1;
+        decimals = collateral.MIN_DECIMALS() - 1;
         vm.expectRevert(
             abi.encodeWithSelector(
                 ERC6909Collateral_SetDecimal_LessThanMinimalDecimal.selector, collateral.MIN_DECIMALS(), decimals
