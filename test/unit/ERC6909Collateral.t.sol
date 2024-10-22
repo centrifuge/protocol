@@ -52,6 +52,10 @@ contract ERC6909CollateralTest is Test {
 
         uint256 balance = collateral.balanceOf(owner, tokenId);
 
+        vm.expectRevert("Auth/not-authorized");
+        vm.prank(makeAddr("unauthorized"));
+        collateral.mint(owner, tokenId, amount);
+
         vm.expectRevert(abi.encodeWithSelector(OverflowUint256.selector, balance, MAX_UINT256));
         collateral.mint(owner, tokenId, MAX_UINT256);
 
@@ -71,6 +75,10 @@ contract ERC6909CollateralTest is Test {
 
         ERC6909Collateral collateral = new ERC6909Collateral(address(this));
         uint256 tokenId = collateral.mint(owner, URI, amount);
+
+        vm.expectRevert("Auth/not-authorized");
+        vm.prank(makeAddr("unauthorized"));
+        collateral.burn(owner, tokenId, amount);
 
         uint256 burnMoreThanHave = amount + 1;
         vm.expectRevert(abi.encodeWithSelector(ERC6909Collateral_Burn_InsufficientBalance.selector, owner, tokenId));
@@ -95,20 +103,33 @@ contract ERC6909CollateralTest is Test {
 
     function testSettingSymbol(uint256 tokenId, string calldata symbol) public {
         ERC6909Collateral collateral = new ERC6909Collateral(address(this));
+
         collateral.setSymbol(tokenId, symbol);
         assertEq(collateral.symbol(tokenId), symbol);
+
+        vm.expectRevert("Auth/not-authorized");
+        vm.prank(makeAddr("unauthorized"));
+        collateral.setSymbol(tokenId, symbol);
     }
 
     function testSettingName(uint256 tokenId, string calldata name) public {
         ERC6909Collateral collateral = new ERC6909Collateral(address(this));
         collateral.setName(tokenId, name);
         assertEq(collateral.name(tokenId), name);
+
+        vm.expectRevert("Auth/not-authorized");
+        vm.prank(makeAddr("unauthorized"));
+        collateral.setName(tokenId, name);
     }
 
     function testSettingContractURI(string calldata URI) public {
         ERC6909Collateral collateral = new ERC6909Collateral(address(this));
         collateral.setContractURI(URI);
         assertEq(collateral.contractURI(), URI);
+
+        vm.expectRevert("Auth/not-authorized");
+        vm.prank(makeAddr("unauthorized"));
+        collateral.setContractURI(URI);
     }
 
     function testSettingDecimals(uint256 tokenId) public {
@@ -124,6 +145,10 @@ contract ERC6909CollateralTest is Test {
                 ERC6909Collateral_SetDecimal_LessThanMinimalDecimal.selector, collateral.MIN_DECIMALS(), decimals
             )
         );
+        collateral.setDecimals(tokenId, decimals);
+
+        vm.expectRevert("Auth/not-authorized");
+        vm.prank(makeAddr("unauthorized"));
         collateral.setDecimals(tokenId, decimals);
     }
 }

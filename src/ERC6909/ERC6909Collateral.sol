@@ -93,7 +93,11 @@ contract ERC6909Collateral is Auth, ERC6909, IERC6909URIExtension, IERC6909Metad
         uint256 _balance = balanceOf[_owner][_tokenId];
         require(_balance >= _amount, ERC6909Collateral_Burn_InsufficientBalance(_owner, _tokenId));
 
-        _balance -= _amount;
+        /// @dev The require check above guarantees that you cannot burn more than you have
+        unchecked {
+            _balance -= _amount;
+        }
+
         balanceOf[_owner][_tokenId] = _balance;
 
         emit Transfer(msg.sender, _owner, address(0), _tokenId, _amount);
@@ -109,15 +113,15 @@ contract ERC6909Collateral is Auth, ERC6909, IERC6909URIExtension, IERC6909Metad
         emit ContractURI(address(this), _URI);
     }
 
-    function setName(uint256 _tokenId, string calldata _name) public auth {
+    function setName(uint256 _tokenId, string calldata _name) external auth {
         name[_tokenId] = _name;
     }
 
-    function setSymbol(uint256 _tokenId, string calldata _symbol) public auth {
+    function setSymbol(uint256 _tokenId, string calldata _symbol) external auth {
         symbol[_tokenId] = _symbol;
     }
 
-    function setDecimals(uint256 _tokenId, uint8 _decimals) public auth {
+    function setDecimals(uint256 _tokenId, uint8 _decimals) external auth {
         require(_decimals >= MIN_DECIMALS, ERC6909Collateral_SetDecimal_LessThanMinimalDecimal(MIN_DECIMALS, _decimals));
         decimals[_tokenId] = _decimals;
     }
