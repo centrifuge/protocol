@@ -1,13 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >= 0.8.0;
 
-interface IERC6909 {
-    function transfer(address receiver, uint256 id, uint256 amount) external returns (bool success);
-    function transferFrom(address sender, address receiver, uint256 id, uint256 amount)
-        external
-        returns (bool success);
-    function balanceOf(address owner, uint256 id) external returns (uint256 amount);
-}
+import {IERC6909} from "src/interfaces/Common.sol";
 
 /// Interface to handle an escrow of nfts
 interface INftEscrow {

@@ -14,10 +14,6 @@ interface IERC6909 {
 
 interface IERC7726 {
     function getQuote(uint256 baseAmount, address base, address quote) external view returns (uint256 quoteAmount);
-    function getIndicativeQuote(uint256 baseAmount, address base, address quote)
-        external
-        view
-        returns (uint256 quoteAmount);
 }
 
 interface IPoolRegistry {
