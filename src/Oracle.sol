@@ -5,6 +5,7 @@ import {IERC7726, IERC7726} from "src/interfaces/IERC7726.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 
+/// @notice Quote value representation value representation
 struct Quote {
     /// @notice Price of one base in quote denomination
     uint256 amount;
@@ -86,15 +87,16 @@ contract OracleFactory {
     /// @param salt Extra bytes to generate different address for the same feeder.
     function deploy(address feeder, bytes32 salt) external returns (Oracle) {
         Oracle deployed = new Oracle{salt: salt}(feeder);
+
         emit NewOracleDeployed(address(deployed));
 
         return deployed;
     }
 
-    /// Retuns the deterministic contract address for a feeder.
+    /// @notice Retuns the deterministic contract address for a feeder.
     /// @param feeder The account that will be able to fed values in the contract.
     /// @param salt Extra bytes to generate different address for the same feeder.
-    function oracleAddress(address feeder, bytes32 salt) public view returns (address) {
+    function getAddress(address feeder, bytes32 salt) public view returns (address) {
         bytes memory bytecode = abi.encodePacked(type(Oracle).creationCode, abi.encode(feeder));
 
         return address(

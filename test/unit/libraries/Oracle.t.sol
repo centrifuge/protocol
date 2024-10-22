@@ -24,7 +24,7 @@ contract TestOracle is Test {
 
     function testDeploy() public {
         vm.expectEmit();
-        emit OracleFactory.NewOracleDeployed(factory.oracleAddress(FEEDER, SALT));
+        emit OracleFactory.NewOracleDeployed(factory.getAddress(FEEDER, SALT));
 
         factory.deploy(FEEDER, SALT);
     }
