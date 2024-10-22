@@ -17,19 +17,19 @@ interface INftEscrow {
     event Attached(uint160 nftId, uint256 elementId);
     event Detached(uint160 nftId, uint256 elementId);
 
-    /// @notice NFT already locked in the escrow
+    /// @notice NFT already locked in the escrow.
     error AlreadyLocked();
 
-    /// @notice NFT not locked in the escrow
+    /// @notice NFT not locked in the escrow.
     error NotLocked();
 
-    /// @notice The asset was already attached to an element
+    /// @notice The asset was already attached to an element.
     error AlreadyAttached();
 
-    /// @notice The asset was not attached to an element
+    /// @notice The asset was not attached to an element.
     error NotAttached();
 
-    /// @notice The asset can not be transfered to/from this contract
+    /// @notice The asset can not be transfered to/from this contract.
     error CanNotBeTransferred();
 
     /// @notice The element is not valid. It has zero value.
