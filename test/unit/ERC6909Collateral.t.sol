@@ -190,13 +190,12 @@ contract ERC6909CollateralTest is Test {
         assertFalse(collateral.isOperator(self, operator));
     }
 
-    function testTransfer(uint256 amount) public {
+    function testTransfer(address receiver, uint256 amount) public {
         amount = bound(amount, 2, type(uint256).max);
         string memory URI = "some/random";
 
         uint256 tokenId = collateral.mint(self, URI, amount);
 
-        address receiver = makeAddr("Receiver");
         uint256 half = amount / 2;
         bool result = collateral.transfer(receiver, tokenId, half);
 
@@ -213,5 +212,22 @@ contract ERC6909CollateralTest is Test {
         uint256 nonExistingTokenId = 1337;
         vm.expectRevert(abi.encodeWithSelector(ERC6909_Transfer_InsufficientBalance.selector, self, nonExistingTokenId));
         collateral.transfer(receiver, nonExistingTokenId, amount);
+    }
+
+    function testApprovals(address delegate, uint256 tokenId, uint256 amount) public {
+        assertEq(collateral.allowance(self, delegate, tokenId), 0);
+
+        bool result = collateral.approve(delegate, tokenId, amount);
+        assertTrue(result);
+        assertEq(collateral.allowance(self, delegate, tokenId), amount);
+
+        result = collateral.approve(delegate, tokenId, amount);
+        assertTrue(result);
+        assertEq(collateral.allowance(self, delegate, tokenId), amount);
+
+        uint256 newAllowance = amount + 1;
+        result = collateral.approve(delegate, tokenId, newAllowance);
+        assertTrue(result);
+        assertEq(collateral.allowance(self, delegate, tokenId), newAllowance);
     }
 }
