@@ -76,6 +76,7 @@ contract ERC6909CollateralTest is Test {
     }
 
     function testMintingOnExistingToken(address owner, uint256 amount) public {
+        vm.assume(owner != address(0));
         uint256 MAX_UINT256 = type(uint256).max;
         amount = bound(amount, 1, MAX_UINT256);
         string memory URI = "some/random/URI";
@@ -191,6 +192,7 @@ contract ERC6909CollateralTest is Test {
     }
 
     function testTransfer(address receiver, uint256 amount) public {
+        vm.assume(receiver != address(0));
         amount = bound(amount, 2, type(uint256).max);
         string memory URI = "some/random";
 
@@ -204,9 +206,8 @@ contract ERC6909CollateralTest is Test {
         assertEq(collateral.balanceOf(receiver, tokenId), half);
 
         // Testing non-existing owner with an existing tokenId where the balance will be 0
-        tokenId = collateral.mint(receiver, URI, amount);
         vm.expectRevert(abi.encodeWithSelector(ERC6909_Transfer_InsufficientBalance.selector, self, tokenId));
-        collateral.transfer(receiver, tokenId, amount);
+        collateral.transfer(makeAddr("random"), tokenId, amount);
 
         // Testing non-existing tokenId where the balance will be 0
         uint256 nonExistingTokenId = 1337;
