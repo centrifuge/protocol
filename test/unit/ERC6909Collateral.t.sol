@@ -7,6 +7,8 @@ import {ERC6909Collateral} from "src/ERC6909/ERC6909Collateral.sol";
 import {IERC6909URIExtension} from "src/interfaces/ERC6909/IERC6909URIExtension.sol";
 import {StringLib} from "src/libraries/StringLib.sol";
 import {OverflowUint256} from "src/Errors.sol";
+import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
+import {IERC165} from "src/interfaces/IERC165.sol";
 
 contract ERC6909CollateralTest is Test {
     using StringLib for string;
@@ -291,5 +293,10 @@ contract ERC6909CollateralTest is Test {
         isSuccessful = collateral.approve(delegate, tokenId, newAllowance);
         assertTrue(isSuccessful);
         assertEq(collateral.allowance(self, delegate, tokenId), newAllowance);
+    }
+
+    function testInterfaceSupport() public view {
+        assertTrue(collateral.supportsInterface(type(IERC6909).interfaceId));
+        assertTrue(collateral.supportsInterface(type(IERC165).interfaceId));
     }
 }
