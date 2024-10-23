@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
-import {ERC6909_Transfer_InsufficientBalance} from "src/ERC6909/ERC6909Errors.sol";
+import {
+    ERC6909_Transfer_InsufficientBalance,
+    ERC6909_TransferFrom_InsufficientAllowance
+} from "src/ERC6909/ERC6909Errors.sol";
 import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
 import {IERC165} from "src/interfaces/IERC165.sol";
 import {OverflowUint256} from "src/Errors.sol";
@@ -21,17 +24,23 @@ abstract contract ERC6909 is IERC6909, IERC165 {
     }
 
     /// @inheritdoc IERC6909
-    function transferFrom(address sender, address receiver, uint256 id, uint256 amount)
+    function transferFrom(address sender, address receiver, uint256 tokenId, uint256 amount)
         external
         virtual
         returns (bool)
     {
         if (msg.sender != sender && !isOperator[sender][msg.sender]) {
-            uint256 allowed = allowance[sender][msg.sender][id];
-            if (allowed != type(uint256).max) allowance[sender][msg.sender][id] = allowed - amount;
+            uint256 allowed = allowance[sender][msg.sender][tokenId];
+            if (allowed != type(uint256).max) {
+                unchecked {
+                    uint256 newAllowance = allowed - amount;
+                    require(newAllowance <= allowed, ERC6909_TransferFrom_InsufficientAllowance(msg.sender, tokenId));
+                    allowance[sender][msg.sender][tokenId] = newAllowance;
+                }
+            }
         }
 
-        return _transfer(sender, receiver, id, amount);
+        return _transfer(sender, receiver, tokenId, amount);
     }
 
     /// @inheritdoc IERC6909

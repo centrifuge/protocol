@@ -182,26 +182,26 @@ contract ERC6909CollateralTest is Test {
     }
 
     function testSettingOperatorApproval(address operator) public {
-        bool result = collateral.setOperator(operator, true);
-        assertTrue(result);
+        bool isSuccessful = collateral.setOperator(operator, true);
+        assertTrue(isSuccessful);
         assertTrue(collateral.isOperator(self, operator));
 
-        result = collateral.setOperator(operator, false);
-        assertTrue(result);
+        isSuccessful = collateral.setOperator(operator, false);
+        assertTrue(isSuccessful);
         assertFalse(collateral.isOperator(self, operator));
     }
 
-    function testTransfer(address receiver, uint256 amount) public {
-        vm.assume(receiver != address(0));
+    function testTransfer(uint256 amount) public {
+        address receiver = makeAddr("receiver");
         amount = bound(amount, 2, type(uint256).max);
         string memory URI = "some/random";
 
         uint256 tokenId = collateral.mint(self, URI, amount);
 
         uint256 half = amount / 2;
-        bool result = collateral.transfer(receiver, tokenId, half);
+        bool isSuccessful = collateral.transfer(receiver, tokenId, half);
 
-        assertTrue(result);
+        assertTrue(isSuccessful);
         assertEq(collateral.balanceOf(self, tokenId), amount - half);
         assertEq(collateral.balanceOf(receiver, tokenId), half);
 
@@ -215,20 +215,81 @@ contract ERC6909CollateralTest is Test {
         collateral.transfer(receiver, nonExistingTokenId, amount);
     }
 
+    function testTransferFrom() public {
+        address operator = makeAddr("operator");
+        address delegate = makeAddr("delegate");
+        address receiver = makeAddr("receiver");
+
+        uint256 amount = 32;
+        string memory URI = "some/random/URI";
+        uint256 tokenId = collateral.mint(self, URI, amount);
+
+        uint256 sentAmount = amount / 2; // 16
+
+        // Caller is neither operator, nor has allowance
+        vm.expectRevert(abi.encodeWithSelector(ERC6909_TransferFrom_InsufficientAllowance.selector, delegate, tokenId));
+        vm.prank(delegate);
+        bool isSuccessful = collateral.transferFrom(self, receiver, tokenId, sentAmount);
+        assertFalse(isSuccessful);
+
+        assertEq(collateral.balanceOf(receiver, tokenId), 0);
+        assertEq(collateral.balanceOf(self, tokenId), amount);
+
+        // Caller is an operator and does not have allowance
+        collateral.setOperator(operator, true);
+        assertEq(collateral.allowance(self, operator, tokenId), 0);
+
+        vm.prank(operator);
+        isSuccessful = collateral.transferFrom(self, receiver, tokenId, sentAmount);
+        assertTrue(isSuccessful);
+
+        uint256 remainingBalance = amount - sentAmount; // 16
+        assertEq(collateral.balanceOf(receiver, tokenId), sentAmount);
+        assertEq(collateral.balanceOf(self, tokenId), remainingBalance);
+
+        // Caller has allowance and it is not an operator
+        uint256 receiverBalance = collateral.balanceOf(receiver, tokenId);
+        uint256 allowance = remainingBalance;
+        sentAmount = remainingBalance / 2; // 8
+        collateral.approve(delegate, tokenId, allowance);
+
+        assertFalse(collateral.isOperator(self, delegate));
+        assertEq(collateral.allowance(self, delegate, tokenId), allowance);
+
+        vm.prank(delegate);
+        isSuccessful = collateral.transferFrom(self, receiver, tokenId, sentAmount);
+
+        remainingBalance = remainingBalance - sentAmount; // 8
+
+        assertTrue(isSuccessful);
+        assertEq(collateral.balanceOf(receiver, tokenId), receiverBalance + sentAmount);
+        assertEq(collateral.balanceOf(self, tokenId), remainingBalance);
+        assertEq(collateral.allowance(self, delegate, tokenId), allowance - sentAmount);
+
+        // Caller is actually the owner
+        receiverBalance = collateral.balanceOf(receiver, tokenId);
+
+        isSuccessful = collateral.transferFrom(self, receiver, tokenId, remainingBalance);
+
+        assertTrue(isSuccessful);
+        assertEq(collateral.balanceOf(receiver, tokenId), receiverBalance + remainingBalance);
+        assertEq(collateral.balanceOf(self, tokenId), 0);
+    }
+
     function testApprovals(address delegate, uint256 tokenId, uint256 amount) public {
         assertEq(collateral.allowance(self, delegate, tokenId), 0);
 
-        bool result = collateral.approve(delegate, tokenId, amount);
-        assertTrue(result);
+        bool isSuccessful = collateral.approve(delegate, tokenId, amount);
+        assertTrue(isSuccessful);
         assertEq(collateral.allowance(self, delegate, tokenId), amount);
 
-        result = collateral.approve(delegate, tokenId, amount);
-        assertTrue(result);
+        isSuccessful = collateral.approve(delegate, tokenId, amount);
+        assertTrue(isSuccessful);
         assertEq(collateral.allowance(self, delegate, tokenId), amount);
 
         uint256 newAllowance = amount + 1;
-        result = collateral.approve(delegate, tokenId, newAllowance);
-        assertTrue(result);
+        isSuccessful = collateral.approve(delegate, tokenId, newAllowance);
+        assertTrue(isSuccessful);
         assertEq(collateral.allowance(self, delegate, tokenId), newAllowance);
     }
 }
