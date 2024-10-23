@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {ERC6909_Transfer_InsufficientBalance} from "src/ERC6909/ERC6909Errors.sol";
 import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
 import {IERC165} from "src/interfaces/IERC165.sol";
+import {OverflowUint256} from "src/Errors.sol";
 
 /// @title      Basic implementation of all properties according to the ERC6909.
 ///
@@ -58,12 +59,20 @@ abstract contract ERC6909 is IERC6909, IERC165 {
     }
 
     function _transfer(address sender, address receiver, uint256 id, uint256 amount) private returns (bool) {
-        uint256 balance = balanceOf[sender][id];
-        require(balance >= amount, ERC6909_Transfer_InsufficientBalance(sender, id));
+        uint256 senderBalance = balanceOf[sender][id];
+        require(senderBalance >= amount, ERC6909_Transfer_InsufficientBalance(sender, id));
 
-        balanceOf[sender][id] -= amount;
+        /// @dev    The require check few lines above guarantees that
+        ///         it cannot underflow.
+        unchecked {
+            balanceOf[sender][id] -= amount;
+        }
 
-        balanceOf[receiver][id] += amount;
+        /// @dev    The totalSupply check during minting guarantees that
+        ///         there won't be more token that will cause overflow
+        unchecked {
+            balanceOf[receiver][id] += amount;
+        }
 
         emit Transfer(msg.sender, sender, receiver, id, amount);
 

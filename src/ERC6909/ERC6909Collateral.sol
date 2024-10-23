@@ -9,8 +9,6 @@ import {IERC6909URIExtension} from "src/interfaces/ERC6909/IERC6909URIExtension.
 import {IERC6909MetadataExtension} from "src/interfaces/ERC6909/IERC6909MetadataExtension.sol";
 import {OverflowUint256} from "src/Errors.sol";
 
-import "forge-std/Test.sol";
-
 contract ERC6909Collateral is Auth, ERC6909, IERC6909URIExtension, IERC6909MetadataExtension {
     using StringLib for string;
     using StringLib for uint256;
@@ -29,6 +27,8 @@ contract ERC6909Collateral is Auth, ERC6909, IERC6909URIExtension, IERC6909Metad
     mapping(uint256 tokenId => string symbol) public symbol;
     /// @inheritdoc IERC6909MetadataExtension
     mapping(uint256 tokenId => uint8 decimals) public decimals;
+
+    mapping(uint256 tokenId => uint256 total) public totalSupply;
 
     constructor(address _owner) Auth(_owner) {}
 
@@ -55,6 +55,8 @@ contract ERC6909Collateral is Auth, ERC6909, IERC6909URIExtension, IERC6909Metad
 
         balanceOf[_owner][_tokenId] = _amount;
 
+        totalSupply[_tokenId] = _amount;
+
         setTokenURI(_tokenId, _tokenURI);
 
         emit Transfer(msg.sender, address(0), _owner, _tokenId, _amount);
@@ -68,14 +70,14 @@ contract ERC6909Collateral is Auth, ERC6909, IERC6909URIExtension, IERC6909Metad
     /// @return             New supply of item with _tokenId
     function mint(address _owner, uint256 _tokenId, uint256 _amount) public auth returns (uint256) {
         uint256 balance = balanceOf[_owner][_tokenId];
-        require(balance > 0, ERC6909Collateral_Mint_UnknownTokenId(_owner, _tokenId));
+        require(_tokenId <= latestTokenId, ERC6909Collateral_Mint_UnknownTokenId(_owner, _tokenId));
 
-        uint256 newBalance;
         unchecked {
-            newBalance = balance + _amount;
-            require(newBalance >= balance, OverflowUint256(balance, _amount));
+            uint256 totalSupply_ = totalSupply[_tokenId];
+            require(totalSupply_ + _amount >= totalSupply_, OverflowUint256(totalSupply_, _amount));
         }
 
+        uint256 newBalance = balance + _amount;
         balanceOf[_owner][_tokenId] = newBalance;
 
         emit Transfer(msg.sender, address(0), _owner, _tokenId, _amount);
@@ -93,9 +95,15 @@ contract ERC6909Collateral is Auth, ERC6909, IERC6909URIExtension, IERC6909Metad
         uint256 _balance = balanceOf[_owner][_tokenId];
         require(_balance >= _amount, ERC6909Collateral_Burn_InsufficientBalance(_owner, _tokenId));
 
-        /// @dev The require check above guarantees that you cannot burn more than you have
+        /// @dev    The require check above guarantees that you cannot burn more than you have.
         unchecked {
             _balance -= _amount;
+        }
+
+        /// @dev    The sum of all balances MUST be equal to totalSupply.
+        ///         The require check above means you cannot burn more than the balance hence cannot underflow.
+        unchecked {
+            totalSupply[_tokenId] -= _amount;
         }
 
         balanceOf[_owner][_tokenId] = _balance;

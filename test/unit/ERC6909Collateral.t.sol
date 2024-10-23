@@ -12,11 +12,16 @@ contract ERC6909CollateralTest is Test {
     using StringLib for string;
 
     string constant EMPTY = "";
+    address immutable self;
 
     ERC6909Collateral collateral;
 
+    constructor() {
+        self = address(this);
+    }
+
     function setUp() public {
-        collateral = new ERC6909Collateral(address(this));
+        collateral = new ERC6909Collateral(self);
     }
 
     function testAuthorizations(address owner) public {
@@ -25,21 +30,21 @@ contract ERC6909CollateralTest is Test {
         assertEq(collateral.wards(owner), 1);
 
         vm.expectRevert("Auth/not-authorized");
-        collateral.rely(address(this));
+        collateral.rely(self);
 
         vm.prank(owner);
-        collateral.rely(address(this));
+        collateral.rely(self);
 
         assertEq(collateral.wards(owner), 1);
-        assertEq(collateral.wards(address(this)), 1);
+        assertEq(collateral.wards(self), 1);
 
         collateral.deny(owner);
         assertEq(collateral.wards(owner), 0);
-        assertEq(collateral.wards(address(this)), 1);
+        assertEq(collateral.wards(self), 1);
 
         vm.expectRevert("Auth/not-authorized");
         vm.prank(owner);
-        collateral.deny(address(this));
+        collateral.deny(self);
     }
 
     function testMintingNewItem(address owner, uint256 amount, string calldata URI) public {
@@ -67,6 +72,7 @@ contract ERC6909CollateralTest is Test {
         assertEq(collateral.latestTokenId(), tokenId);
         assertEq(collateral.balanceOf(owner, tokenId), amount);
         assertEq(collateral.tokenURI(tokenId), URI);
+        assertEq(collateral.totalSupply(tokenId), amount);
     }
 
     function testMintingOnExistingToken(address owner, uint256 amount) public {
@@ -114,15 +120,18 @@ contract ERC6909CollateralTest is Test {
         uint256 remaining = collateral.burn(owner, tokenId, burnAmount);
         assertEq(collateral.balanceOf(owner, tokenId), remaining);
         assertEq(remaining, 1);
+        assertEq(collateral.totalSupply(tokenId), remaining);
 
         remaining = collateral.burn(owner, tokenId, 0);
         assertEq(collateral.balanceOf(owner, tokenId), remaining);
         assertEq(remaining, 1);
+        assertEq(collateral.totalSupply(tokenId), remaining);
 
         burnAmount = 1;
         remaining = collateral.burn(owner, tokenId, burnAmount);
         assertEq(collateral.balanceOf(owner, tokenId), 0);
         assertEq(remaining, 0);
+        assertEq(collateral.totalSupply(tokenId), 0);
     }
 
     function testSettingSymbol(uint256 tokenId, string calldata symbol) public {
@@ -174,10 +183,35 @@ contract ERC6909CollateralTest is Test {
     function testSettingOperatorApproval(address operator) public {
         bool result = collateral.setOperator(operator, true);
         assertTrue(result);
-        assertTrue(collateral.isOperator(address(this), operator));
+        assertTrue(collateral.isOperator(self, operator));
 
         result = collateral.setOperator(operator, false);
         assertTrue(result);
-        assertFalse(collateral.isOperator(address(this), operator));
+        assertFalse(collateral.isOperator(self, operator));
+    }
+
+    function testTransfer(uint256 amount) public {
+        amount = bound(amount, 2, type(uint256).max);
+        string memory URI = "some/random";
+
+        uint256 tokenId = collateral.mint(self, URI, amount);
+
+        address receiver = makeAddr("Receiver");
+        uint256 half = amount / 2;
+        bool result = collateral.transfer(receiver, tokenId, half);
+
+        assertTrue(result);
+        assertEq(collateral.balanceOf(self, tokenId), amount - half);
+        assertEq(collateral.balanceOf(receiver, tokenId), half);
+
+        // Testing non-existing owner with an existing tokenId where the balance will be 0
+        tokenId = collateral.mint(receiver, URI, amount);
+        vm.expectRevert(abi.encodeWithSelector(ERC6909_Transfer_InsufficientBalance.selector, self, tokenId));
+        collateral.transfer(receiver, tokenId, amount);
+
+        // Testing non-existing tokenId where the balance will be 0
+        uint256 nonExistingTokenId = 1337;
+        vm.expectRevert(abi.encodeWithSelector(ERC6909_Transfer_InsufficientBalance.selector, self, nonExistingTokenId));
+        collateral.transfer(receiver, nonExistingTokenId, amount);
     }
 }
