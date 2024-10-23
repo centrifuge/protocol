@@ -7,40 +7,24 @@ import "src/interfaces/IPortfolio.sol";
 import "src/interfaces/INftEscrow.sol";
 
 contract MockLinearAccrual is ILinearAccrual {
-    function increaseNormalizedDebt(bytes32, uint128 prevNormalizedDebt, uint128 increment)
-        external
-        pure
-        returns (uint128 newNormalizedDebt)
-    {
-        return prevNormalizedDebt + increment;
+    function modifyNormalizedDebt(bytes32, int128 normalizedDebt, int128 increment) external pure returns (int128) {
+        return normalizedDebt + increment;
     }
 
-    function decreaseNormalizedDebt(bytes32, uint128 prevNormalizedDebt, uint128 decrement)
-        external
-        pure
-        returns (uint128 newNormalizedDebt)
-    {
-        return prevNormalizedDebt + decrement;
+    function renormalizeDebt(bytes32, bytes32, int128 normalizedDebt) external pure returns (int128) {
+        return normalizedDebt;
     }
 
-    function renormalizeDebt(bytes32, bytes32, uint128 prevNormalizedDebt)
-        external
-        pure
-        returns (uint128 newNormalizedDebt)
-    {
-        return prevNormalizedDebt;
-    }
-
-    function debt(bytes32, uint128 normalizedDebt) external pure returns (uint128) {
+    function debt(bytes32, int128 normalizedDebt) external pure returns (int128) {
         return normalizedDebt;
     }
 }
 
-contract TestPortfolio is Test {
-    IPoolRegistry poolRegistry = IPoolRegistry(address(0));
-    IERC6909 nfts = IERC6909(address(0));
-    IERC7726 valuation = IERC7726(address(0));
-    INftEscrow escrow = INftEscrow(address(0));
+contract TestCommon is Test {
+    IPoolRegistry poolRegistry = IPoolRegistry(address(100));
+    IERC6909 nfts = IERC6909(address(100));
+    IERC7726 valuation = IERC7726(address(100));
+    INftEscrow escrow = INftEscrow(address(100));
 
     MockLinearAccrual linearAccrual = new MockLinearAccrual();
 
@@ -49,30 +33,63 @@ contract TestPortfolio is Test {
     bytes32 constant INTEREST_RATE_A = bytes32(uint256(1));
     uint256 constant TOKEN_ID = 23;
     uint160 constant COLLATERAL_ID = 18;
+    IERC6909 constant NO_SOURCE = IERC6909(address(0));
+
+    IPortfolio.ItemInfo ITEM_INFO = IPortfolio.ItemInfo(INTEREST_RATE_A, d18(10), valuation);
 
     Portfolio portfolio = new Portfolio(address(this), poolRegistry, linearAccrual, escrow);
 
-    function _mockAttach(uint32 itemId) internal {
+    function _mockAttach(uint256 itemId) internal {
         vm.mockCall(
             address(escrow),
-            abi.encodeWithSelector(INftEscrow.attach.selector, address(nfts), TOKEN_ID, itemId),
+            abi.encodeWithSelector(INftEscrow.attach.selector, address(nfts), TOKEN_ID, uint256(POOL_A) << 64 + itemId),
             abi.encode(18)
         );
     }
 
-    function testCreate() public {
+    function getItem(uint32 itemId) internal view returns (Item memory) {
+        (
+            IPortfolio.ItemInfo memory info,
+            int128 normalizedDebt,
+            Decimal18 outstandingQuantity,
+            uint160 collateralId,
+            bool isValid
+        ) = portfolio.items(POOL_A, itemId - 1);
+        return Item(info, normalizedDebt, outstandingQuantity, collateralId, isValid);
+    }
+}
+
+contract TestCreate is TestCommon {
+    function testMultipleCreate() public {
         vm.expectEmit();
-        emit IPortfolio.Create(POOL_A, 1, nfts, TOKEN_ID);
-        emit IPortfolio.Create(POOL_A, 2, nfts, TOKEN_ID); // Increasing Item ID for the second creation
+        emit IPortfolio.Create(POOL_A, 1, NO_SOURCE, 0);
+        emit IPortfolio.Create(POOL_A, 2, NO_SOURCE, 0);
 
-        _mockAttach(1);
-        portfolio.create(POOL_A, IPortfolio.ItemInfo(INTEREST_RATE_A, d18(10), valuation), nfts, TOKEN_ID);
-
-        _mockAttach(2);
-        portfolio.create(POOL_A, IPortfolio.ItemInfo(INTEREST_RATE_A, d18(10), valuation), nfts, TOKEN_ID);
+        portfolio.create(POOL_A, ITEM_INFO, NO_SOURCE, 0);
+        portfolio.create(POOL_A, ITEM_INFO, NO_SOURCE, 0);
     }
 
-    /*
+    function testCreateNoCollateral() public {
+        vm.expectEmit();
+        emit IPortfolio.Create(POOL_A, 1, NO_SOURCE, 0);
+
+        portfolio.create(POOL_A, ITEM_INFO, NO_SOURCE, 0);
+
+        assert(getItem(1).isValid);
+    }
+
+    function testCreateWithCollateral() public {
+        vm.expectEmit();
+        emit IPortfolio.Create(POOL_A, 1, nfts, TOKEN_ID);
+
+        _mockAttach(1);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+
+        assert(getItem(1).isValid);
+    }
+}
+
+/*
     function testIncrease() public {
         portfolio.create(POOL_A, IPortfolio.ItemInfo(INTEREST_RATE_A, d18(10), valuation), nfts, TOKEN_ID);
 
@@ -104,4 +121,3 @@ contract TestPortfolio is Test {
         assert(isValid);
     }
     */
-}

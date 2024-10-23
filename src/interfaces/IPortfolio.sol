@@ -6,9 +6,6 @@ import {Decimal18} from "src/libraries/Decimal18.sol";
 
 /// @notice Defines a set of items that can be valued
 interface IValuation {
-    /// @notice Dispatched when the item can not be found.
-    error ItemNotFound();
-
     /// @notice How the price is used to value each item.
     enum PricingMode {
         /// @dev Underlaying call to `ERC6909.getQuote()`
@@ -16,10 +13,6 @@ interface IValuation {
         /// @dev Underlaying call to `ERC6909.getIndicativeQuote()`
         Indicative
     }
-
-    /// @notice Return the valuation of an item in the portfolio
-    /// @param mode How the item is valued
-    function itemValuation(uint64 poolId, uint32 itemId, PricingMode mode) external view returns (uint128 value);
 
     /// @notice Return the Net Asset Value of all items in the portfolio
     /// @param mode How the items are valued
@@ -39,6 +32,9 @@ interface IPortfolio is IValuation {
         /// @notice Valuation used for this item.
         IERC7726 valuation;
     }
+
+    /// @notice Dispatched when the item can not be found.
+    error ItemNotFound();
 
     /// @notice Dispatched when the item can not be closed yet.
     error ItemCanNotBeClosed();
@@ -91,4 +87,11 @@ interface IPortfolio is IValuation {
 
     /// @notice Close a non-outstanding item returning the collateral to the `collateralOwner`
     function close(uint64 poolId, uint32 itemId) external;
+
+    /// @notice returns the debt of an item
+    function debt(uint64 poolId, uint32 itemId) external view returns (int128 debt_);
+
+    /// @notice Return the valuation of an item in the portfolio
+    /// @param mode How the item is valued
+    function itemValuation(uint64 poolId, uint32 itemId, PricingMode mode) external view returns (uint128 value);
 }

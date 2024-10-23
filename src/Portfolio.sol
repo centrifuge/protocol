@@ -12,7 +12,7 @@ struct Item {
     /// Base info of this item
     IPortfolio.ItemInfo info;
     /// A representation of the debt used by LinealAccrual to obtain the real debt
-    uint128 normalizedDebt;
+    int128 normalizedDebt;
     /// Outstanding quantity
     Decimal18 outstandingQuantity;
     /// Identification of the asset used for this item
@@ -23,6 +23,7 @@ struct Item {
 
 contract Portfolio is Auth, IPortfolio {
     using MathLib for uint256;
+    using MathLib for uint128;
 
     IPoolRegistry public poolRegistry;
     ILinearAccrual public linearAccrual;
@@ -56,7 +57,7 @@ contract Portfolio is Auth, IPortfolio {
 
         uint160 collateralId = 0;
         if (address(source) != address(0)) {
-            uint256 uniqueItemId = poolId << 64 + itemId;
+            uint256 uniqueItemId = uint256(poolId) << 64 + itemId;
             collateralId = nftEscrow.attach(source, tokenId, uniqueItemId);
         }
 
@@ -90,8 +91,10 @@ contract Portfolio is Auth, IPortfolio {
 
         Decimal18 quantity = _getQuantity(poolId, item, amount);
 
+        // TODO: Handle the case when currently the current debt is negative
+
         item.normalizedDebt =
-            linearAccrual.increaseNormalizedDebt(item.info.interestRateId, item.normalizedDebt, amount);
+            linearAccrual.modifyNormalizedDebt(item.info.interestRateId, item.normalizedDebt, amount.toInt128());
         item.outstandingQuantity = item.outstandingQuantity + quantity;
 
         emit DebtIncreased(poolId, itemId, amount);
@@ -103,20 +106,11 @@ contract Portfolio is Auth, IPortfolio {
 
         Decimal18 quantity = _getQuantity(poolId, item, principal);
 
-        /*
-        uint128 debt = linearAccrual.debt(item.info.interestRateId, item.normalizedDebt);
+        // TODO: Handle the case when principal + intereset > current debt.
 
-        if (principal - quantity) {
-            OverDecreasedPrincipal();
-        }
-
-        if (principal + interest > debt) {
-            OverDecreasedInterest();
-        }
-        */
-
-        item.normalizedDebt =
-            linearAccrual.decreaseNormalizedDebt(item.info.interestRateId, item.normalizedDebt, principal + interest);
+        item.normalizedDebt = linearAccrual.modifyNormalizedDebt(
+            item.info.interestRateId, item.normalizedDebt, -(principal + interest).toInt128()
+        );
         item.outstandingQuantity = item.outstandingQuantity - quantity;
 
         emit DebtDecreased(poolId, itemId, principal, interest);
@@ -134,8 +128,8 @@ contract Portfolio is Auth, IPortfolio {
     /// @inheritdoc IPortfolio
     function close(uint64 poolId, uint32 itemId) external auth {
         Item storage item = _getItem(poolId, itemId);
-        require(item.outstandingQuantity.inner() == 0, ItemCanNotBeClosed()); // TODO: Can be removed?
-        require(linearAccrual.debt(item.info.interestRateId, item.normalizedDebt) == 0, ItemCanNotBeClosed());
+        require(item.outstandingQuantity.inner() == 0, ItemCanNotBeClosed());
+        require(linearAccrual.debt(item.info.interestRateId, item.normalizedDebt) <= 0, ItemCanNotBeClosed());
 
         uint160 collateralId = item.collateralId;
 
@@ -148,13 +142,13 @@ contract Portfolio is Auth, IPortfolio {
         emit Closed(poolId, itemId);
     }
 
-    /// @notice returns the debt of an item
-    function debt(uint64 poolId, uint32 itemId) external view returns (uint128 debtValue) {
+    /// @inheritdoc IPortfolio
+    function debt(uint64 poolId, uint32 itemId) external view returns (int128 debt_) {
         Item storage item = _getItem(poolId, itemId);
         return linearAccrual.debt(item.info.interestRateId, item.normalizedDebt);
     }
 
-    /// @inheritdoc IValuation
+    /// @inheritdoc IPortfolio
     function itemValuation(uint64 poolId, uint32 itemId, PricingMode mode) external view returns (uint128 value) {
         Item storage item = _getItem(poolId, itemId);
 
@@ -172,7 +166,8 @@ contract Portfolio is Auth, IPortfolio {
         }
     }
 
-    function _getItem(uint64 poolId, uint32 itemId) internal view returns (Item storage) {
+    /// @dev returns an item given both poolId and itemId
+    function _getItem(uint64 poolId, uint32 itemId) private view returns (Item storage) {
         Item storage item = items[poolId][itemId - 1];
         require(item.isValid, ItemNotFound());
 
@@ -204,7 +199,7 @@ contract Portfolio is Auth, IPortfolio {
             return item.info.valuation.getQuote(quantity.inner(), base, quote).toUint128();
         } else {
             // mode == PricingMode.Indicative
-            // TODO: Using the indicative quote
+            // TODO: Using the indicative value instead
             return item.info.valuation.getQuote(quantity.inner(), base, quote).toUint128();
         }
     }

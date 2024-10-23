@@ -21,17 +21,13 @@ interface IPoolRegistry {
 }
 
 interface ILinearAccrual {
-    function increaseNormalizedDebt(bytes32 rateId, uint128 prevNormalizedDebt, uint128 increment)
+    function modifyNormalizedDebt(bytes32 rateId, int128 prevNormalizedDebt, int128 increment)
         external
-        returns (uint128 newNormalizedDebt);
+        returns (int128 newNormalizedDebt);
 
-    function decreaseNormalizedDebt(bytes32 rateId, uint128 prevNormalizedDebt, uint128 decrement)
+    function renormalizeDebt(bytes32 rateId, bytes32 newRateId, int128 prevNormalizedDebt)
         external
-        returns (uint128 newNormalizedDebt);
+        returns (int128 newNormalizedDebt);
 
-    function renormalizeDebt(bytes32 rateId, bytes32 newRateId, uint128 prevNormalizedDebt)
-        external
-        returns (uint128 newNormalizedDebt);
-
-    function debt(bytes32 rateId, uint128 normalizedDebt) external view returns (uint128 debt);
+    function debt(bytes32 rateId, int128 normalizedDebt) external view returns (int128 debt);
 }
