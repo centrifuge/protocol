@@ -39,13 +39,13 @@ interface IERC6909Collateral is IERC6909, IERC6909MetadataExtension, IERC6909URI
     /// @return             New supply of item with _tokenId
     function mint(address _owner, uint256 _tokenId, uint256 _amount) external returns (uint256);
 
-    /// @notice             Destroy supply of a given _tokenId by _amount for _owner
+    /// @notice             Destroy supply of a given _tokenId by _amount
+    /// @dev                The msg.sender MUST be the owner
     ///
-    /// @param _owner       Owner of the item
     /// @param _tokenId     Item which have reduced supply
     /// @param _amount      Amount to be burnt
     /// @return             Amount that is left after burning the _amount tokens
-    function burn(address _owner, uint256 _tokenId, uint256 _amount) external returns (uint256);
+    function burn(uint256 _tokenId, uint256 _amount) external returns (uint256);
 
     /// @notice             Sets _name for a given _tokenId
     ///

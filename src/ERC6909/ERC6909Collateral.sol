@@ -76,9 +76,10 @@ contract ERC6909Collateral is IERC6909Collateral, ERC6909, Auth {
     }
 
     /// @inheritdoc IERC6909Collateral
-    function burn(address _owner, uint256 _tokenId, uint256 _amount) external auth returns (uint256) {
-        uint256 _balance = balanceOf[_owner][_tokenId];
-        require(_balance >= _amount, ERC6909Collateral_Burn_InsufficientBalance(_owner, _tokenId));
+    function burn(uint256 _tokenId, uint256 _amount) external returns (uint256) {
+        address _owner = msg.sender;
+        uint256 _balance = balanceOf[msg.sender][_tokenId];
+        require(_balance >= _amount, ERC6909Collateral_Burn_InsufficientBalance(msg.sender, _tokenId));
 
         /// @dev    The require check above guarantees that you cannot burn more than you have.
         unchecked {
@@ -91,7 +92,7 @@ contract ERC6909Collateral is IERC6909Collateral, ERC6909, Auth {
             totalSupply[_tokenId] -= _amount;
         }
 
-        balanceOf[_owner][_tokenId] = _balance;
+        balanceOf[msg.sender][_tokenId] = _balance;
 
         emit Transfer(msg.sender, _owner, address(0), _tokenId, _amount);
 

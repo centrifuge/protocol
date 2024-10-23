@@ -101,37 +101,32 @@ contract ERC6909CollateralTest is Test {
         collateral.mint(owner, nonExistingID, amount);
     }
 
-    function testBurningToken(address owner, uint256 amount) public {
+    function testBurningToken(uint256 amount) public {
         string memory URI = "some/random/URI";
-
-        vm.assume(owner != address(0));
+        address owner = self;
         amount = bound(amount, 2, type(uint256).max - 1);
 
         uint256 tokenId = collateral.mint(owner, URI, amount);
 
-        vm.expectRevert("Auth/not-authorized");
-        vm.prank(makeAddr("unauthorized"));
-        collateral.burn(owner, tokenId, amount);
-
         uint256 burnMoreThanHave = amount + 1;
         vm.expectRevert(abi.encodeWithSelector(ERC6909Collateral_Burn_InsufficientBalance.selector, owner, tokenId));
-        collateral.burn(owner, tokenId, burnMoreThanHave);
+        collateral.burn(tokenId, burnMoreThanHave);
 
         assertEq(collateral.balanceOf(owner, tokenId), amount);
 
         uint256 burnAmount = amount - 1;
-        uint256 remaining = collateral.burn(owner, tokenId, burnAmount);
+        uint256 remaining = collateral.burn(tokenId, burnAmount);
         assertEq(collateral.balanceOf(owner, tokenId), remaining);
         assertEq(remaining, 1);
         assertEq(collateral.totalSupply(tokenId), remaining);
 
-        remaining = collateral.burn(owner, tokenId, 0);
+        remaining = collateral.burn(tokenId, 0);
         assertEq(collateral.balanceOf(owner, tokenId), remaining);
         assertEq(remaining, 1);
         assertEq(collateral.totalSupply(tokenId), remaining);
 
         burnAmount = 1;
-        remaining = collateral.burn(owner, tokenId, burnAmount);
+        remaining = collateral.burn(tokenId, burnAmount);
         assertEq(collateral.balanceOf(owner, tokenId), 0);
         assertEq(remaining, 0);
         assertEq(collateral.totalSupply(tokenId), 0);
