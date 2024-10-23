@@ -289,7 +289,7 @@ contract ERC6909CollateralTest is Test {
         assertTrue(isSuccessful);
         assertEq(collateral.allowance(self, delegate, tokenId), amount);
 
-        uint256 newAllowance = amount + 1;
+        uint256 newAllowance = 1337;
         isSuccessful = collateral.approve(delegate, tokenId, newAllowance);
         assertTrue(isSuccessful);
         assertEq(collateral.allowance(self, delegate, tokenId), newAllowance);
