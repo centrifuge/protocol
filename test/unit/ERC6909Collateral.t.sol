@@ -13,9 +13,15 @@ contract ERC6909CollateralTest is Test {
 
     string constant EMPTY = "";
 
+    ERC6909Collateral collateral;
+
+    function setUp() public {
+        collateral = new ERC6909Collateral(address(this));
+    }
+
     function testAuthorizations(address owner) public {
         vm.assume(owner != address(0));
-        ERC6909Collateral collateral = new ERC6909Collateral(owner);
+        collateral = new ERC6909Collateral(owner);
         assertEq(collateral.wards(owner), 1);
 
         vm.expectRevert("Auth/not-authorized");
@@ -40,8 +46,6 @@ contract ERC6909CollateralTest is Test {
         vm.assume(owner != address(0));
         vm.assume(!URI.isEmpty());
         amount = bound(amount, 1, type(uint256).max);
-
-        ERC6909Collateral collateral = new ERC6909Collateral(address(this));
 
         vm.expectRevert(ERC6909Collateral_Mint_EmptyOwner.selector);
         collateral.mint(address(0), URI, amount);
@@ -70,9 +74,7 @@ contract ERC6909CollateralTest is Test {
         amount = bound(amount, 1, MAX_UINT256);
         string memory URI = "some/random/URI";
 
-        ERC6909Collateral collateral = new ERC6909Collateral(address(this));
         uint256 tokenId = collateral.mint(owner, URI, amount);
-
         uint256 balance = collateral.balanceOf(owner, tokenId);
 
         vm.expectRevert("Auth/not-authorized");
@@ -96,7 +98,6 @@ contract ERC6909CollateralTest is Test {
         vm.assume(owner != address(0));
         amount = bound(amount, 2, type(uint256).max - 1);
 
-        ERC6909Collateral collateral = new ERC6909Collateral(address(this));
         uint256 tokenId = collateral.mint(owner, URI, amount);
 
         vm.expectRevert("Auth/not-authorized");
@@ -125,8 +126,6 @@ contract ERC6909CollateralTest is Test {
     }
 
     function testSettingSymbol(uint256 tokenId, string calldata symbol) public {
-        ERC6909Collateral collateral = new ERC6909Collateral(address(this));
-
         collateral.setSymbol(tokenId, symbol);
         assertEq(collateral.symbol(tokenId), symbol);
 
@@ -136,7 +135,6 @@ contract ERC6909CollateralTest is Test {
     }
 
     function testSettingName(uint256 tokenId, string calldata name) public {
-        ERC6909Collateral collateral = new ERC6909Collateral(address(this));
         collateral.setName(tokenId, name);
         assertEq(collateral.name(tokenId), name);
 
@@ -146,7 +144,6 @@ contract ERC6909CollateralTest is Test {
     }
 
     function testSettingContractURI(string calldata URI) public {
-        ERC6909Collateral collateral = new ERC6909Collateral(address(this));
         collateral.setContractURI(URI);
         assertEq(collateral.contractURI(), URI);
 
@@ -156,7 +153,6 @@ contract ERC6909CollateralTest is Test {
     }
 
     function testSettingDecimals(uint256 tokenId) public {
-        ERC6909Collateral collateral = new ERC6909Collateral(address(this));
         uint8 decimals = collateral.MIN_DECIMALS();
 
         collateral.setDecimals(tokenId, decimals);
@@ -173,5 +169,15 @@ contract ERC6909CollateralTest is Test {
         vm.expectRevert("Auth/not-authorized");
         vm.prank(makeAddr("unauthorized"));
         collateral.setDecimals(tokenId, decimals);
+    }
+
+    function testSettingOperatorApproval(address operator) public {
+        bool result = collateral.setOperator(operator, true);
+        assertTrue(result);
+        assertTrue(collateral.isOperator(address(this), operator));
+
+        result = collateral.setOperator(operator, false);
+        assertTrue(result);
+        assertFalse(collateral.isOperator(address(this), operator));
     }
 }
