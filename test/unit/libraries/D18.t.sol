@@ -2,7 +2,7 @@
 pragma solidity ^0.8.28;
 
 import "forge-std/Test.sol";
-import "src/libraries/D18.sol";
+import "src/types/D18.sol";
 import "src/libraries/MathLib.sol";
 
 contract TestPortfolio is Test {
