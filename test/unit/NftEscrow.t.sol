@@ -39,7 +39,7 @@ contract TestCommon is Test {
 }
 
 contract TestLock is TestCommon {
-    function testLock() public {
+    function testSuccess() public {
         vm.expectEmit();
         emit INftEscrow.Locked(nfts, TOKEN_ID);
         _mockEscrowBalance(0);
@@ -48,14 +48,14 @@ contract TestLock is TestCommon {
         escrow.lock(nfts, TOKEN_ID, OWNER);
     }
 
-    function testErrLockAlreadyLocked() public {
+    function testErrAlreadyLocked() public {
         _mockEscrowBalance(1);
         vm.expectRevert(abi.encodeWithSelector(INftEscrow.AlreadyLocked.selector));
 
         escrow.lock(nfts, TOKEN_ID, OWNER);
     }
 
-    function testErrLockCanNotBeTransferred() public {
+    function testErrCanNotBeTransferred() public {
         _mockEscrowBalance(0);
         _mockTransfer(OWNER, address(escrow), false);
         vm.expectRevert(abi.encodeWithSelector(INftEscrow.CanNotBeTransferred.selector));
@@ -65,7 +65,7 @@ contract TestLock is TestCommon {
 }
 
 contract TestUnlock is TestCommon {
-    function testUnlock() public {
+    function testSuccess() public {
         vm.expectEmit();
         emit INftEscrow.Unlocked(nfts, TOKEN_ID);
         _mockTransfer(address(escrow), OWNER, true);
@@ -73,7 +73,7 @@ contract TestUnlock is TestCommon {
         escrow.unlock(nfts, TOKEN_ID, OWNER);
     }
 
-    function testErrUnlockAlreadyAttached() public {
+    function testErrAlreadyAttached() public {
         _mockEscrowBalance(1);
         escrow.attach(nfts, TOKEN_ID, ELEMENT_ID);
 
@@ -82,7 +82,7 @@ contract TestUnlock is TestCommon {
         escrow.unlock(nfts, TOKEN_ID, OWNER);
     }
 
-    function testErrUnlockCanNotBeTransferred() public {
+    function testErrCanNotBeTransferred() public {
         _mockTransfer(address(escrow), OWNER, false);
         vm.expectRevert(abi.encodeWithSelector(INftEscrow.CanNotBeTransferred.selector));
 
@@ -91,7 +91,7 @@ contract TestUnlock is TestCommon {
 }
 
 contract TestAttach is TestCommon {
-    function testAttach() public {
+    function testSuccess() public {
         vm.expectEmit();
         emit INftEscrow.Attached(NFT_ID, ELEMENT_ID);
         _mockEscrowBalance(1);
@@ -99,13 +99,13 @@ contract TestAttach is TestCommon {
         escrow.attach(nfts, TOKEN_ID, ELEMENT_ID);
     }
 
-    function testErrAttachInvalidElement() public {
+    function testErrInvalidElement() public {
         vm.expectRevert(abi.encodeWithSelector(INftEscrow.InvalidElement.selector));
 
         escrow.attach(nfts, TOKEN_ID, 0);
     }
 
-    function testErrAttachAlreadyAttached() public {
+    function testErrAlreadyAttached() public {
         _mockEscrowBalance(1);
         escrow.attach(nfts, TOKEN_ID, ELEMENT_ID);
 
@@ -114,7 +114,7 @@ contract TestAttach is TestCommon {
         escrow.attach(nfts, TOKEN_ID, ELEMENT_ID);
     }
 
-    function testErrAttachNotLocked() public {
+    function testErrNotLocked() public {
         _mockEscrowBalance(0);
         vm.expectRevert(abi.encodeWithSelector(INftEscrow.NotLocked.selector));
 
@@ -123,7 +123,7 @@ contract TestAttach is TestCommon {
 }
 
 contract TestDetach is TestCommon {
-    function testDetach() public {
+    function testSuccess() public {
         _mockEscrowBalance(1);
 
         escrow.attach(nfts, TOKEN_ID, ELEMENT_ID);
@@ -134,7 +134,7 @@ contract TestDetach is TestCommon {
         escrow.detach(NFT_ID);
     }
 
-    function testErrDetachNotAttached() public {
+    function testErrNotAttached() public {
         vm.expectRevert(abi.encodeWithSelector(INftEscrow.NotAttached.selector));
         escrow.detach(NFT_ID);
     }
