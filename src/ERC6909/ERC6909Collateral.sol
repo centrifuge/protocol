@@ -8,7 +8,6 @@ import {Auth} from "src/Auth.sol";
 import {IERC6909Collateral} from "src/interfaces/ERC6909/IERC6909Collateral.sol";
 import {IERC6909URIExtension} from "src/interfaces/ERC6909/IERC6909URIExtension.sol";
 import {IERC6909MetadataExtension} from "src/interfaces/ERC6909/IERC6909MetadataExtension.sol";
-import {OverflowUint256} from "src/Errors.sol";
 
 contract ERC6909Collateral is IERC6909Collateral, ERC6909, Auth {
     using StringLib for string;
@@ -64,7 +63,9 @@ contract ERC6909Collateral is IERC6909Collateral, ERC6909, Auth {
 
         unchecked {
             uint256 totalSupply_ = totalSupply[_tokenId];
-            require(totalSupply_ + _amount >= totalSupply_, OverflowUint256(totalSupply_, _amount));
+            uint256 newSupply = totalSupply_ + _amount;
+            require(newSupply >= totalSupply_, ERC6909Collateral_Mint_MaxSupplyReached());
+            totalSupply[_tokenId] = newSupply;
         }
 
         uint256 newBalance = balance + _amount;

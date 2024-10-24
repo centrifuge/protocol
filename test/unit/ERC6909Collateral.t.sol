@@ -80,17 +80,21 @@ contract ERC6909CollateralTest is Test {
     function testMintingOnExistingToken(address owner, uint256 amount) public {
         vm.assume(owner != address(0));
         uint256 MAX_UINT256 = type(uint256).max;
-        amount = bound(amount, 1, MAX_UINT256);
+        uint256 offset = 10;
+        amount = bound(amount, 1, MAX_UINT256 - offset);
         string memory URI = "some/random/URI";
 
         uint256 tokenId = collateral.mint(owner, URI, amount);
         uint256 balance = collateral.balanceOf(owner, tokenId);
 
+        uint256 totalSupply = collateral.totalSupply(tokenId);
+        assertEq(totalSupply, amount);
+
         vm.expectRevert("Auth/not-authorized");
         vm.prank(makeAddr("unauthorized"));
         collateral.mint(owner, tokenId, amount);
 
-        vm.expectRevert(abi.encodeWithSelector(OverflowUint256.selector, balance, MAX_UINT256));
+        vm.expectRevert(ERC6909Collateral_Mint_MaxSupplyReached.selector);
         collateral.mint(owner, tokenId, MAX_UINT256);
 
         uint256 latestBalance = collateral.mint(owner, tokenId, 0);
@@ -99,6 +103,10 @@ contract ERC6909CollateralTest is Test {
         uint256 nonExistingID = collateral.latestTokenId() + 1;
         vm.expectRevert(abi.encodeWithSelector(ERC6909Collateral_Mint_UnknownTokenId.selector, owner, nonExistingID));
         collateral.mint(owner, nonExistingID, amount);
+
+        uint256 newBalance = collateral.mint(owner, tokenId, offset);
+        assertEq(newBalance, balance + offset);
+        assertEq(collateral.totalSupply(tokenId), totalSupply + offset);
     }
 
     function testBurningToken(uint256 amount) public {
