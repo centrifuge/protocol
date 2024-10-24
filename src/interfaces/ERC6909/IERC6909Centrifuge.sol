@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
 import {IERC6909URIExtension} from "src/interfaces/ERC6909/IERC6909URIExtension.sol";
 
-interface IERC6909Collateral is IERC6909, IERC6909URIExtension {
+interface IERC6909Centrifuge is IERC6909, IERC6909URIExtension {
     /// @notice             Get total supply of a given token
     /// @dev                To increase the total supply call mint(address _owner, uint256 _tokenId, uint256 _amount).
     ///                     The total supply will be increased by _amount and cannot go over type(uint256).max;
