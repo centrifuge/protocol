@@ -74,11 +74,7 @@ abstract contract ERC6909 is IERC6909, IERC165 {
             balanceOf[sender][id] -= amount;
         }
 
-        /// @dev    The totalSupply check during minting guarantees that
-        ///         there won't be more token that will cause overflow
-        unchecked {
-            balanceOf[receiver][id] += amount;
-        }
+        balanceOf[receiver][id] += amount;
 
         emit Transfer(msg.sender, sender, receiver, id, amount);
 
