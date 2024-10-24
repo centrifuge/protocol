@@ -67,6 +67,23 @@ contract Portfolio is Auth, IPortfolio {
     }
 
     /// @inheritdoc IPortfolio
+    function close(uint64 poolId, uint32 itemId) external auth {
+        Item storage item = _getItem(poolId, itemId);
+        require(item.outstandingQuantity.inner() == 0, ItemCanNotBeClosed());
+        require(linearAccrual.debt(item.info.interestRateId, item.normalizedDebt) <= 0, ItemCanNotBeClosed());
+
+        uint160 collateralId = item.collateralId;
+
+        delete items[poolId][itemId - 1];
+
+        if (collateralId != 0) {
+            nftEscrow.detach(collateralId);
+        }
+
+        emit Closed(poolId, itemId);
+    }
+
+    /// @inheritdoc IPortfolio
     function updateInterestRate(uint64 poolId, uint32 itemId, bytes32 rateId) external auth {
         Item storage item = _getItem(poolId, itemId);
 
@@ -126,23 +143,6 @@ contract Portfolio is Auth, IPortfolio {
     }
 
     /// @inheritdoc IPortfolio
-    function close(uint64 poolId, uint32 itemId) external auth {
-        Item storage item = _getItem(poolId, itemId);
-        require(item.outstandingQuantity.inner() == 0, ItemCanNotBeClosed());
-        require(linearAccrual.debt(item.info.interestRateId, item.normalizedDebt) <= 0, ItemCanNotBeClosed());
-
-        uint160 collateralId = item.collateralId;
-
-        delete items[poolId][itemId];
-
-        if (collateralId != 0) {
-            nftEscrow.detach(collateralId);
-        }
-
-        emit Closed(poolId, itemId);
-    }
-
-    /// @inheritdoc IPortfolio
     function debt(uint64 poolId, uint32 itemId) external view returns (int128 debt_) {
         Item storage item = _getItem(poolId, itemId);
         return linearAccrual.debt(item.info.interestRateId, item.normalizedDebt);
@@ -180,7 +180,7 @@ contract Portfolio is Auth, IPortfolio {
         view
         returns (Decimal18 quantity)
     {
-        address base = poolRegistry.currencyOfPool(poolId);
+        address base = poolRegistry.currency(poolId);
         address quote = address(item.collateralId);
 
         return d18(item.info.valuation.getQuote(amount, base, quote).toUint128());
@@ -193,7 +193,7 @@ contract Portfolio is Auth, IPortfolio {
         returns (uint128 amount)
     {
         address base = address(item.collateralId);
-        address quote = poolRegistry.currencyOfPool(poolId);
+        address quote = poolRegistry.currency(poolId);
 
         if (mode == PricingMode.Real) {
             return item.info.valuation.getQuote(quantity.inner(), base, quote).toUint128();

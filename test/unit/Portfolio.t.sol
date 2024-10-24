@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import "forge-std/Test.sol";
+import {stdError} from "forge-std/StdError.sol";
 import "src/Portfolio.sol";
 import "src/interfaces/IPortfolio.sol";
 import "src/interfaces/INftEscrow.sol";
@@ -34,20 +35,49 @@ contract TestCommon is Test {
     uint256 constant TOKEN_ID = 23;
     uint160 constant COLLATERAL_ID = 18;
     IERC6909 constant NO_SOURCE = IERC6909(address(0));
+    address constant POOL_CURRENCY = address(10);
 
     IPortfolio.ItemInfo ITEM_INFO = IPortfolio.ItemInfo(INTEREST_RATE_A, d18(10), valuation);
 
     Portfolio portfolio = new Portfolio(address(this), poolRegistry, linearAccrual, escrow);
 
+    function setUp() public {
+        _mockCurrency();
+    }
+
     function _mockAttach(uint256 itemId) internal {
         vm.mockCall(
             address(escrow),
             abi.encodeWithSelector(INftEscrow.attach.selector, address(nfts), TOKEN_ID, uint256(POOL_A) << 64 + itemId),
-            abi.encode(18)
+            abi.encode(COLLATERAL_ID)
         );
     }
 
-    function getItem(uint32 itemId) internal view returns (Item memory) {
+    function _mockDetach() internal {
+        vm.mockCall(
+            address(escrow),
+            abi.encodeWithSelector(INftEscrow.detach.selector, address(nfts), COLLATERAL_ID),
+            abi.encode()
+        );
+    }
+
+    function _mockQuote(Decimal18 quantity, address quote) internal {
+        vm.mockCall(
+            address(valuation),
+            abi.encodeWithSelector(IERC7726.getQuote.selector, quantity.inner(), POOL_CURRENCY, quote),
+            abi.encode(quantity.inner())
+        );
+    }
+
+    function _mockCurrency() internal {
+        vm.mockCall(
+            address(poolRegistry),
+            abi.encodeWithSelector(IPoolRegistry.currency.selector, POOL_A),
+            abi.encode(POOL_CURRENCY)
+        );
+    }
+
+    function _getItem(uint32 itemId) internal view returns (Item memory) {
         (
             IPortfolio.ItemInfo memory info,
             int128 normalizedDebt,
@@ -60,7 +90,7 @@ contract TestCommon is Test {
 }
 
 contract TestCreate is TestCommon {
-    function testMultipleCreate() public {
+    function testSuccessMultiple() public {
         vm.expectEmit();
         emit IPortfolio.Create(POOL_A, 1, NO_SOURCE, 0);
         emit IPortfolio.Create(POOL_A, 2, NO_SOURCE, 0);
@@ -69,55 +99,57 @@ contract TestCreate is TestCommon {
         portfolio.create(POOL_A, ITEM_INFO, NO_SOURCE, 0);
     }
 
-    function testCreateNoCollateral() public {
+    function testSuccessWithoutCollateral() public {
         vm.expectEmit();
         emit IPortfolio.Create(POOL_A, 1, NO_SOURCE, 0);
-
         portfolio.create(POOL_A, ITEM_INFO, NO_SOURCE, 0);
 
-        assert(getItem(1).isValid);
+        assert(_getItem(1).isValid);
+        assertEq(_getItem(1).collateralId, 0);
     }
 
-    function testCreateWithCollateral() public {
+    function testSuccessWithCollateral() public {
+        _mockAttach(1);
+
         vm.expectEmit();
         emit IPortfolio.Create(POOL_A, 1, nfts, TOKEN_ID);
-
-        _mockAttach(1);
         portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
 
-        assert(getItem(1).isValid);
+        assert(_getItem(1).isValid);
+        assertEq(_getItem(1).collateralId, COLLATERAL_ID);
     }
 }
 
-/*
-    function testIncrease() public {
-        portfolio.create(POOL_A, IPortfolio.ItemInfo(INTEREST_RATE_A, d18(10), valuation), nfts, TOKEN_ID);
-
-        vm.expectEmit();
-        emit IPortfolio.DebtIncreased(POOL_A, 1, 100);
-
-        portfolio.increaseDebt(POOL_A, 1, 100);
-    }
-
-    function testDecrease() public {
-        portfolio.create(POOL_A, IPortfolio.ItemInfo(INTEREST_RATE_A, d18(10), valuation), nfts, TOKEN_ID);
-        portfolio.increaseDebt(POOL_A, 1, 100);
-
-        vm.expectEmit();
-        emit IPortfolio.DebtDecreased(POOL_A, 1, 100, 0);
-
-        portfolio.decreaseDebt(POOL_A, 1, 100, 0);
-    }
-
-    function testClose() public {
-        portfolio.create(POOL_A, IPortfolio.ItemInfo(INTEREST_RATE_A, d18(10), valuation), nfts, TOKEN_ID);
+contract TestClose is TestCommon {
+    function testSuccessWithoutCollateral() public {
+        portfolio.create(POOL_A, ITEM_INFO, NO_SOURCE, 0);
 
         vm.expectEmit();
         emit IPortfolio.Closed(POOL_A, 1);
-
         portfolio.close(POOL_A, 1);
 
-        (,,,, bool isValid) = portfolio.items(POOL_A, 0);
-        assert(isValid);
+        assert(!_getItem(1).isValid);
     }
-    */
+
+    function testSuccessWithCollateral() public {
+        _mockAttach(1);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+        _mockDetach();
+
+        vm.expectEmit();
+        emit IPortfolio.Closed(POOL_A, 1);
+        portfolio.close(POOL_A, 1);
+
+        assert(!_getItem(1).isValid);
+    }
+
+    function testErrItemCanNotBeClosed() public {
+        portfolio.create(POOL_A, ITEM_INFO, NO_SOURCE, 0);
+
+        _mockQuote(d18(5), address(0));
+        portfolio.increaseDebt(POOL_A, 1, 5);
+
+        vm.expectRevert(abi.encodeWithSelector(IPortfolio.ItemCanNotBeClosed.selector));
+        portfolio.close(POOL_A, 1);
+    }
+}

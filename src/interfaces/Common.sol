@@ -17,7 +17,7 @@ interface IERC7726 {
 }
 
 interface IPoolRegistry {
-    function currencyOfPool(uint64 poolId) external view returns (address currency);
+    function currency(uint64 poolId) external view returns (address currency);
 }
 
 interface ILinearAccrual {

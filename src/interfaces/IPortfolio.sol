@@ -42,6 +42,9 @@ interface IPortfolio is IValuation {
     /// @notice Dispatched after the creation of an item.
     event Create(uint64 indexed poolId, uint32 itemId, IERC6909 source, uint256 tokenId);
 
+    /// @notice Dispatched when the item lifetime ends
+    event Closed(uint64 indexed poolId, uint32 itemId);
+
     /// @notice Dispatched when the item valuation has been updated.
     event ValuationUpdated(uint64 indexed poolId, uint32 itemId, IERC7726);
 
@@ -54,12 +57,18 @@ interface IPortfolio is IValuation {
     /// @notice Dispatched when the item debt has been decreased.
     event DebtDecreased(uint64 indexed poolId, uint32 itemId, uint128 principal, uint128 interest);
 
-    /// @notice Dispatched when the item lifetime ends
-    event Closed(uint64 indexed poolId, uint32 itemId);
-
-    /// @notice Creates a new item based of a collateral.
-    /// The owner of the collateral will be this contract until close is called.
+    /// @notice Creates a new item.
+    /// The collateral defined by `source` and `tokenId` is lock to this item until close is called.
+    /// @param info Item related information
+    /// @param source Contract where the collateral defined by `tokenId` exists.
+    /// If zero, then no collateral is used for this item.
+    /// @param tokenId Asset used for this item as collateral.
+    /// If `source == 0` then this param does not take effect.
     function create(uint64 poolId, ItemInfo calldata info, IERC6909 source, uint256 tokenId) external;
+
+    /// @notice Close a non-outstanding item
+    /// If a collateral was attached to this item, now the collateral is free.
+    function close(uint64 poolId, uint32 itemId) external;
 
     /// @notice Update the interest rate used by this item
     /// @param rateId Interest rate identification
@@ -84,9 +93,6 @@ interface IPortfolio is IValuation {
     /// @param interest Amount used to decrease the pending interest accrued in this item.
     function transferDebt(uint64 poolId, uint32 fromItemId, uint32 toItemId, uint128 principal, uint128 interest)
         external;
-
-    /// @notice Close a non-outstanding item returning the collateral to the `collateralOwner`
-    function close(uint64 poolId, uint32 itemId) external;
 
     /// @notice returns the debt of an item
     function debt(uint64 poolId, uint32 itemId) external view returns (int128 debt_);
