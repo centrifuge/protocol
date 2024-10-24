@@ -7,7 +7,6 @@ import {StringLib} from "src/libraries/StringLib.sol";
 import {Auth} from "src/Auth.sol";
 import {IERC6909Collateral} from "src/interfaces/ERC6909/IERC6909Collateral.sol";
 import {IERC6909URIExtension} from "src/interfaces/ERC6909/IERC6909URIExtension.sol";
-import {IERC6909MetadataExtension} from "src/interfaces/ERC6909/IERC6909MetadataExtension.sol";
 
 contract ERC6909Collateral is IERC6909Collateral, ERC6909, Auth {
     using StringLib for string;
@@ -21,12 +20,6 @@ contract ERC6909Collateral is IERC6909Collateral, ERC6909, Auth {
     string public contractURI;
     /// @inheritdoc IERC6909URIExtension
     mapping(uint256 tokenId => string URI) public tokenURI;
-    /// @inheritdoc IERC6909MetadataExtension
-    mapping(uint256 tokenId => string name) public name;
-    /// @inheritdoc IERC6909MetadataExtension
-    mapping(uint256 tokenId => string symbol) public symbol;
-    /// @inheritdoc IERC6909MetadataExtension
-    mapping(uint256 tokenId => uint8 decimals) public decimals;
     /// @inheritdoc IERC6909Collateral
     mapping(uint256 tokenId => uint256 total) public totalSupply;
 
@@ -105,21 +98,5 @@ contract ERC6909Collateral is IERC6909Collateral, ERC6909, Auth {
         contractURI = _URI;
 
         emit ContractURI(address(this), _URI);
-    }
-
-    // @inheritdoc IERC6909Collateral
-    function setName(uint256 _tokenId, string calldata _name) external auth {
-        name[_tokenId] = _name;
-    }
-
-    // @inheritdoc IERC6909Collateral
-    function setSymbol(uint256 _tokenId, string calldata _symbol) external auth {
-        symbol[_tokenId] = _symbol;
-    }
-
-    // @inheritdoc IERC6909Collateral
-    function setDecimals(uint256 _tokenId, uint8 _decimals) external auth {
-        require(_decimals >= MIN_DECIMALS, ERC6909Collateral_SetDecimal_LessThanMinimalDecimal(MIN_DECIMALS, _decimals));
-        decimals[_tokenId] = _decimals;
     }
 }

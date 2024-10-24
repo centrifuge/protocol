@@ -140,24 +140,6 @@ contract ERC6909CollateralTest is Test {
         assertEq(collateral.totalSupply(tokenId), 0);
     }
 
-    function testSettingSymbol(uint256 tokenId, string calldata symbol) public {
-        collateral.setSymbol(tokenId, symbol);
-        assertEq(collateral.symbol(tokenId), symbol);
-
-        vm.expectRevert("Auth/not-authorized");
-        vm.prank(makeAddr("unauthorized"));
-        collateral.setSymbol(tokenId, symbol);
-    }
-
-    function testSettingName(uint256 tokenId, string calldata name) public {
-        collateral.setName(tokenId, name);
-        assertEq(collateral.name(tokenId), name);
-
-        vm.expectRevert("Auth/not-authorized");
-        vm.prank(makeAddr("unauthorized"));
-        collateral.setName(tokenId, name);
-    }
-
     function testSettingContractURI(string calldata URI) public {
         collateral.setContractURI(URI);
         assertEq(collateral.contractURI(), URI);
@@ -165,25 +147,6 @@ contract ERC6909CollateralTest is Test {
         vm.expectRevert("Auth/not-authorized");
         vm.prank(makeAddr("unauthorized"));
         collateral.setContractURI(URI);
-    }
-
-    function testSettingDecimals(uint256 tokenId) public {
-        uint8 decimals = collateral.MIN_DECIMALS();
-
-        collateral.setDecimals(tokenId, decimals);
-        assertEq(collateral.decimals(tokenId), decimals);
-
-        decimals = collateral.MIN_DECIMALS() - 1;
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                ERC6909Collateral_SetDecimal_LessThanMinimalDecimal.selector, collateral.MIN_DECIMALS(), decimals
-            )
-        );
-        collateral.setDecimals(tokenId, decimals);
-
-        vm.expectRevert("Auth/not-authorized");
-        vm.prank(makeAddr("unauthorized"));
-        collateral.setDecimals(tokenId, decimals);
     }
 
     function testSettingOperatorApproval(address operator) public {

@@ -2,10 +2,9 @@
 pragma solidity 0.8.28;
 
 import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
-import {IERC6909MetadataExtension} from "src/interfaces/ERC6909/IERC6909MetadataExtension.sol";
 import {IERC6909URIExtension} from "src/interfaces/ERC6909/IERC6909URIExtension.sol";
 
-interface IERC6909Collateral is IERC6909, IERC6909MetadataExtension, IERC6909URIExtension {
+interface IERC6909Collateral is IERC6909, IERC6909URIExtension {
     /// @notice             Get total supply of a given token
     /// @dev                To increase the total supply call mint(address _owner, uint256 _tokenId, uint256 _amount).
     ///                     The total supply will be increased by _amount and cannot go over type(uint256).max;
@@ -46,22 +45,4 @@ interface IERC6909Collateral is IERC6909, IERC6909MetadataExtension, IERC6909URI
     /// @param _amount      Amount to be burnt
     /// @return             Amount that is left after burning the _amount tokens
     function burn(uint256 _tokenId, uint256 _amount) external returns (uint256);
-
-    /// @notice             Sets _name for a given _tokenId
-    ///
-    /// @param _tokenId     Token Id
-    /// @param _name        Token Name
-    function setName(uint256 _tokenId, string calldata _name) external;
-
-    /// @notice             Sets _symbol for a given _tokenId
-    ///
-    /// @param _tokenId     Token Id
-    /// @param _symbol        Token Symbol
-    function setSymbol(uint256 _tokenId, string calldata _symbol) external;
-
-    /// @notice             Sets _decimals for a given _tokenId
-    ///
-    /// @param _tokenId     Token Id
-    /// @param _decimals    Token Decimals
-    function setDecimals(uint256 _tokenId, uint8 _decimals) external;
 }
