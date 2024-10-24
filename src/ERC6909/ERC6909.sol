@@ -32,11 +32,8 @@ abstract contract ERC6909 is IERC6909, IERC165 {
         if (msg.sender != sender && !isOperator[sender][msg.sender]) {
             uint256 allowed = allowance[sender][msg.sender][tokenId];
             if (allowed != type(uint256).max) {
-                unchecked {
-                    uint256 newAllowance = allowed - amount;
-                    require(newAllowance <= allowed, ERC6909_TransferFrom_InsufficientAllowance(msg.sender, tokenId));
-                    allowance[sender][msg.sender][tokenId] = newAllowance;
-                }
+                require(amount <= allowed, ERC6909_TransferFrom_InsufficientAllowance(msg.sender, tokenId));
+                allowance[sender][msg.sender][tokenId] -= amount;
             }
         }
 
