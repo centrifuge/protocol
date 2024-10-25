@@ -65,6 +65,30 @@ contract MathLibTest is Test {
         MathLib.toUint128(uint256(type(uint128).max) + x);
     }
 
+    function testToInt128(uint256 x) public pure {
+        x = bound(x, 0, uint256(uint128(type(int128).max)));
+
+        assertEq(x, uint256(uint128(MathLib.toInt128(x))));
+    }
+
+    function testToInt128Overflow(int128 x) public {
+        vm.assume(x > 0);
+        vm.expectRevert("MathLib/int128-overflow");
+        MathLib.toInt128(uint256(uint128(type(int128).max)) + uint128(x));
+    }
+
+    function testToUint32(uint256 x) public pure {
+        x = bound(x, 0, type(uint32).max);
+
+        assertEq(x, uint256(MathLib.toUint32(x)));
+    }
+
+    function testToUint32Overflow(uint256 x) public {
+        vm.assume(x > type(uint32).max);
+        vm.expectRevert("MathLib/uint32-overflow");
+        MathLib.toUint32(x);
+    }
+
     function testToUint8(uint256 x) public pure {
         x = bound(x, 0, type(uint8).max);
 

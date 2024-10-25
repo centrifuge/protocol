@@ -8,9 +8,9 @@ import {D18} from "src/types/D18.sol";
 interface IValuation {
     /// @notice How the price is used to value each item.
     enum PricingMode {
-        /// @dev Underlaying call to `ERC6909.getQuote()`
+        /// @dev Underlaying call to `ERC7726.getQuote()`
         Real,
-        /// @dev Underlaying call to `ERC6909.getIndicativeQuote()`
+        /// @dev Underlaying call to `ERC7726.getIndicativeQuote()`
         Indicative
     }
 
@@ -40,7 +40,7 @@ interface IPortfolio is IValuation {
     error ItemCanNotBeClosed();
 
     /// @notice Dispatched after the creation of an item.
-    event Create(uint64 indexed poolId, uint32 itemId, IERC6909 source, uint256 tokenId);
+    event Created(uint64 indexed poolId, uint32 itemId, IERC6909 source, uint256 tokenId);
 
     /// @notice Dispatched when the item lifetime ends
     event Closed(uint64 indexed poolId, uint32 itemId);

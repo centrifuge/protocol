@@ -163,7 +163,7 @@ library MathLib {
         return uint32(value);
     }
 
-    /// @notice Safe type conversion from uint256 to uint128.
+    /// @notice Safe type conversion from uint256 to int128.
     function toInt128(uint256 _value) internal pure returns (int128 value) {
         if (_value > uint128(type(int128).max)) {
             revert("MathLib/int128-overflow");

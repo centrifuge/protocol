@@ -95,7 +95,7 @@ contract TestCreate is TestCommon {
     function testSuccess() public {
         _mockAttach(FIRST_ITEM_ID);
         vm.expectEmit();
-        emit IPortfolio.Create(POOL_A, FIRST_ITEM_ID, nfts, TOKEN_ID);
+        emit IPortfolio.Created(POOL_A, FIRST_ITEM_ID, nfts, TOKEN_ID);
         portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
 
         assert(_getItem(FIRST_ITEM_ID).isValid);
@@ -105,12 +105,12 @@ contract TestCreate is TestCommon {
     function testItemIdIncrement() public {
         _mockAttach(1);
         vm.expectEmit();
-        emit IPortfolio.Create(POOL_A, 1, nfts, TOKEN_ID);
+        emit IPortfolio.Created(POOL_A, 1, nfts, TOKEN_ID);
         portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
 
         _mockAttach(2);
         vm.expectEmit();
-        emit IPortfolio.Create(POOL_A, 2, nfts, TOKEN_ID);
+        emit IPortfolio.Created(POOL_A, 2, nfts, TOKEN_ID);
         portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
     }
 }
@@ -149,4 +149,24 @@ contract TestClose is TestCommon {
         vm.expectRevert(abi.encodeWithSelector(IPortfolio.ItemCanNotBeClosed.selector));
         portfolio.close(POOL_A, FIRST_ITEM_ID);
     }
+}
+
+contract TestIncreaseDebt is TestCommon {
+    function testSucess() public {}
+}
+
+contract TestDecreaseDebt is TestCommon {
+    function testSucess() public {}
+}
+
+contract TestTransferDebt is TestCommon {
+    function testSucess() public {}
+}
+
+contract TestItemValuation is TestCommon {
+    function testSucess() public {}
+}
+
+contract TestNav is TestCommon {
+    function testSucess() public {}
 }

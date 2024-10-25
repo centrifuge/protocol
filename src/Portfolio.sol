@@ -60,7 +60,7 @@ contract Portfolio is Auth, IPortfolio {
 
         items[poolId].push(Item(info, 0, d18(0), collateralId, true));
 
-        emit Create(poolId, itemId, source, tokenId);
+        emit Created(poolId, itemId, source, tokenId);
     }
 
     /// @inheritdoc IPortfolio
