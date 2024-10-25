@@ -21,7 +21,6 @@ contract TestCommon is Test {
     bytes32 constant INTEREST_RATE_A = bytes32(uint256(1));
     uint256 constant TOKEN_ID = 23;
     uint160 constant COLLATERAL_ID = 18;
-    IERC6909 constant NO_SOURCE = IERC6909(address(0));
     address constant POOL_CURRENCY = address(10);
 
     IPortfolio.ItemInfo ITEM_INFO = IPortfolio.ItemInfo(INTEREST_RATE_A, d18(10), valuation);
@@ -48,10 +47,10 @@ contract TestCommon is Test {
         );
     }
 
-    function _mockQuoteForQuantities(uint128 amount, address quote, Decimal18 quantity) internal {
+    function _mockQuoteForQuantities(uint128 amount, Decimal18 quantity) internal {
         vm.mockCall(
             address(valuation),
-            abi.encodeWithSelector(IERC7726.getQuote.selector, amount, POOL_CURRENCY, quote),
+            abi.encodeWithSelector(IERC7726.getQuote.selector, amount, POOL_CURRENCY, COLLATERAL_ID),
             abi.encode(quantity)
         );
     }
@@ -95,7 +94,6 @@ contract TestCommon is Test {
 contract TestCreate is TestCommon {
     function testSuccess() public {
         _mockAttach(FIRST_ITEM_ID);
-
         vm.expectEmit();
         emit IPortfolio.Create(POOL_A, FIRST_ITEM_ID, nfts, TOKEN_ID);
         portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
@@ -105,12 +103,15 @@ contract TestCreate is TestCommon {
     }
 
     function testItemIdIncrement() public {
+        _mockAttach(1);
         vm.expectEmit();
-        emit IPortfolio.Create(POOL_A, 1, NO_SOURCE, 0);
-        emit IPortfolio.Create(POOL_A, 2, NO_SOURCE, 0);
+        emit IPortfolio.Create(POOL_A, 1, nfts, TOKEN_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
 
-        portfolio.create(POOL_A, ITEM_INFO, NO_SOURCE, 0);
-        portfolio.create(POOL_A, ITEM_INFO, NO_SOURCE, 0);
+        _mockAttach(2);
+        vm.expectEmit();
+        emit IPortfolio.Create(POOL_A, 2, nfts, TOKEN_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
     }
 }
 
@@ -121,7 +122,6 @@ contract TestClose is TestCommon {
 
         _mockDetach();
         _mockDebt(0);
-
         vm.expectEmit();
         emit IPortfolio.Closed(POOL_A, FIRST_ITEM_ID);
         portfolio.close(POOL_A, FIRST_ITEM_ID);
@@ -130,9 +130,10 @@ contract TestClose is TestCommon {
     }
 
     function testErrItemCanNotBeClosedDueQuantity() public {
-        portfolio.create(POOL_A, ITEM_INFO, NO_SOURCE, 0);
+        _mockAttach(FIRST_ITEM_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
 
-        _mockQuoteForQuantities(20, address(0), d18(5));
+        _mockQuoteForQuantities(20, d18(5));
         _mockModifyNormalizedDebt(20);
         portfolio.increaseDebt(POOL_A, FIRST_ITEM_ID, 20);
 
@@ -141,10 +142,10 @@ contract TestClose is TestCommon {
     }
 
     function testErrItemCanNotBeClosedDueDebt() public {
-        portfolio.create(POOL_A, ITEM_INFO, NO_SOURCE, 0);
+        _mockAttach(FIRST_ITEM_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
 
         _mockDebt(1);
-
         vm.expectRevert(abi.encodeWithSelector(IPortfolio.ItemCanNotBeClosed.selector));
         portfolio.close(POOL_A, FIRST_ITEM_ID);
     }

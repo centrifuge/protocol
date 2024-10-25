@@ -58,6 +58,7 @@ interface IPortfolio is IValuation {
     event DebtDecreased(uint64 indexed poolId, uint32 itemId, uint128 principal, uint128 interest);
 
     /// @notice Creates a new item.
+    /// @param poolId The identifier of the pool
     /// The collateral defined by `source` and `tokenId` is lock to this item until close is called.
     /// @param info Item related information
     /// @param source Contract where the collateral defined by `tokenId` exists.
@@ -67,26 +68,37 @@ interface IPortfolio is IValuation {
     function create(uint64 poolId, ItemInfo calldata info, IERC6909 source, uint256 tokenId) external;
 
     /// @notice Close a non-outstanding item
+    /// @param poolId The identifier of the pool
+    /// @param itemId The identifier of the item for which we decrease the debt
     /// If a collateral was attached to this item, now the collateral is free.
     function close(uint64 poolId, uint32 itemId) external;
 
     /// @notice Update the interest rate used by this item
+    /// @param poolId The identifier of the pool
+    /// @param itemId The identifier of the item for which we decrease the debt
     /// @param rateId Interest rate identification
     function updateInterestRate(uint64 poolId, uint32 itemId, bytes32 rateId) external;
 
     /// @notice Update the valuation contract address used for this item
+    /// @param poolId The identifier of the pool
+    /// @param itemId The identifier of the item for which we decrease the debt
     function updateValuation(uint64 poolId, uint32 itemId, IERC7726 valuation) external;
 
     /// @notice Increase the debt of an item.
+    /// @param poolId The identifier of the pool
+    /// @param itemId The identifier of the item for which we decrease the debt
     /// Depending on the configured interest rate, the debt will increase over the time based on the amount given.
     function increaseDebt(uint64 poolId, uint32 itemId, uint128 amount) external;
 
     /// @notice Decrease the debt of an item
+    /// @param poolId The identifier of the pool
+    /// @param itemId The identifier of the item for which we decrease the debt
     /// @param principal Amount used to decrease the base debt amount from where the interest is accrued.
     /// @param interest Amount used to decrease the pending interest accrued in this item.
     function decreaseDebt(uint64 poolId, uint32 itemId, uint128 principal, uint128 interest) external;
 
     /// @notice Transfer debt `from` an item `to` another item.
+    /// @param poolId The identifier of the pool
     /// @param fromItemId The item from which to decrease the debt.
     /// @param toItemId The item from which to increase the debt.
     /// @param principal Amount used to decrease the base debt amount from where the interest is accrued.
@@ -95,9 +107,13 @@ interface IPortfolio is IValuation {
         external;
 
     /// @notice returns the debt of an item
+    /// @param poolId The identifier of the pool
+    /// @param itemId The identifier of the item for which we decrease the debt
     function debt(uint64 poolId, uint32 itemId) external view returns (int128 debt_);
 
     /// @notice Return the valuation of an item in the portfolio
+    /// @param poolId The identifier of the pool
+    /// @param itemId The identifier of the item for which we decrease the debt
     /// @param mode How the item is valued
     function itemValuation(uint64 poolId, uint32 itemId, PricingMode mode) external view returns (uint128 value);
 }

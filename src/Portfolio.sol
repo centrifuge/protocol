@@ -55,11 +55,8 @@ contract Portfolio is Auth, IPortfolio {
     function create(uint64 poolId, ItemInfo calldata info, IERC6909 source, uint256 tokenId) external auth {
         uint32 itemId = items[poolId].length.toUint32() + 1;
 
-        uint160 collateralId = 0;
-        if (address(source) != address(0)) {
-            uint256 uniqueItemId = uint256(poolId) << 64 + itemId;
-            collateralId = nftEscrow.attach(source, tokenId, uniqueItemId);
-        }
+        uint256 uniqueItemId = uint256(poolId) << 64 + itemId;
+        uint160 collateralId = nftEscrow.attach(source, tokenId, uniqueItemId);
 
         items[poolId].push(Item(info, 0, d18(0), collateralId, true));
 
@@ -76,9 +73,7 @@ contract Portfolio is Auth, IPortfolio {
 
         delete items[poolId][itemId - 1];
 
-        if (collateralId != 0) {
-            nftEscrow.detach(collateralId);
-        }
+        nftEscrow.detach(collateralId);
 
         emit Closed(poolId, itemId);
     }
