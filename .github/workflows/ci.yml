@@ -19,7 +19,7 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
 
       - name: Run tests
-        run: forge test --no-match-path "test/invariant/**/*.sol"
+        run: forge test --no-match-path "test/invariant/**/*.sol" --deny-warnings
         env:
           FOUNDRY_PROFILE: ci
           FORK_TESTS: false
@@ -75,7 +75,7 @@ jobs:
       - name: Build contracts
         run: |
           forge --version
-          forge build --sizes
+          forge build --sizes --deny-warnings
 
       - name: Check formatting
         run: forge fmt --check

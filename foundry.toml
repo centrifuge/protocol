@@ -6,7 +6,6 @@ libs = ['lib']
 
 solc_version = "0.8.28"
 evm_version = "cancun"
-deny_warnings = true
 
 optimizer = true
 optimizer_runs = 500
