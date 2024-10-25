@@ -2,7 +2,7 @@
 pragma solidity >=0.5.0;
 
 import {IERC7726, IERC6909} from "src/interfaces/Common.sol";
-import {Decimal18} from "src/libraries/Decimal18.sol";
+import {D18} from "src/types/D18.sol";
 
 /// @notice Defines a set of items that can be valued
 interface IValuation {
@@ -28,7 +28,7 @@ interface IPortfolio is IValuation {
         /// @notice Fixed point number with the amount of asset hold by this item.
         /// Usually for Price valued items it will be > 1.
         /// Other valuations will normally set this value from 0-1.
-        Decimal18 quantity;
+        D18 quantity;
         /// @notice Valuation used for this item.
         IERC7726 valuation;
     }

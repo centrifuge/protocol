@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.28;
 
-import {Decimal18, d18} from "src/libraries/Decimal18.sol";
+import {D18, d18} from "src/types/D18.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {Auth} from "src/Auth.sol";
 import {INftEscrow} from "src/interfaces/INftEscrow.sol";
@@ -14,7 +14,7 @@ struct Item {
     /// A representation of the debt used by LinealAccrual to obtain the real debt
     int128 normalizedDebt;
     /// Outstanding quantity
-    Decimal18 outstandingQuantity;
+    D18 outstandingQuantity;
     /// Identification of the asset used for this item
     uint160 collateralId;
     /// Existence flag
@@ -101,7 +101,7 @@ contract Portfolio is Auth, IPortfolio {
     function increaseDebt(uint64 poolId, uint32 itemId, uint128 amount) public auth {
         Item storage item = _getItem(poolId, itemId);
 
-        Decimal18 quantity = _getQuantity(poolId, item, amount);
+        D18 quantity = _getQuantity(poolId, item, amount);
 
         // TODO: Handle the case when currently the current debt is negative
 
@@ -116,7 +116,7 @@ contract Portfolio is Auth, IPortfolio {
     function decreaseDebt(uint64 poolId, uint32 itemId, uint128 principal, uint128 interest) public auth {
         Item storage item = _getItem(poolId, itemId);
 
-        Decimal18 quantity = _getQuantity(poolId, item, principal);
+        D18 quantity = _getQuantity(poolId, item, principal);
 
         // TODO: Handle the case when principal + intereset > current debt.
 
@@ -170,11 +170,7 @@ contract Portfolio is Auth, IPortfolio {
     }
 
     /// @dev The item quantity for a pool currency amount
-    function _getQuantity(uint64 poolId, Item storage item, uint128 amount)
-        internal
-        view
-        returns (Decimal18 quantity)
-    {
+    function _getQuantity(uint64 poolId, Item storage item, uint128 amount) internal view returns (D18 quantity) {
         address base = poolRegistry.currency(poolId);
         address quote = address(item.collateralId);
 
@@ -182,7 +178,7 @@ contract Portfolio is Auth, IPortfolio {
     }
 
     /// @dev The pool currency amount for some item quantity.
-    function _getValue(uint64 poolId, Item storage item, Decimal18 quantity, PricingMode mode)
+    function _getValue(uint64 poolId, Item storage item, D18 quantity, PricingMode mode)
         internal
         view
         returns (uint128 amount)

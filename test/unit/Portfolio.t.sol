@@ -47,7 +47,7 @@ contract TestCommon is Test {
         );
     }
 
-    function _mockQuoteForQuantities(uint128 amount, Decimal18 quantity) internal {
+    function _mockQuoteForQuantities(uint128 amount, D18 quantity) internal {
         vm.mockCall(
             address(valuation),
             abi.encodeWithSelector(IERC7726.getQuote.selector, amount, POOL_CURRENCY, COLLATERAL_ID),
@@ -83,7 +83,7 @@ contract TestCommon is Test {
         (
             IPortfolio.ItemInfo memory info,
             int128 normalizedDebt,
-            Decimal18 outstandingQuantity,
+            D18 outstandingQuantity,
             uint160 collateralId,
             bool isValid
         ) = portfolio.items(POOL_A, itemId - 1);
