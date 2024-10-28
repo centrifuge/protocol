@@ -31,10 +31,12 @@ contract TestCommon is Test {
         _mockCurrency();
     }
 
-    function _mockAttach(uint256 itemId) internal {
+    function _mockAttach(uint32 itemId) internal {
         vm.mockCall(
             address(escrow),
-            abi.encodeWithSelector(INftEscrow.attach.selector, address(nfts), TOKEN_ID, uint256(POOL_A) << 64 + itemId),
+            abi.encodeWithSelector(
+                INftEscrow.attach.selector, address(nfts), TOKEN_ID, uint96(bytes12(abi.encodePacked(POOL_A, itemId)))
+            ),
             abi.encode(COLLATERAL_ID)
         );
     }
@@ -63,11 +65,11 @@ contract TestCommon is Test {
         );
     }
 
-    function _mockModifyNormalizedDebt(int128 variation) internal {
+    function _mockModifyNormalizedDebt(int128 variation, int128 pre, int128 post) internal {
         vm.mockCall(
             address(linearAccrual),
-            abi.encodeWithSelector(ILinearAccrual.modifyNormalizedDebt.selector, INTEREST_RATE_A, 0, variation),
-            abi.encode(0)
+            abi.encodeWithSelector(ILinearAccrual.modifyNormalizedDebt.selector, INTEREST_RATE_A, pre, variation),
+            abi.encode(post)
         );
     }
 
@@ -134,7 +136,7 @@ contract TestClose is TestCommon {
         portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
 
         _mockQuoteForQuantities(20, d18(5));
-        _mockModifyNormalizedDebt(20);
+        _mockModifyNormalizedDebt(20, 0, 0);
         portfolio.increaseDebt(POOL_A, FIRST_ITEM_ID, 20);
 
         vm.expectRevert(abi.encodeWithSelector(IPortfolio.ItemCanNotBeClosed.selector));
@@ -142,6 +144,7 @@ contract TestClose is TestCommon {
     }
 
     function testErrItemCanNotBeClosedDueDebt() public {
+        _mockAttach(FIRST_ITEM_ID);
         _mockAttach(FIRST_ITEM_ID);
         portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
 
@@ -151,8 +154,55 @@ contract TestClose is TestCommon {
     }
 }
 
-contract TestIncreaseDebt is TestCommon {
+contract TestUpdateInterestRate is TestCommon {
     function testSuccess() public {}
+}
+
+contract TestUpdateValutation is TestCommon {
+    function testSuccess() public {}
+}
+
+contract TestIncreaseDebt is TestCommon {
+    uint128 constant AMOUNT = 20;
+
+    function testSuccess() public {
+        _mockAttach(FIRST_ITEM_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+
+        _mockQuoteForQuantities(AMOUNT, d18(2));
+        _mockModifyNormalizedDebt(int128(AMOUNT), 0, int128(AMOUNT));
+        vm.expectEmit();
+        emit IPortfolio.DebtIncreased(POOL_A, FIRST_ITEM_ID, AMOUNT);
+        portfolio.increaseDebt(POOL_A, FIRST_ITEM_ID, AMOUNT);
+
+        assertEq(_getItem(FIRST_ITEM_ID).outstandingQuantity.inner(), d18(2).inner());
+        assertEq(_getItem(FIRST_ITEM_ID).normalizedDebt, int128(AMOUNT));
+    }
+
+    function testIncreaseOverIncrease() public {
+        _mockAttach(FIRST_ITEM_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+
+        _mockQuoteForQuantities(AMOUNT, d18(2));
+        _mockModifyNormalizedDebt(int128(AMOUNT), 0, int128(AMOUNT));
+        portfolio.increaseDebt(POOL_A, FIRST_ITEM_ID, AMOUNT);
+
+        _mockModifyNormalizedDebt(int128(AMOUNT), int128(AMOUNT), int128(AMOUNT * 2));
+        portfolio.increaseDebt(POOL_A, FIRST_ITEM_ID, AMOUNT);
+
+        assertEq(_getItem(FIRST_ITEM_ID).outstandingQuantity.inner(), d18(4).inner());
+        assertEq(_getItem(FIRST_ITEM_ID).normalizedDebt, int128(AMOUNT * 2));
+    }
+
+    function testErrOverIncreased() public {
+        _mockAttach(FIRST_ITEM_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+
+        _mockQuoteForQuantities(AMOUNT, ITEM_INFO.quantity + d18(1));
+        _mockModifyNormalizedDebt(int128(AMOUNT), 0, int128(AMOUNT));
+        vm.expectRevert(abi.encodeWithSelector(IPortfolio.OverIncreased.selector));
+        portfolio.increaseDebt(POOL_A, FIRST_ITEM_ID, AMOUNT);
+    }
 }
 
 contract TestDecreaseDebt is TestCommon {

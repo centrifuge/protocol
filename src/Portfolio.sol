@@ -103,11 +103,13 @@ contract Portfolio is Auth, IPortfolio {
 
         D18 quantity = _getQuantity(poolId, item, amount);
 
-        // TODO: Handle the case when currently the current debt is negative
+        D18 newOutsandingQuantity = item.outstandingQuantity + quantity;
+        require(newOutsandingQuantity <= item.info.quantity, OverIncreased());
+        item.outstandingQuantity = newOutsandingQuantity;
 
+        // TODO: Handle the case when currently the current debt is negative
         item.normalizedDebt =
             linearAccrual.modifyNormalizedDebt(item.info.interestRateId, item.normalizedDebt, amount.toInt128());
-        item.outstandingQuantity = item.outstandingQuantity + quantity;
 
         emit DebtIncreased(poolId, itemId, amount);
     }
