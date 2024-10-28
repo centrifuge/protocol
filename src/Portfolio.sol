@@ -55,7 +55,7 @@ contract Portfolio is Auth, IPortfolio {
     function create(uint64 poolId, ItemInfo calldata info, IERC6909 source, uint256 tokenId) external auth {
         uint32 itemId = items[poolId].length.toUint32() + 1;
 
-        uint256 uniqueItemId = uint256(poolId) << 64 + itemId;
+        uint96 uniqueItemId = uint96(bytes12(abi.encodePacked(poolId, itemId)));
         uint160 collateralId = nftEscrow.attach(source, tokenId, uniqueItemId);
 
         items[poolId].push(Item(info, 0, d18(0), collateralId, true));

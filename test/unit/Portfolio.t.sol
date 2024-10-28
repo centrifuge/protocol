@@ -152,21 +152,21 @@ contract TestClose is TestCommon {
 }
 
 contract TestIncreaseDebt is TestCommon {
-    function testSucess() public {}
+    function testSuccess() public {}
 }
 
 contract TestDecreaseDebt is TestCommon {
-    function testSucess() public {}
+    function testSuccess() public {}
 }
 
 contract TestTransferDebt is TestCommon {
-    function testSucess() public {}
+    function testSuccess() public {}
 }
 
 contract TestItemValuation is TestCommon {
-    function testSucess() public {}
+    function testSuccess() public {}
 }
 
 contract TestNav is TestCommon {
-    function testSucess() public {}
+    function testSuccess() public {}
 }
