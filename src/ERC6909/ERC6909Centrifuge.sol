@@ -12,8 +12,6 @@ contract ERC6909Centrifuge is IERC6909Centrifuge, ERC6909, Auth {
     using StringLib for string;
     using StringLib for uint256;
 
-    uint8 public constant MIN_DECIMALS = 2;
-
     uint256 public latestTokenId;
 
     /// @inheritdoc IERC6909URIExtension
