@@ -52,9 +52,11 @@ abstract contract ERC6909 is IERC6909, IERC165 {
 
     /// @inheritdoc IERC6909
     function setOperator(address operator, bool approved) external returns (bool) {
-        isOperator[msg.sender][operator] = approved;
+        if (isOperator[msg.sender][operator] != approved) {
+            isOperator[msg.sender][operator] = approved;
 
-        emit OperatorSet(msg.sender, operator, approved);
+            emit OperatorSet(msg.sender, operator, approved);
+        }
 
         return true;
     }
