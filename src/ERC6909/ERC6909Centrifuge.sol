@@ -71,7 +71,6 @@ contract ERC6909Centrifuge is IERC6909Centrifuge, ERC6909, Auth {
 
     /// @inheritdoc IERC6909Centrifuge
     function burn(uint256 _tokenId, uint256 _amount) external returns (uint256) {
-        address _owner = msg.sender;
         uint256 _balance = balanceOf[msg.sender][_tokenId];
         require(_balance >= _amount, ERC6909Centrifuge_Burn_InsufficientBalance(msg.sender, _tokenId));
 
@@ -88,7 +87,7 @@ contract ERC6909Centrifuge is IERC6909Centrifuge, ERC6909, Auth {
 
         balanceOf[msg.sender][_tokenId] = _balance;
 
-        emit Transfer(msg.sender, _owner, address(0), _tokenId, _amount);
+        emit Transfer(msg.sender, msg.sender, address(0), _tokenId, _amount);
 
         return _balance;
     }
