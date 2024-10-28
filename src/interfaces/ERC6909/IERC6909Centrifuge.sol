@@ -24,7 +24,7 @@ interface IERC6909Centrifuge is IERC6909, IERC6909URIExtension {
     /// @dev                For non-fungible tokens, call with amount = 1, for fungible it could be any amount.
     ///                     TokenId is auto incremented by one.
     ///
-    /// @param _owner       Creates suppy of a given _tokenId by _amount for _owner
+    /// @param _owner       Creates supply of a given _tokenId by _amount for _owner
     /// @param _tokenURI    URI fortestBurningToken the newly minted token
     /// @param _amount      Amount of newly created supply
     /// @return _tokenId    Id of the newly minted token
@@ -32,9 +32,9 @@ interface IERC6909Centrifuge is IERC6909, IERC6909URIExtension {
 
     /// @dev                Used to increase the supply for a given _tokenId
     ///
-    /// @param _owner       Creates suppy of a given _tokenId by _amount for _owner
+    /// @param _owner       Creates supply of a given _tokenId by _amount for _owner
     /// @param _tokenId     The token id  of the item which supply will be increased
-    /// @param _amount      Amount by which the supply for _tokenId of _owner is increase by
+    /// @param _amount      Amount by which the supply for _tokenId of _owner is increased by
     /// @return             New supply of item with _tokenId
     function mint(address _owner, uint256 _tokenId, uint256 _amount) external returns (uint256);
 
