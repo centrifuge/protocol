@@ -8,7 +8,7 @@ interface IERC6909URIExtension {
 
     /// Functions ///
 
-    /// @return uri     Returns the common token URI
+    /// @return uri     Returns the common token URI.
     function contractURI() external view returns (string memory);
 
     /// @dev            Returns empty string if tokenId does not exist.

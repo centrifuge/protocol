@@ -11,8 +11,8 @@ import {OverflowUint256} from "src/Errors.sol";
 
 /// @title      Basic implementation of all properties according to the ERC6909.
 ///
-/// @dev        This implementation MUST be extended with another contract which defines how tokens are created
-///             Either implement mint/burn or override transfer/transferFrom
+/// @dev        This implementation MUST be extended with another contract which defines how tokens are created.
+///             Either implement mint/burn or override transfer/transferFrom.
 abstract contract ERC6909 is IERC6909, IERC165 {
     mapping(address owner => mapping(uint256 id => uint256 amount)) public balanceOf;
     mapping(address owner => mapping(address operator => bool isOperator)) public isOperator;

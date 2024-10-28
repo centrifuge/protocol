@@ -21,7 +21,7 @@ interface IERC6909 {
     /// @return amount    The allowance of the token.
     function allowance(address owner, address spender, uint256 id) external view returns (uint256 amount);
 
-    /// @notice           Checks if a spender is approved by an owner as an operator
+    /// @notice           Checks if a spender is approved by an owner as an operator.
     /// @param owner      The address of the owner.
     /// @param spender    The address of the spender.
     /// @return approved  The approval status.
@@ -31,7 +31,7 @@ interface IERC6909 {
     /// @param receiver   The address of the receiver.
     /// @param id         The id of the token.
     /// @param amount     The amount of the token.
-    /// @return bool      True, always, unless the function reverts
+    /// @return bool      True, always, unless the function reverts.
     function transfer(address receiver, uint256 id, uint256 amount) external returns (bool);
 
     /// @notice           Transfers an amount of an id from a sender to a receiver.
@@ -39,19 +39,19 @@ interface IERC6909 {
     /// @param receiver   The address of the receiver.
     /// @param id         The id of the token.
     /// @param amount     The amount of the token.
-    /// @return bool      True, always, unless the function reverts
+    /// @return bool      True, always, unless the function reverts.
     function transferFrom(address sender, address receiver, uint256 id, uint256 amount) external returns (bool);
 
     /// @notice           Approves an amount of an id to a spender.
     /// @param spender    The address of the spender.
     /// @param id         The id of the token.
     /// @param amount     The amount of the token.
-    /// @return bool      True, always
+    /// @return bool      True, always.
     function approve(address spender, uint256 id, uint256 amount) external returns (bool);
 
     /// @notice           Sets or removes an operator for the caller.
     /// @param operator   The address of the operator.
     /// @param approved   The approval status.
-    /// @return bool      True, always
+    /// @return bool      True, always.
     function setOperator(address operator, bool approved) external returns (bool);
 }
