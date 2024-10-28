@@ -21,6 +21,26 @@ contract TestPortfolio is Test {
         assertEqDecimal(c.inner(), a - b, 18);
     }
 
+    function testFuzzEq(uint128 a, uint128 b) public pure {
+        assertEq(d18(a) == d18(b), a == b);
+    }
+
+    function testFuzzGt(uint128 a, uint128 b) public pure {
+        assertEq(d18(a) > d18(b), a > b);
+    }
+
+    function testFuzzGte(uint128 a, uint128 b) public pure {
+        assertEq(d18(a) >= d18(b), a >= b);
+    }
+
+    function testFuzzLt(uint128 a, uint128 b) public pure {
+        assertEq(d18(a) < d18(b), a < b);
+    }
+
+    function testFuzzLte(uint128 a, uint128 b) public pure {
+        assertEq(d18(a) <= d18(b), a <= b);
+    }
+
     function testFuzzMulInt(uint128 a, uint128 b) public pure {
         vm.assume(uint256(a) * uint256(b) <= type(uint128).max);
 
