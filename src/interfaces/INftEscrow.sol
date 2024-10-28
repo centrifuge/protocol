@@ -12,10 +12,10 @@ interface IERC6909 {
 
 /// Interface to handle an escrow of nfts
 interface INftEscrow {
-    event Locked(IERC6909 source, uint256 tokenId);
-    event Unlocked(IERC6909 source, uint256 tokenId);
-    event Attached(uint160 nftId, uint256 elementId);
-    event Detached(uint160 nftId, uint256 elementId);
+    event Locked(IERC6909 indexed source, uint256 indexed tokenId);
+    event Unlocked(IERC6909 indexed source, uint256 indexed tokenId);
+    event Attached(uint160 indexed nftId, uint256 indexed elementId);
+    event Detached(uint160 indexed nftId, uint256 indexed elementId);
 
     /// @notice NFT already locked in the escrow.
     error AlreadyLocked();
