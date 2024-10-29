@@ -73,6 +73,14 @@ contract TestCommon is Test {
         );
     }
 
+    function _mockRenormalizeDebt(bytes32 interestRateId, int128 pre, int128 post) internal {
+        vm.mockCall(
+            address(linearAccrual),
+            abi.encodeWithSelector(ILinearAccrual.renormalizeDebt.selector, INTEREST_RATE_A, interestRateId, pre),
+            abi.encode(post)
+        );
+    }
+
     function _mockDebt(int128 expectedDebt) internal {
         vm.mockCall(
             address(linearAccrual),
@@ -155,11 +163,35 @@ contract TestClose is TestCommon {
 }
 
 contract TestUpdateInterestRate is TestCommon {
-    function testSuccess() public {}
+    bytes32 constant INTEREST_RATE_B = bytes32(uint256(2));
+
+    function testSuccess() public {
+        _mockAttach(FIRST_ITEM_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+
+        _mockRenormalizeDebt(INTEREST_RATE_B, 0, 1);
+        vm.expectEmit();
+        emit IPortfolio.InterestRateUpdated(POOL_A, FIRST_ITEM_ID, INTEREST_RATE_B);
+        portfolio.updateInterestRate(POOL_A, FIRST_ITEM_ID, INTEREST_RATE_B);
+
+        assertEq(_getItem(FIRST_ITEM_ID).normalizedDebt, 1);
+        assertEq(_getItem(FIRST_ITEM_ID).info.interestRateId, INTEREST_RATE_B);
+    }
 }
 
 contract TestUpdateValutation is TestCommon {
-    function testSuccess() public {}
+    IERC7726 newValuation = IERC7726(address(101));
+
+    function testSuccess() public {
+        _mockAttach(FIRST_ITEM_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+
+        vm.expectEmit();
+        emit IPortfolio.ValuationUpdated(POOL_A, FIRST_ITEM_ID, newValuation);
+        portfolio.updateValuation(POOL_A, FIRST_ITEM_ID, newValuation);
+
+        assertEq(address(_getItem(FIRST_ITEM_ID).info.valuation), address(newValuation));
+    }
 }
 
 contract TestIncreaseDebt is TestCommon {
