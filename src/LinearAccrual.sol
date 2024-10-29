@@ -29,13 +29,33 @@ contract LinearAccrual is ILinearAccrual {
     mapping(bytes32 rateId => Group group) public groups;
 
     /// @inheritdoc ILinearAccrual
-    function getRateId(uint128 rate, CompoundingPeriod period) public pure returns (bytes32) {
-        Group memory group = Group(rate, period);
+    function drip(bytes32 rateId) public {
+        Rate storage rate = rates[rateId];
+        require(rate.accumulatedRate != 0, RateIdMissing(rateId));
 
-        return keccak256(abi.encode(group));
+        // Short circuit to save gas
+        if (rate.lastUpdated == uint64(block.timestamp)) {
+            return;
+        }
+
+        // Infallible since group storage exists iff rate storage exists
+        Group memory group = groups[rateId];
+        require(group.ratePerPeriod != 0, "group-missing");
+
+        // Determine number of full compounding periods passed since last update
+        uint64 periodsPassed = Compounding.getPeriodsPassed(group.period, rate.lastUpdated);
+
+        if (periodsPassed > 0) {
+            rate.accumulatedRate = group.ratePerPeriod.rpow(periodsPassed, MathLib.One18).mulDiv(
+                rate.accumulatedRate, MathLib.One18
+            ).toUint128();
+
+            emit RateAccumulated(rateId, rate.accumulatedRate, periodsPassed);
+            rate.lastUpdated = uint64(block.timestamp);
+        }
     }
-    /// @inheritdoc ILinearAccrual
 
+    /// @inheritdoc ILinearAccrual
     function registerRateId(uint128 ratePerPeriod, CompoundingPeriod period) public returns (bytes32 rateId) {
         Group memory group = Group(ratePerPeriod, period);
 
@@ -51,7 +71,14 @@ contract LinearAccrual is ILinearAccrual {
     }
 
     /// @inheritdoc ILinearAccrual
-    function increaseNormalizedDebt(bytes32 rateId, uint128 prevNormalizedDebt, uint128 debtIncrease)
+    function getRateId(uint128 rate, CompoundingPeriod period) public pure returns (bytes32) {
+        Group memory group = Group(rate, period);
+
+        return keccak256(abi.encode(group));
+    }
+
+    /// @inheritdoc ILinearAccrual
+    function getIncreasedNormalizedDebt(bytes32 rateId, uint128 prevNormalizedDebt, uint128 debtIncrease)
         external
         view
         returns (uint128 newNormalizedDebt)
@@ -63,7 +90,7 @@ contract LinearAccrual is ILinearAccrual {
     }
 
     /// @inheritdoc ILinearAccrual
-    function decreaseNormalizedDebt(bytes32 rateId, uint128 prevNormalizedDebt, uint128 debtDecrease)
+    function getDecreasedNormalizedDebt(bytes32 rateId, uint128 prevNormalizedDebt, uint128 debtDecrease)
         external
         view
         returns (uint128 newNormalizedDebt)
@@ -74,7 +101,7 @@ contract LinearAccrual is ILinearAccrual {
     }
 
     /// @inheritdoc ILinearAccrual
-    function renormalizeDebt(bytes32 oldRateId, bytes32 newRateId, uint128 prevNormalizedDebt)
+    function getRenormalizedDebt(bytes32 oldRateId, bytes32 newRateId, uint128 prevNormalizedDebt)
         external
         view
         returns (uint128 newNormalizedDebt)
@@ -91,35 +118,6 @@ contract LinearAccrual is ILinearAccrual {
         _requireUpdatedRateId(rateId);
 
         return normalizedDebt.mulDiv(rates[rateId].accumulatedRate, MathLib.One18);
-    }
-
-    /// @notice     Updates the accumulated rate of the corresponding identifier based on the periods which have passed
-    /// since the last update
-    /// @param      rateId the id of the interest rate group
-    function drip(bytes32 rateId) public {
-        Rate storage rate = rates[rateId];
-        require(rate.accumulatedRate != 0, RateIdMissing(rateId));
-
-        // Short circuit to save gas
-        if (rate.lastUpdated == uint64(block.timestamp)) {
-            return;
-        }
-
-        // Infallible since group storage exists iff rate storage exists
-        Group memory group = groups[rateId];
-        require(group.ratePerPeriod != 0, "group-missing");
-
-        // Determine number of full compounding periods passed since last update
-        uint256 periodsPassed = Compounding.getPeriodsPassed(group.period, rate.lastUpdated);
-
-        if (periodsPassed > 0) {
-            rate.accumulatedRate = group.ratePerPeriod.rpow(periodsPassed, MathLib.One18).mulDiv(
-                rate.accumulatedRate, MathLib.One18
-            ).toUint128();
-
-            emit RateAccumulated(rateId, rate.accumulatedRate, periodsPassed);
-            rate.lastUpdated = uint64(block.timestamp);
-        }
     }
 
     function _requireUpdatedRateId(bytes32 rateId) internal view {

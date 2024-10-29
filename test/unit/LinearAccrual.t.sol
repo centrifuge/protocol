@@ -51,32 +51,35 @@ contract LinearAccrualTest is Test {
         linearAccrual.registerRateId(rate, period);
     }
 
-    function testIncreaseNormalizedDebt(uint128 rate, uint128 prevNormalizedDebt, uint128 debtIncrease, uint8 periodInt)
-        public
-    {
+    function testGetIncreasedNormalizedDebt(
+        uint128 rate,
+        uint128 prevNormalizedDebt,
+        uint128 debtIncrease,
+        uint8 periodInt
+    ) public {
         rate = uint128(bound(rate, 10 ** 10, 10 ** 20));
         debtIncrease = uint128(bound(debtIncrease, 0, 10 ** 20));
         vm.assume(prevNormalizedDebt < type(uint128).max - debtIncrease / rate);
         CompoundingPeriod period = CompoundingPeriod(bound(periodInt, 0, 1));
 
         bytes32 rateId = linearAccrual.registerRateId(rate, period);
-        uint128 newDebt = linearAccrual.increaseNormalizedDebt(rateId, prevNormalizedDebt, debtIncrease);
+        uint128 newDebt = linearAccrual.getIncreasedNormalizedDebt(rateId, prevNormalizedDebt, debtIncrease);
         uint128 expectedDebt = prevNormalizedDebt + (debtIncrease / rate);
         assertEq(newDebt, expectedDebt, "Incorrect new normalized debt");
 
         vm.warp(block.timestamp + 1 seconds);
         vm.expectRevert();
-        linearAccrual.increaseNormalizedDebt(rateId, prevNormalizedDebt, debtIncrease);
+        linearAccrual.getIncreasedNormalizedDebt(rateId, prevNormalizedDebt, debtIncrease);
     }
 
-    function testIncreaseNormalizedDebtReverts(uint128 rate, uint8 periodInt) public {
+    function testGetIncreasedNormalizedDebtReverts(uint128 rate, uint8 periodInt) public {
         rate = uint128(bound(rate, 10 ** 10, 10 ** 20));
         CompoundingPeriod period = CompoundingPeriod(bound(periodInt, 0, 1));
         bytes32 rateId = linearAccrual.getRateId(rate, period);
 
         // Registration missing
         vm.expectRevert(abi.encodeWithSelector(ILinearAccrual.RateIdMissing.selector, rateId));
-        linearAccrual.increaseNormalizedDebt(rateId, 0, 0);
+        linearAccrual.getIncreasedNormalizedDebt(rateId, 0, 0);
 
         linearAccrual.registerRateId(rate, period);
         vm.warp(block.timestamp + 1 seconds);
@@ -85,12 +88,15 @@ contract LinearAccrualTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(ILinearAccrual.RateIdOutdated.selector, rateId, block.timestamp - 1 seconds)
         );
-        linearAccrual.increaseNormalizedDebt(rateId, 0, 0);
+        linearAccrual.getIncreasedNormalizedDebt(rateId, 0, 0);
     }
 
-    function testDecreaseNormalizedDebt(uint128 rate, uint128 prevNormalizedDebt, uint128 debtDecrease, uint8 periodInt)
-        public
-    {
+    function testGetDecreasedNormalizedDebt(
+        uint128 rate,
+        uint128 prevNormalizedDebt,
+        uint128 debtDecrease,
+        uint8 periodInt
+    ) public {
         rate = uint128(bound(rate, 10 ** 10, 10 ** 20));
         debtDecrease = uint128(bound(debtDecrease, 0, 10 ** 20));
         prevNormalizedDebt = uint128(bound(prevNormalizedDebt, debtDecrease / rate, 10 ** 20));
@@ -99,20 +105,20 @@ contract LinearAccrualTest is Test {
         // Compounding schedule irrelevant since test does not require dripping
         bytes32 rateId = linearAccrual.registerRateId(rate, period);
 
-        uint128 newDebt = linearAccrual.decreaseNormalizedDebt(rateId, prevNormalizedDebt, debtDecrease);
+        uint128 newDebt = linearAccrual.getDecreasedNormalizedDebt(rateId, prevNormalizedDebt, debtDecrease);
         uint128 expectedDebt = prevNormalizedDebt - (debtDecrease / rate);
 
         assertEq(newDebt, expectedDebt, "Incorrect new normalized debt");
     }
 
-    function testDecreaseNormalizedDebtReverts(uint128 rate, uint8 periodInt) public {
+    function testGetDecreasedNormalizedDebtReverts(uint128 rate, uint8 periodInt) public {
         rate = uint128(bound(rate, 10 ** 10, 10 ** 20));
         CompoundingPeriod period = CompoundingPeriod(bound(periodInt, 0, 1));
         bytes32 rateId = linearAccrual.getRateId(rate, period);
 
         // Registration missing
         vm.expectRevert(abi.encodeWithSelector(ILinearAccrual.RateIdMissing.selector, rateId));
-        linearAccrual.decreaseNormalizedDebt(rateId, 0, 0);
+        linearAccrual.getDecreasedNormalizedDebt(rateId, 0, 0);
 
         linearAccrual.registerRateId(rate, period);
         vm.warp(block.timestamp + 1 seconds);
@@ -121,10 +127,10 @@ contract LinearAccrualTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(ILinearAccrual.RateIdOutdated.selector, rateId, block.timestamp - 1 seconds)
         );
-        linearAccrual.decreaseNormalizedDebt(rateId, 0, 0);
+        linearAccrual.getDecreasedNormalizedDebt(rateId, 0, 0);
     }
 
-    function testRenormalizeDebt(uint128 oldRate, uint128 newRate, uint128 prevNormalizedDebt, uint8 periodInt)
+    function testGetRenormalizedDebt(uint128 oldRate, uint128 newRate, uint128 prevNormalizedDebt, uint8 periodInt)
         public
     {
         vm.assume(oldRate != newRate);
@@ -137,11 +143,11 @@ contract LinearAccrualTest is Test {
 
         uint256 oldDebt = linearAccrual.debt(oldRateId, prevNormalizedDebt);
         uint256 expectedNewNormalizedDebt = oldDebt / newRate;
-        uint128 newNormalizedDebt = linearAccrual.renormalizeDebt(oldRateId, newRateId, prevNormalizedDebt);
+        uint128 newNormalizedDebt = linearAccrual.getRenormalizedDebt(oldRateId, newRateId, prevNormalizedDebt);
         assertEq(newNormalizedDebt, expectedNewNormalizedDebt, "Incorrect renormalized debt");
     }
 
-    function testRenormalizeDebtReverts(uint128 oldRate, uint128 newRate) public {
+    function testGetRenormalizedDebtReverts(uint128 oldRate, uint128 newRate) public {
         vm.assume(oldRate != newRate);
         oldRate = uint128(bound(oldRate, 10 ** 10, 10 ** 20));
         newRate = uint128(bound(newRate, 10 ** 10, 10 ** 20));
@@ -151,11 +157,11 @@ contract LinearAccrualTest is Test {
 
         // Registration missing
         vm.expectRevert(abi.encodeWithSelector(ILinearAccrual.RateIdMissing.selector, oldRateId));
-        linearAccrual.renormalizeDebt(oldRateId, newRateId, 0);
+        linearAccrual.getRenormalizedDebt(oldRateId, newRateId, 0);
 
         linearAccrual.registerRateId(oldRate, period);
         vm.expectRevert(abi.encodeWithSelector(ILinearAccrual.RateIdMissing.selector, newRateId));
-        linearAccrual.renormalizeDebt(oldRateId, newRateId, 1);
+        linearAccrual.getRenormalizedDebt(oldRateId, newRateId, 1);
 
         linearAccrual.registerRateId(newRate, period);
         vm.warp(block.timestamp + 1 seconds);
@@ -164,13 +170,13 @@ contract LinearAccrualTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(ILinearAccrual.RateIdOutdated.selector, oldRateId, block.timestamp - 1 seconds)
         );
-        linearAccrual.renormalizeDebt(oldRateId, newRateId, 2);
+        linearAccrual.getRenormalizedDebt(oldRateId, newRateId, 2);
 
         linearAccrual.drip(oldRateId);
         vm.expectRevert(
             abi.encodeWithSelector(ILinearAccrual.RateIdOutdated.selector, newRateId, block.timestamp - 1 seconds)
         );
-        linearAccrual.renormalizeDebt(oldRateId, newRateId, 3);
+        linearAccrual.getRenormalizedDebt(oldRateId, newRateId, 3);
     }
 
     function testDebt(uint128 rate, uint128 normalizedDebt, uint8 periodInt) public {
