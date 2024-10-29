@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import {LinearAccrual, Group} from "src/LinearAccrual.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {ILinearAccrual} from "src/interfaces/ILinearAccrual.sol";
-import "src/Compounding.sol";
+import {CompoundingPeriod} from "src/Compounding.sol";
 import {d18, D18, mulInt} from "src/types/D18.sol";
 
 contract LinearAccrualTest is Test {
@@ -36,11 +36,11 @@ contract LinearAccrualTest is Test {
 
         (D18 ratePerPeriod, CompoundingPeriod retrievedPeriod) = linearAccrual.groups(rateId);
         assertEq(ratePerPeriod.inner(), rate.inner(), "Rate per period mismatch");
-        assertEq(uint256(retrievedPeriod), uint256(period), "Period mismatch");
+        assertEq(uint8(retrievedPeriod), uint8(period), "Period mismatch");
 
         (D18 accumulatedRate, uint64 lastUpdated) = linearAccrual.rates(rateId);
         assertEq(accumulatedRate.inner(), rate.inner(), "Initial accumulated rate mismatch");
-        assertEq(uint256(lastUpdated), block.timestamp, "Last updated mismatch");
+        assertEq(lastUpdated, uint64(block.timestamp), "Last updated mismatch");
     }
 
     function testRegisterRateIdReverts(uint128 rate128, uint8 periodInt) public {
@@ -141,12 +141,13 @@ contract LinearAccrualTest is Test {
         D18 oldRate = d18(uint128(bound(oldRate128, 1e10, 1e20)));
         D18 newRate = d18(uint128(bound(newRate128, 1e10, 1e20)));
         CompoundingPeriod period = CompoundingPeriod(bound(periodInt, 0, 1));
+        prevNormalizedDebt = uint128(bound(prevNormalizedDebt, 0, type(uint128).max / newRate.inner()));
 
         bytes32 oldRateId = linearAccrual.registerRateId(oldRate, period);
         bytes32 newRateId = linearAccrual.registerRateId(newRate, period);
 
-        uint256 oldDebt = linearAccrual.debt(oldRateId, prevNormalizedDebt);
-        uint256 expectedNewNormalizedDebt = oldDebt / newRate.inner();
+        uint128 oldDebt = linearAccrual.debt(oldRateId, prevNormalizedDebt);
+        uint128 expectedNewNormalizedDebt = oldDebt / newRate.inner();
         uint128 newNormalizedDebt = linearAccrual.getRenormalizedDebt(oldRateId, newRateId, prevNormalizedDebt);
         assertEq(newNormalizedDebt, expectedNewNormalizedDebt, "Incorrect renormalized debt");
     }
@@ -187,10 +188,11 @@ contract LinearAccrualTest is Test {
         uint128 precision = 1e18;
         D18 rate = d18(uint128(bound(rate128, 1e10, 1e20)));
         CompoundingPeriod period = CompoundingPeriod(bound(periodInt, 0, 1));
+        normalizedDebt = uint128(bound(normalizedDebt, 0, type(uint128).max / rate.inner()));
 
         bytes32 rateId = linearAccrual.registerRateId(rate, period);
-        uint256 currentDebt = linearAccrual.debt(rateId, normalizedDebt);
-        uint256 expectedDebt = uint256(normalizedDebt) * rate.inner() / precision;
+        uint128 currentDebt = linearAccrual.debt(rateId, normalizedDebt);
+        uint128 expectedDebt = normalizedDebt * rate.inner() / precision;
         assertEq(currentDebt, expectedDebt, "Incorrect debt calculation");
     }
 

@@ -66,5 +66,5 @@ interface ILinearAccrual {
     /// accumulated rate.
     /// @param      rateId Identifier of the rate group
     /// @param      normalizedDebt Normalized debt from which we derive the debt
-    function debt(bytes32 rateId, uint128 normalizedDebt) external view returns (uint256);
+    function debt(bytes32 rateId, uint128 normalizedDebt) external view returns (uint128);
 }

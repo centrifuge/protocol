@@ -47,8 +47,11 @@ contract LinearAccrual is ILinearAccrual {
         uint64 periodsPassed = Compounding.getPeriodsPassed(group.period, rate.lastUpdated);
 
         if (periodsPassed > 0) {
-            uint256 x = uint256(group.ratePerPeriod.inner()).rpow(periodsPassed, d18(1e18).inner());
-            rate.accumulatedRate = d18(rate.accumulatedRate.mulInt(x.toUint128()));
+            rate.accumulatedRate = d18(
+                rate.accumulatedRate.mulInt(
+                    uint256(group.ratePerPeriod.inner()).rpow(periodsPassed, d18(1e18).inner()).toUint128()
+                )
+            );
 
             emit RateAccumulated(rateId, rate.accumulatedRate, periodsPassed);
             rate.lastUpdated = uint64(block.timestamp);
@@ -108,15 +111,14 @@ contract LinearAccrual is ILinearAccrual {
         _requireUpdatedRateId(oldRateId);
         _requireUpdatedRateId(newRateId);
 
-        uint256 debt_ = debt(oldRateId, prevNormalizedDebt);
-        return (debt_ / rates[newRateId].accumulatedRate.inner()).toUint128();
+        return (debt(oldRateId, prevNormalizedDebt) / rates[newRateId].accumulatedRate.inner()).toUint128();
     }
 
     /// @inheritdoc ILinearAccrual
-    function debt(bytes32 rateId, uint128 normalizedDebt) public view returns (uint256) {
+    function debt(bytes32 rateId, uint128 normalizedDebt) public view returns (uint128) {
         _requireUpdatedRateId(rateId);
 
-        return normalizedDebt.mulDiv(rates[rateId].accumulatedRate.inner(), 1e18);
+        return normalizedDebt.mulDiv(rates[rateId].accumulatedRate.inner(), 1e18).toUint128();
     }
 
     function _requireUpdatedRateId(bytes32 rateId) internal view {
