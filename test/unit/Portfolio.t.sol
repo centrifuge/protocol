@@ -81,11 +81,11 @@ contract TestCommon is Test {
         );
     }
 
-    function _mockDebt(int128 expectedDebt) internal {
+    function _mockDebt(int128 pre, int128 post) internal {
         vm.mockCall(
             address(linearAccrual),
-            abi.encodeWithSelector(ILinearAccrual.debt.selector, INTEREST_RATE_A, 0),
-            abi.encode(expectedDebt)
+            abi.encodeWithSelector(ILinearAccrual.debt.selector, INTEREST_RATE_A, pre),
+            abi.encode(post)
         );
     }
 
@@ -131,7 +131,7 @@ contract TestClose is TestCommon {
         portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
 
         _mockDetach();
-        _mockDebt(0);
+        _mockDebt(0, 0);
         vm.expectEmit();
         emit IPortfolio.Closed(POOL_A, FIRST_ITEM_ID);
         portfolio.close(POOL_A, FIRST_ITEM_ID);
@@ -156,7 +156,7 @@ contract TestClose is TestCommon {
         _mockAttach(FIRST_ITEM_ID);
         portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
 
-        _mockDebt(1);
+        _mockDebt(0, 1);
         vm.expectRevert(abi.encodeWithSelector(IPortfolio.ItemCanNotBeClosed.selector));
         portfolio.close(POOL_A, FIRST_ITEM_ID);
     }
@@ -226,19 +226,67 @@ contract TestIncreaseDebt is TestCommon {
         assertEq(_getItem(FIRST_ITEM_ID).normalizedDebt, int128(AMOUNT * 2));
     }
 
-    function testErrOverIncreased() public {
+    function testErrTooMuchDebt() public {
         _mockAttach(FIRST_ITEM_ID);
         portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
 
         _mockQuoteForQuantities(AMOUNT, ITEM_INFO.quantity + d18(1));
         _mockModifyNormalizedDebt(int128(AMOUNT), 0, int128(AMOUNT));
-        vm.expectRevert(abi.encodeWithSelector(IPortfolio.OverIncreased.selector));
+        vm.expectRevert(abi.encodeWithSelector(IPortfolio.TooMuchDebt.selector));
         portfolio.increaseDebt(POOL_A, FIRST_ITEM_ID, AMOUNT);
     }
 }
 
 contract TestDecreaseDebt is TestCommon {
-    function testSuccess() public {}
+    uint128 constant INCREASE_AMOUNT = 20;
+    D18 immutable INCREASE_QUANTITY = d18(8);
+
+    uint128 constant DECREASE_AMOUNT = 15;
+    D18 immutable DECREASE_QUANTITY = d18(6);
+
+    uint128 constant ITEM_INTEREST = 10;
+    uint128 constant INTEREST = 8;
+
+    function _prepareItem() private {
+        _mockAttach(FIRST_ITEM_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+
+        _mockQuoteForQuantities(INCREASE_AMOUNT, INCREASE_QUANTITY);
+        _mockModifyNormalizedDebt(int128(INCREASE_AMOUNT), 0, int128(INCREASE_AMOUNT));
+        portfolio.increaseDebt(POOL_A, FIRST_ITEM_ID, INCREASE_AMOUNT);
+    }
+
+    function testWithoutInterest() public {
+        _prepareItem();
+
+        _mockDebt(int128(INCREASE_AMOUNT), int128(INCREASE_AMOUNT));
+        _mockQuoteForQuantities(DECREASE_AMOUNT, DECREASE_QUANTITY);
+        _mockModifyNormalizedDebt(
+            -int128(DECREASE_AMOUNT), int128(INCREASE_AMOUNT), int128(INCREASE_AMOUNT - DECREASE_AMOUNT)
+        );
+        vm.expectEmit();
+        emit IPortfolio.DebtDecreased(POOL_A, FIRST_ITEM_ID, DECREASE_AMOUNT, 0);
+        portfolio.decreaseDebt(POOL_A, FIRST_ITEM_ID, DECREASE_AMOUNT, 0);
+
+        assertEq(_getItem(FIRST_ITEM_ID).outstandingQuantity.inner(), (INCREASE_QUANTITY - DECREASE_QUANTITY).inner());
+        assertEq(_getItem(FIRST_ITEM_ID).normalizedDebt, int128(INCREASE_AMOUNT - DECREASE_AMOUNT));
+    }
+
+    function testWithInterest() public {
+        _prepareItem();
+
+        _mockDebt(int128(INCREASE_AMOUNT), int128(INCREASE_AMOUNT + ITEM_INTEREST));
+        _mockQuoteForQuantities(0, d18(0));
+        _mockModifyNormalizedDebt(
+            -int128(INTEREST), int128(INCREASE_AMOUNT), int128(INCREASE_AMOUNT + ITEM_INTEREST - INTEREST)
+        );
+        vm.expectEmit();
+        emit IPortfolio.DebtDecreased(POOL_A, FIRST_ITEM_ID, 0, INTEREST);
+        portfolio.decreaseDebt(POOL_A, FIRST_ITEM_ID, 0, INTEREST);
+
+        assertEq(_getItem(FIRST_ITEM_ID).outstandingQuantity.inner(), INCREASE_QUANTITY.inner());
+        assertEq(_getItem(FIRST_ITEM_ID).normalizedDebt, int128(INCREASE_AMOUNT + ITEM_INTEREST - INTEREST));
+    }
 }
 
 contract TestTransferDebt is TestCommon {

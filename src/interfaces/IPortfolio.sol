@@ -40,7 +40,13 @@ interface IPortfolio is IValuation {
     error ItemCanNotBeClosed();
 
     /// @notice Dispatched when the item is increased more than the item's quantity.
-    error OverIncreased();
+    error TooMuchDebt();
+
+    /// @notice Dispatched when the item is decreased more than the outstanding quantity.
+    error TooMuchPrincipal();
+
+    /// @notice Dispatched when the item is decreased with more interest than required.
+    error TooMuchInterest();
 
     /// @notice Dispatched after the creation of an item.
     event Created(uint64 indexed poolId, uint32 itemId, IERC6909 source, uint256 tokenId);
