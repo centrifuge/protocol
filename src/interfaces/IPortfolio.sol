@@ -99,12 +99,17 @@ interface IPortfolio is IValuation {
     /// Depending on the configured interest rate, the debt will increase over the time based on the amount given.
     function increaseDebt(uint64 poolId, uint32 itemId, uint128 amount) external;
 
-    /// @notice Decrease the debt of an item
+    /// @notice Decrease the principal debt of an item
     /// @param poolId The identifier of the pool
     /// @param itemId The identifier of the item for which we decrease the debt
     /// @param principal Amount used to decrease the base debt amount from where the interest is accrued.
+    function decreasePrincipalDebt(uint64 poolId, uint32 itemId, uint128 principal) external;
+
+    /// @notice Decrease the interest debt of an item
+    /// @param poolId The identifier of the pool
+    /// @param itemId The identifier of the item for which we decrease the debt
     /// @param interest Amount used to decrease the pending interest accrued in this item.
-    function decreaseDebt(uint64 poolId, uint32 itemId, uint128 principal, uint128 interest) external;
+    function decreaseInterestDebt(uint64 poolId, uint32 itemId, uint128 interest) external;
 
     /// @notice Transfer debt `from` an item `to` another item.
     /// @param poolId The identifier of the pool

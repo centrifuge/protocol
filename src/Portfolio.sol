@@ -116,24 +116,32 @@ contract Portfolio is Auth, IPortfolio {
     }
 
     /// @inheritdoc IPortfolio
-    function decreaseDebt(uint64 poolId, uint32 itemId, uint128 principal, uint128 interest) public auth {
+    function decreasePrincipalDebt(uint64 poolId, uint32 itemId, uint128 principal) public auth {
         Item storage item = _getItem(poolId, itemId);
 
         D18 quantity = _getQuantity(poolId, item, principal);
         require(quantity <= item.outstandingQuantity, TooMuchPrincipal());
 
+        item.outstandingQuantity = item.outstandingQuantity - quantity;
+        item.normalizedDebt =
+            linearAccrual.modifyNormalizedDebt(item.info.interestRateId, item.normalizedDebt, -principal.toInt128());
+
+        emit DebtDecreased(poolId, itemId, principal, 0);
+    }
+
+    /// @inheritdoc IPortfolio
+    function decreaseInterestDebt(uint64 poolId, uint32 itemId, uint128 interest) public auth {
+        Item storage item = _getItem(poolId, itemId);
+
+        uint128 expectedPrincipal = _getAmount(poolId, item, item.outstandingQuantity, PricingMode.Real);
         int128 debt_ = linearAccrual.debt(item.info.interestRateId, item.normalizedDebt);
-        int128 outstandingInterest = debt_ - principal.toInt128();
+        int128 outstandingInterest = debt_ - expectedPrincipal.toInt128();
         require(interest.toInt128() <= outstandingInterest, TooMuchInterest());
 
-        // TODO: Handle the case when the current debt is negative
+        item.normalizedDebt =
+            linearAccrual.modifyNormalizedDebt(item.info.interestRateId, item.normalizedDebt, -interest.toInt128());
 
-        item.outstandingQuantity = item.outstandingQuantity - quantity;
-        item.normalizedDebt = linearAccrual.modifyNormalizedDebt(
-            item.info.interestRateId, item.normalizedDebt, -(principal + interest).toInt128()
-        );
-
-        emit DebtDecreased(poolId, itemId, principal, interest);
+        emit DebtDecreased(poolId, itemId, 0, interest);
     }
 
     /// @inheritdoc IPortfolio
@@ -141,7 +149,8 @@ contract Portfolio is Auth, IPortfolio {
         external
         auth
     {
-        decreaseDebt(poolId, fromItemId, principal, interest);
+        decreasePrincipalDebt(poolId, fromItemId, principal);
+        decreaseInterestDebt(poolId, fromItemId, interest);
         increaseDebt(poolId, toItemId, principal + interest);
     }
 
@@ -155,7 +164,7 @@ contract Portfolio is Auth, IPortfolio {
     function itemValuation(uint64 poolId, uint32 itemId, PricingMode mode) external view returns (uint128 value) {
         Item storage item = _getItem(poolId, itemId);
 
-        return _getValue(poolId, item, item.outstandingQuantity, mode);
+        return _getAmount(poolId, item, item.outstandingQuantity, mode);
     }
 
     /// @inheritdoc IValuation
@@ -164,7 +173,7 @@ contract Portfolio is Auth, IPortfolio {
             Item storage item = items[poolId][itemPos];
 
             if (item.isValid) {
-                value += _getValue(poolId, item, item.outstandingQuantity, mode);
+                value += _getAmount(poolId, item, item.outstandingQuantity, mode);
             }
         }
     }
@@ -186,7 +195,7 @@ contract Portfolio is Auth, IPortfolio {
     }
 
     /// @dev The pool currency amount for some item quantity.
-    function _getValue(uint64 poolId, Item storage item, D18 quantity, PricingMode mode)
+    function _getAmount(uint64 poolId, Item storage item, D18 quantity, PricingMode mode)
         internal
         view
         returns (uint128 amount)
