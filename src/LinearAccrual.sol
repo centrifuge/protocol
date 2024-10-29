@@ -63,14 +63,13 @@ contract LinearAccrual is ILinearAccrual {
         Group memory group = Group(ratePerPeriod, period);
 
         rateId = keccak256(abi.encode(group));
-        if (groups[rateId].ratePerPeriod.inner() == 0) {
-            groups[rateId] = group;
-            // TODO(@wischli): Some source stated another timestamp should be used instead of block.timestamp
-            rates[rateId] = Rate(ratePerPeriod, uint64(block.timestamp));
-            emit NewRateId(rateId, ratePerPeriod, period);
-        } else {
-            revert RateIdExists(rateId, ratePerPeriod, period);
-        }
+
+        require(groups[rateId].ratePerPeriod.inner() == 0, RateIdExists(rateId, ratePerPeriod, period));
+
+        groups[rateId] = group;
+        rates[rateId] = Rate(ratePerPeriod, uint64(block.timestamp));
+
+        emit NewRateId(rateId, ratePerPeriod, period);
     }
 
     /// @inheritdoc ILinearAccrual
