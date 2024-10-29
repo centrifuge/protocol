@@ -109,6 +109,34 @@ contract TestCommon is Test {
     }
 }
 
+contract TestFile is TestCommon {
+    address constant NEW_ADDRESS = address(1234);
+
+    function testPoolRegistry() public {
+        vm.expectEmit();
+        emit IPortfolio.File("poolRegistry", NEW_ADDRESS);
+        portfolio.file("poolRegistry", NEW_ADDRESS);
+
+        assertEq(address(portfolio.poolRegistry()), NEW_ADDRESS);
+    }
+
+    function testLinearAccrual() public {
+        vm.expectEmit();
+        emit IPortfolio.File("linearAccrual", NEW_ADDRESS);
+        portfolio.file("linearAccrual", NEW_ADDRESS);
+
+        assertEq(address(portfolio.linearAccrual()), NEW_ADDRESS);
+    }
+
+    function testNftEscrow() public {
+        vm.expectEmit();
+        emit IPortfolio.File("nftEscrow", NEW_ADDRESS);
+        portfolio.file("nftEscrow", NEW_ADDRESS);
+
+        assertEq(address(portfolio.nftEscrow()), NEW_ADDRESS);
+    }
+}
+
 contract TestCreate is TestCommon {
     function testSuccess() public {
         _mockAttach(FIRST_ITEM_ID);

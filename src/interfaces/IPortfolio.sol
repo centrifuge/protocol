@@ -33,6 +33,9 @@ interface IPortfolio is IValuation {
         IERC7726 valuation;
     }
 
+    /// Emit when the `what` parameter of `file()` is not supported by the implementation.
+    error FileUnrecognizedWhat();
+
     /// @notice Dispatched when the item can not be found.
     error ItemNotFound();
 
@@ -47,6 +50,9 @@ interface IPortfolio is IValuation {
 
     /// @notice Dispatched when the item is decreased with more interest than required.
     error TooMuchInterest();
+
+    /// @notice Emit when a call to `file()` was performed.
+    event File(bytes32 what, address addr);
 
     /// @notice Dispatched after the creation of an item.
     event Created(uint64 indexed poolId, uint32 itemId, IERC6909 source, uint256 tokenId);
@@ -65,6 +71,12 @@ interface IPortfolio is IValuation {
 
     /// @notice Dispatched when the item debt has been decreased.
     event DebtDecreased(uint64 indexed poolId, uint32 itemId, uint128 principal, uint128 interest);
+
+    /// @notice Updates a contract parameter.
+    /// @param what Name of the parameter to update.
+    /// Accepts a bytes32 representation of 'poolRegistry', 'linearAccrual' strings values.
+    /// @param data New value given to the `what` parameter.
+    function file(bytes32 what, address data) external;
 
     /// @notice Creates a new item.
     /// @param poolId The identifier of the pool

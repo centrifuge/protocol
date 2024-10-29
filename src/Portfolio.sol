@@ -32,8 +32,6 @@ contract Portfolio is Auth, IPortfolio {
     /// A list of items (a portfolio) per pool.
     mapping(uint64 poolId => Item[]) public items;
 
-    event File(bytes32, address);
-
     constructor(address owner, IPoolRegistry poolRegistry_, ILinearAccrual linearAccrual_, INftEscrow nftEscrow_)
         Auth(owner)
     {
@@ -42,12 +40,12 @@ contract Portfolio is Auth, IPortfolio {
         nftEscrow = nftEscrow_;
     }
 
-    /// @notice Updates a contract parameter
-    /// @param what Accepts a bytes32 representation of 'poolRegistry', 'linearAccrual'
+    /// @inheritdoc IPortfolio
     function file(bytes32 what, address data) external auth {
         if (what == "poolRegistry") poolRegistry = IPoolRegistry(data);
         else if (what == "linearAccrual") linearAccrual = ILinearAccrual(data);
-        else revert("Portfolio/file-unrecognized-param");
+        else if (what == "nftEscrow") nftEscrow = INftEscrow(data);
+        else revert FileUnrecognizedWhat();
         emit File(what, data);
     }
 
