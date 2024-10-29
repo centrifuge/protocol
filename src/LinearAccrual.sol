@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {ILinearAccrual} from "src/interfaces/ILinearAccrual.sol";
-import {Compounding, CompoundingPeriod} from "src/Compounding.sol";
+import {Compounding, CompoundingPeriod} from "src/libraries/Compounding.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {d18, D18, mulInt} from "src/types/D18.sol";
 

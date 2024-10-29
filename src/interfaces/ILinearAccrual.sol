@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
-import {CompoundingPeriod} from "../Compounding.sol";
+import {CompoundingPeriod} from "src/libraries/Compounding.sol";
 import {D18} from "src/types/D18.sol";
 
 interface ILinearAccrual {

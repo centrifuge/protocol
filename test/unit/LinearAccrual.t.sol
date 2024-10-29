@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import {LinearAccrual, Group} from "src/LinearAccrual.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {ILinearAccrual} from "src/interfaces/ILinearAccrual.sol";
-import {CompoundingPeriod} from "src/Compounding.sol";
+import {CompoundingPeriod} from "src/libraries/Compounding.sol";
 import {d18, D18, mulInt} from "src/types/D18.sol";
 
 contract LinearAccrualTest is Test {
