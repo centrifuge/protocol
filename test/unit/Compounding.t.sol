@@ -28,18 +28,18 @@ contract TestCompounding is Test {
         _testGetPeriodsBeforePeriodIncrement(period);
     }
 
-    function testGetPeriodsIntervals(uint8 periodInt, uint256 start, uint256 end) public {
+    function testGetPeriodsIntervals(uint8 periodInt, uint64 start, uint64 end) public {
         vm.assume(start < end);
         CompoundingPeriod period =
             CompoundingPeriod(bound(periodInt, uint8(CompoundingPeriod.Secondly), uint8(CompoundingPeriod.Daily)));
-        start = uint256(bound(start, 2, type(uint128).max / Compounding.getSeconds(CompoundingPeriod.Daily)));
-        end = uint256(bound(end, start + 1, type(uint128).max / Compounding.getSeconds(CompoundingPeriod.Daily)));
+        start = uint64(bound(start, 2, type(uint64).max / Compounding.getSeconds(CompoundingPeriod.Daily)));
+        end = uint64(bound(end, start + 1, type(uint64).max / Compounding.getSeconds(CompoundingPeriod.Daily)));
         _testGetPeriodsPassed(period, start, end);
     }
 
     function _testGetPeriodsZero(CompoundingPeriod period) internal view {
         require(
-            Compounding.getPeriodsPassed(period, block.timestamp) == 0,
+            Compounding.getPeriodsPassed(period, uint64(block.timestamp)) == 0,
             string(
                 abi.encodePacked(
                     "getPeriodsPassed should return 0 for ",
@@ -51,7 +51,7 @@ contract TestCompounding is Test {
     }
 
     function _testGetPeriodsOne(CompoundingPeriod period) internal {
-        uint256 periodLength = Compounding.getSeconds(period);
+        uint64 periodLength = Compounding.getSeconds(period);
 
         vm.warp(periodLength);
         require(
@@ -81,7 +81,7 @@ contract TestCompounding is Test {
     }
 
     function _testGetPeriodsBeforePeriodIncrement(CompoundingPeriod period) internal {
-        uint256 periodLength = Compounding.getSeconds(period);
+        uint64 periodLength = Compounding.getSeconds(period);
 
         vm.warp(periodLength - 1);
         require(
@@ -96,8 +96,8 @@ contract TestCompounding is Test {
         );
     }
 
-    function _testGetSeconds(CompoundingPeriod period, uint256 expectedSeconds) internal pure {
-        uint256 compoundingSeconds = Compounding.getSeconds(period);
+    function _testGetSeconds(CompoundingPeriod period, uint64 expectedSeconds) internal pure {
+        uint64 compoundingSeconds = Compounding.getSeconds(period);
         require(
             compoundingSeconds == expectedSeconds,
             string(
@@ -108,12 +108,12 @@ contract TestCompounding is Test {
         );
     }
 
-    function _testGetPeriodsPassed(CompoundingPeriod period, uint256 start, uint256 end) internal {
+    function _testGetPeriodsPassed(CompoundingPeriod period, uint64 start, uint64 end) internal {
         require(end > start, "end must be greater than start");
-        uint256 periodLength = Compounding.getSeconds(period);
+        uint64 periodLength = Compounding.getSeconds(period);
 
         vm.warp(end * periodLength - 1 seconds);
-        uint256 expectedPeriods = end - start - 1;
+        uint64 expectedPeriods = end - start - 1;
         require(
             Compounding.getPeriodsPassed(period, start * periodLength) == expectedPeriods,
             string(
