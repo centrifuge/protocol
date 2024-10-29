@@ -4,11 +4,12 @@ pragma solidity 0.8.28;
 import {ILinearAccrual} from "src/interfaces/ILinearAccrual.sol";
 import {Compounding, CompoundingPeriod} from "src/Compounding.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
+import {d18, D18, mulInt} from "src/types/D18.sol";
 
 /// @dev Represents the rate accumulator and the timestamp of the last rate update
 struct Rate {
     /// @dev Accumulated rate index over time
-    uint128 accumulatedRate;
+    D18 accumulatedRate;
     /// @dev Timestamp of last rate update
     uint64 lastUpdated;
 }
@@ -16,7 +17,7 @@ struct Rate {
 /// @dev Each group corresponds to a particular compound period and the accrual rate per period
 struct Group {
     /// @dev Rate per compound period
-    uint128 ratePerPeriod;
+    D18 ratePerPeriod;
     /// @dev Duration of compound period
     CompoundingPeriod period;
 }
@@ -31,7 +32,7 @@ contract LinearAccrual is ILinearAccrual {
     /// @inheritdoc ILinearAccrual
     function drip(bytes32 rateId) public {
         Rate storage rate = rates[rateId];
-        require(rate.accumulatedRate != 0, RateIdMissing(rateId));
+        require(rate.accumulatedRate.inner() != 0, RateIdMissing(rateId));
 
         // Short circuit to save gas
         if (rate.lastUpdated == uint64(block.timestamp)) {
@@ -40,15 +41,14 @@ contract LinearAccrual is ILinearAccrual {
 
         // Infallible since group storage exists iff rate storage exists
         Group memory group = groups[rateId];
-        require(group.ratePerPeriod != 0, "group-missing");
+        require(group.ratePerPeriod.inner() != 0, "group-missing");
 
         // Determine number of full compounding periods passed since last update
         uint64 periodsPassed = Compounding.getPeriodsPassed(group.period, rate.lastUpdated);
 
         if (periodsPassed > 0) {
-            rate.accumulatedRate = group.ratePerPeriod.rpow(periodsPassed, MathLib.One18).mulDiv(
-                rate.accumulatedRate, MathLib.One18
-            ).toUint128();
+            uint256 x = uint256(group.ratePerPeriod.inner()).rpow(periodsPassed, d18(1e18).inner());
+            rate.accumulatedRate = d18(rate.accumulatedRate.mulInt(x.toUint128()));
 
             emit RateAccumulated(rateId, rate.accumulatedRate, periodsPassed);
             rate.lastUpdated = uint64(block.timestamp);
@@ -56,11 +56,11 @@ contract LinearAccrual is ILinearAccrual {
     }
 
     /// @inheritdoc ILinearAccrual
-    function registerRateId(uint128 ratePerPeriod, CompoundingPeriod period) public returns (bytes32 rateId) {
+    function registerRateId(D18 ratePerPeriod, CompoundingPeriod period) public returns (bytes32 rateId) {
         Group memory group = Group(ratePerPeriod, period);
 
         rateId = keccak256(abi.encode(group));
-        if (groups[rateId].ratePerPeriod == 0) {
+        if (groups[rateId].ratePerPeriod.inner() == 0) {
             groups[rateId] = group;
             // TODO(@wischli): Some source stated another timestamp should be used instead of block.timestamp
             rates[rateId] = Rate(ratePerPeriod, uint64(block.timestamp));
@@ -71,7 +71,7 @@ contract LinearAccrual is ILinearAccrual {
     }
 
     /// @inheritdoc ILinearAccrual
-    function getRateId(uint128 rate, CompoundingPeriod period) public pure returns (bytes32) {
+    function getRateId(D18 rate, CompoundingPeriod period) public pure returns (bytes32) {
         Group memory group = Group(rate, period);
 
         return keccak256(abi.encode(group));
@@ -85,8 +85,7 @@ contract LinearAccrual is ILinearAccrual {
     {
         _requireUpdatedRateId(rateId);
 
-        // TODO(@review): Discuss if precions better if we do (prev * rate + debtIncrease) / rate
-        return prevNormalizedDebt + debtIncrease / rates[rateId].accumulatedRate;
+        return prevNormalizedDebt + debtIncrease / rates[rateId].accumulatedRate.inner();
     }
 
     /// @inheritdoc ILinearAccrual
@@ -97,7 +96,7 @@ contract LinearAccrual is ILinearAccrual {
     {
         _requireUpdatedRateId(rateId);
 
-        return prevNormalizedDebt - debtDecrease / rates[rateId].accumulatedRate;
+        return prevNormalizedDebt - debtDecrease / rates[rateId].accumulatedRate.inner();
     }
 
     /// @inheritdoc ILinearAccrual
@@ -110,14 +109,14 @@ contract LinearAccrual is ILinearAccrual {
         _requireUpdatedRateId(newRateId);
 
         uint256 debt_ = debt(oldRateId, prevNormalizedDebt);
-        return (debt_ / rates[newRateId].accumulatedRate).toUint128();
+        return (debt_ / rates[newRateId].accumulatedRate.inner()).toUint128();
     }
 
     /// @inheritdoc ILinearAccrual
     function debt(bytes32 rateId, uint128 normalizedDebt) public view returns (uint256) {
         _requireUpdatedRateId(rateId);
 
-        return normalizedDebt.mulDiv(rates[rateId].accumulatedRate, MathLib.One18);
+        return normalizedDebt.mulDiv(rates[rateId].accumulatedRate.inner(), 1e18);
     }
 
     function _requireUpdatedRateId(bytes32 rateId) internal view {
