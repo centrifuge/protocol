@@ -37,6 +37,31 @@ contract TestCompounding is Test {
         _testGetPeriodsPassed(period, start, end);
     }
 
+    function testGetPeriodsUTC() public {
+        // 2024-1-1 00:00:00 UTC
+        uint64 genesis = 1704067200;
+        vm.warp(genesis);
+        assertEq(Compounding.getPeriodsPassed(CompoundingPeriod.Secondly, genesis), 0);
+        assertEq(Compounding.getPeriodsPassed(CompoundingPeriod.Daily, genesis), 0);
+
+        // 2024-1-2 00:00:00 UTC
+        uint64 oneDayAfterGenesis = 1704153600;
+        assertEq(genesis + Compounding.SECONDS_PER_DAY, oneDayAfterGenesis);
+        vm.warp(oneDayAfterGenesis);
+        assertEq(Compounding.getPeriodsPassed(CompoundingPeriod.Secondly, genesis), Compounding.SECONDS_PER_DAY);
+        assertEq(Compounding.getPeriodsPassed(CompoundingPeriod.Daily, genesis), 1);
+
+        // 2024-1-2 23:59:59 UTC
+        vm.warp(oneDayAfterGenesis + Compounding.SECONDS_PER_DAY - 1);
+        assertEq(Compounding.getPeriodsPassed(CompoundingPeriod.Secondly, genesis), 2 * Compounding.SECONDS_PER_DAY - 1);
+        assertEq(Compounding.getPeriodsPassed(CompoundingPeriod.Daily, genesis), 1);
+
+        // 2024-1-3 00:00:00 UTC
+        vm.warp(oneDayAfterGenesis + Compounding.SECONDS_PER_DAY);
+        assertEq(Compounding.getPeriodsPassed(CompoundingPeriod.Secondly, genesis), 2 * Compounding.SECONDS_PER_DAY);
+        assertEq(Compounding.getPeriodsPassed(CompoundingPeriod.Daily, genesis), 2);
+    }
+
     function _testGetPeriodsZero(CompoundingPeriod period) internal view {
         require(
             Compounding.getPeriodsPassed(period, uint64(block.timestamp)) == 0,
