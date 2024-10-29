@@ -108,7 +108,7 @@ jobs:
       - name: Filter directories
         run: |
           sudo apt update && sudo apt install -y lcov
-          lcov --remove lcov.info 'test/*' 'script/*' 'src/libraries/*' --output-file lcov.info --rc lcov_branch_coverage=1 --ignore-errors empty --ignore-errors unused
+          lcov --remove lcov.info 'test/*' 'script/*' --output-file lcov.info --rc lcov_branch_coverage=1 --ignore-errors empty --ignore-errors unused
 
       # This step posts a detailed coverage report as a comment and deletes previous comments on
       # each push. The below step is used to fail coverage if the specified coverage threshold is
