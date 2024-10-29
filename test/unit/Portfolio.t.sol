@@ -244,10 +244,14 @@ contract TestDecreaseDebt is TestCommon {
     uint128 constant DECREASE_AMOUNT = 15;
     D18 immutable DECREASE_QUANTITY = d18(6);
 
+    uint128 constant OVER_DECREASE_AMOUNT = INCREASE_AMOUNT + 5;
+    D18 immutable OVER_DECREASE_QUANTITY = INCREASE_QUANTITY + d18(3);
+
     uint128 constant ITEM_INTEREST = 10;
     uint128 constant INTEREST = 8;
+    uint128 constant OVER_INTEREST = ITEM_INTEREST + 1;
 
-    function _prepareItem() private {
+    function _createAndIncreaseItem() private {
         _mockAttach(FIRST_ITEM_ID);
         portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
 
@@ -256,8 +260,8 @@ contract TestDecreaseDebt is TestCommon {
         portfolio.increaseDebt(POOL_A, FIRST_ITEM_ID, INCREASE_AMOUNT);
     }
 
-    function testWithoutInterest() public {
-        _prepareItem();
+    function testUsingPrincipal() public {
+        _createAndIncreaseItem();
 
         _mockDebt(int128(INCREASE_AMOUNT), int128(INCREASE_AMOUNT));
         _mockQuoteForQuantities(DECREASE_AMOUNT, DECREASE_QUANTITY);
@@ -272,8 +276,8 @@ contract TestDecreaseDebt is TestCommon {
         assertEq(_getItem(FIRST_ITEM_ID).normalizedDebt, int128(INCREASE_AMOUNT - DECREASE_AMOUNT));
     }
 
-    function testWithInterest() public {
-        _prepareItem();
+    function testUsingInterest() public {
+        _createAndIncreaseItem();
 
         _mockDebt(int128(INCREASE_AMOUNT), int128(INCREASE_AMOUNT + ITEM_INTEREST));
         _mockQuoteForQuantities(0, d18(0));
@@ -286,6 +290,50 @@ contract TestDecreaseDebt is TestCommon {
 
         assertEq(_getItem(FIRST_ITEM_ID).outstandingQuantity.inner(), INCREASE_QUANTITY.inner());
         assertEq(_getItem(FIRST_ITEM_ID).normalizedDebt, int128(INCREASE_AMOUNT + ITEM_INTEREST - INTEREST));
+    }
+
+    function testErrTooMuchPrincipalWithoutIncrease() public {
+        _mockAttach(FIRST_ITEM_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+
+        _mockDebt(0, 0);
+        _mockQuoteForQuantities(1, d18(1));
+        vm.expectRevert(abi.encodeWithSelector(IPortfolio.TooMuchPrincipal.selector));
+        portfolio.decreaseDebt(POOL_A, FIRST_ITEM_ID, 1, 0);
+    }
+
+    function testErrToMuchInterestWithoutIncrease() public {
+        _mockAttach(FIRST_ITEM_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+
+        _mockDebt(0, 0);
+        _mockQuoteForQuantities(0, d18(0));
+        vm.expectRevert(abi.encodeWithSelector(IPortfolio.TooMuchInterest.selector));
+        portfolio.decreaseDebt(POOL_A, FIRST_ITEM_ID, 0, 1);
+    }
+
+    function testErrTooMuchPrincipal() public {
+        _createAndIncreaseItem();
+
+        _mockDebt(int128(INCREASE_AMOUNT), int128(OVER_DECREASE_AMOUNT));
+        _mockQuoteForQuantities(OVER_DECREASE_AMOUNT, OVER_DECREASE_QUANTITY);
+        vm.expectRevert(abi.encodeWithSelector(IPortfolio.TooMuchPrincipal.selector));
+        portfolio.decreaseDebt(POOL_A, FIRST_ITEM_ID, OVER_DECREASE_AMOUNT, 0);
+    }
+
+    function testErrTooMuchInterest() public {
+        // TODO
+        /*
+        _createAndIncreaseItem();
+
+        _mockDebt(int128(INCREASE_AMOUNT), int128(INCREASE_AMOUNT + ITEM_INTEREST));
+        _mockQuoteForQuantities(0, d18(0));
+        _mockModifyNormalizedDebt(
+        -int128(OVER_INTEREST), int128(INCREASE_AMOUNT), int128(INCREASE_AMOUNT + ITEM_INTEREST - OVER_INTEREST)
+        );
+        vm.expectRevert(abi.encodeWithSelector(IPortfolio.TooMuchInterest.selector));
+        portfolio.decreaseDebt(POOL_A, FIRST_ITEM_ID, 0, OVER_INTEREST);
+        */
     }
 }
 

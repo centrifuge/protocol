@@ -106,7 +106,7 @@ contract Portfolio is Auth, IPortfolio {
         D18 newOutsandingQuantity = item.outstandingQuantity + quantity;
         require(newOutsandingQuantity <= item.info.quantity, TooMuchDebt());
 
-        // TODO: Handle the case when currently the current debt is negative
+        // TODO: Handle the case when the current debt is negative
 
         item.outstandingQuantity = newOutsandingQuantity;
         item.normalizedDebt =
@@ -119,12 +119,14 @@ contract Portfolio is Auth, IPortfolio {
     function decreaseDebt(uint64 poolId, uint32 itemId, uint128 principal, uint128 interest) public auth {
         Item storage item = _getItem(poolId, itemId);
 
-        int128 debt_ = linearAccrual.debt(item.info.interestRateId, item.normalizedDebt);
-        int128 outstanding_debt = debt_ - principal.toInt128();
-        require(interest.toInt128() <= outstanding_debt, TooMuchInterest());
-
         D18 quantity = _getQuantity(poolId, item, principal);
         require(quantity <= item.outstandingQuantity, TooMuchPrincipal());
+
+        int128 debt_ = linearAccrual.debt(item.info.interestRateId, item.normalizedDebt);
+        int128 outstandingInterest = debt_ - principal.toInt128();
+        require(interest.toInt128() <= outstandingInterest, TooMuchInterest());
+
+        // TODO: Handle the case when the current debt is negative
 
         item.outstandingQuantity = item.outstandingQuantity - quantity;
         item.normalizedDebt = linearAccrual.modifyNormalizedDebt(
