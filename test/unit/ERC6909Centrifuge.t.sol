@@ -179,9 +179,7 @@ contract ERC6909CentrifugeTest is Test {
 
         // Testing non-existing tokenId where the balance will be 0
         uint256 nonExistingTokenId = 1337;
-        vm.expectRevert(
-            abi.encodeWithSelector(IERC6909.InsufficientBalance.selector, self, nonExistingTokenId)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IERC6909.InsufficientBalance.selector, self, nonExistingTokenId));
         token.transfer(receiver, nonExistingTokenId, amount);
     }
 
