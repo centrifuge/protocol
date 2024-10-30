@@ -32,9 +32,18 @@ function mulInt(D18 d, uint128 value) pure returns (uint128) {
     return MathLib.mulDiv(D18.unwrap(d), value, 1e18).toUint128();
 }
 
+/// @dev  Divides an integer by a decimal, i.e.
+/// @dev  Same as mulDiv for integers, i.e:
+/// - d (decimal):      2_000_000_000_000_000_000
+/// - value (integer):  100_000_000_000_000_000_000
+/// - result (integer): 50_000_000_000_000_000_000
+function reciprocalMulInt(D18 d, uint128 value) pure returns (uint128) {
+    return MathLib.mulDiv(value, 1e18, d.inner()).toUint128();
+}
+
 /// @dev Easy way to construct a decimal number
 function d18(uint128 value) pure returns (D18) {
     return D18.wrap(value);
 }
 
-using {add as +, sub as -, inner, mulInt} for D18 global;
+using {add as +, sub as -, inner, mulInt, reciprocalMulInt} for D18 global;

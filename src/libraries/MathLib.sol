@@ -9,7 +9,6 @@ library MathLib {
     /// @param x The base value which should be exponentiated
     /// @param n The exponent
     /// @param base The scaling base, typically used for fix-point calculations
-
     function rpow(uint256 x, uint256 n, uint256 base) public pure returns (uint256 z) {
         assembly {
             switch x
@@ -148,19 +147,30 @@ library MathLib {
 
     /// @notice Safe type conversion from uint256 to uint8.
     function toUint8(uint256 value) internal pure returns (uint8) {
-        if (value > type(uint8).max) {
-            revert("MathLib/uint8-overflow");
-        }
+        require(value <= type(uint8).max, "MathLib/uint8-overflow");
+
         return uint8(value);
     }
 
     /// @notice Safe type conversion from uint256 to uint128.
-    function toUint128(uint256 _value) internal pure returns (uint128 value) {
-        if (_value > type(uint128).max) {
-            revert("MathLib/uint128-overflow");
-        } else {
-            value = uint128(_value);
-        }
+    function toUint128(uint256 _value) internal pure returns (uint128) {
+        require(_value <= type(uint128).max, "MathLib/uint128-overflow");
+
+        return uint128(_value);
+    }
+
+    /// @notice Safe type conversion from uint128 to int128
+    function toInt128(uint128 _value) internal pure returns (int128) {
+        require(_value <= uint128(type(int128).max), "MathLib/uint128-to-int128-overflow");
+
+        return int128(_value);
+    }
+
+    /// @notice Safe type conversion from int128 to uint128
+    function toUint256(int128 _value) internal pure returns (uint256) {
+        require(_value >= 0, "MathLib/int128-to-uint256-underflow");
+
+        return uint256(int256(_value));
     }
 
     /// @notice Returns the smallest of two numbers.

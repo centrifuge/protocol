@@ -31,25 +31,15 @@ interface ILinearAccrual {
     /// @param      period Compounding schedule
     function getRateId(D18 ratePerPeriod, CompoundingPeriod period) external pure returns (bytes32 rateId);
 
-    /// @notice     Returns the sum of the current normalized debt and the normalized increment.
+    /// @notice     Returns the sum of the current normalized debt and the normalized change.
     ///
     /// @param      rateId Identifier of the rate group
     /// @param      prevNormalizedDebt Normalized debt before decreasing
-    /// @param      debtIncrease The amount by which we increase the debt
-    function getIncreasedNormalizedDebt(bytes32 rateId, uint128 prevNormalizedDebt, uint128 debtIncrease)
+    /// @param      debtChange The amount by which we modify the debt
+    function getModifiedNormalizedDebt(bytes32 rateId, int128 prevNormalizedDebt, int128 debtChange)
         external
         view
-        returns (uint128 newNormalizedDebt);
-
-    /// @notice     Returns the difference of the current normalized debt and the normalized decrement.
-    ///
-    /// @param      rateId Identifier of the rate group
-    /// @param      prevNormalizedDebt Normalized debt before decreasing
-    /// @param      debtDecrease The amount by which we decrease the debt
-    function getDecreasedNormalizedDebt(bytes32 rateId, uint128 prevNormalizedDebt, uint128 debtDecrease)
-        external
-        view
-        returns (uint128 newNormalizedDebt);
+        returns (int128 newNormalizedDebt);
 
     /// @notice     Returns the renormalized debt based on the current rate group after transitioning normalization from
     /// the previous one.
@@ -57,14 +47,14 @@ interface ILinearAccrual {
     /// @param      oldRateId Identifier of the previous rate group
     /// @param      newRateId Identifier of the current rate group
     /// @param      prevNormalizedDebt Normalized debt under previous rate group
-    function getRenormalizedDebt(bytes32 oldRateId, bytes32 newRateId, uint128 prevNormalizedDebt)
+    function getRenormalizedDebt(bytes32 oldRateId, bytes32 newRateId, int128 prevNormalizedDebt)
         external
         view
-        returns (uint128 newNormalizedDebt);
+        returns (int128 newNormalizedDebt);
 
     /// @notice     Returns the current debt without normalization based on actual block.timestamp (now) and the
     /// accumulated rate.
     /// @param      rateId Identifier of the rate group
-    /// @param      normalizedDebt Normalized debt from which we derive the debt
-    function debt(bytes32 rateId, uint128 normalizedDebt) external view returns (uint128);
+    /// @param      normalizedDebt Normalized debt from which we derive the unnormalized debt
+    function debt(bytes32 rateId, int128 normalizedDebt) external view returns (int128 unnormalizedDebt);
 }

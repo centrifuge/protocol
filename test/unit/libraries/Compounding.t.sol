@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {Test} from "forge-std/Test.sol";
 import {Compounding, CompoundingPeriod} from "src/libraries/Compounding.sol";
 
-contract TestCompounding is Test {
+contract CompoundingTest is Test {
     function testGetSeconds() public pure {
         _testGetSeconds(CompoundingPeriod.Secondly, 1);
         _testGetSeconds(CompoundingPeriod.Daily, 86400);

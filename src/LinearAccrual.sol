@@ -25,6 +25,7 @@ struct Group {
 contract LinearAccrual is ILinearAccrual {
     using MathLib for uint128;
     using MathLib for uint256;
+    using MathLib for int128;
 
     mapping(bytes32 rateId => Rate rate) public rates;
     mapping(bytes32 rateId => Group group) public groups;
@@ -80,44 +81,48 @@ contract LinearAccrual is ILinearAccrual {
     }
 
     /// @inheritdoc ILinearAccrual
-    function getIncreasedNormalizedDebt(bytes32 rateId, uint128 prevNormalizedDebt, uint128 debtIncrease)
+    function getModifiedNormalizedDebt(bytes32 rateId, int128 prevNormalizedDebt, int128 debtChange)
         external
         view
-        returns (uint128 newNormalizedDebt)
+        returns (int128 newNormalizedDebt)
     {
         _requireUpdatedRateId(rateId);
 
-        return prevNormalizedDebt + debtIncrease / rates[rateId].accumulatedRate.inner();
+        if (debtChange >= 0) {
+            return prevNormalizedDebt + rates[rateId].accumulatedRate.reciprocalMulInt(uint128(debtChange)).toInt128();
+        } else {
+            return prevNormalizedDebt - rates[rateId].accumulatedRate.reciprocalMulInt(uint128(-debtChange)).toInt128();
+        }
     }
 
     /// @inheritdoc ILinearAccrual
-    function getDecreasedNormalizedDebt(bytes32 rateId, uint128 prevNormalizedDebt, uint128 debtDecrease)
+    function getRenormalizedDebt(bytes32 oldRateId, bytes32 newRateId, int128 prevNormalizedDebt)
         external
         view
-        returns (uint128 newNormalizedDebt)
+        returns (int128 newNormalizedDebt)
     {
-        _requireUpdatedRateId(rateId);
-
-        return prevNormalizedDebt - debtDecrease / rates[rateId].accumulatedRate.inner();
-    }
-
-    /// @inheritdoc ILinearAccrual
-    function getRenormalizedDebt(bytes32 oldRateId, bytes32 newRateId, uint128 prevNormalizedDebt)
-        external
-        view
-        returns (uint128 newNormalizedDebt)
-    {
-        _requireUpdatedRateId(oldRateId);
         _requireUpdatedRateId(newRateId);
 
-        return (debt(oldRateId, prevNormalizedDebt) / rates[newRateId].accumulatedRate.inner()).toUint128();
+        int128 debt_ = debt(oldRateId, prevNormalizedDebt);
+
+        if (debt_ >= 0) {
+            return rates[newRateId].accumulatedRate.reciprocalMulInt(debt_.toUint256().toUint128()).toInt128();
+        } else {
+            return -(rates[newRateId].accumulatedRate.reciprocalMulInt((-debt_).toUint256().toUint128()).toInt128());
+        }
     }
 
     /// @inheritdoc ILinearAccrual
-    function debt(bytes32 rateId, uint128 normalizedDebt) public view returns (uint128) {
+    function debt(bytes32 rateId, int128 normalizedDebt) public view returns (int128) {
         _requireUpdatedRateId(rateId);
 
-        return normalizedDebt.mulDiv(rates[rateId].accumulatedRate.inner(), 1e18).toUint128();
+        // @dev Casting to int128 safe because we don't exceed number of digits of normalizedDebt
+        // @dev Casting to uint256 necessary for mulDiv
+        if (normalizedDebt >= 0) {
+            return normalizedDebt.toUint256().mulDiv(rates[rateId].accumulatedRate.inner(), 1e18).toUint128().toInt128();
+        } else {
+            return -(-normalizedDebt).toUint256().mulDiv(rates[rateId].accumulatedRate.inner(), 1e18).toUint128().toInt128();
+        }
     }
 
     function _requireUpdatedRateId(bytes32 rateId) internal view {

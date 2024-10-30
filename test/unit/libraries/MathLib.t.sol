@@ -89,4 +89,30 @@ contract MathLibTest is Test {
         vm.expectRevert("MathLib/uint8-overflow");
         MathLib.toUint8(x);
     }
+
+    function testToInt128(uint128 x) public pure {
+        x = uint128(bound(x, 0, uint128(type(int128).max)));
+
+        assertEq(int128(x), MathLib.toInt128(x));
+    }
+
+    function testToInt128Overflow(uint128 x) public {
+        vm.assume(x > uint128(type(int128).max));
+
+        vm.expectRevert("MathLib/uint128-to-int128-overflow");
+        MathLib.toInt128(x);
+    }
+
+    function testInt128ToUint256(uint128 _x) public pure {
+        int128 x = int128(uint128(bound(_x, 0, uint128(type(int128).max))));
+
+        assertEq(uint256(int256(x)), MathLib.toUint256(x));
+    }
+
+    function testInt128ToUint256Underflow(int128 x) public {
+        vm.assume(x < 0);
+
+        vm.expectRevert("MathLib/int128-to-uint256-underflow");
+        MathLib.toUint256(x);
+    }
 }
