@@ -9,13 +9,13 @@ import {IERC165} from "src/interfaces/IERC165.sol";
 /// @dev        This implementation MUST be extended with another contract which defines how tokens are created.
 ///             Either implement mint/burn or override transfer/transferFrom.
 abstract contract ERC6909 is IERC6909, IERC165 {
-    mapping(address owner => mapping(uint256 id => uint256 amount)) public balanceOf;
-    mapping(address owner => mapping(address operator => bool isOperator)) public isOperator;
-    mapping(address owner => mapping(address spender => mapping(uint256 id => uint256 amount))) public allowance;
+    mapping(address owner => mapping(uint256 tokenId => uint256)) public balanceOf;
+    mapping(address owner => mapping(address operator => bool)) public isOperator;
+    mapping(address owner => mapping(address spender => mapping(uint256 tokenId => uint256))) public allowance;
 
     /// @inheritdoc IERC6909
-    function transfer(address receiver, uint256 id, uint256 amount) external virtual returns (bool) {
-        return _transfer(msg.sender, receiver, id, amount);
+    function transfer(address receiver, uint256 tokenId, uint256 amount) external virtual returns (bool) {
+        return _transfer(msg.sender, receiver, tokenId, amount);
     }
 
     /// @inheritdoc IERC6909
@@ -36,22 +36,19 @@ abstract contract ERC6909 is IERC6909, IERC165 {
     }
 
     /// @inheritdoc IERC6909
-    function approve(address spender, uint256 id, uint256 amount) external returns (bool) {
-        if (allowance[msg.sender][spender][id] != amount) {
-            allowance[msg.sender][spender][id] = amount;
+    function approve(address spender, uint256 tokenId, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender][tokenId] = amount;
 
-            emit Approval(msg.sender, spender, id, amount);
-        }
+        emit Approval(msg.sender, spender, tokenId, amount);
+
         return true;
     }
 
     /// @inheritdoc IERC6909
     function setOperator(address operator, bool approved) external returns (bool) {
-        if (isOperator[msg.sender][operator] != approved) {
-            isOperator[msg.sender][operator] = approved;
+        isOperator[msg.sender][operator] = approved;
 
-            emit OperatorSet(msg.sender, operator, approved);
-        }
+        emit OperatorSet(msg.sender, operator, approved);
 
         return true;
     }
@@ -61,19 +58,19 @@ abstract contract ERC6909 is IERC6909, IERC165 {
         return type(IERC6909).interfaceId == interfaceId || type(IERC165).interfaceId == interfaceId;
     }
 
-    function _transfer(address sender, address receiver, uint256 id, uint256 amount) private returns (bool) {
-        uint256 senderBalance = balanceOf[sender][id];
-        require(senderBalance >= amount, InsufficientBalance(sender, id));
+    function _transfer(address sender, address receiver, uint256 tokenId, uint256 amount) private returns (bool) {
+        uint256 senderBalance = balanceOf[sender][tokenId];
+        require(senderBalance >= amount, InsufficientBalance(sender, tokenId));
 
         /// @dev    The require check few lines above guarantees that
         ///         it cannot underflow.
         unchecked {
-            balanceOf[sender][id] -= amount;
+            balanceOf[sender][tokenId] -= amount;
         }
 
-        balanceOf[receiver][id] += amount;
+        balanceOf[receiver][tokenId] += amount;
 
-        emit Transfer(msg.sender, sender, receiver, id, amount);
+        emit Transfer(msg.sender, sender, receiver, tokenId, amount);
 
         return true;
     }

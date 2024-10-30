@@ -6,11 +6,9 @@ import {ERC6909Centrifuge} from "src/ERC6909/ERC6909Centrifuge.sol";
 import {previewAddress as _previewAddress} from "src/utils/Deployment.sol";
 import {IERC6909Factory} from "src/interfaces/ERC6909/IERC6909Factory.sol";
 
-contract ERC6909Factory is IERC6909Factory, Auth {
-    constructor(address _owner) Auth(_owner) {}
-
+contract ERC6909Factory is IERC6909Factory {
     /// @inheritdoc IERC6909Factory
-    function deploy(address owner, bytes32 salt) public auth returns (address collateral) {
+    function deploy(address owner, bytes32 salt) public returns (address collateral) {
         collateral = address(new ERC6909Centrifuge{salt: salt}(owner));
     }
 

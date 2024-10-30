@@ -11,18 +11,4 @@ contract StringLibTest is Test {
 
         assertFalse(StringLib.isEmpty(nonEmptyString));
     }
-
-    function testConversionToString() public pure {
-        uint256 aNumber = 12345;
-        assertEq(StringLib.toString(aNumber), "12345");
-
-        aNumber = 0;
-        assertEq(StringLib.toString(aNumber), "0");
-
-        aNumber = type(uint256).max;
-        assertEq(
-            StringLib.toString(aNumber),
-            "115792089237316195423570985008687907853269984665640564039457584007913129639935"
-        );
-    }
 }

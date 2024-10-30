@@ -8,19 +8,11 @@ contract ERC6909FactoryTest is Test {
     ERC6909Factory factory;
 
     function setUp() public {
-        factory = new ERC6909Factory(address(this));
-    }
-
-    function testAuthorizationRestriction() public view {
-        assertEq(factory.wards(address(this)), 1);
+        factory = new ERC6909Factory();
     }
 
     function testCreatingNewInstance() public {
         bytes32 salt = keccak256("salt me");
-
-        vm.expectRevert("Auth/not-authorized");
-        vm.prank(makeAddr("unauthorized"));
-        factory.deploy(address(this), salt);
 
         address instance = factory.deploy(address(this), salt);
         assertTrue(instance != address(0));
@@ -31,6 +23,7 @@ contract ERC6909FactoryTest is Test {
     function testDeterminism(bytes32 salt, address owner) public {
         vm.assume(owner != address(0));
         vm.assume(salt != "");
+        
         address instance = factory.deploy(owner, salt);
         assertEq(instance, factory.previewAddress(owner, salt));
     }

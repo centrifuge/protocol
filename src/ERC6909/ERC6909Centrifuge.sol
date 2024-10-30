@@ -23,76 +23,76 @@ contract ERC6909Centrifuge is IERC6909Centrifuge, ERC6909, Auth {
     constructor(address _owner) Auth(_owner) {}
 
     /// @inheritdoc IERC6909Centrifuge
-    function setTokenURI(uint256 _tokenId, string memory _URI) public auth {
-        tokenURI[_tokenId] = _URI;
+    function setTokenURI(uint256 tokenId, string memory URI) public auth {
+        tokenURI[tokenId] = URI;
 
-        emit TokenURI(_tokenId, _URI);
+        emit TokenURISet(tokenId, URI);
     }
 
     /// @inheritdoc IERC6909Centrifuge
-    function mint(address _owner, string memory _tokenURI, uint256 _amount) public auth returns (uint256 _tokenId) {
-        require(_owner != address(0), EmptyOwner());
-        require(!_tokenURI.isEmpty(), EmptyURI());
-        require(_amount > 0, EmptyAmount());
+    function mint(address owner, string memory tokenURI_, uint256 amount) public auth returns (uint256 tokenId) {
+        require(owner != address(0), EmptyOwner());
+        require(!tokenURI_.isEmpty(), EmptyURI());
+        require(amount > 0, EmptyAmount());
 
-        _tokenId = ++latestTokenId;
+        tokenId = ++latestTokenId;
 
-        balanceOf[_owner][_tokenId] = _amount;
+        balanceOf[owner][tokenId] = amount;
 
-        totalSupply[_tokenId] = _amount;
+        totalSupply[tokenId] = amount;
 
-        setTokenURI(_tokenId, _tokenURI);
+        setTokenURI(tokenId, tokenURI_);
 
-        emit Transfer(msg.sender, address(0), _owner, _tokenId, _amount);
+        emit Transfer(msg.sender, address(0), owner, tokenId, amount);
     }
 
     /// @inheritdoc IERC6909Centrifuge
-    function mint(address _owner, uint256 _tokenId, uint256 _amount) public auth returns (uint256) {
-        uint256 balance = balanceOf[_owner][_tokenId];
-        require(_tokenId <= latestTokenId, UnknownTokenId(_owner, _tokenId));
+    function mint(address owner, uint256 tokenId, uint256 amount) public auth returns (uint256) {
+        uint256 balance = balanceOf[owner][tokenId];
+        require(tokenId <= latestTokenId, UnknownTokenId(owner, tokenId));
 
         unchecked {
-            uint256 totalSupply_ = totalSupply[_tokenId];
-            uint256 newSupply = totalSupply_ + _amount;
+            uint256 totalSupply_ = totalSupply[tokenId];
+            uint256 newSupply = totalSupply_ + amount;
             require(newSupply >= totalSupply_, MaxSupplyReached());
-            totalSupply[_tokenId] = newSupply;
+            totalSupply[tokenId] = newSupply;
         }
 
-        uint256 newBalance = balance + _amount;
-        balanceOf[_owner][_tokenId] = newBalance;
+        uint256 newBalance = balance + amount;
+        balanceOf[owner][tokenId] = newBalance;
 
-        emit Transfer(msg.sender, address(0), _owner, _tokenId, _amount);
+        emit Transfer(msg.sender, address(0), owner, tokenId, amount);
 
         return newBalance;
     }
 
     /// @inheritdoc IERC6909Centrifuge
-    function burn(uint256 _tokenId, uint256 _amount) external returns (uint256) {
-        uint256 _balance = balanceOf[msg.sender][_tokenId];
-        require(_balance >= _amount, InsufficientBalance(msg.sender, _tokenId));
+    function burn(uint256 tokenId, uint256 amount) external returns (uint256) {
+        uint256 balance = balanceOf[msg.sender][tokenId];
+        require(balance >= amount, InsufficientBalance(msg.sender, tokenId));
 
-        /// @dev    The require check above guarantees that you cannot burn more than you have.
+        ///         The require check above guarantees that you cannot burn more than you have.
         unchecked {
-            _balance -= _amount;
+            balance -= amount;
         }
 
-        /// @dev    The sum of all balances MUST be equal to totalSupply.
+        ///         The sum of all balances MUST be equal to totalSupply.
         ///         The require check above means you cannot burn more than the balance hence cannot underflow.
         unchecked {
-            totalSupply[_tokenId] -= _amount;
+            totalSupply[tokenId] -= amount;
         }
 
-        balanceOf[msg.sender][_tokenId] = _balance;
+        balanceOf[msg.sender][tokenId] = balance;
 
-        emit Transfer(msg.sender, msg.sender, address(0), _tokenId, _amount);
+        emit Transfer(msg.sender, msg.sender, address(0), tokenId, amount);
 
-        return _balance;
+        return balance;
     }
 
     // @inheritdoc IERC6909Centrifuge
-    function setContractURI(string calldata _URI) external auth {
-        contractURI = _URI;
+    function setContractURI(string calldata URI) external auth {
+        contractURI = URI;
 
-        emit ContractURI(address(this), _URI);
+        emit ContractURISet(address(this), URI);
     }
 }
