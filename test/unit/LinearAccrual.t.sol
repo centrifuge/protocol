@@ -24,7 +24,7 @@ contract LinearAccrualTest is Test {
         D18 rate = d18(uint128(bound(_rate, 1e10, 1e20)));
         CompoundingPeriod period = CompoundingPeriod(bound(_period, 0, 1));
 
-        bytes32 rateId = linearAccrual.getRateId(rate, period);
+        bytes32 rateId = linearAccrual.getRateId(rate.inner(), period);
         assertEq(keccak256(abi.encode(Group(rate, period))), rateId, "Rate id mismatch");
     }
 
@@ -33,8 +33,8 @@ contract LinearAccrualTest is Test {
         CompoundingPeriod period = CompoundingPeriod(bound(_period, 0, 1));
 
         vm.expectEmit(true, true, true, true);
-        emit ILinearAccrual.NewRateId(keccak256(abi.encode(Group(rate, period))), rate, period);
-        bytes32 rateId = linearAccrual.registerRateId(rate, period);
+        emit ILinearAccrual.NewRateId(keccak256(abi.encode(Group(rate, period))), rate.inner(), period);
+        bytes32 rateId = linearAccrual.registerRateId(rate.inner(), period);
 
         (D18 ratePerPeriod, CompoundingPeriod retrievedPeriod) = linearAccrual.groups(rateId);
         assertEq(ratePerPeriod.inner(), rate.inner(), "Rate per period mismatch");
@@ -48,10 +48,10 @@ contract LinearAccrualTest is Test {
     function testRegisterRateIdReverts(uint128 _rate, uint8 _period) public {
         D18 rate = d18(uint128(bound(_rate, 1e10, 1e20)));
         CompoundingPeriod period = CompoundingPeriod(bound(_period, 0, 1));
-        bytes32 rateId = linearAccrual.registerRateId(rate, period);
+        bytes32 rateId = linearAccrual.registerRateId(rate.inner(), period);
 
         vm.expectRevert(abi.encodeWithSelector(ILinearAccrual.RateIdExists.selector, rateId, rate, period));
-        linearAccrual.registerRateId(rate, period);
+        linearAccrual.registerRateId(rate.inner(), period);
     }
 
     function testFuzzGetNormalizedDebtNoChange(
@@ -68,7 +68,7 @@ contract LinearAccrualTest is Test {
         int128 prevNormalizedDebt =
             isNegativeDebt ? -(prevNormalizedDebtUnsigned).toInt128() : prevNormalizedDebtUnsigned.toInt128();
 
-        bytes32 rateId = linearAccrual.registerRateId(rate, period);
+        bytes32 rateId = linearAccrual.registerRateId(rate.inner(), period);
         int128 newDebt = linearAccrual.getModifiedNormalizedDebt(rateId, prevNormalizedDebt, 0);
         assertEq(newDebt, prevNormalizedDebt, "Incorrect new normalized debt with 0 change");
     }
@@ -76,7 +76,7 @@ contract LinearAccrualTest is Test {
     function testGetModiefiedNormalizedDebt() public {
         D18 rate = d18(uint128(15e16)); // 0.15
         CompoundingPeriod period = CompoundingPeriod.Daily;
-        bytes32 rateId = linearAccrual.registerRateId(rate, period);
+        bytes32 rateId = linearAccrual.registerRateId(rate.inner(), period);
 
         // Case 1: positive debt, positive change
         int128 prevNormalizedDebt = 1e21;
@@ -121,7 +121,7 @@ contract LinearAccrualTest is Test {
         int128 prevNormalizedDebt = signDebt * prevNormalizedDebtUnsigned.toInt128();
         int128 debtChanged = signChange * debtChangeUnsigned.toInt128();
 
-        bytes32 rateId = linearAccrual.registerRateId(rate, period);
+        bytes32 rateId = linearAccrual.registerRateId(rate.inner(), period);
         int128 newDebt = linearAccrual.getModifiedNormalizedDebt(rateId, prevNormalizedDebt, debtChanged);
         int128 expectedDebt = prevNormalizedDebt
             + signChange * uint256(debtChangeUnsigned).mulDiv(1e18, rate.inner()).toUint128().toInt128();
@@ -136,8 +136,8 @@ contract LinearAccrualTest is Test {
         D18 oldRate = d18(uint128(15e16)); // 0.15
         D18 newRate = d18(uint128(45e16)); // 0.45
         CompoundingPeriod period = CompoundingPeriod.Daily;
-        bytes32 oldRateId = linearAccrual.registerRateId(oldRate, period);
-        bytes32 newRateId = linearAccrual.registerRateId(newRate, period);
+        bytes32 oldRateId = linearAccrual.registerRateId(oldRate.inner(), period);
+        bytes32 newRateId = linearAccrual.registerRateId(newRate.inner(), period);
 
         int128 newNormalizedDebt = linearAccrual.getRenormalizedDebt(oldRateId, newRateId, 3e10);
         assertEq(newNormalizedDebt, 1e10, "Incorrect hardcoded renormalized debt");
@@ -159,8 +159,8 @@ contract LinearAccrualTest is Test {
 
         int128 signDebt = isNegativeDebt ? -1 : int128(1);
         int128 prevNormalizedDebt = signDebt * prevNormalizedDebtUnsigned.toInt128();
-        bytes32 oldRateId = linearAccrual.registerRateId(oldRate, period);
-        bytes32 newRateId = linearAccrual.registerRateId(newRate, period);
+        bytes32 oldRateId = linearAccrual.registerRateId(oldRate.inner(), period);
+        bytes32 newRateId = linearAccrual.registerRateId(newRate.inner(), period);
 
         int128 oldDebt = linearAccrual.debt(oldRateId, prevNormalizedDebt);
         int128 expectedNewNormalizedDebt =
@@ -174,17 +174,17 @@ contract LinearAccrualTest is Test {
         D18 oldRate = d18(uint128(bound(_oldRate, 1e10, 1e20)));
         D18 newRate = d18(uint128(bound(_newRate, 1e10, 1e20)));
         CompoundingPeriod period = CompoundingPeriod.Secondly;
-        bytes32 oldRateId = linearAccrual.getRateId(oldRate, period);
-        bytes32 newRateId = linearAccrual.getRateId(newRate, period);
+        bytes32 oldRateId = linearAccrual.getRateId(oldRate.inner(), period);
+        bytes32 newRateId = linearAccrual.getRateId(newRate.inner(), period);
 
         // Registration missing
         vm.expectRevert(abi.encodeWithSelector(ILinearAccrual.RateIdMissing.selector, newRateId));
         linearAccrual.getRenormalizedDebt(oldRateId, newRateId, 1);
-        linearAccrual.registerRateId(newRate, period);
+        linearAccrual.registerRateId(newRate.inner(), period);
 
         vm.expectRevert(abi.encodeWithSelector(ILinearAccrual.RateIdMissing.selector, oldRateId));
         linearAccrual.getRenormalizedDebt(oldRateId, newRateId, 0);
-        linearAccrual.registerRateId(oldRate, period);
+        linearAccrual.registerRateId(oldRate.inner(), period);
 
         vm.warp(block.timestamp + 1 seconds);
 
@@ -209,7 +209,7 @@ contract LinearAccrualTest is Test {
         int128 sign = isNegativeDebt ? -1 : int128(1);
         int128 normalizedDebt = sign * normalizedDebtUnsigned.toInt128();
 
-        bytes32 rateId = linearAccrual.registerRateId(rate, period);
+        bytes32 rateId = linearAccrual.registerRateId(rate.inner(), period);
         int128 currentDebt = linearAccrual.debt(rateId, normalizedDebt);
         uint128 expectedDebtUnsigned = normalizedDebtUnsigned * rate.inner() / precision;
 
@@ -219,13 +219,13 @@ contract LinearAccrualTest is Test {
     function testFuzzDebtReverts(uint128 _rate, uint8 _period) public {
         D18 rate = d18(uint128(bound(_rate, 1e10, 1e20)));
         CompoundingPeriod period = CompoundingPeriod(bound(_period, 0, 1));
-        bytes32 rateId = linearAccrual.getRateId(rate, period);
+        bytes32 rateId = linearAccrual.getRateId(rate.inner(), period);
 
         // Registration missing
         vm.expectRevert(abi.encodeWithSelector(ILinearAccrual.RateIdMissing.selector, rateId));
         linearAccrual.debt(rateId, 0);
 
-        linearAccrual.registerRateId(rate, period);
+        linearAccrual.registerRateId(rate.inner(), period);
         vm.warp(block.timestamp + 1 seconds);
 
         // Update missing after advancing blocks
@@ -238,7 +238,7 @@ contract LinearAccrualTest is Test {
     function testFuzzDrip(uint128 _rate) public {
         D18 rate = d18(uint128(bound(_rate, 1e15, 1e20)));
         CompoundingPeriod period = CompoundingPeriod.Secondly;
-        bytes32 rateId = linearAccrual.registerRateId(rate, period);
+        bytes32 rateId = linearAccrual.registerRateId(rate.inner(), period);
 
         // Pass zero periods
         linearAccrual.drip(rateId);
@@ -250,7 +250,7 @@ contract LinearAccrualTest is Test {
         vm.warp(initialLastUpdated + 1 seconds);
         D18 rateSquare = d18(rate.mulInt(rate.inner()));
         vm.expectEmit(true, true, true, true);
-        emit ILinearAccrual.RateAccumulated(rateId, rateSquare, 1);
+        emit ILinearAccrual.RateAccumulated(rateId, rateSquare.inner(), 1);
         linearAccrual.drip(rateId);
         (D18 rateAfterTwoPeriods,) = linearAccrual.rates(rateId);
         assertEq(rateAfterTwoPeriods.inner(), rateSquare.inner(), "Rate should be ^2 after one passed period");
@@ -266,7 +266,7 @@ contract LinearAccrualTest is Test {
     function testFuzzDripReverts(uint128 _rate) public {
         D18 rate = d18(uint128(bound(_rate, 1e15, 1e21)));
         CompoundingPeriod period = CompoundingPeriod.Secondly;
-        bytes32 rateId = linearAccrual.getRateId(rate, period);
+        bytes32 rateId = linearAccrual.getRateId(rate.inner(), period);
 
         // Registration missing
         vm.expectRevert(abi.encodeWithSelector(ILinearAccrual.RateIdMissing.selector, rateId));

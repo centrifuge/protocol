@@ -54,28 +54,29 @@ contract LinearAccrual is ILinearAccrual {
                 )
             );
 
-            emit RateAccumulated(rateId, rate.accumulatedRate, periodsPassed);
+            emit RateAccumulated(rateId, rate.accumulatedRate.inner(), periodsPassed);
             rate.lastUpdated = uint64(block.timestamp);
         }
     }
 
     /// @inheritdoc ILinearAccrual
-    function registerRateId(D18 ratePerPeriod, CompoundingPeriod period) public returns (bytes32 rateId) {
+    function registerRateId(uint128 ratePerPeriod_, CompoundingPeriod period) public returns (bytes32 rateId) {
+        D18 ratePerPeriod = d18(ratePerPeriod_);
         Group memory group = Group(ratePerPeriod, period);
 
         rateId = keccak256(abi.encode(group));
 
-        require(groups[rateId].ratePerPeriod.inner() == 0, RateIdExists(rateId, ratePerPeriod, period));
+        require(groups[rateId].ratePerPeriod.inner() == 0, RateIdExists(rateId, ratePerPeriod.inner(), period));
 
         groups[rateId] = group;
         rates[rateId] = Rate(ratePerPeriod, uint64(block.timestamp));
 
-        emit NewRateId(rateId, ratePerPeriod, period);
+        emit NewRateId(rateId, ratePerPeriod.inner(), period);
     }
 
     /// @inheritdoc ILinearAccrual
-    function getRateId(D18 rate, CompoundingPeriod period) public pure returns (bytes32) {
-        Group memory group = Group(rate, period);
+    function getRateId(uint128 rate, CompoundingPeriod period) public pure returns (bytes32) {
+        Group memory group = Group(d18(rate), period);
 
         return keccak256(abi.encode(group));
     }

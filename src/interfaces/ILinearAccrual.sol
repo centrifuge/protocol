@@ -2,15 +2,14 @@
 pragma solidity 0.8.28;
 
 import {CompoundingPeriod} from "src/libraries/Compounding.sol";
-import {D18} from "src/types/D18.sol";
 
 interface ILinearAccrual {
     /// Events
-    event NewRateId(bytes32 indexed rateId, D18 indexed ratePerPeriod, CompoundingPeriod period);
-    event RateAccumulated(bytes32 indexed rateId, D18 indexed rate, uint64 periodsPassed);
+    event NewRateId(bytes32 indexed rateId, uint128 indexed ratePerPeriod, CompoundingPeriod period);
+    event RateAccumulated(bytes32 indexed rateId, uint128 indexed rate, uint64 periodsPassed);
 
     /// Errors
-    error RateIdExists(bytes32 rateId, D18 ratePerPeriod, CompoundingPeriod period);
+    error RateIdExists(bytes32 rateId, uint128 ratePerPeriod, CompoundingPeriod period);
     error RateIdMissing(bytes32 rateId);
     error RateIdOutdated(bytes32 rateId, uint64 lastUpdated);
 
@@ -23,13 +22,13 @@ interface ILinearAccrual {
     ///
     /// @param      ratePerPeriod Rate per compound period
     /// @param      period Compounding schedule
-    function registerRateId(D18 ratePerPeriod, CompoundingPeriod period) external returns (bytes32 rateId);
+    function registerRateId(uint128 ratePerPeriod, CompoundingPeriod period) external returns (bytes32 rateId);
 
     /// @notice     Returns the rate identifier for the given rate and compound period.
     ///
     /// @param      ratePerPeriod Rate per compound period
     /// @param      period Compounding schedule
-    function getRateId(D18 ratePerPeriod, CompoundingPeriod period) external pure returns (bytes32 rateId);
+    function getRateId(uint128 ratePerPeriod, CompoundingPeriod period) external pure returns (bytes32 rateId);
 
     /// @notice     Returns the sum of the current normalized debt and the normalized change.
     ///
