@@ -6,7 +6,6 @@ interface IERC6909 {
     function transferFrom(address sender, address receiver, uint256 id, uint256 amount)
         external
         returns (bool success);
-    function decimals(uint256 tokenId) external view returns (uint8);
     function balanceOf(address owner, uint256 id) external returns (uint256 amount);
 }
 
@@ -14,8 +13,6 @@ interface IERC6909 {
 interface INftEscrow {
     event Locked(IERC6909 indexed source, uint256 indexed tokenId);
     event Unlocked(IERC6909 indexed source, uint256 indexed tokenId);
-    event Attached(uint160 indexed nftId, uint256 indexed elementId);
-    event Detached(uint160 indexed nftId, uint256 indexed elementId);
 
     /// @notice NFT already locked in the escrow.
     error AlreadyLocked();
@@ -23,41 +20,22 @@ interface INftEscrow {
     /// @notice NFT not locked in the escrow.
     error NotLocked();
 
-    /// @notice The asset was already attached to an element.
-    error AlreadyAttached();
-
-    /// @notice The asset was not attached to an element.
-    error NotAttached();
-
     /// @notice The asset can not be transfered to/from this contract.
     error CanNotBeTransferred();
 
-    /// @notice The element is not valid. It has zero value.
-    error InvalidElement();
-
-    /// @notice Lock a collateral transfering one token to the contract.
+    /// @notice Lock a nft transfering one token to the contract.
+    /// No more tokens from the same `tokenId` can be sent to the escrow until it's locked.
     /// @param source The contract or collection where identify the `tokenId`
     /// @param tokenId The asset identification
     /// @param from Address allowed to transfer one token.
-    /// @return nftId An unique identification of this `source` + `tokenId`
-    function lock(IERC6909 source, uint256 tokenId, address from) external returns (uint160 nftId);
+    function lock(IERC6909 source, uint256 tokenId, address from) external;
 
-    /// @notice Lock a collateral transfering the token from the contract.
+    /// @notice Unlock a nft transfering back the token from the contract.
+    /// The same `tokenId` can be locked again
     /// @param source The contract or collection where identify the `tokenId`
     /// @param tokenId The asset identification
     /// @param to Address where the token will be transfered to.
     function unlock(IERC6909 source, uint256 tokenId, address to) external;
-
-    /// @notice Associated an element to an already locked asset
-    /// @param source The contract or collection where identify the `tokenId`
-    /// @param tokenId The asset identification
-    /// @param elementId An identification of the element associated to the asset
-    /// @return nftId An unique identification of this `source` + `tokenId`
-    function attach(IERC6909 source, uint256 tokenId, uint256 elementId) external returns (uint160 nftId);
-
-    /// @notice Associated an element to a locked asset
-    /// @param nftId The unique identification of the locked/attached nft
-    function detach(uint160 nftId) external;
 
     /// @notice Compute the unique identification of the asset.
     /// @param source The contract or collection where identify the `tokenId`
