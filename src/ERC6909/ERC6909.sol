@@ -1,13 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
-import {
-    ERC6909_Transfer_InsufficientBalance,
-    ERC6909_TransferFrom_InsufficientAllowance
-} from "src/ERC6909/ERC6909Errors.sol";
 import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
 import {IERC165} from "src/interfaces/IERC165.sol";
-import {OverflowUint256} from "src/Errors.sol";
 
 /// @title      Basic implementation of all properties according to the ERC6909.
 ///
@@ -32,7 +27,7 @@ abstract contract ERC6909 is IERC6909, IERC165 {
         if (msg.sender != sender && !isOperator[sender][msg.sender]) {
             uint256 allowed = allowance[sender][msg.sender][tokenId];
             if (allowed != type(uint256).max) {
-                require(amount <= allowed, ERC6909_TransferFrom_InsufficientAllowance(msg.sender, tokenId));
+                require(amount <= allowed, InsufficientAllowance(msg.sender, tokenId));
                 allowance[sender][msg.sender][tokenId] -= amount;
             }
         }
@@ -68,7 +63,7 @@ abstract contract ERC6909 is IERC6909, IERC165 {
 
     function _transfer(address sender, address receiver, uint256 id, uint256 amount) private returns (bool) {
         uint256 senderBalance = balanceOf[sender][id];
-        require(senderBalance >= amount, ERC6909_Transfer_InsufficientBalance(sender, id));
+        require(senderBalance >= amount, InsufficientBalance(sender, id));
 
         /// @dev    The require check few lines above guarantees that
         ///         it cannot underflow.

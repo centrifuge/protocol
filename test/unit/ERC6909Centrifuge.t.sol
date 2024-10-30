@@ -2,11 +2,11 @@
 pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
-import "src/ERC6909/ERC6909Errors.sol";
 import {ERC6909Centrifuge} from "src/ERC6909/ERC6909Centrifuge.sol";
+import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
+import {IERC6909Centrifuge} from "src/interfaces/ERC6909/IERC6909Centrifuge.sol";
 import {IERC6909URIExtension} from "src/interfaces/ERC6909/IERC6909URIExtension.sol";
 import {StringLib} from "src/libraries/StringLib.sol";
-import {OverflowUint256} from "src/Errors.sol";
 import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
 import {IERC165} from "src/interfaces/IERC165.sol";
 
@@ -54,13 +54,13 @@ contract ERC6909CentrifugeTest is Test {
         vm.assume(!URI.isEmpty());
         amount = bound(amount, 1, type(uint256).max);
 
-        vm.expectRevert(ERC6909Centrifuge_Mint_EmptyOwner.selector);
+        vm.expectRevert(IERC6909Centrifuge.EmptyOwner.selector);
         token.mint(address(0), URI, amount);
 
-        vm.expectRevert(ERC6909Centrifuge_Mint_EmptyURI.selector);
+        vm.expectRevert(IERC6909Centrifuge.EmptyURI.selector);
         token.mint(owner, "", amount);
 
-        vm.expectRevert(ERC6909Centrifuge_Mint_EmptyAmount.selector);
+        vm.expectRevert(IERC6909Centrifuge.EmptyAmount.selector);
         token.mint(owner, URI, 0);
 
         vm.expectRevert("Auth/not-authorized");
@@ -94,14 +94,14 @@ contract ERC6909CentrifugeTest is Test {
         vm.prank(makeAddr("unauthorized"));
         token.mint(owner, tokenId, amount);
 
-        vm.expectRevert(ERC6909Centrifuge_Mint_MaxSupplyReached.selector);
+        vm.expectRevert(IERC6909Centrifuge.MaxSupplyReached.selector);
         token.mint(owner, tokenId, MAX_UINT256);
 
         uint256 latestBalance = token.mint(owner, tokenId, 0);
         assertEq(latestBalance, balance);
 
         uint256 nonExistingID = token.latestTokenId() + 1;
-        vm.expectRevert(abi.encodeWithSelector(ERC6909Centrifuge_Mint_UnknownTokenId.selector, owner, nonExistingID));
+        vm.expectRevert(abi.encodeWithSelector(IERC6909Centrifuge.UnknownTokenId.selector, owner, nonExistingID));
         token.mint(owner, nonExistingID, amount);
 
         uint256 newBalance = token.mint(owner, tokenId, offset);
@@ -117,7 +117,7 @@ contract ERC6909CentrifugeTest is Test {
         uint256 tokenId = token.mint(owner, URI, amount);
 
         uint256 burnMoreThanHave = amount + 1;
-        vm.expectRevert(abi.encodeWithSelector(ERC6909Centrifuge_Burn_InsufficientBalance.selector, owner, tokenId));
+        vm.expectRevert(abi.encodeWithSelector(IERC6909.InsufficientBalance.selector, owner, tokenId));
         token.burn(tokenId, burnMoreThanHave);
 
         assertEq(token.balanceOf(owner, tokenId), amount);
@@ -174,12 +174,14 @@ contract ERC6909CentrifugeTest is Test {
         assertEq(token.balanceOf(receiver, tokenId), half);
 
         // Testing non-existing owner with an existing tokenId where the balance will be 0
-        vm.expectRevert(abi.encodeWithSelector(ERC6909_Transfer_InsufficientBalance.selector, self, tokenId));
+        vm.expectRevert(abi.encodeWithSelector(IERC6909.InsufficientBalance.selector, self, tokenId));
         token.transfer(makeAddr("random"), tokenId, amount);
 
         // Testing non-existing tokenId where the balance will be 0
         uint256 nonExistingTokenId = 1337;
-        vm.expectRevert(abi.encodeWithSelector(ERC6909_Transfer_InsufficientBalance.selector, self, nonExistingTokenId));
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC6909.InsufficientBalance.selector, self, nonExistingTokenId)
+        );
         token.transfer(receiver, nonExistingTokenId, amount);
     }
 
@@ -195,7 +197,7 @@ contract ERC6909CentrifugeTest is Test {
         uint256 sentAmount = amount / 2; // 16
 
         // Caller is neither operator, nor has allowance
-        vm.expectRevert(abi.encodeWithSelector(ERC6909_TransferFrom_InsufficientAllowance.selector, delegate, tokenId));
+        vm.expectRevert(abi.encodeWithSelector(IERC6909.InsufficientAllowance.selector, delegate, tokenId));
         vm.prank(delegate);
         bool isSuccessful = token.transferFrom(self, receiver, tokenId, sentAmount);
         assertFalse(isSuccessful);

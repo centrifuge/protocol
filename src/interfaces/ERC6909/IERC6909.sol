@@ -2,6 +2,10 @@
 pragma solidity 0.8.28;
 
 interface IERC6909 {
+    /// Errors
+    error InsufficientBalance(address owner, uint256 tokenId);
+    error InsufficientAllowance(address sender, uint256 tokenId);
+
     /// Events
     event OperatorSet(address indexed owner, address indexed operator, bool approved);
     event Approval(address indexed owner, address indexed spender, uint256 indexed id, uint256 amount);

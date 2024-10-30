@@ -5,6 +5,16 @@ import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
 import {IERC6909URIExtension} from "src/interfaces/ERC6909/IERC6909URIExtension.sol";
 
 interface IERC6909Centrifuge is IERC6909, IERC6909URIExtension {
+    /// Errors
+    error UnknownTokenId(address owner, uint256 tokenId);
+    error EmptyOwner();
+    error EmptyAmount();
+    error EmptyURI();
+    error MaxSupplyReached();
+    error Burn_InsufficientBalance(address owner, uint256 id);
+    error LessThanMinimalDecimal(uint8 minimal, uint8 actual);
+
+    /// Functions
     /// @notice             Get total supply of a given token.
     /// @dev                To increase the total supply call mint(address _owner, uint256 _tokenId, uint256 _amount).
     ///                     The total supply will be increased by _amount and cannot go over type(uint256).max.
