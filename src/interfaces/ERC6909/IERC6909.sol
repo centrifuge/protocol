@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
-interface IERC6909 {
+import {IERC165} from "src/interfaces/IERC165.sol";
+
+interface IERC6909 is IERC165 {
     /// Errors
     error EmptyOwner();
     error EmptyAmount();

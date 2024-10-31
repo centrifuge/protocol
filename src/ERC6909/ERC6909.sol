@@ -9,7 +9,7 @@ import {StringLib} from "src/libraries/StringLib.sol";
 ///
 /// @dev        This implementation MUST be extended with another contract which defines how tokens are created.
 ///             Either implement mint/burn or override transfer/transferFrom.
-abstract contract ERC6909 is IERC6909, IERC165 {
+abstract contract ERC6909 is IERC6909 {
     mapping(address owner => mapping(uint256 tokenId => uint256)) public balanceOf;
     mapping(address owner => mapping(address operator => bool)) public isOperator;
     mapping(address owner => mapping(address spender => mapping(uint256 tokenId => uint256))) public allowance;
