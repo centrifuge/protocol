@@ -33,16 +33,16 @@ contract LinearAccrual is ILinearAccrual {
     /// @inheritdoc ILinearAccrual
     function drip(bytes32 rateId) public {
         Rate storage rate = rates[rateId];
-        require(rate.accumulatedRate.inner() != 0, RateIdMissing(rateId));
 
         // Short circuit to save gas
         if (rate.lastUpdated == uint64(block.timestamp)) {
             return;
+        } else if (rate.accumulatedRate.inner() == 0) {
+            rate.lastUpdated = uint64(block.timestamp);
+            return;
         }
 
-        // Infallible since group storage exists iff rate storage exists
         Group memory group = groups[rateId];
-        require(group.ratePerPeriod.inner() != 0, "group-missing");
 
         // Determine number of full compounding periods passed since last update
         uint64 periodsPassed = Compounding.getPeriodsPassed(group.period, rate.lastUpdated);
@@ -117,8 +117,8 @@ contract LinearAccrual is ILinearAccrual {
     function debt(bytes32 rateId, int128 normalizedDebt) public view returns (int128) {
         _requireUpdatedRateId(rateId);
 
-        // @dev Casting to int128 safe because we don't exceed number of digits of normalizedDebt
-        // @dev Casting to uint256 necessary for mulDiv
+        // Casting to int128 safe because we don't exceed number of digits of normalizedDebt
+        // Casting to uint256 necessary for mulDiv
         if (normalizedDebt >= 0) {
             return normalizedDebt.toUint256().mulDiv(rates[rateId].accumulatedRate.inner(), 1e18).toUint128().toInt128();
         } else {

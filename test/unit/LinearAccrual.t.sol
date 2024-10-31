@@ -263,13 +263,17 @@ contract LinearAccrualTest is Test {
         assertApproxEqAbs(rateAfter4Periods.inner(), ratePow4, 10 ** 4, "Rate should be ^4 after 3 passed periods");
     }
 
-    function testFuzzDripReverts(uint128 _rate) public {
-        D18 rate = d18(uint128(bound(_rate, 1e15, 1e21)));
+    function testDripZeroRate() public {
+        D18 rate = d18(0);
         CompoundingPeriod period = CompoundingPeriod.Secondly;
         bytes32 rateId = linearAccrual.getRateId(rate.inner(), period);
+        (, uint64 lastUpdated) = linearAccrual.rates(rateId);
+        assertEq(lastUpdated, 0);
 
-        // Registration missing
-        vm.expectRevert(abi.encodeWithSelector(ILinearAccrual.RateIdMissing.selector, rateId));
+        // NOTE: We did not register the rate id as it's the default 0 value
+        vm.warp(1 seconds);
         linearAccrual.drip(rateId);
+        (, lastUpdated) = linearAccrual.rates(rateId);
+        assertEq(lastUpdated, 1);
     }
 }
