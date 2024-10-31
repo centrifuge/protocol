@@ -46,7 +46,7 @@ contract LinearAccrualTest is Test {
     }
 
     function testRegisterRateIdReverts(uint128 _rate, uint8 _period) public {
-        D18 rate = d18(uint128(bound(_rate, 1e10, 1e20)));
+        D18 rate = d18(uint128(bound(_rate, 0, 1e20)));
         CompoundingPeriod period = CompoundingPeriod(bound(_period, 0, 1));
         bytes32 rateId = linearAccrual.registerRateId(rate.inner(), period);
 
@@ -99,6 +99,14 @@ contract LinearAccrualTest is Test {
         change = 3e19;
         newDebt = linearAccrual.getModifiedNormalizedDebt(rateId, prevNormalizedDebt, change);
         assertEq(newDebt, -1e21 + 2e20, "Incorrect new normalized debt with hardcoded change (case 4)");
+
+        // Case 5: zero rate
+        bytes32 zeroRateId = linearAccrual.registerRateId(0, period);
+        assertEq(
+            linearAccrual.getModifiedNormalizedDebt(zeroRateId, prevNormalizedDebt, change),
+            prevNormalizedDebt + change,
+            "Incorrect new normalized debt with 0 rate"
+        );
     }
 
     function testFuzzGetModifiedNormalizedDebt(
@@ -141,6 +149,21 @@ contract LinearAccrualTest is Test {
 
         int128 newNormalizedDebt = linearAccrual.getRenormalizedDebt(oldRateId, newRateId, 3e10);
         assertEq(newNormalizedDebt, 1e10, "Incorrect hardcoded renormalized debt");
+
+        // old rate is zero rate
+        bytes32 zeroRateId = linearAccrual.registerRateId(0, period);
+        assertEq(
+            linearAccrual.getRenormalizedDebt(zeroRateId, newRateId, 90e17),
+            2e19, // 90e17 * 1e18 / 45e16 = 2e19
+            "Incorrect renormalized debt with 0 old rate"
+        );
+
+        // new rate is zero rate
+        assertEq(
+            linearAccrual.getRenormalizedDebt(oldRateId, zeroRateId, 2e20),
+            30e18, // 2e20 * 15e16 / 1e18 =  = 30e18
+            "Incorrect renormalized debt with 0 new rate"
+        );
     }
 
     function testFuzzGetRenormalizedDebtFuzz(

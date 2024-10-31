@@ -49,9 +49,7 @@ contract LinearAccrual is ILinearAccrual {
 
         if (periodsPassed > 0) {
             rate.accumulatedRate = d18(
-                rate.accumulatedRate.mulInt(
-                    uint256(group.ratePerPeriod.inner()).rpow(periodsPassed, d18(1e18).inner()).toUint128()
-                )
+                rate.accumulatedRate.mulInt(uint256(group.ratePerPeriod.inner()).rpow(periodsPassed, 1e18).toUint128())
             );
 
             emit RateAccumulated(rateId, rate.accumulatedRate.inner(), periodsPassed);
@@ -66,7 +64,7 @@ contract LinearAccrual is ILinearAccrual {
 
         rateId = keccak256(abi.encode(group));
 
-        require(groups[rateId].ratePerPeriod.inner() == 0, RateIdExists(rateId, ratePerPeriod.inner(), period));
+        require(rates[rateId].lastUpdated == 0, RateIdExists(rateId, ratePerPeriod.inner(), period));
 
         groups[rateId] = group;
         rates[rateId] = Rate(ratePerPeriod, uint64(block.timestamp));
@@ -89,6 +87,11 @@ contract LinearAccrual is ILinearAccrual {
     {
         _requireUpdatedRateId(rateId);
 
+        // Short circuit
+        if (rates[rateId].accumulatedRate.inner() == 0) {
+            return prevNormalizedDebt + debtChange;
+        }
+
         if (debtChange >= 0) {
             return prevNormalizedDebt + rates[rateId].accumulatedRate.reciprocalMulInt(uint128(debtChange)).toInt128();
         } else {
@@ -106,6 +109,11 @@ contract LinearAccrual is ILinearAccrual {
 
         int128 debt_ = debt(oldRateId, prevNormalizedDebt);
 
+        // Short circuit
+        if (rates[newRateId].accumulatedRate.inner() == 0) {
+            return debt_;
+        }
+
         if (debt_ >= 0) {
             return rates[newRateId].accumulatedRate.reciprocalMulInt(debt_.toUint256().toUint128()).toInt128();
         } else {
@@ -116,6 +124,11 @@ contract LinearAccrual is ILinearAccrual {
     /// @inheritdoc ILinearAccrual
     function debt(bytes32 rateId, int128 normalizedDebt) public view returns (int128) {
         _requireUpdatedRateId(rateId);
+
+        // Short circuit
+        if (rates[rateId].accumulatedRate.inner() == 0) {
+            return normalizedDebt;
+        }
 
         // Casting to int128 safe because we don't exceed number of digits of normalizedDebt
         // Casting to uint256 necessary for mulDiv
