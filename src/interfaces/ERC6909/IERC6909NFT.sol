@@ -7,8 +7,6 @@ import {IERC6909URIExtension} from "src/interfaces/ERC6909/IERC6909URIExtension.
 interface IERC6909NFT is IERC6909, IERC6909URIExtension {
     /// Errors
     error UnknownTokenId(address owner, uint256 tokenId);
-
-    error Burn_InsufficientBalance(address owner, uint256 tokenId);
     error LessThanMinimalDecimal(uint8 minimal, uint8 actual);
 
     /// Functions
