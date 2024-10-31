@@ -3,6 +3,9 @@ pragma solidity 0.8.28;
 
 interface IERC6909 {
     /// Errors
+    error EmptyOwner();
+    error EmptyAmount();
+    error InvalidTokenId();
     error InsufficientBalance(address owner, uint256 tokenId);
     error InsufficientAllowance(address sender, uint256 tokenId);
 
