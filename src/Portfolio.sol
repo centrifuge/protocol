@@ -50,28 +50,28 @@ contract Portfolio is Auth, IPortfolio {
     }
 
     /// @inheritdoc IPortfolio
-    function create(uint64 poolId, ItemInfo calldata info, IERC6909 source, uint256 tokenId) external auth {
+    function create(uint64 poolId, ItemInfo calldata info, IERC6909 source, uint256 tokenId, address owner)
+        external
+        auth
+    {
         uint32 itemId = items[poolId].length.toUint32() + 1;
 
-        uint96 uniqueItemId = uint96(bytes12(abi.encodePacked(poolId, itemId)));
-        uint160 collateralId = nftEscrow.attach(source, tokenId, uniqueItemId);
+        nftEscrow.lock(source, tokenId, owner);
 
-        items[poolId].push(Item(info, 0, d18(0), collateralId, true));
+        items[poolId].push(Item(info, 0, d18(0), nftEscrow.computeNftId(source, tokenId), true));
 
         emit Created(poolId, itemId, source, tokenId);
     }
 
     /// @inheritdoc IPortfolio
-    function close(uint64 poolId, uint32 itemId) external auth {
+    function close(uint64 poolId, uint32 itemId, IERC6909 source, uint256 tokenId, address owner) external auth {
         Item storage item = _getItem(poolId, itemId);
         require(item.outstandingQuantity.inner() == 0, ItemCanNotBeClosed());
         require(linearAccrual.debt(item.info.interestRateId, item.normalizedDebt) <= 0, ItemCanNotBeClosed());
 
-        uint160 collateralId = item.collateralId;
-
         delete items[poolId][itemId - 1];
 
-        nftEscrow.detach(collateralId);
+        nftEscrow.unlock(source, tokenId, owner);
 
         emit Closed(poolId, itemId);
     }

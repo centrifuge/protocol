@@ -29,23 +29,40 @@ contract TestCommon is Test {
 
     function setUp() public {
         _mockCurrency();
+        _mockLock();
+        _mockUnlock();
+        _mockComputeNftId();
     }
 
-    function _mockAttach(uint32 itemId) internal {
+    function _mockCurrency() internal {
         vm.mockCall(
-            address(escrow),
-            abi.encodeWithSelector(
-                INftEscrow.attach.selector, address(nfts), TOKEN_ID, uint96(bytes12(abi.encodePacked(POOL_A, itemId)))
-            ),
-            abi.encode(COLLATERAL_ID)
+            address(poolRegistry),
+            abi.encodeWithSelector(IPoolRegistry.currency.selector, POOL_A),
+            abi.encode(POOL_CURRENCY)
         );
     }
 
-    function _mockDetach() internal {
+    function _mockLock() internal {
         vm.mockCall(
             address(escrow),
-            abi.encodeWithSelector(INftEscrow.detach.selector, address(nfts), COLLATERAL_ID),
+            abi.encodeWithSelector(INftEscrow.lock.selector, address(nfts), TOKEN_ID, OWNER),
             abi.encode()
+        );
+    }
+
+    function _mockUnlock() internal {
+        vm.mockCall(
+            address(escrow),
+            abi.encodeWithSelector(INftEscrow.unlock.selector, address(nfts), TOKEN_ID, OWNER),
+            abi.encode()
+        );
+    }
+
+    function _mockComputeNftId() internal {
+        vm.mockCall(
+            address(escrow),
+            abi.encodeWithSelector(INftEscrow.computeNftId.selector, address(nfts), TOKEN_ID),
+            abi.encode(COLLATERAL_ID)
         );
     }
 
@@ -62,14 +79,6 @@ contract TestCommon is Test {
             address(valuation),
             abi.encodeWithSelector(IERC7726.getQuote.selector, quantity, COLLATERAL_ID, POOL_CURRENCY),
             abi.encode(amount)
-        );
-    }
-
-    function _mockCurrency() internal {
-        vm.mockCall(
-            address(poolRegistry),
-            abi.encodeWithSelector(IPoolRegistry.currency.selector, POOL_A),
-            abi.encode(POOL_CURRENCY)
         );
     }
 
@@ -139,62 +148,54 @@ contract TestFile is TestCommon {
 
 contract TestCreate is TestCommon {
     function testSuccess() public {
-        _mockAttach(FIRST_ITEM_ID);
         vm.expectEmit();
         emit IPortfolio.Created(POOL_A, FIRST_ITEM_ID, nfts, TOKEN_ID);
-        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID, OWNER);
 
         assert(_getItem(FIRST_ITEM_ID).isValid);
         assertEq(_getItem(FIRST_ITEM_ID).collateralId, COLLATERAL_ID);
     }
 
     function testItemIdIncrement() public {
-        _mockAttach(1);
         vm.expectEmit();
         emit IPortfolio.Created(POOL_A, 1, nfts, TOKEN_ID);
-        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID, OWNER);
 
-        _mockAttach(2);
         vm.expectEmit();
         emit IPortfolio.Created(POOL_A, 2, nfts, TOKEN_ID);
-        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID, OWNER);
     }
 }
 
 contract TestClose is TestCommon {
     function testSuccess() public {
-        _mockAttach(FIRST_ITEM_ID);
-        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID, OWNER);
 
-        _mockDetach();
         _mockDebt(0, 0);
         vm.expectEmit();
         emit IPortfolio.Closed(POOL_A, FIRST_ITEM_ID);
-        portfolio.close(POOL_A, FIRST_ITEM_ID);
+        portfolio.close(POOL_A, FIRST_ITEM_ID, nfts, TOKEN_ID, OWNER);
 
         assert(!_getItem(FIRST_ITEM_ID).isValid);
     }
 
     function testErrItemCanNotBeClosedDueQuantity() public {
-        _mockAttach(FIRST_ITEM_ID);
-        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID, OWNER);
 
         _mockQuoteForQuantities(20, d18(5));
         _mockModifyNormalizedDebt(20, 0, 0);
         portfolio.increaseDebt(POOL_A, FIRST_ITEM_ID, 20);
 
         vm.expectRevert(abi.encodeWithSelector(IPortfolio.ItemCanNotBeClosed.selector));
-        portfolio.close(POOL_A, FIRST_ITEM_ID);
+        portfolio.close(POOL_A, FIRST_ITEM_ID, nfts, TOKEN_ID, OWNER);
     }
 
     function testErrItemCanNotBeClosedDueDebt() public {
-        _mockAttach(FIRST_ITEM_ID);
-        _mockAttach(FIRST_ITEM_ID);
-        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID, OWNER);
 
         _mockDebt(0, 1);
         vm.expectRevert(abi.encodeWithSelector(IPortfolio.ItemCanNotBeClosed.selector));
-        portfolio.close(POOL_A, FIRST_ITEM_ID);
+        portfolio.close(POOL_A, FIRST_ITEM_ID, nfts, TOKEN_ID, OWNER);
     }
 }
 
@@ -202,8 +203,7 @@ contract TestUpdateInterestRate is TestCommon {
     bytes32 constant INTEREST_RATE_B = bytes32(uint256(2));
 
     function testSuccess() public {
-        _mockAttach(FIRST_ITEM_ID);
-        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID, OWNER);
 
         _mockRenormalizeDebt(INTEREST_RATE_B, 0, 1);
         vm.expectEmit();
@@ -219,8 +219,7 @@ contract TestUpdateValutation is TestCommon {
     IERC7726 newValuation = IERC7726(address(101));
 
     function testSuccess() public {
-        _mockAttach(FIRST_ITEM_ID);
-        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID, OWNER);
 
         vm.expectEmit();
         emit IPortfolio.ValuationUpdated(POOL_A, FIRST_ITEM_ID, newValuation);
@@ -234,8 +233,7 @@ contract TestIncreaseDebt is TestCommon {
     uint128 constant AMOUNT = 20;
 
     function testSuccess() public {
-        _mockAttach(FIRST_ITEM_ID);
-        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID, OWNER);
 
         _mockQuoteForQuantities(AMOUNT, d18(2));
         _mockModifyNormalizedDebt(int128(AMOUNT), 0, int128(AMOUNT));
@@ -248,8 +246,7 @@ contract TestIncreaseDebt is TestCommon {
     }
 
     function testIncreaseOverIncrease() public {
-        _mockAttach(FIRST_ITEM_ID);
-        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID, OWNER);
 
         _mockQuoteForQuantities(AMOUNT, d18(2));
         _mockModifyNormalizedDebt(int128(AMOUNT), 0, int128(AMOUNT));
@@ -263,8 +260,7 @@ contract TestIncreaseDebt is TestCommon {
     }
 
     function testErrTooMuchDebt() public {
-        _mockAttach(FIRST_ITEM_ID);
-        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID, OWNER);
 
         _mockQuoteForQuantities(AMOUNT, ITEM_INFO.quantity + d18(1));
         _mockModifyNormalizedDebt(int128(AMOUNT), 0, int128(AMOUNT));
@@ -278,8 +274,7 @@ contract TestDecreaseDebt is TestCommon {
     D18 immutable INCREASE_QUANTITY = d18(8);
 
     function _createAndIncreaseItem() internal {
-        _mockAttach(FIRST_ITEM_ID);
-        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID, OWNER);
 
         _mockQuoteForQuantities(INCREASE_AMOUNT, INCREASE_QUANTITY);
         _mockModifyNormalizedDebt(int128(INCREASE_AMOUNT), 0, int128(INCREASE_AMOUNT));
@@ -318,8 +313,7 @@ contract TestDecreasesPrincipalDebt is TestDecreaseDebt {
     }
 
     function testErrTooMuchPrincipalWithoutIncrease() public {
-        _mockAttach(FIRST_ITEM_ID);
-        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID, OWNER);
 
         _mockQuoteForQuantities(1, d18(1));
         vm.expectRevert(abi.encodeWithSelector(IPortfolio.TooMuchPrincipal.selector));
@@ -360,8 +354,7 @@ contract TestDecreasesInterestDebt is TestDecreaseDebt {
     }
 
     function testErrToMuchInterestWithoutIncrease() public {
-        _mockAttach(FIRST_ITEM_ID);
-        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID);
+        portfolio.create(POOL_A, ITEM_INFO, nfts, TOKEN_ID, OWNER);
 
         _mockDebt(0, 0);
         _mockQuoteForAmount(d18(0), 0);

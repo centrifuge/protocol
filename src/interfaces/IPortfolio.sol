@@ -86,13 +86,13 @@ interface IPortfolio is IValuation {
     /// If zero, then no collateral is used for this item.
     /// @param tokenId Asset used for this item as collateral.
     /// If `source == 0` then this param does not take effect.
-    function create(uint64 poolId, ItemInfo calldata info, IERC6909 source, uint256 tokenId) external;
+    function create(uint64 poolId, ItemInfo calldata info, IERC6909 source, uint256 tokenId, address owner) external;
 
     /// @notice Close a non-outstanding item
     /// @param poolId The identifier of the pool
     /// @param itemId The identifier of the item for which we decrease the debt
     /// If a collateral was attached to this item, now the collateral is free.
-    function close(uint64 poolId, uint32 itemId) external;
+    function close(uint64 poolId, uint32 itemId, IERC6909 source, uint256 tokenId, address owner) external;
 
     /// @notice Update the interest rate used by this item
     /// @param poolId The identifier of the pool
