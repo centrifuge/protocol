@@ -28,7 +28,7 @@ contract ERC6909NFTTest is Test {
     }
 
     function testAuthorizations(address owner) public {
-        vm.assume(owner != address(0));
+        vm.assume(owner != address(0) && owner != self);
         token = new ERC6909NFT(owner);
         assertEq(token.wards(owner), 1);
 
