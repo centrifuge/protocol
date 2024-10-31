@@ -2,12 +2,14 @@
 pragma solidity 0.8.28;
 
 interface IERC6909URIExtension {
-    /// Events ///
+    /// Events
     event TokenURISet(uint256 indexed tokenId, string uri);
     event ContractURISet(address indexed target, string uri);
 
-    /// Functions ///
+    /// Errors
+    error EmptyURI();
 
+    /// Functions
     /// @return uri     Returns the common token URI.
     function contractURI() external view returns (string memory);
 

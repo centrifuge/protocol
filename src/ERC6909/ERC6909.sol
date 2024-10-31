@@ -3,12 +3,15 @@ pragma solidity 0.8.28;
 
 import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
 import {IERC165} from "src/interfaces/IERC165.sol";
+import {StringLib} from "src/libraries/StringLib.sol";
 
 /// @title      Basic implementation of all properties according to the ERC6909.
 ///
 /// @dev        This implementation MUST be extended with another contract which defines how tokens are created.
 ///             Either implement mint/burn or override transfer/transferFrom.
 abstract contract ERC6909 is IERC6909, IERC165 {
+    using StringLib for string;
+
     mapping(address owner => mapping(uint256 tokenId => uint256)) public balanceOf;
     mapping(address owner => mapping(address operator => bool)) public isOperator;
     mapping(address owner => mapping(address spender => mapping(uint256 tokenId => uint256))) public allowance;
@@ -58,11 +61,33 @@ abstract contract ERC6909 is IERC6909, IERC165 {
         return type(IERC6909).interfaceId == interfaceId || type(IERC165).interfaceId == interfaceId;
     }
 
+    function _mint(address owner, uint256 tokenId, uint256 amount) internal {
+        require(owner != address(0), EmptyOwner());
+        require(tokenId > 0, InvalidTokenId());
+        require(amount > 0, EmptyAmount());
+
+        balanceOf[owner][tokenId] += amount;
+
+        emit Transfer(msg.sender, address(0), owner, tokenId, amount);
+    }
+
+    function _burn(address owner, uint256 tokenId, uint256 amount) internal {
+        uint256 balance = balanceOf[owner][tokenId];
+        require(balance >= amount, InsufficientBalance(msg.sender, tokenId));
+
+        /// the underflow check is handled by the require line above
+        unchecked {
+            balanceOf[owner][tokenId] -= amount;
+        }
+
+        emit Transfer(owner, owner, address(0), tokenId, amount);
+    }
+
     function _transfer(address sender, address receiver, uint256 tokenId, uint256 amount) private returns (bool) {
         uint256 senderBalance = balanceOf[sender][tokenId];
         require(senderBalance >= amount, InsufficientBalance(sender, tokenId));
 
-        /// @dev    The require check few lines above guarantees that
+        ///         The require check few lines above guarantees that
         ///         it cannot underflow.
         unchecked {
             balanceOf[sender][tokenId] -= amount;
