@@ -9,7 +9,6 @@ import {IERC6909URIExtension} from "src/interfaces/ERC6909/IERC6909URIExtension.
 
 contract ERC6909NFT is IERC6909NFT, ERC6909, Auth {
     using StringLib for string;
-    using StringLib for uint256;
 
     uint8 constant MAX_SUPPLY = 1;
 

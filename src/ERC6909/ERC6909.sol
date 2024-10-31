@@ -10,8 +10,6 @@ import {StringLib} from "src/libraries/StringLib.sol";
 /// @dev        This implementation MUST be extended with another contract which defines how tokens are created.
 ///             Either implement mint/burn or override transfer/transferFrom.
 abstract contract ERC6909 is IERC6909, IERC165 {
-    using StringLib for string;
-
     mapping(address owner => mapping(uint256 tokenId => uint256)) public balanceOf;
     mapping(address owner => mapping(address operator => bool)) public isOperator;
     mapping(address owner => mapping(address spender => mapping(uint256 tokenId => uint256))) public allowance;
@@ -75,7 +73,7 @@ abstract contract ERC6909 is IERC6909, IERC165 {
         uint256 balance = balanceOf[owner][tokenId];
         require(balance >= amount, InsufficientBalance(msg.sender, tokenId));
 
-        /// the underflow check is handled by the require line above
+        // The underflow check is handled by the require line above
         unchecked {
             balanceOf[owner][tokenId] -= amount;
         }
@@ -87,8 +85,8 @@ abstract contract ERC6909 is IERC6909, IERC165 {
         uint256 senderBalance = balanceOf[sender][tokenId];
         require(senderBalance >= amount, InsufficientBalance(sender, tokenId));
 
-        ///         The require check few lines above guarantees that
-        ///         it cannot underflow.
+        //        The require check few lines above guarantees that
+        //        it cannot underflow.
         unchecked {
             balanceOf[sender][tokenId] -= amount;
         }
