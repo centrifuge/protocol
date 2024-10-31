@@ -55,7 +55,7 @@ contract Oracle is IOracle {
     /// - Otherwise we assume 18 decimals
     function _extractDecimals(address assetId) internal view returns (uint8) {
         if (assetId.code.length == 0) {
-            // It means, it is not an contract address
+            // It means, it is not a contract address
             return DEFAULT_DECIMALS;
         } else {
             (bool ok, bytes memory data) = assetId.staticcall(abi.encodeWithSelector(IERC20.decimals.selector));

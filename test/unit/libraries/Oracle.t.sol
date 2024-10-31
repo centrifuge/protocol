@@ -7,74 +7,94 @@ import "src/interfaces/IERC7726.sol";
 
 contract SomeContract {}
 
-contract TestOracle is Test {
+contract TestCommon is Test {
     address constant FEEDER = address(1);
     bytes32 constant SALT = bytes32(uint256(42));
 
-    address CURR_FROM_CONTRACT = address(new SomeContract()); //ERC20 contract address => 6 decimals
-    address CURR_NO_CONTRACT = address(123); // Non contract address => 18 decimals
-
     OracleFactory factory = new OracleFactory();
+}
 
-    function testDeploy() public {
+contract TestDeploy is TestCommon {
+    function testSuccess() public {
         vm.expectEmit();
         emit IOracleFactory.NewOracleDeployed(factory.getAddress(FEEDER, SALT));
 
         factory.deploy(FEEDER, SALT);
     }
 
-    function testSetQuote() public {
+    function testSeveral() public {
+        factory.deploy(FEEDER, SALT);
+        factory.deploy(FEEDER, bytes32(uint256(43)));
+    }
+
+    function testFailOverrideDeploy() public {
+        factory.deploy(FEEDER, SALT);
+        factory.deploy(FEEDER, SALT);
+    }
+}
+
+contract TestSetQuote is TestCommon {
+    address BASE = address(10);
+    address QUOTE = address(12);
+
+    function testSuccess() public {
         IOracle oracle = factory.deploy(FEEDER, SALT);
 
         vm.expectEmit();
         vm.warp(1 days);
-        emit IOracle.NewQuoteSet(address(1), address(2), 100, 1 days);
+        emit IOracle.NewQuoteSet(BASE, QUOTE, 100, 1 days);
 
         vm.prank(FEEDER);
-        oracle.setQuote(address(1), address(2), 100);
+        oracle.setQuote(BASE, QUOTE, 100);
     }
 
-    function testNonFeeder() public {
+    function testErrNotValidFeeder() public {
         IOracle oracle = factory.deploy(FEEDER, SALT);
 
         vm.expectRevert(abi.encodeWithSelector(IOracle.NotValidFeeder.selector));
-        oracle.setQuote(address(1), address(2), 100);
+        oracle.setQuote(BASE, QUOTE, 100);
     }
 
-    function testNeverFed() public {
+    function testErrNoQuote() public {
         IOracle oracle = factory.deploy(address(this), SALT);
 
         vm.expectRevert(abi.encodeWithSelector(IOracle.NoQuote.selector));
-        oracle.getQuote(1, address(1), address(2));
+        oracle.getQuote(1, BASE, QUOTE);
     }
+}
 
-    function testGetQuoteERC20() public {
+contract TestGetQuote is TestCommon {
+    address CURR_FROM_CONTRACT = address(new SomeContract()); //ERC20 contract address => 6 decimals
+    address CURR_NO_CONTRACT = address(123); // Non contract address => 18 decimals
+    address BASE = address(1000); // Anyone
+
+    function testERC20() public {
         IOracle oracle = factory.deploy(address(this), SALT);
-        oracle.setQuote(CURR_FROM_CONTRACT, CURR_NO_CONTRACT, 100);
+        oracle.setQuote(CURR_FROM_CONTRACT, BASE, 100);
 
         vm.mockCall(CURR_FROM_CONTRACT, abi.encodeWithSelector(IERC20.decimals.selector), abi.encode(uint8(6)));
-        assertEq(oracle.getQuote(5 * 10 ** 6, CURR_FROM_CONTRACT, CURR_NO_CONTRACT), 500);
+        assertEq(oracle.getQuote(5 * 10 ** 6, CURR_FROM_CONTRACT, BASE), 500);
     }
 
-    function testGetQuoteNonERC20Contract() public {
+    function testNonERC20Contract() public {
         IOracle oracle = factory.deploy(address(this), SALT);
-        oracle.setQuote(CURR_FROM_CONTRACT, CURR_NO_CONTRACT, 100);
+        oracle.setQuote(CURR_FROM_CONTRACT, BASE, 100);
 
-        assertEq(oracle.getQuote(5 * 10 ** 18, CURR_FROM_CONTRACT, CURR_NO_CONTRACT), 500);
+        assertEq(oracle.getQuote(5 * 10 ** 18, CURR_FROM_CONTRACT, BASE), 500);
     }
 
-    function testGetQuoteERC20ContractWithErr() public {
+    function testERC20ContractWithErr() public {
         IOracle oracle = factory.deploy(address(this), SALT);
-        oracle.setQuote(CURR_FROM_CONTRACT, CURR_NO_CONTRACT, 100);
+        oracle.setQuote(CURR_FROM_CONTRACT, BASE, 100);
 
         vm.mockCallRevert(CURR_FROM_CONTRACT, abi.encodeWithSelector(IERC20.decimals.selector), abi.encode("error"));
-        assertEq(oracle.getQuote(5 * 10 ** 18, CURR_FROM_CONTRACT, CURR_NO_CONTRACT), 500);
+        assertEq(oracle.getQuote(5 * 10 ** 18, CURR_FROM_CONTRACT, BASE), 500);
     }
 
-    function testGetQuoteNonContract() public {
+    function testNonContract() public {
         IOracle oracle = factory.deploy(address(this), SALT);
-        oracle.setQuote(CURR_NO_CONTRACT, CURR_NO_CONTRACT, 100);
+        oracle.setQuote(CURR_NO_CONTRACT, BASE, 100);
 
-        assertEq(oracle.getQuote(5 * 10 ** 18, CURR_NO_CONTRACT, CURR_NO_CONTRACT), 500);
+        assertEq(oracle.getQuote(5 * 10 ** 18, CURR_NO_CONTRACT, BASE), 500);
     }
 }
