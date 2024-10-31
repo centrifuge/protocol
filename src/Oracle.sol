@@ -55,16 +55,13 @@ contract Oracle is IOracle {
     /// - Otherwise we assume 18 decimals
     function _extractDecimals(address assetId) internal view returns (uint8) {
         if (assetId.code.length == 0) {
-            // It means, it is not a contract address
             return DEFAULT_DECIMALS;
-        } else {
-            (bool ok, bytes memory data) = assetId.staticcall(abi.encodeWithSelector(IERC20.decimals.selector));
-            if (ok) {
-                return abi.decode(data, (uint8));
-            } else {
-                // It means, it is no an ERC20 address or the static call reverted
-                return DEFAULT_DECIMALS;
-            }
+        }
+
+        try IERC20(assetId).decimals() returns (uint8 decimals) {
+            return decimals;
+        } catch {
+            return DEFAULT_DECIMALS;
         }
     }
 }
