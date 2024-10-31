@@ -3,6 +3,9 @@ pragma solidity 0.8.28;
 
 /// @dev  A factory contract to deploy new collateral contracts implementing IERC6909.
 interface IERC6909Factory {
+    /// Events
+    event NewTokenDeployment(address indexed owner, address instance);
+
     /// @notice       Deploys new install of a contract that implements IERC6909.
     /// @dev          Factory should deploy deterministically if possible.
     ///

@@ -8,8 +8,9 @@ import {IERC6909Factory} from "src/interfaces/ERC6909/IERC6909Factory.sol";
 
 contract ERC6909Factory is IERC6909Factory {
     /// @inheritdoc IERC6909Factory
-    function deploy(address owner, bytes32 salt) public returns (address collateral) {
-        collateral = address(new ERC6909NFT{salt: salt}(owner));
+    function deploy(address owner, bytes32 salt) public returns (address instance) {
+        instance = address(new ERC6909NFT{salt: salt}(owner));
+        emit NewTokenDeployment(owner, instance);
     }
 
     /// @inheritdoc IERC6909Factory
