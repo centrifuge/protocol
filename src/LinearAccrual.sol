@@ -9,6 +9,7 @@ import {d18, D18, mulInt} from "src/types/D18.sol";
 /// @dev Represents the rate accumulator and the timestamp of the last rate update
 struct Rate {
     /// @dev Accumulated rate index over time
+    /// @dev Assumes rate to be prefixed by 1, i.e. 5% rate shall be represented as 1.05 = d18(1e18 + 5e16)
     D18 accumulatedRate;
     /// @dev Timestamp of last rate update
     uint64 lastUpdated;
@@ -17,6 +18,7 @@ struct Rate {
 /// @dev Each group corresponds to a particular compound period and the accrual rate per period
 struct Group {
     /// @dev Rate per compound period
+    /// @dev Assumes rate to be prefixed by 1, i.e. 5% rate shall be represented as 1.05 = d18(1e18 + 5e16)
     D18 ratePerPeriod;
     /// @dev Duration of compound period
     CompoundingPeriod period;
@@ -37,9 +39,6 @@ contract LinearAccrual is ILinearAccrual {
         // Short circuit to save gas
         if (rate.lastUpdated == uint64(block.timestamp)) {
             return;
-        } else if (rate.accumulatedRate.inner() == 0) {
-            rate.lastUpdated = uint64(block.timestamp);
-            return;
         }
 
         Group memory group = groups[rateId];
@@ -58,6 +57,7 @@ contract LinearAccrual is ILinearAccrual {
     }
 
     /// @inheritdoc ILinearAccrual
+    /// @dev Throws if rate has been updated once already implying it has been registered before
     function registerRateId(uint128 ratePerPeriod_, CompoundingPeriod period) public returns (bytes32 rateId) {
         D18 ratePerPeriod = d18(ratePerPeriod_);
         Group memory group = Group(ratePerPeriod, period);
@@ -80,17 +80,14 @@ contract LinearAccrual is ILinearAccrual {
     }
 
     /// @inheritdoc ILinearAccrual
+    /// @dev Throws if rate has not been updated in the current block
+    /// @dev Throws if rate is zero-rate
     function getModifiedNormalizedDebt(bytes32 rateId, int128 prevNormalizedDebt, int128 debtChange)
         external
         view
         returns (int128 newNormalizedDebt)
     {
-        _requireUpdatedRateId(rateId);
-
-        // Short circuit
-        if (rates[rateId].accumulatedRate.inner() == 0) {
-            return prevNormalizedDebt + debtChange;
-        }
+        _requireNonZeroUpdatedRateId(rateId);
 
         if (debtChange >= 0) {
             return prevNormalizedDebt + rates[rateId].accumulatedRate.reciprocalMulInt(uint128(debtChange)).toInt128();
@@ -100,19 +97,16 @@ contract LinearAccrual is ILinearAccrual {
     }
 
     /// @inheritdoc ILinearAccrual
+    /// @dev Throws if rate has not been updated in the current block
+    /// @dev Throws if rate is zero-rate
     function getRenormalizedDebt(bytes32 oldRateId, bytes32 newRateId, int128 prevNormalizedDebt)
         external
         view
         returns (int128 newNormalizedDebt)
     {
-        _requireUpdatedRateId(newRateId);
+        _requireNonZeroUpdatedRateId(newRateId);
 
         int128 debt_ = debt(oldRateId, prevNormalizedDebt);
-
-        // Short circuit
-        if (rates[newRateId].accumulatedRate.inner() == 0) {
-            return debt_;
-        }
 
         if (debt_ >= 0) {
             return rates[newRateId].accumulatedRate.reciprocalMulInt(debt_.toUint256().toUint128()).toInt128();
@@ -122,13 +116,10 @@ contract LinearAccrual is ILinearAccrual {
     }
 
     /// @inheritdoc ILinearAccrual
+    /// @dev Throws if rate has not been updated in the current block
+    /// @dev Throws if rate is zero-rate
     function debt(bytes32 rateId, int128 normalizedDebt) public view returns (int128) {
-        _requireUpdatedRateId(rateId);
-
-        // Short circuit
-        if (rates[rateId].accumulatedRate.inner() == 0) {
-            return normalizedDebt;
-        }
+        _requireNonZeroUpdatedRateId(rateId);
 
         // Casting to int128 safe because we don't exceed number of digits of normalizedDebt
         // Casting to uint256 necessary for mulDiv
@@ -139,8 +130,12 @@ contract LinearAccrual is ILinearAccrual {
         }
     }
 
-    function _requireUpdatedRateId(bytes32 rateId) internal view {
-        require(rates[rateId].lastUpdated != 0, RateIdMissing(rateId));
+    /// @notice Ensures the given rate id was updated in the current block and is not the zero-rate.
+    /// @dev Throws if rate has not been updated in the current block
+    /// @dev Throws if rate is zero-rate
+    /// @param rateId Identifier of the rate group
+    function _requireNonZeroUpdatedRateId(bytes32 rateId) internal view {
+        require(rates[rateId].lastUpdated != 0 && rates[rateId].accumulatedRate.inner() != 0, RateIdMissing(rateId));
         require(rates[rateId].lastUpdated == block.timestamp, RateIdOutdated(rateId, rates[rateId].lastUpdated));
     }
 }

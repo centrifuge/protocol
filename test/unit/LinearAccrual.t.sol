@@ -100,13 +100,10 @@ contract LinearAccrualTest is Test {
         newDebt = linearAccrual.getModifiedNormalizedDebt(rateId, prevNormalizedDebt, change);
         assertEq(newDebt, -1e21 + 2e20, "Incorrect new normalized debt with hardcoded change (case 4)");
 
-        // Case 5: zero rate
+        // Check 0-rate reversion
         bytes32 zeroRateId = linearAccrual.registerRateId(0, period);
-        assertEq(
-            linearAccrual.getModifiedNormalizedDebt(zeroRateId, prevNormalizedDebt, change),
-            prevNormalizedDebt + change,
-            "Incorrect new normalized debt with 0 rate"
-        );
+        vm.expectRevert();
+        linearAccrual.getModifiedNormalizedDebt(zeroRateId, prevNormalizedDebt, change);
     }
 
     function testFuzzGetModifiedNormalizedDebt(
@@ -141,29 +138,24 @@ contract LinearAccrualTest is Test {
     }
 
     function testGetRenormalizedDebt() public {
-        D18 oldRate = d18(uint128(15e16)); // 0.15
-        D18 newRate = d18(uint128(45e16)); // 0.45
         CompoundingPeriod period = CompoundingPeriod.Daily;
-        bytes32 oldRateId = linearAccrual.registerRateId(oldRate.inner(), period);
-        bytes32 newRateId = linearAccrual.registerRateId(newRate.inner(), period);
+        bytes32 oldRateId = linearAccrual.registerRateId(uint128(15e16), period); // 0.15
+        bytes32 newRateId = linearAccrual.registerRateId(uint128(45e16), period); // 0.45
 
         int128 newNormalizedDebt = linearAccrual.getRenormalizedDebt(oldRateId, newRateId, 3e10);
         assertEq(newNormalizedDebt, 1e10, "Incorrect hardcoded renormalized debt");
 
-        // old rate is zero rate
-        bytes32 zeroRateId = linearAccrual.registerRateId(0, period);
+        // old rate is identity-rate
         assertEq(
-            linearAccrual.getRenormalizedDebt(zeroRateId, newRateId, 90e17),
+            linearAccrual.getRenormalizedDebt(linearAccrual.registerRateId(1e18, period), newRateId, 90e17),
             2e19, // 90e17 * 1e18 / 45e16 = 2e19
             "Incorrect renormalized debt with 0 old rate"
         );
 
         // new rate is zero rate
-        assertEq(
-            linearAccrual.getRenormalizedDebt(oldRateId, zeroRateId, 2e20),
-            30e18, // 2e20 * 15e16 / 1e18 =  = 30e18
-            "Incorrect renormalized debt with 0 new rate"
-        );
+        bytes32 zeroRateId = linearAccrual.registerRateId(0, period);
+        vm.expectRevert();
+        linearAccrual.getRenormalizedDebt(oldRateId, zeroRateId, 2e20);
     }
 
     function testFuzzGetRenormalizedDebtFuzz(
