@@ -13,8 +13,6 @@ contract TestCommon is Test {
     NftEscrow escrow = new NftEscrow(address(this));
     IERC6909 nfts = IERC6909(address(0));
 
-    uint160 immutable NFT_ID = escrow.computeNftId(nfts, TOKEN_ID);
-
     function _mockBalanceOf(uint256 balance) internal {
         vm.mockCall(
             address(nfts),

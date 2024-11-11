@@ -26,9 +26,4 @@ contract NftEscrow is Auth, INftEscrow {
 
         emit Unlocked(source, tokenId);
     }
-
-    /// @inheritdoc INftEscrow
-    function computeNftId(IERC6909 source, uint256 tokenId) public pure returns (uint160) {
-        return uint160(uint256(keccak256(abi.encodePacked(source, tokenId))));
-    }
 }

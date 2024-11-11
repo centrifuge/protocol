@@ -30,10 +30,4 @@ interface INftEscrow {
     /// @param tokenId The asset identification
     /// @param to Address where the token will be transfered to.
     function unlock(IERC6909 source, uint256 tokenId, address to) external;
-
-    /// @notice Compute the unique identification of the asset.
-    /// @param source The contract or collection where identify the `tokenId`
-    /// @param tokenId The asset identification
-    /// @return nftId An unique identification of this `source` + `tokenId`
-    function computeNftId(IERC6909 source, uint256 tokenId) external pure returns (uint160 nftId);
 }
