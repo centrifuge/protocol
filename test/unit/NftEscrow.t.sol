@@ -2,7 +2,6 @@
 pragma solidity >= 0.8.28;
 
 import "forge-std/Test.sol";
-import "forge-std/mocks/MockERC20.sol";
 import "src/NftEscrow.sol";
 import "src/interfaces/INftEscrow.sol";
 
@@ -16,7 +15,7 @@ contract TestCommon is Test {
 
     uint160 immutable NFT_ID = escrow.computeNftId(nfts, TOKEN_ID);
 
-    function _mockEscrowBalance(uint256 balance) internal {
+    function _mockBalanceOf(uint256 balance) internal {
         vm.mockCall(
             address(nfts),
             abi.encodeWithSelector(IERC6909.balanceOf.selector, address(escrow), TOKEN_ID),
@@ -24,7 +23,7 @@ contract TestCommon is Test {
         );
     }
 
-    function _mockTransfer(address from, address to, bool result) internal {
+    function _mockTransferFrom(address from, address to, bool result) internal {
         vm.mockCall(
             address(nfts),
             abi.encodeWithSelector(IERC6909.transferFrom.selector, from, to, TOKEN_ID, 1),
@@ -35,8 +34,8 @@ contract TestCommon is Test {
 
 contract TestLock is TestCommon {
     function testSuccess() public {
-        _mockEscrowBalance(0);
-        _mockTransfer(OWNER, address(escrow), true);
+        _mockBalanceOf(0);
+        _mockTransferFrom(OWNER, address(escrow), true);
 
         vm.expectEmit();
         emit INftEscrow.Locked(nfts, TOKEN_ID);
@@ -44,15 +43,15 @@ contract TestLock is TestCommon {
     }
 
     function testErrAlreadyLocked() public {
-        _mockEscrowBalance(1);
+        _mockBalanceOf(1);
 
         vm.expectRevert(abi.encodeWithSelector(INftEscrow.AlreadyLocked.selector));
         escrow.lock(nfts, TOKEN_ID, OWNER);
     }
 
     function testErrCanNotBeTransferred() public {
-        _mockEscrowBalance(0);
-        _mockTransfer(OWNER, address(escrow), false);
+        _mockBalanceOf(0);
+        _mockTransferFrom(OWNER, address(escrow), false);
 
         vm.expectRevert(abi.encodeWithSelector(INftEscrow.CanNotBeTransferred.selector));
         escrow.lock(nfts, TOKEN_ID, OWNER);
@@ -61,8 +60,8 @@ contract TestLock is TestCommon {
 
 contract TestUnlock is TestCommon {
     function testSuccess() public {
-        _mockEscrowBalance(1);
-        _mockTransfer(address(escrow), OWNER, true);
+        _mockBalanceOf(1);
+        _mockTransferFrom(address(escrow), OWNER, true);
 
         vm.expectEmit();
         emit INftEscrow.Unlocked(nfts, TOKEN_ID);
@@ -70,15 +69,15 @@ contract TestUnlock is TestCommon {
     }
 
     function testErrNotLocked() public {
-        _mockEscrowBalance(0);
+        _mockBalanceOf(0);
 
         vm.expectRevert(abi.encodeWithSelector(INftEscrow.NotLocked.selector));
         escrow.unlock(nfts, TOKEN_ID, OWNER);
     }
 
     function testErrCanNotBeTransferred() public {
-        _mockEscrowBalance(1);
-        _mockTransfer(address(escrow), OWNER, false);
+        _mockBalanceOf(1);
+        _mockTransferFrom(address(escrow), OWNER, false);
 
         vm.expectRevert(abi.encodeWithSelector(INftEscrow.CanNotBeTransferred.selector));
         escrow.unlock(nfts, TOKEN_ID, OWNER);
