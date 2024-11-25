@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
 /// @dev  A factory contract to deploy new collateral contracts implementing IERC6909.
