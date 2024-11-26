@@ -21,6 +21,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
     function registerPool(CurrencyId poolCurrency, address shareClassManager)
         external
         payable
+        auth
         returns (PoolId poolId)
     {
         uint32 chainId = block.chainid.toUint32();
@@ -34,16 +35,16 @@ contract PoolRegistry is Auth, IPoolRegistry {
     }
 
     /// @inheritdoc IPoolRegistry
-    function changeManager(PoolId poolId, address manager) external {
-        require(poolManagers[poolId] == manager, NotManagerOrNonExistingPool());
-        poolManagers[poolId] = manager;
+    function changeManager(address currentManager, PoolId poolId, address newManager) external auth {
+        require(poolManagers[poolId] == currentManager, NotManagerOrNonExistingPool());
+        poolManagers[poolId] = newManager;
 
-        emit NewPoolManager(manager);
+        emit NewPoolManager(newManager);
     }
 
     /// @inheritdoc IPoolRegistry
-    function updateMetadata(PoolId poolId, bytes calldata metadata) external {
-        require(poolManagers[poolId] == msg.sender, NotManagerOrNonExistingPool());
+    function updateMetadata(address manager, PoolId poolId, bytes calldata metadata) external auth {
+        require(poolManagers[poolId] == manager, NotManagerOrNonExistingPool());
         poolMetadata[poolId] = metadata;
 
         emit NewPoolMetadata(poolId, metadata);

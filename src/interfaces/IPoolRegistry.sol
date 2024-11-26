@@ -17,7 +17,7 @@ interface IPoolRegistry {
     /// @notice TODO
     function registerPool(CurrencyId poolCurrency, address shareClassManager) external payable returns (PoolId);
     /// @notice TODO
-    function changeManager(PoolId poolId, address manager) external;
+    function changeManager(address currentManager, PoolId poolId, address newManager) external;
     /// @notice TODO
-    function updateMetadata(PoolId poolId, bytes calldata metadata) external;
+    function updateMetadata(address currentManager, PoolId poolId, bytes calldata metadata) external;
 }
