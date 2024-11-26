@@ -57,7 +57,8 @@ library MathLib {
     function mulDiv(uint256 x, uint256 y, uint256 denominator) internal pure returns (uint256 result) {
         unchecked {
             // 512-bit multiply [prod1 prod0] = x * y. Compute the product mod 2^256 and mod 2^256 - 1, then use
-            // use the Chinese Remainder Theorem to reconstruct the 512 bit result. The result is stored in two 256
+            // use the Chinese Remainder Theorem to reconstruct the 512 bit result. The result is stored in two
+            // 256https://www.alchemy.com/overviews/solidity-call
             // variables such that product = prod1 * 2^256 + prod0.
             uint256 prod0; // Least significant 256 bits of the product
             uint256 prod1; // Most significant 256 bits of the product
@@ -153,6 +154,13 @@ library MathLib {
             revert("MathLib/uint8-overflow");
         }
         return uint8(value);
+    }
+
+    function toUint32(uint256 value) internal pure returns (uint32) {
+        if (value > type(uint32).max) {
+            revert("MathLib/uint32-overflow");
+        }
+        return uint32(value);
     }
 
     /// @notice Safe type conversion from uint256 to uint128.
