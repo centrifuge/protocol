@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-interface IPoolRegistry {
-    /// Types
-    type PoolId is uint64;
-    type CurrencyId is address;
+import {PoolId} from "src/types/PoolId.sol";
+import {Currency} from "src/types/Currency.sol";
 
+interface IPoolRegistry {
     /// Events
     event NewPool(PoolId indexed poolId, address indexed manager);
     event NewPoolManager(address indexed manager);
@@ -15,7 +14,7 @@ interface IPoolRegistry {
     error NotManagerOrNonExistingPool();
 
     /// @notice TODO
-    function registerPool(CurrencyId poolCurrency, address shareClassManager) external payable returns (PoolId);
+    function registerPool(Currency poolCurrency, address shareClassManager) external payable returns (PoolId);
     /// @notice TODO
     function changeManager(address currentManager, PoolId poolId, address newManager) external;
     /// @notice TODO

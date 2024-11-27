@@ -2,6 +2,8 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/Auth.sol";
+import {PoolId} from "src/types/PoolId.sol";
+import {Currency} from "src/types/Currency.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
 
@@ -11,14 +13,14 @@ contract PoolRegistry is Auth, IPoolRegistry {
     uint32 public latestId;
 
     mapping(PoolId => bytes) public poolMetadata;
-    mapping(PoolId => address) public poolManagers;
+    mapping(PoolId => address) public poolAdmins;
     mapping(PoolId => address) public shareClassManagers;
-    mapping(PoolId => CurrencyId) public poolCurrencies;
+    mapping(PoolId => Currency) public poolCurrencies;
 
     constructor(address deployer) Auth(deployer) {}
 
     /// @inheritdoc IPoolRegistry
-    function registerPool(CurrencyId poolCurrency, address shareClassManager)
+    function registerPool(Currency poolCurrency, address shareClassManager)
         external
         payable
         auth
@@ -27,7 +29,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
         uint32 chainId = block.chainid.toUint32();
         poolId = PoolId.wrap((uint64(chainId) << 32) | uint64(latestId++));
 
-        poolManagers[poolId] = msg.sender;
+        poolAdmins[poolId] = msg.sender;
         poolCurrencies[poolId] = poolCurrency;
         shareClassManagers[poolId] = shareClassManager;
 
@@ -36,15 +38,15 @@ contract PoolRegistry is Auth, IPoolRegistry {
 
     /// @inheritdoc IPoolRegistry
     function changeManager(address currentManager, PoolId poolId, address newManager) external auth {
-        require(poolManagers[poolId] == currentManager, NotManagerOrNonExistingPool());
-        poolManagers[poolId] = newManager;
+        require(poolAdmins[poolId] == currentManager, NotManagerOrNonExistingPool());
+        poolAdmins[poolId] = newManager;
 
         emit NewPoolManager(newManager);
     }
 
     /// @inheritdoc IPoolRegistry
     function updateMetadata(address manager, PoolId poolId, bytes calldata metadata) external auth {
-        require(poolManagers[poolId] == manager, NotManagerOrNonExistingPool());
+        require(poolAdmins[poolId] == manager, NotManagerOrNonExistingPool());
         poolMetadata[poolId] = metadata;
 
         emit NewPoolMetadata(poolId, metadata);
