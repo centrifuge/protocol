@@ -7,13 +7,15 @@ import {Currency} from "src/types/Currency.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
 
+import "forge-std/console.sol";
+
 contract PoolRegistry is Auth, IPoolRegistry {
     using MathLib for uint256;
 
     uint32 public latestId;
 
-    mapping(PoolId => bytes) public poolMetadata;
-    mapping(PoolId => PoolAdmin) public poolAdmins;
+    mapping(PoolId => bytes) public metadata;
+    mapping(PoolId => mapping(address => bool)) public poolAdmins;
     mapping(PoolId => address) public shareClassManagers;
     mapping(PoolId => Currency) public poolCurrencies;
 
@@ -25,10 +27,14 @@ contract PoolRegistry is Auth, IPoolRegistry {
         auth
         returns (PoolId poolId)
     {
-        uint32 chainId = block.chainid.toUint32();
-        poolId = PoolId.wrap((uint64(chainId) << 32) | uint64(latestId++));
+        require(admin != address(0), EmptyAdmin());
+        require(Currency.unwrap(currency) != address(0), EmptyCurrency());
+        require(shareClassManager != address(0), EmptyShareClassManager());
 
-        poolAdmins[poolId] = PoolAdmin({account: admin, canManage: true});
+        // TODO: Make this part of the library. Something like PoolId.generate();
+        poolId = PoolId.wrap((uint64(block.chainid.toUint32()) << 32) | uint64(latestId++));
+
+        poolAdmins[poolId][admin] = true;
         poolCurrencies[poolId] = currency;
         shareClassManagers[poolId] = shareClassManager;
 
@@ -36,20 +42,29 @@ contract PoolRegistry is Auth, IPoolRegistry {
     }
 
     /// @inheritdoc IPoolRegistry
-    function modifyAdmin(PoolId poolId, address admin, bool canManage) external auth {
-        PoolAdmin storage poolAdmin = poolAdmins[poolId];
-        require(poolAdmin.account != address(0), NonExistingPool(poolId));
-        poolAdmin.account = admin;
-        poolAdmin.canManage = canManage;
+    function updateAdmin(PoolId poolId, address admin, bool canManage) external auth {
+        require(admin != address(0), EmptyAdmin());
+        require(shareClassManagers[poolId] != address(0), NonExistingPool(poolId));
+
+        poolAdmins[poolId][admin] = canManage;
 
         emit NewPoolManager(admin);
     }
 
     /// @inheritdoc IPoolRegistry
-    function updateMetadata(PoolId poolId, bytes calldata metadata) external auth {
-        require(poolAdmins[poolId].account != address(0), NonExistingPool(poolId));
-        poolMetadata[poolId] = metadata;
+    function updateMetadata(PoolId poolId, bytes calldata metadata_) external auth {
+        require(shareClassManagers[poolId] != address(0), NonExistingPool(poolId));
+        metadata[poolId] = metadata_;
 
-        emit NewPoolMetadata(poolId, metadata);
+        emit NewPoolMetadata(poolId, metadata_);
+    }
+
+    /// @inheritdoc IPoolRegistry
+    function updateShareClassManager(PoolId poolId, address shareClassManager) external auth {
+        require(shareClassManagers[poolId] != address(0), NonExistingPool(poolId));
+        require(shareClassManager != address(0), EmptyShareClassManager());
+        shareClassManagers[poolId] = shareClassManager;
+
+        emit NewShareClassManager(poolId, shareClassManager);
     }
 }
