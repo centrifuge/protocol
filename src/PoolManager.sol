@@ -3,6 +3,8 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/Auth.sol";
 import {D18} from "src/types/D18.sol";
+import {PoolLocker} from "src/PoolLocker.sol";
+import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
 
 /// [ERC-7726](https://eips.ethereum.org/EIPS/eip-7726): Common Quote Oracle
 /// Interface for data feeds providing the relative value of assets.
@@ -16,7 +18,8 @@ interface IERC7726 {
 }
 
 interface IShareClassManager {
-    function requestDeposit(uint64 poolId, uint32 shareClassId, uint256 assetId, address investor) external;
+    function requestDeposit(uint64 poolId, uint32 shareClassId, uint256 assetId, address investor, uint128 amount)
+        external;
     function approveSubscription(
         uint64 poolId,
         uint32 shareClassId,
@@ -39,86 +42,78 @@ interface IPoolRegistry {
     function shareClassManager(uint64 poolId) external view returns (IShareClassManager);
 }
 
+interface IAssetManager is IERC6909 {}
+
 interface IAccounting {
     function unlock(uint64 poolId) external;
     function lock(uint64 poolId) external;
 }
 
-contract PoolManager is Auth {
-    error WrongExecutionInputs();
-    error FailedCallExecution(uint32 callIndex);
+interface IHoldings {
+    function updateHoldings() external;
+}
 
-    IPoolRegistry poolRegistry;
-    IAccounting accounting;
+interface IGateway {
+    function send(bytes calldata message) external;
+}
 
-    uint64 unlockedPool; // Transient
+contract PoolManager is PoolLocker {
+    IPoolRegistry immutable poolRegistry;
+    IAssetManager immutable assetManager;
+    IAccounting immutable accounting;
 
-    constructor(address owner) Auth(owner) {}
+    IHoldings immutable holdings;
+    IGateway immutable gateway;
 
-    modifier poolUnlocked() {
-        require(unlockedPool != 0);
-        _;
+    constructor(
+        IPoolRegistry poolRegistry_,
+        IAssetManager assetManager_,
+        IAccounting accounting_,
+        IHoldings holdings_,
+        IGateway gateway_
+    ) {
+        poolRegistry = poolRegistry_;
+        assetManager = assetManager_;
+        accounting = accounting_;
+        holdings = holdings_;
+        gateway = gateway_;
     }
 
-    // This method is called first in a multicall
-    function _unlock(uint64 poolId) private {
+    /// @dev This method is called first in a multicall
+    function _unlock(uint64 poolId) internal override {
         require(poolRegistry.isUnlocker(msg.sender, poolId));
-        unlockedPool = poolId;
         accounting.unlock(poolId);
     }
 
-    function _lock() private {
-        accounting.unlock(unlockedPool);
-        unlockedPool = 0;
+    /// @dev This method is called last in `execute()`
+    function _lock() internal override {
+        accounting.lock(_unlockedPoolId());
     }
-
-    /// @dev Will perform all methods between the unlock <-> lock
-    /// @dev All calls with poolUnlocked modifier are able to be called inside this method
-    function execute(uint64 poolId, address[] calldata targets, bytes[] calldata data)
-        external
-        returns (bytes[] memory results)
-    {
-        _unlock(poolId);
-
-        require(targets.length == data.length, WrongExecutionInputs());
-
-        results = new bytes[](data.length);
-
-        for (uint32 i; i < targets.length; i++) {
-            (bool success, bytes memory result) = targets[i].call(data[i]);
-            if (!success) {
-                // Forward the error happened in target.call()
-                assembly {
-                    let ptr := mload(0x40)
-                    let size := returndatasize()
-                    returndatacopy(ptr, 0, size)
-                    revert(ptr, size)
-                }
-            }
-            results[i] = result;
-        }
-
-        _lock();
-    }
-
-    // ---- Calls that require to unlock ----
-
-    function allowPool(uint32 chainId) public poolUnlocked {}
-    function allowShareClass(uint32 chainId) public poolUnlocked {}
-
-    function depositRequest(uint32 shareClassId, uint256 assetId, address investor) public poolUnlocked {
-        poolRegistry.shareClassManager(unlockedPool).requestDeposit(unlockedPool, shareClassId, assetId, investor);
-    }
-
-    function approveSubscription(uint64 poolId) public poolUnlocked {}
-    function issueShares(uint64 poolId) public poolUnlocked {}
-
-    // ---- Permissionless calls ----
 
     function registerPool() external returns (uint64) {
-        // Dispatch some event associated to PoolManager
+        // TODO: calculate fees
         return poolRegistry.registerPool(msg.sender);
     }
 
-    function claimShares(uint64 poolId) public {}
+    function handle(bytes calldata message) external {
+        require(msg.sender == address(gateway));
+        // TODO decode
+        // TODO: Call to specific method of this contract, i.e depositRequest
+    }
+
+    function allowPool(uint32 chainId) external poolUnlocked {}
+    function allowShareClass(uint32 chainId) external poolUnlocked {}
+
+    function depositRequest(uint32 shareClassId, uint256 assetId, address investor, uint128 amount)
+        private
+        poolUnlocked
+    {
+        uint64 poolId = _unlockedPoolId();
+        poolRegistry.shareClassManager(poolId).requestDeposit(poolId, shareClassId, assetId, investor, amount);
+    }
+
+    function approveSubscription(uint64 poolId) external poolUnlocked {}
+    function updateHoldings() external poolUnlocked {}
+    function issueShares(uint64 poolId) external poolUnlocked {}
+    function claimShares(uint64 poolId) external {}
 }
