@@ -20,12 +20,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
     constructor(address deployer) Auth(deployer) {}
 
     /// @inheritdoc IPoolRegistry
-    function registerPool(Currency poolCurrency, address shareClassManager)
-        external
-        payable
-        auth
-        returns (PoolId poolId)
-    {
+    function registerPool(Currency poolCurrency, address shareClassManager) external auth returns (PoolId poolId) {
         uint32 chainId = block.chainid.toUint32();
         poolId = PoolId.wrap((uint64(chainId) << 32) | uint64(latestId++));
 

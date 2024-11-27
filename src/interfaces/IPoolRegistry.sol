@@ -14,7 +14,7 @@ interface IPoolRegistry {
     error NotManagerOrNonExistingPool();
 
     /// @notice TODO
-    function registerPool(Currency poolCurrency, address shareClassManager) external payable returns (PoolId);
+    function registerPool(Currency poolCurrency, address shareClassManager) external returns (PoolId);
     /// @notice TODO
     function changeManager(address currentManager, PoolId poolId, address newManager) external;
     /// @notice TODO
