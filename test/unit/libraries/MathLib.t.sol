@@ -76,4 +76,16 @@ contract MathLibTest is Test {
         vm.expectRevert("MathLib/uint8-overflow");
         MathLib.toUint8(x);
     }
+
+    function testToUint32(uint256 x) public pure {
+        x = bound(x, 0, type(uint32).max);
+
+        assertEq(x, uint256(MathLib.toUint32(x)));
+    }
+
+    function testToUint32Overflow(uint256 x) public {
+        vm.assume(x > type(uint32).max);
+        vm.expectRevert("MathLib/uint32-overflow");
+        MathLib.toUint32(x);
+    }
 }
