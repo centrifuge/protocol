@@ -5,18 +5,23 @@ import {PoolId} from "src/types/PoolId.sol";
 import {Currency} from "src/types/Currency.sol";
 
 interface IPoolRegistry {
+    struct PoolAdmin {
+        address account;
+        bool canManage;
+    }
+    
     /// Events
     event NewPool(PoolId indexed poolId, address indexed manager);
     event NewPoolManager(address indexed manager);
     event NewPoolMetadata(PoolId indexed poolId, bytes metadata);
 
     /// Errors
-    error NotManagerOrNonExistingPool();
+    error NonExistingPool(PoolId id);
 
     /// @notice TODO
-    function registerPool(Currency poolCurrency, address shareClassManager) external returns (PoolId);
+    function registerPool(address admin, Currency currency, address shareClassManager) external returns (PoolId);
     /// @notice TODO
-    function changeManager(address currentManager, PoolId poolId, address newManager) external;
+    function modifyAdmin(PoolId poolId, address newAdmin, bool canManage) external;
     /// @notice TODO
-    function updateMetadata(address currentManager, PoolId poolId, bytes calldata metadata) external;
+    function updateMetadata(PoolId poolId, bytes calldata metadata) external;
 }

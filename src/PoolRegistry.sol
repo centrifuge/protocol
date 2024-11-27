@@ -13,35 +13,41 @@ contract PoolRegistry is Auth, IPoolRegistry {
     uint32 public latestId;
 
     mapping(PoolId => bytes) public poolMetadata;
-    mapping(PoolId => address) public poolAdmins;
+    mapping(PoolId => PoolAdmin) public poolAdmins;
     mapping(PoolId => address) public shareClassManagers;
     mapping(PoolId => Currency) public poolCurrencies;
 
     constructor(address deployer) Auth(deployer) {}
 
     /// @inheritdoc IPoolRegistry
-    function registerPool(Currency poolCurrency, address shareClassManager) external auth returns (PoolId poolId) {
+    function registerPool(address admin, Currency currency, address shareClassManager)
+        external
+        auth
+        returns (PoolId poolId)
+    {
         uint32 chainId = block.chainid.toUint32();
         poolId = PoolId.wrap((uint64(chainId) << 32) | uint64(latestId++));
 
-        poolAdmins[poolId] = msg.sender;
-        poolCurrencies[poolId] = poolCurrency;
+        poolAdmins[poolId] = PoolAdmin({account: admin, canManage: true});
+        poolCurrencies[poolId] = currency;
         shareClassManagers[poolId] = shareClassManager;
 
         emit NewPool(poolId, msg.sender);
     }
 
     /// @inheritdoc IPoolRegistry
-    function changeManager(address currentManager, PoolId poolId, address newManager) external auth {
-        require(poolAdmins[poolId] == currentManager, NotManagerOrNonExistingPool());
-        poolAdmins[poolId] = newManager;
+    function modifyAdmin(PoolId poolId, address admin, bool canManage) external auth {
+        PoolAdmin storage poolAdmin = poolAdmins[poolId];
+        require(poolAdmin.account != address(0), NonExistingPool(poolId));
+        poolAdmin.account = admin;
+        poolAdmin.canManage = canManage;
 
-        emit NewPoolManager(newManager);
+        emit NewPoolManager(admin);
     }
 
     /// @inheritdoc IPoolRegistry
-    function updateMetadata(address manager, PoolId poolId, bytes calldata metadata) external auth {
-        require(poolAdmins[poolId] == manager, NotManagerOrNonExistingPool());
+    function updateMetadata(PoolId poolId, bytes calldata metadata) external auth {
+        require(poolAdmins[poolId].account != address(0), NonExistingPool(poolId));
         poolMetadata[poolId] = metadata;
 
         emit NewPoolMetadata(poolId, metadata);
