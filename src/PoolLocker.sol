@@ -3,11 +3,19 @@ pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 import {IPoolLocker} from "src/interfaces/IPoolLocker.sol";
+import {IMulticall} from "src/interfaces/IMulticall.sol";
 
 /// @notice Abstract the mechanism to unlocks pools
 abstract contract PoolLocker is IPoolLocker {
+    /// Contract for the multicall
+    IMulticall immutable private multicall;
+
     /// @dev Represents the unlocked pool Id
     uint64 private transient unlocked;
+
+    constructor(IMulticall multicall_) {
+        multicall = multicall_;
+    }
 
     /// @dev allows to execute a method only if the pool is unlocked.
     /// The method can only be execute as part of `execute()`
@@ -27,29 +35,6 @@ abstract contract PoolLocker is IPoolLocker {
     /// @dev This method is called last in the multical execution
     function _lock() internal virtual;
 
-    /// @dev Performs a generic multicall. It reverts the whole transaction if one call fails.
-    function _multiCall(address[] calldata targets, bytes[] calldata datas) private returns (bytes[] memory results) {
-        require(targets.length == datas.length, WrongExecutionParams());
-
-        results = new bytes[](datas.length);
-
-        for (uint32 i; i < targets.length; i++) {
-            (bool success, bytes memory result) = targets[i].call(datas[i]);
-            if (!success) {
-                // Forward the error happened in target.call().
-                if (!success) {
-                    assembly {
-                        let ptr := mload(0x40)
-                        let size := returndatasize()
-                        returndatacopy(ptr, 0, size)
-                        revert(ptr, size)
-                    }
-                }
-            }
-            results[i] = result;
-        }
-    }
-
     /// @inheritdoc IPoolLocker
     /// @dev All calls with `poolUnlocked` modifier are able to be called inside this method
     function execute(uint64 poolId, address[] calldata targets, bytes[] calldata datas)
@@ -60,7 +45,7 @@ abstract contract PoolLocker is IPoolLocker {
         _unlock(poolId);
         unlocked = poolId;
 
-        results = _multiCall(targets, datas);
+        results = multicall.aggregate(targets, datas);
 
         unlocked = 0;
         _lock();
