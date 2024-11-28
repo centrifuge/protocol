@@ -7,7 +7,7 @@ import {IPoolLocker} from "src/interfaces/IPoolLocker.sol";
 /// @notice Abstract the mechanism to unlocks pools
 abstract contract PoolLocker is IPoolLocker {
     /// @dev Represents the unlocked pool Id
-    uint64 transient unlocked;
+    uint64 private transient unlocked;
 
     /// @dev allows to execute a method only if the pool is unlocked.
     /// The method can only be execute as part of `execute()`
