@@ -12,7 +12,7 @@ abstract contract PoolLocker is IPoolLocker {
     /// @dev allows to execute a method only if the pool is unlocked.
     /// The method can only be execute as part of `execute()`
     modifier poolUnlocked() {
-        require(unlocked != 0);
+        require(unlocked != 0, PoolLocked());
         _;
     }
 

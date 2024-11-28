@@ -36,7 +36,6 @@ contract PoolManagerMock is PoolLocker {
     }
 
     function poolRelatedMethod() external view poolUnlocked returns (uint64) {
-        require(wasUnlock == unlockedPoolId());
         return unlockedPoolId();
     }
 }
@@ -105,5 +104,10 @@ contract PoolLockerTest is Test {
 
         vm.expectRevert(IPoolLocker.WrongExecutionParams.selector);
         poolManager.execute(POOL_A, targets, methods);
+    }
+
+    function testErrPoolLocked() public {
+        vm.expectRevert(IPoolLocker.PoolLocked.selector);
+        poolManager.poolRelatedMethod();
     }
 }
