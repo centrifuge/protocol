@@ -9,6 +9,9 @@ interface IPoolLocker {
     /// @notice Dispatched when the `targets` and `datas` length parameters in `execute()` do not matched.
     error WrongExecutionParams();
 
+    /// @notice Dispatched when the pool is not unlocked to interact with.
+    error PoolLocked();
+
     /// @notice Returns the unlocked poolId.
     /// In only will contain a non-zero value if called inside `execute()`
     function unlockedPoolId() external returns (uint64);
