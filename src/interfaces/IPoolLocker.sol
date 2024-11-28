@@ -16,8 +16,7 @@ interface IPoolLocker {
     /// In only will contain a non-zero value if called inside `execute()`
     function unlockedPoolId() external returns (uint64);
 
-    /// @notice Execute a multicall inside an unlocked pool.
-    /// In one call fails, it reverts the whole transaction.
+    /// @notice Execute a multicall inside of an unlocked pool.
     function execute(uint64 poolId, address[] calldata targets, bytes[] calldata datas)
         external
         returns (bytes[] memory results);
