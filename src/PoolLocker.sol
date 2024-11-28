@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
-/// @dev The inherent contract of `PoolLocker` can not have storage to not break the delegatecall rules
-abstract contract PoolLocker {
-    error PoolAlreadyUnlocked();
-    error WrongExecutionInputs();
+import "forge-std/Test.sol";
+import {IPoolLocker} from "src/interfaces/IPoolLocker.sol";
 
+/// @notice Abstract the mechanism to unlocks pools
+abstract contract PoolLocker is IPoolLocker {
+    /// @dev Represents the unlocked pool Id
     uint64 transient unlocked;
 
     /// @dev allows to execute a method only if the pool is unlocked.
@@ -15,7 +16,7 @@ abstract contract PoolLocker {
         _;
     }
 
-    /// @dev returns the unlocked poolId
+    /// @inheritdoc IPoolLocker
     function unlockedPoolId() public view returns (uint64) {
         return unlocked;
     }
@@ -26,30 +27,32 @@ abstract contract PoolLocker {
     /// @dev This method is called last in the multical execution
     function _lock() internal virtual;
 
-    /// @dev Performs a generic multicall
-    function _multiDelegatecall(address[] calldata targets, bytes[] calldata data) private returns (bytes[] memory results) {
-        require(targets.length == data.length, WrongExecutionInputs());
+    /// @dev Performs a generic multicall. It reverts the whole transaction if one call fails.
+    function _multiCall(address[] calldata targets, bytes[] calldata datas) private returns (bytes[] memory results) {
+        require(targets.length == datas.length, WrongExecutionParams());
 
-        results = new bytes[](data.length);
+        results = new bytes[](datas.length);
 
         for (uint32 i; i < targets.length; i++) {
-            (bool success, bytes memory result) = targets[i].call(data[i]);
+            (bool success, bytes memory result) = targets[i].call(datas[i]);
             if (!success) {
-                // Forward the error happened in target.call()
-                assembly {
-                    let ptr := mload(0x40)
-                    let size := returndatasize()
-                    returndatacopy(ptr, 0, size)
-                    revert(ptr, size)
+                // Forward the error happened in target.call().
+                if (!success) {
+                    assembly {
+                        let ptr := mload(0x40)
+                        let size := returndatasize()
+                        returndatacopy(ptr, 0, size)
+                        revert(ptr, size)
+                    }
                 }
             }
             results[i] = result;
         }
     }
 
-    /// @dev Will perform all methods between the unlock <-> lock
-    /// All calls with poolUnlocked modifier are able to be called inside this method
-    function execute(uint64 poolId, address[] calldata targets, bytes[] calldata data)
+    /// @inheritdoc IPoolLocker
+    /// @dev All calls with `poolUnlocked` modifier are able to be called inside this method
+    function execute(uint64 poolId, address[] calldata targets, bytes[] calldata datas)
         external
         returns (bytes[] memory results)
     {
@@ -57,7 +60,7 @@ abstract contract PoolLocker {
         _unlock(poolId);
         unlocked = poolId;
 
-        results = _multiDelegatecall(targets, data);
+        results = _multiCall(targets, datas);
 
         unlocked = 0;
         _lock();

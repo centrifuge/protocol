@@ -62,8 +62,8 @@ contract PoolManager is PoolLocker {
     IAssetManager immutable assetManager;
     IAccounting immutable accounting;
 
-    IHoldings immutable holdings;
-    IGateway immutable gateway;
+    IHoldings holdings;
+    IGateway gateway;
 
     constructor(
         IPoolRegistry poolRegistry_,
@@ -87,7 +87,7 @@ contract PoolManager is PoolLocker {
 
     /// @dev This method is called last in `execute()`
     function _lock() internal override {
-        accounting.lock(_unlockedPoolId());
+        accounting.lock(unlockedPoolId());
     }
 
     function registerPool() external returns (uint64) {
@@ -108,8 +108,10 @@ contract PoolManager is PoolLocker {
         private
         poolUnlocked
     {
-        uint64 poolId = _unlockedPoolId();
-        poolRegistry.shareClassManager(poolId).requestDeposit(poolId, shareClassId, assetId, investor, amount);
+        uint64 poolId = unlockedPoolId();
+        IShareClassManager shareClassManager = poolRegistry.shareClassManager(poolId);
+
+        shareClassManager.requestDeposit(poolId, shareClassId, assetId, investor, amount);
     }
 
     function approveSubscription(uint64 poolId) external poolUnlocked {}
