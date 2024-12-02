@@ -2,22 +2,23 @@
 pragma solidity ^0.8.28;
 
 import "forge-std/Test.sol";
+import {PoolId} from "src/types/Domain.sol";
 import {PoolLocker} from "src/PoolLocker.sol";
 import {IPoolLocker} from "src/interfaces/IPoolLocker.sol";
 import {IMulticall} from "src/interfaces/IMulticall.sol";
 import {Multicall} from "src/Multicall.sol";
 
 contract PoolManagerMock is PoolLocker {
-    uint64 public wasUnlockWithPool;
+    PoolId public wasUnlockWithPool;
     bool public waslock;
 
     constructor(IMulticall multicall) PoolLocker(multicall) {}
 
-    function poolRelatedMethod() external view poolUnlocked returns (uint64) {
+    function poolRelatedMethod() external view poolUnlocked returns (PoolId) {
         return unlockedPoolId();
     }
 
-    function _unlock(uint64 poolId) internal override {
+    function _unlock(PoolId poolId) internal override {
         wasUnlockWithPool = poolId;
     }
 
@@ -27,7 +28,7 @@ contract PoolManagerMock is PoolLocker {
 }
 
 contract PoolLockerTest is Test {
-    uint64 constant POOL_A = 42;
+    PoolId constant POOL_A = PoolId.wrap(42);
 
     Multicall multicall = new Multicall();
     PoolManagerMock poolManager = new PoolManagerMock(multicall);
@@ -40,9 +41,9 @@ contract PoolLockerTest is Test {
         methods[0] = abi.encodeWithSelector(poolManager.poolRelatedMethod.selector);
 
         bytes[] memory results = poolManager.execute(POOL_A, targets, methods);
-        assertEq(abi.decode(results[0], (uint64)), POOL_A);
+        assertEq(PoolId.unwrap(abi.decode(results[0], (PoolId))), PoolId.unwrap(POOL_A));
 
-        assertEq(poolManager.wasUnlockWithPool(), POOL_A);
+        assertEq(PoolId.unwrap(poolManager.wasUnlockWithPool()), PoolId.unwrap(POOL_A));
         assertEq(poolManager.waslock(), true);
     }
 
