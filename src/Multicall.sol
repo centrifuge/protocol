@@ -15,10 +15,9 @@ contract Multicall is IMulticall {
             // Forward the error happened in target.call().
             if (!success) {
                 assembly {
-                    let ptr := mload(0x40)
-                    let size := returndatasize()
-                    returndatacopy(ptr, 0, size)
-                    revert(ptr, size)
+                    // Reverting the error originated in the above call.
+                    // First 32 bytes contains the size of the array, rest the error data
+                    revert(add(result, 32), mload(result))
                 }
             }
             results[i] = result;

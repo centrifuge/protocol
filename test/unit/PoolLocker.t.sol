@@ -13,16 +13,16 @@ contract PoolManagerMock is PoolLocker {
 
     constructor(IMulticall multicall) PoolLocker(multicall) {}
 
+    function poolRelatedMethod() external view poolUnlocked returns (uint64) {
+        return unlockedPoolId();
+    }
+
     function _unlock(uint64 poolId) internal override {
         wasUnlockWithPool = poolId;
     }
 
     function _lock() internal override {
         waslock = true;
-    }
-
-    function poolRelatedMethod() external view poolUnlocked returns (uint64) {
-        return unlockedPoolId();
     }
 }
 
