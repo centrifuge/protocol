@@ -12,15 +12,13 @@ contract Multicall is IMulticall {
 
         for (uint32 i; i < targets.length; i++) {
             (bool success, bytes memory result) = targets[i].call(datas[i]);
+            // Forward the error happened in target.call().
             if (!success) {
-                // Forward the error happened in target.call().
-                if (!success) {
-                    assembly {
-                        let ptr := mload(0x40)
-                        let size := returndatasize()
-                        returndatacopy(ptr, 0, size)
-                        revert(ptr, size)
-                    }
+                assembly {
+                    let ptr := mload(0x40)
+                    let size := returndatasize()
+                    returndatacopy(ptr, 0, size)
+                    revert(ptr, size)
                 }
             }
             results[i] = result;

@@ -6,6 +6,6 @@ interface IMulticall {
     error WrongExecutionParams();
 
     /// @notice Execute a generic multicall.
-    /// In one call fails, it reverts the whole transaction.
+    /// If one call fails, it reverts the whole transaction.
     function aggregate(address[] calldata targets, bytes[] calldata datas) external returns (bytes[] memory results);
 }

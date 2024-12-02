@@ -8,13 +8,13 @@ import {IMulticall} from "src/interfaces/IMulticall.sol";
 import {Multicall} from "src/Multicall.sol";
 
 contract PoolManagerMock is PoolLocker {
-    uint64 public wasUnlock;
+    uint64 public wasUnlockWithPool;
     bool public waslock;
 
     constructor(IMulticall multicall) PoolLocker(multicall) {}
 
     function _unlock(uint64 poolId) internal override {
-        wasUnlock = poolId;
+        wasUnlockWithPool = poolId;
     }
 
     function _lock() internal override {
@@ -33,16 +33,16 @@ contract PoolLockerTest is Test {
     PoolManagerMock poolManager = new PoolManagerMock(multicall);
 
     function testWithPoolUnlockerMethod() public {
-        address[] memory targets = new address[](2);
+        address[] memory targets = new address[](1);
         targets[0] = address(poolManager);
 
-        bytes[] memory methods = new bytes[](2);
+        bytes[] memory methods = new bytes[](1);
         methods[0] = abi.encodeWithSelector(poolManager.poolRelatedMethod.selector);
 
         bytes[] memory results = poolManager.execute(POOL_A, targets, methods);
         assertEq(abi.decode(results[0], (uint64)), POOL_A);
 
-        assertEq(poolManager.wasUnlock(), POOL_A);
+        assertEq(poolManager.wasUnlockWithPool(), POOL_A);
         assertEq(poolManager.waslock(), true);
     }
 
