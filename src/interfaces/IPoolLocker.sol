@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
+import {PoolId} from "src/types/Domain.sol";
+
 /// @notice Abstract the mechanism to unlock pools
 interface IPoolLocker {
     /// @notice Dispatched when the pool is already unlocked.
@@ -14,11 +16,11 @@ interface IPoolLocker {
     error PoolLocked();
 
     /// @notice Execute a multicall inside of an unlocked pool.
-    function execute(uint64 poolId, address[] calldata targets, bytes[] calldata datas)
+    function execute(PoolId poolId, address[] calldata targets, bytes[] calldata datas)
         external
         returns (bytes[] memory results);
 
     /// @notice Returns the unlocked poolId.
     /// In only will contain a non-zero value if called inside `execute()`
-    function unlockedPoolId() external view returns (uint64);
+    function unlockedPoolId() external view returns (PoolId);
 }
