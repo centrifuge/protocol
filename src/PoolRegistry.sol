@@ -24,7 +24,6 @@ contract PoolRegistry is Auth, IPoolRegistry {
     /// @inheritdoc IPoolRegistry
     function registerPool(address admin_, AssetId currency_, IShareClassManager shareClassManager_)
         external
-        auth
         returns (PoolId poolId)
     {
         require(admin_ != address(0), EmptyAdmin());
