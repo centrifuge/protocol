@@ -9,12 +9,12 @@ interface IPoolRegistry {
     event NewPool(PoolId indexed poolId, address indexed manager, address indexed shareClassManager, Currency currency);
     event NewPoolManager(PoolId indexed poolId, address indexed manager);
     event NewPoolMetadata(PoolId indexed poolId, bytes metadata);
-    event NewShareClassManager(PoolId indexed poolId, address shareClassManager);
+    event NewShareClassManager(PoolId indexed poolId, address indexed shareClassManager);
 
     /// Errors
     error NonExistingPool(PoolId id);
     error EmptyAdmin();
-    error EmptyCurrency(); 
+    error EmptyCurrency();
     error EmptyShareClassManager();
 
     /// @notice TODO
