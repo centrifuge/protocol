@@ -134,4 +134,25 @@ contract PoolRegistryTest is Test {
         registry.updateShareClassManager(poolId, shareClassManager_);
         assertEq(registry.shareClassManagers(poolId), shareClassManager_);
     }
+
+    function testUpdateItemsManager(address itemManager) public nonZero(itemManager) {
+        address fundAdmin = makeAddr("fundAdmin");
+
+        PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
+
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert("Auth/not-authorized");
+        registry.updateItemManager(poolId, itemManager);
+
+        PoolId nonExistingPool = PoolId.wrap(0xDEAD);
+        vm.expectRevert(abi.encodeWithSelector(IPoolRegistry.NonExistingPool.selector, nonExistingPool));
+        registry.updateItemManager(nonExistingPool, itemManager);
+
+        vm.expectRevert(IPoolRegistry.EmptyItemManager.selector);
+        registry.updateItemManager(poolId, address(0));
+
+        assertEq(registry.itemManagers(poolId), address(0));
+        registry.updateItemManager(poolId, itemManager);
+        assertEq(registry.itemManagers(poolId), itemManager);
+    }
 }

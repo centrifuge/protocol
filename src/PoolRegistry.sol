@@ -15,6 +15,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
     mapping(PoolId => bytes) public metadata;
     mapping(PoolId => mapping(address => bool)) public poolAdmins;
     mapping(PoolId => address) public shareClassManagers;
+    mapping(PoolId => address) public itemManagers;
     mapping(PoolId => Currency) public poolCurrencies;
 
     constructor(address deployer) Auth(deployer) {}
@@ -64,5 +65,13 @@ contract PoolRegistry is Auth, IPoolRegistry {
         shareClassManagers[poolId] = shareClassManager;
 
         emit NewShareClassManager(poolId, shareClassManager);
+    }
+
+    function updateItemManager(PoolId poolId, address itemManager) external auth {
+        require(shareClassManagers[poolId] != address(0), NonExistingPool(poolId));
+        require(itemManager != address(0), EmptyItemManager());
+        itemManagers[poolId] = itemManager;
+
+        emit NewItemManager(poolId, itemManager);
     }
 }

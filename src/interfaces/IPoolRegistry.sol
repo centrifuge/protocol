@@ -10,12 +10,14 @@ interface IPoolRegistry {
     event NewPoolManager(PoolId indexed poolId, address indexed manager);
     event NewPoolMetadata(PoolId indexed poolId, bytes metadata);
     event NewShareClassManager(PoolId indexed poolId, address indexed shareClassManager);
+    event NewItemManager(PoolId indexed poolId, address indexed itemManager);
 
     /// Errors
     error NonExistingPool(PoolId id);
     error EmptyAdmin();
     error EmptyCurrency();
     error EmptyShareClassManager();
+    error EmptyItemManager();
 
     /// @notice TODO
     function registerPool(address admin, Currency currency, address shareClassManager) external returns (PoolId);
@@ -25,4 +27,6 @@ interface IPoolRegistry {
     function updateMetadata(PoolId poolId, bytes calldata metadata) external;
     /// @notice TODO
     function updateShareClassManager(PoolId poolId, address shareClassManager) external;
+    /// @notice TODO
+    function updateItemManager(PoolId poolId, address itemManager) external;
 }
