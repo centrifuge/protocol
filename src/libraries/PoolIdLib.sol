@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {PoolId} from "src/types/PoolId.sol";
 
 library PoolIdLib {
-    function chainId(PoolId poolId) internal pure returns (uint64) {
-        return uint64(PoolId.unwrap(poolId) >> 32);
+    function chainId(PoolId poolId) internal pure returns (uint32) {
+        return uint32(PoolId.unwrap(poolId) >> 32);
     }
 }

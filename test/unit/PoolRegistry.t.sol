@@ -20,11 +20,16 @@ contract PoolRegistryTest is Test {
         _;
     }
 
+    modifier notThisContract(address addr) {
+        vm.assume(address(this) != addr);
+        _;
+    }
+
     function setUp() public {
         registry = new PoolRegistry(address(this));
     }
 
-    function testAuthorization(address additionalWard) public nonZero(additionalWard) {
+    function testAuthorization(address additionalWard) public nonZero(additionalWard) notThisContract(additionalWard) {
         assertEq(registry.wards(address(this)), 1);
 
         assertEq(registry.wards(additionalWard), 0);
@@ -35,7 +40,7 @@ contract PoolRegistryTest is Test {
         assertEq(registry.wards(additionalWard), 0);
     }
 
-    function testPoolRegistration(address fundAdmin) public nonZero(fundAdmin) {
+    function testPoolRegistration(address fundAdmin) public nonZero(fundAdmin) notThisContract(fundAdmin) {
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert("Auth/not-authorized");
         registry.registerPool(address(this), USD, shareClassManager);
@@ -61,7 +66,10 @@ contract PoolRegistryTest is Test {
         public
         nonZero(fundAdmin)
         nonZero(additionalAdmin)
+        notThisContract(fundAdmin)
+        notThisContract(additionalAdmin)
     {
+        vm.assume(fundAdmin != additionalAdmin);
         PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
 
         assertFalse(registry.poolAdmins(poolId, additionalAdmin));
