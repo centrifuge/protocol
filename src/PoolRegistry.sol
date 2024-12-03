@@ -7,8 +7,6 @@ import {Currency} from "src/types/Currency.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
 
-import "forge-std/console.sol";
-
 contract PoolRegistry is Auth, IPoolRegistry {
     using MathLib for uint256;
 
