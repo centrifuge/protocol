@@ -31,7 +31,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
         require(shareClassManager != address(0), EmptyShareClassManager());
 
         // TODO: Make this part of the library. Something like PoolId.generate();
-        poolId = PoolId.wrap((uint64(block.chainid.toUint32()) << 32) | uint64(latestId++));
+        poolId = PoolId.wrap((uint64(block.chainid.toUint32()) << 32) | uint64(++latestId));
 
         poolAdmins[poolId][admin] = true;
         poolCurrencies[poolId] = currency;
