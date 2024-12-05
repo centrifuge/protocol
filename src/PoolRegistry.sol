@@ -53,6 +53,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
     /// @inheritdoc IPoolRegistry
     function updateMetadata(PoolId poolId, bytes calldata metadata_) external auth {
         require(shareClassManagers[poolId] != address(0), NonExistingPool(poolId));
+
         metadata[poolId] = metadata_;
 
         emit NewPoolMetadata(poolId, metadata_);
@@ -62,16 +63,29 @@ contract PoolRegistry is Auth, IPoolRegistry {
     function updateShareClassManager(PoolId poolId, address shareClassManager) external auth {
         require(shareClassManagers[poolId] != address(0), NonExistingPool(poolId));
         require(shareClassManager != address(0), EmptyShareClassManager());
+
         shareClassManagers[poolId] = shareClassManager;
 
         emit NewShareClassManager(poolId, shareClassManager);
     }
 
+    /// @inheritdoc IPoolRegistry
     function updateItemManager(PoolId poolId, address itemManager) external auth {
         require(shareClassManagers[poolId] != address(0), NonExistingPool(poolId));
         require(itemManager != address(0), EmptyItemManager());
+
         itemManagers[poolId] = itemManager;
 
         emit NewItemManager(poolId, itemManager);
+    }
+
+    /// @inheritdoc IPoolRegistry
+    function updateCurrency(PoolId poolId, Currency currency) external auth {
+        require(shareClassManagers[poolId] != address(0), NonExistingPool(poolId));
+        require(Currency.unwrap(currency) != address(0), EmptyCurrency());
+
+        poolCurrencies[poolId] = currency;
+
+        emit NewPoolCurrency(poolId, currency);
     }
 }

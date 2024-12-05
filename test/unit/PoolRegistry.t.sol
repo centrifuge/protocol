@@ -155,4 +155,26 @@ contract PoolRegistryTest is Test {
         registry.updateItemManager(poolId, itemManager);
         assertEq(registry.itemManagers(poolId), itemManager);
     }
+
+    function testUpdatePoolCurrency(address currency_) public nonZero(currency_) {
+        address fundAdmin = makeAddr("fundAdmin");
+        Currency currency = Currency.wrap(currency_);
+
+        PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
+
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert("Auth/not-authorized");
+        registry.updateCurrency(poolId, currency);
+
+        PoolId nonExistingPool = PoolId.wrap(0xDEAD);
+        vm.expectRevert(abi.encodeWithSelector(IPoolRegistry.NonExistingPool.selector, nonExistingPool));
+        registry.updateCurrency(nonExistingPool, currency);
+
+        vm.expectRevert(IPoolRegistry.EmptyCurrency.selector);
+        registry.updateCurrency(poolId, Currency.wrap(address(0)));
+
+        assertTrue(Currency.unwrap(registry.poolCurrencies(poolId)) != Currency.unwrap(currency));
+        registry.updateCurrency(poolId, currency);
+        assertEq(Currency.unwrap(registry.poolCurrencies(poolId)), Currency.unwrap(currency));
+    }
 }
