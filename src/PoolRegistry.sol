@@ -70,6 +70,9 @@ contract PoolRegistry is Auth, IPoolRegistry {
 
     /// @inheritdoc IPoolRegistry
     function updateCurrency(PoolId poolId, Currency currency) external auth {
+        // TODO: Make sure the address that is passed is actually a token
+        // One idea is to check if `decimals()` can be called but might not work with Special Address
+        // defined in the ERC-7726 for traditional currencies.
         require(shareClassManagers[poolId] != address(0), NonExistingPool(poolId));
         require(Currency.unwrap(currency) != address(0), EmptyCurrency());
 
