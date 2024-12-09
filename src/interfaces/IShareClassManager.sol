@@ -77,9 +77,7 @@ interface IShareClassManager {
         address assetId,
         uint256 claimedAssetAmount
     );
-    event UpdatedNav(
-        uint64 indexed poolId, bytes16 indexed shareClassId, uint32 indexed epoch, uint256 prevAmount, uint256 newAmount
-    );
+    event UpdatedNav(uint64 indexed poolId, bytes16 indexed shareClassId, uint256 newAmount);
     event AddedShareClass(uint64 indexed poolId, bytes16 indexed shareClassId, string metadata);
 
     /// Errors

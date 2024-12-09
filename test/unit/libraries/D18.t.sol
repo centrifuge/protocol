@@ -24,7 +24,7 @@ contract TestPortfolio is Test {
     function testFuzzMulInt(uint128 a, uint128 b) public pure {
         vm.assume(uint256(a) * uint256(b) <= type(uint128).max);
 
-        uint128 c = d18(a).mulInt(b);
+        uint128 c = d18(a).mulUint128(b);
         assertEq(c, MathLib.mulDiv(a, b, 1e18));
     }
 
@@ -32,6 +32,6 @@ contract TestPortfolio is Test {
         D18 factor = d18(1_500_000_000_000_000_000); // 1.5
         uint128 value = 4_000_000_000_000_000_000;
 
-        assertEq(factor.mulInt(value), 6_000_000_000_000_000_000);
+        assertEq(factor.mulUint128(value), 6_000_000_000_000_000_000);
     }
 }
