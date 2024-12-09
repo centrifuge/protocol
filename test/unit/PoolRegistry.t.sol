@@ -7,6 +7,7 @@ import {PoolId} from "src/types/PoolId.sol";
 import {Currency} from "src/types/Currency.sol";
 import {PoolRegistry} from "src/PoolRegistry.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
+import {IAuth} from "src/interfaces/IAuth.sol";
 
 contract PoolRegistryTest is Test {
     using MathLib for uint256;
@@ -42,7 +43,7 @@ contract PoolRegistryTest is Test {
 
     function testPoolRegistration(address fundAdmin) public nonZero(fundAdmin) notThisContract(fundAdmin) {
         vm.prank(makeAddr("unauthorizedAddress"));
-        vm.expectRevert("Auth/not-authorized");
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         registry.registerPool(address(this), USD, shareClassManager);
 
         vm.expectRevert(IPoolRegistry.EmptyShareClassManager.selector);
@@ -75,7 +76,7 @@ contract PoolRegistryTest is Test {
         assertFalse(registry.poolAdmins(poolId, additionalAdmin));
 
         vm.prank(makeAddr("unauthorizedAddress"));
-        vm.expectRevert("Auth/not-authorized");
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         registry.updateAdmin(poolId, additionalAdmin, true);
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);
@@ -102,7 +103,7 @@ contract PoolRegistryTest is Test {
         assertEq(registry.metadata(poolId).length, 0);
 
         vm.prank(makeAddr("unauthorizedAddress"));
-        vm.expectRevert("Auth/not-authorized");
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         registry.updateMetadata(poolId, metadata);
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);
@@ -121,7 +122,7 @@ contract PoolRegistryTest is Test {
         assertEq(registry.shareClassManagers(poolId), shareClassManager);
 
         vm.prank(makeAddr("unauthorizedAddress"));
-        vm.expectRevert("Auth/not-authorized");
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         registry.updateShareClassManager(poolId, shareClassManager_);
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);
@@ -142,7 +143,7 @@ contract PoolRegistryTest is Test {
         PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
 
         vm.prank(makeAddr("unauthorizedAddress"));
-        vm.expectRevert("Auth/not-authorized");
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         registry.updateCurrency(poolId, currency);
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);
