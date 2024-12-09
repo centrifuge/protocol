@@ -2,6 +2,18 @@
 pragma solidity 0.8.28;
 
 library MathLib {
+    enum Rounding {
+        Down, // Toward negative infinity
+        Up, // Toward infinity
+        Zero // Toward zero
+
+    }
+
+    error MulDiv_Overflow();
+    error Uint8_Overflow();
+    error Uint32_Overflow();
+    error Uint128_Overflow();
+
     uint256 public constant One27 = 10 ** 27;
     /// @notice Returns x^n with rounding precision of base
     ///
@@ -42,13 +54,6 @@ library MathLib {
         }
     }
 
-    enum Rounding {
-        Down, // Toward negative infinity
-        Up, // Toward infinity
-        Zero // Toward zero
-
-    }
-
     /// @notice Calculates floor(x * y / denominator) with full precision. Throws if result overflows a uint256 or
     ///         denominator == 0
     /// @dev    Original credit to Remco Bloemen under MIT license (https://xn--2-umb.com/21/muldiv)
@@ -76,7 +81,7 @@ library MathLib {
             }
 
             // Make sure the result is less than 2^256. Also prevents denominator == 0.
-            require(denominator > prod1, "Math: mulDiv overflow");
+            require(denominator > prod1, MulDiv_Overflow());
 
             ///////////////////////////////////////////////
             // 512 by 256 division.
@@ -149,26 +154,19 @@ library MathLib {
 
     /// @notice Safe type conversion from uint256 to uint8.
     function toUint8(uint256 value) internal pure returns (uint8) {
-        if (value > type(uint8).max) {
-            revert("MathLib/uint8-overflow");
-        }
+        require(value <= type(uint8).max, Uint8_Overflow());
         return uint8(value);
     }
 
     function toUint32(uint256 value) internal pure returns (uint32) {
-        if (value > type(uint32).max) {
-            revert("MathLib/uint32-overflow");
-        }
+        require(value <= type(uint32).max, Uint32_Overflow());
         return uint32(value);
     }
 
     /// @notice Safe type conversion from uint256 to uint128.
-    function toUint128(uint256 _value) internal pure returns (uint128 value) {
-        if (_value > type(uint128).max) {
-            revert("MathLib/uint128-overflow");
-        } else {
-            value = uint128(_value);
-        }
+    function toUint128(uint256 value) internal pure returns (uint128) {
+        require(value <= type(uint128).max, Uint128_Overflow());
+        return uint128(value);
     }
 
     /// @notice Returns the smallest of two numbers.
