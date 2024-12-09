@@ -9,6 +9,7 @@ import {IERC6909URIExtension} from "src/interfaces/ERC6909/IERC6909URIExtension.
 import {StringLib} from "src/libraries/StringLib.sol";
 import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
 import {IERC165} from "src/interfaces/IERC165.sol";
+import {IAuth} from "src/interfaces/IAuth.sol";
 
 contract ERC6909NFTTest is Test {
     using StringLib for string;
@@ -32,7 +33,7 @@ contract ERC6909NFTTest is Test {
         token = new ERC6909NFT(owner);
         assertEq(token.wards(owner), 1);
 
-        vm.expectRevert("Auth/not-authorized");
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         token.rely(self);
 
         vm.prank(owner);
@@ -45,7 +46,7 @@ contract ERC6909NFTTest is Test {
         assertEq(token.wards(owner), 0);
         assertEq(token.wards(self), 1);
 
-        vm.expectRevert("Auth/not-authorized");
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(owner);
         token.deny(self);
     }
@@ -60,7 +61,7 @@ contract ERC6909NFTTest is Test {
         vm.expectRevert(IERC6909URIExtension.EmptyURI.selector);
         token.mint(owner, "");
 
-        vm.expectRevert("Auth/not-authorized");
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(makeAddr("unauthorized"));
         token.mint(owner, URI);
 
@@ -91,7 +92,7 @@ contract ERC6909NFTTest is Test {
         token.setContractURI(URI);
         assertEq(token.contractURI(), URI);
 
-        vm.expectRevert("Auth/not-authorized");
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(makeAddr("unauthorized"));
         token.setContractURI(URI);
     }

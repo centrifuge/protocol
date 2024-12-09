@@ -61,7 +61,7 @@ contract MathLibTest is Test {
 
     function testToUint128Overflow(uint128 x) public {
         vm.assume(x > 0);
-        vm.expectRevert("MathLib/uint128-overflow");
+        vm.expectRevert(MathLib.Uint128_Overflow.selector);
         MathLib.toUint128(uint256(type(uint128).max) + x);
     }
 
@@ -73,7 +73,19 @@ contract MathLibTest is Test {
 
     function testToUint8Overflow(uint256 x) public {
         vm.assume(x > type(uint8).max);
-        vm.expectRevert("MathLib/uint8-overflow");
+        vm.expectRevert(MathLib.Uint8_Overflow.selector);
         MathLib.toUint8(x);
+    }
+
+    function testToUint32(uint256 x) public pure {
+        x = bound(x, 0, type(uint32).max);
+
+        assertEq(x, uint256(MathLib.toUint32(x)));
+    }
+
+    function testToUint32Overflow(uint256 x) public {
+        vm.assume(x > type(uint32).max);
+        vm.expectRevert(MathLib.Uint32_Overflow.selector);
+        MathLib.toUint32(x);
     }
 }
