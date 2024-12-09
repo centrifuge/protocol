@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {Auth} from "src/Auth.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {D18, d18} from "src/types/D18.sol";
+import {PoolId} from "src/types/PoolId.sol";
 
 // TODO(@wischli): Explore idea of single ratio for redemptions and deposits as either is always zero due to epoch id
 // incrementing afer approval
@@ -30,13 +32,13 @@ struct UserOrder {
 }
 
 // NOTE: Must be removed before merging
-interface IPoolRegistry {
-    function getPoolDenomination(uint64 poolId) external view returns (uint256 poolDenomination);
+interface IPoolRegistryExtended {
+    function getPoolDenomination(PoolId poolId) external view returns (uint256 poolDenomination);
 }
 
 // Assumptions:
 // * ShareClassId is unique and derived from pool, i.e. bytes16(keccak256(poolId + salt))
-contract SingleShareClass is IShareClassManager {
+contract SingleShareClass is Auth, IShareClassManager {
     using MathLib for uint128;
     using MathLib for uint256;
 
@@ -50,8 +52,8 @@ contract SingleShareClass is IShareClassManager {
     mapping(bytes16 => uint256 nav) public shareClassNav;
     // TOOD(@wischli): Check whether per epochId is necessary
     mapping(bytes16 => mapping(uint32 epochId => Epoch epoch)) public epochRatios;
-    mapping(uint64 poolId => uint32 epochId) public epochs;
-    mapping(uint64 poolId => bytes16) public shareClassIds;
+    mapping(PoolId poolId => uint32 epochId) public epochs;
+    mapping(PoolId poolId => bytes16) public shareClassIds;
     mapping(bytes16 => uint256) totalIssuance;
     mapping(bytes16 => uint32 epochId) latestIssuance;
     mapping(bytes16 => mapping(address assetId => uint32 epochId)) latestDepositApproval;
@@ -60,13 +62,13 @@ contract SingleShareClass is IShareClassManager {
     /// Errors
     error NegativeNav();
 
-    constructor(address poolRegistry_) {
+    constructor(address deployer, address poolRegistry_) Auth(deployer) {
         require(poolRegistry != address(0), "Empty poolRegistry");
         poolRegistry = poolRegistry_;
     }
 
     /// @inheritdoc IShareClassManager
-    function allowAsset(uint64 poolId, bytes16 shareClassId, address assetId) public {
+    function allowAsset(PoolId poolId, bytes16 shareClassId, address assetId) external auth {
         require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(poolId, shareClassId));
 
         allowedAssets[shareClassId][assetId] = true;
@@ -76,12 +78,12 @@ contract SingleShareClass is IShareClassManager {
 
     /// @inheritdoc IShareClassManager
     function requestDeposit(
-        uint64 poolId,
+        PoolId poolId,
         bytes16 shareClassId,
         uint256 amount,
         address investor,
         address depositAssetId
-    ) public {
+    ) external {
         require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(poolId, shareClassId));
         require(
             allowedAssets[shareClassId][depositAssetId] == true,
@@ -112,23 +114,23 @@ contract SingleShareClass is IShareClassManager {
 
     /// @inheritdoc IShareClassManager
     function requestRedemption(
-        uint64 poolId,
+        PoolId poolId,
         bytes16 shareClassId,
         uint256 amount,
         address investor,
         address payoutAssetId
-    ) public {
+    ) external {
         // TODO(@wischli)
     }
 
     /// @inheritdoc IShareClassManager
     function approveDeposits(
-        uint64 poolId,
+        PoolId poolId,
         bytes16 shareClassId,
         uint128 approvalRatio,
         address paymentAssetId,
         uint128 paymentAssetPrice
-    ) public returns (uint256 approvedPoolAmount, uint256 approvedAssetAmount) {
+    ) external auth returns (uint256 approvedPoolAmount, uint256 approvedAssetAmount) {
         require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(poolId, shareClassId));
         require(
             allowedAssets[shareClassId][paymentAssetId] == true,
@@ -168,26 +170,26 @@ contract SingleShareClass is IShareClassManager {
 
     /// @inheritdoc IShareClassManager
     function approveRedemptions(
-        uint64 poolId,
+        PoolId poolId,
         bytes16 shareClassId,
         uint128 approvalRatio,
         address payoutAssetId,
         uint128 payoutAssetPrice
-    ) public returns (uint256 approved, uint256 pending) {
+    ) external auth returns (uint256 approved, uint256 pending) {
         // TODO(@wischli)
     }
 
-    function issueShares(uint64 poolId, bytes16 shareClassId, uint256 nav) public {
+    function issueShares(PoolId poolId, bytes16 shareClassId, uint256 nav) external auth {
         this.issueEpochShares(poolId, shareClassId, nav, epochs[poolId] - 1);
     }
 
     // TODO(@wischli): Docs
-    function issueEpochShares(uint64 poolId, bytes16 shareClassId, uint256 nav, uint32 endEpochId) public {
+    function issueEpochShares(PoolId poolId, bytes16 shareClassId, uint256 nav, uint32 endEpochId) external auth {
         require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(poolId, shareClassId));
         require(endEpochId <= epochs[poolId], IShareClassManager.EpochNotFound(poolId, endEpochId));
 
         uint32 startEpochId = latestIssuance[shareClassId];
-        uint256 poolDenomination = IPoolRegistry(poolRegistry).getPoolDenomination(poolId);
+        uint256 poolDenomination = IPoolRegistryExtended(poolRegistry).getPoolDenomination(poolId);
 
         for (uint32 epochId = startEpochId; epochId <= endEpochId; epochId++) {
             uint256 newShares = _issueEpochShares(shareClassId, nav, poolDenomination, epochId);
@@ -199,13 +201,13 @@ contract SingleShareClass is IShareClassManager {
     }
 
     /// @inheritdoc IShareClassManager
-    function revokeShares(uint64 poolId, bytes16 shareClassId, uint256 nav) public {
+    function revokeShares(PoolId poolId, bytes16 shareClassId, uint256 nav) external auth {
         // TODO(@wischli)
     }
 
     /// @inheritdoc IShareClassManager
-    function claimDeposit(uint64 poolId, bytes16 shareClassId, address investor, address depositAssetId)
-        public
+    function claimDeposit(PoolId poolId, bytes16 shareClassId, address investor, address depositAssetId)
+        external
         returns (uint256 payout)
     {
         return this.claimEpochDeposit(poolId, shareClassId, investor, depositAssetId, latestIssuance[shareClassId]);
@@ -213,12 +215,12 @@ contract SingleShareClass is IShareClassManager {
 
     // TODO(@wischli): Docs
     function claimEpochDeposit(
-        uint64 poolId,
+        PoolId poolId,
         bytes16 shareClassId,
         address investor,
         address depositAssetId,
         uint32 endEpochId
-    ) public returns (uint256 payout) {
+    ) external returns (uint256 payout) {
         require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(poolId, shareClassId));
         require(endEpochId <= epochs[poolId], IShareClassManager.EpochNotFound(poolId, endEpochId));
         require(
@@ -249,23 +251,24 @@ contract SingleShareClass is IShareClassManager {
     }
 
     /// @inheritdoc IShareClassManager
-    function claimRedemption(uint64 poolId, bytes16 shareClassId, address investor, address depositAssetId)
-        public
+    function claimRedemption(PoolId poolId, bytes16 shareClassId, address investor, address depositAssetId)
+        external
         returns (uint256 payout)
     {
         // TODO(@wischli)
     }
 
     /// @inheritdoc IShareClassManager
-    function updateShareClassNav(uint64 poolId, bytes16 shareClassId, int256 navCorrection)
-        public
+    function updateShareClassNav(PoolId poolId, bytes16 shareClassId, int256 navCorrection)
+        external
+        auth
         returns (uint256 nav)
     {
         require(navCorrection >= 0, NegativeNav());
         return this.updateShareClassNav(poolId, shareClassId, uint256(navCorrection));
     }
 
-    function updateShareClassNav(uint64 poolId, bytes16 shareClassId, uint256 nav) public returns (uint256) {
+    function updateShareClassNav(PoolId poolId, bytes16 shareClassId, uint256 nav) external auth returns (uint256) {
         require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(poolId, shareClassId));
 
         shareClassNav[shareClassId] = nav;
@@ -275,19 +278,19 @@ contract SingleShareClass is IShareClassManager {
     }
 
     /// @inheritdoc IShareClassManager
-    function addShareClass(uint64 poolId, bytes memory /*_data*/ ) public pure returns (bytes16) {
+    function addShareClass(PoolId poolId, bytes memory /*_data*/ ) external pure returns (bytes16) {
         revert IShareClassManager.MaxShareClassNumberExceeded(poolId, 1);
     }
 
     /// @inheritdoc IShareClassManager
-    function isAllowedAsset(uint64 poolId, bytes16 shareClassId, address assetId) public view returns (bool) {
+    function isAllowedAsset(PoolId poolId, bytes16 shareClassId, address assetId) external view returns (bool) {
         require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(poolId, shareClassId));
 
         return allowedAssets[shareClassId][assetId];
     }
 
     /// @inheritdoc IShareClassManager
-    function getShareClassNav(uint64 poolId, bytes16 shareClassId) public view returns (uint256 nav) {
+    function getShareClassNav(PoolId poolId, bytes16 shareClassId) external view returns (uint256 nav) {
         require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(poolId, shareClassId));
 
         return shareClassNav[shareClassId];

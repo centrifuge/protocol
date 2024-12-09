@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {PoolId} from "src/types/PoolId.sol";
+
 interface IShareClassManager {
     /// Events
-    event NewEpoch(uint64 poolId, uint32 newIndex);
-    event AllowedAsset(uint64 indexed poolId, bytes16 indexed shareClassId, address indexed assetId);
+    event NewEpoch(PoolId poolId, uint32 newIndex);
+    event AllowedAsset(PoolId indexed poolId, bytes16 indexed shareClassId, address indexed assetId);
     event UpdatedDepositRequest(
-        uint64 indexed poolId,
+        PoolId indexed poolId,
         bytes16 indexed shareClassId,
         uint32 indexed epoch,
         address investor,
@@ -15,7 +17,7 @@ interface IShareClassManager {
         address assetId
     );
     event UpdatedRedemptionRequest(
-        uint64 indexed poolId,
+        PoolId indexed poolId,
         bytes16 indexed shareClassId,
         uint32 indexed epoch,
         address investor,
@@ -24,7 +26,7 @@ interface IShareClassManager {
         address payoutAssetId
     );
     event ApprovedDeposits(
-        uint64 indexed poolId,
+        PoolId indexed poolId,
         bytes16 indexed shareClassId,
         uint32 indexed epoch,
         address assetId,
@@ -35,7 +37,7 @@ interface IShareClassManager {
         uint128 assetToPool
     );
     event ApprovedRedemptions(
-        uint64 indexed poolId,
+        PoolId indexed poolId,
         bytes16 indexed shareClassId,
         uint32 indexed epoch,
         address assetId,
@@ -46,17 +48,17 @@ interface IShareClassManager {
         uint128 shareClassToPool
     );
     event IssuedShares(
-        uint64 indexed poolId, bytes16 indexed shareClassId, uint32 indexed epoch, uint256 nav, uint256 issuedShares
+        PoolId indexed poolId, bytes16 indexed shareClassId, uint32 indexed epoch, uint256 nav, uint256 issuedShares
     );
     // uint256 poolAmount
 
     event RevokedShares(
-        uint64 indexed poolId, bytes16 indexed shareClassId, uint32 indexed epoch, uint256 nav, uint256 revokedShares
+        PoolId indexed poolId, bytes16 indexed shareClassId, uint32 indexed epoch, uint256 nav, uint256 revokedShares
     );
     // uint256 poolAmount
 
     event ClaimedDeposit(
-        uint64 indexed poolId,
+        PoolId indexed poolId,
         bytes16 indexed shareClassId,
         uint32 indexed epoch,
         address investor,
@@ -66,7 +68,7 @@ interface IShareClassManager {
         uint256 claimedShareAmount
     );
     event ClaimedRedemption(
-        uint64 indexed poolId,
+        PoolId indexed poolId,
         bytes16 indexed shareClassId,
         uint32 indexed epoch,
         address investor,
@@ -77,18 +79,18 @@ interface IShareClassManager {
         address assetId,
         uint256 claimedAssetAmount
     );
-    event UpdatedNav(uint64 indexed poolId, bytes16 indexed shareClassId, uint256 newAmount);
-    event AddedShareClass(uint64 indexed poolId, bytes16 indexed shareClassId, string metadata);
+    event UpdatedNav(PoolId indexed poolId, bytes16 indexed shareClassId, uint256 newAmount);
+    event AddedShareClass(PoolId indexed poolId, bytes16 indexed shareClassId, string metadata);
 
     /// Errors
-    error PoolMissing(uint64 poolId);
-    error ShareClassMismatch(uint64 poolId, bytes16 shareClassId);
-    error MaxShareClassNumberExceeded(uint64 poolId, uint64 numberOfShareClasses);
-    error AssetNotAllowed(uint64 poolId, bytes16 shareClassId, address assetId);
-    error InvestorNotAllowed(uint64 poolId, bytes16 shareClassId, address assetId, address investor);
-    error ClaimDepositRequired(uint64 poolId, bytes16 shareClassId, address assetId, address investor);
-    error ClaimRedemptionRequired(uint64 poolId, bytes16 shareClassId, address assetId, address investor);
-    error EpochNotFound(uint64 poolId, uint32 epochId);
+    error PoolMissing(PoolId poolId);
+    error ShareClassMismatch(PoolId poolId, bytes16 shareClassId);
+    error MaxShareClassNumberExceeded(PoolId poolId, uint64 numberOfShareClasses);
+    error AssetNotAllowed(PoolId poolId, bytes16 shareClassId, address assetId);
+    error InvestorNotAllowed(PoolId poolId, bytes16 shareClassId, address assetId, address investor);
+    error ClaimDepositRequired(PoolId poolId, bytes16 shareClassId, address assetId, address investor);
+    error ClaimRedemptionRequired(PoolId poolId, bytes16 shareClassId, address assetId, address investor);
+    error EpochNotFound(PoolId poolId, uint32 epochId);
 
     /// Functions
     // TODO(@review): Check whether bidirectionality (deposit, redeem) is implementation specific
@@ -98,7 +100,7 @@ interface IShareClassManager {
     /// @param poolId Identifier of the pool
     /// @param shareClassId Identifier of the share class
     /// @param assetId Identifier of the asset
-    function allowAsset(uint64 poolId, bytes16 shareClassId, address assetId) external;
+    function allowAsset(PoolId poolId, bytes16 shareClassId, address assetId) external;
 
     /// @notice Creates or updates a request to deposit (exchange) an asset amount for share class tokens.
     ///
@@ -108,7 +110,7 @@ interface IShareClassManager {
     /// @param investor Address of the entity which is depositing
     /// @param depositAssetId Identifier of the asset which the investor used for their deposit request
     function requestDeposit(
-        uint64 poolId,
+        PoolId poolId,
         bytes16 shareClassId,
         uint256 amount,
         address investor,
@@ -124,7 +126,7 @@ interface IShareClassManager {
     /// @param payoutAssetId Identifier of the asset which the investor eventually receives back for their redeemed
     /// share class tokens
     function requestRedemption(
-        uint64 poolId,
+        PoolId poolId,
         bytes16 shareClassId,
         uint256 amount,
         address investor,
@@ -142,7 +144,7 @@ interface IShareClassManager {
     /// @return approvedPoolAmount Sum of deposit request amounts in pool amount which was approved
     /// @return approvedAssetAmount Sum of deposit request amounts in asset amount which was not approved
     function approveDeposits(
-        uint64 poolId,
+        PoolId poolId,
         bytes16 shareClassId,
         uint128 approvalRatio,
         address paymentAssetId,
@@ -161,7 +163,7 @@ interface IShareClassManager {
     /// @return approved Sum of redemption request amounts in pool amount which was approved
     /// @return pending Sum of redemption request amounts in share class token amount which was not approved
     function approveRedemptions(
-        uint64 poolId,
+        PoolId poolId,
         bytes16 shareClassId,
         uint128 approvalRatio,
         address payoutAssetId,
@@ -173,14 +175,14 @@ interface IShareClassManager {
     /// @param poolId Identifier of the pool
     /// @param shareClassId Identifier of the share class
     /// @param nav Total value of assets of the pool and share class
-    function issueShares(uint64 poolId, bytes16 shareClassId, uint256 nav) external;
+    function issueShares(PoolId poolId, bytes16 shareClassId, uint256 nav) external;
 
     /// @notice Take back shares for the given identifier based on the provided NAV.
     ///
     /// @param poolId Identifier of the pool
     /// @param shareClassId Identifier of the share class
     /// @param nav Total value of assets of the pool and share class
-    function revokeShares(uint64 poolId, bytes16 shareClassId, uint256 nav) external;
+    function revokeShares(PoolId poolId, bytes16 shareClassId, uint256 nav) external;
 
     /// @notice Collects shares for an investor after their deposit request was (partially) approved and new shares were
     /// issued.
@@ -190,7 +192,7 @@ interface IShareClassManager {
     /// @param investor Address of the recipient address of the share class tokens
     /// @param depositAssetId Identifier of the asset which the investor used for their deposit request
     /// @return payout Amount of shares which the investor receives
-    function claimDeposit(uint64 poolId, bytes16 shareClassId, address investor, address depositAssetId)
+    function claimDeposit(PoolId poolId, bytes16 shareClassId, address investor, address depositAssetId)
         external
         returns (uint256 payout);
 
@@ -203,7 +205,7 @@ interface IShareClassManager {
     /// @param depositAssetId Identifier of the asset which the investor requested to receive back for their redeemed
     /// shares
     /// @return payout Asset amount which the investor receives
-    function claimRedemption(uint64 poolId, bytes16 shareClassId, address investor, address depositAssetId)
+    function claimRedemption(PoolId poolId, bytes16 shareClassId, address investor, address depositAssetId)
         external
         returns (uint256 payout);
 
@@ -213,7 +215,7 @@ interface IShareClassManager {
     /// @param shareClassId Identifier of the share class
     /// @param navCorrection Manual correction of the NAV
     /// @return nav Total value of assets of the pool and share class post updating
-    function updateShareClassNav(uint64 poolId, bytes16 shareClassId, int256 navCorrection)
+    function updateShareClassNav(PoolId poolId, bytes16 shareClassId, int256 navCorrection)
         external
         returns (uint256 nav);
 
@@ -222,7 +224,7 @@ interface IShareClassManager {
     /// @param poolId Identifier of the pool
     /// @param data Data of the new share class
     /// @return shareClassId Identifier of the newly added share class
-    function addShareClass(uint64 poolId, bytes memory data) external returns (bytes16 shareClassId);
+    function addShareClass(PoolId poolId, bytes memory data) external returns (bytes16 shareClassId);
 
     // TODO(@review): Check whether bidirectionality (deposit, redeem) is implementation specific
     /// @notice Returns whether the given asset can be used to request a deposit for the given share class id. If an
@@ -233,12 +235,12 @@ interface IShareClassManager {
     /// @param shareClassId Identifier of the share class
     /// @param assetId Identifier of the asset
     /// @return bool Whether the asset was allowed as payment for deposit and payout for redemption requests.
-    function isAllowedAsset(uint64 poolId, bytes16 shareClassId, address assetId) external view returns (bool);
+    function isAllowedAsset(PoolId poolId, bytes16 shareClassId, address assetId) external view returns (bool);
 
     /// @notice Returns the current NAV of a share class of a pool.
     ///
     /// @param poolId Identifier of the pool
     /// @param shareClassId Identifier of the share class
     /// @return nav Total value of assets of the pool and share class
-    function getShareClassNav(uint64 poolId, bytes16 shareClassId) external view returns (uint256 nav);
+    function getShareClassNav(PoolId poolId, bytes16 shareClassId) external view returns (uint256 nav);
 }
