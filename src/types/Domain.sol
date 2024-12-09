@@ -22,3 +22,5 @@ type Ratio is uint128;
 type EpochId is uint32;
 
 type ChainId is uint32;
+
+type ItemId is uint32;

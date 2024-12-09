@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/Auth.sol";
-import {ChainId, PoolId, ShareClassId, AssetId, Ratio} from "src/types/Domain.sol";
+import {ChainId, PoolId, ShareClassId, AssetId, Ratio, ItemId} from "src/types/Domain.sol";
 import {D18} from "src/types/D18.sol";
 import {PoolLocker} from "src/PoolLocker.sol";
 import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
@@ -19,17 +19,21 @@ interface IERC7726 {
 }
 
 interface IShareClassManager {
-    function requestDeposit(PoolId poolId, ShareClassId shareClassId, AssetId assetId, address investor, uint128 amount)
+    function requestDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, address investor, uint128 amount)
         external;
-    function approveDepositRequests(
-        PoolId poolId,
-        ShareClassId shareClassId,
-        AssetId assetId,
-        Ratio approvalRatio,
-        IERC7726 valuation
-    ) external returns (uint128 totalApproved);
-    function issueShares(PoolId poolId, ShareClassId shareClassId, uint128 nav, uint64 epochIndex) external;
-    function claimShares(PoolId poolId, ShareClassId shareClassId, AssetId assetId, address investor) external;
+    function approveDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, Ratio approvalRatio, IERC7726 valuation)
+        external
+        returns (uint128 totalApproved);
+    function issueShares(PoolId poolId, ShareClassId scId, uint128 nav, uint64 epochIndex) external;
+    function claimShares(PoolId poolId, ShareClassId scId, AssetId assetId, address investor) external;
+}
+
+interface IItemManager {
+    function create(PoolId poolId, IERC6909 source, uint256 tokenId, address owner, bytes calldata data) external;
+    function close(PoolId poolId, ItemId itemId, IERC6909 source, uint256 tokenId, address owner) external;
+    function increaseDebt(PoolId poolId, ItemId itemId, uint128 amount) external;
+    function decreasePrincipalDebt(PoolId poolId, ItemId itemId, uint128 amount) external;
+    function decreaseInterestDebt(PoolId poolId, ItemId itemId, uint128 amount) external;
 }
 
 interface IPoolRegistry {
@@ -48,6 +52,7 @@ interface IAssetManager is IERC6909 {
 }
 
 interface IAccounting {
+    function updateEntry() external;
     function unlock(PoolId poolId) external;
     function lock(PoolId poolId) external;
 }
@@ -56,8 +61,8 @@ interface IHoldings {
     function updateHoldings() external;
     function valuation(PoolId poolId, ShareClassId scId, AssetId assetId) external returns (IERC7726);
 
-    function pendingPoolEscrow(PoolId poolId, ShareClassId scId) external view returns (address);
-    function poolEscrow(PoolId poolId, ShareClassId scId) external view returns (address);
+    function pendingShareClassEscrow(PoolId poolId, ShareClassId scId) external view returns (address);
+    function shareClassEscrow(PoolId poolId, ShareClassId scId) external view returns (address);
 }
 
 interface IGateway {
