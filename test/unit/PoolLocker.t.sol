@@ -10,7 +10,7 @@ import {Multicall} from "src/Multicall.sol";
 
 contract PoolManagerMock is PoolLocker {
     PoolId public wasUnlockWithPool;
-    bool public waslock;
+    bool public wasLock;
 
     constructor(IMulticall multicall) PoolLocker(multicall) {}
 
@@ -23,7 +23,7 @@ contract PoolManagerMock is PoolLocker {
     }
 
     function _afterLock() internal override {
-        waslock = true;
+        wasLock = true;
     }
 }
 
@@ -44,7 +44,7 @@ contract PoolLockerTest is Test {
         assertEq(PoolId.unwrap(abi.decode(results[0], (PoolId))), PoolId.unwrap(POOL_A));
 
         assertEq(PoolId.unwrap(poolManager.wasUnlockWithPool()), PoolId.unwrap(POOL_A));
-        assertEq(poolManager.waslock(), true);
+        assertEq(poolManager.wasLock(), true);
     }
 
     function testErrPoolAlreadyUnlocked() public {
