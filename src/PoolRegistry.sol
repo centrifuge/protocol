@@ -46,7 +46,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
 
         poolAdmins[poolId][admin] = canManage;
 
-        emit NewPoolManager(poolId, admin);
+        emit UpdatedPoolAdmin(poolId, admin);
     }
 
     /// @inheritdoc IPoolRegistry
@@ -55,7 +55,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
 
         metadata[poolId] = metadata_;
 
-        emit NewPoolMetadata(poolId, metadata_);
+        emit UpdatedPoolMetadata(poolId, metadata_);
     }
 
     /// @inheritdoc IPoolRegistry
@@ -65,7 +65,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
 
         shareClassManagers[poolId] = shareClassManager;
 
-        emit NewShareClassManager(poolId, shareClassManager);
+        emit UpdatedShareClassManager(poolId, shareClassManager);
     }
 
     /// @inheritdoc IPoolRegistry
@@ -75,6 +75,6 @@ contract PoolRegistry is Auth, IPoolRegistry {
 
         poolCurrencies[poolId] = currency;
 
-        emit NewPoolCurrency(poolId, currency);
+        emit UpdatedPoolCurrency(poolId, currency);
     }
 }
