@@ -32,8 +32,10 @@ interface IShareClassManager {
     function approveDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, Ratio approvalRatio, IERC7726 valuation)
         external
         returns (uint128 totalApproved);
-    function issueShares(PoolId poolId, ShareClassId scId, uint128 nav, uint64 epochIndex) external;
-    function claimShares(PoolId poolId, ShareClassId scId, AssetId assetId, address investor) external;
+    function issueShares(PoolId poolId, ShareClassId scId, uint128 nav) external;
+    function claimShares(PoolId poolId, ShareClassId scId, AssetId assetId, address investor)
+        external
+        returns (uint128 shares, uint128 investedAmount);
 }
 
 interface IItemManager {
@@ -82,4 +84,12 @@ interface IHoldings {
 interface IGateway {
     function sendAllowPool(ChainId chainId, PoolId poolId) external;
     function sendAllowShareClass(ChainId chainId, PoolId poolId, ShareClassId scId) external;
+    function sendFulfilledDepositRequest(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        address investor,
+        uint128 shares,
+        uint128 investedAmount
+    ) external;
 }

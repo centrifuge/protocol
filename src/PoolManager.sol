@@ -107,8 +107,11 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         holdings.updateHoldings(poolId, scId, assetId, totalApprovedAmount);
     }
 
-    function issueShares() external poolUnlocked {
-        // TODO
+    function issueShares(ShareClassId scId, uint128 nav) external poolUnlocked {
+        PoolId poolId = unlockedPoolId();
+        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
+
+        scm.issueShares(poolId, scId, nav);
     }
 
     function increaseDebt(IItemManager im, ShareClassId scId, ItemId itemId, uint128 amount) external poolUnlocked {
@@ -135,8 +138,11 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         // TODO: Accounting update entry
     }
 
-    function claimShares() external {
-        // TODO
+    function claimShares(PoolId poolId, ShareClassId scId, AssetId assetId, address investor) external {
+        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
+
+        (uint128 shares, uint128 investedAmount) = scm.claimShares(poolId, scId, assetId, investor);
+        gateway.sendFulfilledDepositRequest(poolId, scId, assetId, investor, shares, investedAmount);
     }
 
     function _unlock(PoolId poolId) internal override {
