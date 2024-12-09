@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ChainId, PoolId, ShareClassId, AssetId, Ratio, ItemId} from "src/types/Domain.sol";
+import {ChainId, PoolId, ShareClassId, AssetId, Ratio, ItemId, AccountId} from "src/types/Domain.sol";
 import {
     IPoolRegistry,
     IAssetManager,
@@ -10,14 +10,18 @@ import {
     IGateway,
     IShareClassManager,
     IERC7726,
-    IItemManager
+    IItemManager,
+    IPoolCurrency
 } from "src/interfaces/ICommon.sol";
 import {IPoolManager} from "src/interfaces/IPoolManager.sol";
 import {IMulticall} from "src/interfaces/IMulticall.sol";
 import {PoolLocker} from "src/PoolLocker.sol";
 import {Auth} from "src/Auth.sol";
+import {MathLib} from "src/libraries/MathLib.sol";
 
 contract PoolManager is Auth, PoolLocker, IPoolManager {
+    using MathLib for uint256;
+
     IPoolRegistry immutable poolRegistry;
     IAssetManager immutable assetManager;
     IAccounting immutable accounting;
@@ -86,8 +90,21 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         assetManager.transferFrom(pendingShareClassEscrow, shareClassEscrow, erc6909Id, totalApproved);
     }
 
-    function updateHoldings(ShareClassId scId, AssetId assetId, uint128 amount) external poolUnlocked {
-        // TODO
+    function updateHoldings(ShareClassId scId, AssetId assetId, uint128 approvedAmount) external poolUnlocked {
+        PoolId poolId = unlockedPoolId();
+        uint128 prevHoldings = holdings.prevHoldings(poolId, scId, assetId);
+        uint128 totalApprovedAmount = prevHoldings + approvedAmount;
+
+        IERC7726 valuation = holdings.valuation(poolId, scId, assetId);
+        address base = address(AssetId.unwrap(assetId));
+        address quote = address(poolRegistry.currency(poolId));
+        uint128 totalApprovedPoolAmount = valuation.getQuote(uint256(totalApprovedAmount), base, quote).toUint128();
+
+        AccountId assetAccount = holdings.assetAccount(poolId, scId, assetId);
+        AccountId equityAccount = holdings.equityAccount(poolId, scId, assetId);
+
+        accounting.updateEntry(equityAccount, assetAccount, totalApprovedPoolAmount);
+        holdings.updateHoldings(poolId, scId, assetId, totalApprovedAmount);
     }
 
     function issueShares() external poolUnlocked {

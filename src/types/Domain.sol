@@ -23,4 +23,6 @@ type EpochId is uint32;
 
 type ChainId is uint32;
 
-type ItemId is uint32;
+type ItemId is uint32; // TODO: check if the type should be wide to carry AssetIds inside
+
+type AccountId is uint128;
