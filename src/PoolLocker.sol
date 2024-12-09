@@ -7,10 +7,10 @@ import {IMulticall} from "src/interfaces/IMulticall.sol";
 
 abstract contract PoolLocker is IPoolLocker {
     /// Contract for the multicall
-    IMulticall immutable private multicall;
+    IMulticall private immutable multicall;
 
     /// @dev Represents the unlocked pool Id
-    PoolId private transient unlocked;
+    PoolId private /*TODO: transient*/ unlocked;
 
     /// @dev allows to execute a method only if the pool is unlocked.
     /// The method can only be execute as part of `execute()`
@@ -49,6 +49,4 @@ abstract contract PoolLocker is IPoolLocker {
 
     /// @dev This method is called last in the multical execution
     function _lock() internal virtual;
-
 }
-
