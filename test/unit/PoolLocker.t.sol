@@ -18,11 +18,11 @@ contract PoolManagerMock is PoolLocker {
         return unlockedPoolId();
     }
 
-    function _unlock(PoolId poolId) internal override {
+    function _beforeUnlock(PoolId poolId) internal override {
         wasUnlockWithPool = poolId;
     }
 
-    function _lock() internal override {
+    function _afterLock() internal override {
         waslock = true;
     }
 }

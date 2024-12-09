@@ -30,13 +30,13 @@ abstract contract PoolLocker is IPoolLocker {
         returns (bytes[] memory results)
     {
         require(PoolId.unwrap(unlocked) == 0, PoolAlreadyUnlocked());
-        _unlock(poolId);
+        _beforeUnlock(poolId);
         unlocked = poolId;
 
         results = multicall.aggregate(targets, datas);
 
         unlocked = PoolId.wrap(0);
-        _lock();
+        _afterLock();
     }
 
     /// @inheritdoc IPoolLocker
@@ -45,8 +45,8 @@ abstract contract PoolLocker is IPoolLocker {
     }
 
     /// @dev This method is called first in the multicall execution
-    function _unlock(PoolId poolId) internal virtual;
+    function _beforeUnlock(PoolId poolId) internal virtual;
 
     /// @dev This method is called last in the multical execution
-    function _lock() internal virtual;
+    function _afterLock() internal virtual;
 }
