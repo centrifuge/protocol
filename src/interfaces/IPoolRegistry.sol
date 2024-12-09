@@ -6,7 +6,7 @@ import {Currency} from "src/types/Currency.sol";
 
 interface IPoolRegistry {
     /// Events
-    event NewPool(PoolId indexed poolId, address indexed manager, address indexed shareClassManager, Currency currency);
+    event NewPool(PoolId poolId, address indexed manager, address indexed shareClassManager, Currency indexed currency);
     event UpdatedPoolAdmin(PoolId indexed poolId, address indexed manager);
     event UpdatedPoolMetadata(PoolId indexed poolId, bytes metadata);
     event UpdatedShareClassManager(PoolId indexed poolId, address indexed shareClassManager);
