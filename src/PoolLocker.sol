@@ -30,6 +30,7 @@ abstract contract PoolLocker is IPoolLocker {
         returns (bytes[] memory results)
     {
         require(PoolId.unwrap(unlocked) == 0, PoolAlreadyUnlocked());
+        require(_canUnlock(poolId), "User cannot unlock");
         _unlock(poolId);
         unlocked = poolId;
 
@@ -49,6 +50,8 @@ abstract contract PoolLocker is IPoolLocker {
 
     /// @dev This method is called last in the multical execution
     function _lock() internal virtual;
+
+    function _canUnlock(PoolId poolId) internal virtual returns (bool);
 
 }
 

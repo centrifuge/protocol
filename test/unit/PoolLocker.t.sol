@@ -11,6 +11,7 @@ import {Multicall} from "src/Multicall.sol";
 contract PoolManagerMock is PoolLocker {
     PoolId public wasUnlockWithPool;
     bool public waslock;
+    bool public _canLockToggle;
 
     constructor(IMulticall multicall) PoolLocker(multicall) {}
 
@@ -25,13 +26,26 @@ contract PoolManagerMock is PoolLocker {
     function _lock() internal override {
         waslock = true;
     }
+
+    function _canUnlock(PoolId id) internal override returns (bool) {
+        return _canLockToggle;
+    }
+
+    function toggleCanLock(bool canLock) external {
+        _canLockToggle = canLock;
+    }
 }
 
 contract PoolLockerTest is Test {
     PoolId constant POOL_A = PoolId.wrap(42);
 
     Multicall multicall = new Multicall();
-    PoolManagerMock poolManager = new PoolManagerMock(multicall);
+    PoolManagerMock poolManager;
+
+    function setUp() public {
+        poolManager = new PoolManagerMock(multicall);
+        poolManager.toggleCanLock(true);
+    }
 
     function testWithPoolUnlockerMethod() public {
         address[] memory targets = new address[](1);
@@ -67,5 +81,18 @@ contract PoolLockerTest is Test {
     function testErrPoolLocked() public {
         vm.expectRevert(IPoolLocker.PoolLocked.selector);
         poolManager.poolRelatedMethod();
+    }
+
+    function testLockingPermissions() public {
+        address[] memory targets = new address[](1);
+        targets[0] = address(poolManager);
+
+        bytes[] memory functions = new bytes[](1);
+        functions[0] = abi.encodeWithSelector(poolManager.poolRelatedMethod.selector);
+
+        poolManager.toggleCanLock(false);
+
+        vm.expectRevert();
+        poolManager.execute(POOL_A, targets, functions);
     }
 }

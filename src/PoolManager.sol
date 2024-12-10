@@ -146,11 +146,14 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     }
 
     function _unlock(PoolId poolId) internal override {
-        require(poolRegistry.isUnlocker(msg.sender, poolId));
         accounting.unlock(poolId);
     }
 
     function _lock() internal override {
         accounting.lock(unlockedPoolId());
+    }
+
+    function _canUnlock(PoolId poolId) internal override returns (bool) {
+        return poolRegistry.isUnlocker(msg.sender, poolId);
     }
 }
