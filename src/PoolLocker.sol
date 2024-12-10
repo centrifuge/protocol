@@ -35,8 +35,8 @@ abstract contract PoolLocker is IPoolLocker {
 
         results = multicall.aggregate(targets, datas);
 
+        _beforeLock();
         _unlockedPoolId = PoolId.wrap(0);
-        _afterLock();
     }
 
     /// @inheritdoc IPoolLocker
@@ -48,5 +48,5 @@ abstract contract PoolLocker is IPoolLocker {
     function _beforeUnlock(PoolId poolId) internal virtual;
 
     /// @dev This method is called last in the multical execution
-    function _afterLock() internal virtual;
+    function _beforeLock() internal virtual;
 }
