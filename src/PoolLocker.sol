@@ -47,6 +47,6 @@ abstract contract PoolLocker is IPoolLocker {
     /// @dev This method is called first in the multicall execution
     function _beforeUnlock(PoolId poolId) internal virtual;
 
-    /// @dev This method is called last in the multical execution
+    /// @dev This method is called last in the multicall execution
     function _beforeLock() internal virtual;
 }
