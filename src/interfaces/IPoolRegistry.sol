@@ -6,20 +6,21 @@ import {Currency} from "src/types/Currency.sol";
 
 interface IPoolRegistry {
     /// Events
-    event NewPool(PoolId poolId, address indexed manager, address indexed shareClassManager, Currency indexed currency);
+    event NewPool(PoolId poolId, address indexed manager, address indexed shareClassManager, address indexed currency);
     event UpdatedPoolAdmin(PoolId indexed poolId, address indexed manager);
     event UpdatedPoolMetadata(PoolId indexed poolId, bytes metadata);
     event UpdatedShareClassManager(PoolId indexed poolId, address indexed shareClassManager);
-    event UpdatedPoolCurrency(PoolId indexed poolId, Currency currency);
+    event UpdatedPoolCurrency(PoolId indexed poolId, address currency);
 
     /// Errors
     error NonExistingPool(PoolId id);
     error EmptyAdmin();
     error EmptyCurrency();
+    error UnsupportedCurrency();
     error EmptyShareClassManager();
 
     /// @notice TODO
-    function registerPool(address admin, Currency currency, address shareClassManager) external returns (PoolId);
+    function registerPool(address admin, address currency, address shareClassManager) external returns (PoolId);
     /// @notice TODO
     function updateAdmin(PoolId poolId, address newAdmin, bool canManage) external;
     /// @notice TODO
@@ -27,5 +28,5 @@ interface IPoolRegistry {
     /// @notice TODO
     function updateShareClassManager(PoolId poolId, address shareClassManager) external;
     /// @notice TODO
-    function updateCurrency(PoolId poolId, Currency currency) external;
+    function updateCurrency(PoolId poolId, address currency) external;
 }

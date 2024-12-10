@@ -8,12 +8,14 @@ import {Currency} from "src/types/Currency.sol";
 import {PoolRegistry} from "src/PoolRegistry.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
 import {IAuth} from "src/interfaces/IAuth.sol";
+import {FiatCurrencyRegistry} from "src/FiatCurrencyRegistry.sol";
 
 contract PoolRegistryTest is Test {
     using MathLib for uint256;
 
     PoolRegistry registry;
-    Currency USD = Currency.wrap(address(840));
+    FiatCurrencyRegistry fiatRegistry;
+    Currency USD = Currency(address(840), 18, "USD", "USD");
     address shareClassManager = makeAddr("shareClassManager");
 
     modifier nonZero(address addr) {
@@ -27,7 +29,10 @@ contract PoolRegistryTest is Test {
     }
 
     function setUp() public {
-        registry = new PoolRegistry(address(this));
+        fiatRegistry = new FiatCurrencyRegistry();
+        registry = new PoolRegistry(address(this), address(fiatRegistry));
+
+        fiatRegistry.register(USD);
     }
 
     function testAuthorization(address additionalWard) public nonZero(additionalWard) notThisContract(additionalWard) {
@@ -44,18 +49,18 @@ contract PoolRegistryTest is Test {
     function testPoolRegistration(address fundAdmin) public nonZero(fundAdmin) notThisContract(fundAdmin) {
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.registerPool(address(this), USD, shareClassManager);
+        registry.registerPool(address(this), USD.addr, shareClassManager);
 
         vm.expectRevert(IPoolRegistry.EmptyShareClassManager.selector);
-        registry.registerPool(address(this), USD, address(0));
+        registry.registerPool(address(this), USD.addr, address(0));
 
         vm.expectRevert(IPoolRegistry.EmptyAdmin.selector);
-        registry.registerPool(address(0), USD, shareClassManager);
+        registry.registerPool(address(0), USD.addr, shareClassManager);
 
         vm.expectRevert(IPoolRegistry.EmptyCurrency.selector);
-        registry.registerPool(address(this), Currency.wrap(address(0)), shareClassManager);
+        registry.registerPool(address(this), address(0), shareClassManager);
 
-        PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
+        PoolId poolId = registry.registerPool(fundAdmin, USD.addr, shareClassManager);
         assertEq(poolId.chainId(), block.chainid.toUint32());
 
         assertTrue(registry.poolAdmins(poolId, fundAdmin));
@@ -71,7 +76,7 @@ contract PoolRegistryTest is Test {
         notThisContract(additionalAdmin)
     {
         vm.assume(fundAdmin != additionalAdmin);
-        PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
+        PoolId poolId = registry.registerPool(fundAdmin, USD.addr, shareClassManager);
 
         assertFalse(registry.poolAdmins(poolId, additionalAdmin));
 
@@ -98,7 +103,7 @@ contract PoolRegistryTest is Test {
     function testUpdateMetadata(bytes calldata metadata) public {
         address fundAdmin = makeAddr("fundAdmin");
 
-        PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
+        PoolId poolId = registry.registerPool(fundAdmin, USD.addr, shareClassManager);
 
         assertEq(registry.metadata(poolId).length, 0);
 
@@ -117,7 +122,7 @@ contract PoolRegistryTest is Test {
     function testUpdateShareClassManager(address shareClassManager_) public nonZero(shareClassManager_) {
         address fundAdmin = makeAddr("fundAdmin");
 
-        PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
+        PoolId poolId = registry.registerPool(fundAdmin, USD.addr, shareClassManager);
 
         assertEq(registry.shareClassManagers(poolId), shareClassManager);
 
@@ -138,23 +143,24 @@ contract PoolRegistryTest is Test {
 
     function testUpdatePoolCurrency(address currency_) public nonZero(currency_) {
         address fundAdmin = makeAddr("fundAdmin");
-        Currency currency = Currency.wrap(currency_);
+        Currency memory currency = Currency(currency_, 18, "TEST", "TEST");
+        fiatRegistry.register(currency);
 
-        PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
+        PoolId poolId = registry.registerPool(fundAdmin, USD.addr, shareClassManager);
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.updateCurrency(poolId, currency);
+        registry.updateCurrency(poolId, currency_);
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);
         vm.expectRevert(abi.encodeWithSelector(IPoolRegistry.NonExistingPool.selector, nonExistingPool));
-        registry.updateCurrency(nonExistingPool, currency);
+        registry.updateCurrency(nonExistingPool, currency_);
 
         vm.expectRevert(IPoolRegistry.EmptyCurrency.selector);
-        registry.updateCurrency(poolId, Currency.wrap(address(0)));
+        registry.updateCurrency(poolId, address(0));
 
-        assertTrue(Currency.unwrap(registry.poolCurrencies(poolId)) != Currency.unwrap(currency));
-        registry.updateCurrency(poolId, currency);
-        assertEq(Currency.unwrap(registry.poolCurrencies(poolId)), Currency.unwrap(currency));
+        registry.updateCurrency(poolId, currency.addr);
+        (address poolCurrencyAddr,,,) = registry.poolCurrencies(poolId);
+        assertEq(poolCurrencyAddr, currency.addr);
     }
 }
