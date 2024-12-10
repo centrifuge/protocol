@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
-import {IERC165} from "src/interfaces/IERC165.sol";
+import {IERC165} from "forge-std/interfaces/IERC165.sol";
 import {StringLib} from "src/libraries/StringLib.sol";
 
 /// @title      Basic implementation of all properties according to the ERC6909.
