@@ -10,12 +10,12 @@ abstract contract PoolLocker is IPoolLocker {
     IMulticall private immutable multicall;
 
     /// @dev Represents the unlocked pool Id
-    PoolId private /*TODO: transient*/ unlocked;
+    PoolId private /*TODO: transient*/ _unlockedPoolId;
 
     /// @dev allows to execute a method only if the pool is unlocked.
     /// The method can only be execute as part of `execute()`
     modifier poolUnlocked() {
-        require(PoolId.unwrap(unlocked) != 0, PoolLocked());
+        require(PoolId.unwrap(_unlockedPoolId) != 0, PoolLocked());
         _;
     }
 
@@ -29,19 +29,19 @@ abstract contract PoolLocker is IPoolLocker {
         external
         returns (bytes[] memory results)
     {
-        require(PoolId.unwrap(unlocked) == 0, PoolAlreadyUnlocked());
+        require(PoolId.unwrap(_unlockedPoolId) == 0, PoolAlreadyUnlocked());
         _beforeUnlock(poolId);
-        unlocked = poolId;
+        _unlockedPoolId = poolId;
 
         results = multicall.aggregate(targets, datas);
 
-        unlocked = PoolId.wrap(0);
+        _unlockedPoolId = PoolId.wrap(0);
         _afterLock();
     }
 
     /// @inheritdoc IPoolLocker
     function unlockedPoolId() public view returns (PoolId) {
-        return unlocked;
+        return _unlockedPoolId;
     }
 
     /// @dev This method is called first in the multicall execution
