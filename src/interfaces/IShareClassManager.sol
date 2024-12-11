@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {PoolId} from "src/types/PoolId.sol";
+import {IERC7726} from "src/interfaces/IERC7726.sol";
 
 interface IShareClassManager {
     /// Events
@@ -154,7 +155,7 @@ interface IShareClassManager {
     /// @param shareClassId Identifier of the share class
     /// @param approvalRatio Percentage of approved requests
     /// @param paymentAssetId Identifier of the asset locked for the deposit request
-    /// @param paymentAssetPrice Price ratio of asset amount to pool amount
+    /// @param valuation Converter for quotas, e.g. price ratio of asset amount to pool amount
     /// @return approvedPoolAmount Sum of deposit request amounts in pool amount which was approved
     /// @return approvedAssetAmount Sum of deposit request amounts in asset amount which was not approved
     function approveDeposits(
@@ -162,7 +163,7 @@ interface IShareClassManager {
         bytes16 shareClassId,
         uint128 approvalRatio,
         address paymentAssetId,
-        uint128 paymentAssetPrice
+        IERC7726 valuation
     ) external returns (uint256 approvedPoolAmount, uint256 approvedAssetAmount);
 
     /// @notice Approves a percentage of all redemption requests for the given triplet of pool id, share class id and
@@ -173,7 +174,7 @@ interface IShareClassManager {
     /// @param approvalRatio Percentage of approved requests
     /// @param payoutAssetId Identifier of the asset for which all requests want to exchange their share class tokens
     /// for
-    /// @param payoutAssetPrice Price ratio of share class token amount to pool amount
+    /// @param valuation Converter for quotas, e.g. price ratio of share class token amount to pool amount
     /// @return approved Sum of redemption request amounts in pool amount which was approved
     /// @return pending Sum of redemption request amounts in share class token amount which was not approved
     function approveRedemptions(
@@ -181,7 +182,7 @@ interface IShareClassManager {
         bytes16 shareClassId,
         uint128 approvalRatio,
         address payoutAssetId,
-        uint128 payoutAssetPrice
+        IERC7726 valuation
     ) external returns (uint256 approved, uint256 pending);
 
     /// @notice Emits new shares for the given identifier based on the provided NAV.
