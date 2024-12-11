@@ -25,10 +25,8 @@ struct Epoch {
 struct UserOrder {
     // @dev Index of epoch in which last order was made
     uint32 lastUpdate;
-    // @dev Amount of pending deposit request in asset denomination
-    uint256 pendingDepositRequest;
-    // @dev Amount of pending redeem request in share class denomination
-    uint256 pendingRedeemRequest;
+    // @dev Pending amount
+    uint256 pending;
 }
 
 // NOTE: Must be removed before merging
@@ -46,7 +44,9 @@ contract SingleShareClass is Auth, IShareClassManager {
     uint32 private /*TODO: transient*/ _epochIncrement;
     address public immutable poolRegistry;
     mapping(bytes16 => mapping(address assetId => bool)) public allowedAssets;
-    mapping(bytes16 => mapping(address assetId => mapping(address investor => UserOrder pending))) public userOrders;
+    mapping(bytes16 => mapping(address assetId => mapping(address investor => UserOrder pending))) public
+        depositRequests;
+    mapping(bytes16 => mapping(address assetId => mapping(address investor => UserOrder pending))) public redeemRequests;
     mapping(bytes16 => mapping(address assetId => uint256 pending)) public pendingDeposits;
     // TODO(@review): Check whether needed for accounting. If not, remove
     mapping(bytes16 => uint256 approved) public approvedDeposits;
@@ -95,7 +95,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         _updateDepositRequest(
             poolId,
             shareClassId,
-            -int256(userOrders[shareClassId][depositAssetId][investor].pendingDepositRequest),
+            -int256(depositRequests[shareClassId][depositAssetId][investor].pending),
             investor,
             depositAssetId
         );
@@ -229,7 +229,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
         require(endEpochId < epochs[poolId], IShareClassManager.EpochNotFound(epochs[poolId]));
 
-        UserOrder storage userOrder = userOrders[shareClassId][depositAssetId][investor];
+        UserOrder storage userOrder = depositRequests[shareClassId][depositAssetId][investor];
 
         for (uint32 epochId = userOrder.lastUpdate; epochId <= endEpochId; epochId++) {
             (uint256 approvedAssetAmount, uint256 pendingAssetAmount, uint256 investorShares) =
@@ -329,12 +329,12 @@ contract SingleShareClass is Auth, IShareClassManager {
         returns (uint256 approvedAssetAmount, uint256 pendingAssetAmount, uint256 investorShares)
     {
         Epoch memory epoch = epochRatios[shareClassId][epochId];
-        approvedAssetAmount = epoch.depositRatio.mulUint256(userOrder.pendingDepositRequest);
+        approvedAssetAmount = epoch.depositRatio.mulUint256(userOrder.pending);
         investorShares = epochRatios[shareClassId][epochId].shareClassToAssetQuote.mulUint256(approvedAssetAmount);
 
-        userOrder.pendingDepositRequest -= approvedAssetAmount;
+        userOrder.pending -= approvedAssetAmount;
 
-        return (approvedAssetAmount, userOrder.pendingDepositRequest, investorShares);
+        return (approvedAssetAmount, userOrder.pending, investorShares);
     }
 
     /// @notice Increments the given epoch id if it has not been incremented within the current block. If the epoch has
@@ -366,7 +366,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
         // TODO: Permission check for investor
 
-        UserOrder storage userOrder = userOrders[shareClassId][depositAssetId][investor];
+        UserOrder storage userOrder = depositRequests[shareClassId][depositAssetId][investor];
         uint32 latestDepositApproval_ = latestDepositApproval[shareClassId][depositAssetId];
         require(
             latestDepositApproval_ == 0 || userOrder.lastUpdate > latestDepositApproval_,
@@ -374,9 +374,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         );
 
         userOrder.lastUpdate = epochs[poolId];
-        userOrder.pendingDepositRequest = amount >= 0
-            ? userOrder.pendingDepositRequest + uint256(amount)
-            : userOrder.pendingDepositRequest - uint256(amount);
+        userOrder.pending = amount >= 0 ? userOrder.pending + uint256(amount) : userOrder.pending - uint256(amount);
 
         pendingDeposits[shareClassId][depositAssetId] = amount >= 0
             ? pendingDeposits[shareClassId][depositAssetId] + uint256(amount)
@@ -387,7 +385,7 @@ contract SingleShareClass is Auth, IShareClassManager {
             shareClassId,
             epochs[poolId],
             investor,
-            userOrder.pendingDepositRequest,
+            userOrder.pending,
             pendingDeposits[shareClassId][depositAssetId],
             depositAssetId
         );
