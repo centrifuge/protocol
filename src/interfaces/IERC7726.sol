@@ -10,3 +10,10 @@ interface IERC7726 {
     /// @param baseAmount The amount of base in base terms.
     function getQuote(uint256 baseAmount, address base, address quote) external view returns (uint256 quoteAmount);
 }
+
+interface IERC7726Ext is IERC7726 {
+    /// @notice Returns the internal ratio used to convert quote base into quote, e.g. ETH to USDC
+    /// @param base The numerator asset for the desired ratio
+    /// @param quote The denominator asset
+    function getFactor(address base, address quote) external view returns (uint256 factor);
+}
