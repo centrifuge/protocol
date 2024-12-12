@@ -19,8 +19,9 @@ function sub(D18 d1, D18 d2) pure returns (D18) {
     return D18.wrap(D18.unwrap(d1) - D18.unwrap(d2));
 }
 
+// TODO(@wischli): Add tests
 function div(D18 d1, D18 d2) pure returns (D18) {
-    return D18.wrap(D18.unwrap(d1) / D18.unwrap(d2));
+    return D18.wrap(MathLib.mulDiv(D18.unwrap(d1), 1e18, D18.unwrap(d2)).toUint128());
 }
 
 /// @dev sugar for getting the inner representation of a D18
