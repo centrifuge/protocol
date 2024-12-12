@@ -2,7 +2,7 @@
 pragma solidity ^0.8.28;
 
 import "forge-std/Test.sol";
-import {PoolId} from "src/types/Domain.sol";
+import {PoolId} from "src/types/PoolId.sol";
 import {PoolLocker} from "src/PoolLocker.sol";
 import {IPoolLocker} from "src/interfaces/IPoolLocker.sol";
 import {IMulticall} from "src/interfaces/IMulticall.sol";

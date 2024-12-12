@@ -5,7 +5,8 @@ import {Auth} from "src/Auth.sol";
 import {PoolId} from "src/types/PoolId.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
-import {IERC20Metadata, IShareClassManager} from "src/interfaces/ICommon.sol";
+import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
+import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 
 contract PoolRegistry is Auth, IPoolRegistry {
     using MathLib for uint256;
@@ -23,6 +24,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
     /// @inheritdoc IPoolRegistry
     function registerPool(address admin, IERC20Metadata currency_, IShareClassManager shareClassManager_)
         external
+        auth
         returns (PoolId poolId)
     {
         require(admin != address(0), EmptyAdmin());
