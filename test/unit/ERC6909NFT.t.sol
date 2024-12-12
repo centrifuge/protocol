@@ -8,7 +8,7 @@ import {IERC6909NFT} from "src/interfaces/ERC6909/IERC6909NFT.sol";
 import {IERC6909URIExtension} from "src/interfaces/ERC6909/IERC6909URIExtension.sol";
 import {StringLib} from "src/libraries/StringLib.sol";
 import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
-import {IERC165} from "src/interfaces/IERC165.sol";
+import {IERC165} from "forge-std/interfaces/IERC165.sol";
 import {IAuth} from "src/interfaces/IAuth.sol";
 
 contract ERC6909NFTTest is Test {
