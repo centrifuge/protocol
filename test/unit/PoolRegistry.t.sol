@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import "forge-std/Test.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {PoolId} from "src/types/PoolId.sol";
-import {Currency} from "src/types/Currency.sol";
 import {PoolRegistry} from "src/PoolRegistry.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
 import {IAuth} from "src/interfaces/IAuth.sol";
@@ -146,7 +145,7 @@ contract PoolRegistryTest is Test {
         vm.expectRevert(IPoolRegistry.EmptyCurrency.selector);
         registry.updateCurrency(poolId, IERC20Metadata(address(0)));
 
-        assertNotEq(address(registry.poolCurrencies(poolId)), address(currency));
+        vm.assume(address(registry.poolCurrencies(poolId)) != address(currency));
         registry.updateCurrency(poolId, currency);
         assertEq(address(registry.poolCurrencies(poolId)), address(currency));
     }
