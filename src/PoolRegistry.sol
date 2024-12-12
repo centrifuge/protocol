@@ -81,7 +81,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
     }
 
     /// @inheritdoc IPoolRegistry
-    function setAddressFor(PoolId poolId, bytes32 key, address value) external {
+    function setAddressFor(PoolId poolId, bytes32 key, address value) external auth {
         addresses[poolId][key] = value;
     }
 
