@@ -22,7 +22,22 @@ interface IPoolRegistry {
     error NonExistingPool(PoolId id);
     error EmptyAdmin();
     error EmptyCurrency();
+    error EmptyAddress();
     error EmptyShareClassManager();
+
+    /// Functions
+
+    /// Getters
+    /// @notice TODO
+    function metadata(PoolId poolId) external returns (bytes memory);
+    /// @notice TODO
+    function poolCurrencies(PoolId poolId) external returns (IERC20Metadata);
+    /// @notice TODO
+    function shareClassManagers(PoolId poolId) external returns (IShareClassManager);
+    /// @notice TODO
+    function poolAdmins(PoolId poolId, address admin) external returns (bool);
+    /// @notice TODO
+    function addresses(PoolId poolId, bytes32 key) external returns (address);
 
     /// @notice TODO
     function registerPool(address admin, IERC20Metadata currency, IShareClassManager shareClassManager)
@@ -37,14 +52,5 @@ interface IPoolRegistry {
     /// @notice TODO
     function updateCurrency(PoolId poolId, IERC20Metadata currency) external;
     /// @notice TODO
-    function setAddressFor(PoolId poolId, bytes32 key, address value) external;
-
-    /// @notice TODO
-    function currency(PoolId poolId) external view returns (IERC20Metadata);
-    /// @notice TODO
-    function isAdmin(PoolId poolId, address admin) external view returns (bool);
-    /// @notice TODO
-    function shareClassManager(PoolId poolId) external view returns (IShareClassManager);
-    /// @notice TODO
-    function addressFor(PoolId poolId, bytes32 key) external view returns (address);
+    function updateAddress(PoolId poolid, bytes32 key, address addr) external;
 }

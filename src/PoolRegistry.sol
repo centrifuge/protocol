@@ -80,28 +80,9 @@ contract PoolRegistry is Auth, IPoolRegistry {
         emit UpdatedPoolCurrency(poolId, currency_);
     }
 
-    /// @inheritdoc IPoolRegistry
-    function setAddressFor(PoolId poolId, bytes32 key, address value) external auth {
-        addresses[poolId][key] = value;
-    }
-
-    /// @inheritdoc IPoolRegistry
-    function currency(PoolId poolId) external view returns (IERC20Metadata) {
-        return poolCurrencies[poolId];
-    }
-
-    /// @inheritdoc IPoolRegistry
-    function isAdmin(PoolId poolId, address admin) external view returns (bool) {
-        return poolAdmins[poolId][admin];
-    }
-
-    /// @inheritdoc IPoolRegistry
-    function shareClassManager(PoolId poolId) external view returns (IShareClassManager) {
-        return shareClassManagers[poolId];
-    }
-
-    /// @inheritdoc IPoolRegistry
-    function addressFor(PoolId poolId, bytes32 key) external view returns (address) {
-        return addresses[poolId][key];
+    function updateAddress(PoolId poolId, bytes32 key, address addr) external auth {
+        require(address(shareClassManagers[poolId]) != address(0), NonExistingPool(poolId));
+        require(addr != address(0), EmptyAddress());
+        addresses[poolId][key] = addr;
     }
 }
