@@ -78,13 +78,17 @@ contract SingleShareClass is Auth, IShareClassManager {
     /// Errors
     error NegativeNav();
     error Unauthorized();
-    error AlreadyApproved();
 
     constructor(address deployer, address poolRegistry_, address investorPermissions_) Auth(deployer) {
         require(poolRegistry_ != address(0), "Empty poolRegistry");
         require(investorPermissions_ != address(0), "Empty investorPermissions");
         poolRegistry = poolRegistry_;
         investorPermissions = investorPermissions_;
+    }
+
+    // TODO(@wischli): Docs
+    function setShareClassId(PoolId poolId, bytes16 shareClassId_) external auth {
+        shareClassIds[poolId] = shareClassId_;
     }
 
     /// @inheritdoc IShareClassManager
@@ -163,51 +167,41 @@ contract SingleShareClass is Auth, IShareClassManager {
         require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
 
         // Advance epochId if it has not been advanced within this transaction (e.g. in case of multiCall context)
-        uint32 epochId = epochIds[poolId];
-        epochIds[poolId] = _incrementEpoch(epochId);
-
-        // Check for approval in same epoch
-        Epoch storage epoch = epochs[shareClassId][epochId];
-        require(epoch.approvedDeposits == 0, AlreadyApproved());
+        uint32 approvalEpochId = _advanceEpoch(poolId);
 
         // Reduce pending
-        uint256 pendingDeposit = pendingDeposits[shareClassId][paymentAssetId];
-        approvedAssetAmount = d18(approvalRatio).mulUint256(pendingDeposit);
+        approvedAssetAmount = d18(approvalRatio).mulUint256(pendingDeposits[shareClassId][paymentAssetId]);
         pendingDeposits[shareClassId][paymentAssetId] -= approvedAssetAmount;
+        uint256 pendingDepositsPostUpdate = pendingDeposits[shareClassId][paymentAssetId];
 
         // Increase approved
-        approvedPoolAmount = valuation.getQuote(
-            approvedAssetAmount, paymentAssetId, IPoolRegistryExtended(poolRegistry).getPoolCurrency(poolId)
-        );
+        address poolCurrency = IPoolRegistryExtended(poolRegistry).getPoolCurrency(poolId);
+        D18 paymentAssetPrice = d18(valuation.getFactor(paymentAssetId, poolCurrency).toUint128());
+        approvedPoolAmount = paymentAssetPrice.mulUint256(approvedAssetAmount);
         approvedDeposits[shareClassId] += approvedPoolAmount;
-        D18 paymentAssetPrice = d18(approvedPoolAmount.mulDiv(1e18, approvedAssetAmount).toUint128());
 
         // Update epoch data
+        Epoch storage epoch = epochs[shareClassId][approvalEpochId];
         epoch.valuation = valuation;
-        epoch.approvedDeposits = approvedPoolAmount;
+        epoch.approvedDeposits += approvedPoolAmount;
 
-        EpochRatio storage epochRatio = epochRatios[shareClassId][paymentAssetId][epochId];
+        EpochRatio storage epochRatio = epochRatios[shareClassId][paymentAssetId][approvalEpochId];
         epochRatio.depositRatio = d18(approvalRatio);
         epochRatio.assetToPoolQuote = paymentAssetPrice;
 
-        latestDepositApproval[shareClassId][paymentAssetId] = epochId;
+        latestDepositApproval[shareClassId][paymentAssetId] = approvalEpochId;
 
         emit IShareClassManager.ApprovedDeposits(
             poolId,
             shareClassId,
-            epochId,
+            approvalEpochId,
             paymentAssetId,
             approvalRatio,
             approvedPoolAmount,
             approvedAssetAmount,
-            pendingDeposit,
+            pendingDepositsPostUpdate,
             paymentAssetPrice.inner()
         );
-
-        // Epoch doesn't necessarily advance, e.g. in case of multiple approvals inside the same multiCall
-        if (epochId < epochIds[poolId]) {
-            emit IShareClassManager.NewEpoch(poolId, epochId + 1);
-        }
     }
 
     /// @inheritdoc IShareClassManager
@@ -221,12 +215,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
 
         // Advance epochId if it has not been advanced within this transaction (e.g. in case of multiCall context)
-        uint32 epochId = epochIds[poolId];
-        epochIds[poolId] = _incrementEpoch(epochId);
-
-        // Check for approval in same epoch
-        Epoch storage epoch = epochs[shareClassId][epochId];
-        require(epoch.approvedShares == 0, AlreadyApproved());
+        uint32 approvalEpochId = _advanceEpoch(poolId);
 
         // Reduce pending
         approvedShares = d18(approvalRatio).mulUint256(pendingRedemptions[shareClassId][payoutAssetId]);
@@ -239,28 +228,24 @@ contract SingleShareClass is Auth, IShareClassManager {
         D18 payoutAssetPrice = d18(valuation.getFactor(payoutAssetId, poolCurrency).toUint128());
 
         // Update epoch data
+        Epoch storage epoch = epochs[shareClassId][approvalEpochId];
         epoch.valuation = valuation;
         epoch.approvedShares = approvedShares;
 
-        EpochRatio storage epochRatio = epochRatios[shareClassId][payoutAssetId][epochId];
+        EpochRatio storage epochRatio = epochRatios[shareClassId][payoutAssetId][approvalEpochId];
         epochRatio.redeemRatio = d18(approvalRatio);
         epochRatio.assetToPoolQuote = payoutAssetPrice;
 
         emit IShareClassManager.ApprovedRedemptions(
             poolId,
             shareClassId,
-            epochId,
+            approvalEpochId,
             payoutAssetId,
             approvalRatio,
             approvedShares,
             pendingShares,
             payoutAssetPrice.inner()
         );
-
-        // Epoch doesn't necessarily advance, e.g. in case of multiple approvals inside the same multiCall
-        if (epochId < epochIds[poolId]) {
-            emit IShareClassManager.NewEpoch(poolId, epochId + 1);
-        }
     }
 
     /// @inheritdoc IShareClassManager
@@ -500,11 +485,11 @@ contract SingleShareClass is Auth, IShareClassManager {
         // If issueShares is per assetId, this is fixed by using latestIssuance[shareClassId][depositAsset]
 
         userOrder.lastUpdate = epochIds[poolId];
-        userOrder.pending = amount >= 0 ? userOrder.pending + uint256(amount) : userOrder.pending - uint256(amount);
+        userOrder.pending = amount >= 0 ? userOrder.pending + uint256(amount) : userOrder.pending - uint256(-amount);
 
         pendingDeposits[shareClassId][depositAssetId] = amount >= 0
             ? pendingDeposits[shareClassId][depositAssetId] + uint256(amount)
-            : pendingDeposits[shareClassId][depositAssetId] - uint256(amount);
+            : pendingDeposits[shareClassId][depositAssetId] - uint256(-amount);
 
         emit IShareClassManager.UpdatedDepositRequest(
             poolId,
@@ -537,11 +522,11 @@ contract SingleShareClass is Auth, IShareClassManager {
         );
 
         userOrder.lastUpdate = epochIds[poolId];
-        userOrder.pending = amount >= 0 ? userOrder.pending + uint256(amount) : userOrder.pending - uint256(amount);
+        userOrder.pending = amount >= 0 ? userOrder.pending + uint256(amount) : userOrder.pending - uint256(-amount);
 
         pendingRedemptions[shareClassId][payoutAssetId] = amount >= 0
             ? pendingRedemptions[shareClassId][payoutAssetId] + uint256(amount)
-            : pendingRedemptions[shareClassId][payoutAssetId] - uint256(amount);
+            : pendingRedemptions[shareClassId][payoutAssetId] - uint256(-amount);
 
         emit IShareClassManager.UpdatedRedeemRequest(
             poolId,
@@ -613,12 +598,34 @@ contract SingleShareClass is Auth, IShareClassManager {
     /// already been bumped, we don't bump it again to allow deposit and redeem approvals to point to the same epoch id.
     ///
     /// @param epochId Identifier of the epoch which we want to increment.
-    /// @return incrementedEpochId Potentially incremented epoch identifier.
-    function _incrementEpoch(uint32 epochId) private returns (uint32 incrementedEpochId) {
+    // TODO(@wischli): Fix
+    /// @return checkEpochId Potentially incremented epoch identifier.
+    /// @return newEpochId Potentially incremented epoch identifier.
+    function _incrementEpoch(uint32 epochId) private returns (uint32 checkEpochId, uint32 newEpochId) {
+        // FIXME: 2x approval in same block should write epochs[SAME_ID] instead of epochs[x] and epochs[x+1]
         if (_epochIncrement == 0) {
             _epochIncrement = 1;
+            newEpochId = epochId + _epochIncrement;
+            return (newEpochId, newEpochId);
+        } else {
+            return (epochId > 0 ? epochId - 1 : 0, epochId);
         }
-        return epochId + _epochIncrement;
+    }
+
+    function _advanceEpoch(PoolId poolId) private returns (uint32 epochIdCurrentBlock) {
+        uint32 epochId = epochIds[poolId];
+
+        // Epoch doesn't necessarily advance, e.g. in case of multiple approvals inside the same multiCall
+        if (_epochIncrement == 0) {
+            _epochIncrement = 1;
+            epochIds[poolId] += 1;
+
+            emit IShareClassManager.NewEpoch(poolId, epochId + 1);
+
+            return epochId;
+        } else {
+            return epochId > 0 ? epochId - 1 : 0;
+        }
     }
 
     /// @notice Collects shares for an investor after their deposit request was (partially) approved and new shares were
