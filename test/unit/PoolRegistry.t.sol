@@ -48,9 +48,9 @@ contract PoolRegistryTest is Test {
         PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
         assertEq(poolId.chainId(), block.chainid.toUint32());
 
-        assertTrue(registry.poolAdmins(poolId, fundAdmin));
-        assertFalse(registry.poolAdmins(poolId, address(this)));
-        assertEq(address(registry.shareClassManagers(poolId)), address(shareClassManager));
+        assertTrue(registry.isAdmin(poolId, fundAdmin));
+        assertFalse(registry.isAdmin(poolId, address(this)));
+        assertEq(address(registry.shareClassManager(poolId)), address(shareClassManager));
     }
 
     function testUpdateAdmin(address fundAdmin, address additionalAdmin)
@@ -63,7 +63,7 @@ contract PoolRegistryTest is Test {
         vm.assume(fundAdmin != additionalAdmin);
         PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
 
-        assertFalse(registry.poolAdmins(poolId, additionalAdmin));
+        assertFalse(registry.isAdmin(poolId, additionalAdmin));
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -78,11 +78,11 @@ contract PoolRegistryTest is Test {
 
         // Approve a new admin
         registry.updateAdmin(poolId, additionalAdmin, true);
-        assertTrue(registry.poolAdmins(poolId, additionalAdmin));
+        assertTrue(registry.isAdmin(poolId, additionalAdmin));
 
         // Remove an existing admin
         registry.updateAdmin(poolId, additionalAdmin, false);
-        assertFalse(registry.poolAdmins(poolId, additionalAdmin));
+        assertFalse(registry.isAdmin(poolId, additionalAdmin));
     }
 
     function testUpdateMetadata(bytes calldata metadata) public {
@@ -112,7 +112,7 @@ contract PoolRegistryTest is Test {
 
         PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
 
-        assertEq(address(registry.shareClassManagers(poolId)), address(shareClassManager));
+        assertEq(address(registry.shareClassManager(poolId)), address(shareClassManager));
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -126,7 +126,7 @@ contract PoolRegistryTest is Test {
         registry.updateShareClassManager(poolId, IShareClassManager(address(0)));
 
         registry.updateShareClassManager(poolId, shareClassManager_);
-        assertEq(address(registry.shareClassManagers(poolId)), address(shareClassManager_));
+        assertEq(address(registry.shareClassManager(poolId)), address(shareClassManager_));
     }
 
     function testUpdatePoolCurrency(IERC20Metadata currency) public nonZero(address(currency)) {
@@ -145,9 +145,9 @@ contract PoolRegistryTest is Test {
         vm.expectRevert(IPoolRegistry.EmptyCurrency.selector);
         registry.updateCurrency(poolId, IERC20Metadata(address(0)));
 
-        vm.assume(address(registry.poolCurrencies(poolId)) != address(currency));
+        vm.assume(address(registry.currency(poolId)) != address(currency));
         registry.updateCurrency(poolId, currency);
-        assertEq(address(registry.poolCurrencies(poolId)), address(currency));
+        assertEq(address(registry.currency(poolId)), address(currency));
     }
 
     function testUpdateAddress() public {
@@ -155,16 +155,13 @@ contract PoolRegistryTest is Test {
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);
         vm.expectRevert(abi.encodeWithSelector(IPoolRegistry.NonExistingPool.selector, nonExistingPool));
-        registry.updateAddress(nonExistingPool, "key", address(1));
+        registry.setAddressFor(nonExistingPool, "key", address(1));
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.updateAddress(poolId, "key", address(1));
+        registry.setAddressFor(poolId, "key", address(1));
 
-        vm.expectRevert(IPoolRegistry.EmptyAddress.selector);
-        registry.updateAddress(poolId, "key", address(0));
-
-        registry.updateAddress(poolId, "key", address(1));
-        assertEq(address(registry.addresses(poolId, "key")), address(1));
+        registry.setAddressFor(poolId, "key", address(1));
+        assertEq(address(registry.addressFor(poolId, "key")), address(1));
     }
 }
