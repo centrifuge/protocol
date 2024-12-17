@@ -23,77 +23,19 @@ uint256 constant DENO_POOL = 10 ** 4;
 uint256 constant MIN_REQUEST_AMOUNT = 1e10;
 uint256 constant MAX_REQUEST_AMOUNT = 1e40;
 
-contract PoolRegistryMock is IPoolRegistry {
-    IERC20Metadata USD = IERC20Metadata(POOL_CURRENCY);
-
-    function poolCurrencies(PoolId) external view override returns (IERC20Metadata) {
-        return USD;
-    }
-
-    function metadata(PoolId) external pure returns (bytes memory) {
-        revert("metadata intentionally unimplemented");
-    }
-
-    function shareClassManagers(PoolId) external pure returns (IShareClassManager) {
-        revert("shareClassManagers intentionally unimplemented");
-    }
-
-    function poolAdmins(PoolId, address) external pure returns (bool) {
-        revert("poolAdmins intentionally unimplemented");
-    }
-
-    function addresses(PoolId, bytes32) external pure returns (address) {
-        revert("addresses intentionally unimplemented");
-    }
-
-    function registerPool(address, IERC20Metadata, IShareClassManager) external pure returns (PoolId) {
-        revert("registerPool intentionally unimplemented");
-    }
-
-    function updateAdmin(PoolId, address, bool) external pure {
-        revert("updateAdmin intentionally unimplemented");
-    }
-
-    function updateMetadata(PoolId, bytes calldata) external pure {
-        revert("updateMetadata intentionally unimplemented");
-    }
-
-    function updateShareClassManager(PoolId, IShareClassManager) external pure {
-        revert("updateShareClassManager intentionally unimplemented");
-    }
-
-    function updateCurrency(PoolId, IERC20Metadata) external pure {
-        revert("updateCurrency intentionally unimplemented");
-    }
-
-    function updateAddress(PoolId, bytes32, address) external pure {
-        revert("updateAddress intentionally unimplemented");
+contract PoolRegistryMock {
+    function poolCurrencies(PoolId) external pure returns (IERC20Metadata) {
+        return IERC20Metadata(POOL_CURRENCY);
     }
 }
 
-contract EveryoneInvestor is IInvestorPermissions {
+contract EveryoneInvestor {
     function isFrozenInvestor(bytes16, address) external pure returns (bool) {
         return false;
     }
 
-    function isUnfrozenInvestor(bytes16, address) external pure override returns (bool) {
+    function isUnfrozenInvestor(bytes16, address) external pure returns (bool) {
         return true;
-    }
-
-    function add(bytes16, address) external pure {
-        revert("add intentionally unimplemented");
-    }
-
-    function remove(bytes16, address) external pure {
-        revert("remove intentionally unimplemented");
-    }
-
-    function freeze(bytes16, address) external pure {
-        revert("freeze intentionally unimplemented");
-    }
-
-    function unfreeze(bytes16, address) external pure {
-        revert("unfreeze intentionally unimplemented");
     }
 }
 
@@ -161,16 +103,24 @@ contract SingleShareClassTest is Test {
     using MathLib for uint256;
 
     SingleShareClass public shareClass;
-    PoolRegistryMock public poolRegistry;
-    EveryoneInvestor public investorPermissions;
+    IPoolRegistry public poolRegistry;
+    IInvestorPermissions public investorPermissions;
+
     OracleMock oracleMock = new OracleMock();
+    PoolRegistryMock poolRegistryMock = new PoolRegistryMock();
+    EveryoneInvestor investorPermissionsMock = new EveryoneInvestor();
 
     PoolId poolId = PoolId.wrap(1);
     bytes16 shareClassId = bytes16("shareClass123");
+    address poolRegistryAddress = makeAddr("poolRegistry");
+    address investorPermissionsAddress = makeAddr("investorPermissions");
 
     function setUp() public {
-        poolRegistry = new PoolRegistryMock();
-        investorPermissions = new EveryoneInvestor();
+        // Set bytecode of interfaces to mock
+        vm.etch(poolRegistryAddress, address(poolRegistryMock).code);
+        poolRegistry = IPoolRegistry(poolRegistryAddress);
+        vm.etch(investorPermissionsAddress, address(investorPermissionsMock).code);
+        investorPermissions = IInvestorPermissions(investorPermissionsAddress);
 
         shareClass = new SingleShareClass(address(this), address(poolRegistry), address(investorPermissions));
         shareClass.setShareClassId(poolId, shareClassId);
