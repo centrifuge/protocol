@@ -2,18 +2,22 @@
 pragma solidity 0.8.28;
 
 import {IInvestorPermissions} from "src/interfaces/IInvestorPermissions.sol";
+import {Auth} from "src/Auth.sol";
 
 struct InvestorPermission {
     uint64 validUntil;
     bool frozen;
 }
 
-contract InvestorPermissions is IInvestorPermissions {
+// TODO(@wischli): Write tests
+contract InvestorPermissions is Auth, IInvestorPermissions {
     // @dev: Value for until is arbitrary because we ignore it for now but need to distinguish between default and
     // non-default storage entries
     uint64 private constant _DEFAUL_VALIDITY = type(uint64).min;
 
     mapping(bytes16 shareClassId => mapping(address user => InvestorPermission)) permissions;
+
+    constructor(address deployer) Auth(deployer) {}
 
     function add(bytes16 shareClassId, address target) external {
         permissions[shareClassId][target] = InvestorPermission(_DEFAUL_VALIDITY, false);
