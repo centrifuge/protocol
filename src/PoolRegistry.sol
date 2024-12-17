@@ -3,9 +3,10 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/Auth.sol";
 import {PoolId} from "src/types/PoolId.sol";
-import {Currency} from "src/types/Currency.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
+import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
+import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 
 contract PoolRegistry is Auth, IPoolRegistry {
     using MathLib for uint256;
@@ -13,36 +14,37 @@ contract PoolRegistry is Auth, IPoolRegistry {
     uint32 public latestId;
 
     mapping(PoolId => bytes) public metadata;
-    mapping(PoolId => Currency) public poolCurrencies;
-    mapping(PoolId => address) public shareClassManagers;
+    mapping(PoolId => IERC20Metadata) public poolCurrencies;
+    mapping(PoolId => IShareClassManager) public shareClassManagers;
     mapping(PoolId => mapping(address => bool)) public poolAdmins;
+    mapping(PoolId => mapping(bytes32 key => address)) public addresses;
 
     constructor(address deployer) Auth(deployer) {}
 
     /// @inheritdoc IPoolRegistry
-    function registerPool(address admin, Currency currency, address shareClassManager)
+    function registerPool(address admin, IERC20Metadata currency_, IShareClassManager shareClassManager_)
         external
         auth
         returns (PoolId poolId)
     {
         require(admin != address(0), EmptyAdmin());
-        require(Currency.unwrap(currency) != address(0), EmptyCurrency());
-        require(shareClassManager != address(0), EmptyShareClassManager());
+        require(address(currency_) != address(0), EmptyCurrency());
+        require(address(shareClassManager_) != address(0), EmptyShareClassManager());
 
         // TODO: Make this part of the library. Something like PoolId.generate();
         poolId = PoolId.wrap((uint64(block.chainid.toUint32()) << 32) | uint64(++latestId));
 
         poolAdmins[poolId][admin] = true;
-        poolCurrencies[poolId] = currency;
-        shareClassManagers[poolId] = shareClassManager;
+        poolCurrencies[poolId] = currency_;
+        shareClassManagers[poolId] = shareClassManager_;
 
-        emit NewPool(poolId, admin, shareClassManager, currency);
+        emit NewPool(poolId, admin, shareClassManager_, currency_);
     }
 
     /// @inheritdoc IPoolRegistry
     function updateAdmin(PoolId poolId, address admin, bool canManage) external auth {
         require(admin != address(0), EmptyAdmin());
-        require(shareClassManagers[poolId] != address(0), NonExistingPool(poolId));
+        require(address(shareClassManagers[poolId]) != address(0), NonExistingPool(poolId));
 
         poolAdmins[poolId][admin] = canManage;
 
@@ -51,7 +53,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
 
     /// @inheritdoc IPoolRegistry
     function updateMetadata(PoolId poolId, bytes calldata metadata_) external auth {
-        require(shareClassManagers[poolId] != address(0), NonExistingPool(poolId));
+        require(address(shareClassManagers[poolId]) != address(0), NonExistingPool(poolId));
 
         metadata[poolId] = metadata_;
 
@@ -59,25 +61,28 @@ contract PoolRegistry is Auth, IPoolRegistry {
     }
 
     /// @inheritdoc IPoolRegistry
-    function updateShareClassManager(PoolId poolId, address shareClassManager) external auth {
-        require(shareClassManagers[poolId] != address(0), NonExistingPool(poolId));
-        require(shareClassManager != address(0), EmptyShareClassManager());
+    function updateShareClassManager(PoolId poolId, IShareClassManager shareClassManager_) external auth {
+        require(address(shareClassManagers[poolId]) != address(0), NonExistingPool(poolId));
+        require(address(shareClassManager_) != address(0), EmptyShareClassManager());
 
-        shareClassManagers[poolId] = shareClassManager;
+        shareClassManagers[poolId] = shareClassManager_;
 
-        emit UpdatedShareClassManager(poolId, shareClassManager);
+        emit UpdatedShareClassManager(poolId, shareClassManager_);
     }
 
     /// @inheritdoc IPoolRegistry
-    function updateCurrency(PoolId poolId, Currency currency) external auth {
-        // TODO: Make sure the address that is passed is actually a token
-        // One idea is to check if `decimals()` can be called but might not work with Special Address
-        // defined in the ERC-7726 for traditional currencies.
-        require(shareClassManagers[poolId] != address(0), NonExistingPool(poolId));
-        require(Currency.unwrap(currency) != address(0), EmptyCurrency());
+    function updateCurrency(PoolId poolId, IERC20Metadata currency_) external auth {
+        require(address(shareClassManagers[poolId]) != address(0), NonExistingPool(poolId));
+        require(address(currency_) != address(0), EmptyCurrency());
 
-        poolCurrencies[poolId] = currency;
+        poolCurrencies[poolId] = currency_;
 
-        emit UpdatedPoolCurrency(poolId, currency);
+        emit UpdatedPoolCurrency(poolId, currency_);
+    }
+
+    function updateAddress(PoolId poolId, bytes32 key, address addr) external auth {
+        require(address(shareClassManagers[poolId]) != address(0), NonExistingPool(poolId));
+        require(addr != address(0), EmptyAddress());
+        addresses[poolId][key] = addr;
     }
 }

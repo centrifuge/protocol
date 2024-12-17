@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {PoolId} from "src/types/Domain.sol";
+import {PoolId} from "src/types/PoolId.sol";
 import {IPoolLocker} from "src/interfaces/IPoolLocker.sol";
 import {IMulticall} from "src/interfaces/IMulticall.sol";
 
