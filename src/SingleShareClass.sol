@@ -10,6 +10,7 @@ import {D18, d18} from "src/types/D18.sol";
 import {PoolId} from "src/types/PoolId.sol";
 import {IERC7726Ext} from "src/interfaces/IERC7726.sol";
 import {IInvestorPermissions} from "src/interfaces/IInvestorPermissions.sol";
+import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
 
 struct Epoch {
     /// @dev Price of one share class per pool token
@@ -36,11 +37,6 @@ struct UserOrder {
     uint32 lastUpdate;
     /// @dev Pending amount
     uint256 pending;
-}
-
-// NOTE: Must be removed before merging
-interface IPoolRegistryExtended {
-    function getPoolCurrency(PoolId poolId) external view returns (address poolCurrency);
 }
 
 // Assumptions:
@@ -177,7 +173,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         uint256 pendingDepositsPostUpdate = pendingDeposits[shareClassId][paymentAssetId];
 
         // Increase approved
-        address poolCurrency = IPoolRegistryExtended(poolRegistry).getPoolCurrency(poolId);
+        address poolCurrency = address(IPoolRegistry(poolRegistry).poolCurrencies(poolId));
         D18 paymentAssetPrice = d18(valuation.getFactor(paymentAssetId, poolCurrency).toUint128());
         approvedPoolAmount = paymentAssetPrice.mulUint256(approvedAssetAmount);
         approvedDeposits[shareClassId] += approvedPoolAmount;
@@ -226,7 +222,7 @@ contract SingleShareClass is Auth, IShareClassManager {
 
         // Increase approved
         approvedRedemptions[shareClassId] += approvedShares;
-        address poolCurrency = IPoolRegistryExtended(poolRegistry).getPoolCurrency(poolId);
+        address poolCurrency = address(IPoolRegistry(poolRegistry).poolCurrencies(poolId));
         D18 payoutAssetPrice = d18(valuation.getFactor(payoutAssetId, poolCurrency).toUint128());
 
         // Update epoch data
@@ -557,7 +553,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         D18 shareToPoolQuote = d18(
             (
                 epoch.valuation.getQuote(
-                    nav, IPoolRegistryExtended(poolRegistry).getPoolCurrency(poolId), address(bytes20(shareClassId))
+                    nav, address(IPoolRegistry(poolRegistry).poolCurrencies(poolId)), address(bytes20(shareClassId))
                 ) / totalIssuance[shareClassId]
             ).toUint128()
         );
@@ -585,7 +581,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         epoch.shareToPoolQuote = d18(
             (
                 epoch.valuation.getQuote(
-                    nav, IPoolRegistryExtended(poolRegistry).getPoolCurrency(poolId), address(bytes20(shareClassId))
+                    nav, address(IPoolRegistry(poolRegistry).poolCurrencies(poolId)), address(bytes20(shareClassId))
                 ) / totalIssuance[shareClassId]
             ).toUint128()
         );

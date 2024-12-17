@@ -3,16 +3,18 @@ pragma solidity ^0.8.28;
 
 import "forge-std/Test.sol";
 
-import {IPoolRegistryExtended, SingleShareClass, Epoch, EpochRatio, UserOrder} from "src/SingleShareClass.sol";
+import {SingleShareClass, Epoch, EpochRatio, UserOrder} from "src/SingleShareClass.sol";
 import {PoolId} from "src/types/PoolId.sol";
 import {D18, d18} from "src/types/D18.sol";
 import {IERC7726Ext} from "src/interfaces/IERC7726.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 import {IInvestorPermissions} from "src/interfaces/IInvestorPermissions.sol";
+import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
+import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 
 PoolId constant POOL_ID = PoolId.wrap(0x123);
-address constant POOL_CURRENCY = address(0x01234);
+address constant POOL_CURRENCY = address(840);
 address constant USDC = address(0x0123456);
 address constant OTHER_STABLE = address(0x01234567);
 uint256 constant DENO_USDC = 10 ** 6;
@@ -21,15 +23,51 @@ uint256 constant DENO_POOL = 10 ** 4;
 uint256 constant MIN_REQUEST_AMOUNT = 1e10;
 uint256 constant MAX_REQUEST_AMOUNT = 1e40;
 
-contract PoolRegistryMock is IPoolRegistryExtended {
-    address public mockCurrency;
+contract PoolRegistryMock is IPoolRegistry {
+    IERC20Metadata USD = IERC20Metadata(POOL_CURRENCY);
 
-    constructor(address _mockCurrency) {
-        mockCurrency = _mockCurrency;
+    function poolCurrencies(PoolId) external view override returns (IERC20Metadata) {
+        return USD;
     }
 
-    function getPoolCurrency(PoolId) external view override returns (address) {
-        return mockCurrency;
+    function metadata(PoolId) external pure returns (bytes memory) {
+        revert("metadata intentionally unimplemented");
+    }
+
+    function shareClassManagers(PoolId) external pure returns (IShareClassManager) {
+        revert("shareClassManagers intentionally unimplemented");
+    }
+
+    function poolAdmins(PoolId, address) external pure returns (bool) {
+        revert("poolAdmins intentionally unimplemented");
+    }
+
+    function addresses(PoolId, bytes32) external pure returns (address) {
+        revert("addresses intentionally unimplemented");
+    }
+
+    function registerPool(address, IERC20Metadata, IShareClassManager) external pure returns (PoolId) {
+        revert("registerPool intentionally unimplemented");
+    }
+
+    function updateAdmin(PoolId, address, bool) external pure {
+        revert("updateAdmin intentionally unimplemented");
+    }
+
+    function updateMetadata(PoolId, bytes calldata) external pure {
+        revert("updateMetadata intentionally unimplemented");
+    }
+
+    function updateShareClassManager(PoolId, IShareClassManager) external pure {
+        revert("updateShareClassManager intentionally unimplemented");
+    }
+
+    function updateCurrency(PoolId, IERC20Metadata) external pure {
+        revert("updateCurrency intentionally unimplemented");
+    }
+
+    function updateAddress(PoolId, bytes32, address) external pure {
+        revert("updateAddress intentionally unimplemented");
     }
 }
 
@@ -43,19 +81,19 @@ contract EveryoneInvestor is IInvestorPermissions {
     }
 
     function add(bytes16, address) external pure {
-        revert("intentionally unimplemented");
+        revert("add intentionally unimplemented");
     }
 
     function remove(bytes16, address) external pure {
-        revert("intentionally unimplemented");
+        revert("remove intentionally unimplemented");
     }
 
     function freeze(bytes16, address) external pure {
-        revert("intentionally unimplemented");
+        revert("freeze intentionally unimplemented");
     }
 
     function unfreeze(bytes16, address) external pure {
-        revert("intentionally unimplemented");
+        revert("unfreeze intentionally unimplemented");
     }
 }
 
@@ -131,7 +169,7 @@ contract SingleShareClassTest is Test {
     bytes16 shareClassId = bytes16("shareClass123");
 
     function setUp() public {
-        poolRegistry = new PoolRegistryMock(POOL_CURRENCY);
+        poolRegistry = new PoolRegistryMock();
         investorPermissions = new EveryoneInvestor();
 
         shareClass = new SingleShareClass(address(this), address(poolRegistry), address(investorPermissions));
@@ -226,11 +264,11 @@ contract SingleShareClassTest is Test {
         uint256 approvedPool = approvedUSDC / 100;
 
         vm.expectEmit(true, true, true, true);
+        emit IShareClassManager.NewEpoch(poolId, 1);
+        vm.expectEmit(true, true, true, true);
         emit IShareClassManager.ApprovedDeposits(
             poolId, shareClassId, 0, USDC, approvalRatio, approvedPool, approvedUSDC, deposits - approvedUSDC, 1e16
         );
-        vm.expectEmit(true, true, true, true);
-        emit IShareClassManager.NewEpoch(poolId, 1);
         shareClass.approveDeposits(poolId, shareClassId, approvalRatio, USDC, oracleMock);
 
         assertEq(shareClass.pendingDeposits(shareClassId, USDC), deposits - approvedUSDC);
