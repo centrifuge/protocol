@@ -2,30 +2,55 @@
 pragma solidity 0.8.28;
 
 import {PoolId} from "src/types/PoolId.sol";
-import {Currency} from "src/types/Currency.sol";
+import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
+import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 
 interface IPoolRegistry {
     /// Events
-    event NewPool(PoolId poolId, address indexed manager, address indexed shareClassManager, Currency indexed currency);
-    event UpdatedPoolAdmin(PoolId indexed poolId, address indexed manager);
+    event NewPool(
+        PoolId poolId,
+        address indexed admin,
+        IShareClassManager indexed shareClassManager,
+        IERC20Metadata indexed currency
+    );
+    event UpdatedPoolAdmin(PoolId indexed poolId, address indexed admin);
     event UpdatedPoolMetadata(PoolId indexed poolId, bytes metadata);
-    event UpdatedShareClassManager(PoolId indexed poolId, address indexed shareClassManager);
-    event UpdatedPoolCurrency(PoolId indexed poolId, Currency currency);
+    event UpdatedShareClassManager(PoolId indexed poolId, IShareClassManager indexed shareClassManager);
+    event UpdatedPoolCurrency(PoolId indexed poolId, IERC20Metadata currency);
 
     /// Errors
     error NonExistingPool(PoolId id);
     error EmptyAdmin();
     error EmptyCurrency();
+    error EmptyAddress();
     error EmptyShareClassManager();
 
+    /// Functions
+
+    /// Getters
     /// @notice TODO
-    function registerPool(address admin, Currency currency, address shareClassManager) external returns (PoolId);
+    function metadata(PoolId poolId) external returns (bytes memory);
+    /// @notice TODO
+    function poolCurrencies(PoolId poolId) external returns (IERC20Metadata);
+    /// @notice TODO
+    function shareClassManagers(PoolId poolId) external returns (IShareClassManager);
+    /// @notice TODO
+    function poolAdmins(PoolId poolId, address admin) external returns (bool);
+    /// @notice TODO
+    function addresses(PoolId poolId, bytes32 key) external returns (address);
+
+    /// @notice TODO
+    function registerPool(address admin, IERC20Metadata currency, IShareClassManager shareClassManager)
+        external
+        returns (PoolId);
     /// @notice TODO
     function updateAdmin(PoolId poolId, address newAdmin, bool canManage) external;
     /// @notice TODO
     function updateMetadata(PoolId poolId, bytes calldata metadata) external;
     /// @notice TODO
-    function updateShareClassManager(PoolId poolId, address shareClassManager) external;
+    function updateShareClassManager(PoolId poolId, IShareClassManager shareClassManager) external;
     /// @notice TODO
-    function updateCurrency(PoolId poolId, Currency currency) external;
+    function updateCurrency(PoolId poolId, IERC20Metadata currency) external;
+    /// @notice TODO
+    function updateAddress(PoolId poolid, bytes32 key, address addr) external;
 }
