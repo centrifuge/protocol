@@ -11,34 +11,6 @@ import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
 import {PoolId} from "src/types/PoolId.sol";
 
-interface IShareClassManager {
-    function requestDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, address investor, uint128 amount)
-        external;
-    function requestRedemption(PoolId poolId, ShareClassId scId, AssetId assetId, address investor, uint128 amount)
-        external;
-
-    function approveDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, Ratio approvalRatio, IERC7726 valuation)
-        external
-        returns (uint128 totalApproved);
-    function approveRedemption(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        Ratio approvalRatio,
-        IERC7726 valuation
-    ) external returns (uint128 totalApproved);
-
-    function issueShares(PoolId poolId, ShareClassId scId, uint128 nav) external;
-    function revokeShares(PoolId poolId, ShareClassId scId, uint128 nav) external;
-
-    function claimShares(PoolId poolId, ShareClassId scId, AssetId assetId, address investor)
-        external
-        returns (uint128 shares, uint128 tokens);
-    function claimTokens(PoolId poolId, ShareClassId scId, AssetId assetId, address investor)
-        external
-        returns (uint128 shares, uint128 tokens);
-}
-
 interface IAssetManager is IERC6909 {
     function mint(address who, AssetId assetId, uint128 amount) external;
     function burn(address who, AssetId assetId, uint128 amount) external;

@@ -2,7 +2,8 @@
 pragma solidity 0.8.28;
 
 import {ChainId, ShareClassId, AssetId, Ratio, ItemId} from "src/types/Domain.sol";
-import {IERC20Metadata, IShareClassManager} from "src/interfaces/ICommon.sol";
+import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
+import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 import {PoolId} from "src/types/PoolId.sol";
 
 import {IItemManager} from "src/interfaces/IItemManager.sol";
