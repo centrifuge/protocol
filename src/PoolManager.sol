@@ -113,7 +113,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         scm.revokeShares(poolId, scId, nav);
     }
 
-    function increaseItemValue(IItemManager im, ItemId itemId, uint128 amount) external poolUnlocked {
+    function increaseItem(IItemManager im, ItemId itemId, uint128 amount) external poolUnlocked {
         PoolId poolId = unlockedPoolId();
 
         IAccountingItemManager.Accounts memory accounts = im.itemAccounts(poolId, itemId);
@@ -122,7 +122,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         accounting.updateEntry(accounts.equity, accounts.asset, valueChange);
     }
 
-    function decreaseItemValue(IItemManager im, ItemId itemId, uint128 amount) external poolUnlocked {
+    function decreaseItem(IItemManager im, ItemId itemId, uint128 amount) external poolUnlocked {
         PoolId poolId = unlockedPoolId();
 
         IAccountingItemManager.Accounts memory accounts = im.itemAccounts(poolId, itemId);
@@ -131,17 +131,18 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         accounting.updateEntry(accounts.asset, accounts.equity, valueChange);
     }
 
-    /*
-    function updateItemValue(IItemManager im, ItemId itemId) external poolUnlocked {
+    function updateItem(IItemManager im, ItemId itemId) external poolUnlocked {
         PoolId poolId = unlockedPoolId();
 
-        uint128 value = im.itemValue(poolId, itemId);
+        int128 diff = im.update(poolId, itemId);
 
-        IERC7726 valuation = im.valuation(poolId, itemId);
-        uint128 currentValue =
-    valuation.getQuote(im.itemAmount, AssetId.unwrap(assetId), address(poolRegistry.currency(poolId))).toUint128();
+        IAccountingItemManager.Accounts memory accounts = im.itemAccounts(poolId, itemId);
+        if (diff > 0) {
+            accounting.updateEntry(accounts.asset, accounts.loss, uint128(diff));
+        } else if (diff < 0) {
+            accounting.updateEntry(accounts.gain, accounts.asset, uint128(-diff));
+        }
     }
-    */
 
     function moveOut(ChainId chainId, ShareClassId scId, AssetId assetId, address receiver, uint128 assetAmount)
         external

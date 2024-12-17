@@ -28,9 +28,11 @@ interface IPoolUnlockedMethods {
 
     function revokeShares(ShareClassId id, uint128 nav) external;
 
-    function increaseItemValue(IItemManager im, ItemId itemId, uint128 amount) external;
+    function increaseItem(IItemManager im, ItemId itemId, uint128 amount) external;
 
-    function decreaseItemValue(IItemManager im, ItemId itemId, uint128 amount) external;
+    function decreaseItem(IItemManager im, ItemId itemId, uint128 amount) external;
+
+    function updateItem(IItemManager im, ItemId itemId) external;
 
     function moveOut(ChainId chainId, ShareClassId scId, AssetId assetId, address receiver, uint128 assetAmount)
         external
