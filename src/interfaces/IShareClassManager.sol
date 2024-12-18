@@ -89,7 +89,7 @@ interface IShareClassManager {
     error InvestorNotAllowed();
     error ClaimDepositRequired();
     error ClaimRedeemRequired();
-    error EpochNotFound(uint32 maxEpochId);
+    error EpochNotFound();
 
     /// Functions
     // TODO(@review): Check whether bidirectionality (deposit, redeem) is implementation specific
