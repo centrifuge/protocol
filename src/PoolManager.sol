@@ -182,8 +182,8 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         scm.requestRedemption(poolId, scId, assetId, investor, amount);
     }
 
-    function lockTokens(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount) external {
-        assetManager.mint(_escrow(poolId, scId, Escrow.SHARE_CLASS), assetId, amount);
+    function lockTokens(AssetId assetId, address recvAddr, uint128 amount) external {
+        assetManager.mint(recvAddr, assetId, amount);
     }
 
     function claimShares(PoolId poolId, ShareClassId scId, AssetId assetId, address investor) external {

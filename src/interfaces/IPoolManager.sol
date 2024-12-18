@@ -47,7 +47,7 @@ interface IFromGatewayMethods {
     function requestRedemption(PoolId poolId, ShareClassId scId, AssetId assetId, address investor, uint128 amount)
         external;
 
-    function lockTokens(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount) external;
+    function lockTokens(AssetId assetId, address recvAddr, uint128 amount) external;
 }
 
 interface IPoolManager is IPoolUnlockedMethods, IFromGatewayMethods {
