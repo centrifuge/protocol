@@ -50,11 +50,21 @@ interface IShareClassManager {
         D18 assetToPool
     );
     event IssuedShares(
-        PoolId indexed poolId, bytes16 indexed shareClassId, uint32 indexed epoch, uint256 nav, uint256 issuedShares
+        PoolId indexed poolId,
+        bytes16 indexed shareClassId,
+        uint32 indexed epoch,
+        D18 navPerShare,
+        uint256 nav,
+        uint256 issuedShares
     );
 
     event RevokedShares(
-        PoolId indexed poolId, bytes16 indexed shareClassId, uint32 indexed epoch, uint256 nav, uint256 revokedShares
+        PoolId indexed poolId,
+        bytes16 indexed shareClassId,
+        uint32 indexed epoch,
+        D18 navPerShare,
+        uint256 nav,
+        uint256 revokedShares
     );
 
     event ClaimedDeposit(
@@ -237,22 +247,28 @@ interface IShareClassManager {
         external
         returns (uint256 payoutAssetAmount, uint256 paymentShareAmount);
 
-    /// @notice Updates the NAV of a share class of a pool and returns it.
+    /// @notice Updates the NAV of a share class of a pool and returns it per share as well as the issuance.
     ///
     /// @param poolId Identifier of the pool
     /// @param shareClassId Identifier of the share class
-    /// @param navCorrection Manual correction of the NAV
-    /// @return nav Total value of assets of the pool and share class post updating
-    function updateShareClassNav(PoolId poolId, bytes16 shareClassId, int256 navCorrection)
+    /// @return navPerShare Total value of assets of the pool and share class per share
+    /// @return issuance Total issuance of the share class
+    function updateShareClassNav(PoolId poolId, bytes16 shareClassId)
         external
-        returns (uint256 nav);
+        returns (D18 navPerShare, uint256 issuance);
+
+    /// @notice Generic update function for a pool.
+    ///
+    /// @param poolId Identifier of the pool
+    /// @param data Payload of the update
+    function update(PoolId poolId, bytes calldata data) external;
 
     /// @notice Adds a new share class to the given pool.
     ///
     /// @param poolId Identifier of the pool
     /// @param data Data of the new share class
     /// @return shareClassId Identifier of the newly added share class
-    function addShareClass(PoolId poolId, bytes memory data) external returns (bytes16 shareClassId);
+    function addShareClass(PoolId poolId, bytes calldata data) external returns (bytes16 shareClassId);
 
     // TODO(@review): Check whether bidirectionality (deposit, redeem) is implementation specific
     /// @notice Returns whether the given asset can be used to request a deposit for the given share class id. If an
@@ -265,10 +281,14 @@ interface IShareClassManager {
     /// @return bool Whether the asset was allowed as payment for deposit and payout for redemption requests.
     function isAllowedAsset(PoolId poolId, bytes16 shareClassId, address assetId) external view returns (bool);
 
-    /// @notice Returns the current NAV of a share class of a pool.
+    /// @notice Returns the current NAV of a share class of a pool per share as well as the issuance.
     ///
     /// @param poolId Identifier of the pool
     /// @param shareClassId Identifier of the share class
-    /// @return nav Total value of assets of the pool and share class
-    function getShareClassNav(PoolId poolId, bytes16 shareClassId) external view returns (uint256 nav);
+    /// @return navPerShare Total value of assets of the pool and share class per share
+    /// @return issuance Total issuance of the share class
+    function getShareClassNavPerShare(PoolId poolId, bytes16 shareClassId)
+        external
+        view
+        returns (D18 navPerShare, uint256 issuance);
 }
