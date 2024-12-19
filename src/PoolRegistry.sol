@@ -14,46 +14,46 @@ contract PoolRegistry is Auth, IPoolRegistry {
     uint32 public latestId;
 
     mapping(PoolId => bytes) public metadata;
-    mapping(PoolId => IERC20Metadata) public poolCurrencies;
-    mapping(PoolId => IShareClassManager) public shareClassManagers;
-    mapping(PoolId => mapping(address => bool)) public poolAdmins;
-    mapping(PoolId => mapping(bytes32 key => address)) public addresses;
+    mapping(PoolId => IERC20Metadata) public currency;
+    mapping(PoolId => IShareClassManager) public shareClassManager;
+    mapping(PoolId => mapping(address => bool)) public isAdmin;
+    mapping(PoolId => mapping(bytes32 key => address)) public addressFor;
 
     constructor(address deployer) Auth(deployer) {}
 
     /// @inheritdoc IPoolRegistry
-    function registerPool(address admin, IERC20Metadata currency_, IShareClassManager shareClassManager_)
+    function registerPool(address admin_, IERC20Metadata currency_, IShareClassManager shareClassManager_)
         external
         auth
         returns (PoolId poolId)
     {
-        require(admin != address(0), EmptyAdmin());
+        require(admin_ != address(0), EmptyAdmin());
         require(address(currency_) != address(0), EmptyCurrency());
         require(address(shareClassManager_) != address(0), EmptyShareClassManager());
 
         // TODO: Make this part of the library. Something like PoolId.generate();
         poolId = PoolId.wrap((uint64(block.chainid.toUint32()) << 32) | uint64(++latestId));
 
-        poolAdmins[poolId][admin] = true;
-        poolCurrencies[poolId] = currency_;
-        shareClassManagers[poolId] = shareClassManager_;
+        isAdmin[poolId][admin_] = true;
+        currency[poolId] = currency_;
+        shareClassManager[poolId] = shareClassManager_;
 
-        emit NewPool(poolId, admin, shareClassManager_, currency_);
+        emit NewPool(poolId, admin_, shareClassManager_, currency_);
     }
 
     /// @inheritdoc IPoolRegistry
-    function updateAdmin(PoolId poolId, address admin, bool canManage) external auth {
-        require(admin != address(0), EmptyAdmin());
-        require(address(shareClassManagers[poolId]) != address(0), NonExistingPool(poolId));
+    function updateAdmin(PoolId poolId, address admin_, bool canManage) external auth {
+        require(admin_ != address(0), EmptyAdmin());
+        require(address(shareClassManager[poolId]) != address(0), NonExistingPool(poolId));
 
-        poolAdmins[poolId][admin] = canManage;
+        isAdmin[poolId][admin_] = canManage;
 
-        emit UpdatedPoolAdmin(poolId, admin);
+        emit UpdatedPoolAdmin(poolId, admin_);
     }
 
     /// @inheritdoc IPoolRegistry
     function updateMetadata(PoolId poolId, bytes calldata metadata_) external auth {
-        require(address(shareClassManagers[poolId]) != address(0), NonExistingPool(poolId));
+        require(address(shareClassManager[poolId]) != address(0), NonExistingPool(poolId));
 
         metadata[poolId] = metadata_;
 
@@ -62,27 +62,26 @@ contract PoolRegistry is Auth, IPoolRegistry {
 
     /// @inheritdoc IPoolRegistry
     function updateShareClassManager(PoolId poolId, IShareClassManager shareClassManager_) external auth {
-        require(address(shareClassManagers[poolId]) != address(0), NonExistingPool(poolId));
+        require(address(shareClassManager[poolId]) != address(0), NonExistingPool(poolId));
         require(address(shareClassManager_) != address(0), EmptyShareClassManager());
 
-        shareClassManagers[poolId] = shareClassManager_;
+        shareClassManager[poolId] = shareClassManager_;
 
         emit UpdatedShareClassManager(poolId, shareClassManager_);
     }
 
     /// @inheritdoc IPoolRegistry
     function updateCurrency(PoolId poolId, IERC20Metadata currency_) external auth {
-        require(address(shareClassManagers[poolId]) != address(0), NonExistingPool(poolId));
+        require(address(shareClassManager[poolId]) != address(0), NonExistingPool(poolId));
         require(address(currency_) != address(0), EmptyCurrency());
 
-        poolCurrencies[poolId] = currency_;
+        currency[poolId] = currency_;
 
         emit UpdatedPoolCurrency(poolId, currency_);
     }
 
-    function updateAddress(PoolId poolId, bytes32 key, address addr) external auth {
-        require(address(shareClassManagers[poolId]) != address(0), NonExistingPool(poolId));
-        require(addr != address(0), EmptyAddress());
-        addresses[poolId][key] = addr;
+    function setAddressFor(PoolId poolId, bytes32 key, address addr) external auth {
+        require(address(shareClassManager[poolId]) != address(0), NonExistingPool(poolId));
+        addressFor[poolId][key] = addr;
     }
 }
