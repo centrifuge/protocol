@@ -45,8 +45,8 @@ contract SingleShareClass is Auth, IShareClassManager {
 
     /// Storage
     // TODO: Reorder for optimal storage layout
-    uint32 private transient _epochIncrement;
-    // uint32 private /*transient*/ _epochIncrement;
+    // uint32 private transient _epochIncrement;
+    uint32 private /*transient*/ _epochIncrement;
     address public immutable poolRegistry;
     address public immutable investorPermissions;
     mapping(PoolId poolId => bytes16) public shareClassIds;
@@ -491,8 +491,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         // approval
         uint32 latestApproval = latestDepositApproval[shareClassId][depositAssetId];
         require(
-            userOrder.pending == 0
-                || latestApproval == 0 || userOrder.lastUpdate > latestApproval,
+            userOrder.pending == 0 || latestApproval == 0 || userOrder.lastUpdate > latestApproval,
             IShareClassManager.ClaimDepositRequired()
         );
 
@@ -529,7 +528,8 @@ contract SingleShareClass is Auth, IShareClassManager {
         // Block updates until pending amount does not impact claimable amount
         uint32 latestApproval = latestRedeemApproval[shareClassId][payoutAssetId];
         require(
-            userOrder.pending == 0 || latestApproval == 0 || userOrder.lastUpdate > latestApproval, IShareClassManager.ClaimRedeemRequired()
+            userOrder.pending == 0 || latestApproval == 0 || userOrder.lastUpdate > latestApproval,
+            IShareClassManager.ClaimRedeemRequired()
         );
 
         userOrder.lastUpdate = epochIds[poolId];
@@ -687,7 +687,8 @@ contract SingleShareClass is Auth, IShareClassManager {
         return (approvedShares, userOrder.pending, approvedAssetAmount);
     }
 
-    /// @dev Temporarily necessary for tests until forge supports transient storage setting, i.e. https://github.com/foundry-rs/foundry/issues/8165 is merged
+    /// @dev Temporarily necessary for tests until forge supports transient storage setting, i.e.
+    /// https://github.com/foundry-rs/foundry/issues/8165 is merged
     function tmpResetEpochIncrement() external {
         _epochIncrement = 0;
     }
