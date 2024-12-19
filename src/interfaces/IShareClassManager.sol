@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {PoolId} from "src/types/PoolId.sol";
 import {IERC7726Ext} from "src/interfaces/IERC7726.sol";
+import {D18} from "src/types/D18.sol";
 
 interface IShareClassManager {
     /// Events
@@ -32,21 +33,21 @@ interface IShareClassManager {
         bytes16 indexed shareClassId,
         uint32 indexed epoch,
         address assetId,
-        uint128 approvalRatio,
+        D18 approvalRatio,
         uint256 approvedPoolAmount,
         uint256 approvedAssetAmount,
         uint256 pendingAssetAmount,
-        uint128 assetToPool
+        D18 assetToPool
     );
     event ApprovedRedemptions(
         PoolId indexed poolId,
         bytes16 indexed shareClassId,
         uint32 indexed epoch,
         address assetId,
-        uint128 approvalRatio,
+        D18 approvalRatio,
         uint256 approvedShareClassAmount,
         uint256 pending,
-        uint128 assetToPool
+        D18 assetToPool
     );
     event IssuedShares(
         PoolId indexed poolId, bytes16 indexed shareClassId, uint32 indexed epoch, uint256 nav, uint256 issuedShares
@@ -165,7 +166,7 @@ interface IShareClassManager {
     function approveDeposits(
         PoolId poolId,
         bytes16 shareClassId,
-        uint128 approvalRatio,
+        D18 approvalRatio,
         address paymentAssetId,
         IERC7726Ext valuation
     ) external returns (uint256 approvedPoolAmount, uint256 approvedAssetAmount);
@@ -184,27 +185,28 @@ interface IShareClassManager {
     function approveRedemptions(
         PoolId poolId,
         bytes16 shareClassId,
-        uint128 approvalRatio,
+        D18 approvalRatio,
         address payoutAssetId,
         IERC7726Ext valuation
     ) external returns (uint256 approved, uint256 pending);
 
-    /// @notice Emits new shares for the given identifier based on the provided NAV.
+    /// @notice Emits new shares for the given identifier based on the provided NAV per share.
     ///
     /// @param poolId Identifier of the pool
     /// @param shareClassId Identifier of the share class
-    /// @param nav Total value of assets of the pool and share class
-    function issueShares(PoolId poolId, bytes16 shareClassId, uint256 nav) external;
+    /// @param depositAssetId Identifier of the deposit asset for which shares should be issued
+    /// @param navPerShare Total value of assets of the pool and share class per share
+    function issueShares(PoolId poolId, bytes16 shareClassId, address depositAssetId, D18 navPerShare) external;
 
-    /// @notice Take back shares for the given identifier based on the provided NAV.
+    /// @notice Take back shares for the given identifier based on the provided NAV per share.
     ///
     /// @param poolId Identifier of the pool
     /// @param shareClassId Identifier of the share class
     /// @param payoutAssetId Identifier of the payout asset
-    /// @param nav Total value of assets of the pool and share class
+    /// @param navPerShare Total value of assets of the pool and share class per share
     /// @return payoutAssetAmount Converted amount of payout asset based on number of revoked shares
     /// @return payoutPoolAmount Converted amount of pool currency based on number of revoked shares
-    function revokeShares(PoolId poolId, bytes16 shareClassId, address payoutAssetId, uint256 nav)
+    function revokeShares(PoolId poolId, bytes16 shareClassId, address payoutAssetId, D18 navPerShare)
         external
         returns (uint256 payoutAssetAmount, uint256 payoutPoolAmount);
 
