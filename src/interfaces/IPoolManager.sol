@@ -26,7 +26,7 @@ interface IPoolUnlockedMethods {
 
     function issueShares(ShareClassId id, uint128 nav) external;
 
-    function revokeShares(ShareClassId id, uint128 nav) external;
+    function revokeShares(ShareClassId scId, AssetId assetId, uint128 nav) external;
 
     function increaseItem(IItemManager im, ItemId itemId, uint128 amount) external;
 
@@ -47,7 +47,7 @@ interface IFromGatewayMethods {
     function requestRedemption(PoolId poolId, ShareClassId scId, AssetId assetId, address investor, uint128 amount)
         external;
 
-    function lockTokens(AssetId assetId, address recvAddr, uint128 amount) external;
+    function notifyLockedTokens(AssetId assetId, address recvAddr, uint128 amount) external;
 }
 
 interface IPoolManager is IPoolUnlockedMethods, IFromGatewayMethods {

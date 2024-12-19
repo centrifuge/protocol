@@ -105,12 +105,19 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         scm.issueShares(poolId, scId, nav);
     }
 
-    function revokeShares(ShareClassId scId, uint128 nav) external poolUnlocked {
+    function revokeShares(ShareClassId scId, AssetId assetId, uint128 nav) external poolUnlocked {
         PoolId poolId = unlockedPoolId();
 
         IShareClassManager scm = poolRegistry.shareClassManagers(poolId);
 
-        scm.revokeShares(poolId, scId, nav);
+        uint128 amount = scm.revokeShares(poolId, scId, nav);
+
+        assetManager.transferFrom(
+            _escrow(poolId, scId, Escrow.SHARE_CLASS),
+            _escrow(poolId, scId, Escrow.PENDING_SHARE_CLASS),
+            uint256(uint160(AssetId.unwrap(assetId))),
+            amount
+        );
     }
 
     function increaseItem(IItemManager im, ItemId itemId, uint128 amount) external poolUnlocked {
@@ -138,9 +145,9 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
 
         IAccountingItemManager.Accounts memory accounts = im.itemAccounts(poolId, itemId);
         if (diff > 0) {
-            accounting.updateEntry(accounts.asset, accounts.loss, uint128(diff));
+            accounting.updateEntry(accounts.gain, accounts.asset, uint128(diff));
         } else if (diff < 0) {
-            accounting.updateEntry(accounts.gain, accounts.asset, uint128(-diff));
+            accounting.updateEntry(accounts.asset, accounts.loss, uint128(-diff));
         }
     }
 
@@ -151,11 +158,11 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     {
         PoolId poolId = unlockedPoolId();
 
-        ItemId itemId = holdings.itemIdFromAsset(poolId, scId, assetId);
-
         assetManager.burn(_escrow(poolId, scId, Escrow.SHARE_CLASS), assetId, assetAmount);
 
+        ItemId itemId = holdings.itemIdFromAsset(poolId, scId, assetId);
         IERC7726 valuation = holdings.valuation(poolId, itemId);
+
         poolAmount = valuation.getQuote(
             assetAmount, AssetId.unwrap(assetId), address(poolRegistry.poolCurrencies(poolId))
         ).toUint128();
@@ -182,7 +189,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         scm.requestRedemption(poolId, scId, assetId, investor, amount);
     }
 
-    function lockTokens(AssetId assetId, address recvAddr, uint128 amount) external {
+    function notifyLockedTokens(AssetId assetId, address recvAddr, uint128 amount) external onlyGateway {
         assetManager.mint(recvAddr, assetId, amount);
     }
 
@@ -198,7 +205,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
 
         (uint128 shares, uint128 tokens) = scm.claimShares(poolId, scId, assetId, investor);
 
-        assetManager.burn(_escrow(poolId, scId, Escrow.SHARE_CLASS), assetId, tokens);
+        assetManager.burn(_escrow(poolId, scId, Escrow.PENDING_SHARE_CLASS), assetId, tokens);
 
         gateway.sendFulfilledRedemptionRequest(poolId, scId, assetId, investor, shares, tokens);
     }
