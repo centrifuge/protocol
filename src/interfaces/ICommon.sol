@@ -22,6 +22,11 @@ interface IAccounting {
 }
 
 interface IGateway {
+    // NOTE: The implementation must store a mapping by chainId to track
+    // allowed pools
+    // allowed share classes
+    // That mapping would act as a whitelist for the Gateway to discard messages that contains not allowed
+    // pools/shareClasses
     function sendAllowPool(ChainId chainId, PoolId poolId) external;
     function sendAllowShareClass(ChainId chainId, PoolId poolId, ShareClassId scId) external;
     function sendFulfilledDepositRequest(

@@ -53,6 +53,16 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     }
 
     //----------------------------------------------------------------------------------------------
+    // Deployer methods
+    //----------------------------------------------------------------------------------------------
+
+    function file(bytes32 what, address data) external auth {
+        if (what == "gateway") gateway = IGateway(data);
+        else if (what == "holdings") holdings = IHoldings(data);
+        else revert("TODO error");
+    }
+
+    //----------------------------------------------------------------------------------------------
     // Permisionless methods
     //----------------------------------------------------------------------------------------------
 
@@ -86,12 +96,10 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     //----------------------------------------------------------------------------------------------
 
     function allowPool(ChainId chainId) external poolUnlocked {
-        // TODO: store somewhere the allowed info?
         gateway.sendAllowPool(chainId, unlockedPoolId());
     }
 
     function allowShareClass(ChainId chainId, ShareClassId scId) external poolUnlocked {
-        // TODO: store somewhere the allowed info?
         gateway.sendAllowShareClass(chainId, unlockedPoolId(), scId);
     }
 
@@ -215,7 +223,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Private / internal
+    // internal / private
     //----------------------------------------------------------------------------------------------
 
     function _beforeUnlock(PoolId poolId) internal view override {
