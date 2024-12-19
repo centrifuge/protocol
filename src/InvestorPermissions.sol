@@ -13,9 +13,9 @@ struct InvestorPermission {
 contract InvestorPermissions is Auth, IInvestorPermissions {
     // @dev: Value for until is arbitrary because we ignore it for now but need to distinguish between default and
     // non-default storage entries
-    uint64 private constant _DEFAUL_VALIDITY = type(uint64).min;
+    uint64 private constant _DEFAUL_VALIDITY = type(uint64).max;
 
-    mapping(bytes16 shareClassId => mapping(address user => InvestorPermission)) permissions;
+    mapping(bytes16 shareClassId => mapping(address user => InvestorPermission)) public permissions;
 
     constructor(address deployer) Auth(deployer) {}
 
@@ -34,7 +34,7 @@ contract InvestorPermissions is Auth, IInvestorPermissions {
     function freeze(bytes16 shareClassId, address target) external {
         InvestorPermission storage perm = permissions[shareClassId][target];
 
-        require(perm.validUntil == _DEFAUL_VALIDITY, Missing());
+        require(perm.validUntil == _DEFAUL_VALIDITY, IInvestorPermissions.Missing());
         require(perm.frozen == false, AlreadyFrozen());
 
         perm.frozen = true;
@@ -45,7 +45,7 @@ contract InvestorPermissions is Auth, IInvestorPermissions {
     function unfreeze(bytes16 shareClassId, address target) external {
         InvestorPermission storage perm = permissions[shareClassId][target];
 
-        require(perm.validUntil == _DEFAUL_VALIDITY, Missing());
+        require(perm.validUntil == _DEFAUL_VALIDITY, IInvestorPermissions.Missing());
         require(perm.frozen == true, NotFrozen());
 
         permissions[shareClassId][target].frozen = false;
