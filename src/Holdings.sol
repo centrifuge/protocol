@@ -16,6 +16,7 @@ import {AccountingItemManager} from "src/AccountingItemManager.sol";
 import {Auth} from "src/Auth.sol";
 
 struct Item {
+    ShareClassId scId;
     AssetId assetId;
     IERC7726 valuation;
     uint128 assetAmount;
@@ -42,11 +43,13 @@ contract Holdings is AccountingItemManager, IHoldings {
 
         ItemId itemId = ItemId.wrap(++lastItemId[poolId]);
         itemIds[poolId][scId][assetId] = itemId;
-        items[poolId][itemId] = Item(assetId, valuation_, 0, 0);
+        items[poolId][itemId] = Item(scId, assetId, valuation_, 0, 0);
     }
 
     /// @inheritdoc IItemManager
     function close(PoolId poolId, ItemId itemId, bytes calldata /*data*/ ) external auth {
+        Item storage item = items[poolId][itemId];
+        itemIds[poolId][item.scId][item.assetId] = ItemId.wrap(0);
         delete items[poolId][itemId];
     }
 
@@ -93,6 +96,10 @@ contract Holdings is AccountingItemManager, IHoldings {
         revert("unsupported");
     }
 
+    function increaseInterest(PoolId, /*poolId*/ ItemId, /*itemId*/ uint128 /*amount*/ ) external pure {
+        revert("unsupported");
+    }
+
     /// @inheritdoc IItemManager
     function itemValue(PoolId poolId, ItemId itemId) external view returns (uint128 value) {
         return items[poolId][itemId].assetAmountValue;
@@ -108,7 +115,14 @@ contract Holdings is AccountingItemManager, IHoldings {
         items[poolId][itemId].valuation = valuation_;
     }
 
+    /// @inheritdoc IHoldings
     function itemIdFromAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (ItemId) {
         return itemIds[poolId][scId][assetId];
+    }
+
+    /// @inheritdoc IHoldings
+    function itemIdToAsset(PoolId poolId, ItemId itemId) external view returns (ShareClassId scId, AssetId assetId) {
+        Item storage item = items[poolId][itemId];
+        return (item.scId, item.assetId);
     }
 }

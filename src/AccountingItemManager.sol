@@ -6,7 +6,7 @@ import {ItemId, AccountId} from "src/types/Domain.sol";
 import {IAccountingItemManager} from "src/interfaces/IAccountingItemManager.sol";
 import {Auth} from "src/Auth.sol";
 
-contract AccountingItemManager is Auth, IAccountingItemManager {
+abstract contract AccountingItemManager is Auth, IAccountingItemManager {
     mapping(PoolId => mapping(ItemId => Accounts)) public accounts;
 
     constructor(address deployer) Auth(deployer) {}
