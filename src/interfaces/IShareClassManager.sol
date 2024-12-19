@@ -51,12 +51,10 @@ interface IShareClassManager {
     event IssuedShares(
         PoolId indexed poolId, bytes16 indexed shareClassId, uint32 indexed epoch, uint256 nav, uint256 issuedShares
     );
-    // uint256 poolAmount
 
     event RevokedShares(
         PoolId indexed poolId, bytes16 indexed shareClassId, uint32 indexed epoch, uint256 nav, uint256 revokedShares
     );
-    // uint256 poolAmount
 
     event ClaimedDeposit(
         PoolId indexed poolId,
