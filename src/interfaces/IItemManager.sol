@@ -23,11 +23,13 @@ interface IItemManager is IAccountingItemManager {
     /// @return value The value the item has decrement.
     function decrease(PoolId poolId, ItemId itemId, uint128 amount) external returns (uint128 value);
 
-    /// @notice Decrements the amount of an item as interest.
-    function decreaseInterest(PoolId poolId, ItemId itemId, uint128 amount) external;
+    /// @notice Increments the interest of an item.
+    /// @param interestAmount The amount of interest to be incremented.
+    function increaseInterest(PoolId poolId, ItemId itemId, uint128 interestAmount) external;
 
-    /// @notice Increments the amount of an item as interest.
-    function increaseInterest(PoolId poolId, ItemId itemId, uint128 amount) external;
+    /// @notice Decrements the interest of an item.
+    /// @param interestAmount The amount of interest to be decremented.
+    function decreaseInterest(PoolId poolId, ItemId itemId, uint128 interestAmount) external;
 
     /// @notice Reset the value of an item using the current valuation.
     /// @return diff The difference in value after the new valuation.

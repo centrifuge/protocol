@@ -34,7 +34,6 @@ contract Holdings is AccountingItemManager, IHoldings {
 
     constructor(address deployer, IPoolRegistry poolRegistry_) AccountingItemManager(deployer) {
         poolRegistry = poolRegistry_;
-        // TODO: should we initialize the accounts from AccountingItemManager here?
     }
 
     /// @inheritdoc IItemManager
@@ -44,6 +43,9 @@ contract Holdings is AccountingItemManager, IHoldings {
         ItemId itemId_ = ItemId.wrap(++lastItemId[poolId]);
         itemId[poolId][scId][assetId] = itemId_;
         item[poolId][itemId_] = Item(scId, assetId, valuation_, 0, 0);
+
+        // TODO: should we initialize the accounts from AccountingItemManager here using an Accounts parameter?
+        // I think so.
     }
 
     /// @inheritdoc IItemManager
@@ -92,11 +94,12 @@ contract Holdings is AccountingItemManager, IHoldings {
     }
 
     /// @inheritdoc IItemManager
-    function decreaseInterest(PoolId, /*poolId*/ ItemId, /*itemId_*/ uint128 /*amount*/ ) external pure {
+    function increaseInterest(PoolId, /*poolId*/ ItemId, /*itemId_*/ uint128 /*interestAmount*/ ) external pure {
         revert("unsupported");
     }
 
-    function increaseInterest(PoolId, /*poolId*/ ItemId, /*itemId_*/ uint128 /*amount*/ ) external pure {
+    /// @inheritdoc IItemManager
+    function decreaseInterest(PoolId, /*poolId*/ ItemId, /*itemId_*/ uint128 /*interestAmount*/ ) external pure {
         revert("unsupported");
     }
 
