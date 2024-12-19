@@ -34,9 +34,8 @@ interface IPoolUnlockedMethods {
 
     function updateItem(IItemManager im, ItemId itemId) external;
 
-    function moveOut(ChainId chainId, ShareClassId scId, AssetId assetId, address receiver, uint128 assetAmount)
-        external
-        returns (uint128 poolAmount);
+    function unlockTokens(ChainId chainId, ShareClassId scId, AssetId assetId, address receiver, uint128 assetAmount)
+        external;
 }
 
 /// @dev interface for methods called by the gateway

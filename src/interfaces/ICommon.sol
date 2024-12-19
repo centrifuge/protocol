@@ -40,5 +40,5 @@ interface IGateway {
         uint128 shares,
         uint128 investedAmount
     ) external;
-    function sendUnlockTokens(ChainId chainId, AssetId assetId, address receiver, uint128 poolAmount) external;
+    function sendUnlockTokens(ChainId chainId, AssetId assetId, address receiver, uint128 assetAmount) external;
 }

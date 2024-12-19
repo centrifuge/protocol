@@ -52,6 +52,10 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         gateway = gateway_;
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Permisionless methods
+    //----------------------------------------------------------------------------------------------
+
     function createPool(IERC20Metadata currency, IShareClassManager shareClassManager)
         external
         returns (PoolId poolId)
@@ -59,6 +63,27 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         // TODO: add fees
         return poolRegistry.registerPool(msg.sender, currency, shareClassManager);
     }
+
+    function claimShares(PoolId poolId, ShareClassId scId, AssetId assetId, address investor) external {
+        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
+
+        (uint128 shares, uint128 tokens) = scm.claimShares(poolId, scId, assetId, investor);
+        gateway.sendFulfilledDepositRequest(poolId, scId, assetId, investor, shares, tokens);
+    }
+
+    function claimTokens(PoolId poolId, ShareClassId scId, AssetId assetId, address investor) external {
+        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
+
+        (uint128 shares, uint128 tokens) = scm.claimShares(poolId, scId, assetId, investor);
+
+        assetManager.burn(_escrow(poolId, scId, Escrow.PENDING_SHARE_CLASS), assetId, tokens);
+
+        gateway.sendFulfilledRedemptionRequest(poolId, scId, assetId, investor, shares, tokens);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Pool admin methods
+    //----------------------------------------------------------------------------------------------
 
     function allowPool(ChainId chainId) external poolUnlocked {
         // TODO: store somewhere the allowed info?
@@ -73,7 +98,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     function approveDeposit(ShareClassId scId, AssetId assetId, Ratio approvalRatio) external poolUnlocked {
         PoolId poolId = unlockedPoolId();
 
-        IShareClassManager scm = poolRegistry.shareClassManagers(poolId);
+        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
         ItemId itemId = holdings.itemIdFromAsset(poolId, scId, assetId);
         IERC7726 valuation = holdings.valuation(poolId, itemId);
 
@@ -90,27 +115,27 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     function approveRedemption(ShareClassId scId, AssetId assetId, Ratio approvalRatio) external poolUnlocked {
         PoolId poolId = unlockedPoolId();
 
-        IShareClassManager scm = poolRegistry.shareClassManagers(poolId);
+        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
         ItemId itemId = holdings.itemIdFromAsset(poolId, scId, assetId);
         IERC7726 valuation = holdings.valuation(poolId, itemId);
 
         scm.approveDeposit(poolId, scId, assetId, approvalRatio, valuation);
     }
 
-    function issueShares(ShareClassId scId, uint128 nav) external poolUnlocked {
+    function issueShares(ShareClassId scId, uint128 navPerShare) external poolUnlocked {
         PoolId poolId = unlockedPoolId();
 
-        IShareClassManager scm = poolRegistry.shareClassManagers(poolId);
+        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
 
-        scm.issueShares(poolId, scId, nav);
+        scm.issueShares(poolId, scId, navPerShare);
     }
 
-    function revokeShares(ShareClassId scId, AssetId assetId, uint128 nav) external poolUnlocked {
+    function revokeShares(ShareClassId scId, AssetId assetId, uint128 navPerShare) external poolUnlocked {
         PoolId poolId = unlockedPoolId();
 
-        IShareClassManager scm = poolRegistry.shareClassManagers(poolId);
+        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
 
-        uint128 amount = scm.revokeShares(poolId, scId, nav);
+        uint128 amount = scm.revokeShares(poolId, scId, navPerShare);
 
         assetManager.transferFrom(
             _escrow(poolId, scId, Escrow.SHARE_CLASS),
@@ -151,24 +176,20 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         }
     }
 
-    function moveOut(ChainId chainId, ShareClassId scId, AssetId assetId, address receiver, uint128 assetAmount)
+    function unlockTokens(ChainId chainId, ShareClassId scId, AssetId assetId, address receiver, uint128 assetAmount)
         external
         poolUnlocked
-        returns (uint128 poolAmount)
     {
         PoolId poolId = unlockedPoolId();
 
         assetManager.burn(_escrow(poolId, scId, Escrow.SHARE_CLASS), assetId, assetAmount);
 
-        ItemId itemId = holdings.itemIdFromAsset(poolId, scId, assetId);
-        IERC7726 valuation = holdings.valuation(poolId, itemId);
-
-        poolAmount = valuation.getQuote(
-            assetAmount, AssetId.unwrap(assetId), address(poolRegistry.poolCurrencies(poolId))
-        ).toUint128();
-
-        gateway.sendUnlockTokens(chainId, assetId, receiver, poolAmount);
+        gateway.sendUnlockTokens(chainId, assetId, receiver, assetAmount);
     }
+
+    //----------------------------------------------------------------------------------------------
+    // Gateway owner methods
+    //----------------------------------------------------------------------------------------------
 
     function requestDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, address investor, uint128 amount)
         external
@@ -177,7 +198,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         address pendingShareClassEscrow = _escrow(poolId, scId, Escrow.PENDING_SHARE_CLASS);
         assetManager.mint(pendingShareClassEscrow, assetId, amount);
 
-        IShareClassManager scm = poolRegistry.shareClassManagers(poolId);
+        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
         scm.requestDeposit(poolId, scId, assetId, investor, amount);
     }
 
@@ -185,7 +206,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         external
         onlyGateway
     {
-        IShareClassManager scm = poolRegistry.shareClassManagers(poolId);
+        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
         scm.requestRedemption(poolId, scId, assetId, investor, amount);
     }
 
@@ -193,33 +214,20 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         assetManager.mint(recvAddr, assetId, amount);
     }
 
-    function claimShares(PoolId poolId, ShareClassId scId, AssetId assetId, address investor) external {
-        IShareClassManager scm = poolRegistry.shareClassManagers(poolId);
-
-        (uint128 shares, uint128 tokens) = scm.claimShares(poolId, scId, assetId, investor);
-        gateway.sendFulfilledDepositRequest(poolId, scId, assetId, investor, shares, tokens);
-    }
-
-    function claimTokens(PoolId poolId, ShareClassId scId, AssetId assetId, address investor) external {
-        IShareClassManager scm = poolRegistry.shareClassManagers(poolId);
-
-        (uint128 shares, uint128 tokens) = scm.claimShares(poolId, scId, assetId, investor);
-
-        assetManager.burn(_escrow(poolId, scId, Escrow.PENDING_SHARE_CLASS), assetId, tokens);
-
-        gateway.sendFulfilledRedemptionRequest(poolId, scId, assetId, investor, shares, tokens);
-    }
-
-    function _escrow(PoolId poolId, ShareClassId scId, Escrow escrow) private view returns (address) {
-        bytes32 key = keccak256(abi.encodePacked(scId, "escrow", escrow));
-        return poolRegistry.addresses(poolId, key);
-    }
+    //----------------------------------------------------------------------------------------------
+    // Private / internal
+    //----------------------------------------------------------------------------------------------
 
     function _beforeUnlock(PoolId poolId) internal view override {
-        require(poolRegistry.poolAdmins(poolId, msg.sender));
+        require(poolRegistry.isAdmin(poolId, msg.sender));
     }
 
     function _beforeLock() internal override {
         accounting.lock(unlockedPoolId());
+    }
+
+    function _escrow(PoolId poolId, ShareClassId scId, Escrow escrow) private view returns (address) {
+        bytes32 key = keccak256(abi.encodePacked(scId, "escrow", escrow));
+        return poolRegistry.addressFor(poolId, key);
     }
 }
