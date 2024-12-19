@@ -26,8 +26,8 @@ struct Item {
 contract Holdings is AccountingItemManager, IHoldings {
     using MathLib for uint256;
 
-    mapping(PoolId => mapping(ItemId => Item)) public items;
-    mapping(PoolId => mapping(ShareClassId => mapping(AssetId => ItemId))) public itemIds;
+    mapping(PoolId => mapping(ItemId => Item)) public item;
+    mapping(PoolId => mapping(ShareClassId => mapping(AssetId => ItemId))) public itemId;
     mapping(PoolId => uint32) lastItemId;
 
     IPoolRegistry immutable poolRegistry;
@@ -41,88 +41,88 @@ contract Holdings is AccountingItemManager, IHoldings {
     function create(PoolId poolId, IERC7726 valuation_, bytes calldata data) external auth {
         (ShareClassId scId, AssetId assetId) = abi.decode(data, (ShareClassId, AssetId));
 
-        ItemId itemId = ItemId.wrap(++lastItemId[poolId]);
-        itemIds[poolId][scId][assetId] = itemId;
-        items[poolId][itemId] = Item(scId, assetId, valuation_, 0, 0);
+        ItemId itemId_ = ItemId.wrap(++lastItemId[poolId]);
+        itemId[poolId][scId][assetId] = itemId_;
+        item[poolId][itemId_] = Item(scId, assetId, valuation_, 0, 0);
     }
 
     /// @inheritdoc IItemManager
-    function close(PoolId poolId, ItemId itemId, bytes calldata /*data*/ ) external auth {
-        Item storage item = items[poolId][itemId];
-        itemIds[poolId][item.scId][item.assetId] = ItemId.wrap(0);
-        delete items[poolId][itemId];
+    function close(PoolId poolId, ItemId itemId_, bytes calldata /*data*/ ) external auth {
+        Item storage item_ = item[poolId][itemId_];
+        itemId[poolId][item_.scId][item_.assetId] = ItemId.wrap(0);
+        delete item[poolId][itemId_];
     }
 
     /// @inheritdoc IItemManager
-    function increase(PoolId poolId, ItemId itemId, uint128 amount) external auth returns (uint128 amountValue) {
-        Item storage item = items[poolId][itemId];
-        address poolCurrency = address(poolRegistry.poolCurrencies(poolId));
+    function increase(PoolId poolId, ItemId itemId_, uint128 amount) external auth returns (uint128 amountValue) {
+        Item storage item_ = item[poolId][itemId_];
+        address poolCurrency = address(poolRegistry.currency(poolId));
 
-        amountValue = uint128(item.valuation.getQuote(amount, AssetId.unwrap(item.assetId), poolCurrency));
+        amountValue = uint128(item_.valuation.getQuote(amount, AssetId.unwrap(item_.assetId), poolCurrency));
 
-        item.assetAmount += amount;
-        item.assetAmountValue += amountValue;
+        item_.assetAmount += amount;
+        item_.assetAmountValue += amountValue;
     }
 
     /// @inheritdoc IItemManager
-    function decrease(PoolId poolId, ItemId itemId, uint128 amount) external auth returns (uint128 amountValue) {
-        Item storage item = items[poolId][itemId];
-        address poolCurrency = address(poolRegistry.poolCurrencies(poolId));
+    function decrease(PoolId poolId, ItemId itemId_, uint128 amount) external auth returns (uint128 amountValue) {
+        Item storage item_ = item[poolId][itemId_];
+        address poolCurrency = address(poolRegistry.currency(poolId));
 
-        amountValue = uint128(item.valuation.getQuote(amount, AssetId.unwrap(item.assetId), poolCurrency));
+        amountValue = uint128(item_.valuation.getQuote(amount, AssetId.unwrap(item_.assetId), poolCurrency));
 
-        item.assetAmount -= amount;
-        item.assetAmountValue -= amountValue;
+        item_.assetAmount -= amount;
+        item_.assetAmountValue -= amountValue;
     }
 
     /// @inheritdoc IItemManager
-    function update(PoolId poolId, ItemId itemId) external auth returns (int128 diff) {
-        Item storage item = items[poolId][itemId];
+    function update(PoolId poolId, ItemId itemId_) external auth returns (int128 diff) {
+        Item storage item_ = item[poolId][itemId_];
 
-        address poolCurrency = address(poolRegistry.poolCurrencies(poolId));
+        address poolCurrency = address(poolRegistry.currency(poolId));
 
         uint128 currentAmountValue =
-            uint128(item.valuation.getQuote(item.assetAmount, AssetId.unwrap(item.assetId), poolCurrency));
+            uint128(item_.valuation.getQuote(item_.assetAmount, AssetId.unwrap(item_.assetId), poolCurrency));
 
-        diff = currentAmountValue > item.assetAmountValue
-            ? uint256(currentAmountValue - item.assetAmountValue).toInt128()
-            : -uint256(item.assetAmountValue - currentAmountValue).toInt128();
+        diff = currentAmountValue > item_.assetAmountValue
+            ? uint256(currentAmountValue - item_.assetAmountValue).toInt128()
+            : -uint256(item_.assetAmountValue - currentAmountValue).toInt128();
 
-        item.assetAmountValue = currentAmountValue;
+        item_.assetAmountValue = currentAmountValue;
     }
 
     /// @inheritdoc IItemManager
-    function decreaseInterest(PoolId, /*poolId*/ ItemId, /*itemId*/ uint128 /*amount*/ ) external pure {
+    function decreaseInterest(PoolId, /*poolId*/ ItemId, /*itemId_*/ uint128 /*amount*/ ) external pure {
         revert("unsupported");
     }
 
-    function increaseInterest(PoolId, /*poolId*/ ItemId, /*itemId*/ uint128 /*amount*/ ) external pure {
+    function increaseInterest(PoolId, /*poolId*/ ItemId, /*itemId_*/ uint128 /*amount*/ ) external pure {
         revert("unsupported");
     }
 
     /// @inheritdoc IItemManager
-    function itemValue(PoolId poolId, ItemId itemId) external view returns (uint128 value) {
-        return items[poolId][itemId].assetAmountValue;
+    function itemValue(PoolId poolId, ItemId itemId_) external view returns (uint128 value) {
+        return item[poolId][itemId_].assetAmountValue;
     }
 
     /// @inheritdoc IItemManager
-    function valuation(PoolId poolId, ItemId itemId) external view returns (IERC7726) {
-        return items[poolId][itemId].valuation;
+    function valuation(PoolId poolId, ItemId itemId_) external view returns (IERC7726) {
+        return item[poolId][itemId_].valuation;
     }
 
     /// @inheritdoc IItemManager
-    function updateValuation(PoolId poolId, ItemId itemId, IERC7726 valuation_) external auth {
-        items[poolId][itemId].valuation = valuation_;
+    function updateValuation(PoolId poolId, ItemId itemId_, IERC7726 valuation_) external auth {
+        item[poolId][itemId_].valuation = valuation_;
     }
 
     /// @inheritdoc IHoldings
     function itemIdFromAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (ItemId) {
-        return itemIds[poolId][scId][assetId];
+        return itemId[poolId][scId][assetId];
     }
 
     /// @inheritdoc IHoldings
-    function itemIdToAsset(PoolId poolId, ItemId itemId) external view returns (ShareClassId scId, AssetId assetId) {
-        Item storage item = items[poolId][itemId];
-        return (item.scId, item.assetId);
+    function itemIdToAsset(PoolId poolId, ItemId itemId_) external view returns (ShareClassId scId, AssetId assetId) {
+        Item storage item_ = item[poolId][itemId_];
+        return (item_.scId, item_.assetId);
     }
 }
