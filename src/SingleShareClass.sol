@@ -33,10 +33,10 @@ struct EpochRatio {
 }
 
 struct UserOrder {
-    /// @dev Index of epoch in which last order was made
-    uint32 lastUpdate;
     /// @dev Pending amount
     uint256 pending;
+    /// @dev Index of epoch in which last order was made
+    uint32 lastUpdate;
 }
 
 // Assumptions:
@@ -47,8 +47,8 @@ contract SingleShareClass is Auth, IShareClassManager {
 
     /// Storage
     // TODO: Reorder for optimal storage layout
-    uint32 private transient _epochIncrement;
-    // uint32 private /*transient*/ _epochIncrement;
+    // uint32 private transient _epochIncrement;
+    uint32 private /*transient*/ _epochIncrement;
     address public immutable poolRegistry;
     address public immutable investorPermissions;
     mapping(PoolId poolId => bytes16) public shareClassIds;
@@ -383,7 +383,7 @@ contract SingleShareClass is Auth, IShareClassManager {
             payoutShareAmount += investorShares;
             paymentAssetAmount += approvedAssetAmount;
 
-            userOrder.pending -= approvedAssetAmount;
+            userOrder.pending = pendingAssetAmount;
 
             emit IShareClassManager.ClaimedDeposit(
                 poolId,
@@ -397,7 +397,7 @@ contract SingleShareClass is Auth, IShareClassManager {
             );
         }
 
-        userOrder.lastUpdate = endEpochId;
+        userOrder.lastUpdate = endEpochId + 1;
     }
 
     /// @inheritdoc IShareClassManager
@@ -446,7 +446,7 @@ contract SingleShareClass is Auth, IShareClassManager {
             );
         }
 
-        userOrder.lastUpdate = endEpochId;
+        userOrder.lastUpdate = endEpochId + 1;
     }
 
     /// @inheritdoc IShareClassManager
@@ -653,11 +653,11 @@ contract SingleShareClass is Auth, IShareClassManager {
 
         approvedAssetAmount = epochRatio.depositRatio.mulUint256(userOrder.pending);
 
-        // shares = poolToShares * poolAmount  = poolToShare * assetToPool * assetAmount
+        // #shares = poolToShares * poolAmount  = poolToShare * (assetToPool * assetAmount)
         investorShares =
-            epochRatio.poolToShareQuote.mulUint256(epochRatio.assetToPoolQuote.reciprocalMulInt(approvedAssetAmount));
+            epochRatio.poolToShareQuote.mulUint256(epochRatio.assetToPoolQuote.mulUint256(approvedAssetAmount));
 
-        return (approvedAssetAmount, userOrder.pending, investorShares);
+        return (approvedAssetAmount, userOrder.pending - approvedAssetAmount, investorShares);
     }
 
     /// @notice Reduces the share class token count of the investor in exchange for collecting an amount of payment
@@ -679,7 +679,7 @@ contract SingleShareClass is Auth, IShareClassManager {
 
         approvedShares = epochRatio.redeemRatio.mulUint256(userOrder.pending);
 
-        // assetAmount = poolAmount / assetToPoolQuote = poolToShare * shares / assetToPool
+        // assetAmount = poolAmount * poolToAsset = poolAmount / assetToPool = (#shares / poolToAsset) / assetToPool
         approvedAssetAmount =
             epochRatio.assetToPoolQuote.reciprocalMulInt(epochRatio.poolToShareQuote.mulUint256(approvedShares));
 
