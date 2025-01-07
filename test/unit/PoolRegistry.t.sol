@@ -167,9 +167,10 @@ contract PoolRegistryTest is Test {
 
     function testExists() public {
         PoolId poolId = registry.registerPool(makeAddr("fundManager"), USD, shareClassManager);
-        assertEq(registry.exists(poolId), true);
+        registry.ensureExistence(poolId);
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);
-        assertEq(registry.exists(nonExistingPool), false);
+        vm.expectRevert(abi.encodeWithSelector(IPoolRegistry.NonExistingPool.selector, nonExistingPool));
+        registry.ensureExistence(nonExistingPool);
     }
 }

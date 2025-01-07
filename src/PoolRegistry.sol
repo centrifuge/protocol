@@ -43,7 +43,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
 
     /// @inheritdoc IPoolRegistry
     function updateAdmin(PoolId poolId, address admin_, bool canManage) external auth {
-        require(exists(poolId), NonExistingPool(poolId));
+        ensureExistence(poolId);
         require(admin_ != address(0), EmptyAdmin());
 
         isAdmin[poolId][admin_] = canManage;
@@ -53,7 +53,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
 
     /// @inheritdoc IPoolRegistry
     function updateMetadata(PoolId poolId, bytes calldata metadata_) external auth {
-        require(exists(poolId), NonExistingPool(poolId));
+        ensureExistence(poolId);
 
         metadata[poolId] = metadata_;
 
@@ -62,7 +62,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
 
     /// @inheritdoc IPoolRegistry
     function updateShareClassManager(PoolId poolId, IShareClassManager shareClassManager_) external auth {
-        require(exists(poolId), NonExistingPool(poolId));
+        ensureExistence(poolId);
         require(address(shareClassManager_) != address(0), EmptyShareClassManager());
 
         shareClassManager[poolId] = shareClassManager_;
@@ -72,7 +72,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
 
     /// @inheritdoc IPoolRegistry
     function updateCurrency(PoolId poolId, IERC20Metadata currency_) external auth {
-        require(exists(poolId), NonExistingPool(poolId));
+        ensureExistence(poolId);
         require(address(currency_) != address(0), EmptyCurrency());
 
         currency[poolId] = currency_;
@@ -80,12 +80,14 @@ contract PoolRegistry is Auth, IPoolRegistry {
         emit UpdatedPoolCurrency(poolId, currency_);
     }
 
+    /// @inheritdoc IPoolRegistry
     function setAddressFor(PoolId poolId, bytes32 key, address addr) external auth {
-        require(exists(poolId), NonExistingPool(poolId));
+        ensureExistence(poolId);
         addressFor[poolId][key] = addr;
     }
 
-    function exists(PoolId poolId) public view returns (bool) {
-        return address(shareClassManager[poolId]) != address(0);
+    /// @inheritdoc IPoolRegistry
+    function ensureExistence(PoolId poolId) public view {
+        require(address(shareClassManager[poolId]) != address(0), NonExistingPool(poolId));
     }
 }

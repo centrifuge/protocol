@@ -49,5 +49,5 @@ interface IPoolRegistry {
     /// @notice TODO
     function addressFor(PoolId poolId, bytes32 key) external view returns (address);
     /// @notice TODO
-    function exists(PoolId poolId) external view returns (bool);
+    function ensureExistence(PoolId poolId) external view;
 }
