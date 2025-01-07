@@ -48,4 +48,6 @@ interface IPoolRegistry {
     function isAdmin(PoolId poolId, address admin) external view returns (bool);
     /// @notice TODO
     function addressFor(PoolId poolId, bytes32 key) external view returns (address);
+    /// @notice TODO
+    function exists(PoolId poolId) external view returns (bool);
 }
