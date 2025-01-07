@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {ItemId} from "src/types/Domain.sol";
 import {PoolId} from "src/types/PoolId.sol";
-import {ItemId, AssetId, ShareClassId} from "src/types/Domain.sol";
+import {AssetId} from "src/types/AssetId.sol";
+import {ShareClassId} from "src/types/ShareClassId.sol";
 import {IItemManager} from "src/interfaces/IItemManager.sol";
 
 interface IHoldings is IItemManager {
-    // TODO: add some events & errors here
-    error NotFound();
+    error WrongValuation();
+    error WrongAssetId();
+    error WrongShareClassId();
 
     /// Returns the itemId for an specific asset in a share class
     function itemIdFromAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (ItemId);
