@@ -58,6 +58,8 @@ contract Holdings is Auth, IHoldings {
             AccountId accountId_ = accounts[i];
             accountId[poolId][itemId_][accountId_.kind()] = accountId_;
         }
+
+        emit CreatedItem(poolId, itemId_, valuation_);
     }
 
     /// @inheritdoc IItemManager
@@ -67,10 +69,12 @@ contract Holdings is Auth, IHoldings {
 
         itemId[poolId][item_.scId][item_.assetId] = ItemId.wrap(0);
         delete item[poolId][itemId_];
+
+        emit ClosedItem(poolId, itemId_);
     }
 
     /// @inheritdoc IItemManager
-    function increase(PoolId poolId, ItemId itemId_, uint128 amount, IERC7726 valuation_)
+    function increase(PoolId poolId, ItemId itemId_, IERC7726 valuation_, uint128 amount)
         external
         auth
         returns (uint128 amountValue)
@@ -85,10 +89,12 @@ contract Holdings is Auth, IHoldings {
 
         item_.assetAmount += amount;
         item_.assetAmountValue += amountValue;
+
+        emit ItemIncreased(poolId, itemId_, valuation_, amount, amountValue);
     }
 
     /// @inheritdoc IItemManager
-    function decrease(PoolId poolId, ItemId itemId_, uint128 amount, IERC7726 valuation_)
+    function decrease(PoolId poolId, ItemId itemId_, IERC7726 valuation_, uint128 amount)
         external
         auth
         returns (uint128 amountValue)
@@ -103,6 +109,8 @@ contract Holdings is Auth, IHoldings {
 
         item_.assetAmount -= amount;
         item_.assetAmountValue -= amountValue;
+
+        emit ItemDecreased(poolId, itemId_, valuation_, amount, amountValue);
     }
 
     /// @inheritdoc IItemManager
@@ -120,6 +128,8 @@ contract Holdings is Auth, IHoldings {
             : -uint256(item_.assetAmountValue - currentAmountValue).toInt128();
 
         item_.assetAmountValue = currentAmountValue;
+
+        emit ItemUpdated(poolId, itemId_, diff);
     }
 
     /// @inheritdoc IItemManager
@@ -157,6 +167,8 @@ contract Holdings is Auth, IHoldings {
         require(!item[poolId][itemId_].assetId.isNull(), ItemNotFound());
 
         accountId[poolId][itemId_][accountId_.kind()] = accountId_;
+
+        emit AccountIdSet(poolId, itemId_, accountId_);
     }
 
     /// @inheritdoc IHoldings

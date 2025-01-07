@@ -8,7 +8,19 @@ import {ItemId} from "src/types/Domain.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
 
 interface IItemManager {
+    /// @notice Item was not found for a required action
     error ItemNotFound();
+
+    event CreatedItem(PoolId indexed, ItemId indexed, IERC7726 valuation);
+    event ClosedItem(PoolId indexed, ItemId indexed);
+
+    event ItemIncreased(PoolId indexed, ItemId indexed, IERC7726 valuation, uint128 amount, uint128 increasedValue);
+    event ItemDecreased(PoolId indexed, ItemId indexed, IERC7726 valuation, uint128 amount, uint128 decreasedValue);
+    event ItemIncreasedInterest(PoolId indexed, ItemId indexed, uint128 interestAmount);
+    event ItemDecreasedInterest(PoolId indexed, ItemId indexed, uint128 interestAmount);
+    event ItemUpdated(PoolId indexed, ItemId indexed, int128 diff);
+
+    event AccountIdSet(PoolId indexed, ItemId indexed, AccountId accountId);
 
     /// @notice Creates a new item in a pool using a valuation
     function create(PoolId poolId, IERC7726 valuation, AccountId[] memory accounts, bytes calldata data) external;
@@ -19,13 +31,13 @@ interface IItemManager {
 
     /// @notice Increments the amount of an item and updates the value for that increment.
     /// @return value The value the item has increment.
-    function increase(PoolId poolId, ItemId itemId, uint128 amount, IERC7726 valuation)
+    function increase(PoolId poolId, ItemId itemId, IERC7726 valuation, uint128 amount)
         external
         returns (uint128 value);
 
     /// @notice Decrements the amount of an item and updates the value for that decrement.
     /// @return value The value the item has decrement.
-    function decrease(PoolId poolId, ItemId itemId, uint128 amount, IERC7726 valuation)
+    function decrease(PoolId poolId, ItemId itemId, IERC7726 valuation, uint128 amount)
         external
         returns (uint128 value);
 
@@ -51,7 +63,7 @@ interface IItemManager {
     function updateValuation(PoolId poolId, ItemId itemId, IERC7726 valuation) external;
 
     /// @notice Sets an account id for an specific kind
-    function setAccountId(PoolId poolId, ItemId itemId, AccountId id) external;
+    function setAccountId(PoolId poolId, ItemId itemId, AccountId accountId) external;
 
     /// @notice Returns an account id for an specific kind
     function accountId(PoolId poolId, ItemId itemId, uint8 kind) external view returns (AccountId);
