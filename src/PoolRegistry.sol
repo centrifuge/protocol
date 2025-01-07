@@ -84,4 +84,8 @@ contract PoolRegistry is Auth, IPoolRegistry {
         require(address(shareClassManager[poolId]) != address(0), NonExistingPool(poolId));
         addressFor[poolId][key] = addr;
     }
+
+    function exists(PoolId poolId) external view returns (bool) {
+        return address(shareClassManager[poolId]) != address(0);
+    }
 }
