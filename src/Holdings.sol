@@ -12,7 +12,6 @@ import {IERC7726} from "src/interfaces/IERC7726.sol";
 
 import {MathLib} from "src/libraries/MathLib.sol";
 
-import {AccountingItemManager} from "src/AccountingItemManager.sol";
 import {Auth} from "src/Auth.sol";
 
 struct Item {
@@ -23,29 +22,35 @@ struct Item {
     uint128 assetAmountValue;
 }
 
-contract Holdings is AccountingItemManager, IHoldings {
+contract Holdings is Auth, IHoldings {
     using MathLib for uint256;
 
     mapping(PoolId => mapping(ItemId => Item)) public item;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => ItemId))) public itemId;
     mapping(PoolId => uint32) lastItemId;
+    mapping(PoolId => mapping(ItemId => mapping(uint8 kind => AccountId))) public accountId;
 
     IPoolRegistry immutable poolRegistry;
 
-    constructor(address deployer, IPoolRegistry poolRegistry_) AccountingItemManager(deployer) {
+    constructor(address deployer, IPoolRegistry poolRegistry_) Auth(deployer) {
         poolRegistry = poolRegistry_;
     }
 
     /// @inheritdoc IItemManager
-    function create(PoolId poolId, IERC7726 valuation_, bytes calldata data) external auth {
+    function create(PoolId poolId, IERC7726 valuation_, AccountId[] memory accounts, bytes calldata data)
+        external
+        auth
+    {
         (ShareClassId scId, AssetId assetId) = abi.decode(data, (ShareClassId, AssetId));
 
         ItemId itemId_ = ItemId.wrap(++lastItemId[poolId]);
         itemId[poolId][scId][assetId] = itemId_;
         item[poolId][itemId_] = Item(scId, assetId, valuation_, 0, 0);
 
-        // TODO: should we initialize the accounts from AccountingItemManager here using an Accounts parameter?
-        // I think so.
+        for (uint256 i = 0; i < accounts.length; i++) {
+            AccountId accountId_ = accounts[i];
+            accountId[poolId][itemId_][accountId_.kind()] = accountId_;
+        }
     }
 
     /// @inheritdoc IItemManager
@@ -56,22 +61,30 @@ contract Holdings is AccountingItemManager, IHoldings {
     }
 
     /// @inheritdoc IItemManager
-    function increase(PoolId poolId, ItemId itemId_, uint128 amount) external auth returns (uint128 amountValue) {
+    function increase(PoolId poolId, ItemId itemId_, uint128 amount, IERC7726 valuation_)
+        external
+        auth
+        returns (uint128 amountValue)
+    {
         Item storage item_ = item[poolId][itemId_];
         address poolCurrency = address(poolRegistry.currency(poolId));
 
-        amountValue = uint128(item_.valuation.getQuote(amount, AssetId.unwrap(item_.assetId), poolCurrency));
+        amountValue = uint128(valuation_.getQuote(amount, AssetId.unwrap(item_.assetId), poolCurrency));
 
         item_.assetAmount += amount;
         item_.assetAmountValue += amountValue;
     }
 
     /// @inheritdoc IItemManager
-    function decrease(PoolId poolId, ItemId itemId_, uint128 amount) external auth returns (uint128 amountValue) {
+    function decrease(PoolId poolId, ItemId itemId_, uint128 amount, IERC7726 valuation_)
+        external
+        auth
+        returns (uint128 amountValue)
+    {
         Item storage item_ = item[poolId][itemId_];
         address poolCurrency = address(poolRegistry.currency(poolId));
 
-        amountValue = uint128(item_.valuation.getQuote(amount, AssetId.unwrap(item_.assetId), poolCurrency));
+        amountValue = uint128(valuation_.getQuote(amount, AssetId.unwrap(item_.assetId), poolCurrency));
 
         item_.assetAmount -= amount;
         item_.assetAmountValue -= amountValue;
@@ -116,6 +129,11 @@ contract Holdings is AccountingItemManager, IHoldings {
     /// @inheritdoc IItemManager
     function updateValuation(PoolId poolId, ItemId itemId_, IERC7726 valuation_) external auth {
         item[poolId][itemId_].valuation = valuation_;
+    }
+
+    /// @inheritdoc IItemManager
+    function setAccountId(PoolId poolId, ItemId itemId_, AccountId accountId_) external auth {
+        accountId[poolId][itemId_][accountId_.kind()] = accountId_;
     }
 
     /// @inheritdoc IHoldings
