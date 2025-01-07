@@ -7,6 +7,7 @@ import {IItemManager} from "src/interfaces/IItemManager.sol";
 
 interface IHoldings is IItemManager {
     // TODO: add some events & errors here
+    error NotFound();
 
     /// Returns the itemId for an specific asset in a share class
     function itemIdFromAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (ItemId);

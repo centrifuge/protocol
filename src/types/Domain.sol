@@ -5,6 +5,12 @@ type ShareClassId is uint32;
 
 type AssetId is address;
 
+function isNull(AssetId assetId) pure returns (bool) {
+    return AssetId.unwrap(assetId) != address(0);
+}
+
+using {isNull} for AssetId global;
+
 type ItemId is uint32;
 
 // Note: The less significate byte contains the kind of the account
