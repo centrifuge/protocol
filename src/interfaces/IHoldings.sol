@@ -21,5 +21,5 @@ interface IHoldings is IItemManager {
     function itemIdFromAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (ItemId);
 
     /// @notice Returns the share class and asset of a specific item
-    function itemIdToAsset(PoolId poolId, ItemId itemId) external view returns (ShareClassId scId, AssetId assetId);
+    function itemIdToAsset(PoolId poolId, ShareClassId scId, ItemId itemId) external view returns (AssetId);
 }

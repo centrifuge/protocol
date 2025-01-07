@@ -28,10 +28,10 @@ struct Item {
 contract Holdings is Auth, IHoldings {
     using MathLib for uint256;
 
-    mapping(PoolId => mapping(ItemId => Item)) public item;
+    mapping(PoolId => mapping(ShareClassId => mapping(ItemId => Item))) public item;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => ItemId))) public itemId;
     mapping(PoolId => uint32) lastItemId;
-    mapping(PoolId => mapping(ItemId => mapping(uint8 kind => AccountId))) public accountId;
+    mapping(PoolId => mapping(ShareClassId => mapping(ItemId => mapping(uint8 kind => AccountId)))) public accountId;
 
     IPoolRegistry immutable poolRegistry;
 
@@ -40,48 +40,51 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @inheritdoc IItemManager
-    function create(PoolId poolId, IERC7726 valuation_, AccountId[] memory accounts, bytes calldata data)
-        external
-        auth
-    {
+    function create(
+        PoolId poolId,
+        ShareClassId scId,
+        IERC7726 valuation_,
+        AccountId[] memory accounts,
+        bytes calldata data
+    ) external auth {
         require(poolRegistry.exists(poolId)); // TODO: change to ensureExistence or dispatch error
-        require(address(valuation_) != address(0), WrongValuation());
-        (ShareClassId scId, AssetId assetId) = abi.decode(data, (ShareClassId, AssetId));
-        require(!assetId.isNull(), WrongAssetId());
         require(!scId.isNull(), WrongShareClassId());
+        require(address(valuation_) != address(0), WrongValuation());
+        AssetId assetId = abi.decode(data, (AssetId));
+        require(!assetId.isNull(), WrongAssetId());
 
         ItemId itemId_ = ItemId.wrap(++lastItemId[poolId]);
         itemId[poolId][scId][assetId] = itemId_;
-        item[poolId][itemId_] = Item(scId, assetId, valuation_, 0, 0);
+        item[poolId][scId][itemId_] = Item(scId, assetId, valuation_, 0, 0);
 
         for (uint256 i = 0; i < accounts.length; i++) {
             AccountId accountId_ = accounts[i];
-            accountId[poolId][itemId_][accountId_.kind()] = accountId_;
+            accountId[poolId][scId][itemId_][accountId_.kind()] = accountId_;
         }
 
-        emit CreatedItem(poolId, itemId_, valuation_);
+        emit CreatedItem(poolId, scId, itemId_, valuation_);
     }
 
     /// @inheritdoc IItemManager
-    function close(PoolId poolId, ItemId itemId_, bytes calldata /*data*/ ) external auth {
-        Item storage item_ = item[poolId][itemId_];
+    function close(PoolId poolId, ShareClassId scId, ItemId itemId_, bytes calldata /*data*/ ) external auth {
+        Item storage item_ = item[poolId][scId][itemId_];
         require(!item_.assetId.isNull(), ItemNotFound());
 
         itemId[poolId][item_.scId][item_.assetId] = ItemId.wrap(0);
-        delete item[poolId][itemId_];
+        delete item[poolId][scId][itemId_];
 
-        emit ClosedItem(poolId, itemId_);
+        emit ClosedItem(poolId, scId, itemId_);
     }
 
     /// @inheritdoc IItemManager
-    function increase(PoolId poolId, ItemId itemId_, IERC7726 valuation_, uint128 amount)
+    function increase(PoolId poolId, ShareClassId scId, ItemId itemId_, IERC7726 valuation_, uint128 amount)
         external
         auth
         returns (uint128 amountValue)
     {
         require(address(valuation_) != address(0), WrongValuation());
 
-        Item storage item_ = item[poolId][itemId_];
+        Item storage item_ = item[poolId][scId][itemId_];
         require(!item_.assetId.isNull(), ItemNotFound());
         address poolCurrency = address(poolRegistry.currency(poolId));
 
@@ -90,18 +93,18 @@ contract Holdings is Auth, IHoldings {
         item_.assetAmount += amount;
         item_.assetAmountValue += amountValue;
 
-        emit ItemIncreased(poolId, itemId_, valuation_, amount, amountValue);
+        emit ItemIncreased(poolId, scId, itemId_, valuation_, amount, amountValue);
     }
 
     /// @inheritdoc IItemManager
-    function decrease(PoolId poolId, ItemId itemId_, IERC7726 valuation_, uint128 amount)
+    function decrease(PoolId poolId, ShareClassId scId, ItemId itemId_, IERC7726 valuation_, uint128 amount)
         external
         auth
         returns (uint128 amountValue)
     {
         require(address(valuation_) != address(0), WrongValuation());
 
-        Item storage item_ = item[poolId][itemId_];
+        Item storage item_ = item[poolId][scId][itemId_];
         require(!item_.assetId.isNull(), ItemNotFound());
         address poolCurrency = address(poolRegistry.currency(poolId));
 
@@ -110,12 +113,12 @@ contract Holdings is Auth, IHoldings {
         item_.assetAmount -= amount;
         item_.assetAmountValue -= amountValue;
 
-        emit ItemDecreased(poolId, itemId_, valuation_, amount, amountValue);
+        emit ItemDecreased(poolId, scId, itemId_, valuation_, amount, amountValue);
     }
 
     /// @inheritdoc IItemManager
-    function update(PoolId poolId, ItemId itemId_) external auth returns (int128 diff) {
-        Item storage item_ = item[poolId][itemId_];
+    function update(PoolId poolId, ShareClassId scId, ItemId itemId_) external auth returns (int128 diff) {
+        Item storage item_ = item[poolId][scId][itemId_];
         require(!item_.assetId.isNull(), ItemNotFound());
 
         address poolCurrency = address(poolRegistry.currency(poolId));
@@ -129,46 +132,52 @@ contract Holdings is Auth, IHoldings {
 
         item_.assetAmountValue = currentAmountValue;
 
-        emit ItemUpdated(poolId, itemId_, diff);
+        emit ItemUpdated(poolId, scId, itemId_, diff);
     }
 
     /// @inheritdoc IItemManager
-    function increaseInterest(PoolId, /*poolId*/ ItemId, /*itemId_*/ uint128 /*interestAmount*/ ) external pure {
+    function increaseInterest(PoolId, /*poolId*/ ShareClassId, /*scId*/ ItemId, /*itemId_*/ uint128 /*interestAmount*/ )
+        external
+        pure
+    {
         revert("unsupported");
     }
 
     /// @inheritdoc IItemManager
-    function decreaseInterest(PoolId, /*poolId*/ ItemId, /*itemId_*/ uint128 /*interestAmount*/ ) external pure {
+    function decreaseInterest(PoolId, /*poolId*/ ShareClassId, /*scId*/ ItemId, /*itemId_*/ uint128 /*interestAmount*/ )
+        external
+        pure
+    {
         revert("unsupported");
     }
 
     /// @inheritdoc IItemManager
-    function itemValue(PoolId poolId, ItemId itemId_) external view returns (uint128 value) {
-        return item[poolId][itemId_].assetAmountValue;
+    function itemValue(PoolId poolId, ShareClassId scId, ItemId itemId_) external view returns (uint128 value) {
+        return item[poolId][scId][itemId_].assetAmountValue;
     }
 
     /// @inheritdoc IItemManager
-    function valuation(PoolId poolId, ItemId itemId_) external view returns (IERC7726) {
-        return item[poolId][itemId_].valuation;
+    function valuation(PoolId poolId, ShareClassId scId, ItemId itemId_) external view returns (IERC7726) {
+        return item[poolId][scId][itemId_].valuation;
     }
 
     /// @inheritdoc IItemManager
-    function updateValuation(PoolId poolId, ItemId itemId_, IERC7726 valuation_) external auth {
+    function updateValuation(PoolId poolId, ShareClassId scId, ItemId itemId_, IERC7726 valuation_) external auth {
         require(address(valuation_) != address(0), WrongValuation());
 
-        Item storage item_ = item[poolId][itemId_];
+        Item storage item_ = item[poolId][scId][itemId_];
         require(!item_.assetId.isNull(), ItemNotFound());
 
         item_.valuation = valuation_;
     }
 
     /// @inheritdoc IItemManager
-    function setAccountId(PoolId poolId, ItemId itemId_, AccountId accountId_) external auth {
-        require(!item[poolId][itemId_].assetId.isNull(), ItemNotFound());
+    function setAccountId(PoolId poolId, ShareClassId scId, ItemId itemId_, AccountId accountId_) external auth {
+        require(!item[poolId][scId][itemId_].assetId.isNull(), ItemNotFound());
 
-        accountId[poolId][itemId_][accountId_.kind()] = accountId_;
+        accountId[poolId][scId][itemId_][accountId_.kind()] = accountId_;
 
-        emit AccountIdSet(poolId, itemId_, accountId_);
+        emit AccountIdSet(poolId, scId, itemId_, accountId_);
     }
 
     /// @inheritdoc IHoldings
@@ -177,8 +186,8 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @inheritdoc IHoldings
-    function itemIdToAsset(PoolId poolId, ItemId itemId_) external view returns (ShareClassId scId, AssetId assetId) {
-        Item storage item_ = item[poolId][itemId_];
-        return (item_.scId, item_.assetId);
+    function itemIdToAsset(PoolId poolId, ShareClassId scId, ItemId itemId_) external view returns (AssetId assetId) {
+        Item storage item_ = item[poolId][scId][itemId_];
+        return item_.assetId;
     }
 }

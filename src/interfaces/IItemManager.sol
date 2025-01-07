@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {PoolId} from "src/types/PoolId.sol";
 import {AccountId} from "src/types/AccountId.sol";
+import {ShareClassId} from "src/types/ShareClassId.sol";
 import {ItemId} from "src/types/Domain.sol";
 
 import {IERC7726} from "src/interfaces/IERC7726.sol";
@@ -11,60 +12,70 @@ interface IItemManager {
     /// @notice Item was not found for a required action
     error ItemNotFound();
 
-    event CreatedItem(PoolId indexed, ItemId indexed, IERC7726 valuation);
-    event ClosedItem(PoolId indexed, ItemId indexed);
+    event CreatedItem(PoolId indexed, ShareClassId scId, ItemId indexed, IERC7726 valuation);
+    event ClosedItem(PoolId indexed, ShareClassId scId, ItemId indexed);
 
-    event ItemIncreased(PoolId indexed, ItemId indexed, IERC7726 valuation, uint128 amount, uint128 increasedValue);
-    event ItemDecreased(PoolId indexed, ItemId indexed, IERC7726 valuation, uint128 amount, uint128 decreasedValue);
-    event ItemIncreasedInterest(PoolId indexed, ItemId indexed, uint128 interestAmount);
-    event ItemDecreasedInterest(PoolId indexed, ItemId indexed, uint128 interestAmount);
-    event ItemUpdated(PoolId indexed, ItemId indexed, int128 diff);
+    event ItemIncreased(
+        PoolId indexed, ShareClassId scId, ItemId indexed, IERC7726 valuation, uint128 amount, uint128 increasedValue
+    );
+    event ItemDecreased(
+        PoolId indexed, ShareClassId scId, ItemId indexed, IERC7726 valuation, uint128 amount, uint128 decreasedValue
+    );
+    event ItemIncreasedInterest(PoolId indexed, ShareClassId scId, ItemId indexed, uint128 interestAmount);
+    event ItemDecreasedInterest(PoolId indexed, ShareClassId scId, ItemId indexed, uint128 interestAmount);
+    event ItemUpdated(PoolId indexed, ShareClassId scId, ItemId indexed, int128 diff);
 
-    event AccountIdSet(PoolId indexed, ItemId indexed, AccountId accountId);
+    event AccountIdSet(PoolId indexed, ShareClassId scId, ItemId indexed, AccountId accountId);
 
     /// @notice Creates a new item in a pool using a valuation
-    function create(PoolId poolId, IERC7726 valuation, AccountId[] memory accounts, bytes calldata data) external;
+    function create(
+        PoolId poolId,
+        ShareClassId scId,
+        IERC7726 valuation,
+        AccountId[] memory accounts,
+        bytes calldata data
+    ) external;
 
     /// @notice Closes an item in a pool using a valuation
     /// An item can only be closed if their value is 0.
-    function close(PoolId poolId, ItemId itemId, bytes calldata data) external;
+    function close(PoolId poolId, ShareClassId scId, ItemId itemId, bytes calldata data) external;
 
     /// @notice Increments the amount of an item and updates the value for that increment.
     /// @return value The value the item has increment.
-    function increase(PoolId poolId, ItemId itemId, IERC7726 valuation, uint128 amount)
+    function increase(PoolId poolId, ShareClassId scId, ItemId itemId, IERC7726 valuation, uint128 amount)
         external
         returns (uint128 value);
 
     /// @notice Decrements the amount of an item and updates the value for that decrement.
     /// @return value The value the item has decrement.
-    function decrease(PoolId poolId, ItemId itemId, IERC7726 valuation, uint128 amount)
+    function decrease(PoolId poolId, ShareClassId scId, ItemId itemId, IERC7726 valuation, uint128 amount)
         external
         returns (uint128 value);
 
     /// @notice Increments the interest of an item.
     /// @param interestAmount The amount of interest to be incremented.
-    function increaseInterest(PoolId poolId, ItemId itemId, uint128 interestAmount) external;
+    function increaseInterest(PoolId poolId, ShareClassId scId, ItemId itemId, uint128 interestAmount) external;
 
     /// @notice Decrements the interest of an item.
     /// @param interestAmount The amount of interest to be decremented.
-    function decreaseInterest(PoolId poolId, ItemId itemId, uint128 interestAmount) external;
+    function decreaseInterest(PoolId poolId, ShareClassId scId, ItemId itemId, uint128 interestAmount) external;
 
     /// @notice Reset the value of an item using the current valuation.
     /// @return diff The difference in value after the new valuation.
-    function update(PoolId poolId, ItemId itemId) external returns (int128 diff);
+    function update(PoolId poolId, ShareClassId scId, ItemId itemId) external returns (int128 diff);
 
     /// @notice Returns the item value of this item.
-    function itemValue(PoolId poolId, ItemId itemId) external view returns (uint128 value);
+    function itemValue(PoolId poolId, ShareClassId scId, ItemId itemId) external view returns (uint128 value);
 
     /// @notice Returns the valuation method used for this item.
-    function valuation(PoolId poolId, ItemId itemId) external view returns (IERC7726);
+    function valuation(PoolId poolId, ShareClassId scId, ItemId itemId) external view returns (IERC7726);
 
     /// @notice Updates the valuation method used for this item.
-    function updateValuation(PoolId poolId, ItemId itemId, IERC7726 valuation) external;
+    function updateValuation(PoolId poolId, ShareClassId scId, ItemId itemId, IERC7726 valuation) external;
 
     /// @notice Sets an account id for an specific kind
-    function setAccountId(PoolId poolId, ItemId itemId, AccountId accountId) external;
+    function setAccountId(PoolId poolId, ShareClassId scId, ItemId itemId, AccountId accountId) external;
 
     /// @notice Returns an account id for an specific kind
-    function accountId(PoolId poolId, ItemId itemId, uint8 kind) external view returns (AccountId);
+    function accountId(PoolId poolId, ShareClassId scId, ItemId itemId, uint8 kind) external view returns (AccountId);
 }
