@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {PoolId} from "src/types/PoolId.sol";
 import {AccountId} from "src/types/AccountId.sol";
-import {ItemId} from "src/types/Domain.sol";
+import {ItemId} from "src/types/ItemId.sol";
 
 import {IERC7726} from "src/interfaces/IERC7726.sol";
 
@@ -21,6 +21,9 @@ interface IItemManager {
 
     /// @notice Item was not found for a required action
     error ItemNotFound();
+
+    /// @notice Valuation is not valid.
+    error WrongValuation();
 
     /// @notice Creates a new item in a pool using a valuation
     function create(PoolId poolId, IERC7726 valuation, AccountId[] memory accounts, bytes calldata data) external;

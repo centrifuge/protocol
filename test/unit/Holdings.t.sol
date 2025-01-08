@@ -3,42 +3,90 @@ pragma solidity ^0.8.28;
 
 import "forge-std/Test.sol";
 
-import {ItemId} from "src/types/Domain.sol";
+import {newItemId, ItemId} from "src/types/ItemId.sol";
 import {PoolId} from "src/types/PoolId.sol";
 import {AssetId} from "src/types/AssetId.sol";
+import {AccountId} from "src/types/AccountId.sol";
 import {ShareClassId} from "src/types/ShareClassId.sol";
-import {Holdings} from "src/Holdings.sol";
+import {Holdings, Item} from "src/Holdings.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
+import {IAuth} from "src/interfaces/IAuth.sol";
+import {IERC7726} from "src/interfaces/IERC7726.sol";
+import {IItemManager} from "src/interfaces/IItemManager.sol";
+import {IHoldings} from "src/interfaces/IHoldings.sol";
+
+PoolId constant POOL_A = PoolId.wrap(42);
+ShareClassId constant SC_1 = ShareClassId.wrap(1);
+AssetId constant ASSET_A = AssetId.wrap(address(2));
+PoolId constant NON_POOL = PoolId.wrap(0);
+ShareClassId constant NON_SC = ShareClassId.wrap(0);
+AssetId constant NON_ASSET = AssetId.wrap(address(0));
+
+contract PoolRegistryMock {
+    function exists(PoolId poolId) external pure returns (bool) {
+        return PoolId.unwrap(poolId) != PoolId.unwrap(NON_POOL);
+    }
+}
 
 contract TestCommon is Test {
-    PoolId constant POOL_A = PoolId.wrap(42);
-    IPoolRegistry immutable poolRegistry = IPoolRegistry(address(42));
-    Holdings holdings = new Holdings(address(0), poolRegistry);
+    IPoolRegistry immutable poolRegistry = IPoolRegistry(address(new PoolRegistryMock()));
+    IERC7726 immutable itemValuation = IERC7726(address(23));
+    Holdings holdings = new Holdings(address(this), poolRegistry);
 }
 
 contract TestCreate is TestCommon {
     function testSuccess() public {
-        //TODO
+        AccountId[] memory accounts = new AccountId[](2);
+        accounts[0] = AccountId.wrap(0xAA00 & 0x01);
+        accounts[1] = AccountId.wrap(0xBB00 & 0x02);
+
+        holdings.create(POOL_A, itemValuation, accounts, abi.encode(SC_1, ASSET_A));
+
+        ItemId itemId = newItemId(0);
+
+        (ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount, uint128 amountValue, bool alive) =
+            holdings.item(POOL_A, itemId.index());
+
+        assertEq(ShareClassId.unwrap(scId), ShareClassId.unwrap(SC_1));
+        assertEq(AssetId.unwrap(assetId), AssetId.unwrap(ASSET_A));
+        assertEq(address(valuation), address(itemValuation));
+        assertEq(amount, 0);
+        assertEq(amountValue, 0);
+        assertEq(alive, true);
+
+        assertEq(AccountId.unwrap(holdings.accountId(POOL_A, itemId, 0x01)), 0xAA00 & 0x01);
+        assertEq(AccountId.unwrap(holdings.accountId(POOL_A, itemId, 0x02)), 0xBB00 & 0x02);
+
+        assertEq(ItemId.unwrap(holdings.itemId(POOL_A, SC_1, ASSET_A)), ItemId.unwrap(itemId));
+
+        vm.expectEmit();
+        emit IItemManager.CreatedItem(POOL_A, itemId, itemValuation);
     }
 
     function testErrNotAuthorized() public {
-        //TODO
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
     }
 
     function testErrNonExistingPool() public {
-        //TODO
-    }
-
-    function testErrWrongShareClass() public {
-        //TODO
+        vm.expectRevert(abi.encodeWithSelector(IPoolRegistry.NonExistingPool.selector, NON_POOL));
+        holdings.create(NON_POOL, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
     }
 
     function testErrWrongValuation() public {
-        //TODO
+        vm.expectRevert(IItemManager.WrongValuation.selector);
+        holdings.create(POOL_A, IERC7726(address(0)), new AccountId[](0), abi.encode(SC_1, ASSET_A));
+    }
+
+    function testErrWrongShareClass() public {
+        vm.expectRevert(IHoldings.WrongShareClassId.selector);
+        holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(NON_SC, ASSET_A));
     }
 
     function testErrWrongAssetId() public {
-        //TODO
+        vm.expectRevert(IHoldings.WrongAssetId.selector);
+        holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, NON_ASSET));
     }
 }
 

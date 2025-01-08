@@ -5,7 +5,7 @@ import {PoolId} from "src/types/PoolId.sol";
 import {AssetId} from "src/types/AssetId.sol";
 import {ShareClassId} from "src/types/ShareClassId.sol";
 import {AccountId} from "src/types/AccountId.sol";
-import {ItemId} from "src/types/Domain.sol";
+import {newItemId, ItemId} from "src/types/ItemId.sol";
 
 import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 import {IItemManager} from "src/interfaces/IItemManager.sol";
@@ -17,20 +17,22 @@ import {MathLib} from "src/libraries/MathLib.sol";
 
 import {Auth} from "src/Auth.sol";
 
+import "forge-std/Test.sol";
+
 struct Item {
     ShareClassId scId;
     AssetId assetId;
     IERC7726 valuation;
     uint128 assetAmount;
     uint128 assetAmountValue;
+    bool alive;
 }
 
 contract Holdings is Auth, IHoldings {
     using MathLib for uint256; // toInt128()
 
-    mapping(PoolId => mapping(ItemId => Item)) public item;
+    mapping(PoolId => Item[]) public item;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => ItemId))) public itemId;
-    mapping(PoolId => uint32) lastItemId;
     mapping(PoolId => mapping(ItemId => mapping(uint8 kind => AccountId))) public accountId;
 
     IPoolRegistry immutable poolRegistry;
@@ -46,13 +48,18 @@ contract Holdings is Auth, IHoldings {
     {
         require(poolRegistry.exists(poolId), IPoolRegistry.NonExistingPool(poolId));
         require(address(valuation_) != address(0), WrongValuation());
-        (ShareClassId scId, AssetId assetId) = abi.decode(data, (ShareClassId, AssetId));
-        require(!assetId.isNull(), WrongAssetId());
-        require(!scId.isNull(), WrongShareClassId());
 
-        ItemId itemId_ = ItemId.wrap(++lastItemId[poolId]);
+        (ShareClassId scId, AssetId assetId) = abi.decode(data, (ShareClassId, AssetId));
+
+        console.log(ShareClassId.unwrap(scId));
+        console.log(AssetId.unwrap(assetId));
+
+        require(!scId.isNull(), WrongShareClassId());
+        require(!assetId.isNull(), WrongAssetId());
+
+        ItemId itemId_ = newItemId(item[poolId].length);
         itemId[poolId][scId][assetId] = itemId_;
-        item[poolId][itemId_] = Item(scId, assetId, valuation_, 0, 0);
+        item[poolId].push(Item(scId, assetId, valuation_, 0, 0, true));
 
         for (uint256 i = 0; i < accounts.length; i++) {
             AccountId accountId_ = accounts[i];
@@ -64,11 +71,11 @@ contract Holdings is Auth, IHoldings {
 
     /// @inheritdoc IItemManager
     function close(PoolId poolId, ItemId itemId_, bytes calldata /*data*/ ) external auth {
-        Item storage item_ = item[poolId][itemId_];
+        Item storage item_ = item[poolId][itemId_.index()];
         require(!item_.assetId.isNull(), ItemNotFound());
 
+        item_.alive = false;
         itemId[poolId][item_.scId][item_.assetId] = ItemId.wrap(0);
-        delete item[poolId][itemId_];
 
         emit ClosedItem(poolId, itemId_);
     }
@@ -81,7 +88,7 @@ contract Holdings is Auth, IHoldings {
     {
         require(address(valuation_) != address(0), WrongValuation());
 
-        Item storage item_ = item[poolId][itemId_];
+        Item storage item_ = item[poolId][itemId_.index()];
         require(!item_.assetId.isNull(), ItemNotFound());
         address poolCurrency = address(poolRegistry.currency(poolId));
 
@@ -101,7 +108,7 @@ contract Holdings is Auth, IHoldings {
     {
         require(address(valuation_) != address(0), WrongValuation());
 
-        Item storage item_ = item[poolId][itemId_];
+        Item storage item_ = item[poolId][itemId_.index()];
         require(!item_.assetId.isNull(), ItemNotFound());
         address poolCurrency = address(poolRegistry.currency(poolId));
 
@@ -115,7 +122,7 @@ contract Holdings is Auth, IHoldings {
 
     /// @inheritdoc IItemManager
     function update(PoolId poolId, ItemId itemId_) external auth returns (int128 diff) {
-        Item storage item_ = item[poolId][itemId_];
+        Item storage item_ = item[poolId][itemId_.index()];
         require(!item_.assetId.isNull(), ItemNotFound());
 
         address poolCurrency = address(poolRegistry.currency(poolId));
@@ -144,19 +151,19 @@ contract Holdings is Auth, IHoldings {
 
     /// @inheritdoc IItemManager
     function itemValue(PoolId poolId, ItemId itemId_) external view returns (uint128 value) {
-        return item[poolId][itemId_].assetAmountValue;
+        return item[poolId][itemId_.index()].assetAmountValue;
     }
 
     /// @inheritdoc IItemManager
     function valuation(PoolId poolId, ItemId itemId_) external view returns (IERC7726) {
-        return item[poolId][itemId_].valuation;
+        return item[poolId][itemId_.index()].valuation;
     }
 
     /// @inheritdoc IItemManager
     function updateValuation(PoolId poolId, ItemId itemId_, IERC7726 valuation_) external auth {
         require(address(valuation_) != address(0), WrongValuation());
 
-        Item storage item_ = item[poolId][itemId_];
+        Item storage item_ = item[poolId][itemId_.index()];
         require(!item_.assetId.isNull(), ItemNotFound());
 
         item_.valuation = valuation_;
@@ -164,7 +171,7 @@ contract Holdings is Auth, IHoldings {
 
     /// @inheritdoc IItemManager
     function setAccountId(PoolId poolId, ItemId itemId_, AccountId accountId_) external auth {
-        require(!item[poolId][itemId_].assetId.isNull(), ItemNotFound());
+        require(!item[poolId][itemId_.index()].assetId.isNull(), ItemNotFound());
 
         accountId[poolId][itemId_][accountId_.kind()] = accountId_;
 
@@ -178,7 +185,7 @@ contract Holdings is Auth, IHoldings {
 
     /// @inheritdoc IHoldings
     function itemIdToAsset(PoolId poolId, ItemId itemId_) external view returns (ShareClassId scId, AssetId assetId) {
-        Item storage item_ = item[poolId][itemId_];
+        Item storage item_ = item[poolId][itemId_.index()];
         return (item_.scId, item_.assetId);
     }
 }

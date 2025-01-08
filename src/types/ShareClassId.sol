@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 type ShareClassId is uint32;
 
 function isNull(ShareClassId scId) pure returns (bool) {
-    return ShareClassId.unwrap(scId) != 0;
+    return ShareClassId.unwrap(scId) == 0;
 }
 
 using {isNull} for ShareClassId global;
