@@ -39,7 +39,7 @@ interface IShareClassManager {
         uint256 pendingAssetAmount,
         D18 assetToPool
     );
-    event ApprovedRedemptions(
+    event ApprovedRedeems(
         PoolId indexed poolId,
         bytes16 indexed shareClassId,
         uint32 indexed epoch,
@@ -192,7 +192,7 @@ interface IShareClassManager {
     /// @param valuation Converter for quotas, e.g. price ratio of share class token amount to pool amount
     /// @return approved Sum of redemption request amounts in pool amount which was approved
     /// @return pending Sum of redemption request amounts in share class token amount which was not approved
-    function approveRedemptions(
+    function approveRedeems(
         PoolId poolId,
         bytes16 shareClassId,
         D18 approvalRatio,

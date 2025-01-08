@@ -60,7 +60,7 @@ contract SingleShareClass is Auth, IShareClassManager {
     // Share class storage
     mapping(bytes16 => mapping(address assetId => bool)) public allowedAssets;
     mapping(bytes16 => mapping(address paymentAssetId => uint256 pending)) public pendingDeposits;
-    mapping(bytes16 => mapping(address payoutAssetId => uint256 pending)) public pendingRedemptions;
+    mapping(bytes16 => mapping(address payoutAssetId => uint256 pending)) public pendingRedeems;
     mapping(bytes16 => D18 navPerShare) public shareClassNavPerShare;
     mapping(bytes16 => uint256) public totalIssuance;
     // Share class + epoch storage
@@ -157,7 +157,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         _updateRedeemRequest(
             poolId,
             shareClassId,
-            -int256(depositRequests[shareClassId][payoutAssetId][investor].pending),
+            -int256(redeemRequests[shareClassId][payoutAssetId][investor].pending),
             investor,
             payoutAssetId
         );
@@ -211,7 +211,7 @@ contract SingleShareClass is Auth, IShareClassManager {
     }
 
     /// @inheritdoc IShareClassManager
-    function approveRedemptions(
+    function approveRedeems(
         PoolId poolId,
         bytes16 shareClassId,
         D18 approvalRatio,
@@ -224,26 +224,26 @@ contract SingleShareClass is Auth, IShareClassManager {
         uint32 approvalEpochId = _advanceEpoch(poolId);
 
         // Reduce pending
-        approvedShares = approvalRatio.mulUint256(pendingRedemptions[shareClassId][payoutAssetId]);
-        pendingRedemptions[shareClassId][payoutAssetId] -= approvedShares;
-        pendingShares = pendingRedemptions[shareClassId][payoutAssetId];
+        approvedShares = approvalRatio.mulUint256(pendingRedeems[shareClassId][payoutAssetId]);
+        pendingRedeems[shareClassId][payoutAssetId] -= approvedShares;
+        pendingShares = pendingRedeems[shareClassId][payoutAssetId];
 
         // Increase approved
         address poolCurrency = address(IPoolRegistry(poolRegistry).currency(poolId));
-        D18 payoutAssetPrice = d18(valuation.getFactor(payoutAssetId, poolCurrency).toUint128());
+        D18 assetToPool = d18(valuation.getFactor(payoutAssetId, poolCurrency).toUint128());
 
         // Update epoch data
         Epoch storage epoch = epochs[shareClassId][approvalEpochId];
         epoch.valuation = valuation;
-        epoch.approvedShares = approvedShares;
+        epoch.approvedShares += approvedShares;
 
         EpochRatio storage epochRatio = epochRatios[shareClassId][payoutAssetId][approvalEpochId];
         epochRatio.redeemRatio = approvalRatio;
-        epochRatio.assetToPoolQuote = payoutAssetPrice;
+        epochRatio.assetToPoolQuote = assetToPool;
 
         latestRedeemApproval[shareClassId][payoutAssetId] = approvalEpochId;
 
-        emit IShareClassManager.ApprovedRedemptions(
+        emit IShareClassManager.ApprovedRedeems(
             poolId,
             shareClassId,
             approvalEpochId,
@@ -251,7 +251,7 @@ contract SingleShareClass is Auth, IShareClassManager {
             approvalRatio,
             approvedShares,
             pendingShares,
-            payoutAssetPrice
+            assetToPool
         );
     }
 
@@ -326,6 +326,8 @@ contract SingleShareClass is Auth, IShareClassManager {
         require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
         require(endEpochId < epochIds[poolId], IShareClassManager.EpochNotFound());
 
+        uint256 totalRevokedShares = 0;
+
         // First issuance starts at epoch 0, subsequent ones at latest pointer plus one
         uint32 startEpochId = latestRevocation[shareClassId][payoutAssetId] + 1;
 
@@ -335,12 +337,14 @@ contract SingleShareClass is Auth, IShareClassManager {
             payoutPoolAmount += epochPoolAmount;
 
             payoutAssetAmount +=
-                epochPoolAmount.mulDiv(1e18, epochRatios[shareClassId][payoutAssetId][epochId].assetToPoolQuote.inner());
+                epochRatios[shareClassId][payoutAssetId][epochId].assetToPoolQuote.reciprocalMulInt(epochPoolAmount);
             uint256 nav = navPerShare.reciprocalMulInt(epochPoolAmount);
+            totalRevokedShares += revokedShares;
 
             emit IShareClassManager.RevokedShares(poolId, shareClassId, epochId, navPerShare, nav, revokedShares);
         }
 
+        totalIssuance[shareClassId] -= totalRevokedShares;
         latestRevocation[shareClassId][payoutAssetId] = endEpochId;
         shareClassNavPerShare[shareClassId] = navPerShare;
     }
@@ -553,9 +557,9 @@ contract SingleShareClass is Auth, IShareClassManager {
         userOrder.lastUpdate = epochIds[poolId];
         userOrder.pending = amount >= 0 ? userOrder.pending + uint256(amount) : userOrder.pending - uint256(-amount);
 
-        pendingRedemptions[shareClassId][payoutAssetId] = amount >= 0
-            ? pendingRedemptions[shareClassId][payoutAssetId] + uint256(amount)
-            : pendingRedemptions[shareClassId][payoutAssetId] - uint256(-amount);
+        pendingRedeems[shareClassId][payoutAssetId] = amount >= 0
+            ? pendingRedeems[shareClassId][payoutAssetId] + uint256(amount)
+            : pendingRedeems[shareClassId][payoutAssetId] - uint256(-amount);
 
         emit IShareClassManager.UpdatedRedeemRequest(
             poolId,
@@ -564,7 +568,7 @@ contract SingleShareClass is Auth, IShareClassManager {
             investor,
             payoutAssetId,
             userOrder.pending,
-            pendingRedemptions[shareClassId][payoutAssetId]
+            pendingRedeems[shareClassId][payoutAssetId]
         );
     }
 
@@ -599,15 +603,12 @@ contract SingleShareClass is Auth, IShareClassManager {
         private
         returns (uint256 revokedShares, uint256 payoutPoolAmount)
     {
-        uint256 approvedShares = epochs[shareClassId][epochId].approvedShares;
+        revokedShares = epochs[shareClassId][epochId].approvedShares;
 
         // payout = shares / poolToShareQuote
-        payoutPoolAmount = uint256(navPerShare.reciprocalMulInt(approvedShares));
+        payoutPoolAmount = uint256(navPerShare.reciprocalMulInt(revokedShares));
 
-        totalIssuance[shareClassId] -= approvedShares;
         epochRatios[shareClassId][payoutAssetId][epochId].poolToShareQuote = navPerShare;
-
-        return (approvedShares, payoutPoolAmount);
     }
 
     /// @notice Advances the current epoch of the given if it has not been incremented within the same block. If the
@@ -684,11 +685,5 @@ contract SingleShareClass is Auth, IShareClassManager {
             epochRatio.assetToPoolQuote.reciprocalMulInt(epochRatio.poolToShareQuote.mulUint256(approvedShares));
 
         return (approvedShares, userOrder.pending, approvedAssetAmount);
-    }
-
-    /// @dev Temporarily necessary for tests until forge supports transient storage setting, i.e.
-    /// https://github.com/foundry-rs/foundry/issues/8165 is merged
-    function tmpResetEpochIncrement() external {
-        _epochIncrement = 0;
     }
 }
