@@ -8,9 +8,6 @@ import {ItemId} from "src/types/Domain.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
 
 interface IItemManager {
-    /// @notice Item was not found for a required action
-    error ItemNotFound();
-
     event CreatedItem(PoolId indexed, ItemId indexed, IERC7726 valuation);
     event ClosedItem(PoolId indexed, ItemId indexed);
 
@@ -21,6 +18,9 @@ interface IItemManager {
     event ItemUpdated(PoolId indexed, ItemId indexed, int128 diff);
 
     event AccountIdSet(PoolId indexed, ItemId indexed, AccountId accountId);
+
+    /// @notice Item was not found for a required action
+    error ItemNotFound();
 
     /// @notice Creates a new item in a pool using a valuation
     function create(PoolId poolId, IERC7726 valuation, AccountId[] memory accounts, bytes calldata data) external;

@@ -26,7 +26,7 @@ struct Item {
 }
 
 contract Holdings is Auth, IHoldings {
-    using MathLib for uint256;
+    using MathLib for uint256; // toInt128()
 
     mapping(PoolId => mapping(ItemId => Item)) public item;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => ItemId))) public itemId;
@@ -44,7 +44,7 @@ contract Holdings is Auth, IHoldings {
         external
         auth
     {
-        require(poolRegistry.exists(poolId)); // TODO: change to ensureExistence or dispatch error
+        require(poolRegistry.exists(poolId), IPoolRegistry.NonExistingPool(poolId));
         require(address(valuation_) != address(0), WrongValuation());
         (ShareClassId scId, AssetId assetId) = abi.decode(data, (ShareClassId, AssetId));
         require(!assetId.isNull(), WrongAssetId());
