@@ -40,9 +40,11 @@ contract TestCreate is TestCommon {
         accounts[0] = AccountId.wrap(0xAA00 & 0x01);
         accounts[1] = AccountId.wrap(0xBB00 & 0x02);
 
-        holdings.create(POOL_A, itemValuation, accounts, abi.encode(SC_1, ASSET_A));
-
         ItemId itemId = newItemId(0);
+
+        vm.expectEmit();
+        emit IItemManager.CreatedItem(POOL_A, itemId, itemValuation);
+        holdings.create(POOL_A, itemValuation, accounts, abi.encode(SC_1, ASSET_A));
 
         (ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount, uint128 amountValue, bool alive) =
             holdings.item(POOL_A, itemId.index());
@@ -58,9 +60,6 @@ contract TestCreate is TestCommon {
         assertEq(AccountId.unwrap(holdings.accountId(POOL_A, itemId, 0x02)), 0xBB00 & 0x02);
 
         assertEq(ItemId.unwrap(holdings.itemId(POOL_A, SC_1, ASSET_A)), ItemId.unwrap(itemId));
-
-        vm.expectEmit();
-        emit IItemManager.CreatedItem(POOL_A, itemId, itemValuation);
     }
 
     function testErrNotAuthorized() public {
@@ -145,15 +144,15 @@ contract TestUpdate is TestCommon {
         //TODO
     }
 
-    function testErrNotAuthorized() public {
-        //TODO
-    }
-
     function testUpdateLess() public {
         //TODO
     }
 
     function testUpdateEquals() public {
+        //TODO
+    }
+
+    function testErrNotAuthorized() public {
         //TODO
     }
 

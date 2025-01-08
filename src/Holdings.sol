@@ -51,15 +51,12 @@ contract Holdings is Auth, IHoldings {
 
         (ShareClassId scId, AssetId assetId) = abi.decode(data, (ShareClassId, AssetId));
 
-        console.log(ShareClassId.unwrap(scId));
-        console.log(AssetId.unwrap(assetId));
-
         require(!scId.isNull(), WrongShareClassId());
         require(!assetId.isNull(), WrongAssetId());
 
         ItemId itemId_ = newItemId(item[poolId].length);
-        itemId[poolId][scId][assetId] = itemId_;
         item[poolId].push(Item(scId, assetId, valuation_, 0, 0, true));
+        itemId[poolId][scId][assetId] = itemId_;
 
         for (uint256 i = 0; i < accounts.length; i++) {
             AccountId accountId_ = accounts[i];
@@ -167,6 +164,8 @@ contract Holdings is Auth, IHoldings {
         require(!item_.assetId.isNull(), ItemNotFound());
 
         item_.valuation = valuation_;
+
+        emit ValuationUpdated(poolId, itemId_, valuation_);
     }
 
     /// @inheritdoc IItemManager

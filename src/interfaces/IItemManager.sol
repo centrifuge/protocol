@@ -8,15 +8,31 @@ import {ItemId} from "src/types/ItemId.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
 
 interface IItemManager {
+    /// @notice Emitted when an item is created
     event CreatedItem(PoolId indexed, ItemId indexed, IERC7726 valuation);
+
+    /// @notice Emitted when an item is closed
     event ClosedItem(PoolId indexed, ItemId indexed);
 
+    /// @notice Emitted when an item is increased
     event ItemIncreased(PoolId indexed, ItemId indexed, IERC7726 valuation, uint128 amount, uint128 increasedValue);
+
+    /// @notice Emitted when an item is decreased
     event ItemDecreased(PoolId indexed, ItemId indexed, IERC7726 valuation, uint128 amount, uint128 decreasedValue);
+
+    /// @notice Emitted when the interest of an item is increased
     event ItemIncreasedInterest(PoolId indexed, ItemId indexed, uint128 interestAmount);
+
+    /// @notice Emitted when the interest of an item is decreased
     event ItemDecreasedInterest(PoolId indexed, ItemId indexed, uint128 interestAmount);
+
+    /// @notice Emitted when the item is updated
     event ItemUpdated(PoolId indexed, ItemId indexed, int128 diff);
 
+    /// @notice Emitted when an item valuation is updated
+    event ValuationUpdated(PoolId indexed, ItemId indexed, IERC7726 valuation);
+
+    /// @notice Emitted when an account is for an item is set
     event AccountIdSet(PoolId indexed, ItemId indexed, AccountId accountId);
 
     /// @notice Item was not found for a required action
