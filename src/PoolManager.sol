@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ChainId, ShareClassId, AssetId, Ratio, ItemId, AccountId} from "src/types/Domain.sol";
+import {ChainId, Ratio} from "src/types/Domain.sol";
+import {ShareClassId} from "src/types/ShareClassId.sol";
+import {AssetId} from "src/types/AssetId.sol";
+import {ItemId} from "src/types/ItemId.sol";
+import {AccountId} from "src/types/AccountId.sol";
 import {PoolId} from "src/types/PoolId.sol";
 
 import {IAssetManager, IAccounting, IGateway} from "src/interfaces/ICommon.sol";
@@ -9,7 +13,6 @@ import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
 import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 import {IItemManager} from "src/interfaces/IItemManager.sol";
-import {IAccountingItemManager} from "src/interfaces/IAccountingItemManager.sol";
 import {IHoldings} from "src/interfaces/IHoldings.sol";
 import {IPoolManager, Escrow} from "src/interfaces/IPoolManager.sol";
 import {IMulticall} from "src/interfaces/IMulticall.sol";
@@ -19,6 +22,13 @@ import {MathLib} from "src/libraries/MathLib.sol";
 
 import {PoolLocker} from "src/PoolLocker.sol";
 import {Auth} from "src/Auth.sol";
+
+enum AccountType {
+    ASSET,
+    EQUITY,
+    LOSS,
+    GAIN
+}
 
 contract PoolManager is Auth, PoolLocker, IPoolManager {
     using MathLib for uint256;
@@ -153,22 +163,28 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         );
     }
 
-    function increaseItem(IItemManager im, ItemId itemId, uint128 amount) external poolUnlocked {
+    function increaseItem(IItemManager im, ItemId itemId, IERC7726 valuation, uint128 amount) external poolUnlocked {
         PoolId poolId = unlockedPoolId();
 
-        IAccountingItemManager.Accounts memory accounts = im.itemAccounts(poolId, itemId);
-        uint128 valueChange = im.increase(poolId, itemId, amount);
+        uint128 valueChange = im.increase(poolId, itemId, valuation, amount);
 
-        accounting.updateEntry(accounts.equity, accounts.asset, valueChange);
+        accounting.updateEntry(
+            im.accountId(poolId, itemId, uint8(AccountType.EQUITY)),
+            im.accountId(poolId, itemId, uint8(AccountType.ASSET)),
+            valueChange
+        );
     }
 
-    function decreaseItem(IItemManager im, ItemId itemId, uint128 amount) external poolUnlocked {
+    function decreaseItem(IItemManager im, ItemId itemId, IERC7726 valuation, uint128 amount) external poolUnlocked {
         PoolId poolId = unlockedPoolId();
 
-        IAccountingItemManager.Accounts memory accounts = im.itemAccounts(poolId, itemId);
-        uint128 valueChange = im.decrease(poolId, itemId, amount);
+        uint128 valueChange = im.decrease(poolId, itemId, valuation, amount);
 
-        accounting.updateEntry(accounts.asset, accounts.equity, valueChange);
+        accounting.updateEntry(
+            im.accountId(poolId, itemId, uint8(AccountType.ASSET)),
+            im.accountId(poolId, itemId, uint8(AccountType.EQUITY)),
+            valueChange
+        );
     }
 
     function updateItem(IItemManager im, ItemId itemId) external poolUnlocked {
@@ -176,11 +192,18 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
 
         int128 diff = im.update(poolId, itemId);
 
-        IAccountingItemManager.Accounts memory accounts = im.itemAccounts(poolId, itemId);
         if (diff > 0) {
-            accounting.updateEntry(accounts.gain, accounts.asset, uint128(diff));
+            accounting.updateEntry(
+                im.accountId(poolId, itemId, uint8(AccountType.GAIN)),
+                im.accountId(poolId, itemId, uint8(AccountType.ASSET)),
+                uint128(diff)
+            );
         } else if (diff < 0) {
-            accounting.updateEntry(accounts.asset, accounts.loss, uint128(-diff));
+            accounting.updateEntry(
+                im.accountId(poolId, itemId, uint8(AccountType.ASSET)),
+                im.accountId(poolId, itemId, uint8(AccountType.LOSS)),
+                uint128(-diff)
+            );
         }
     }
 

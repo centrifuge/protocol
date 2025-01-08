@@ -3,13 +3,19 @@ pragma solidity 0.8.28;
 
 // NOTE: this is a pending interface until we split this into files
 
-import {Auth} from "src/Auth.sol";
-import {ChainId, ShareClassId, AssetId, Ratio, ItemId, AccountId} from "src/types/Domain.sol";
+import {ChainId, Ratio} from "src/types/Domain.sol";
+import {ShareClassId} from "src/types/ShareClassId.sol";
+import {AssetId} from "src/types/AssetId.sol";
+import {ItemId} from "src/types/ItemId.sol";
+import {AccountId} from "src/types/AccountId.sol";
 import {D18} from "src/types/D18.sol";
-import {PoolLocker} from "src/PoolLocker.sol";
+import {PoolId} from "src/types/PoolId.sol";
+
 import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
-import {PoolId} from "src/types/PoolId.sol";
+
+import {PoolLocker} from "src/PoolLocker.sol";
+import {Auth} from "src/Auth.sol";
 
 interface IAssetManager is IERC6909 {
     function mint(address who, AssetId assetId, uint128 amount) external;

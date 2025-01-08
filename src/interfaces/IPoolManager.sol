@@ -1,12 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
-import {ChainId, ShareClassId, AssetId, Ratio, ItemId} from "src/types/Domain.sol";
-import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
-import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
+import {ChainId, Ratio} from "src/types/Domain.sol";
+import {ShareClassId} from "src/types/ShareClassId.sol";
+import {AssetId} from "src/types/AssetId.sol";
+import {ItemId} from "src/types/ItemId.sol";
+import {AccountId} from "src/types/AccountId.sol";
 import {PoolId} from "src/types/PoolId.sol";
 
+import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
+import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 import {IItemManager} from "src/interfaces/IItemManager.sol";
+import {IERC7726} from "src/interfaces/IERC7726.sol";
 
 enum Escrow {
     SHARE_CLASS,
@@ -28,9 +33,9 @@ interface IPoolUnlockedMethods {
 
     function revokeShares(ShareClassId scId, AssetId assetId, uint128 nav) external;
 
-    function increaseItem(IItemManager im, ItemId itemId, uint128 amount) external;
+    function increaseItem(IItemManager im, ItemId itemId, IERC7726 valuation, uint128 amount) external;
 
-    function decreaseItem(IItemManager im, ItemId itemId, uint128 amount) external;
+    function decreaseItem(IItemManager im, ItemId itemId, IERC7726 valuation, uint128 amount) external;
 
     function updateItem(IItemManager im, ItemId itemId) external;
 
