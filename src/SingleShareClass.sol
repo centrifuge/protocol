@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {console} from "forge-std/Console.sol";
+import {console} from "forge-std/console.sol";
 
 import {Auth} from "src/Auth.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
@@ -438,15 +438,23 @@ contract SingleShareClass is Auth, IShareClassManager {
         UserOrder storage userOrder = redeemRequests[shareClassId][payoutAssetId][investor];
 
         for (uint32 epochId = userOrder.lastUpdate; epochId <= endEpochId; epochId++) {
-            (uint256 approvedShares, uint256 pendingShares, uint256 approvedAssetAmount) =
+            (uint256 approvedShares, uint256 approvedAssetAmount) =
                 _claimEpochRedeem(shareClassId, payoutAssetId, userOrder, epochId);
+
             paymentShareAmount += approvedShares;
             payoutAssetAmount += approvedAssetAmount;
-
+            
             userOrder.pending -= approvedShares;
 
             emit IShareClassManager.ClaimedRedeem(
-                poolId, shareClassId, epochId, investor, payoutAssetId, approvedShares, pendingShares, payoutAssetAmount
+                poolId,
+                shareClassId,
+                epochId,
+                investor,
+                payoutAssetId,
+                approvedShares,
+                userOrder.pending,
+                approvedAssetAmount
             );
         }
 
@@ -669,21 +677,20 @@ contract SingleShareClass is Auth, IShareClassManager {
     /// @param payoutAssetId Identifier of the asset which the investor desires to receive
     /// @param epochId Identifier of the epoch for which it is claimed
     /// @return approvedShares Amount of shares which the investor redeemed
-    /// @return pendingShares Amount of shares which are still pending for redemption
     /// @return approvedAssetAmount Amount of payout asset which the investor received
     function _claimEpochRedeem(bytes16 shareClassId, address payoutAssetId, UserOrder storage userOrder, uint32 epochId)
         private
         view
-        returns (uint256 approvedShares, uint256 pendingShares, uint256 approvedAssetAmount)
+        returns (uint256 approvedShares, uint256 approvedAssetAmount)
     {
         EpochRatio memory epochRatio = epochRatios[shareClassId][payoutAssetId][epochId];
 
         approvedShares = epochRatio.redeemRatio.mulUint256(userOrder.pending);
 
-        // assetAmount = poolAmount * poolToAsset = poolAmount / assetToPool = (#shares / poolToAsset) / assetToPool
+        // assetAmount = poolAmount * poolToAsset = poolAmount / assetToPool = (#shares / poolToShare) / assetToPool
         approvedAssetAmount =
-            epochRatio.assetToPoolQuote.reciprocalMulInt(epochRatio.poolToShareQuote.mulUint256(approvedShares));
+            epochRatio.assetToPoolQuote.reciprocalMulInt(epochRatio.poolToShareQuote.reciprocalMulInt(approvedShares));
 
-        return (approvedShares, userOrder.pending, approvedAssetAmount);
+        return (approvedShares, approvedAssetAmount);
     }
 }
