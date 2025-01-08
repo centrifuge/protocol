@@ -619,7 +619,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         epochRatios[shareClassId][payoutAssetId][epochId].poolToShareQuote = navPerShare;
     }
 
-    /// @notice Advances the current epoch of the given if it has not been incremented within the same block. If the
+    /// @notice Advances the current epoch of the given if it has not been incremented within the multicall. If the
     /// epoch has already been incremented, we don't bump it again to allow deposit and redeem approvals to point to the
     /// same epoch id. Emits NewEpoch event if the epoch is advanced.
     ///

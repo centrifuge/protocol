@@ -7,7 +7,6 @@ import "src/libraries/MathLib.sol";
 contract MathLibTest is Test {
     using MathLib for uint256;
 
-    // TODO(@wischli): Fuzzing
     function testRpow() public pure {
         uint256 base = 10 ** 27;
         uint256 x = 2 * 10 ** 27;

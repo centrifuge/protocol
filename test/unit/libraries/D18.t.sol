@@ -28,11 +28,18 @@ contract D18Test is Test {
         assertEq(c, MathLib.mulDiv(a, b, 1e18));
     }
 
-    function testMulInt() public pure {
+    function testMulUint128() public pure {
         D18 factor = d18(1_500_000_000_000_000_000); // 1.5
         uint128 value = 4_000_000_000_000_000_000;
 
         assertEq(factor.mulUint128(value), 6_000_000_000_000_000_000);
+    }
+
+    function testMulUint256() public pure {
+        D18 factor = d18(1_500_000_000_000_000_000); // 1.5
+        uint256 value = 4_000_000_000_000_000_000_000_000;
+
+        assertEq(factor.mulUint256(value), 6_000_000_000_000_000_000_000_000);
     }
 
     function testReciprocalMulInt() public pure {
@@ -47,5 +54,33 @@ contract D18Test is Test {
         multiplier = uint128(bound(multiplier, 0, type(uint128).max / 1e18));
 
         assertEq(divisor.reciprocalMulInt(multiplier), multiplier * 1e18 / divisor.inner());
+    }
+
+    function testMulD8() public pure {
+        D18 left = d18(50e18);
+        D18 right = d18(2e19);
+
+        assertEq(mulD8(left, right).inner(), 100e19);
+    }
+
+    function testFuzzMulD8(uint128 left_, uint128 right_) public pure {
+        D18 left = d18(uint128(bound(left_, 1, type(uint128).max)));
+        D18 right = d18(uint128(bound(right_, 0, type(uint128).max / left.inner())));
+
+        assertEq(mulD8(left, right).inner(), left.inner() * right.inner() / 1e18);
+    }
+
+    function testDivD8() public pure {
+        D18 numerator = d18(50e18);
+        D18 denominator = d18(2e19);
+
+        assertEq(divD8(numerator, denominator).inner(), 25e17);
+    }
+
+    function testFuzzDivD8(uint128 numerator_, uint128 denominator_) public pure {
+        D18 numerator = d18(uint128(bound(numerator_, 1, 1e20)));
+        D18 denominator = d18(uint128(bound(denominator_, 1, 1e20)));
+
+        assertEq(divD8(numerator, denominator).inner(), numerator.inner() * 1e18 / denominator.inner());
     }
 }

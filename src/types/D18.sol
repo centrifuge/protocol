@@ -19,11 +19,18 @@ function sub(D18 d1, D18 d2) pure returns (D18) {
     return D18.wrap(D18.unwrap(d1) - D18.unwrap(d2));
 }
 
-// TODO(@wischli): Add tests
-function div(D18 d1, D18 d2) pure returns (D18) {
+/// @dev Divides one D18 by another one while retaining precision:
+/// - nominator (decimal): 50e18
+/// - denominator (decimal):  2e19
+/// - result (decimal): 25e17
+function divD8(D18 d1, D18 d2) pure returns (D18) {
     return D18.wrap(MathLib.mulDiv(D18.unwrap(d1), 1e18, D18.unwrap(d2)).toUint128());
 }
 
+/// @dev Multiplies one D18 with another one while retaining precision:
+/// - value1 (decimal): 50e18
+/// - value2 (decimal):  2e19
+/// - result (decimal): 100e19
 function mulD8(D18 d1, D18 d2) pure returns (D18) {
     return D18.wrap(MathLib.mulDiv(D18.unwrap(d1), D18.unwrap(d2), 1e18).toUint128());
 }
@@ -64,4 +71,4 @@ function d18(uint128 value) pure returns (D18) {
 }
 
 // TODO(@review): Discuss  mulInt128, mulInt256 vs. wrapping above code in library s.t. duplicate `mulInt` can co-exist
-using {add as +, sub as -, div as /, inner, mulD8 as *, mulUint128, mulUint256, reciprocalMulInt} for D18 global;
+using {add as +, sub as -, divD8 as /, inner, mulD8 as *, mulUint128, mulUint256, reciprocalMulInt} for D18 global;
