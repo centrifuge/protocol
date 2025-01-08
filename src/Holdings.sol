@@ -69,7 +69,7 @@ contract Holdings is Auth, IHoldings {
     /// @inheritdoc IItemManager
     function close(PoolId poolId, ItemId itemId_, bytes calldata /*data*/ ) external auth {
         Item storage item_ = item[poolId][itemId_.index()];
-        require(!item_.assetId.isNull(), ItemNotFound());
+        require(item_.alive, ItemNotFound());
 
         item_.alive = false;
         itemId[poolId][item_.scId][item_.assetId] = ItemId.wrap(0);
@@ -86,7 +86,7 @@ contract Holdings is Auth, IHoldings {
         require(address(valuation_) != address(0), WrongValuation());
 
         Item storage item_ = item[poolId][itemId_.index()];
-        require(!item_.assetId.isNull(), ItemNotFound());
+        require(item_.alive, ItemNotFound());
         address poolCurrency = address(poolRegistry.currency(poolId));
 
         amountValue = uint128(valuation_.getQuote(amount, AssetId.unwrap(item_.assetId), poolCurrency));
@@ -106,7 +106,7 @@ contract Holdings is Auth, IHoldings {
         require(address(valuation_) != address(0), WrongValuation());
 
         Item storage item_ = item[poolId][itemId_.index()];
-        require(!item_.assetId.isNull(), ItemNotFound());
+        require(item_.alive, ItemNotFound());
         address poolCurrency = address(poolRegistry.currency(poolId));
 
         amountValue = uint128(valuation_.getQuote(amount, AssetId.unwrap(item_.assetId), poolCurrency));
@@ -120,7 +120,7 @@ contract Holdings is Auth, IHoldings {
     /// @inheritdoc IItemManager
     function update(PoolId poolId, ItemId itemId_) external auth returns (int128 diff) {
         Item storage item_ = item[poolId][itemId_.index()];
-        require(!item_.assetId.isNull(), ItemNotFound());
+        require(item_.alive, ItemNotFound());
 
         address poolCurrency = address(poolRegistry.currency(poolId));
 
@@ -161,7 +161,7 @@ contract Holdings is Auth, IHoldings {
         require(address(valuation_) != address(0), WrongValuation());
 
         Item storage item_ = item[poolId][itemId_.index()];
-        require(!item_.assetId.isNull(), ItemNotFound());
+        require(item_.alive, ItemNotFound());
 
         item_.valuation = valuation_;
 
@@ -170,7 +170,7 @@ contract Holdings is Auth, IHoldings {
 
     /// @inheritdoc IItemManager
     function setAccountId(PoolId poolId, ItemId itemId_, AccountId accountId_) external auth {
-        require(!item[poolId][itemId_.index()].assetId.isNull(), ItemNotFound());
+        require(item[poolId][itemId_.index()].alive, ItemNotFound());
 
         accountId[poolId][itemId_][accountId_.kind()] = accountId_;
 
