@@ -7,6 +7,7 @@ import {SingleShareClass, Epoch, EpochRatio, UserOrder} from "src/SingleShareCla
 import {PoolId} from "src/types/PoolId.sol";
 import {D18, d18} from "src/types/D18.sol";
 import {IERC7726Ext} from "src/interfaces/IERC7726.sol";
+import {IAuth} from "src/interfaces/IAuth.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 import {IInvestorPermissions} from "src/interfaces/IInvestorPermissions.sol";
@@ -121,6 +122,11 @@ abstract contract SingleShareClassBaseTest is Test {
     address investorPermissionsAddress = makeAddr("investorPermissions");
     address investor = makeAddr("investor");
 
+    modifier notThisContract(address addr) {
+        vm.assume(address(this) != addr);
+        _;
+    }
+
     function setUp() public virtual {
         // Set bytecode of interfaces to mock
         vm.etch(poolRegistryAddress, address(poolRegistryMock).code);
@@ -189,7 +195,7 @@ abstract contract SingleShareClassBaseTest is Test {
 contract SingleShareClassTest is SingleShareClassBaseTest {
     using MathLib for uint256;
 
-    function testDeployment(address nonWard) public view {
+    function testDeployment(address nonWard) public view notThisContract(poolRegistryAddress) {
         vm.assume(
             nonWard != address(poolRegistry) && nonWard != address(investorPermissions) && nonWard != address(this)
         );
@@ -207,7 +213,7 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         assertEq(shareClass.wards(nonWard), 0);
     }
 
-    function testAllowAsset() public {
+    function testAllowAsset() public notThisContract(poolRegistryAddress) {
         address assetId = makeAddr("asset");
 
         assertFalse(shareClass.isAllowedAsset(poolId, shareClassId, assetId));
@@ -215,18 +221,18 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         assertTrue(shareClass.isAllowedAsset(poolId, shareClassId, assetId));
     }
 
-    function testDisallowAsset() public {
+    function testDisallowAsset() public notThisContract(poolRegistryAddress) {
         shareClass.disallowAsset(poolId, shareClassId, USDC);
         assertFalse(shareClass.isAllowedAsset(poolId, shareClassId, USDC));
     }
 
-    function testGetShareClassNavPerShare() public view {
+    function testGetShareClassNavPerShare() public view notThisContract(poolRegistryAddress) {
         (D18 navPerShare, uint256 nav) = shareClass.shareClassNavPerShare(poolId, shareClassId);
         assertEq(nav, 0);
         assertEq(navPerShare.inner(), 0);
     }
 
-    function testRequestDeposit(uint256 amount) public {
+    function testRequestDeposit(uint256 amount) public notThisContract(poolRegistryAddress) {
         amount = uint256(bound(amount, MIN_REQUEST_AMOUNT, MAX_REQUEST_AMOUNT));
 
         assertEq(shareClass.pendingDeposits(shareClassId, USDC), 0);
@@ -240,7 +246,7 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         _assertDepositRequestEq(shareClassId, USDC, investor, UserOrder(amount, 1));
     }
 
-    function testCancelDepositRequest(uint256 amount) public {
+    function testCancelDepositRequest(uint256 amount) public notThisContract(poolRegistryAddress) {
         amount = uint256(bound(amount, MIN_REQUEST_AMOUNT, MAX_REQUEST_AMOUNT));
         shareClass.requestDeposit(poolId, shareClassId, amount, investor, USDC);
 
@@ -256,7 +262,7 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         uint256 depositAmount,
         uint8 numInvestors,
         uint128 approvalRatio_
-    ) public {
+    ) public notThisContract(poolRegistryAddress) {
         depositAmount = uint256(bound(depositAmount, MIN_REQUEST_AMOUNT, MAX_REQUEST_AMOUNT));
         D18 approvalRatio = d18(uint128(bound(approvalRatio_, 1e14, 1e18)));
         numInvestors = uint8(bound(numInvestors, 1, 100));
@@ -292,7 +298,10 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(d18(0), approvalRatio, d18(1e16), d18(0)));
     }
 
-    function testApproveDepositsTwoAssetsSameEpoch(uint256 depositAmount, uint128 approvalRatio) public {
+    function testApproveDepositsTwoAssetsSameEpoch(uint256 depositAmount, uint128 approvalRatio)
+        public
+        notThisContract(poolRegistryAddress)
+    {
         uint256 depositAmountUsdc = uint256(bound(depositAmount, MIN_REQUEST_AMOUNT, MAX_REQUEST_AMOUNT));
         uint256 depositAmountOther = uint256(bound(depositAmount, 1e8, MAX_REQUEST_AMOUNT));
         D18 approvalRatioUsdc = d18(uint128(bound(approvalRatio, 1e14, 1e18)));
@@ -316,7 +325,10 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         _assertEpochRatioEq(shareClassId, OTHER_STABLE, 1, EpochRatio(d18(0), approvalRatioOther, d18(1e10), d18(0)));
     }
 
-    function testIssueSharesSingleEpoch(uint256 depositAmount, uint128 navPerShare, uint128 approvalRatio_) public {
+    function testIssueSharesSingleEpoch(uint256 depositAmount, uint128 navPerShare, uint128 approvalRatio_)
+        public
+        notThisContract(poolRegistryAddress)
+    {
         depositAmount = uint256(bound(depositAmount, MIN_REQUEST_AMOUNT, MAX_REQUEST_AMOUNT));
         D18 poolToShareQuote = d18(uint128(bound(navPerShare, 1e14, type(uint128).max / 1e18)));
         D18 approvalRatio = d18(uint128(bound(approvalRatio_, 1e14, 1e18)));
@@ -337,7 +349,10 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(d18(0), approvalRatio, d18(1e16), poolToShareQuote));
     }
 
-    function testClaimDepositSingleEpoch(uint256 depositAmount, uint128 navPerShare, uint128 approvalRatio_) public {
+    function testClaimDepositSingleEpoch(uint256 depositAmount, uint128 navPerShare, uint128 approvalRatio_)
+        public
+        notThisContract(poolRegistryAddress)
+    {
         depositAmount = uint256(bound(depositAmount, MIN_REQUEST_AMOUNT, MAX_REQUEST_AMOUNT / 1e18));
         D18 poolToShareQuote = d18(uint128(bound(navPerShare, 1e10, type(uint128).max / 1e18)));
         D18 approvalRatio = d18(uint128(bound(approvalRatio_, 1e14, 1e18)));
@@ -366,7 +381,7 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         assertEq(userShares + payment, 0, "replay must not be possible");
     }
 
-    function testRequestRedeem(uint256 amount) public {
+    function testRequestRedeem(uint256 amount) public notThisContract(poolRegistryAddress) {
         amount = uint256(bound(amount, MIN_REQUEST_AMOUNT, MAX_REQUEST_AMOUNT));
 
         assertEq(shareClass.pendingRedeems(shareClassId, USDC), 0);
@@ -380,7 +395,7 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         _assertRedeemRequestEq(shareClassId, USDC, investor, UserOrder(amount, 1));
     }
 
-    function testCancelRedeemRequest(uint256 amount) public {
+    function testCancelRedeemRequest(uint256 amount) public notThisContract(poolRegistryAddress) {
         amount = uint256(bound(amount, MIN_REQUEST_AMOUNT, MAX_REQUEST_AMOUNT));
         shareClass.requestRedeem(poolId, shareClassId, amount, investor, USDC);
 
@@ -430,7 +445,10 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(approvalRatio, d18(0), d18(1e16), d18(0)));
     }
 
-    function testApproveRedeemsTwoAssetsSameEpoch(uint256 redeemAmount, uint128 approvalRatio) public {
+    function testApproveRedeemsTwoAssetsSameEpoch(uint256 redeemAmount, uint128 approvalRatio)
+        public
+        notThisContract(poolRegistryAddress)
+    {
         uint256 redeemAmountUsdc = uint256(bound(redeemAmount, MIN_REQUEST_AMOUNT, MAX_REQUEST_AMOUNT));
         uint256 redeemAmountOther = uint256(bound(redeemAmount, 1e8, MAX_REQUEST_AMOUNT));
         D18 approvalRatioUsdc = d18(uint128(bound(approvalRatio, 1e14, 1e18)));
@@ -469,7 +487,10 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         _assertEpochRatioEq(shareClassId, OTHER_STABLE, 1, EpochRatio(approvalRatioOther, d18(0), d18(1e10), d18(0)));
     }
 
-    function testRevokeSharesSingleEpoch(uint256 redeemAmount, uint128 navPerShare, uint128 approvalRatio_) public {
+    function testRevokeSharesSingleEpoch(uint256 redeemAmount, uint128 navPerShare, uint128 approvalRatio_)
+        public
+        notThisContract(poolRegistryAddress)
+    {
         redeemAmount = uint256(bound(redeemAmount, MIN_REQUEST_AMOUNT, MAX_REQUEST_AMOUNT / 1e18));
         D18 poolToShareQuote = d18(uint128(bound(navPerShare, 1e14, type(uint128).max / 1e18)));
         D18 approvalRatio = d18(uint128(bound(approvalRatio_, 1e14, 1e18)));
@@ -502,7 +523,10 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(approvalRatio, d18(0), d18(1e16), poolToShareQuote));
     }
 
-    function testClaimRedeemSingleEpoch(uint256 redeemAmount, uint128 navPerShare, uint128 approvalRatio_) public {
+    function testClaimRedeemSingleEpoch(uint256 redeemAmount, uint128 navPerShare, uint128 approvalRatio_)
+        public
+        notThisContract(poolRegistryAddress)
+    {
         redeemAmount = uint256(bound(redeemAmount, MIN_REQUEST_AMOUNT, MAX_REQUEST_AMOUNT / 1e18));
         D18 poolToShareQuote = d18(uint128(bound(navPerShare, 1e10, type(uint128).max / 1e18)));
         D18 approvalRatio = d18(uint128(bound(approvalRatio_, 1e14, 1e18)));
@@ -550,7 +574,7 @@ contract SingleShareClassIsolatedTest is SingleShareClassBaseTest {
         uint128 navPerShare_,
         uint128 approvalRatio_,
         uint8 maxEpochId
-    ) public {
+    ) public notThisContract(poolRegistryAddress) {
         depositAmount = uint256(bound(depositAmount, MIN_REQUEST_AMOUNT, MAX_REQUEST_AMOUNT));
         D18 poolToShareQuote = d18(uint128(bound(navPerShare_, 1e10, type(uint128).max / 1e18)));
         maxEpochId = uint8(bound(maxEpochId, 3, 50));
@@ -607,7 +631,7 @@ contract SingleShareClassIsolatedTest is SingleShareClassBaseTest {
         uint128 navPerShare,
         uint128 approvalRatio_,
         uint8 maxEpochId
-    ) public {
+    ) public notThisContract(poolRegistryAddress) {
         D18 poolToShareQuote = d18(uint128(bound(navPerShare, 1e10, type(uint128).max / 1e18)));
         maxEpochId = uint8(bound(maxEpochId, 3, 50));
         depositAmount = maxEpochId * uint256(bound(depositAmount, MIN_REQUEST_AMOUNT, MAX_REQUEST_AMOUNT / 1e18));
@@ -656,7 +680,7 @@ contract SingleShareClassIsolatedTest is SingleShareClassBaseTest {
         uint128 navPerShare_,
         uint128 approvalRatio_,
         uint8 maxEpochId
-    ) public {
+    ) public notThisContract(poolRegistryAddress) {
         redeemAmount = uint256(bound(redeemAmount, MIN_REQUEST_AMOUNT, MAX_REQUEST_AMOUNT / 1e18));
         D18 poolToShareQuote = d18(uint128(bound(navPerShare_, 1e10, type(uint128).max / 1e18)));
         maxEpochId = uint8(bound(maxEpochId, 3, 50));
@@ -719,7 +743,7 @@ contract SingleShareClassIsolatedTest is SingleShareClassBaseTest {
         uint128 navPerShare_,
         uint128 approvalRatio_,
         uint8 maxEpochId
-    ) public {
+    ) public notThisContract(poolRegistryAddress) {
         D18 poolToShareQuote = d18(uint128(bound(navPerShare_, 1e10, type(uint128).max / 1e18)));
         maxEpochId = uint8(bound(maxEpochId, 3, 50));
         redeemAmount = maxEpochId * uint256(bound(redeemAmount, MIN_REQUEST_AMOUNT, MAX_REQUEST_AMOUNT / 1e18));
@@ -776,6 +800,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     using MathLib for uint256;
 
     bytes16 wrongShareClassId = bytes16("otherId");
+    address unauthorized = makeAddr("unauthorizedAddress");
 
     error Unauthorized();
     error NotYetApproved();
@@ -801,40 +826,72 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     function testAllowAssetWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
         shareClass.allowAsset(poolId, wrongShareClassId, USDC);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
+        shareClass.allowAsset(poolId, shareClassId, USDC);
     }
 
     function testDisallowAssetWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
         shareClass.disallowAsset(poolId, wrongShareClassId, USDC);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
+        shareClass.disallowAsset(poolId, shareClassId, USDC);
     }
 
     function testRequestDepositWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        shareClass.requestDeposit(poolId, wrongShareClassId, 1, investor, USDC);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
         shareClass.requestDeposit(poolId, wrongShareClassId, 1, investor, USDC);
     }
 
     function testCancelRequestDepositWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
         shareClass.cancelDepositRequest(poolId, wrongShareClassId, investor, USDC);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
+        shareClass.cancelDepositRequest(poolId, wrongShareClassId, investor, USDC);
     }
 
     function testRequestRedeemWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        shareClass.requestRedeem(poolId, wrongShareClassId, 1, investor, USDC);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
         shareClass.requestRedeem(poolId, wrongShareClassId, 1, investor, USDC);
     }
 
     function testCancelRedeemRequestWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
         shareClass.cancelRedeemRequest(poolId, wrongShareClassId, investor, USDC);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
+        shareClass.cancelRedeemRequest(poolId, wrongShareClassId, investor, USDC);
     }
 
     function testApproveDepositsWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
         shareClass.approveDeposits(poolId, wrongShareClassId, d18(1), USDC, IERC7726Ext(address(this)));
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
+        shareClass.approveDeposits(poolId, wrongShareClassId, d18(1), USDC, IERC7726Ext(address(this)));
     }
 
     function testApproveRedeemsWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        shareClass.approveRedeems(poolId, wrongShareClassId, d18(1), USDC, IERC7726Ext(address(this)));
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
         shareClass.approveRedeems(poolId, wrongShareClassId, d18(1), USDC, IERC7726Ext(address(this)));
     }
 
@@ -848,10 +905,18 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
 
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
         shareClass.issueShares(poolId, wrongShareClassId, USDC, d18(1));
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
+        shareClass.issueShares(poolId, wrongShareClassId, USDC, d18(1));
     }
 
     function testIssueSharesUntilEpochWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        shareClass.issueSharesUntilEpoch(poolId, wrongShareClassId, USDC, d18(1), 0);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
         shareClass.issueSharesUntilEpoch(poolId, wrongShareClassId, USDC, d18(1), 0);
     }
 
@@ -865,10 +930,18 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
 
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
         shareClass.revokeShares(poolId, wrongShareClassId, USDC, d18(1));
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
+        shareClass.revokeShares(poolId, wrongShareClassId, USDC, d18(1));
     }
 
     function testRevokeSharesUntilEpochWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        shareClass.revokeSharesUntilEpoch(poolId, wrongShareClassId, USDC, d18(1), 0);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
         shareClass.revokeSharesUntilEpoch(poolId, wrongShareClassId, USDC, d18(1), 0);
     }
 

@@ -84,7 +84,10 @@ contract SingleShareClass is Auth, IShareClassManager {
         investorPermissions = investorPermissions_;
     }
 
-    // TODO(@wischli): Docs
+    /// @notice Associate a pool with a share class id.
+    ///
+    /// @param poolId Identifier of the pool
+    /// @param shareClassId_ Identifier of the share class to be linked to the pool
     function setShareClassId(PoolId poolId, bytes16 shareClassId_) external auth {
         require(shareClassIds[poolId] == bytes16(0), ShareClassIdAlreadySet());
 
@@ -117,7 +120,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         uint256 amount,
         address investor,
         address depositAssetId
-    ) external {
+    ) external auth {
         require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
         require(allowedAssets[shareClassId][depositAssetId] == true, IShareClassManager.AssetNotAllowed());
 
@@ -126,6 +129,7 @@ contract SingleShareClass is Auth, IShareClassManager {
 
     function cancelDepositRequest(PoolId poolId, bytes16 shareClassId, address investor, address depositAssetId)
         external
+        auth
     {
         require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
 
@@ -141,6 +145,7 @@ contract SingleShareClass is Auth, IShareClassManager {
     /// @inheritdoc IShareClassManager
     function requestRedeem(PoolId poolId, bytes16 shareClassId, uint256 amount, address investor, address payoutAssetId)
         external
+        auth
     {
         require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
         require(allowedAssets[shareClassId][payoutAssetId] == true, IShareClassManager.AssetNotAllowed());
@@ -151,6 +156,7 @@ contract SingleShareClass is Auth, IShareClassManager {
     /// @inheritdoc IShareClassManager
     function cancelRedeemRequest(PoolId poolId, bytes16 shareClassId, address investor, address payoutAssetId)
         external
+        auth
     {
         require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
 
@@ -462,7 +468,7 @@ contract SingleShareClass is Auth, IShareClassManager {
     }
 
     /// @inheritdoc IShareClassManager
-    function updateShareClassNav(PoolId poolId, bytes16 shareClassId) external view returns (D18, uint256) {
+    function updateShareClassNav(PoolId poolId, bytes16 shareClassId) external view auth returns (D18, uint256) {
         require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
 
         // TODO(@mustermeiszer): Needed for single share class?
@@ -543,7 +549,13 @@ contract SingleShareClass is Auth, IShareClassManager {
         );
     }
 
-    // TODO(@wischli): Docs
+    /// @notice Updates the amount of a request to redeem (exchange) share class tokens for an asset.
+    ///
+    /// @param poolId Identifier of the pool
+    /// @param shareClassId Identifier of the share class
+    /// @param amount Share class token amount which is updated
+    /// @param investor Address of the entity which is depositing
+    /// @param payoutAssetId Identifier of the asset which the investor wants to offramp to
     function _updateRedeemRequest(
         PoolId poolId,
         bytes16 shareClassId,
