@@ -443,7 +443,7 @@ contract SingleShareClass is Auth, IShareClassManager {
 
             paymentShareAmount += approvedShares;
             payoutAssetAmount += approvedAssetAmount;
-            
+
             userOrder.pending -= approvedShares;
 
             emit IShareClassManager.ClaimedRedeem(

@@ -623,6 +623,7 @@ contract SingleShareClassIsolatedTest is SingleShareClassBaseTest {
         }
         (uint256 userShares, uint256 payment) = shareClass.claimDeposit(poolId, shareClassId, investor, USDC);
 
+        assertEq(approvedUSDC + pending, depositAmount, "approved + pending must equal request amount");
         assertEq(shares, userShares, "shares mismatch");
         assertEq(approvedUSDC, payment, "payment mismatch");
         _assertDepositRequestEq(shareClassId, USDC, investor, UserOrder(pending, maxEpochId));
@@ -675,6 +676,61 @@ contract SingleShareClassIsolatedTest is SingleShareClassBaseTest {
         // Ensure another issuance has no impact
         shareClass.revokeShares(poolId, shareClassId, USDC, poolToShareQuote);
         assertEq(shareClass.latestRevocation(shareClassId, USDC), maxEpochId - 1);
+    }
+
+    function testClaimRedeemManyEpochs(
+        uint256 redeemAmount,
+        uint128 navPerShare,
+        uint128 approvalRatio_,
+        uint8 maxEpochId
+    ) public {
+        D18 poolToShareQuote = d18(uint128(bound(navPerShare, 1e10, type(uint128).max / 1e18)));
+        maxEpochId = uint8(bound(maxEpochId, 3, 50));
+        redeemAmount = maxEpochId * uint256(bound(redeemAmount, MIN_REQUEST_AMOUNT, MAX_REQUEST_AMOUNT / 1e18));
+        D18 approvalRatio = d18(uint128(bound(approvalRatio_, 1e10, 1e16)));
+        uint256 pendingRedeem = redeemAmount;
+        uint256 payout = 0;
+        uint256 approvedRedeem = 0;
+
+        // Mock total issuance to equal total redeemAmount
+        vm.store(
+            address(shareClass),
+            keccak256(abi.encode(shareClassId, uint256(WITH_TRANSIENT ? 8 : 9))),
+            bytes32(uint256(redeemAmount))
+        );
+
+        shareClass.requestRedeem(poolId, shareClassId, redeemAmount, investor, USDC);
+
+        // Approve many epochs and revoke shares
+        for (uint8 i = 1; i < maxEpochId; i++) {
+            _resetTransientEpochIncrement();
+            shareClass.approveRedeems(poolId, shareClassId, approvalRatio, USDC, oracleMock);
+            pendingRedeem -= approvalRatio.mulUint256(pendingRedeem);
+        }
+        shareClass.revokeShares(poolId, shareClassId, USDC, poolToShareQuote);
+        assertEq(shareClass.totalIssuance(shareClassId), pendingRedeem, "totalIssuance mismatch");
+
+        // Ensure each epoch is claimed separately
+        pendingRedeem = redeemAmount;
+        for (uint8 i = 1; i < maxEpochId; i++) {
+            uint256 epochApproved = approvalRatio.mulUint256(pendingRedeem);
+            uint256 epochPayout = poolToShareQuote.reciprocalMulInt(epochApproved) * 100;
+            pendingRedeem -= approvalRatio.mulUint256(pendingRedeem);
+            payout += epochPayout;
+            approvedRedeem += epochApproved;
+
+            vm.expectEmit(true, true, true, true);
+            emit IShareClassManager.ClaimedRedeem(
+                poolId, shareClassId, i, investor, USDC, epochApproved, pendingRedeem, epochPayout
+            );
+        }
+        (uint256 payoutAssetAmount, uint256 paymentShareAmount) =
+            shareClass.claimRedeem(poolId, shareClassId, investor, USDC);
+
+        assertEq(approvedRedeem + pendingRedeem, redeemAmount, "approved + pending must equal request amount");
+        assertEq(payout, payoutAssetAmount, "payout asset amount mismatch");
+        assertEq(approvedRedeem, paymentShareAmount, "payment shares mismatch");
+        _assertRedeemRequestEq(shareClassId, USDC, investor, UserOrder(pendingRedeem, maxEpochId));
     }
 
     // TODO: function testIssueSharesWithApprovedRedemption
