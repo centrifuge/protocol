@@ -779,12 +779,23 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
 
     error Unauthorized();
     error NotYetApproved();
+    error ShareClassIdAlreadySet();
 
     function testConstructor() public {
         vm.expectRevert(bytes("Empty poolRegistry"));
         new SingleShareClass(address(this), address(0), address(0));
         vm.expectRevert(bytes("Empty investorPermissions"));
         new SingleShareClass(address(this), address(1), address(0));
+    }
+
+    function testSetShareClassIdAlreadySet() public {
+        vm.expectRevert(abi.encodeWithSelector(ShareClassIdAlreadySet.selector));
+        shareClass.setShareClassId(poolId, shareClassId);
+    }
+
+    function testIsAllowedAssetWrongShareClassId() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        shareClass.isAllowedAsset(poolId, wrongShareClassId, USDC);
     }
 
     function testAllowAssetWrongShareClassId() public {
@@ -914,6 +925,26 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     function testRevokeSharesBeforeApproval() public {
         vm.expectRevert(abi.encodeWithSelector(NotYetApproved.selector));
         shareClass.revokeShares(poolId, shareClassId, USDC, d18(1));
+    }
+
+    function testIssueSharesUntilEpochNotFound() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.EpochNotFound.selector));
+        shareClass.issueSharesUntilEpoch(poolId, shareClassId, USDC, d18(1), 2);
+    }
+
+    function testRevokeSharesUntilEpochNotFound() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.EpochNotFound.selector));
+        shareClass.revokeSharesUntilEpoch(poolId, shareClassId, USDC, d18(1), 2);
+    }
+
+    function testClaimDepositUntilEpochNotFound() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.EpochNotFound.selector));
+        shareClass.claimDepositUntilEpoch(poolId, shareClassId, investor, USDC, 2);
+    }
+
+    function testClaimRedeemUntilEpochNotFound() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.EpochNotFound.selector));
+        shareClass.claimRedeemUntilEpoch(poolId, shareClassId, investor, USDC, 2);
     }
 
     function testRequestDepositNotInvestor() public {
