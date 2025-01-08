@@ -287,7 +287,7 @@ interface IShareClassManager {
     /// @param shareClassId Identifier of the share class
     /// @return navPerShare Total value of assets of the pool and share class per share
     /// @return issuance Total issuance of the share class
-    function getShareClassNavPerShare(PoolId poolId, bytes16 shareClassId)
+    function shareClassNavPerShare(PoolId poolId, bytes16 shareClassId)
         external
         view
         returns (D18 navPerShare, uint256 issuance);

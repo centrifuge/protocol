@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {console} from "forge-std/console.sol";
+// import {console} from "forge-std/console.sol";
 
 import {Auth} from "src/Auth.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
@@ -61,7 +61,7 @@ contract SingleShareClass is Auth, IShareClassManager {
     mapping(bytes16 => mapping(address assetId => bool)) public allowedAssets;
     mapping(bytes16 => mapping(address paymentAssetId => uint256 pending)) public pendingDeposits;
     mapping(bytes16 => mapping(address payoutAssetId => uint256 pending)) public pendingRedeems;
-    mapping(bytes16 => D18 navPerShare) public shareClassNavPerShare;
+    mapping(bytes16 => D18 navPerShare) private _shareClassNavPerShare;
     mapping(bytes16 => uint256) public totalIssuance;
     // Share class + epoch storage
     mapping(PoolId poolId => uint32 epochId) public epochIds;
@@ -290,7 +290,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         }
 
         latestIssuance[shareClassId][depositAssetId] = endEpochId;
-        shareClassNavPerShare[shareClassId] = navPerShare;
+        _shareClassNavPerShare[shareClassId] = navPerShare;
     }
 
     /// @inheritdoc IShareClassManager
@@ -346,7 +346,7 @@ contract SingleShareClass is Auth, IShareClassManager {
 
         totalIssuance[shareClassId] -= totalRevokedShares;
         latestRevocation[shareClassId][payoutAssetId] = endEpochId;
-        shareClassNavPerShare[shareClassId] = navPerShare;
+        _shareClassNavPerShare[shareClassId] = navPerShare;
     }
 
     /// @inheritdoc IShareClassManager
@@ -489,14 +489,14 @@ contract SingleShareClass is Auth, IShareClassManager {
 
     /// @inheritdoc IShareClassManager
     // TODO(@mustermeiszer): Needed for single share class?
-    function getShareClassNavPerShare(PoolId poolId, bytes16 shareClassId)
+    function shareClassNavPerShare(PoolId poolId, bytes16 shareClassId)
         external
         view
         returns (D18 navPerShare, uint256 issuance)
     {
         require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
 
-        return (shareClassNavPerShare[shareClassId], totalIssuance[shareClassId]);
+        return (_shareClassNavPerShare[shareClassId], totalIssuance[shareClassId]);
     }
 
     /// @notice Updates the amount of a request to deposit (exchange) an asset amount for share class tokens.

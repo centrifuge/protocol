@@ -220,6 +220,12 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         assertFalse(shareClass.isAllowedAsset(poolId, shareClassId, USDC));
     }
 
+    function testGetShareClassNavPerShare() public view {
+        (D18 navPerShare, uint256 nav) = shareClass.shareClassNavPerShare(poolId, shareClassId);
+        assertEq(nav, 0);
+        assertEq(navPerShare.inner(), 0);
+    }
+
     function testRequestDeposit(uint256 amount) public {
         amount = uint256(bound(amount, MIN_REQUEST_AMOUNT, MAX_REQUEST_AMOUNT));
 
@@ -541,12 +547,12 @@ contract SingleShareClassIsolatedTest is SingleShareClassBaseTest {
 
     function testIssueSharesManyEpochs(
         uint256 depositAmount,
-        uint128 navPerShare,
+        uint128 navPerShare_,
         uint128 approvalRatio_,
         uint8 maxEpochId
     ) public {
         depositAmount = uint256(bound(depositAmount, MIN_REQUEST_AMOUNT, MAX_REQUEST_AMOUNT));
-        D18 poolToShareQuote = d18(uint128(bound(navPerShare, 1e10, type(uint128).max / 1e18)));
+        D18 poolToShareQuote = d18(uint128(bound(navPerShare_, 1e10, type(uint128).max / 1e18)));
         maxEpochId = uint8(bound(maxEpochId, 3, 50));
         D18 approvalRatio = d18(uint128(bound(approvalRatio_, 1e14, 1e18)));
         uint256 shares = 0;
@@ -565,11 +571,11 @@ contract SingleShareClassIsolatedTest is SingleShareClassBaseTest {
         for (uint8 i = 1; i < maxEpochId; i++) {
             uint256 approvedUSDC = approvalRatio.mulUint256(pendingUSDC);
             pendingUSDC += depositAmount - approvedUSDC;
-            uint256 shares = poolToShareQuote.mulUint256(approvedUSDC / 100);
-            uint256 nav = poolToShareQuote.mulUint256(shares);
+            uint256 epochShares = poolToShareQuote.mulUint256(approvedUSDC / 100);
+            uint256 nav = poolToShareQuote.mulUint256(epochShares);
 
             vm.expectEmit(true, true, true, true);
-            emit IShareClassManager.IssuedShares(poolId, shareClassId, i, poolToShareQuote, nav, shares);
+            emit IShareClassManager.IssuedShares(poolId, shareClassId, i, poolToShareQuote, nav, epochShares);
         }
 
         shareClass.issueShares(poolId, shareClassId, USDC, poolToShareQuote);
@@ -587,6 +593,9 @@ contract SingleShareClassIsolatedTest is SingleShareClassBaseTest {
             _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(d18(0), approvalRatio, d18(1e16), poolToShareQuote));
         }
         assertEq(shareClass.totalIssuance(shareClassId), shares, "totalIssuance mismatch");
+        (D18 navPerShare, uint256 issuance) = shareClass.shareClassNavPerShare(poolId, shareClassId);
+        assertEq(navPerShare.inner(), poolToShareQuote.inner());
+        assertEq(issuance, shares, "totalIssuance mismatch");
 
         // Ensure another issuance has no impact
         shareClass.issueShares(poolId, shareClassId, USDC, poolToShareQuote);
@@ -644,12 +653,12 @@ contract SingleShareClassIsolatedTest is SingleShareClassBaseTest {
 
     function testRevokeSharesManyEpochs(
         uint256 redeemAmount,
-        uint128 navPerShare,
+        uint128 navPerShare_,
         uint128 approvalRatio_,
         uint8 maxEpochId
     ) public {
         redeemAmount = uint256(bound(redeemAmount, MIN_REQUEST_AMOUNT, MAX_REQUEST_AMOUNT / 1e18));
-        D18 poolToShareQuote = d18(uint128(bound(navPerShare, 1e10, type(uint128).max / 1e18)));
+        D18 poolToShareQuote = d18(uint128(bound(navPerShare_, 1e10, type(uint128).max / 1e18)));
         maxEpochId = uint8(bound(maxEpochId, 3, 50));
         D18 approvalRatio = d18(uint128(bound(approvalRatio_, 1e14, 1e18)));
         uint256 initialShares = maxEpochId * redeemAmount;
@@ -696,6 +705,9 @@ contract SingleShareClassIsolatedTest is SingleShareClassBaseTest {
             _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(approvalRatio, d18(0), d18(1e16), poolToShareQuote));
         }
         assertEq(shareClass.totalIssuance(shareClassId), initialShares - redeemedShares);
+        (D18 navPerShare, uint256 issuance) = shareClass.shareClassNavPerShare(poolId, shareClassId);
+        assertEq(navPerShare.inner(), poolToShareQuote.inner());
+        assertEq(issuance, initialShares - redeemedShares);
 
         // Ensure another issuance has no impact
         shareClass.revokeShares(poolId, shareClassId, USDC, poolToShareQuote);
@@ -704,11 +716,11 @@ contract SingleShareClassIsolatedTest is SingleShareClassBaseTest {
 
     function testClaimRedeemManyEpochs(
         uint256 redeemAmount,
-        uint128 navPerShare,
+        uint128 navPerShare_,
         uint128 approvalRatio_,
         uint8 maxEpochId
     ) public {
-        D18 poolToShareQuote = d18(uint128(bound(navPerShare, 1e10, type(uint128).max / 1e18)));
+        D18 poolToShareQuote = d18(uint128(bound(navPerShare_, 1e10, type(uint128).max / 1e18)));
         maxEpochId = uint8(bound(maxEpochId, 3, 50));
         redeemAmount = maxEpochId * uint256(bound(redeemAmount, MIN_REQUEST_AMOUNT, MAX_REQUEST_AMOUNT / 1e18));
         D18 approvalRatio = d18(uint128(bound(approvalRatio_, 1e10, 1e16)));
@@ -876,7 +888,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
 
     function testGetShareClassNavWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
-        shareClass.getShareClassNavPerShare(poolId, wrongShareClassId);
+        shareClass.shareClassNavPerShare(poolId, wrongShareClassId);
     }
 
     function testRequestDepositAssetNotAllowed() public {
