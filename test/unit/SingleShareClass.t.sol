@@ -145,10 +145,8 @@ abstract contract SingleShareClassBaseTest is Test {
     }
 
     function _assertEpochEq(bytes16 shareClassId_, uint32 epochId, Epoch memory expected) internal view {
-        (IERC7726Ext valuation, uint256 approvedDeposits, uint256 approvedShares) =
-            shareClass.epochs(shareClassId_, epochId);
+        (uint256 approvedDeposits, uint256 approvedShares) = shareClass.epochs(shareClassId_, epochId);
 
-        assertEq(address(valuation), address(expected.valuation));
         assertEq(approvedDeposits, expected.approvedDeposits, "approveDeposits mismatch");
         assertEq(approvedShares, expected.approvedShares, "approvedShares mismatch");
     }
@@ -274,7 +272,7 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         // Only one epoch should have passed
         assertEq(shareClass.epochIds(poolId), 2);
 
-        _assertEpochEq(shareClassId, 1, Epoch(oracleMock, approvedPool, 0));
+        _assertEpochEq(shareClassId, 1, Epoch(approvedPool, 0));
         _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(d18(0), approvalRatio, d18(1e16), d18(0)));
     }
 
@@ -300,7 +298,7 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
 
         assertEq(shareClass.epochIds(poolId), 2);
 
-        _assertEpochEq(shareClassId, 1, Epoch(oracleMock, approvedPool, 0));
+        _assertEpochEq(shareClassId, 1, Epoch(approvedPool, 0));
         _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(d18(0), approvalRatioUsdc, d18(1e16), d18(0)));
         _assertEpochRatioEq(shareClassId, OTHER_STABLE, 1, EpochRatio(d18(0), approvalRatioOther, d18(1e10), d18(0)));
     }
@@ -325,7 +323,7 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         shareClass.issueShares(poolId, shareClassId, USDC, poolToShareQuote);
         assertEq(shareClass.totalIssuance(shareClassId), shares);
         assertEq(shareClass.latestIssuance(shareClassId, USDC), 1);
-        _assertEpochEq(shareClassId, 1, Epoch(oracleMock, approvedPool, 0));
+        _assertEpochEq(shareClassId, 1, Epoch(approvedPool, 0));
         _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(d18(0), approvalRatio, d18(1e16), poolToShareQuote));
     }
 
@@ -421,7 +419,7 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         // Only one epoch should have passed
         assertEq(shareClass.epochIds(poolId), 2);
 
-        _assertEpochEq(shareClassId, 1, Epoch(oracleMock, 0, approvedShares));
+        _assertEpochEq(shareClassId, 1, Epoch(0, approvedShares));
         _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(approvalRatio, d18(0), d18(1e16), d18(0)));
     }
 
@@ -462,7 +460,7 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
             "pending shares OtherCurrency mismatch"
         );
 
-        _assertEpochEq(shareClassId, 1, Epoch(oracleMock, 0, approvedShares));
+        _assertEpochEq(shareClassId, 1, Epoch(0, approvedShares));
         _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(approvalRatioUsdc, d18(0), d18(1e16), d18(0)));
         _assertEpochRatioEq(shareClassId, OTHER_STABLE, 1, EpochRatio(approvalRatioOther, d18(0), d18(1e10), d18(0)));
     }
@@ -499,7 +497,7 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
 
         assertEq(shareClass.totalIssuance(shareClassId), redeemAmount - approvedRedeem);
         assertEq(shareClass.latestRevocation(shareClassId, USDC), 1);
-        _assertEpochEq(shareClassId, 1, Epoch(oracleMock, 0, approvedRedeem));
+        _assertEpochEq(shareClassId, 1, Epoch(0, approvedRedeem));
         _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(approvalRatio, d18(0), d18(1e16), poolToShareQuote));
     }
 
@@ -593,7 +591,7 @@ contract SingleShareClassIsolatedTest is SingleShareClassBaseTest {
             uint256 approvedPool = approvedUSDC / 100;
             shares += poolToShareQuote.mulUint256(approvedPool);
 
-            _assertEpochEq(shareClassId, i, Epoch(oracleMock, approvedPool, 0));
+            _assertEpochEq(shareClassId, i, Epoch(approvedPool, 0));
             _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(d18(0), approvalRatio, d18(1e16), poolToShareQuote));
         }
         assertEq(shareClass.totalIssuance(shareClassId), shares, "totalIssuance mismatch");
@@ -705,7 +703,7 @@ contract SingleShareClassIsolatedTest is SingleShareClassBaseTest {
             pendingRedeems += redeemAmount - approvedRedeems;
             redeemedShares += approvedRedeems;
 
-            _assertEpochEq(shareClassId, i, Epoch(oracleMock, 0, approvedRedeems));
+            _assertEpochEq(shareClassId, i, Epoch(0, approvedRedeems));
             _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(approvalRatio, d18(0), d18(1e16), poolToShareQuote));
         }
         assertEq(shareClass.totalIssuance(shareClassId), initialShares - redeemedShares);

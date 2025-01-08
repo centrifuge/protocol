@@ -12,8 +12,6 @@ import {IERC7726Ext} from "src/interfaces/IERC7726.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
 
 struct Epoch {
-    /// @dev Valuation used for quotas
-    IERC7726Ext valuation;
     /// @dev Amount of approved deposits (in pool denomination)
     uint256 approvedDeposits;
     /// @dev Amount of approved shares (in share denomination)
@@ -190,7 +188,6 @@ contract SingleShareClass is Auth, IShareClassManager {
 
         // Update epoch data
         Epoch storage epoch = epochs[shareClassId][approvalEpochId];
-        epoch.valuation = valuation;
         epoch.approvedDeposits += approvedPoolAmount;
 
         EpochRatio storage epochRatio = epochRatios[shareClassId][paymentAssetId][approvalEpochId];
@@ -236,7 +233,6 @@ contract SingleShareClass is Auth, IShareClassManager {
 
         // Update epoch data
         Epoch storage epoch = epochs[shareClassId][approvalEpochId];
-        epoch.valuation = valuation;
         epoch.approvedShares += approvedShares;
 
         EpochRatio storage epochRatio = epochRatios[shareClassId][payoutAssetId][approvalEpochId];
