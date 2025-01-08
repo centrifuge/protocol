@@ -549,6 +549,8 @@ contract SingleShareClassIsolatedTest is SingleShareClassBaseTest {
         D18 poolToShareQuote = d18(uint128(bound(navPerShare, 1e10, type(uint128).max / 1e18)));
         maxEpochId = uint8(bound(maxEpochId, 3, 50));
         D18 approvalRatio = d18(uint128(bound(approvalRatio_, 1e14, 1e18)));
+        uint256 shares = 0;
+        uint256 pendingUSDC = depositAmount;
 
         // Bump up latestApproval epochs
         for (uint8 i = 1; i < maxEpochId; i++) {
@@ -559,16 +561,26 @@ contract SingleShareClassIsolatedTest is SingleShareClassBaseTest {
         }
         assertEq(shareClass.totalIssuance(shareClassId), 0);
 
+        // Assert issued events
+        for (uint8 i = 1; i < maxEpochId; i++) {
+            uint256 approvedUSDC = approvalRatio.mulUint256(pendingUSDC);
+            pendingUSDC += depositAmount - approvedUSDC;
+            uint256 shares = poolToShareQuote.mulUint256(approvedUSDC / 100);
+            uint256 nav = poolToShareQuote.mulUint256(shares);
+
+            vm.expectEmit(true, true, true, true);
+            emit IShareClassManager.IssuedShares(poolId, shareClassId, i, poolToShareQuote, nav, shares);
+        }
+
         shareClass.issueShares(poolId, shareClassId, USDC, poolToShareQuote);
         assertEq(shareClass.latestIssuance(shareClassId, USDC), maxEpochId - 1);
 
         // Ensure each epoch is issued separately
-        uint256 shares = 0;
-        uint256 pendingDeposits = 0;
+        pendingUSDC = depositAmount;
         for (uint8 i = 1; i < maxEpochId; i++) {
-            uint256 approvedDeposits = approvalRatio.mulUint256(depositAmount + pendingDeposits);
-            pendingDeposits += depositAmount - approvedDeposits;
-            uint256 approvedPool = approvedDeposits / 100;
+            uint256 approvedUSDC = approvalRatio.mulUint256(pendingUSDC);
+            pendingUSDC += depositAmount - approvedUSDC;
+            uint256 approvedPool = approvedUSDC / 100;
             shares += poolToShareQuote.mulUint256(approvedPool);
 
             _assertEpochEq(shareClassId, i, Epoch(oracleMock, approvedPool, 0));
@@ -611,14 +623,15 @@ contract SingleShareClassIsolatedTest is SingleShareClassBaseTest {
         // Ensure each epoch is claimed separately
         approvedUSDC = 0;
         pending = depositAmount;
-        vm.expectEmit(true, true, true, true);
         for (uint8 i = 1; i < maxEpochId; i++) {
             uint256 epochShares = poolToShareQuote.mulUint256(approvalRatio.mulUint256(pending) / 100);
-            approvedUSDC += approvalRatio.mulUint256(pending);
-            pending = depositAmount - approvedUSDC;
+            uint256 epochApprovedUSDC = approvalRatio.mulUint256(pending);
+            approvedUSDC += epochApprovedUSDC;
+            pending -= epochApprovedUSDC;
 
+            vm.expectEmit(true, true, true, true);
             emit IShareClassManager.ClaimedDeposit(
-                poolId, shareClassId, i, investor, USDC, approvedUSDC, pending, epochShares
+                poolId, shareClassId, i, investor, USDC, epochApprovedUSDC, pending, epochShares
             );
         }
         (uint256 userShares, uint256 payment) = shareClass.claimDeposit(poolId, shareClassId, investor, USDC);
