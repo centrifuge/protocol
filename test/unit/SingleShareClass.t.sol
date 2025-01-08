@@ -640,6 +640,8 @@ contract SingleShareClassIsolatedTest is SingleShareClassBaseTest {
         maxEpochId = uint8(bound(maxEpochId, 3, 50));
         D18 approvalRatio = d18(uint128(bound(approvalRatio_, 1e14, 1e18)));
         uint256 initialShares = maxEpochId * redeemAmount;
+        uint256 redeemedShares = 0;
+        uint256 pendingRedeems = redeemAmount;
 
         // Mock total issuance to equal total redeemAmount
         vm.store(
@@ -657,12 +659,21 @@ contract SingleShareClassIsolatedTest is SingleShareClassBaseTest {
         }
         assertEq(shareClass.totalIssuance(shareClassId), initialShares);
 
+        // Assert revoked events
+        for (uint8 i = 1; i < maxEpochId; i++) {
+            uint256 approvedRedeems = approvalRatio.mulUint256(pendingRedeems);
+            uint256 nav = poolToShareQuote.mulUint256(approvedRedeems);
+            pendingRedeems += redeemAmount - approvedRedeems;
+
+            vm.expectEmit(true, true, true, true);
+            emit IShareClassManager.RevokedShares(poolId, shareClassId, i, poolToShareQuote, nav, approvedRedeems);
+        }
+
         shareClass.revokeShares(poolId, shareClassId, USDC, poolToShareQuote);
         assertEq(shareClass.latestRevocation(shareClassId, USDC), maxEpochId - 1);
 
         // Ensure each epoch was revoked separately
-        uint256 redeemedShares = 0;
-        uint256 pendingRedeems = redeemAmount;
+        pendingRedeems = redeemAmount;
         for (uint8 i = 1; i < maxEpochId; i++) {
             uint256 approvedRedeems = approvalRatio.mulUint256(pendingRedeems);
             pendingRedeems += redeemAmount - approvedRedeems;

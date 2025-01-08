@@ -338,7 +338,7 @@ contract SingleShareClass is Auth, IShareClassManager {
 
             payoutAssetAmount +=
                 epochRatios[shareClassId][payoutAssetId][epochId].assetToPoolQuote.reciprocalMulInt(epochPoolAmount);
-            uint256 nav = navPerShare.reciprocalMulInt(epochPoolAmount);
+            uint256 nav = navPerShare.mulUint256(revokedShares);
             totalRevokedShares += revokedShares;
 
             emit IShareClassManager.RevokedShares(poolId, shareClassId, epochId, navPerShare, nav, revokedShares);
