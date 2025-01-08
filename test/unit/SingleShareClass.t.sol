@@ -10,7 +10,6 @@ import {IERC7726Ext} from "src/interfaces/IERC7726.sol";
 import {IAuth} from "src/interfaces/IAuth.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
-import {IInvestorPermissions} from "src/interfaces/IInvestorPermissions.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
 import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 
@@ -30,16 +29,6 @@ bool constant WITH_TRANSIENT = false;
 contract PoolRegistryMock {
     function currency(PoolId) external pure returns (IERC20Metadata) {
         return IERC20Metadata(POOL_CURRENCY);
-    }
-}
-
-contract EveryoneInvestor {
-    function isFrozenInvestor(bytes16, address) external pure returns (bool) {
-        return false;
-    }
-
-    function isUnfrozenInvestor(bytes16, address) external pure returns (bool) {
-        return true;
     }
 }
 
@@ -110,16 +99,13 @@ abstract contract SingleShareClassBaseTest is Test {
 
     SingleShareClass public shareClass;
     IPoolRegistry public poolRegistry;
-    IInvestorPermissions public investorPermissions;
 
     OracleMock oracleMock = new OracleMock();
     PoolRegistryMock poolRegistryMock = new PoolRegistryMock();
-    EveryoneInvestor investorPermissionsMock = new EveryoneInvestor();
 
     PoolId poolId = PoolId.wrap(1);
     bytes16 shareClassId = SHARE_CLASS_ID;
     address poolRegistryAddress = makeAddr("poolRegistry");
-    address investorPermissionsAddress = makeAddr("investorPermissions");
     address investor = makeAddr("investor");
 
     modifier notThisContract(address addr) {
@@ -131,10 +117,8 @@ abstract contract SingleShareClassBaseTest is Test {
         // Set bytecode of interfaces to mock
         vm.etch(poolRegistryAddress, address(poolRegistryMock).code);
         poolRegistry = IPoolRegistry(poolRegistryAddress);
-        vm.etch(investorPermissionsAddress, address(investorPermissionsMock).code);
-        investorPermissions = IInvestorPermissions(investorPermissionsAddress);
 
-        shareClass = new SingleShareClass(address(this), address(poolRegistry), address(investorPermissions));
+        shareClass = new SingleShareClass(address(this), address(poolRegistry));
         shareClass.setShareClassId(poolId, shareClassId);
         shareClass.allowAsset(poolId, shareClassId, USDC);
         shareClass.allowAsset(poolId, shareClassId, OTHER_STABLE);
@@ -196,19 +180,15 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
     using MathLib for uint256;
 
     function testDeployment(address nonWard) public view notThisContract(poolRegistryAddress) {
-        vm.assume(
-            nonWard != address(poolRegistry) && nonWard != address(investorPermissions) && nonWard != address(this)
-        );
+        vm.assume(nonWard != address(poolRegistry) && nonWard != address(this));
 
         assertEq(shareClass.poolRegistry(), address(poolRegistry));
-        assertEq(shareClass.investorPermissions(), address(investorPermissions));
         assertEq(shareClass.shareClassIds(poolId), shareClassId);
         assertTrue(shareClass.isAllowedAsset(poolId, shareClassId, USDC));
         assertTrue(shareClass.isAllowedAsset(poolId, shareClassId, OTHER_STABLE));
 
         assertEq(shareClass.wards(address(this)), 1);
         assertEq(shareClass.wards(address(poolRegistry)), 0);
-        assertEq(shareClass.wards(address(investorPermissions)), 0);
 
         assertEq(shareClass.wards(nonWard), 0);
     }
@@ -808,9 +788,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
 
     function testConstructor() public {
         vm.expectRevert(bytes("Empty poolRegistry"));
-        new SingleShareClass(address(this), address(0), address(0));
-        vm.expectRevert(bytes("Empty investorPermissions"));
-        new SingleShareClass(address(this), address(1), address(0));
+        new SingleShareClass(address(this), address(0));
     }
 
     function testSetShareClassIdAlreadySet() public {
@@ -1018,28 +996,6 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     function testClaimRedeemUntilEpochNotFound() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.EpochNotFound.selector));
         shareClass.claimRedeemUntilEpoch(poolId, shareClassId, investor, USDC, 2);
-    }
-
-    function testRequestDepositNotInvestor() public {
-        vm.mockCall(
-            address(investorPermissions),
-            abi.encodeWithSignature("isUnfrozenInvestor(bytes16,address)"),
-            abi.encode(false)
-        );
-
-        vm.expectRevert(abi.encodeWithSelector(Unauthorized.selector));
-        shareClass.requestDeposit(poolId, shareClassId, 1, investor, USDC);
-    }
-
-    function testCancelDepositNotInvestor() public {
-        vm.mockCall(
-            address(investorPermissions),
-            abi.encodeWithSignature("isUnfrozenInvestor(bytes16,address)"),
-            abi.encode(false)
-        );
-
-        vm.expectRevert(abi.encodeWithSelector(Unauthorized.selector));
-        shareClass.cancelDepositRequest(poolId, shareClassId, investor, USDC);
     }
 
     function testUpdateShareClassUnsupported() public {

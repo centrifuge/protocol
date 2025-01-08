@@ -9,7 +9,6 @@ import {MathLib} from "src/libraries/MathLib.sol";
 import {D18, d18} from "src/types/D18.sol";
 import {PoolId} from "src/types/PoolId.sol";
 import {IERC7726Ext} from "src/interfaces/IERC7726.sol";
-import {IInvestorPermissions} from "src/interfaces/IInvestorPermissions.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
 
 struct Epoch {
@@ -50,7 +49,6 @@ contract SingleShareClass is Auth, IShareClassManager {
     // uint32 private transient _epochIncrement;
     uint32 private /*transient*/ _epochIncrement;
     address public immutable poolRegistry;
-    address public immutable investorPermissions;
     mapping(PoolId poolId => bytes16) public shareClassIds;
     // User storage
     mapping(bytes16 => mapping(address paymentAssetId => mapping(address investor => UserOrder pending))) public
@@ -77,11 +75,9 @@ contract SingleShareClass is Auth, IShareClassManager {
     error ShareClassIdAlreadySet();
     error NotYetApproved();
 
-    constructor(address deployer, address poolRegistry_, address investorPermissions_) Auth(deployer) {
+    constructor(address deployer, address poolRegistry_) Auth(deployer) {
         require(poolRegistry_ != address(0), "Empty poolRegistry");
-        require(investorPermissions_ != address(0), "Empty investorPermissions");
         poolRegistry = poolRegistry_;
-        investorPermissions = investorPermissions_;
     }
 
     /// @notice Associate a pool with a share class id.
@@ -519,8 +515,6 @@ contract SingleShareClass is Auth, IShareClassManager {
         address investor,
         address depositAssetId
     ) private {
-        require(IInvestorPermissions(investorPermissions).isUnfrozenInvestor(shareClassId, investor), Unauthorized());
-
         UserOrder storage userOrder = depositRequests[shareClassId][depositAssetId][investor];
 
         // Block updates until pending amount does not impact claimable amount, i.e. last update happened after latest
@@ -563,8 +557,6 @@ contract SingleShareClass is Auth, IShareClassManager {
         address investor,
         address payoutAssetId
     ) private {
-        require(IInvestorPermissions(investorPermissions).isUnfrozenInvestor(shareClassId, investor), Unauthorized());
-
         UserOrder storage userOrder = redeemRequests[shareClassId][payoutAssetId][investor];
 
         // Block updates until pending amount does not impact claimable amount
