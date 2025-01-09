@@ -184,12 +184,7 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @inheritdoc IHoldings
-    function itemIdFromAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (ItemId) {
-        return itemId[poolId][scId][assetId];
-    }
-
-    /// @inheritdoc IHoldings
-    function itemIdToAsset(PoolId poolId, ItemId itemId_) external view returns (ShareClassId scId, AssetId assetId) {
+    function itemProperties(PoolId poolId, ItemId itemId_) external view returns (ShareClassId scId, AssetId assetId) {
         require(itemId_.index() < item[poolId].length, ItemNotFound());
 
         Item storage item_ = item[poolId][itemId_.index()];
