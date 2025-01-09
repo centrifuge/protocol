@@ -89,6 +89,7 @@ contract Holdings is Auth, IHoldings {
         returns (uint128 amountValue)
     {
         require(address(valuation_) != address(0), WrongValuation());
+        require(itemId_.index() < item[poolId].length, ItemNotFound());
 
         Item storage item_ = item[poolId][itemId_.index()];
         address poolCurrency = address(poolRegistry.currency(poolId));
@@ -108,6 +109,7 @@ contract Holdings is Auth, IHoldings {
         returns (uint128 amountValue)
     {
         require(address(valuation_) != address(0), WrongValuation());
+        require(itemId_.index() < item[poolId].length, ItemNotFound());
 
         Item storage item_ = item[poolId][itemId_.index()];
         address poolCurrency = address(poolRegistry.currency(poolId));
@@ -122,10 +124,10 @@ contract Holdings is Auth, IHoldings {
 
     /// @inheritdoc IItemManager
     function update(PoolId poolId, ItemId itemId_) external auth returns (int128 diff) {
+        require(itemId_.index() < item[poolId].length, ItemNotFound());
+
         Item storage item_ = item[poolId][itemId_.index()];
-
         address poolCurrency = address(poolRegistry.currency(poolId));
-
         uint128 currentAmountValue =
             uint128(item_.valuation.getQuote(item_.assetAmount, AssetId.unwrap(item_.assetId), poolCurrency));
 
@@ -150,28 +152,31 @@ contract Holdings is Auth, IHoldings {
 
     /// @inheritdoc IItemManager
     function itemValue(PoolId poolId, ItemId itemId_) external view returns (uint128 value) {
+        require(itemId_.index() < item[poolId].length, ItemNotFound());
+
         return item[poolId][itemId_.index()].assetAmountValue;
     }
 
     /// @inheritdoc IItemManager
     function valuation(PoolId poolId, ItemId itemId_) external view returns (IERC7726) {
+        require(itemId_.index() < item[poolId].length, ItemNotFound());
+
         return item[poolId][itemId_.index()].valuation;
     }
 
     /// @inheritdoc IItemManager
     function updateValuation(PoolId poolId, ItemId itemId_, IERC7726 valuation_) external auth {
         require(address(valuation_) != address(0), WrongValuation());
+        require(itemId_.index() < item[poolId].length, ItemNotFound());
 
-        Item storage item_ = item[poolId][itemId_.index()];
-
-        item_.valuation = valuation_;
+        item[poolId][itemId_.index()].valuation = valuation_;
 
         emit ValuationUpdated(poolId, itemId_, valuation_);
     }
 
     /// @inheritdoc IItemManager
     function setAccountId(PoolId poolId, ItemId itemId_, AccountId accountId_) external auth {
-        item[poolId][itemId_.index()]; // Check item existance
+        require(itemId_.index() < item[poolId].length, ItemNotFound());
 
         accountId[poolId][itemId_][accountId_.kind()] = accountId_;
 
@@ -185,6 +190,8 @@ contract Holdings is Auth, IHoldings {
 
     /// @inheritdoc IHoldings
     function itemIdToAsset(PoolId poolId, ItemId itemId_) external view returns (ShareClassId scId, AssetId assetId) {
+        require(itemId_.index() < item[poolId].length, ItemNotFound());
+
         Item storage item_ = item[poolId][itemId_.index()];
         return (item_.scId, item_.assetId);
     }
