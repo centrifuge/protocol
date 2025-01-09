@@ -50,22 +50,24 @@ contract Holdings is Auth, IHoldings {
     function create(PoolId poolId, IERC7726 valuation_, AccountId[] memory accounts, bytes calldata data)
         external
         auth
+        returns (ItemId)
     {
         (ShareClassId scId, AssetId assetId) = abi.decode(data, (ShareClassId, AssetId));
-        create(poolId, scId, assetId, valuation_, accounts);
+        return create(poolId, scId, assetId, valuation_, accounts);
     }
 
     /// @inheritdoc IHoldings
     function create(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation_, AccountId[] memory accounts)
         public
         auth
+        returns (ItemId itemId_)
     {
         require(poolRegistry.exists(poolId), IPoolRegistry.NonExistingPool(poolId));
         require(address(valuation_) != address(0), WrongValuation());
         require(!scId.isNull(), WrongShareClassId());
         require(!assetId.isNull(), WrongAssetId());
 
-        ItemId itemId_ = newItemId(item[poolId].length);
+        itemId_ = newItemId(item[poolId].length);
         item[poolId].push(Item(scId, assetId, valuation_, 0, 0));
         itemId[poolId][scId][assetId] = itemId_;
 

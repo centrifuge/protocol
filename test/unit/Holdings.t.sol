@@ -63,11 +63,13 @@ contract TestCreate is TestCommon {
         accounts[0] = AccountId.wrap(0xAA00 & 0x01);
         accounts[1] = AccountId.wrap(0xBB00 & 0x02);
 
-        ItemId itemId = newItemId(0);
+        ItemId expectedItemId = newItemId(0);
 
         vm.expectEmit();
-        emit IItemManager.CreatedItem(POOL_A, itemId, itemValuation);
-        holdings.create(POOL_A, itemValuation, accounts, abi.encode(SC_1, ASSET_A));
+        emit IItemManager.CreatedItem(POOL_A, expectedItemId, itemValuation);
+        ItemId itemId = holdings.create(POOL_A, itemValuation, accounts, abi.encode(SC_1, ASSET_A));
+
+        assertEq(ItemId.unwrap(itemId), ItemId.unwrap(expectedItemId));
 
         (ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount, uint128 amountValue) =
             holdings.item(POOL_A, itemId.index());
@@ -170,20 +172,36 @@ contract TestUpdate is TestCommon {
 }
 
 contract TestUpdateValuation is TestCommon {
+    IERC7726 immutable newItemValuation = IERC7726(address(42));
+
     function testSuccess() public {
-        //TODO
+        ItemId itemId = holdings.create(POOL_A, newItemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+
+        vm.expectEmit();
+        emit IItemManager.ValuationUpdated(POOL_A, itemId, newItemValuation);
+        holdings.updateValuation(POOL_A, itemId, newItemValuation);
+
+        assertEq(address(holdings.valuation(POOL_A, itemId)), address(newItemValuation));
     }
 
     function testErrNotAuthorized() public {
-        //TODO
+        ItemId itemId = holdings.create(POOL_A, newItemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        holdings.updateValuation(POOL_A, itemId, newItemValuation);
     }
 
     function testErrWrongValuation() public {
-        //TODO
+        ItemId itemId = holdings.create(POOL_A, newItemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+
+        vm.expectRevert(IItemManager.WrongValuation.selector);
+        holdings.updateValuation(POOL_A, itemId, IERC7726(address(0)));
     }
 
     function testErrItemNotFound() public {
-        //TODO
+        vm.expectRevert(IItemManager.ItemNotFound.selector);
+        holdings.updateValuation(POOL_A, newItemId(0), newItemValuation);
     }
 }
 

@@ -42,7 +42,9 @@ interface IItemManager {
     error WrongValuation();
 
     /// @notice Creates a new item in a pool using a valuation
-    function create(PoolId poolId, IERC7726 valuation, AccountId[] memory accounts, bytes calldata data) external;
+    function create(PoolId poolId, IERC7726 valuation, AccountId[] memory accounts, bytes calldata data)
+        external
+        returns (ItemId);
 
     /// @notice Closes an item in a pool using a valuation
     /// An item can only be closed if their value is 0.

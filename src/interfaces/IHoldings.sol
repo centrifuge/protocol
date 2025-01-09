@@ -30,7 +30,8 @@ interface IHoldings is IItemManager {
 
     /// @notice Creates a new holding item in a pool
     function create(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation, AccountId[] memory accounts)
-        external;
+        external
+        returns (ItemId);
 
     /// @notice Returns the itemId for an specific asset in a share class
     function itemId(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (ItemId);
