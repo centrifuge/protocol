@@ -17,8 +17,6 @@ import {MathLib} from "src/libraries/MathLib.sol";
 
 import {Auth} from "src/Auth.sol";
 
-import "forge-std/Test.sol";
-
 struct Item {
     ShareClassId scId;
     AssetId assetId;
@@ -37,7 +35,7 @@ contract Holdings is Auth, IHoldings {
 
     IPoolRegistry immutable poolRegistry;
 
-    constructor(address deployer, IPoolRegistry poolRegistry_) Auth(deployer) {
+    constructor(IPoolRegistry poolRegistry_, address deployer) Auth(deployer) {
         poolRegistry = poolRegistry_;
     }
 
@@ -58,7 +56,7 @@ contract Holdings is Auth, IHoldings {
         item[poolId].push(Item(scId, assetId, valuation_, 0, 0, true));
         itemId[poolId][scId][assetId] = itemId_;
 
-        for (uint256 i = 0; i < accounts.length; i++) {
+        for (uint256 i; i < accounts.length; i++) {
             AccountId accountId_ = accounts[i];
             accountId[poolId][itemId_][accountId_.kind()] = accountId_;
         }
