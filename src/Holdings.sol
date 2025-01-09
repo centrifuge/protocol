@@ -17,16 +17,16 @@ import {MathLib} from "src/libraries/MathLib.sol";
 
 import {Auth} from "src/Auth.sol";
 
-struct Item {
-    ShareClassId scId;
-    AssetId assetId;
-    IERC7726 valuation;
-    uint128 assetAmount;
-    uint128 assetAmountValue;
-}
-
 contract Holdings is Auth, IHoldings {
     using MathLib for uint256; // toInt128()
+
+    struct Item {
+        ShareClassId scId;
+        AssetId assetId;
+        IERC7726 valuation;
+        uint128 assetAmount;
+        uint128 assetAmountValue;
+    }
 
     mapping(PoolId => Item[]) public item;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => ItemId))) public itemId;

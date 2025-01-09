@@ -8,7 +8,7 @@ import {PoolId} from "src/types/PoolId.sol";
 import {AssetId} from "src/types/AssetId.sol";
 import {AccountId} from "src/types/AccountId.sol";
 import {ShareClassId} from "src/types/ShareClassId.sol";
-import {Holdings, Item} from "src/Holdings.sol";
+import {Holdings} from "src/Holdings.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
 import {IAuth} from "src/interfaces/IAuth.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
