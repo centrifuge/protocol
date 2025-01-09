@@ -33,10 +33,18 @@ contract Holdings is Auth, IHoldings {
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => ItemId))) public itemId;
     mapping(PoolId => mapping(ItemId => mapping(uint8 kind => AccountId))) public accountId;
 
-    IPoolRegistry immutable poolRegistry;
+    IPoolRegistry public poolRegistry;
 
     constructor(IPoolRegistry poolRegistry_, address deployer) Auth(deployer) {
         poolRegistry = poolRegistry_;
+    }
+
+    /// @inheritdoc IHoldings
+    function file(bytes32 what, address data) external auth {
+        if (what == "poolRegistry") poolRegistry = IPoolRegistry(data);
+        else revert FileUnrecognizedWhat();
+
+        emit File(what, data);
     }
 
     /// @inheritdoc IItemManager

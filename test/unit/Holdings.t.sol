@@ -34,6 +34,29 @@ contract TestCommon is Test {
     Holdings holdings = new Holdings(poolRegistry, address(this));
 }
 
+contract TestFile is TestCommon {
+    address constant newPoolRegistryAddr = address(42);
+
+    function testSuccess() public {
+        vm.expectEmit();
+        emit IHoldings.File("poolRegistry", newPoolRegistryAddr);
+        holdings.file("poolRegistry", newPoolRegistryAddr);
+
+        assertEq(address(holdings.poolRegistry()), newPoolRegistryAddr);
+    }
+
+    function testErrNotAuthorized() public {
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        holdings.file("poolRegistry", newPoolRegistryAddr);
+    }
+
+    function testErrFileUnrecognizedWhat() public {
+        vm.expectRevert(abi.encodeWithSelector(IHoldings.FileUnrecognizedWhat.selector));
+        holdings.file("unrecongnizedWhat", newPoolRegistryAddr);
+    }
+}
+
 contract TestCreate is TestCommon {
     function testSuccess() public {
         AccountId[] memory accounts = new AccountId[](2);
