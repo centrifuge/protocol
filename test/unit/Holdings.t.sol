@@ -31,7 +31,7 @@ contract PoolRegistryMock {
 contract TestCommon is Test {
     IPoolRegistry immutable poolRegistry = IPoolRegistry(address(new PoolRegistryMock()));
     IERC7726 immutable itemValuation = IERC7726(address(23));
-    Holdings holdings = new Holdings(address(this), poolRegistry);
+    Holdings holdings = new Holdings(poolRegistry, address(this));
 }
 
 contract TestCreate is TestCommon {
@@ -95,11 +95,17 @@ contract TestClose is TestCommon {
     }
 
     function testErrNotAuthorized() public {
-        //TODO
+        ItemId itemId = newItemId(0);
+        holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        holdings.close(POOL_A, itemId, bytes(""));
     }
 
     function testErrItemNotFound() public {
-        //TODO
+        vm.expectRevert(IItemManager.ItemNotFound.selector);
+        holdings.close(POOL_A, newItemId(0), bytes(""));
     }
 }
 
