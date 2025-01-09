@@ -119,15 +119,23 @@ contract TestIncrease is TestCommon {
     }
 
     function testErrNotAuthorized() public {
-        //TODO
+        ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        holdings.increase(POOL_A, itemId, itemValuation, 0);
     }
 
     function testErrWrongValuation() public {
-        //TODO
+        ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+
+        vm.expectRevert(IItemManager.WrongValuation.selector);
+        holdings.increase(POOL_A, itemId, IERC7726(address(0)), 0);
     }
 
     function testErrItemNotFound() public {
-        //TODO
+        vm.expectRevert(IItemManager.ItemNotFound.selector);
+        holdings.increase(POOL_A, newItemId(0), itemValuation, 0);
     }
 }
 
@@ -137,15 +145,23 @@ contract TestDecrease is TestCommon {
     }
 
     function testErrNotAuthorized() public {
-        //TODO
+        ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        holdings.decrease(POOL_A, itemId, itemValuation, 0);
     }
 
     function testErrWrongValuation() public {
-        //TODO
+        ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+
+        vm.expectRevert(IItemManager.WrongValuation.selector);
+        holdings.decrease(POOL_A, itemId, IERC7726(address(0)), 0);
     }
 
     function testErrItemNotFound() public {
-        //TODO
+        vm.expectRevert(IItemManager.ItemNotFound.selector);
+        holdings.decrease(POOL_A, newItemId(0), itemValuation, 0);
     }
 }
 
@@ -163,11 +179,16 @@ contract TestUpdate is TestCommon {
     }
 
     function testErrNotAuthorized() public {
-        //TODO
+        ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        holdings.update(POOL_A, itemId);
     }
 
     function testErrItemNotFound() public {
-        //TODO
+        vm.expectRevert(IItemManager.ItemNotFound.selector);
+        holdings.update(POOL_A, newItemId(0));
     }
 }
 
@@ -175,7 +196,7 @@ contract TestUpdateValuation is TestCommon {
     IERC7726 immutable newItemValuation = IERC7726(address(42));
 
     function testSuccess() public {
-        ItemId itemId = holdings.create(POOL_A, newItemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+        ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
 
         vm.expectEmit();
         emit IItemManager.ValuationUpdated(POOL_A, itemId, newItemValuation);
@@ -185,7 +206,7 @@ contract TestUpdateValuation is TestCommon {
     }
 
     function testErrNotAuthorized() public {
-        ItemId itemId = holdings.create(POOL_A, newItemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+        ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -193,7 +214,7 @@ contract TestUpdateValuation is TestCommon {
     }
 
     function testErrWrongValuation() public {
-        ItemId itemId = holdings.create(POOL_A, newItemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+        ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
 
         vm.expectRevert(IItemManager.WrongValuation.selector);
         holdings.updateValuation(POOL_A, itemId, IERC7726(address(0)));
@@ -207,14 +228,23 @@ contract TestUpdateValuation is TestCommon {
 
 contract TestSetAccountId is TestCommon {
     function testSuccess() public {
-        //TODO
+        ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+
+        holdings.setAccountId(POOL_A, itemId, AccountId.wrap(0xAA00 & 0x01));
+
+        assertEq(AccountId.unwrap(holdings.accountId(POOL_A, itemId, 0x01)), 0xAA00 & 0x01);
     }
 
     function testErrNotAuthorized() public {
-        //TODO
+        ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        holdings.setAccountId(POOL_A, itemId, AccountId.wrap(0xAA00 & 0x01));
     }
 
     function testErrItemNotFound() public {
-        //TODO
+        vm.expectRevert(IItemManager.ItemNotFound.selector);
+        holdings.setAccountId(POOL_A, newItemId(0), AccountId.wrap(0xAA00 & 0x01));
     }
 }
