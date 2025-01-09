@@ -47,21 +47,14 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @inheritdoc IItemManager
+    /// @param data expect a (ShareClassId, AssetId) encoded.
     function create(PoolId poolId, IERC7726 valuation_, AccountId[] memory accounts, bytes calldata data)
         external
         auth
-        returns (ItemId)
-    {
-        (ShareClassId scId, AssetId assetId) = abi.decode(data, (ShareClassId, AssetId));
-        return create(poolId, scId, assetId, valuation_, accounts);
-    }
-
-    /// @inheritdoc IHoldings
-    function create(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation_, AccountId[] memory accounts)
-        public
-        auth
         returns (ItemId itemId_)
     {
+        (ShareClassId scId, AssetId assetId) = abi.decode(data, (ShareClassId, AssetId));
+
         require(poolRegistry.exists(poolId), IPoolRegistry.NonExistingPool(poolId));
         require(address(valuation_) != address(0), WrongValuation());
         require(!scId.isNull(), WrongShareClassId());
