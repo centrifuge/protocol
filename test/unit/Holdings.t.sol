@@ -69,7 +69,7 @@ contract TestCreate is TestCommon {
         emit IItemManager.CreatedItem(POOL_A, itemId, itemValuation);
         holdings.create(POOL_A, itemValuation, accounts, abi.encode(SC_1, ASSET_A));
 
-        (ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount, uint128 amountValue, bool alive) =
+        (ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount, uint128 amountValue) =
             holdings.item(POOL_A, itemId.index());
 
         assertEq(ShareClassId.unwrap(scId), ShareClassId.unwrap(SC_1));
@@ -77,7 +77,6 @@ contract TestCreate is TestCommon {
         assertEq(address(valuation), address(itemValuation));
         assertEq(amount, 0);
         assertEq(amountValue, 0);
-        assertEq(alive, true);
 
         assertEq(AccountId.unwrap(holdings.accountId(POOL_A, itemId, 0x01)), 0xAA00 & 0x01);
         assertEq(AccountId.unwrap(holdings.accountId(POOL_A, itemId, 0x02)), 0xBB00 & 0x02);
@@ -109,26 +108,6 @@ contract TestCreate is TestCommon {
     function testErrWrongAssetId() public {
         vm.expectRevert(IHoldings.WrongAssetId.selector);
         holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, NON_ASSET));
-    }
-}
-
-contract TestClose is TestCommon {
-    function testSuccess() public {
-        //TODO
-    }
-
-    function testErrNotAuthorized() public {
-        ItemId itemId = newItemId(0);
-        holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
-
-        vm.prank(makeAddr("unauthorizedAddress"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        holdings.close(POOL_A, itemId, bytes(""));
-    }
-
-    function testErrItemNotFound() public {
-        vm.expectRevert(IItemManager.ItemNotFound.selector);
-        holdings.close(POOL_A, newItemId(0), bytes(""));
     }
 }
 
