@@ -37,6 +37,7 @@ contract PoolRegistryMock {
 contract TestCommon is Test {
     IPoolRegistry immutable poolRegistry = IPoolRegistry(address(new PoolRegistryMock()));
     IERC7726 immutable itemValuation = IERC7726(address(23));
+    IERC7726 immutable customValuation = IERC7726(address(42));
     Holdings holdings = new Holdings(poolRegistry, address(this));
 
     function mockGetQuote(IERC7726 valuation, uint128 baseAmount, uint128 quoteAmount) public {
@@ -99,6 +100,8 @@ contract TestCreate is TestCommon {
         assertEq(AccountId.unwrap(holdings.accountId(POOL_A, itemId, 0x01)), 0xAA00 & 0x01);
         assertEq(AccountId.unwrap(holdings.accountId(POOL_A, itemId, 0x02)), 0xBB00 & 0x02);
 
+        ///TODO: check getters
+
         assertEq(ItemId.unwrap(holdings.itemId(POOL_A, SC_1, ASSET_A)), ItemId.unwrap(itemId));
     }
 
@@ -130,8 +133,6 @@ contract TestCreate is TestCommon {
 }
 
 contract TestIncrease is TestCommon {
-    IERC7726 immutable customValuation = IERC7726(address(42));
-
     function testSuccess() public {
         ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
         mockGetQuote(customValuation, 20, 200);
@@ -172,8 +173,6 @@ contract TestIncrease is TestCommon {
 }
 
 contract TestDecrease is TestCommon {
-    IERC7726 immutable customValuation = IERC7726(address(42));
-
     function testSuccess() public {
         ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
         mockGetQuote(customValuation, 20, 200);
@@ -215,15 +214,51 @@ contract TestDecrease is TestCommon {
 
 contract TestUpdate is TestCommon {
     function testUpdateMore() public {
-        //TODO
+        ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+        mockGetQuote(customValuation, 20, 200);
+        holdings.increase(POOL_A, itemId, customValuation, 20);
+
+        vm.expectEmit();
+        emit IItemManager.ItemUpdated(POOL_A, itemId, 50);
+        mockGetQuote(itemValuation, 20, 250);
+        int128 diff = holdings.update(POOL_A, itemId);
+
+        assertEq(diff, 50);
+
+        (,,,, uint128 amountValue) = holdings.item(POOL_A, itemId.index());
+        assertEq(amountValue, 250);
     }
 
     function testUpdateLess() public {
-        //TODO
+        ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+        mockGetQuote(customValuation, 20, 200);
+        holdings.increase(POOL_A, itemId, customValuation, 20);
+
+        vm.expectEmit();
+        emit IItemManager.ItemUpdated(POOL_A, itemId, -50);
+        mockGetQuote(itemValuation, 20, 150);
+        int128 diff = holdings.update(POOL_A, itemId);
+
+        assertEq(diff, -50);
+
+        (,,,, uint128 amountValue) = holdings.item(POOL_A, itemId.index());
+        assertEq(amountValue, 150);
     }
 
     function testUpdateEquals() public {
-        //TODO
+        ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+        mockGetQuote(customValuation, 20, 200);
+        holdings.increase(POOL_A, itemId, customValuation, 20);
+
+        vm.expectEmit();
+        emit IItemManager.ItemUpdated(POOL_A, itemId, 0);
+        mockGetQuote(itemValuation, 20, 200);
+        int128 diff = holdings.update(POOL_A, itemId);
+
+        assertEq(diff, 0);
+
+        (,,,, uint128 amountValue) = holdings.item(POOL_A, itemId.index());
+        assertEq(amountValue, 200);
     }
 
     function testErrNotAuthorized() public {
