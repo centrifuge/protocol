@@ -100,7 +100,12 @@ contract TestCreate is TestCommon {
         assertEq(AccountId.unwrap(holdings.accountId(POOL_A, itemId, 0x01)), 0xAA00 & 0x01);
         assertEq(AccountId.unwrap(holdings.accountId(POOL_A, itemId, 0x02)), 0xBB00 & 0x02);
 
-        ///TODO: check getters
+        (scId, assetId) = holdings.itemProperties(POOL_A, itemId);
+        assertEq(ShareClassId.unwrap(scId), ShareClassId.unwrap(SC_1));
+        assertEq(AssetId.unwrap(assetId), AssetId.unwrap(ASSET_A));
+
+        valuation = holdings.valuation(POOL_A, itemId);
+        assertEq(address(valuation), address(itemValuation));
 
         assertEq(ItemId.unwrap(holdings.itemId(POOL_A, SC_1, ASSET_A)), ItemId.unwrap(itemId));
     }
@@ -259,6 +264,8 @@ contract TestUpdate is TestCommon {
 
         (,,,, uint128 amountValue) = holdings.item(POOL_A, itemId.index());
         assertEq(amountValue, 200);
+
+        assertEq(holdings.itemValue(POOL_A, itemId), 200);
     }
 
     function testErrNotAuthorized() public {
