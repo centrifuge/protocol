@@ -277,16 +277,20 @@ contract SingleShareClass is Auth, IShareClassManager {
         require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
         require(endEpochId < epochIds[poolId], IShareClassManager.EpochNotFound());
 
+        uint256 totalNewShares = 0;
+
         // First issuance starts at epoch 0, subsequent ones at latest pointer plus one
         uint32 startEpochId = latestIssuance[shareClassId][depositAssetId] + 1;
 
         for (uint32 epochId = startEpochId; epochId <= endEpochId; epochId++) {
             uint256 newShares = _issueEpochShares(shareClassId, depositAssetId, navPerShare, epochId);
             uint256 nav = navPerShare.mulUint256(newShares);
+            totalNewShares += newShares;
 
             emit IShareClassManager.IssuedShares(poolId, shareClassId, epochId, navPerShare, nav, newShares);
         }
 
+        totalIssuance[shareClassId] += totalNewShares;
         latestIssuance[shareClassId][depositAssetId] = endEpochId;
         _shareClassNavPerShare[shareClassId] = navPerShare;
     }
@@ -594,7 +598,6 @@ contract SingleShareClass is Auth, IShareClassManager {
         // shares = navPerShare * approvedPoolAmount
         newShares = navPerShare.mulUint256(epochs[shareClassId][epochId].approvedDeposits);
 
-        totalIssuance[shareClassId] += newShares;
         epochRatios[shareClassId][depositAssetId][epochId].poolToShareQuote = navPerShare;
     }
 
