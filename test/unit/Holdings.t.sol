@@ -100,13 +100,6 @@ contract TestCreate is TestCommon {
         assertEq(AccountId.unwrap(holdings.accountId(POOL_A, itemId, 0x01)), 0xAA00 & 0x01);
         assertEq(AccountId.unwrap(holdings.accountId(POOL_A, itemId, 0x02)), 0xBB00 & 0x02);
 
-        (scId, assetId) = holdings.itemProperties(POOL_A, itemId);
-        assertEq(ShareClassId.unwrap(scId), ShareClassId.unwrap(SC_1));
-        assertEq(AssetId.unwrap(assetId), AssetId.unwrap(ASSET_A));
-
-        valuation = holdings.valuation(POOL_A, itemId);
-        assertEq(address(valuation), address(itemValuation));
-
         assertEq(ItemId.unwrap(holdings.itemId(POOL_A, SC_1, ASSET_A)), ItemId.unwrap(itemId));
     }
 
@@ -336,5 +329,70 @@ contract TestSetAccountId is TestCommon {
     function testErrItemNotFound() public {
         vm.expectRevert(IItemManager.ItemNotFound.selector);
         holdings.setAccountId(POOL_A, newItemId(0), AccountId.wrap(0xAA00 & 0x01));
+    }
+}
+
+contract TestItemValue is TestCommon {
+    function testSuccess() public {
+        ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+        mockGetQuote(itemValuation, 20, 200);
+        holdings.increase(POOL_A, itemId, itemValuation, 20);
+
+        uint128 value = holdings.itemValue(POOL_A, itemId);
+
+        assertEq(value, 200);
+    }
+
+    function testErrItemNotFound() public {
+        vm.expectRevert(IItemManager.ItemNotFound.selector);
+        holdings.itemValue(POOL_A, newItemId(0));
+    }
+}
+
+contract TestValuation is TestCommon {
+    function testSuccess() public {
+        ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+
+        IERC7726 valuation = holdings.valuation(POOL_A, itemId);
+
+        assertEq(address(valuation), address(itemValuation));
+    }
+
+    function testErrItemNotFound() public {
+        vm.expectRevert(IItemManager.ItemNotFound.selector);
+        holdings.valuation(POOL_A, newItemId(0));
+    }
+}
+
+contract TestItemProperties is TestCommon {
+    function testSuccess() public {
+        ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+
+        (ShareClassId scId, AssetId assetId) = holdings.itemProperties(POOL_A, itemId);
+
+        assertEq(ShareClassId.unwrap(scId), ShareClassId.unwrap(SC_1));
+        assertEq(AssetId.unwrap(assetId), AssetId.unwrap(ASSET_A));
+    }
+
+    function testErrItemNotFound() public {
+        vm.expectRevert(IItemManager.ItemNotFound.selector);
+        holdings.itemProperties(POOL_A, newItemId(0));
+    }
+}
+
+contract TestUnsupported is TestCommon {
+    function testClose() public {
+        vm.expectRevert("unsupported");
+        holdings.close(POOL_A, newItemId(0), bytes(""));
+    }
+
+    function testIncreaseInterest() public {
+        vm.expectRevert("unsupported");
+        holdings.increaseInterest(POOL_A, newItemId(0), 0);
+    }
+
+    function testDecreaseInterest() public {
+        vm.expectRevert("unsupported");
+        holdings.decreaseInterest(POOL_A, newItemId(0), 0);
     }
 }
