@@ -23,7 +23,6 @@ uint256 constant DENO_OTHER_STABLE = 10 ** 12;
 uint256 constant DENO_POOL = 10 ** 4;
 uint256 constant MIN_REQUEST_AMOUNT = 1e10;
 uint256 constant MAX_REQUEST_AMOUNT = 1e40;
-
 bool constant WITH_TRANSIENT = false;
 
 contract PoolRegistryMock {
@@ -118,7 +117,7 @@ abstract contract SingleShareClassBaseTest is Test {
         vm.etch(poolRegistryAddress, address(poolRegistryMock).code);
         poolRegistry = IPoolRegistry(poolRegistryAddress);
 
-        shareClass = new SingleShareClass(address(this), address(poolRegistry));
+        shareClass = new SingleShareClass(address(poolRegistry), address(this));
         shareClass.setShareClassId(poolId, shareClassId);
         shareClass.allowAsset(poolId, shareClassId, USDC);
         shareClass.allowAsset(poolId, shareClassId, OTHER_STABLE);
@@ -128,7 +127,7 @@ abstract contract SingleShareClassBaseTest is Test {
         internal
         view
     {
-        (uint256 pending, uint32 lastUpdate) = shareClass.depositRequests(shareClassId_, asset, investor_);
+        (uint256 pending, uint32 lastUpdate) = shareClass.depositRequest(shareClassId_, asset, investor_);
 
         assertEq(pending, expected.pending, "pending mismatch");
         assertEq(lastUpdate, expected.lastUpdate, "lastUpdate mismatch");
@@ -138,14 +137,14 @@ abstract contract SingleShareClassBaseTest is Test {
         internal
         view
     {
-        (uint256 pending, uint32 lastUpdate) = shareClass.redeemRequests(shareClassId_, asset, investor_);
+        (uint256 pending, uint32 lastUpdate) = shareClass.redeemRequest(shareClassId_, asset, investor_);
 
         assertEq(pending, expected.pending, "pending mismatch");
         assertEq(lastUpdate, expected.lastUpdate, "lastUpdate mismatch");
     }
 
     function _assertEpochEq(bytes16 shareClassId_, uint32 epochId, Epoch memory expected) internal view {
-        (uint256 approvedDeposits, uint256 approvedShares) = shareClass.epochs(shareClassId_, epochId);
+        (uint256 approvedDeposits, uint256 approvedShares) = shareClass.epoch(shareClassId_, epochId);
 
         assertEq(approvedDeposits, expected.approvedDeposits, "approveDeposits mismatch");
         assertEq(approvedShares, expected.approvedShares, "approvedShares mismatch");
@@ -156,7 +155,7 @@ abstract contract SingleShareClassBaseTest is Test {
         view
     {
         (D18 redeemRatio, D18 depositRatio, D18 assetToPoolQuote, D18 poolToShareQuote) =
-            shareClass.epochRatios(shareClassId_, assetId, epochId);
+            shareClass.epochRatio(shareClassId_, assetId, epochId);
 
         assertEq(poolToShareQuote.inner(), expected.poolToShareQuote.inner(), "poolToShareQuote mismatch");
         assertEq(redeemRatio.inner(), expected.redeemRatio.inner(), "redeemRatio mismatch");
@@ -181,8 +180,8 @@ abstract contract SingleShareClassBaseTest is Test {
     }
 }
 
-///@dev Contains all tests which require transient storage to not reset between calls
-contract SingleShareClassTest is SingleShareClassBaseTest {
+///@dev Contains all simple tests which are expected to succeed
+contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
     using MathLib for uint256;
 
     function testDeployment(address nonWard) public view notThisContract(poolRegistryAddress) {
@@ -212,23 +211,28 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         assertFalse(shareClass.isAllowedAsset(poolId, shareClassId, USDC));
     }
 
-    function testGetShareClassNavPerShare() public view notThisContract(poolRegistryAddress) {
+    function testDefaultGetShareClassNavPerShare() public view notThisContract(poolRegistryAddress) {
         (D18 navPerShare, uint256 nav) = shareClass.shareClassNavPerShare(poolId, shareClassId);
         assertEq(nav, 0);
         assertEq(navPerShare.inner(), 0);
     }
+}
+
+///@dev Contains all deposit related tests which are expected to succeed and don't make use of transient storage
+contract SingleShareClassDepositsNonTransientTest is SingleShareClassBaseTest {
+    using MathLib for uint256;
 
     function testRequestDeposit(uint256 amount) public notThisContract(poolRegistryAddress) {
         amount = uint256(bound(amount, MIN_REQUEST_AMOUNT, MAX_REQUEST_AMOUNT));
 
-        assertEq(shareClass.pendingDeposits(shareClassId, USDC), 0);
+        assertEq(shareClass.pendingDeposit(shareClassId, USDC), 0);
         _assertDepositRequestEq(shareClassId, USDC, investor, UserOrder(0, 0));
 
         vm.expectEmit(true, true, true, true);
         emit IShareClassManager.UpdatedDepositRequest(poolId, shareClassId, 1, investor, USDC, amount, amount);
         shareClass.requestDeposit(poolId, shareClassId, amount, investor, USDC);
 
-        assertEq(shareClass.pendingDeposits(shareClassId, USDC), amount);
+        assertEq(shareClass.pendingDeposit(shareClassId, USDC), amount);
         _assertDepositRequestEq(shareClassId, USDC, investor, UserOrder(amount, 1));
     }
 
@@ -240,7 +244,7 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         emit IShareClassManager.UpdatedDepositRequest(poolId, shareClassId, 1, investor, USDC, 0, 0);
         shareClass.cancelDepositRequest(poolId, shareClassId, investor, USDC);
 
-        assertEq(shareClass.pendingDeposits(shareClassId, USDC), 0);
+        assertEq(shareClass.pendingDeposit(shareClassId, USDC), 0);
         _assertDepositRequestEq(shareClassId, USDC, investor, UserOrder(0, 1));
     }
 
@@ -260,9 +264,9 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
             deposits += investorDeposit;
             shareClass.requestDeposit(poolId, shareClassId, investorDeposit, investor, USDC);
 
-            assertEq(shareClass.pendingDeposits(shareClassId, USDC), deposits);
+            assertEq(shareClass.pendingDeposit(shareClassId, USDC), deposits);
         }
-        assertEq(shareClass.epochIds(poolId), 1);
+        assertEq(shareClass.epochId(poolId), 1);
 
         uint256 approvedUSDC = approvalRatio.mulUint256(deposits);
         uint256 approvedPool = usdcToPool(approvedUSDC);
@@ -275,10 +279,10 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         );
         shareClass.approveDeposits(poolId, shareClassId, approvalRatio, USDC, oracleMock);
 
-        assertEq(shareClass.pendingDeposits(shareClassId, USDC), deposits - approvedUSDC);
+        assertEq(shareClass.pendingDeposit(shareClassId, USDC), deposits - approvedUSDC);
 
         // Only one epoch should have passed
-        assertEq(shareClass.epochIds(poolId), 2);
+        assertEq(shareClass.epochId(poolId), 2);
 
         _assertEpochEq(shareClassId, 1, Epoch(approvedPool, 0));
         _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(d18(0), approvalRatio, d18(1e16), d18(0)));
@@ -304,7 +308,7 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         shareClass.approveDeposits(poolId, shareClassId, approvalRatioUsdc, USDC, oracleMock);
         shareClass.approveDeposits(poolId, shareClassId, approvalRatioOther, OTHER_STABLE, oracleMock);
 
-        assertEq(shareClass.epochIds(poolId), 2);
+        assertEq(shareClass.epochId(poolId), 2);
 
         _assertEpochEq(shareClassId, 1, Epoch(approvedPool, 0));
         _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(d18(0), approvalRatioUsdc, d18(1e16), d18(0)));
@@ -366,18 +370,23 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         (userShares, payment) = shareClass.claimDeposit(poolId, shareClassId, investor, USDC);
         assertEq(userShares + payment, 0, "replay must not be possible");
     }
+}
+
+///@dev Contains all redeem related tests which are expected to succeed and don't make use of transient storage
+contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
+    using MathLib for uint256;
 
     function testRequestRedeem(uint256 amount) public notThisContract(poolRegistryAddress) {
         amount = uint256(bound(amount, MIN_REQUEST_AMOUNT, MAX_REQUEST_AMOUNT));
 
-        assertEq(shareClass.pendingRedeems(shareClassId, USDC), 0);
+        assertEq(shareClass.pendingRedeem(shareClassId, USDC), 0);
         _assertRedeemRequestEq(shareClassId, USDC, investor, UserOrder(0, 0));
 
         vm.expectEmit(true, true, true, true);
         emit IShareClassManager.UpdatedRedeemRequest(poolId, shareClassId, 1, investor, USDC, amount, amount);
         shareClass.requestRedeem(poolId, shareClassId, amount, investor, USDC);
 
-        assertEq(shareClass.pendingRedeems(shareClassId, USDC), amount);
+        assertEq(shareClass.pendingRedeem(shareClassId, USDC), amount);
         _assertRedeemRequestEq(shareClassId, USDC, investor, UserOrder(amount, 1));
     }
 
@@ -389,7 +398,7 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         emit IShareClassManager.UpdatedRedeemRequest(poolId, shareClassId, 1, investor, USDC, 0, 0);
         shareClass.cancelRedeemRequest(poolId, shareClassId, investor, USDC);
 
-        assertEq(shareClass.pendingRedeems(shareClassId, USDC), 0);
+        assertEq(shareClass.pendingRedeem(shareClassId, USDC), 0);
         _assertRedeemRequestEq(shareClassId, USDC, investor, UserOrder(0, 1));
     }
 
@@ -407,9 +416,9 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
             totalRedeems += investorRedeem;
             shareClass.requestRedeem(poolId, shareClassId, investorRedeem, investor, USDC);
 
-            assertEq(shareClass.pendingRedeems(shareClassId, USDC), totalRedeems);
+            assertEq(shareClass.pendingRedeem(shareClassId, USDC), totalRedeems);
         }
-        assertEq(shareClass.epochIds(poolId), 1);
+        assertEq(shareClass.epochId(poolId), 1);
 
         uint256 approvedShares = approvalRatio.mulUint256(totalRedeems);
         uint256 pendingRedeems_ = totalRedeems - approvedShares;
@@ -422,10 +431,10 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         );
         shareClass.approveRedeems(poolId, shareClassId, approvalRatio, USDC, oracleMock);
 
-        assertEq(shareClass.pendingRedeems(shareClassId, USDC), pendingRedeems_);
+        assertEq(shareClass.pendingRedeem(shareClassId, USDC), pendingRedeems_);
 
         // Only one epoch should have passed
-        assertEq(shareClass.epochIds(poolId), 2);
+        assertEq(shareClass.epochId(poolId), 2);
 
         _assertEpochEq(shareClassId, 1, Epoch(0, approvedShares));
         _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(approvalRatio, d18(0), d18(1e16), d18(0)));
@@ -452,7 +461,7 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
         (uint256 approvedOther, uint256 pendingOther) =
             shareClass.approveRedeems(poolId, shareClassId, approvalRatioOther, OTHER_STABLE, oracleMock);
 
-        assertEq(shareClass.epochIds(poolId), 2);
+        assertEq(shareClass.epochId(poolId), 2);
         assertEq(approvedUsdc, approvalRatioUsdc.mulUint256(redeemAmountUsdc), "approved shares USDC mismatch");
         assertEq(
             pendingUsdc,
@@ -552,7 +561,7 @@ contract SingleShareClassTest is SingleShareClassBaseTest {
 }
 
 ///@dev Contains all tests which require transient storage to reset between calls
-contract SingleShareClassIsolatedTest is SingleShareClassBaseTest {
+contract SingleShareClassTransientTest is SingleShareClassBaseTest {
     using MathLib for uint256;
 
     function testIssueSharesManyEpochs(
@@ -800,7 +809,7 @@ contract SingleShareClassIsolatedTest is SingleShareClassBaseTest {
 
         uint256 shares = poolToShareQuote.mulUint256(usdcToPool(MAX_REQUEST_AMOUNT));
         assertEq(shareClass.totalIssuance(shareClassId), shares);
-        assertEq(shareClass.epochIds(poolId), 2);
+        assertEq(shareClass.epochId(poolId), 2);
         _assertDepositRequestEq(shareClassId, USDC, investor, UserOrder(0, 2));
         _assertEpochEq(shareClassId, 1, Epoch(usdcToPool(MAX_REQUEST_AMOUNT), 0));
         _assertDepositRequestEq(shareClassId, USDC, investor, UserOrder(0, 2));
@@ -849,6 +858,7 @@ contract SingleShareClassIsolatedTest is SingleShareClassBaseTest {
     }
 }
 
+///@dev Contains all tests which are expected to revert
 contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     using MathLib for uint256;
 
@@ -861,7 +871,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
 
     function testConstructor() public {
         vm.expectRevert(bytes("Empty poolRegistry"));
-        new SingleShareClass(address(this), address(0));
+        new SingleShareClass(address(0), address(this));
     }
 
     function testSetShareClassIdAlreadySet() public {
