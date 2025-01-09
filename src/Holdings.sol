@@ -47,7 +47,7 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @inheritdoc IItemManager
-    /// @param data expect a (ShareClassId, AssetId) encoded.
+    /// @param data Expect a (ShareClassId, AssetId) encoded.
     function create(PoolId poolId, IERC7726 valuation_, AccountId[] memory accounts, bytes calldata data)
         external
         auth
@@ -70,11 +70,6 @@ contract Holdings is Auth, IHoldings {
         }
 
         emit CreatedItem(poolId, itemId_, valuation_);
-    }
-
-    /// @inheritdoc IItemManager
-    function close(PoolId, /*poolId*/ ItemId, /*itemId_*/ bytes calldata /*data*/ ) external pure {
-        revert("unsupported");
     }
 
     /// @inheritdoc IItemManager
@@ -136,30 +131,6 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @inheritdoc IItemManager
-    function increaseInterest(PoolId, /*poolId*/ ItemId, /*itemId_*/ uint128 /*interestAmount*/ ) external pure {
-        revert("unsupported");
-    }
-
-    /// @inheritdoc IItemManager
-    function decreaseInterest(PoolId, /*poolId*/ ItemId, /*itemId_*/ uint128 /*interestAmount*/ ) external pure {
-        revert("unsupported");
-    }
-
-    /// @inheritdoc IItemManager
-    function itemValue(PoolId poolId, ItemId itemId_) external view returns (uint128 value) {
-        require(itemId_.index() < item[poolId].length, ItemNotFound());
-
-        return item[poolId][itemId_.index()].assetAmountValue;
-    }
-
-    /// @inheritdoc IItemManager
-    function valuation(PoolId poolId, ItemId itemId_) external view returns (IERC7726) {
-        require(itemId_.index() < item[poolId].length, ItemNotFound());
-
-        return item[poolId][itemId_.index()].valuation;
-    }
-
-    /// @inheritdoc IItemManager
     function updateValuation(PoolId poolId, ItemId itemId_, IERC7726 valuation_) external auth {
         require(address(valuation_) != address(0), WrongValuation());
         require(itemId_.index() < item[poolId].length, ItemNotFound());
@@ -178,11 +149,40 @@ contract Holdings is Auth, IHoldings {
         emit AccountIdSet(poolId, itemId_, accountId_);
     }
 
+    /// @inheritdoc IItemManager
+    function itemValue(PoolId poolId, ItemId itemId_) external view returns (uint128 value) {
+        require(itemId_.index() < item[poolId].length, ItemNotFound());
+
+        return item[poolId][itemId_.index()].assetAmountValue;
+    }
+
+    /// @inheritdoc IItemManager
+    function valuation(PoolId poolId, ItemId itemId_) external view returns (IERC7726) {
+        require(itemId_.index() < item[poolId].length, ItemNotFound());
+
+        return item[poolId][itemId_.index()].valuation;
+    }
+
     /// @inheritdoc IHoldings
     function itemProperties(PoolId poolId, ItemId itemId_) external view returns (ShareClassId scId, AssetId assetId) {
         require(itemId_.index() < item[poolId].length, ItemNotFound());
 
         Item storage item_ = item[poolId][itemId_.index()];
         return (item_.scId, item_.assetId);
+    }
+
+    /// @inheritdoc IItemManager
+    function increaseInterest(PoolId, /*poolId*/ ItemId, /*itemId_*/ uint128 /*interestAmount*/ ) external pure {
+        revert("unsupported");
+    }
+
+    /// @inheritdoc IItemManager
+    function decreaseInterest(PoolId, /*poolId*/ ItemId, /*itemId_*/ uint128 /*interestAmount*/ ) external pure {
+        revert("unsupported");
+    }
+
+    /// @inheritdoc IItemManager
+    function close(PoolId, /*poolId*/ ItemId, /*itemId_*/ bytes calldata /*data*/ ) external pure {
+        revert("unsupported");
     }
 }

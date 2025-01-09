@@ -14,6 +14,7 @@ import {IAuth} from "src/interfaces/IAuth.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
 import {IItemManager} from "src/interfaces/IItemManager.sol";
 import {IHoldings} from "src/interfaces/IHoldings.sol";
+import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 
 PoolId constant POOL_A = PoolId.wrap(42);
 ShareClassId constant SC_1 = ShareClassId.wrap(1);
@@ -21,10 +22,15 @@ AssetId constant ASSET_A = AssetId.wrap(address(2));
 PoolId constant NON_POOL = PoolId.wrap(0);
 ShareClassId constant NON_SC = ShareClassId.wrap(0);
 AssetId constant NON_ASSET = AssetId.wrap(address(0));
+IERC20Metadata constant POOL_CURRENCY = IERC20Metadata(address(1));
 
 contract PoolRegistryMock {
     function exists(PoolId poolId) external pure returns (bool) {
         return PoolId.unwrap(poolId) != PoolId.unwrap(NON_POOL);
+    }
+
+    function currency(PoolId) external pure returns (IERC20Metadata) {
+        return POOL_CURRENCY;
     }
 }
 
@@ -32,6 +38,16 @@ contract TestCommon is Test {
     IPoolRegistry immutable poolRegistry = IPoolRegistry(address(new PoolRegistryMock()));
     IERC7726 immutable itemValuation = IERC7726(address(23));
     Holdings holdings = new Holdings(poolRegistry, address(this));
+
+    function mockGetQuote(IERC7726 valuation, uint128 baseAmount, uint128 quoteAmount) public {
+        vm.mockCall(
+            address(valuation),
+            abi.encodeWithSelector(
+                IERC7726.getQuote.selector, uint256(baseAmount), AssetId.unwrap(ASSET_A), address(POOL_CURRENCY)
+            ),
+            abi.encode(uint256(quoteAmount))
+        );
+    }
 }
 
 contract TestFile is TestCommon {
@@ -114,8 +130,24 @@ contract TestCreate is TestCommon {
 }
 
 contract TestIncrease is TestCommon {
+    IERC7726 immutable customValuation = IERC7726(address(42));
+
     function testSuccess() public {
-        //TODO
+        ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+        mockGetQuote(customValuation, 20, 200);
+        holdings.increase(POOL_A, itemId, customValuation, 20);
+
+        mockGetQuote(customValuation, 8, 50);
+        vm.expectEmit();
+        emit IItemManager.ItemIncreased(POOL_A, itemId, customValuation, 8, 50);
+        uint128 value = holdings.increase(POOL_A, itemId, customValuation, 8);
+
+        assertEq(value, 50);
+
+        (,, IERC7726 valuation, uint128 amount, uint128 amountValue) = holdings.item(POOL_A, itemId.index());
+        assertEq(amount, 28);
+        assertEq(amountValue, 250);
+        assertEq(address(valuation), address(itemValuation)); // Does not change
     }
 
     function testErrNotAuthorized() public {
@@ -140,8 +172,24 @@ contract TestIncrease is TestCommon {
 }
 
 contract TestDecrease is TestCommon {
+    IERC7726 immutable customValuation = IERC7726(address(42));
+
     function testSuccess() public {
-        //TODO
+        ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+        mockGetQuote(customValuation, 20, 200);
+        holdings.increase(POOL_A, itemId, customValuation, 20);
+
+        mockGetQuote(customValuation, 8, 50);
+        vm.expectEmit();
+        emit IItemManager.ItemDecreased(POOL_A, itemId, customValuation, 8, 50);
+        uint128 value = holdings.decrease(POOL_A, itemId, customValuation, 8);
+
+        assertEq(value, 50);
+
+        (,, IERC7726 valuation, uint128 amount, uint128 amountValue) = holdings.item(POOL_A, itemId.index());
+        assertEq(amount, 12);
+        assertEq(amountValue, 150);
+        assertEq(address(valuation), address(itemValuation)); // Does not change
     }
 
     function testErrNotAuthorized() public {
