@@ -620,9 +620,10 @@ contract SingleShareClass is Auth, IShareClassManager {
         // Epoch doesn't necessarily advance, e.g. in case of multiple approvals inside the same multiCall
         if (_epochIncrement == 0) {
             _epochIncrement = 1;
-            epochId[poolId] += 1;
+            uint32 newEpochId = epochId_ + 1;
+            epochId[poolId] = newEpochId;
 
-            emit IShareClassManager.NewEpoch(poolId, epochId_ + 1);
+            emit IShareClassManager.NewEpoch(poolId, newEpochId);
 
             return epochId_;
         } else {
