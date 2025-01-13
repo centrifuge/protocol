@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {ChainId, Ratio} from "src/types/Domain.sol";
 import {ShareClassId} from "src/types/ShareClassId.sol";
 import {AssetId} from "src/types/AssetId.sol";
+import {GlobalAddress} from "src/types/GlobalAddress.sol";
 import {ItemId} from "src/types/ItemId.sol";
 import {AccountId} from "src/types/AccountId.sol";
 import {PoolId} from "src/types/PoolId.sol";
@@ -43,22 +44,21 @@ interface IPoolUnlockedMethods {
 
     function updateItem(IItemManager im, ItemId itemId) external;
 
-    function unlockTokens(ChainId chainId, ShareClassId scId, AssetId assetId, address receiver, uint128 assetAmount)
-        external;
+    function unlockTokens(ShareClassId scId, AssetId assetId, GlobalAddress receiver, uint128 assetAmount) external;
 }
 
 /// @dev interface for methods called by the gateway
 interface IFromGatewayMethods {
     function notifyRegisteredAsset(AssetId assetId) external;
 
-    function requestDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, address investor, uint128 amount)
+    function requestDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor, uint128 amount)
         external;
 
-    function requestRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, address investor, uint128 amount)
+    function requestRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor, uint128 amount)
         external;
 
-    function cancelDepositRequest(PoolId poolId, ShareClassId scId, AssetId assetId, address investor) external;
-    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, AssetId assetId, address investor) external;
+    function cancelDepositRequest(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor) external;
+    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor) external;
 
     function notifyLockedTokens(AssetId assetId, address recvAddr, uint128 amount) external;
 }
@@ -68,7 +68,7 @@ interface IPoolManager is IPoolUnlockedMethods, IFromGatewayMethods {
 
     function createPool(IERC20Metadata currency, IShareClassManager shareClassManager) external returns (PoolId);
 
-    function claimShares(PoolId poolId, ShareClassId scId, AssetId assetId, address investor) external;
+    function claimShares(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor) external;
 
-    function claimTokens(PoolId poolId, ShareClassId scId, AssetId assetId, address investor) external;
+    function claimTokens(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor) external;
 }

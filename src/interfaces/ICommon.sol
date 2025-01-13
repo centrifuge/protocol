@@ -6,6 +6,7 @@ pragma solidity 0.8.28;
 import {ChainId, Ratio} from "src/types/Domain.sol";
 import {ShareClassId} from "src/types/ShareClassId.sol";
 import {AssetId} from "src/types/AssetId.sol";
+import {GlobalAddress} from "src/types/GlobalAddress.sol";
 import {ItemId} from "src/types/ItemId.sol";
 import {AccountId} from "src/types/AccountId.sol";
 import {D18} from "src/types/D18.sol";
@@ -42,15 +43,15 @@ interface IGateway {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        address investor,
+        GlobalAddress investor,
         uint128 shares,
         uint128 investedAmount
     ) external;
-    function sendFulfilledRedemptionRequest(
+    function sendFulfilledRedeemRequest(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        address investor,
+        GlobalAddress investor,
         uint128 shares,
         uint128 investedAmount
     ) external;
@@ -58,17 +59,17 @@ interface IGateway {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        address investor,
+        GlobalAddress investor,
         uint128 canceledAmount,
         uint128 fulfilledInvestedAmount
     ) external;
-    function sendFulfilledCancelRedemptionRequest(
+    function sendFulfilledCancelRedeemRequest(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        address investor,
+        GlobalAddress investor,
         uint128 canceledShares,
         uint128 fulfilledInvestedAmount
     ) external;
-    function sendUnlockTokens(ChainId chainId, AssetId assetId, address receiver, uint128 assetAmount) external;
+    function sendUnlockTokens(AssetId assetId, GlobalAddress receiver, uint128 assetAmount) external;
 }
