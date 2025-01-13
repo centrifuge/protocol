@@ -105,12 +105,26 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     // Pool admin methods
     //----------------------------------------------------------------------------------------------
 
-    function allowPool(ChainId chainId) external poolUnlocked {
-        gateway.sendAllowPool(chainId, unlockedPoolId());
+    function notifyPool(ChainId chainId) external poolUnlocked {
+        gateway.sendNotifyPool(chainId, unlockedPoolId());
     }
 
-    function allowShareClass(ChainId chainId, ShareClassId scId) external poolUnlocked {
-        gateway.sendAllowShareClass(chainId, unlockedPoolId(), scId);
+    function notifyShareClass(ChainId chainId, ShareClassId scId) external poolUnlocked {
+        gateway.sendNotifyShareClass(chainId, unlockedPoolId(), scId);
+    }
+
+    function notifyAllowedAsset(ChainId chainId, ShareClassId scId, AssetId assetId, bool isAllowed)
+        external
+        poolUnlocked
+    {
+        gateway.sendNotifyAllowedAsset(chainId, unlockedPoolId(), scId, assetId, isAllowed);
+    }
+
+    function allowAsset(ShareClassId scId, AssetId assetId, bool isAllowed) external poolUnlocked {
+        PoolId poolId = unlockedPoolId();
+
+        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
+        scm.allowAsset(unlockedPoolId(), scId, assetId, isAllowed);
     }
 
     function approveDeposit(ShareClassId scId, AssetId assetId, Ratio approvalRatio) external poolUnlocked {
@@ -130,7 +144,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         );
     }
 
-    function approveRedemption(ShareClassId scId, AssetId assetId, Ratio approvalRatio) external poolUnlocked {
+    function approveRedeem(ShareClassId scId, AssetId assetId, Ratio approvalRatio) external poolUnlocked {
         PoolId poolId = unlockedPoolId();
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
@@ -222,6 +236,10 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     // Gateway owner methods
     //----------------------------------------------------------------------------------------------
 
+    function notifyRegisteredAsset(AssetId assetId) external onlyGateway {
+        // TODO: register in the asset registry
+    }
+
     function requestDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, address investor, uint128 amount)
         external
         onlyGateway
@@ -233,12 +251,39 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         scm.requestDeposit(poolId, scId, assetId, investor, amount);
     }
 
-    function requestRedemption(PoolId poolId, ShareClassId scId, AssetId assetId, address investor, uint128 amount)
+    function requestRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, address investor, uint128 amount)
         external
         onlyGateway
     {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        scm.requestRedemption(poolId, scId, assetId, investor, amount);
+        scm.requestRedeem(poolId, scId, assetId, investor, amount);
+    }
+
+    function cancelDepositRequest(PoolId poolId, ShareClassId scId, AssetId assetId, address investor)
+        external
+        onlyGateway
+    {
+        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
+        (uint128 canceled, uint128 fulfilled) = scm.cancelDepositRequest(poolId, scId, assetId, investor);
+
+        address pendingShareClassEscrow = _escrow(poolId, scId, Escrow.PENDING_SHARE_CLASS);
+        assetManager.burn(pendingShareClassEscrow, assetId, canceled);
+
+        gateway.sendFulfilledCancelDepositRequest(
+            investor.chainId(), poolId, scId, assetId, investor, canceled, fulfilled
+        );
+    }
+
+    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, AssetId assetId, address investor)
+        external
+        onlyGateway
+    {
+        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
+        (uint128 canceled, uint128 fulfilled) = scm.cancelRedeemRequest(poolId, scId, assetId, investor);
+
+        gateway.sendFulfilledRedeemDepositRequest(
+            investor.chainId(), poolId, scId, assetId, investor, canceled, fulfilled
+        );
     }
 
     function notifyLockedTokens(AssetId assetId, address recvAddr, uint128 amount) external onlyGateway {

@@ -28,13 +28,16 @@ interface IAccounting {
 }
 
 interface IGateway {
-    // NOTE: The implementation must store a mapping by chainId to track
-    // allowed pools
-    // allowed share classes
+    // NOTE: Should the implementation store a mapping by chainId to track...?
+    // - allowed pools
+    // - allowed share classes
+    // - allowed assets
     // That mapping would act as a whitelist for the Gateway to discard messages that contains not allowed
     // pools/shareClasses
-    function sendAllowPool(ChainId chainId, PoolId poolId) external;
-    function sendAllowShareClass(ChainId chainId, PoolId poolId, ShareClassId scId) external;
+    function sendNotifyPool(ChainId chainId, PoolId poolId) external;
+    function sendNotifyShareClass(ChainId chainId, PoolId poolId, ShareClassId scId) external;
+    function sendNotifyAllowedAsset(ChainId chainId, PoolId poolId, ShareClassId scId, AssetId assetId, bool isAllowed)
+        external;
     function sendFulfilledDepositRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -50,6 +53,22 @@ interface IGateway {
         address investor,
         uint128 shares,
         uint128 investedAmount
+    ) external;
+    function sendFulfilledCancelDepositRequest(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        address investor,
+        uint128 canceledAmount,
+        uint128 fulfilledInvestedAmount
+    ) external;
+    function sendFulfilledCancelRedemptionRequest(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        address investor,
+        uint128 canceledShares,
+        uint128 fulfilledInvestedAmount
     ) external;
     function sendUnlockTokens(ChainId chainId, AssetId assetId, address receiver, uint128 assetAmount) external;
 }

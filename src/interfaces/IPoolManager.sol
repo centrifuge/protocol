@@ -21,13 +21,17 @@ enum Escrow {
 /// @dev interface for methods that requires the pool to be unlocked
 /// NOTE: They do not require a poolId parameter although they acts over an specific pool
 interface IPoolUnlockedMethods {
-    function allowPool(ChainId chainId) external;
+    function notifyPool(ChainId chainId) external;
 
-    function allowShareClass(ChainId chainId, ShareClassId scId) external;
+    function notifyShareClass(ChainId chainId, ShareClassId scId) external;
+
+    function notifyAllowedAsset(ChainId chainId, ShareClassId scId, AssetId assetId, bool isAllowed) external;
+
+    function allowAsset(ShareClassId scId, AssetId assetId, bool isAllowed) external;
 
     function approveDeposit(ShareClassId scId, AssetId assetId, Ratio approvalRatio) external;
 
-    function approveRedemption(ShareClassId scId, AssetId assetId, Ratio approvalRatio) external;
+    function approveRedeem(ShareClassId scId, AssetId assetId, Ratio approvalRatio) external;
 
     function issueShares(ShareClassId id, uint128 nav) external;
 
@@ -45,11 +49,16 @@ interface IPoolUnlockedMethods {
 
 /// @dev interface for methods called by the gateway
 interface IFromGatewayMethods {
+    function notifyRegisteredAsset(AssetId assetId) external;
+
     function requestDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, address investor, uint128 amount)
         external;
 
-    function requestRedemption(PoolId poolId, ShareClassId scId, AssetId assetId, address investor, uint128 amount)
+    function requestRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, address investor, uint128 amount)
         external;
+
+    function cancelDepositRequest(PoolId poolId, ShareClassId scId, AssetId assetId, address investor) external;
+    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, AssetId assetId, address investor) external;
 
     function notifyLockedTokens(AssetId assetId, address recvAddr, uint128 amount) external;
 }
