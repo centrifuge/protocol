@@ -46,7 +46,7 @@ contract SingleShareClass is Auth, IShareClassManager {
     // TODO: Reorder for optimal storage layout
     // uint32 private transient _epochIncrement;
     uint32 private /*transient*/ _epochIncrement;
-    address public immutable poolRegistry;
+    IPoolRegistry public poolRegistry;
     mapping(PoolId poolId => bytes16) public shareClassIds;
     // User storage
     mapping(bytes16 => mapping(address paymentAssetId => mapping(address investor => UserOrder pending))) public
@@ -72,10 +72,19 @@ contract SingleShareClass is Auth, IShareClassManager {
     error Unauthorized();
     error ShareClassIdAlreadySet();
     error NotYetApproved();
+    error UnrecognizedFileParam();
+
+    /// Events
+    event File(bytes32 what, address who);
 
     constructor(address poolRegistry_, address deployer) Auth(deployer) {
-        require(poolRegistry_ != address(0), "Empty poolRegistry");
-        poolRegistry = poolRegistry_;
+        poolRegistry = IPoolRegistry(poolRegistry_);
+    }
+
+    function file(bytes32 what, address data) external auth {
+        require(what == "poolRegistry", UnrecognizedFileParam());
+        poolRegistry = IPoolRegistry(data);
+        emit File(what, data);
     }
 
     /// @notice Associate a pool with a share class id.
@@ -182,7 +191,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         uint256 pendingDepositPostUpdate = pendingDeposit[shareClassId][paymentAssetId];
 
         // Increase approved
-        address poolCurrency = address(IPoolRegistry(poolRegistry).currency(poolId));
+        address poolCurrency = address(poolRegistry.currency(poolId));
         D18 paymentAssetPrice = d18(valuation.getFactor(paymentAssetId, poolCurrency).toUint128());
         approvedPoolAmount = paymentAssetPrice.mulUint256(approvedAssetAmount);
 
@@ -227,7 +236,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         pendingShares = pendingRedeem[shareClassId][payoutAssetId];
 
         // Increase approved
-        address poolCurrency = address(IPoolRegistry(poolRegistry).currency(poolId));
+        address poolCurrency = address(poolRegistry.currency(poolId));
         D18 assetToPool = d18(valuation.getFactor(payoutAssetId, poolCurrency).toUint128());
 
         // Update epoch data
@@ -488,7 +497,6 @@ contract SingleShareClass is Auth, IShareClassManager {
     }
 
     /// @inheritdoc IShareClassManager
-    // TODO(@mustermeiszer): Needed for single share class?
     function shareClassNavPerShare(PoolId poolId, bytes16 shareClassId)
         external
         view

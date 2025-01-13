@@ -96,8 +96,9 @@ contract OracleMockTest is Test {
 abstract contract SingleShareClassBaseTest is Test {
     using MathLib for uint256;
 
+    event File(bytes32 what, address data);
+
     SingleShareClass public shareClass;
-    IPoolRegistry public poolRegistry;
 
     OracleMock oracleMock = new OracleMock();
     PoolRegistryMock poolRegistryMock = new PoolRegistryMock();
@@ -113,14 +114,18 @@ abstract contract SingleShareClassBaseTest is Test {
     }
 
     function setUp() public virtual {
-        // Set bytecode of interfaces to mock
-        vm.etch(poolRegistryAddress, address(poolRegistryMock).code);
-        poolRegistry = IPoolRegistry(poolRegistryAddress);
-
-        shareClass = new SingleShareClass(address(poolRegistry), address(this));
+        shareClass = new SingleShareClass(poolRegistryAddress, address(this));
         shareClass.setShareClassId(poolId, shareClassId);
         shareClass.allowAsset(poolId, shareClassId, USDC);
         shareClass.allowAsset(poolId, shareClassId, OTHER_STABLE);
+
+        // Mock IPoolRegistry.currency call
+        vm.mockCall(
+            poolRegistryAddress,
+            abi.encodeWithSelector(IPoolRegistry.currency.selector, poolId),
+            abi.encode(IERC20Metadata(POOL_CURRENCY))
+        );
+        assertEq(address(IPoolRegistry(poolRegistryAddress).currency(poolId)), address(IERC20Metadata(POOL_CURRENCY)));
     }
 
     function _assertDepositRequestEq(bytes16 shareClassId_, address asset, address investor_, UserOrder memory expected)
@@ -167,7 +172,17 @@ abstract contract SingleShareClassBaseTest is Test {
     /// https://github.com/foundry-rs/foundry/issues/8165 is merged
     function _resetTransientEpochIncrement() internal {
         if (!WITH_TRANSIENT) {
-            vm.store(address(shareClass), bytes32(uint256(1)), bytes32(uint256(0)));
+            // Slot 1 for `_epochIncrement` and `poolRegistry`
+            bytes32 slot = bytes32(uint256(1));
+
+            // Read the current value of the storage slot
+            bytes32 currentValue = vm.load(address(shareClass), slot);
+
+            // Clear only the first 4 bytes (corresponding to `_epochIncrement`) and preserve the rest
+            bytes32 clearedValue = currentValue & ~bytes32(uint256(0xFFFFFFFF));
+
+            // Set `_epochIncrement` to 0 (already cleared in the mask operation)
+            vm.store(address(shareClass), slot, clearedValue);
         }
     }
 
@@ -185,17 +200,26 @@ contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
     using MathLib for uint256;
 
     function testDeployment(address nonWard) public view notThisContract(poolRegistryAddress) {
-        vm.assume(nonWard != address(poolRegistry) && nonWard != address(this));
+        vm.assume(nonWard != address(shareClass.poolRegistry()) && nonWard != address(this));
 
-        assertEq(shareClass.poolRegistry(), address(poolRegistry));
+        assertEq(address(shareClass.poolRegistry()), poolRegistryAddress);
         assertEq(shareClass.shareClassIds(poolId), shareClassId);
         assertTrue(shareClass.isAllowedAsset(poolId, shareClassId, USDC));
         assertTrue(shareClass.isAllowedAsset(poolId, shareClassId, OTHER_STABLE));
 
         assertEq(shareClass.wards(address(this)), 1);
-        assertEq(shareClass.wards(address(poolRegistry)), 0);
+        assertEq(shareClass.wards(address(shareClass.poolRegistry())), 0);
 
         assertEq(shareClass.wards(nonWard), 0);
+    }
+
+    function testFile() public {
+        address poolRegistryNew = makeAddr("poolRegistryNew");
+        vm.expectEmit(true, true, true, true);
+        emit File("poolRegistry", poolRegistryNew);
+        shareClass.file("poolRegistry", poolRegistryNew);
+
+        assertEq(address(shareClass.poolRegistry()), poolRegistryNew);
     }
 
     function testAllowAsset() public notThisContract(poolRegistryAddress) {
@@ -639,11 +663,11 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
 
         // Approve many epochs and issue shares
         for (uint8 i = 1; i < maxEpochId; i++) {
-            _resetTransientEpochIncrement();
             shareClass.approveDeposits(poolId, shareClassId, approvalRatio, USDC, oracleMock);
             shares += poolToShareQuote.mulUint256(usdcToPool(approvalRatio.mulUint256(pending)));
             approvedUSDC += approvalRatio.mulUint256(pending);
             pending = depositAmount - approvedUSDC;
+            _resetTransientEpochIncrement();
         }
         shareClass.issueShares(poolId, shareClassId, USDC, poolToShareQuote);
         assertEq(shareClass.totalIssuance(shareClassId), shares, "totalIssuance mismatch");
@@ -868,10 +892,12 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     error Unauthorized();
     error NotYetApproved();
     error ShareClassIdAlreadySet();
+    error UnrecognizedFileParam();
 
-    function testConstructor() public {
-        vm.expectRevert(bytes("Empty poolRegistry"));
-        new SingleShareClass(address(0), address(this));
+    function testFile(bytes32 what) public {
+        vm.assume(what != "poolRegistry");
+        vm.expectRevert(abi.encodeWithSelector(UnrecognizedFileParam.selector));
+        shareClass.file(what, address(0));
     }
 
     function testSetShareClassIdAlreadySet() public {
