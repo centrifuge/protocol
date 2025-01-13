@@ -37,25 +37,25 @@ contract OracleMock is IERC7726Ext {
     uint256 private constant _ONE = 1e18;
 
     function getQuote(uint256 baseAmount, address base, address quote) external view returns (uint256 quoteAmount) {
-        return baseAmount.mulDiv(this.getFactor(base, quote), 1e18);
+        return this.getFactor(base, quote).mulUint256(baseAmount);
     }
 
-    function getFactor(address base, address quote) external pure returns (uint256 factor) {
+    function getFactor(address base, address quote) external pure returns (D18 factor) {
         // NOTE: Implicitly refer to D18 factors, i.e. 0.1 = 1e17
         if (base == USDC && quote == OTHER_STABLE) {
-            return _ONE.mulDiv(DENO_OTHER_STABLE, DENO_USDC);
+            return d18(_ONE.mulDiv(DENO_OTHER_STABLE, DENO_USDC).toUint128());
         } else if (base == USDC && quote == POOL_CURRENCY) {
-            return _ONE.mulDiv(DENO_POOL, DENO_USDC);
+            return d18(_ONE.mulDiv(DENO_POOL, DENO_USDC).toUint128());
         } else if (base == OTHER_STABLE && quote == USDC) {
-            return _ONE.mulDiv(DENO_USDC, DENO_OTHER_STABLE);
+            return d18(_ONE.mulDiv(DENO_USDC, DENO_OTHER_STABLE).toUint128());
         } else if (base == OTHER_STABLE && quote == POOL_CURRENCY) {
-            return _ONE.mulDiv(DENO_POOL, DENO_OTHER_STABLE);
+            return d18(_ONE.mulDiv(DENO_POOL, DENO_OTHER_STABLE).toUint128());
         } else if (base == POOL_CURRENCY && quote == USDC) {
-            return _ONE.mulDiv(DENO_USDC, DENO_POOL);
+            return d18(_ONE.mulDiv(DENO_USDC, DENO_POOL).toUint128());
         } else if (base == POOL_CURRENCY && quote == OTHER_STABLE) {
-            return _ONE.mulDiv(DENO_OTHER_STABLE, DENO_POOL);
+            return d18(_ONE.mulDiv(DENO_OTHER_STABLE, DENO_POOL).toUint128());
         } else if (base == POOL_CURRENCY && quote == address(bytes20(SHARE_CLASS_ID))) {
-            return _ONE;
+            return d18(_ONE.toUint128());
         } else {
             revert("Unsupported factor pair");
         }
@@ -76,8 +76,8 @@ contract OracleMockTest is Test {
     }
 
     function testGetFactorUsdcToPool() public view {
-        assertEq(oracleMock.getFactor(USDC, POOL_CURRENCY), 1e16);
-        assertEq(oracleMock.getFactor(POOL_CURRENCY, USDC), 1e20);
+        assertEq(oracleMock.getFactor(USDC, POOL_CURRENCY).inner(), 1e16);
+        assertEq(oracleMock.getFactor(POOL_CURRENCY, USDC).inner(), 1e20);
     }
 
     function testGetQuoteOtherStableToPool() public view {
@@ -88,8 +88,8 @@ contract OracleMockTest is Test {
     }
 
     function testGetFactorOtherStableToPool() public view {
-        assertEq(oracleMock.getFactor(OTHER_STABLE, POOL_CURRENCY), 1e10);
-        assertEq(oracleMock.getFactor(POOL_CURRENCY, OTHER_STABLE), 1e26);
+        assertEq(oracleMock.getFactor(OTHER_STABLE, POOL_CURRENCY).inner(), 1e10);
+        assertEq(oracleMock.getFactor(POOL_CURRENCY, OTHER_STABLE).inner(), 1e26);
     }
 }
 

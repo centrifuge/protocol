@@ -192,7 +192,7 @@ contract SingleShareClass is Auth, IShareClassManager {
 
         // Increase approved
         address poolCurrency = address(poolRegistry.currency(poolId));
-        D18 paymentAssetPrice = d18(valuation.getFactor(paymentAssetId, poolCurrency).toUint128());
+        D18 paymentAssetPrice = valuation.getFactor(paymentAssetId, poolCurrency);
         approvedPoolAmount = paymentAssetPrice.mulUint256(approvedAssetAmount);
 
         // Update epoch data
@@ -237,7 +237,7 @@ contract SingleShareClass is Auth, IShareClassManager {
 
         // Increase approved
         address poolCurrency = address(poolRegistry.currency(poolId));
-        D18 assetToPool = d18(valuation.getFactor(payoutAssetId, poolCurrency).toUint128());
+        D18 assetToPool = valuation.getFactor(payoutAssetId, poolCurrency);
 
         // Update epoch data
         epoch[shareClassId][approvalEpochId].approvedShares += approvedShares;
