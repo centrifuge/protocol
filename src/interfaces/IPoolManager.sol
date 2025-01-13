@@ -49,6 +49,9 @@ interface IPoolUnlockedMethods {
 
 /// @dev interface for methods called by the gateway
 interface IFromGatewayMethods {
+    /// @notice Dispatched when an action that requires to be called from the gateway is calling from somebody else.
+    error NotGateway();
+
     function notifyRegisteredAsset(AssetId assetId) external;
 
     function requestDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor, uint128 amount)
@@ -64,7 +67,13 @@ interface IFromGatewayMethods {
 }
 
 interface IPoolManager is IPoolUnlockedMethods, IFromGatewayMethods {
-    error NotAllowed();
+    /// @notice Emitted when a call to `file()` was performed.
+    event File(bytes32 what, address addr);
+
+    /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
+    error FileUnrecognizedWhat();
+
+    function file(bytes32 what, address data) external;
 
     function createPool(IERC20Metadata currency, IShareClassManager shareClassManager) external returns (PoolId);
 

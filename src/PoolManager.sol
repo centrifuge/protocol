@@ -34,28 +34,27 @@ enum AccountType {
 contract PoolManager is Auth, PoolLocker, IPoolManager {
     using MathLib for uint256;
 
-    IPoolRegistry immutable poolRegistry;
-    IAssetManager immutable assetManager;
-    IAccounting immutable accounting;
-
+    IPoolRegistry poolRegistry;
+    IAssetManager assetManager;
+    IAccounting accounting;
     IHoldings holdings;
     IGateway gateway;
 
     /// @dev A requirement for methods that needs to be called by the gateway
     modifier onlyGateway() {
-        require(msg.sender == address(gateway), NotAllowed());
+        require(msg.sender == address(gateway), NotGateway());
         _;
     }
 
     constructor(
-        address owner,
         IMulticall multicall,
         IPoolRegistry poolRegistry_,
         IAssetManager assetManager_,
         IAccounting accounting_,
         IHoldings holdings_,
-        IGateway gateway_
-    ) Auth(owner) PoolLocker(multicall) {
+        IGateway gateway_,
+        address deployer
+    ) Auth(deployer) PoolLocker(multicall) {
         poolRegistry = poolRegistry_;
         assetManager = assetManager_;
         accounting = accounting_;
@@ -70,7 +69,12 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     function file(bytes32 what, address data) external auth {
         if (what == "gateway") gateway = IGateway(data);
         else if (what == "holdings") holdings = IHoldings(data);
-        else revert("TODO error");
+        else if (what == "poolRegistry") poolRegistry = IPoolRegistry(data);
+        else if (what == "assetManager") assetManager = IAssetManager(data);
+        else if (what == "accounting") accounting = IAccounting(data);
+        else revert FileUnrecognizedWhat();
+
+        emit File(what, data);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -291,12 +295,12 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     // internal / private
     //----------------------------------------------------------------------------------------------
 
-    function _beforeUnlock(PoolId poolId) internal view override {
-        require(poolRegistry.isAdmin(poolId, msg.sender));
-    }
-
     function _beforeLock() internal override {
         accounting.lock(unlockedPoolId());
+    }
+
+    function _beforeUnlock(PoolId poolId) internal view override {
+        require(poolRegistry.isAdmin(poolId, msg.sender));
     }
 
     function _escrow(PoolId poolId, ShareClassId scId, Escrow escrow) private view returns (address) {
