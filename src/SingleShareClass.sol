@@ -290,7 +290,9 @@ contract SingleShareClass is Auth, IShareClassManager {
         uint32 startEpochId = latestIssuance[shareClassId][depositAssetId] + 1;
 
         for (uint32 epochId_ = startEpochId; epochId_ <= endEpochId; epochId_++) {
-            uint256 newShares = _issueEpochShares(shareClassId, depositAssetId, navPerShare, epochId_);
+            epochRatio[shareClassId][depositAssetId][epochId_].poolToShareQuote = navPerShare;
+
+            uint256 newShares = navPerShare.mulUint256(epoch[shareClassId][epochId_].approvedDeposits);
             uint256 nav = navPerShare.mulUint256(newShares);
             totalNewShares += newShares;
 
@@ -341,8 +343,12 @@ contract SingleShareClass is Auth, IShareClassManager {
         uint32 startEpochId = latestRevocation[shareClassId][payoutAssetId] + 1;
 
         for (uint32 epochId_ = startEpochId; epochId_ <= endEpochId; epochId_++) {
-            (uint256 revokedShares, uint256 epochPoolAmount) =
-                _revokeEpochShares(shareClassId, payoutAssetId, navPerShare, epochId_);
+            uint256 revokedShares = epoch[shareClassId][epochId_].approvedShares;
+
+            // payout = shares / poolToShareQuote
+            uint256 epochPoolAmount = uint256(navPerShare.reciprocalMulInt(revokedShares));
+
+            epochRatio[shareClassId][payoutAssetId][epochId_].poolToShareQuote = navPerShare;
             payoutPoolAmount += epochPoolAmount;
 
             payoutAssetAmount +=
@@ -588,44 +594,6 @@ contract SingleShareClass is Auth, IShareClassManager {
             userOrder.pending,
             pendingRedeem[shareClassId][payoutAssetId]
         );
-    }
-
-    /// @notice Emits new shares and sets price for the given identifier based on the provided NAV for the desired
-    /// epoch.
-    ///
-    /// @param shareClassId Identifier of the share class
-    /// @param depositAssetId Identifier of the deposit asset for which new shares are issued
-    /// @param navPerShare Total value of assets of the pool and share class per share
-    /// @param epochId_ Identifier of the epoch for which shares are issued
-    function _issueEpochShares(bytes16 shareClassId, address depositAssetId, D18 navPerShare, uint32 epochId_)
-        private
-        returns (uint256 newShares)
-    {
-        // shares = navPerShare * approvedPoolAmount
-        newShares = navPerShare.mulUint256(epoch[shareClassId][epochId_].approvedDeposits);
-
-        epochRatio[shareClassId][depositAssetId][epochId_].poolToShareQuote = navPerShare;
-    }
-
-    /// @notice Revokes shares for an epoch and sets the price based on amount of approved redemption shares and the
-    /// provided NAV.
-    ///
-    /// @param shareClassId Identifier of the share class
-    /// @param navPerShare Total value of assets of the pool and share class per share
-    /// @param payoutAssetId Identifier of the payout asset for which shares are revoked
-    /// @param epochId_ Identifier of the epoch for which shares are revoked
-    /// @return revokedShares Amount of shares which were approved for revocation
-    /// @return payoutPoolAmount Converted amount of pool currency based on number of revoked shares
-    function _revokeEpochShares(bytes16 shareClassId, address payoutAssetId, D18 navPerShare, uint32 epochId_)
-        private
-        returns (uint256 revokedShares, uint256 payoutPoolAmount)
-    {
-        revokedShares = epoch[shareClassId][epochId_].approvedShares;
-
-        // payout = shares / poolToShareQuote
-        payoutPoolAmount = uint256(navPerShare.reciprocalMulInt(revokedShares));
-
-        epochRatio[shareClassId][payoutAssetId][epochId_].poolToShareQuote = navPerShare;
     }
 
     /// @notice Advances the current epoch of the given if it has not been incremented within the multicall. If the
