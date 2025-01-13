@@ -15,7 +15,7 @@ import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 import {IItemManager} from "src/interfaces/IItemManager.sol";
 import {IHoldings} from "src/interfaces/IHoldings.sol";
-import {IPoolManager, Escrow} from "src/interfaces/IPoolManager.sol";
+import {IPoolManager, Escrow, AccountType} from "src/interfaces/IPoolManager.sol";
 import {IMulticall} from "src/interfaces/IMulticall.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
 
@@ -23,13 +23,6 @@ import {MathLib} from "src/libraries/MathLib.sol";
 
 import {PoolLocker} from "src/PoolLocker.sol";
 import {Auth} from "src/Auth.sol";
-
-enum AccountType {
-    ASSET,
-    EQUITY,
-    LOSS,
-    GAIN
-}
 
 contract PoolManager is Auth, PoolLocker, IPoolManager {
     using MathLib for uint256;
@@ -182,6 +175,17 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         );
     }
 
+    function createItem(IItemManager im, IERC7726 valuation, AccountId[] memory accounts, bytes calldata data)
+        external
+        poolUnlocked
+    {
+        im.create(unlockedPoolId(), valuation, accounts, data);
+    }
+
+    function closeItem(IItemManager im, ItemId itemId, bytes calldata data) external poolUnlocked {
+        im.close(unlockedPoolId(), itemId, data);
+    }
+
     function increaseItem(IItemManager im, ItemId itemId, IERC7726 valuation, uint128 amount) external poolUnlocked {
         PoolId poolId = unlockedPoolId();
 
@@ -226,13 +230,23 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         }
     }
 
+    function updateItemValuation(IItemManager im, ItemId itemId, IERC7726 valuation) external poolUnlocked {
+        im.updateValuation(unlockedPoolId(), itemId, valuation);
+    }
+
+    function setItemAccountId(IItemManager im, ItemId itemId, AccountId accountId) external poolUnlocked {
+        im.setAccountId(unlockedPoolId(), itemId, accountId);
+    }
+
+    function updateEntry(AccountId credit, AccountId debit, uint128 amount) external poolUnlocked {
+        accounting.updateEntry(credit, debit, amount);
+    }
+
     function unlockTokens(ShareClassId scId, AssetId assetId, GlobalAddress receiver, uint128 assetAmount)
         external
         poolUnlocked
     {
-        PoolId poolId = unlockedPoolId();
-
-        assetManager.burn(_escrow(poolId, scId, Escrow.SHARE_CLASS), assetId, assetAmount);
+        assetManager.burn(_escrow(unlockedPoolId(), scId, Escrow.SHARE_CLASS), assetId, assetAmount);
 
         gateway.sendUnlockTokens(assetId, receiver, assetAmount);
     }

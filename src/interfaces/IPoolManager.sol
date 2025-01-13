@@ -19,6 +19,13 @@ enum Escrow {
     PENDING_SHARE_CLASS
 }
 
+enum AccountType {
+    ASSET,
+    EQUITY,
+    LOSS,
+    GAIN
+}
+
 /// @dev interface for methods that requires the pool to be unlocked
 /// NOTE: They do not require a poolId parameter although they acts over an specific pool
 interface IPoolUnlockedMethods {
@@ -38,11 +45,22 @@ interface IPoolUnlockedMethods {
 
     function revokeShares(ShareClassId scId, AssetId assetId, uint128 nav) external;
 
+    function createItem(IItemManager im, IERC7726 valuation, AccountId[] memory accounts, bytes calldata data)
+        external;
+
+    function closeItem(IItemManager im, ItemId itemId, bytes calldata data) external;
+
     function increaseItem(IItemManager im, ItemId itemId, IERC7726 valuation, uint128 amount) external;
 
     function decreaseItem(IItemManager im, ItemId itemId, IERC7726 valuation, uint128 amount) external;
 
     function updateItem(IItemManager im, ItemId itemId) external;
+
+    function updateItemValuation(IItemManager im, ItemId itemId, IERC7726 valuation) external;
+
+    function setItemAccountId(IItemManager im, ItemId itemId, AccountId accountId) external;
+
+    function updateEntry(AccountId credit, AccountId debit, uint128 amount) external;
 
     function unlockTokens(ShareClassId scId, AssetId assetId, GlobalAddress receiver, uint128 assetAmount) external;
 }
