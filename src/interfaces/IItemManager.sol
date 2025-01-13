@@ -74,17 +74,17 @@ interface IItemManager {
     /// @return diff The difference in value after the new valuation.
     function update(PoolId poolId, ItemId itemId) external returns (int128 diff);
 
-    /// @notice Returns the item value of this item.
-    function itemValue(PoolId poolId, ItemId itemId) external view returns (uint128 value);
-
-    /// @notice Returns the valuation method used for this item.
-    function valuation(PoolId poolId, ItemId itemId) external view returns (IERC7726);
-
     /// @notice Updates the valuation method used for this item.
     function updateValuation(PoolId poolId, ItemId itemId, IERC7726 valuation) external;
 
     /// @notice Sets an account id for an specific kind
     function setAccountId(PoolId poolId, ItemId itemId, AccountId accountId) external;
+
+    /// @notice Returns the item value of this item.
+    function itemValue(PoolId poolId, ItemId itemId) external view returns (uint128 value);
+
+    /// @notice Returns the valuation method used for this item.
+    function valuation(PoolId poolId, ItemId itemId) external view returns (IERC7726);
 
     /// @notice Returns an account id for an specific kind
     function accountId(PoolId poolId, ItemId itemId, uint8 kind) external view returns (AccountId);
