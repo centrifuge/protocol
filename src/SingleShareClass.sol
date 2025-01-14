@@ -55,7 +55,6 @@ contract SingleShareClass is Auth, IShareClassManager {
     mapping(bytes16 => mapping(address payoutAssetId => mapping(address investor => UserOrder pending))) public
         redeemRequest;
     // Share class storage
-    mapping(bytes16 => mapping(address assetId => bool)) public allowedAssets;
     mapping(bytes16 => mapping(address paymentAssetId => uint256 pending)) public pendingDeposit;
     mapping(bytes16 => mapping(address payoutAssetId => uint256 pending)) public pendingRedeem;
     mapping(bytes16 => D18 navPerShare) private _shareClassNavPerShare;
@@ -99,24 +98,6 @@ contract SingleShareClass is Auth, IShareClassManager {
     }
 
     /// @inheritdoc IShareClassManager
-    function allowAsset(PoolId poolId, bytes16 shareClassId, address assetId) external auth {
-        _ensureShareClassExists(poolId, shareClassId);
-
-        allowedAssets[shareClassId][assetId] = true;
-
-        emit IShareClassManager.AllowedAsset(poolId, shareClassId, assetId);
-    }
-
-    /// @inheritdoc IShareClassManager
-    function disallowAsset(PoolId poolId, bytes16 shareClassId, address assetId) external auth {
-        _ensureShareClassExists(poolId, shareClassId);
-
-        delete allowedAssets[shareClassId][assetId];
-
-        emit IShareClassManager.DisallowedAsset(poolId, shareClassId, assetId);
-    }
-
-    /// @inheritdoc IShareClassManager
     function requestDeposit(
         PoolId poolId,
         bytes16 shareClassId,
@@ -125,7 +106,6 @@ contract SingleShareClass is Auth, IShareClassManager {
         address depositAssetId
     ) external auth {
         _ensureShareClassExists(poolId, shareClassId);
-        require(allowedAssets[shareClassId][depositAssetId], IShareClassManager.AssetNotAllowed());
 
         _updateDepositRequest(poolId, shareClassId, int256(amount), investor, depositAssetId);
     }
@@ -151,7 +131,6 @@ contract SingleShareClass is Auth, IShareClassManager {
         auth
     {
         _ensureShareClassExists(poolId, shareClassId);
-        require(allowedAssets[shareClassId][payoutAssetId], IShareClassManager.AssetNotAllowed());
 
         _updateRedeemRequest(poolId, shareClassId, int256(amount), investor, payoutAssetId);
     }
@@ -499,13 +478,6 @@ contract SingleShareClass is Auth, IShareClassManager {
     function update(PoolId, bytes calldata) external pure {
         // TODO(@mustermeiszer): Needed for single share class?
         revert("unsupported");
-    }
-
-    /// @inheritdoc IShareClassManager
-    function isAllowedAsset(PoolId poolId, bytes16 shareClassId, address assetId) external view returns (bool) {
-        _ensureShareClassExists(poolId, shareClassId);
-
-        return allowedAssets[shareClassId][assetId];
     }
 
     /// @inheritdoc IShareClassManager

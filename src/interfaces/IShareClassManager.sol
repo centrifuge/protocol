@@ -8,8 +8,6 @@ import {D18} from "src/types/D18.sol";
 interface IShareClassManager {
     /// Events
     event NewEpoch(PoolId poolId, uint32 newIndex);
-    event AllowedAsset(PoolId indexed poolId, bytes16 indexed shareClassId, address indexed assetId);
-    event DisallowedAsset(PoolId indexed poolId, bytes16 indexed shareClassId, address indexed assetId);
     event UpdatedDepositRequest(
         PoolId indexed poolId,
         bytes16 indexed shareClassId,
@@ -94,29 +92,11 @@ interface IShareClassManager {
     error PoolMissing();
     error ShareClassNotFound();
     error MaxShareClassNumberExceeded(uint8 numberOfShareClasses);
-    error AssetNotAllowed();
-    error InvestorNotAllowed();
     error ClaimDepositRequired();
     error ClaimRedeemRequired();
     error EpochNotFound();
 
     /// Functions
-    // TODO(@review): Check whether bidirectionality (deposit, redeem) is implementation specific
-    /// @notice Allow an asset to be used as payment for deposit request and payout for redemption requests a deposit
-    /// for the given share class id.
-    ///
-    /// @param poolId Identifier of the pool
-    /// @param shareClassId Identifier of the share class
-    /// @param assetId Identifier of the asset
-    function allowAsset(PoolId poolId, bytes16 shareClassId, address assetId) external;
-
-    /// @notice Disallow a previously whitelisted asset such that it cannot be used for deposit requests and as
-    /// requested payout asset for redemption requests.
-    ///
-    /// @param poolId Identifier of the pool
-    /// @param shareClassId Identifier of the share class
-    /// @param assetId Identifier of the asset
-    function disallowAsset(PoolId poolId, bytes16 shareClassId, address assetId) external;
 
     /// @notice Creates or updates a request to deposit (exchange) an asset amount for share class tokens.
     ///
@@ -269,17 +249,6 @@ interface IShareClassManager {
     /// @param data Data of the new share class
     /// @return shareClassId Identifier of the newly added share class
     function addShareClass(PoolId poolId, bytes calldata data) external returns (bytes16 shareClassId);
-
-    // TODO(@review): Check whether bidirectionality (deposit, redeem) is implementation specific
-    /// @notice Returns whether the given asset can be used to request a deposit for the given share class id. If an
-    /// asset is allowed for a deposit request, it is automatically allowed as payout asset for redemptions of the given
-    /// share class id.
-    ///
-    /// @param poolId Identifier of the pool
-    /// @param shareClassId Identifier of the share class
-    /// @param assetId Identifier of the asset
-    /// @return bool Whether the asset was allowed as payment for deposit and payout for redemption requests.
-    function isAllowedAsset(PoolId poolId, bytes16 shareClassId, address assetId) external view returns (bool);
 
     /// @notice Returns the current NAV of a share class of a pool per share as well as the issuance.
     ///

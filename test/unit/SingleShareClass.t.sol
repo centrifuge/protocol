@@ -116,8 +116,6 @@ abstract contract SingleShareClassBaseTest is Test {
     function setUp() public virtual {
         shareClass = new SingleShareClass(poolRegistryAddress, address(this));
         shareClass.addShareClass(poolId, bytes(""));
-        shareClass.allowAsset(poolId, shareClassId, USDC);
-        shareClass.allowAsset(poolId, shareClassId, OTHER_STABLE);
 
         // Mock IPoolRegistry.currency call
         vm.mockCall(
@@ -207,8 +205,6 @@ contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
 
         assertEq(address(shareClass.poolRegistry()), poolRegistryAddress);
         assertEq(shareClass.shareClassIds(poolId), shareClassId);
-        assertTrue(shareClass.isAllowedAsset(poolId, shareClassId, USDC));
-        assertTrue(shareClass.isAllowedAsset(poolId, shareClassId, OTHER_STABLE));
 
         assertEq(shareClass.wards(address(this)), 1);
         assertEq(shareClass.wards(address(shareClass.poolRegistry())), 0);
@@ -223,19 +219,6 @@ contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
         shareClass.file("poolRegistry", poolRegistryNew);
 
         assertEq(address(shareClass.poolRegistry()), poolRegistryNew);
-    }
-
-    function testAllowAsset() public notThisContract(poolRegistryAddress) {
-        address assetId = makeAddr("asset");
-
-        assertFalse(shareClass.isAllowedAsset(poolId, shareClassId, assetId));
-        shareClass.allowAsset(poolId, shareClassId, assetId);
-        assertTrue(shareClass.isAllowedAsset(poolId, shareClassId, assetId));
-    }
-
-    function testDisallowAsset() public notThisContract(poolRegistryAddress) {
-        shareClass.disallowAsset(poolId, shareClassId, USDC);
-        assertFalse(shareClass.isAllowedAsset(poolId, shareClassId, USDC));
     }
 
     function testDefaultGetShareClassNavPerShare() public view notThisContract(poolRegistryAddress) {
@@ -523,7 +506,7 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
         // Mock total issuance to equal redeemAmount
         vm.store(
             address(shareClass),
-            keccak256(abi.encode(shareClassId, uint256(WITH_TRANSIENT ? 8 : 9))),
+            keccak256(abi.encode(shareClassId, uint256(WITH_TRANSIENT ? 7 : 8))),
             bytes32(uint256(redeemAmount))
         );
         assertEq(shareClass.totalIssuance(shareClassId), redeemAmount);
@@ -559,7 +542,7 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
         // Mock total issuance to equal redeemAmount
         vm.store(
             address(shareClass),
-            keccak256(abi.encode(shareClassId, uint256(WITH_TRANSIENT ? 8 : 9))),
+            keccak256(abi.encode(shareClassId, uint256(WITH_TRANSIENT ? 7 : 8))),
             bytes32(uint256(redeemAmount))
         );
         assertEq(shareClass.totalIssuance(shareClassId), redeemAmount);
@@ -714,7 +697,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         // Mock total issuance to equal total redeemAmount
         vm.store(
             address(shareClass),
-            keccak256(abi.encode(shareClassId, uint256(WITH_TRANSIENT ? 8 : 9))),
+            keccak256(abi.encode(shareClassId, uint256(WITH_TRANSIENT ? 7 : 8))),
             bytes32(uint256(initialShares))
         );
 
@@ -777,7 +760,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         // Mock total issuance to equal total redeemAmount
         vm.store(
             address(shareClass),
-            keccak256(abi.encode(shareClassId, uint256(WITH_TRANSIENT ? 8 : 9))),
+            keccak256(abi.encode(shareClassId, uint256(WITH_TRANSIENT ? 7 : 8))),
             bytes32(uint256(redeemAmount))
         );
 
@@ -907,29 +890,6 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
         shareClass.addShareClass(poolId, bytes(""));
     }
 
-    function testIsAllowedAssetWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
-        shareClass.isAllowedAsset(poolId, wrongShareClassId, USDC);
-    }
-
-    function testAllowAssetWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
-        shareClass.allowAsset(poolId, wrongShareClassId, USDC);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(unauthorized);
-        shareClass.allowAsset(poolId, shareClassId, USDC);
-    }
-
-    function testDisallowAssetWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
-        shareClass.disallowAsset(poolId, wrongShareClassId, USDC);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(unauthorized);
-        shareClass.disallowAsset(poolId, shareClassId, USDC);
-    }
-
     function testRequestDepositWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.requestDeposit(poolId, wrongShareClassId, 1, investor, USDC);
@@ -988,7 +948,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
         // Mock latestDepositApproval to epoch 1
         vm.store(
             address(shareClass),
-            keccak256(abi.encode(USDC, keccak256(abi.encode(wrongShareClassId, uint256(WITH_TRANSIENT ? 11 : 12))))),
+            keccak256(abi.encode(USDC, keccak256(abi.encode(wrongShareClassId, uint256(WITH_TRANSIENT ? 10 : 11))))),
             bytes32(uint256(1))
         );
 
@@ -1013,7 +973,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
         // Mock latestRedeemApproval to epoch 1
         vm.store(
             address(shareClass),
-            keccak256(abi.encode(USDC, keccak256(abi.encode(wrongShareClassId, uint256(WITH_TRANSIENT ? 12 : 13))))),
+            keccak256(abi.encode(USDC, keccak256(abi.encode(wrongShareClassId, uint256(WITH_TRANSIENT ? 11 : 12))))),
             bytes32(uint256(1))
         );
 
@@ -1062,16 +1022,6 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     function testGetShareClassNavWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.shareClassNavPerShare(poolId, wrongShareClassId);
-    }
-
-    function testRequestDepositAssetNotAllowed() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.AssetNotAllowed.selector));
-        shareClass.requestDeposit(poolId, shareClassId, 1, investor, POOL_CURRENCY);
-    }
-
-    function testRedeemRequestAssetNotAllowed() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.AssetNotAllowed.selector));
-        shareClass.requestRedeem(poolId, shareClassId, 1, investor, POOL_CURRENCY);
     }
 
     function testAddShareClass() public {
