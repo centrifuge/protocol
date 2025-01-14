@@ -36,6 +36,17 @@ struct UserOrder {
     uint32 lastUpdate;
 }
 
+struct AssetEpochState {
+    /// @dev The last epoch in which a deposit approval was made
+    uint32 latestDepositApproval;
+    /// @dev The last epoch in which a redeem approval was made
+    uint32 latestRedeemApproval;
+    /// @dev The last epoch in which shares were issued
+    uint32 latestIssuance;
+    /// @dev The last epoch in which a shares were revoked
+    uint32 latestRevocation;
+}
+
 // Assumptions:
 // * ShareClassId is unique and derived from pool, i.e. bytes16(keccak256(poolId + salt))
 contract SingleShareClass is Auth, IShareClassManager {
@@ -62,16 +73,13 @@ contract SingleShareClass is Auth, IShareClassManager {
     // Share class + epoch storage
     mapping(PoolId poolId => uint32 epochId_) public epochId;
     mapping(bytes16 => mapping(uint32 epochId_ => Epoch epoch)) public epoch;
-    mapping(bytes16 => mapping(address assetId => uint32 epochId_)) latestDepositApproval;
-    mapping(bytes16 => mapping(address assetId => uint32 epochId_)) latestRedeemApproval;
-    mapping(bytes16 => mapping(address assetId => uint32 epochId_)) public latestIssuance;
-    mapping(bytes16 => mapping(address assetId => uint32 epochId_)) public latestRevocation;
+    mapping(bytes16 => mapping(address assetId => AssetEpochState)) public assetEpochState;
     mapping(bytes16 => mapping(address assetId => mapping(uint32 epochId_ => EpochRatio epoch))) public epochRatio;
 
     /// Errors
     error Unauthorized();
     error ShareClassIdAlreadySet();
-    error NotYetApproved();
+    error ApprovalRequired();
     error UnrecognizedFileParam();
 
     /// Events
@@ -181,7 +189,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         epochRatio_.depositRatio = approvalRatio;
         epochRatio_.assetToPoolQuote = paymentAssetPrice;
 
-        latestDepositApproval[shareClassId][paymentAssetId] = approvalEpochId;
+        assetEpochState[shareClassId][paymentAssetId].latestDepositApproval = approvalEpochId;
 
         emit IShareClassManager.ApprovedDeposits(
             poolId,
@@ -225,7 +233,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         epochRatio_.redeemRatio = approvalRatio;
         epochRatio_.assetToPoolQuote = assetToPool;
 
-        latestRedeemApproval[shareClassId][payoutAssetId] = approvalEpochId;
+        assetEpochState[shareClassId][payoutAssetId].latestRedeemApproval = approvalEpochId;
 
         emit IShareClassManager.ApprovedRedeems(
             poolId,
@@ -241,10 +249,10 @@ contract SingleShareClass is Auth, IShareClassManager {
 
     /// @inheritdoc IShareClassManager
     function issueShares(PoolId poolId, bytes16 shareClassId, address depositAssetId, D18 navPerShare) external auth {
-        uint32 latestApproval_ = latestDepositApproval[shareClassId][depositAssetId];
-        require(latestApproval_ > 0, NotYetApproved());
+        AssetEpochState memory assetEpochState_ = assetEpochState[shareClassId][depositAssetId];
+        require(assetEpochState_.latestDepositApproval > assetEpochState_.latestIssuance, ApprovalRequired());
 
-        issueSharesUntilEpoch(poolId, shareClassId, depositAssetId, navPerShare, latestApproval_);
+        issueSharesUntilEpoch(poolId, shareClassId, depositAssetId, navPerShare, assetEpochState_.latestDepositApproval);
     }
 
     /// @notice Emits new shares for the given identifier based on the provided NAV up to the desired epoch.
@@ -266,7 +274,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         uint256 totalNewShares = 0;
 
         // First issuance starts at epoch 0, subsequent ones at latest pointer plus one
-        uint32 startEpochId = latestIssuance[shareClassId][depositAssetId] + 1;
+        uint32 startEpochId = assetEpochState[shareClassId][depositAssetId].latestIssuance + 1;
 
         for (uint32 epochId_ = startEpochId; epochId_ <= endEpochId; epochId_++) {
             epochRatio[shareClassId][depositAssetId][epochId_].poolToShareQuote = navPerShare;
@@ -279,7 +287,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         }
 
         totalIssuance[shareClassId] += totalNewShares;
-        latestIssuance[shareClassId][depositAssetId] = endEpochId;
+        assetEpochState[shareClassId][depositAssetId].latestIssuance = endEpochId;
         _shareClassNavPerShare[shareClassId] = navPerShare;
     }
 
@@ -289,10 +297,12 @@ contract SingleShareClass is Auth, IShareClassManager {
         auth
         returns (uint256 payoutAssetAmount, uint256 payoutPoolAmount)
     {
-        uint32 latestApproval_ = latestRedeemApproval[shareClassId][payoutAssetId];
-        require(latestApproval_ > 0, NotYetApproved());
+        AssetEpochState memory assetEpochState_ = assetEpochState[shareClassId][payoutAssetId];
+        require(assetEpochState_.latestRedeemApproval > assetEpochState_.latestRevocation, ApprovalRequired());
 
-        return revokeSharesUntilEpoch(poolId, shareClassId, payoutAssetId, navPerShare, latestApproval_);
+        return revokeSharesUntilEpoch(
+            poolId, shareClassId, payoutAssetId, navPerShare, assetEpochState_.latestRedeemApproval
+        );
     }
 
     /// @notice Revokes shares for an epoch span and sets the price based on amount of approved redemption shares and
@@ -319,7 +329,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         uint256 totalRevokedShares = 0;
 
         // First issuance starts at epoch 0, subsequent ones at latest pointer plus one
-        uint32 startEpochId = latestRevocation[shareClassId][payoutAssetId] + 1;
+        uint32 startEpochId = assetEpochState[shareClassId][payoutAssetId].latestRevocation + 1;
 
         for (uint32 epochId_ = startEpochId; epochId_ <= endEpochId; epochId_++) {
             uint256 revokedShares = epoch[shareClassId][epochId_].approvedShares;
@@ -339,7 +349,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         }
 
         totalIssuance[shareClassId] -= totalRevokedShares;
-        latestRevocation[shareClassId][payoutAssetId] = endEpochId;
+        assetEpochState[shareClassId][payoutAssetId].latestRevocation = endEpochId;
         _shareClassNavPerShare[shareClassId] = navPerShare;
     }
 
@@ -349,7 +359,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         returns (uint256 payoutShareAmount, uint256 paymentAssetAmount)
     {
         return claimDepositUntilEpoch(
-            poolId, shareClassId, investor, depositAssetId, latestIssuance[shareClassId][depositAssetId]
+            poolId, shareClassId, investor, depositAssetId, assetEpochState[shareClassId][depositAssetId].latestIssuance
         );
     }
 
@@ -409,7 +419,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         returns (uint256 payoutAssetAmount, uint256 paymentShareAmount)
     {
         return claimRedeemUntilEpoch(
-            poolId, shareClassId, investor, payoutAssetId, latestRevocation[shareClassId][payoutAssetId]
+            poolId, shareClassId, investor, payoutAssetId, assetEpochState[shareClassId][payoutAssetId].latestRevocation
         );
     }
 
@@ -509,7 +519,7 @@ contract SingleShareClass is Auth, IShareClassManager {
 
         // Block updates until pending amount does not impact claimable amount, i.e. last update happened after latest
         // approval
-        uint32 latestApproval = latestDepositApproval[shareClassId][depositAssetId];
+        uint32 latestApproval = assetEpochState[shareClassId][depositAssetId].latestDepositApproval;
         require(
             userOrder.pending == 0 || latestApproval == 0 || userOrder.lastUpdate > latestApproval,
             IShareClassManager.ClaimDepositRequired()
@@ -550,7 +560,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         UserOrder storage userOrder = redeemRequest[shareClassId][payoutAssetId][investor];
 
         // Block updates until pending amount does not impact claimable amount
-        uint32 latestApproval = latestRedeemApproval[shareClassId][payoutAssetId];
+        uint32 latestApproval = assetEpochState[shareClassId][payoutAssetId].latestRedeemApproval;
         require(
             userOrder.pending == 0 || latestApproval == 0 || userOrder.lastUpdate > latestApproval,
             IShareClassManager.ClaimRedeemRequired()
