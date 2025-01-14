@@ -25,6 +25,12 @@ contract TestPortfolio is Test {
     address c6 = address(new C6());
     TransientValuation valuation = new TransientValuation();
 
+    function testSameDecimals() public {
+        valuation.setPrice(d18(2, 1)); //2.0
+
+        assertEq(valuation.getQuote(100 * 1e6, c6, c6), 200 * 1e6);
+    }
+
     function testHighPriceFromMoreDecimalsToLess() public {
         valuation.setPrice(d18(3, 1)); //3.0
 
