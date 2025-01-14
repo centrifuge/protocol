@@ -81,6 +81,7 @@ contract SingleShareClass is Auth, IShareClassManager {
     error ShareClassIdAlreadySet();
     error ApprovalRequired();
     error UnrecognizedFileParam();
+    error AlreadyApproved();
 
     /// Events
     event File(bytes32 what, address who);
@@ -172,6 +173,11 @@ contract SingleShareClass is Auth, IShareClassManager {
         // Advance epochId if it has not been advanced within this transaction (e.g. in case of multiCall context)
         uint32 approvalEpochId = _advanceEpoch(poolId);
 
+        // Block approvals for the same asset in the same epoch
+        require(
+            assetEpochState[shareClassId][paymentAssetId].latestDepositApproval != approvalEpochId, AlreadyApproved()
+        );
+
         // Reduce pending
         approvedAssetAmount = approvalRatio.mulUint256(pendingDeposit[shareClassId][paymentAssetId]);
         pendingDeposit[shareClassId][paymentAssetId] -= approvedAssetAmount;
@@ -216,6 +222,9 @@ contract SingleShareClass is Auth, IShareClassManager {
 
         // Advance epochId if it has not been advanced within this transaction (e.g. in case of multiCall context)
         uint32 approvalEpochId = _advanceEpoch(poolId);
+
+        // Block approvals for the same asset in the same epoch
+        require(assetEpochState[shareClassId][payoutAssetId].latestRedeemApproval != approvalEpochId, AlreadyApproved());
 
         // Reduce pending
         approvedShares = approvalRatio.mulUint256(pendingRedeem[shareClassId][payoutAssetId]);

@@ -894,6 +894,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     error Unauthorized();
     error ApprovalRequired();
     error UnrecognizedFileParam();
+    error AlreadyApproved();
 
     function testFile(bytes32 what) public {
         vm.assume(what != "poolRegistry");
@@ -1109,5 +1110,19 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
 
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ClaimRedeemRequired.selector));
         shareClass.requestRedeem(poolId, shareClassId, 1, investor, USDC);
+    }
+
+    function testApproveDepositsAlreadyApproved() public {
+        shareClass.approveDeposits(poolId, shareClassId, d18(1), USDC, oracleMock);
+
+        vm.expectRevert(AlreadyApproved.selector);
+        shareClass.approveDeposits(poolId, shareClassId, d18(1), USDC, oracleMock);
+    }
+
+    function testApproveRedeemssAlreadyApproved() public {
+        shareClass.approveRedeems(poolId, shareClassId, d18(1), USDC, oracleMock);
+
+        vm.expectRevert(AlreadyApproved.selector);
+        shareClass.approveRedeems(poolId, shareClassId, d18(1), USDC, oracleMock);
     }
 }
