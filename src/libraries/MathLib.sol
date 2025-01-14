@@ -13,6 +13,7 @@ library MathLib {
     error Uint8_Overflow();
     error Uint32_Overflow();
     error Uint128_Overflow();
+    error Int128_Overflow();
 
     uint256 public constant One27 = 10 ** 27;
     /// @notice Returns x^n with rounding precision of base
@@ -167,6 +168,12 @@ library MathLib {
     function toUint128(uint256 value) internal pure returns (uint128) {
         require(value <= type(uint128).max, Uint128_Overflow());
         return uint128(value);
+    }
+
+    /// @notice Safe type conversion from uint256 to int128.
+    function toInt128(uint256 value) internal pure returns (int128) {
+        require(value <= uint128(type(int128).max), Int128_Overflow());
+        return int128(uint128(value));
     }
 
     /// @notice Returns the smallest of two numbers.
