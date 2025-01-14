@@ -513,7 +513,7 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
         D18 poolToShareQuote = d18(uint128(bound(navPerShare, 1e14, type(uint128).max / 1e18)));
         D18 approvalRatio = d18(uint128(bound(approvalRatio_, 1e14, 1e18)));
         uint256 approvedRedeem = approvalRatio.mulUint256(redeemAmount);
-        uint256 poolAmount = poolToShareQuote.reciprocalMulInt(approvedRedeem);
+        uint256 poolAmount = poolToShareQuote.reciprocalMulUint256(approvedRedeem);
         uint256 assetAmount = poolToUsdc(poolAmount);
 
         // Mock total issuance to equal redeemAmount
@@ -551,7 +551,7 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
         D18 approvalRatio = d18(uint128(bound(approvalRatio_, 1e14, 1e18)));
         uint256 approvedRedeem = approvalRatio.mulUint256(redeemAmount);
         uint256 pendingRedeem = redeemAmount - approvedRedeem;
-        uint256 payout = poolToUsdc(poolToShareQuote.reciprocalMulInt(approvedRedeem));
+        uint256 payout = poolToUsdc(poolToShareQuote.reciprocalMulUint256(approvedRedeem));
 
         // Mock total issuance to equal redeemAmount
         vm.store(
@@ -795,7 +795,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         pendingRedeem = redeemAmount;
         for (uint8 i = 1; i < maxEpochId; i++) {
             uint256 epochApproved = approvalRatio.mulUint256(pendingRedeem);
-            uint256 epochPayout = poolToUsdc(poolToShareQuote.reciprocalMulInt(epochApproved));
+            uint256 epochPayout = poolToUsdc(poolToShareQuote.reciprocalMulUint256(epochApproved));
             pendingRedeem -= approvalRatio.mulUint256(pendingRedeem);
             payout += epochPayout;
             approvedRedeem += epochApproved;

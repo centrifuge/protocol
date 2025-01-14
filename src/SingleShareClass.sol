@@ -335,13 +335,13 @@ contract SingleShareClass is Auth, IShareClassManager {
             uint256 revokedShares = epoch[shareClassId][epochId_].approvedShares;
 
             // payout = shares / poolToShareQuote
-            uint256 epochPoolAmount = uint256(navPerShare.reciprocalMulInt(revokedShares));
+            uint256 epochPoolAmount = uint256(navPerShare.reciprocalMulUint256(revokedShares));
 
             epochRatio[shareClassId][payoutAssetId][epochId_].poolToShareQuote = navPerShare;
             payoutPoolAmount += epochPoolAmount;
 
             payoutAssetAmount +=
-                epochRatio[shareClassId][payoutAssetId][epochId_].assetToPoolQuote.reciprocalMulInt(epochPoolAmount);
+                epochRatio[shareClassId][payoutAssetId][epochId_].assetToPoolQuote.reciprocalMulUint256(epochPoolAmount);
             uint256 nav = navPerShare.mulUint256(revokedShares);
             totalRevokedShares += revokedShares;
 
@@ -452,8 +452,8 @@ contract SingleShareClass is Auth, IShareClassManager {
             uint256 approvedShares = epochRatio_.redeemRatio.mulUint256(userOrder.pending);
 
             // assetAmount = poolAmount * poolToAsset = poolAmount / assetToPool = (#shares / poolToShare) / assetToPool
-            uint256 approvedAssetAmount = epochRatio_.assetToPoolQuote.reciprocalMulInt(
-                epochRatio_.poolToShareQuote.reciprocalMulInt(approvedShares)
+            uint256 approvedAssetAmount = epochRatio_.assetToPoolQuote.reciprocalMulUint256(
+                epochRatio_.poolToShareQuote.reciprocalMulUint256(approvedShares)
             );
 
             paymentShares += approvedShares;

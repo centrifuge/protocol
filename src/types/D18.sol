@@ -61,7 +61,7 @@ function mulUint256(D18 d, uint256 value) pure returns (uint256) {
 /// - d (decimal):      2_000_000_000_000_000_000
 /// - value (integer):  100_000_000_000_000_000_000
 /// - result (integer): 50_000_000_000_000_000_000
-function reciprocalMulInt(D18 d, uint256 value) pure returns (uint128) {
+function reciprocalMulUint256(D18 d, uint256 value) pure returns (uint256) {
     return MathLib.mulDiv(value, 1e18, d.inner()).toUint128();
 }
 
@@ -71,4 +71,6 @@ function d18(uint128 value) pure returns (D18) {
 }
 
 // TODO(@review): Discuss  mulInt128, mulInt256 vs. wrapping above code in library s.t. duplicate `mulInt` can co-exist
-using {add as +, sub as -, divD8 as /, inner, mulD8 as *, mulUint128, mulUint256, reciprocalMulInt} for D18 global;
+using {
+    add as +, sub as -, divD8 as /, inner, mulD8 as *, mulUint128, mulUint256, reciprocalMulUint256
+} for D18 global;
