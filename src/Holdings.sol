@@ -93,7 +93,7 @@ contract Holdings is Auth, IHoldings {
         Item storage item_ = item[poolId][itemId_.index()];
         address poolCurrency = address(poolRegistry.currency(poolId));
 
-        amountValue = uint128(valuation_.getQuote(amount, AssetId.unwrap(item_.assetId), poolCurrency));
+        amountValue = valuation_.getQuote(amount, AssetId.unwrap(item_.assetId), poolCurrency).toUint128();
 
         item_.assetAmount += amount;
         item_.assetAmountValue += amountValue;
@@ -113,7 +113,7 @@ contract Holdings is Auth, IHoldings {
         Item storage item_ = item[poolId][itemId_.index()];
         address poolCurrency = address(poolRegistry.currency(poolId));
 
-        amountValue = uint128(valuation_.getQuote(amount, AssetId.unwrap(item_.assetId), poolCurrency));
+        amountValue = valuation_.getQuote(amount, AssetId.unwrap(item_.assetId), poolCurrency).toUint128();
 
         item_.assetAmount -= amount;
         item_.assetAmountValue -= amountValue;
@@ -128,7 +128,7 @@ contract Holdings is Auth, IHoldings {
         Item storage item_ = item[poolId][itemId_.index()];
         address poolCurrency = address(poolRegistry.currency(poolId));
         uint128 currentAmountValue =
-            uint128(item_.valuation.getQuote(item_.assetAmount, AssetId.unwrap(item_.assetId), poolCurrency));
+            item_.valuation.getQuote(item_.assetAmount, AssetId.unwrap(item_.assetId), poolCurrency).toUint128();
 
         diffValue = currentAmountValue > item_.assetAmountValue
             ? uint256(currentAmountValue - item_.assetAmountValue).toInt128()
