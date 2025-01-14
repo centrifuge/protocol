@@ -13,8 +13,8 @@ import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
 import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 
-PoolId constant POOL_ID = PoolId.wrap(0x123);
-bytes16 constant SHARE_CLASS_ID = bytes16("shareClassId");
+uint64 constant POOL_ID = 1;
+bytes16 constant SHARE_CLASS_ID = bytes16(keccak256(abi.encode(PoolId.wrap(POOL_ID), 0)));
 address constant POOL_CURRENCY = address(840);
 address constant USDC = address(0x0123456);
 address constant OTHER_STABLE = address(0x01234567);
@@ -103,7 +103,7 @@ abstract contract SingleShareClassBaseTest is Test {
     OracleMock oracleMock = new OracleMock();
     PoolRegistryMock poolRegistryMock = new PoolRegistryMock();
 
-    PoolId poolId = PoolId.wrap(1);
+    PoolId poolId = PoolId.wrap(POOL_ID);
     bytes16 shareClassId = SHARE_CLASS_ID;
     address poolRegistryAddress = makeAddr("poolRegistry");
     address investor = makeAddr("investor");
@@ -115,7 +115,7 @@ abstract contract SingleShareClassBaseTest is Test {
 
     function setUp() public virtual {
         shareClass = new SingleShareClass(poolRegistryAddress, address(this));
-        shareClass.setShareClassId(poolId, shareClassId);
+        shareClass.addShareClass(poolId, bytes(""));
         shareClass.allowAsset(poolId, shareClassId, USDC);
         shareClass.allowAsset(poolId, shareClassId, OTHER_STABLE);
 
@@ -172,16 +172,19 @@ abstract contract SingleShareClassBaseTest is Test {
     /// https://github.com/foundry-rs/foundry/issues/8165 is merged
     function _resetTransientEpochIncrement() internal {
         if (!WITH_TRANSIENT) {
-            // Slot 1 for `_epochIncrement` and `poolRegistry`
+            // Slot 1 for `_epochIncrement`, `poolRegistry`, and `shareClassIdCounter`
             bytes32 slot = bytes32(uint256(1));
 
-            // Read the current value of the storage slot
+            // Load the current value of the storage slot
             bytes32 currentValue = vm.load(address(shareClass), slot);
 
-            // Clear only the first 4 bytes (corresponding to `_epochIncrement`) and preserve the rest
-            bytes32 clearedValue = currentValue & ~bytes32(uint256(0xFFFFFFFF));
+            // Clear only the first 4 bytes (corresponding to `_epochIncrement`)
+            // and preserve the rest
+            bytes32 clearedValue = currentValue & ~bytes32(uint256(0xFFFFFFFF)) // Clear `_epochIncrement` (first 4
+                // bytes)
+                & ~(bytes32(uint256(0xFFFFFFFF)) << 192); // Preserve `shareClassIdCounter` (last 4 bytes)
 
-            // Set `_epochIncrement` to 0 (already cleared in the mask operation)
+            // Set `_epochIncrement` to 0
             vm.store(address(shareClass), slot, clearedValue);
         }
     }
@@ -891,7 +894,6 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
 
     error Unauthorized();
     error NotYetApproved();
-    error ShareClassIdAlreadySet();
     error UnrecognizedFileParam();
 
     function testFile(bytes32 what) public {
@@ -901,8 +903,8 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     }
 
     function testSetShareClassIdAlreadySet() public {
-        vm.expectRevert(abi.encodeWithSelector(ShareClassIdAlreadySet.selector));
-        shareClass.setShareClassId(poolId, shareClassId);
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.MaxShareClassNumberExceeded.selector, 1));
+        shareClass.addShareClass(poolId, bytes(""));
     }
 
     function testIsAllowedAssetWrongShareClassId() public {

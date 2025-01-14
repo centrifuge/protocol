@@ -47,6 +47,7 @@ contract SingleShareClass is Auth, IShareClassManager {
     // uint32 private transient _epochIncrement;
     uint32 private /*transient*/ _epochIncrement;
     IPoolRegistry public poolRegistry;
+    uint32 public shareClassIdCounter;
     mapping(PoolId poolId => bytes16) public shareClassIds;
     // User storage
     mapping(bytes16 => mapping(address paymentAssetId => mapping(address investor => UserOrder pending))) public
@@ -87,14 +88,13 @@ contract SingleShareClass is Auth, IShareClassManager {
         emit File(what, data);
     }
 
-    /// @notice Associate a pool with a share class id.
-    ///
-    /// @param poolId Identifier of the pool
-    /// @param shareClassId_ Identifier of the share class to be linked to the pool
-    function setShareClassId(PoolId poolId, bytes16 shareClassId_) external auth {
-        require(shareClassIds[poolId] == bytes16(0), ShareClassIdAlreadySet());
+    /// @inheritdoc IShareClassManager
+    function addShareClass(PoolId poolId, bytes calldata /* data */ ) external auth returns (bytes16 shareClassId) {
+        require(shareClassIds[poolId] == bytes16(0), IShareClassManager.MaxShareClassNumberExceeded(1));
 
-        shareClassIds[poolId] = shareClassId_;
+        shareClassId = bytes16(keccak256(abi.encode(poolId, shareClassIdCounter++)));
+
+        shareClassIds[poolId] = shareClassId;
         epochId[poolId] = 1;
     }
 
@@ -499,11 +499,6 @@ contract SingleShareClass is Auth, IShareClassManager {
     function update(PoolId, bytes calldata) external pure {
         // TODO(@mustermeiszer): Needed for single share class?
         revert("unsupported");
-    }
-
-    /// @inheritdoc IShareClassManager
-    function addShareClass(PoolId, bytes calldata) external pure returns (bytes16) {
-        revert IShareClassManager.MaxShareClassNumberExceeded(1);
     }
 
     /// @inheritdoc IShareClassManager
