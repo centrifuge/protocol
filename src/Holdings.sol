@@ -122,7 +122,7 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @inheritdoc IItemManager
-    function update(PoolId poolId, ItemId itemId_) external auth returns (int128 diff) {
+    function update(PoolId poolId, ItemId itemId_) external auth returns (int128 diffValue) {
         require(itemId_.index() < item[poolId].length, ItemNotFound());
 
         Item storage item_ = item[poolId][itemId_.index()];
@@ -130,13 +130,13 @@ contract Holdings is Auth, IHoldings {
         uint128 currentAmountValue =
             uint128(item_.valuation.getQuote(item_.assetAmount, AssetId.unwrap(item_.assetId), poolCurrency));
 
-        diff = currentAmountValue > item_.assetAmountValue
+        diffValue = currentAmountValue > item_.assetAmountValue
             ? uint256(currentAmountValue - item_.assetAmountValue).toInt128()
             : -uint256(item_.assetAmountValue - currentAmountValue).toInt128();
 
         item_.assetAmountValue = currentAmountValue;
 
-        emit ItemUpdated(poolId, itemId_, diff);
+        emit ItemUpdated(poolId, itemId_, diffValue);
     }
 
     /// @inheritdoc IItemManager
@@ -163,6 +163,13 @@ contract Holdings is Auth, IHoldings {
         require(itemId_.index() < item[poolId].length, ItemNotFound());
 
         return item[poolId][itemId_.index()].assetAmountValue;
+    }
+
+    /// @inheritdoc IItemManager
+    function itemAmount(PoolId poolId, ItemId itemId_) external view returns (uint128 amount) {
+        require(itemId_.index() < item[poolId].length, ItemNotFound());
+
+        return item[poolId][itemId_.index()].assetAmount;
     }
 
     /// @inheritdoc IItemManager

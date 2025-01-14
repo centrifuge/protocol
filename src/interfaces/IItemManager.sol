@@ -27,7 +27,7 @@ interface IItemManager {
     event ItemDecreasedInterest(PoolId indexed, ItemId indexed, uint128 interestAmount);
 
     /// @notice Emitted when the item is updated
-    event ItemUpdated(PoolId indexed, ItemId indexed, int128 diff);
+    event ItemUpdated(PoolId indexed, ItemId indexed, int128 diffValue);
 
     /// @notice Emitted when an item valuation is updated
     event ValuationUpdated(PoolId indexed, ItemId indexed, IERC7726 valuation);
@@ -71,8 +71,8 @@ interface IItemManager {
     function decreaseInterest(PoolId poolId, ItemId itemId, uint128 interestAmount) external;
 
     /// @notice Reset the value of an item using the current valuation.
-    /// @return diff The difference in value after the new valuation.
-    function update(PoolId poolId, ItemId itemId) external returns (int128 diff);
+    /// @return diffValue The difference in value after the new valuation.
+    function update(PoolId poolId, ItemId itemId) external returns (int128 diffValue);
 
     /// @notice Updates the valuation method used for this item.
     function updateValuation(PoolId poolId, ItemId itemId, IERC7726 valuation) external;
@@ -82,6 +82,9 @@ interface IItemManager {
 
     /// @notice Returns the item value of this item.
     function itemValue(PoolId poolId, ItemId itemId) external view returns (uint128 value);
+
+    /// @notice Returns the item amount of this item.
+    function itemAmount(PoolId poolId, ItemId itemId) external view returns (uint128 amount);
 
     /// @notice Returns the valuation method used for this item.
     function valuation(PoolId poolId, ItemId itemId) external view returns (IERC7726);

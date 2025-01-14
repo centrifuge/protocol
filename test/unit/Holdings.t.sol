@@ -366,6 +366,23 @@ contract TestItemValue is TestCommon {
     }
 }
 
+contract TestItemAmount is TestCommon {
+    function testSuccess() public {
+        ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
+        mockGetQuote(itemValuation, 20, 200);
+        holdings.increase(POOL_A, itemId, itemValuation, 20);
+
+        uint128 value = holdings.itemAmount(POOL_A, itemId);
+
+        assertEq(value, 20);
+    }
+
+    function testErrItemNotFound() public {
+        vm.expectRevert(IItemManager.ItemNotFound.selector);
+        holdings.itemAmount(POOL_A, newItemId(0));
+    }
+}
+
 contract TestValuation is TestCommon {
     function testSuccess() public {
         ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
