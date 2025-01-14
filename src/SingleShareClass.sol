@@ -100,7 +100,7 @@ contract SingleShareClass is Auth, IShareClassManager {
 
     /// @inheritdoc IShareClassManager
     function allowAsset(PoolId poolId, bytes16 shareClassId, address assetId) external auth {
-        require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
+        _ensureShareClassExists(poolId, shareClassId);
 
         allowedAssets[shareClassId][assetId] = true;
 
@@ -109,7 +109,7 @@ contract SingleShareClass is Auth, IShareClassManager {
 
     /// @inheritdoc IShareClassManager
     function disallowAsset(PoolId poolId, bytes16 shareClassId, address assetId) external auth {
-        require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
+        _ensureShareClassExists(poolId, shareClassId);
 
         delete allowedAssets[shareClassId][assetId];
 
@@ -124,8 +124,8 @@ contract SingleShareClass is Auth, IShareClassManager {
         address investor,
         address depositAssetId
     ) external auth {
-        require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
-        require(allowedAssets[shareClassId][depositAssetId] == true, IShareClassManager.AssetNotAllowed());
+        _ensureShareClassExists(poolId, shareClassId);
+        require(allowedAssets[shareClassId][depositAssetId], IShareClassManager.AssetNotAllowed());
 
         _updateDepositRequest(poolId, shareClassId, int256(amount), investor, depositAssetId);
     }
@@ -134,7 +134,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         external
         auth
     {
-        require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
+        _ensureShareClassExists(poolId, shareClassId);
 
         _updateDepositRequest(
             poolId,
@@ -150,8 +150,8 @@ contract SingleShareClass is Auth, IShareClassManager {
         external
         auth
     {
-        require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
-        require(allowedAssets[shareClassId][payoutAssetId] == true, IShareClassManager.AssetNotAllowed());
+        _ensureShareClassExists(poolId, shareClassId);
+        require(allowedAssets[shareClassId][payoutAssetId], IShareClassManager.AssetNotAllowed());
 
         _updateRedeemRequest(poolId, shareClassId, int256(amount), investor, payoutAssetId);
     }
@@ -161,7 +161,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         external
         auth
     {
-        require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
+        _ensureShareClassExists(poolId, shareClassId);
 
         _updateRedeemRequest(
             poolId,
@@ -180,7 +180,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         address paymentAssetId,
         IERC7726Ext valuation
     ) external auth returns (uint256 approvedPoolAmount, uint256 approvedAssetAmount) {
-        require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
+        _ensureShareClassExists(poolId, shareClassId);
 
         // Advance epochId if it has not been advanced within this transaction (e.g. in case of multiCall context)
         uint32 approvalEpochId = _advanceEpoch(poolId);
@@ -225,7 +225,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         address payoutAssetId,
         IERC7726Ext valuation
     ) external auth returns (uint256 approvedShares, uint256 pendingShares) {
-        require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
+        _ensureShareClassExists(poolId, shareClassId);
 
         // Advance epochId if it has not been advanced within this transaction (e.g. in case of multiCall context)
         uint32 approvalEpochId = _advanceEpoch(poolId);
@@ -281,7 +281,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         D18 navPerShare,
         uint32 endEpochId
     ) public auth {
-        require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
+        _ensureShareClassExists(poolId, shareClassId);
         require(endEpochId < epochId[poolId], IShareClassManager.EpochNotFound());
 
         uint256 totalNewShares = 0;
@@ -334,7 +334,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         D18 navPerShare,
         uint32 endEpochId
     ) public auth returns (uint256 payoutAssetAmount, uint256 payoutPoolAmount) {
-        require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
+        _ensureShareClassExists(poolId, shareClassId);
         require(endEpochId < epochId[poolId], IShareClassManager.EpochNotFound());
 
         uint256 totalRevokedShares = 0;
@@ -391,7 +391,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         address depositAssetId,
         uint32 endEpochId
     ) public returns (uint256 payoutShares, uint256 paymentAssetAmount) {
-        require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
+        _ensureShareClassExists(poolId, shareClassId);
         require(endEpochId < epochId[poolId], IShareClassManager.EpochNotFound());
 
         UserOrder storage userOrder = depositRequest[shareClassId][depositAssetId][investor];
@@ -452,7 +452,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         address payoutAssetId,
         uint32 endEpochId
     ) public returns (uint256 payoutAssetAmount, uint256 paymentShares) {
-        require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
+        _ensureShareClassExists(poolId, shareClassId);
         require(endEpochId < epochId[poolId], IShareClassManager.EpochNotFound());
 
         UserOrder storage userOrder = redeemRequest[shareClassId][payoutAssetId][investor];
@@ -489,7 +489,7 @@ contract SingleShareClass is Auth, IShareClassManager {
 
     /// @inheritdoc IShareClassManager
     function updateShareClassNav(PoolId poolId, bytes16 shareClassId) external view auth returns (D18, uint256) {
-        require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
+        _ensureShareClassExists(poolId, shareClassId);
 
         // TODO(@mustermeiszer): Needed for single share class?
         revert("unsupported");
@@ -508,7 +508,7 @@ contract SingleShareClass is Auth, IShareClassManager {
 
     /// @inheritdoc IShareClassManager
     function isAllowedAsset(PoolId poolId, bytes16 shareClassId, address assetId) external view returns (bool) {
-        require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
+        _ensureShareClassExists(poolId, shareClassId);
 
         return allowedAssets[shareClassId][assetId];
     }
@@ -519,7 +519,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         view
         returns (D18 navPerShare, uint256 issuance)
     {
-        require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassMismatch(shareClassIds[poolId]));
+        _ensureShareClassExists(poolId, shareClassId);
 
         return (_shareClassNavPerShare[shareClassId], totalIssuance[shareClassId]);
     }
@@ -629,5 +629,13 @@ contract SingleShareClass is Auth, IShareClassManager {
         } else {
             return uint32(uint256(epochId_ - 1).max(1));
         }
+    }
+
+    /// @notice Ensures the given share class id is linked to the given pool id. If not, reverts.
+    ///
+    /// @param poolId Identifier of the pool.
+    /// @param shareClassId Identifier of the share class to be checked.
+    function _ensureShareClassExists(PoolId poolId, bytes16 shareClassId) private view {
+        require(shareClassIds[poolId] == shareClassId, IShareClassManager.ShareClassNotFound());
     }
 }

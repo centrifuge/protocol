@@ -906,12 +906,12 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     }
 
     function testIsAllowedAssetWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.isAllowedAsset(poolId, wrongShareClassId, USDC);
     }
 
     function testAllowAssetWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.allowAsset(poolId, wrongShareClassId, USDC);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -920,7 +920,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     }
 
     function testDisallowAssetWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.disallowAsset(poolId, wrongShareClassId, USDC);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -929,7 +929,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     }
 
     function testRequestDepositWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.requestDeposit(poolId, wrongShareClassId, 1, investor, USDC);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -938,7 +938,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     }
 
     function testCancelRequestDepositWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.cancelDepositRequest(poolId, wrongShareClassId, investor, USDC);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -947,7 +947,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     }
 
     function testRequestRedeemWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.requestRedeem(poolId, wrongShareClassId, 1, investor, USDC);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -956,7 +956,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     }
 
     function testCancelRedeemRequestWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.cancelRedeemRequest(poolId, wrongShareClassId, investor, USDC);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -965,7 +965,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     }
 
     function testApproveDepositsWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.approveDeposits(poolId, wrongShareClassId, d18(1), USDC, IERC7726Ext(address(this)));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -974,7 +974,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     }
 
     function testApproveRedeemsWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.approveRedeems(poolId, wrongShareClassId, d18(1), USDC, IERC7726Ext(address(this)));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -990,7 +990,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
             bytes32(uint256(1))
         );
 
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.issueShares(poolId, wrongShareClassId, USDC, d18(1));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -999,7 +999,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     }
 
     function testIssueSharesUntilEpochWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.issueSharesUntilEpoch(poolId, wrongShareClassId, USDC, d18(1), 0);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -1015,7 +1015,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
             bytes32(uint256(1))
         );
 
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.revokeShares(poolId, wrongShareClassId, USDC, d18(1));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -1024,7 +1024,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     }
 
     function testRevokeSharesUntilEpochWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.revokeSharesUntilEpoch(poolId, wrongShareClassId, USDC, d18(1), 0);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -1033,32 +1033,32 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     }
 
     function testClaimDepositWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.claimDeposit(poolId, wrongShareClassId, investor, USDC);
     }
 
     function testClaimDepositUntilEpochWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.claimDepositUntilEpoch(poolId, wrongShareClassId, investor, USDC, 0);
     }
 
     function testClaimRedeemWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.claimRedeem(poolId, wrongShareClassId, investor, USDC);
     }
 
     function testClaimRedeemUntilEpochWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.claimRedeemUntilEpoch(poolId, wrongShareClassId, investor, USDC, 0);
     }
 
     function testUpdateShareClassNavWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.updateShareClassNav(poolId, wrongShareClassId);
     }
 
     function testGetShareClassNavWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassMismatch.selector, shareClassId));
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.shareClassNavPerShare(poolId, wrongShareClassId);
     }
 

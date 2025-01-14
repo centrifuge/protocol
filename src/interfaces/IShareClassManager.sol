@@ -92,7 +92,7 @@ interface IShareClassManager {
 
     /// Errors
     error PoolMissing();
-    error ShareClassMismatch(bytes16 correctShareClassId);
+    error ShareClassNotFound();
     error MaxShareClassNumberExceeded(uint8 numberOfShareClasses);
     error AssetNotAllowed();
     error InvestorNotAllowed();
