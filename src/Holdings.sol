@@ -28,6 +28,7 @@ contract Holdings is Auth, IHoldings {
         uint128 assetAmountValue;
     }
 
+    mapping(PoolId => mapping(AssetId => bool)) public isAssetAllowed;
     mapping(PoolId => Item[]) public item;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => ItemId))) public itemId;
     mapping(PoolId => mapping(ItemId => mapping(uint8 kind => AccountId))) public accountId;
@@ -46,6 +47,15 @@ contract Holdings is Auth, IHoldings {
         emit File(what, data);
     }
 
+    /// @inheritdoc IHoldings
+    function allowAsset(PoolId poolId, AssetId assetId, bool isAllow) external auth {
+        require(!assetId.isNull(), WrongAssetId());
+
+        isAssetAllowed[poolId][assetId] = isAllow;
+
+        emit AllowedAsset(poolId, assetId, isAllow);
+    }
+
     /// @inheritdoc IItemManager
     /// @param data Expect a (ShareClassId, AssetId) encoded.
     function create(PoolId poolId, IERC7726 valuation_, AccountId[] memory accounts, bytes calldata data)
@@ -57,7 +67,7 @@ contract Holdings is Auth, IHoldings {
 
         require(address(valuation_) != address(0), WrongValuation());
         require(!scId.isNull(), WrongShareClassId());
-        require(!assetId.isNull(), WrongAssetId());
+        require(isAssetAllowed[poolId][assetId], WrongAssetId());
 
         itemId_ = newItemId(item[poolId].length);
         item[poolId].push(Item(scId, assetId, valuation_, 0, 0));

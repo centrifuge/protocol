@@ -44,6 +44,33 @@ contract TestCommon is Test {
             abi.encode(uint256(quoteAmount))
         );
     }
+
+    function setUp() public {
+        holdings.allowAsset(POOL_A, ASSET_A, true); // Default asset used in all tests
+    }
+}
+
+contract TestAllowAsset is TestCommon {
+    function testSuccess() public {
+        holdings.allowAsset(POOL_A, ASSET_A, false); // Disallow default asset
+
+        vm.expectEmit();
+        emit IHoldings.AllowedAsset(POOL_A, ASSET_A, true);
+        holdings.allowAsset(POOL_A, ASSET_A, true);
+
+        assertEq(holdings.isAssetAllowed(POOL_A, ASSET_A), true);
+    }
+
+    function testErrNotAuthorized() public {
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        holdings.allowAsset(POOL_A, ASSET_A, true);
+    }
+
+    function testErrWrongAssetId() public {
+        vm.expectRevert(IHoldings.WrongAssetId.selector);
+        holdings.allowAsset(POOL_A, NON_ASSET, true);
+    }
 }
 
 contract TestFile is TestCommon {
