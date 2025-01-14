@@ -19,16 +19,11 @@ import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 PoolId constant POOL_A = PoolId.wrap(42);
 ShareClassId constant SC_1 = ShareClassId.wrap(1);
 AssetId constant ASSET_A = AssetId.wrap(address(2));
-PoolId constant NON_POOL = PoolId.wrap(0);
 ShareClassId constant NON_SC = ShareClassId.wrap(0);
 AssetId constant NON_ASSET = AssetId.wrap(address(0));
 IERC20Metadata constant POOL_CURRENCY = IERC20Metadata(address(1));
 
 contract PoolRegistryMock {
-    function exists(PoolId poolId) external pure returns (bool) {
-        return PoolId.unwrap(poolId) != PoolId.unwrap(NON_POOL);
-    }
-
     function currency(PoolId) external pure returns (IERC20Metadata) {
         return POOL_CURRENCY;
     }
@@ -107,11 +102,6 @@ contract TestCreate is TestCommon {
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
         holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
-    }
-
-    function testErrNonExistingPool() public {
-        vm.expectRevert(abi.encodeWithSelector(IPoolRegistry.NonExistingPool.selector, NON_POOL));
-        holdings.create(NON_POOL, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
     }
 
     function testErrWrongValuation() public {

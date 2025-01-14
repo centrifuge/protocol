@@ -55,7 +55,6 @@ contract Holdings is Auth, IHoldings {
     {
         (ShareClassId scId, AssetId assetId) = abi.decode(data, (ShareClassId, AssetId));
 
-        require(poolRegistry.exists(poolId), IPoolRegistry.NonExistingPool(poolId));
         require(address(valuation_) != address(0), WrongValuation());
         require(!scId.isNull(), WrongShareClassId());
         require(!assetId.isNull(), WrongAssetId());
