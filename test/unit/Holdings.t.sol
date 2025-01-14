@@ -99,8 +99,8 @@ contract TestFile is TestCommon {
 contract TestCreate is TestCommon {
     function testSuccess() public {
         AccountId[] memory accounts = new AccountId[](2);
-        accounts[0] = AccountId.wrap(0xAA00 & 0x01);
-        accounts[1] = AccountId.wrap(0xBB00 & 0x02);
+        accounts[0] = AccountId.wrap(0xAA00 | 0x01);
+        accounts[1] = AccountId.wrap(0xBB00 | 0x02);
 
         ItemId expectedItemId = newItemId(0);
 
@@ -119,8 +119,8 @@ contract TestCreate is TestCommon {
         assertEq(amount, 0);
         assertEq(amountValue, 0);
 
-        assertEq(AccountId.unwrap(holdings.accountId(POOL_A, itemId, 0x01)), 0xAA00 & 0x01);
-        assertEq(AccountId.unwrap(holdings.accountId(POOL_A, itemId, 0x02)), 0xBB00 & 0x02);
+        assertEq(AccountId.unwrap(holdings.accountId(POOL_A, itemId, 0x01)), 0xAA00 | 0x01);
+        assertEq(AccountId.unwrap(holdings.accountId(POOL_A, itemId, 0x02)), 0xBB00 | 0x02);
 
         assertEq(ItemId.unwrap(holdings.itemId(POOL_A, SC_1, ASSET_A)), ItemId.unwrap(itemId));
     }
@@ -330,9 +330,11 @@ contract TestSetAccountId is TestCommon {
     function testSuccess() public {
         ItemId itemId = holdings.create(POOL_A, itemValuation, new AccountId[](0), abi.encode(SC_1, ASSET_A));
 
-        holdings.setAccountId(POOL_A, itemId, AccountId.wrap(0xAA00 & 0x01));
+        vm.expectEmit();
+        emit IItemManager.AccountIdSet(POOL_A, itemId, 0x01, AccountId.wrap(0xAA00 | 0x01));
+        holdings.setAccountId(POOL_A, itemId, AccountId.wrap(0xAA00 | 0x01));
 
-        assertEq(AccountId.unwrap(holdings.accountId(POOL_A, itemId, 0x01)), 0xAA00 & 0x01);
+        assertEq(AccountId.unwrap(holdings.accountId(POOL_A, itemId, 0x01)), 0xAA00 | 0x01);
     }
 
     function testErrNotAuthorized() public {
@@ -340,12 +342,12 @@ contract TestSetAccountId is TestCommon {
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        holdings.setAccountId(POOL_A, itemId, AccountId.wrap(0xAA00 & 0x01));
+        holdings.setAccountId(POOL_A, itemId, AccountId.wrap(0xAA00 | 0x01));
     }
 
     function testErrItemNotFound() public {
         vm.expectRevert(IItemManager.ItemNotFound.selector);
-        holdings.setAccountId(POOL_A, newItemId(0), AccountId.wrap(0xAA00 & 0x01));
+        holdings.setAccountId(POOL_A, newItemId(0), AccountId.wrap(0xAA00 | 0x01));
     }
 }
 

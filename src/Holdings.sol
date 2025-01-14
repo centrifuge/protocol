@@ -155,7 +155,7 @@ contract Holdings is Auth, IHoldings {
 
         accountId[poolId][itemId_][accountId_.kind()] = accountId_;
 
-        emit AccountIdSet(poolId, itemId_, accountId_);
+        emit AccountIdSet(poolId, itemId_, accountId_.kind(), accountId_);
     }
 
     /// @inheritdoc IItemManager

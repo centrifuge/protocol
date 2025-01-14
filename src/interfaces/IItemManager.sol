@@ -33,7 +33,7 @@ interface IItemManager {
     event ValuationUpdated(PoolId indexed, ItemId indexed, IERC7726 valuation);
 
     /// @notice Emitted when an account is for an item is set
-    event AccountIdSet(PoolId indexed, ItemId indexed, AccountId accountId);
+    event AccountIdSet(PoolId indexed, ItemId indexed, uint8 indexed kind, AccountId accountId);
 
     /// @notice Item was not found for a required action
     error ItemNotFound();
