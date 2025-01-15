@@ -21,13 +21,6 @@ contract D18Test is Test {
         assertEqDecimal(c.inner(), a - b, 18);
     }
 
-    function testFuzzMulInt(uint128 a, uint128 b) public pure {
-        vm.assume(uint256(a) * uint256(b) <= type(uint128).max);
-
-        uint128 c = d18(a).mulUint128(b);
-        assertEq(c, MathLib.mulDiv(a, b, 1e18));
-    }
-
     function testMulUint128() public pure {
         D18 factor = d18(1_500_000_000_000_000_000); // 1.5
         uint128 value = 4_000_000_000_000_000_000;
@@ -35,11 +28,41 @@ contract D18Test is Test {
         assertEq(factor.mulUint128(value), 6_000_000_000_000_000_000);
     }
 
+    function testFuzzMulUInt128(uint128 a, uint128 b) public pure {
+        a = uint128(bound(a, 1, type(uint128).max));
+        b = uint128(bound(b, 0, type(uint128).max / a));
+
+        uint128 c = d18(a).mulUint128(b);
+        assertEq(c, MathLib.mulDiv(a, b, 1e18));
+    }
+
+    function testRoundingUint128(uint128 a) public pure {
+        a = uint128(bound(a, 0, type(uint128).max / 1e18));
+        D18 oneHundredPercent = d18(1e18);
+
+        assertEq(oneHundredPercent.mulUint128(a), a);
+    }
+
     function testMulUint256() public pure {
         D18 factor = d18(1_500_000_000_000_000_000); // 1.5
         uint256 value = 4_000_000_000_000_000_000_000_000;
 
         assertEq(factor.mulUint256(value), 6_000_000_000_000_000_000_000_000);
+    }
+
+    function testFuzzMulUInt256(uint128 a, uint256 b) public pure {
+        a = uint128(bound(a, 1, type(uint128).max));
+        b = uint256(bound(b, 0, type(uint256).max / a));
+
+        uint256 c = d18(a).mulUint256(b);
+        assertEq(c, MathLib.mulDiv(a, b, 1e18));
+    }
+
+    function testRoundingUint256(uint256 a) public pure {
+        a = bound(a, 0, type(uint256).max / 1e18);
+        D18 oneHundredPercent = d18(1e18);
+
+        assertEq(oneHundredPercent.mulUint256(a), a);
     }
 
     function testReciprocalMulInt() public pure {
