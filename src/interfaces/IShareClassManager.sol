@@ -53,7 +53,7 @@ interface IShareClassManager {
         uint32 indexed epoch,
         D18 navPerShare,
         uint256 nav,
-        uint256 issuedShares
+        uint256 issuedShareAmount
     );
 
     event RevokedShares(
@@ -62,7 +62,7 @@ interface IShareClassManager {
         uint32 indexed epoch,
         D18 navPerShare,
         uint256 nav,
-        uint256 revokedShares
+        uint256 revokedShareAmount
     );
 
     event ClaimedDeposit(
@@ -170,15 +170,15 @@ interface IShareClassManager {
     /// @param payoutAssetId Identifier of the asset for which all requests want to exchange their share class tokens
     /// for
     /// @param valuation Converter for quotas, e.g. price ratio of share class token amount to pool amount
-    /// @return approved Sum of redemption request amounts in pool amount which was approved
-    /// @return pending Sum of redemption request amounts in share class token amount which was not approved
+    /// @return approvedShareAmount Sum of redemption request amounts in pool amount which was approved
+    /// @return pendingShareAmount Sum of redemption request amounts in share class token amount which was not approved
     function approveRedeems(
         PoolId poolId,
         bytes16 shareClassId,
         D18 approvalRatio,
         address payoutAssetId,
         IERC7726Ext valuation
-    ) external returns (uint256 approved, uint256 pending);
+    ) external returns (uint256 approvedShareAmount, uint256 pendingShareAmount);
 
     /// @notice Emits new shares for the given identifier based on the provided NAV per share.
     ///

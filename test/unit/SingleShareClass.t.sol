@@ -147,10 +147,10 @@ abstract contract SingleShareClassBaseTest is Test {
     }
 
     function _assertEpochEq(bytes16 shareClassId_, uint32 epochId, Epoch memory expected) internal view {
-        (uint256 approvedDeposits, uint256 approvedShares) = shareClass.epoch(shareClassId_, epochId);
+        (uint256 approvedDepositAmount, uint256 approvedShareAmount) = shareClass.epoch(shareClassId_, epochId);
 
-        assertEq(approvedDeposits, expected.approvedDeposits, "approveDeposits mismatch");
-        assertEq(approvedShares, expected.approvedShares, "approvedShares mismatch");
+        assertEq(approvedDepositAmount, expected.approvedDepositAmount, "approvedDepositAmount mismatch");
+        assertEq(approvedShareAmount, expected.approvedShareAmount, "approvedShareAmount mismatch");
     }
 
     function _assertEpochRatioEq(bytes16 shareClassId_, address assetId, uint32 epochId, EpochRatio memory expected)

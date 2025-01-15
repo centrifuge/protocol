@@ -56,7 +56,7 @@ interface ISingleShareClass is IShareClassManager {
     /// @param investor Address of the recipient of the share class tokens
     /// @param depositAssetId Identifier of the asset which the investor used for their deposit request
     /// @param endEpochId Identifier of the maximum epoch until it is claimed claim
-    /// @return payoutShares Amount of shares which the investor receives
+    /// @return payoutShareAmount Amount of shares which the investor receives
     /// @return paymentAssetAmount Amount of deposit asset which was taken as payment
     function claimDepositUntilEpoch(
         PoolId poolId,
@@ -64,7 +64,7 @@ interface ISingleShareClass is IShareClassManager {
         address investor,
         address depositAssetId,
         uint32 endEpochId
-    ) external returns (uint256 payoutShares, uint256 paymentAssetAmount);
+    ) external returns (uint256 payoutShareAmount, uint256 paymentAssetAmount);
 
     /// @notice Reduces the share class token count of the investor in exchange for collecting an amount of payment
     /// asset for the specified range of epochs.
@@ -76,12 +76,12 @@ interface ISingleShareClass is IShareClassManager {
     /// redemption
     /// @param endEpochId Identifier of the maximum epoch until it is claimed claim
     /// @return payoutAssetAmount Amount of payout asset which the investor receives
-    /// @return paymentShares Amount of shares which the investor redeemed
+    /// @return paymentShareAmount Amount of shares which the investor redeemed
     function claimRedeemUntilEpoch(
         PoolId poolId,
         bytes16 shareClassId,
         address investor,
         address payoutAssetId,
         uint32 endEpochId
-    ) external returns (uint256 payoutAssetAmount, uint256 paymentShares);
+    ) external returns (uint256 payoutAssetAmount, uint256 paymentShareAmount);
 }
