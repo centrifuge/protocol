@@ -283,8 +283,9 @@ contract SingleShareClassDepositsNonTransientTest is SingleShareClassBaseTest {
 
         vm.expectEmit(true, true, true, true);
         emit IShareClassManager.UpdatedDepositRequest(poolId, scId, 1, investor, USDC, 0, 0);
-        shareClass.cancelDepositRequest(poolId, scId, investor, USDC);
+        (uint256 cancelledAmount) = shareClass.cancelDepositRequest(poolId, scId, investor, USDC);
 
+        assertEq(cancelledAmount, amount);
         assertEq(shareClass.pendingDeposit(scId, USDC), 0);
         _assertDepositRequestEq(scId, USDC, investor, UserOrder(0, 1));
     }

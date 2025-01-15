@@ -119,8 +119,12 @@ interface IShareClassManager {
     /// @param shareClassId Identifier of the share class
     /// @param investor Address of the entity which is depositing
     /// @param depositAssetId Identifier of the asset which the investor used for their deposit request
+    /// @return cancelledAssetAmount The deposit amount which was previously pending and now cancelled which was not
+    /// potentially (partially) swapped to the pool amount in case the deposit asset cannot be exchanged 1:1 into the
+    /// pool token
     function cancelDepositRequest(PoolId poolId, bytes16 shareClassId, address investor, address depositAssetId)
-        external;
+        external
+        returns (uint256 cancelledAssetAmount);
 
     /// @notice Creates or updates a request to redeem (exchange) share class tokens for some asset.
     ///

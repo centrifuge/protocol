@@ -110,16 +110,13 @@ contract SingleShareClass is Auth, ISingleShareClass {
     function cancelDepositRequest(PoolId poolId, bytes16 shareClassId_, address investor, address depositAssetId)
         external
         auth
+        returns (uint256 cancelledAssetAmount)
     {
         _ensureShareClassExists(poolId, shareClassId_);
 
-        _updateDepositRequest(
-            poolId,
-            shareClassId_,
-            -int256(depositRequest[shareClassId_][depositAssetId][investor].pending),
-            investor,
-            depositAssetId
-        );
+        cancelledAssetAmount = depositRequest[shareClassId_][depositAssetId][investor].pending;
+
+        _updateDepositRequest(poolId, shareClassId_, -int256(cancelledAssetAmount), investor, depositAssetId);
     }
 
     /// @inheritdoc IShareClassManager
