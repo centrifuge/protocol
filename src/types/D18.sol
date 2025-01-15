@@ -9,8 +9,6 @@ type D18 is uint128;
 
 using MathLib for uint256;
 
-import {console} from "forge-std/console.sol";
-
 /// @dev add two D18 types
 function add(D18 d1, D18 d2) pure returns (D18) {
     return D18.wrap(D18.unwrap(d1) + D18.unwrap(d2));
@@ -26,8 +24,6 @@ function sub(D18 d1, D18 d2) pure returns (D18) {
 /// - denominator (decimal):  2e19
 /// - result (decimal): 25e17
 function divD8(D18 d1, D18 d2) pure returns (D18) {
-    uint256 left = mulUint256(d1, 1e18);
-    console.log("d1 %d, d2 %d, left %d", d1.inner(), d2.inner(), left);
     return D18.wrap(MathLib.mulDiv(D18.unwrap(d1), 1e18, D18.unwrap(d2)).toUint128());
 }
 
