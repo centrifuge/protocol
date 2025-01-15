@@ -64,37 +64,6 @@ contract OracleMock is IERC7726Ext {
     }
 }
 
-// TODO(@wischli): Remove before merge
-contract OracleMockTest is Test {
-    using MathLib for uint256;
-
-    OracleMock public oracleMock = new OracleMock();
-
-    function testGetQuoteUsdcToPool() public view {
-        uint256 amount = 1e7;
-
-        assertEq(oracleMock.getQuote(amount, USDC, POOL_CURRENCY), 1e5);
-        assertEq(oracleMock.getQuote(amount, POOL_CURRENCY, USDC), 1e9);
-    }
-
-    function testGetFactorUsdcToPool() public view {
-        assertEq(oracleMock.getFactor(USDC, POOL_CURRENCY).inner(), 1e16);
-        assertEq(oracleMock.getFactor(POOL_CURRENCY, USDC).inner(), 1e20);
-    }
-
-    function testGetQuoteOtherStableToPool() public view {
-        uint256 amount = 1e20;
-
-        assertEq(oracleMock.getQuote(amount, OTHER_STABLE, POOL_CURRENCY), 1e12);
-        assertEq(oracleMock.getQuote(amount, POOL_CURRENCY, OTHER_STABLE), 1e28);
-    }
-
-    function testGetFactorOtherStableToPool() public view {
-        assertEq(oracleMock.getFactor(OTHER_STABLE, POOL_CURRENCY).inner(), 1e10);
-        assertEq(oracleMock.getFactor(POOL_CURRENCY, OTHER_STABLE).inner(), 1e26);
-    }
-}
-
 abstract contract SingleShareClassBaseTest is Test {
     using MathLib for uint256;
 
