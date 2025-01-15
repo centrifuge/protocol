@@ -61,20 +61,20 @@ contract SingleShareClass is Auth, IShareClassManager {
     uint32 public shareClassIdCounter;
     mapping(PoolId poolId => bytes16) public shareClassIds;
     // User storage
-    mapping(bytes16 => mapping(address paymentAssetId => mapping(address investor => UserOrder pending))) public
+    mapping(bytes16 scId => mapping(address paymentAssetId => mapping(address investor => UserOrder pending))) public
         depositRequest;
-    mapping(bytes16 => mapping(address payoutAssetId => mapping(address investor => UserOrder pending))) public
+    mapping(bytes16 scId => mapping(address payoutAssetId => mapping(address investor => UserOrder pending))) public
         redeemRequest;
     // Share class storage
-    mapping(bytes16 => mapping(address paymentAssetId => uint256 pending)) public pendingDeposit;
-    mapping(bytes16 => mapping(address payoutAssetId => uint256 pending)) public pendingRedeem;
-    mapping(bytes16 => D18 navPerShare) private _shareClassNavPerShare;
-    mapping(bytes16 => uint256) public totalIssuance;
+    mapping(bytes16 scId => mapping(address paymentAssetId => uint256 pending)) public pendingDeposit;
+    mapping(bytes16 scId => mapping(address payoutAssetId => uint256 pending)) public pendingRedeem;
+    mapping(bytes16 scId => D18 navPerShare) private _shareClassNavPerShare;
+    mapping(bytes16 scId => uint256) public totalIssuance;
     // Share class + epoch storage
     mapping(PoolId poolId => uint32 epochId_) public epochId;
-    mapping(bytes16 => mapping(uint32 epochId_ => Epoch epoch)) public epoch;
-    mapping(bytes16 => mapping(address assetId => AssetEpochState)) public assetEpochState;
-    mapping(bytes16 => mapping(address assetId => mapping(uint32 epochId_ => EpochRatio epoch))) public epochRatio;
+    mapping(bytes16 scId => mapping(uint32 epochId_ => Epoch epoch)) public epoch;
+    mapping(bytes16 scId => mapping(address assetId => AssetEpochState)) public assetEpochState;
+    mapping(bytes16 scId => mapping(address assetId => mapping(uint32 epochId_ => EpochRatio epoch))) public epochRatio;
 
     /// Errors
     error Unauthorized();
