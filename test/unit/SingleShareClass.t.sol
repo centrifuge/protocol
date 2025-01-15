@@ -415,6 +415,35 @@ contract SingleShareClassDepositsNonTransientTest is SingleShareClassBaseTest {
         (userShares, payment) = shareClass.claimDeposit(poolId, scId, investor, USDC);
         assertEq(userShares + payment, 0, "replay must not be possible");
     }
+
+    function testClaimDepositSkipped() public notThisContract(poolRegistryAddress) {
+        uint256 pending = MAX_REQUEST_AMOUNT;
+        uint32 mockLatestIssuance = 10;
+        uint32 mockEpochId = mockLatestIssuance + 1;
+        shareClass.requestDeposit(poolId, scId, pending, investor, USDC);
+
+        // Mock latestIssuance to 10
+        vm.store(
+            address(shareClass),
+            keccak256(abi.encode(USDC, keccak256(abi.encode(scId, uint256(7 + TRANSIENT_STORAGE_SHIFT))))),
+            bytes32(
+                (uint256(0)) // latestDepositApproval
+                    | (uint256(0) << 32) // latestRedeemApproval
+                    | (uint256(mockLatestIssuance) << 64) // latestIssuance
+                    | (uint256(0) << 96) // latestRevocation
+            )
+        );
+        // Mock epochId to 11
+        vm.store(
+            address(shareClass),
+            keccak256(abi.encode(poolId, uint256(4 + TRANSIENT_STORAGE_SHIFT))),
+            bytes32(uint256(mockEpochId))
+        );
+
+        (uint256 payout, uint256 payment) = shareClass.claimDeposit(poolId, scId, investor, USDC);
+        assertEq(payout + payment, 0);
+        _assertDepositRequestEq(scId, USDC, investor, UserOrder(pending, mockEpochId));
+    }
 }
 
 ///@dev Contains all redeem related tests which are expected to succeed and don't make use of transient storage
@@ -604,6 +633,35 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
         // Ensure another claim has no impact
         (payoutAssetAmount, paymentShareAmount) = shareClass.claimRedeem(poolId, scId, investor, USDC);
         assertEq(payoutAssetAmount + paymentShareAmount, 0, "replay must not be possible");
+    }
+
+    function testClaimRedeemSkipped() public notThisContract(poolRegistryAddress) {
+        uint256 pending = MAX_REQUEST_AMOUNT;
+        uint32 mockLatestRevocation = 10;
+        uint32 mockEpochId = mockLatestRevocation + 1;
+        shareClass.requestRedeem(poolId, scId, pending, investor, USDC);
+
+        // Mock latestRevocation to 10
+        vm.store(
+            address(shareClass),
+            keccak256(abi.encode(USDC, keccak256(abi.encode(scId, uint256(7 + TRANSIENT_STORAGE_SHIFT))))),
+            bytes32(
+                (uint256(0)) // latestDepositApproval
+                    | (uint256(0) << 32) // latestRedeemApproval
+                    | (uint256(0) << 64) // latestIssuance
+                    | (uint256(mockLatestRevocation) << 96) // latestRevocation
+            )
+        );
+        // Mock epochId to 11
+        vm.store(
+            address(shareClass),
+            keccak256(abi.encode(poolId, uint256(4 + TRANSIENT_STORAGE_SHIFT))),
+            bytes32(uint256(mockEpochId))
+        );
+
+        (uint256 payout, uint256 payment) = shareClass.claimRedeem(poolId, scId, investor, USDC);
+        assertEq(payout + payment, 0);
+        _assertRedeemRequestEq(scId, USDC, investor, UserOrder(pending, mockEpochId));
     }
 }
 
