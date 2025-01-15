@@ -4,7 +4,8 @@ pragma solidity 0.8.28;
 import {D18} from "src/types/D18.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
 
-/// @notice Interface for a valuation with temporal value
+/// @notice An IERC7726 valuation that allows to set a price that is only valid for the current transaction.
+/// NOTE: Do not use it if the valuation lifetime is longer than the transaction.
 interface ITransientValuation is IERC7726 {
     /// @notice Set the price for the valuation.
     /// The price is the 1 amount of base denominated in quote.
