@@ -10,6 +10,7 @@ import {IERC7726Ext} from "src/interfaces/IERC7726.sol";
 import {IAuth} from "src/interfaces/IAuth.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
+import {ISingleShareClass} from "src/interfaces/ISingleShareClass.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
 import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 
@@ -95,8 +96,6 @@ contract OracleMockTest is Test {
 
 abstract contract SingleShareClassBaseTest is Test {
     using MathLib for uint256;
-
-    event File(bytes32 what, address data);
 
     SingleShareClass public shareClass;
 
@@ -228,7 +227,7 @@ contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
     function testFile() public {
         address poolRegistryNew = makeAddr("poolRegistryNew");
         vm.expectEmit(true, true, true, true);
-        emit File("poolRegistry", poolRegistryNew);
+        emit ISingleShareClass.File("poolRegistry", poolRegistryNew);
         shareClass.file("poolRegistry", poolRegistryNew);
 
         assertEq(address(shareClass.poolRegistry()), poolRegistryNew);
@@ -588,8 +587,6 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
 contract SingleShareClassTransientTest is SingleShareClassBaseTest {
     using MathLib for uint256;
 
-    error ApprovalRequired();
-
     function testIssueSharesManyEpochs(
         uint256 depositAmount,
         uint128 navPerShare_,
@@ -643,7 +640,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         assertEq(issuance, shares, "totalIssuance mismatch");
 
         // Ensure another issuance reverts
-        vm.expectRevert(abi.encodeWithSelector(ApprovalRequired.selector));
+        vm.expectRevert(abi.encodeWithSelector(ISingleShareClass.ApprovalRequired.selector));
         shareClass.issueShares(poolId, shareClassId, USDC, poolToShareQuote);
     }
 
@@ -755,7 +752,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         assertEq(issuance, initialShares - redeemedShares);
 
         // Ensure another issuance reverts
-        vm.expectRevert(abi.encodeWithSelector(ApprovalRequired.selector));
+        vm.expectRevert(abi.encodeWithSelector(ISingleShareClass.ApprovalRequired.selector));
         shareClass.revokeShares(poolId, shareClassId, USDC, poolToShareQuote);
     }
 
@@ -891,15 +888,9 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     bytes16 wrongShareClassId = bytes16("otherId");
     address unauthorized = makeAddr("unauthorizedAddress");
 
-    error Unauthorized();
-    error ApprovalRequired();
-    error UnrecognizedFileParam();
-    error AlreadyApproved();
-    error MaxApprovalRatioExceeded();
-
     function testFile(bytes32 what) public {
         vm.assume(what != "poolRegistry");
-        vm.expectRevert(abi.encodeWithSelector(UnrecognizedFileParam.selector));
+        vm.expectRevert(abi.encodeWithSelector(ISingleShareClass.UnrecognizedFileParam.selector));
         shareClass.file(what, address(0));
     }
 
@@ -1058,12 +1049,12 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     }
 
     function testIssueSharesBeforeApproval() public {
-        vm.expectRevert(abi.encodeWithSelector(ApprovalRequired.selector));
+        vm.expectRevert(abi.encodeWithSelector(ISingleShareClass.ApprovalRequired.selector));
         shareClass.issueShares(poolId, shareClassId, USDC, d18(1));
     }
 
     function testRevokeSharesBeforeApproval() public {
-        vm.expectRevert(abi.encodeWithSelector(ApprovalRequired.selector));
+        vm.expectRevert(abi.encodeWithSelector(ISingleShareClass.ApprovalRequired.selector));
         shareClass.revokeShares(poolId, shareClassId, USDC, d18(1));
     }
 
@@ -1116,24 +1107,24 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     function testApproveDepositsAlreadyApproved() public {
         shareClass.approveDeposits(poolId, shareClassId, d18(1), USDC, oracleMock);
 
-        vm.expectRevert(AlreadyApproved.selector);
+        vm.expectRevert(ISingleShareClass.AlreadyApproved.selector);
         shareClass.approveDeposits(poolId, shareClassId, d18(1), USDC, oracleMock);
     }
 
     function testApproveRedeemssAlreadyApproved() public {
         shareClass.approveRedeems(poolId, shareClassId, d18(1), USDC, oracleMock);
 
-        vm.expectRevert(AlreadyApproved.selector);
+        vm.expectRevert(ISingleShareClass.AlreadyApproved.selector);
         shareClass.approveRedeems(poolId, shareClassId, d18(1), USDC, oracleMock);
     }
 
     function testApproveDepositsRatioExcess() public {
-        vm.expectRevert(MaxApprovalRatioExceeded.selector);
+        vm.expectRevert(ISingleShareClass.MaxApprovalRatioExceeded.selector);
         shareClass.approveDeposits(poolId, shareClassId, d18(1e18 + 1), USDC, oracleMock);
     }
 
     function testApproveRedeemsRatioExcess() public {
-        vm.expectRevert(MaxApprovalRatioExceeded.selector);
+        vm.expectRevert(ISingleShareClass.MaxApprovalRatioExceeded.selector);
         shareClass.approveRedeems(poolId, shareClassId, d18(1e18 + 1), USDC, oracleMock);
     }
 }
