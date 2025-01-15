@@ -70,7 +70,6 @@ function d18(uint128 value) pure returns (D18) {
     return D18.wrap(value);
 }
 
-// TODO(@review): Discuss  mulInt128, mulInt256 vs. wrapping above code in library s.t. duplicate `mulInt` can co-exist
 using {
     add as +, sub as -, divD8 as /, inner, mulD8 as *, mulUint128, mulUint256, reciprocalMulUint256
 } for D18 global;
