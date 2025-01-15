@@ -10,7 +10,7 @@ import {ISingleShareClass} from "src/interfaces/ISingleShareClass.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {PoolId} from "src/types/PoolId.sol";
 
-// import {console} from "forge-std/console.sol";
+import {console} from "forge-std/console.sol";
 
 struct Epoch {
     /// @dev Amount of approved deposits (in pool denomination)
@@ -20,14 +20,18 @@ struct Epoch {
 }
 
 struct EpochRatio {
-    /// @dev Percentage of approved redemptions
-    D18 redeemRatio;
     /// @dev Percentage of approved deposits
     D18 depositRatio;
-    /// @dev Price of one pool per asset token
-    D18 assetToPoolQuote;
-    /// @dev Price of one pool per share class token
-    D18 shareToPoolQuote;
+    /// @dev Percentage of approved redemptions
+    D18 redeemRatio;
+    /// @dev Price of one pool per asset token set during redeem approval
+    D18 depositAssetToPoolQuote;
+    /// @dev Price of one pool per asset token set during redeem approval
+    D18 redeemAssetToPoolQuote;
+    /// @dev Price of one pool per share class token set during deposit flow
+    D18 depositShareToPoolQuote;
+    /// @dev Price of one pool per share class token set during redeem flow
+    D18 redeemShareToPoolQuote;
 }
 
 struct UserOrder {
@@ -186,7 +190,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
         EpochRatio storage epochRatio_ = epochRatio[shareClassId][paymentAssetId][approvalEpochId];
         epochRatio_.depositRatio = approvalRatio;
-        epochRatio_.assetToPoolQuote = paymentAssetPrice;
+        epochRatio_.depositAssetToPoolQuote = paymentAssetPrice;
 
         assetEpochState[shareClassId][paymentAssetId].latestDepositApproval = approvalEpochId;
 
@@ -237,7 +241,8 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
         EpochRatio storage epochRatio_ = epochRatio[shareClassId][payoutAssetId][approvalEpochId];
         epochRatio_.redeemRatio = approvalRatio;
-        epochRatio_.assetToPoolQuote = assetToPool;
+        console.log("Setting %d epoch redeemAssetToPoolQuote to", approvalEpochId, assetToPool.inner());
+        epochRatio_.redeemAssetToPoolQuote = assetToPool;
 
         assetEpochState[shareClassId][payoutAssetId].latestRedeemApproval = approvalEpochId;
 
@@ -275,22 +280,26 @@ contract SingleShareClass is Auth, ISingleShareClass {
         _ensureShareClassExists(poolId, shareClassId);
         require(endEpochId < epochId[poolId], IShareClassManager.EpochNotFound());
 
-        uint256 totalNewShares = 0;
+        uint256 totalIssuance_ = totalIssuance[shareClassId];
 
         // First issuance starts at epoch 0, subsequent ones at latest pointer plus one
         uint32 startEpochId = assetEpochState[shareClassId][depositAssetId].latestIssuance + 1;
 
         for (uint32 epochId_ = startEpochId; epochId_ <= endEpochId; epochId_++) {
-            epochRatio[shareClassId][depositAssetId][epochId_].shareToPoolQuote = navPerShare;
+            // Skip redeem epochs
+            if (epochRatio[shareClassId][depositAssetId][epochId_].depositRatio.inner() == 0) {
+                continue;
+            }
 
             uint256 newShares = navPerShare.reciprocalMulUint256(epoch[shareClassId][epochId_].approvedDeposits);
-            totalNewShares += newShares;
-            uint256 nav = navPerShare.mulUint256(totalNewShares + totalIssuance[shareClassId]);
+            epochRatio[shareClassId][depositAssetId][epochId_].depositShareToPoolQuote = navPerShare;
+            totalIssuance_ += newShares;
+            uint256 nav = navPerShare.mulUint256(totalIssuance_);
 
             emit IShareClassManager.IssuedShares(poolId, shareClassId, epochId_, navPerShare, nav, newShares);
         }
 
-        totalIssuance[shareClassId] += totalNewShares;
+        totalIssuance[shareClassId] = totalIssuance_;
         assetEpochState[shareClassId][depositAssetId].latestIssuance = endEpochId;
         _shareClassNavPerShare[shareClassId] = navPerShare;
     }
@@ -323,29 +332,34 @@ contract SingleShareClass is Auth, ISingleShareClass {
         _ensureShareClassExists(poolId, shareClassId);
         require(endEpochId < epochId[poolId], IShareClassManager.EpochNotFound());
 
-        uint256 totalRevokedShares = 0;
+        uint256 totalIssuance_ = totalIssuance[shareClassId];
 
         // First issuance starts at epoch 0, subsequent ones at latest pointer plus one
         uint32 startEpochId = assetEpochState[shareClassId][payoutAssetId].latestRevocation + 1;
 
         for (uint32 epochId_ = startEpochId; epochId_ <= endEpochId; epochId_++) {
+            EpochRatio storage epochRatio_ = epochRatio[shareClassId][payoutAssetId][epochId_];
+
+            // Skip deposit epochs
+            if (epochRatio_.redeemRatio.inner() == 0) {
+                continue;
+            }
+
             uint256 revokedShares = epoch[shareClassId][epochId_].approvedShares;
 
             // payout = shares * navPerShare
             uint256 epochPoolAmount = navPerShare.mulUint256(revokedShares);
 
-            epochRatio[shareClassId][payoutAssetId][epochId_].shareToPoolQuote = navPerShare;
+            epochRatio_.redeemShareToPoolQuote = navPerShare;
             payoutPoolAmount += epochPoolAmount;
-
-            payoutAssetAmount +=
-                epochRatio[shareClassId][payoutAssetId][epochId_].assetToPoolQuote.reciprocalMulUint256(epochPoolAmount);
-            totalRevokedShares += revokedShares;
-            uint256 nav = navPerShare.mulUint256(totalIssuance[shareClassId] - totalRevokedShares);
+            payoutAssetAmount += epochRatio_.redeemAssetToPoolQuote.reciprocalMulUint256(epochPoolAmount);
+            totalIssuance_ -= revokedShares;
+            uint256 nav = navPerShare.mulUint256(totalIssuance_);
 
             emit IShareClassManager.RevokedShares(poolId, shareClassId, epochId_, navPerShare, nav, revokedShares);
         }
 
-        totalIssuance[shareClassId] -= totalRevokedShares;
+        totalIssuance[shareClassId] = totalIssuance_;
         assetEpochState[shareClassId][payoutAssetId].latestRevocation = endEpochId;
         _shareClassNavPerShare[shareClassId] = navPerShare;
     }
@@ -376,11 +390,16 @@ contract SingleShareClass is Auth, ISingleShareClass {
         for (uint32 epochId_ = userOrder.lastUpdate; epochId_ <= endEpochId; epochId_++) {
             EpochRatio memory epochRatio_ = epochRatio[shareClassId][depositAssetId][epochId_];
 
+            // Skip redeem epochs
+            if (epochRatio_.depositRatio.inner() == 0) {
+                continue;
+            }
+
             uint256 approvedAssetAmount = epochRatio_.depositRatio.mulUint256(userOrder.pending);
 
             // #shares = poolAmount * poolToShares * poolAmount = (assetToPool * assetAmount) / shareToPool
-            uint256 investorShares = epochRatio_.shareToPoolQuote.reciprocalMulUint256(
-                epochRatio_.assetToPoolQuote.mulUint256(approvedAssetAmount)
+            uint256 investorShares = epochRatio_.depositShareToPoolQuote.reciprocalMulUint256(
+                epochRatio_.depositAssetToPoolQuote.mulUint256(approvedAssetAmount)
             );
 
             userOrder.pending -= approvedAssetAmount;
@@ -428,11 +447,16 @@ contract SingleShareClass is Auth, ISingleShareClass {
         for (uint32 epochId_ = userOrder.lastUpdate; epochId_ <= endEpochId; epochId_++) {
             EpochRatio memory epochRatio_ = epochRatio[shareClassId][payoutAssetId][epochId_];
 
+            // Skip deposit epochs
+            if (epochRatio_.redeemRatio.inner() == 0) {
+                continue;
+            }
+
             uint256 approvedShares = epochRatio_.redeemRatio.mulUint256(userOrder.pending);
 
             // assetAmount = poolAmount * poolToAsset = poolAmount / assetToPool = (#shares * shareToPool) / assetToPool
-            uint256 approvedAssetAmount = epochRatio_.assetToPoolQuote.reciprocalMulUint256(
-                epochRatio_.shareToPoolQuote.mulUint256(approvedShares)
+            uint256 approvedAssetAmount = epochRatio_.redeemAssetToPoolQuote.reciprocalMulUint256(
+                epochRatio_.redeemShareToPoolQuote.mulUint256(approvedShares)
             );
 
             paymentShares += approvedShares;

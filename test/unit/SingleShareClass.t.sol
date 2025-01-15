@@ -156,13 +156,33 @@ abstract contract SingleShareClassBaseTest is Test {
         internal
         view
     {
-        (D18 redeemRatio, D18 depositRatio, D18 assetToPoolQuote, D18 shareToPoolQuote) =
-            shareClass.epochRatio(shareClassId_, assetId, epochId);
+        (
+            D18 depositRatio,
+            D18 redeemRatio,
+            D18 depositAssetToPoolQuote,
+            D18 redeemAssetToPoolQuote,
+            D18 depositShareToPoolQuote,
+            D18 redeemShareToPoolQuote
+        ) = shareClass.epochRatio(shareClassId_, assetId, epochId);
 
-        assertEq(shareToPoolQuote.inner(), expected.shareToPoolQuote.inner(), "shareToPoolQuote mismatch");
-        assertEq(redeemRatio.inner(), expected.redeemRatio.inner(), "redeemRatio mismatch");
         assertEq(depositRatio.inner(), expected.depositRatio.inner(), "depositRatio mismatch");
-        assertEq(assetToPoolQuote.inner(), expected.assetToPoolQuote.inner(), "assetToPoolQuote mismatch");
+        assertEq(redeemRatio.inner(), expected.redeemRatio.inner(), "redeemRatio mismatch");
+        assertEq(
+            depositAssetToPoolQuote.inner(),
+            expected.depositAssetToPoolQuote.inner(),
+            "depositAssetToPoolQuote mismatch"
+        );
+        assertEq(
+            redeemAssetToPoolQuote.inner(), expected.redeemAssetToPoolQuote.inner(), "redeemAssetToPoolQuote mismatch"
+        );
+        assertEq(
+            depositShareToPoolQuote.inner(),
+            expected.depositShareToPoolQuote.inner(),
+            "depositShareToPoolQuote mismatch"
+        );
+        assertEq(
+            redeemShareToPoolQuote.inner(), expected.redeemShareToPoolQuote.inner(), "redeemShareToPoolQuote mismatch"
+        );
     }
 
     function _assertAssetEpochStateEq(bytes16 shareClassId_, address assetId, AssetEpochState memory expected)
@@ -307,7 +327,7 @@ contract SingleShareClassDepositsNonTransientTest is SingleShareClassBaseTest {
         assertEq(shareClass.epochId(poolId), 2);
 
         _assertEpochEq(shareClassId, 1, Epoch(approvedPool, 0));
-        _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(d18(0), approvalRatio, d18(1e16), d18(0)));
+        _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(approvalRatio, d18(0), d18(1e16), d18(0), d18(0), d18(0)));
     }
 
     function testApproveDepositsTwoAssetsSameEpoch(uint256 depositAmount, uint128 approvalRatio)
@@ -333,8 +353,12 @@ contract SingleShareClassDepositsNonTransientTest is SingleShareClassBaseTest {
         assertEq(shareClass.epochId(poolId), 2);
 
         _assertEpochEq(shareClassId, 1, Epoch(approvedPool, 0));
-        _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(d18(0), approvalRatioUsdc, d18(1e16), d18(0)));
-        _assertEpochRatioEq(shareClassId, OTHER_STABLE, 1, EpochRatio(d18(0), approvalRatioOther, d18(1e10), d18(0)));
+        _assertEpochRatioEq(
+            shareClassId, USDC, 1, EpochRatio(approvalRatioUsdc, d18(0), d18(1e16), d18(0), d18(0), d18(0))
+        );
+        _assertEpochRatioEq(
+            shareClassId, OTHER_STABLE, 1, EpochRatio(approvalRatioOther, d18(0), d18(1e10), d18(0), d18(0), d18(0))
+        );
     }
 
     function testIssueSharesSingleEpoch(uint256 depositAmount, uint128 shareToPoolQuote_, uint128 approvalRatio_)
@@ -358,7 +382,9 @@ contract SingleShareClassDepositsNonTransientTest is SingleShareClassBaseTest {
         assertEq(shareClass.totalIssuance(shareClassId), shares);
         _assertAssetEpochStateEq(shareClassId, USDC, AssetEpochState(1, 0, 1, 0));
         _assertEpochEq(shareClassId, 1, Epoch(approvedPool, 0));
-        _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(d18(0), approvalRatio, d18(1e16), shareToPoolQuote));
+        _assertEpochRatioEq(
+            shareClassId, USDC, 1, EpochRatio(approvalRatio, d18(0), d18(1e16), d18(0), shareToPoolQuote, d18(0))
+        );
     }
 
     function testClaimDepositSingleEpoch(uint256 depositAmount, uint128 navPerShare, uint128 approvalRatio_)
@@ -459,7 +485,7 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
         assertEq(shareClass.epochId(poolId), 2);
 
         _assertEpochEq(shareClassId, 1, Epoch(0, approvedShares));
-        _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(approvalRatio, d18(0), d18(1e16), d18(0)));
+        _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(d18(0), approvalRatio, d18(0), d18(1e16), d18(0), d18(0)));
     }
 
     function testApproveRedeemsTwoAssetsSameEpoch(uint256 redeemAmount, uint128 approvalRatio)
@@ -500,8 +526,12 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
         );
 
         _assertEpochEq(shareClassId, 1, Epoch(0, approvedShares));
-        _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(approvalRatioUsdc, d18(0), d18(1e16), d18(0)));
-        _assertEpochRatioEq(shareClassId, OTHER_STABLE, 1, EpochRatio(approvalRatioOther, d18(0), d18(1e10), d18(0)));
+        _assertEpochRatioEq(
+            shareClassId, USDC, 1, EpochRatio(d18(0), approvalRatioUsdc, d18(0), d18(1e16), d18(0), d18(0))
+        );
+        _assertEpochRatioEq(
+            shareClassId, OTHER_STABLE, 1, EpochRatio(d18(0), approvalRatioOther, d18(0), d18(1e10), d18(0), d18(0))
+        );
     }
 
     function testRevokeSharesSingleEpoch(uint256 redeemAmount, uint128 navPerShare, uint128 approvalRatio_)
@@ -538,7 +568,9 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
         _assertAssetEpochStateEq(shareClassId, USDC, AssetEpochState(0, 1, 0, 1));
 
         _assertEpochEq(shareClassId, 1, Epoch(0, approvedRedeem));
-        _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(approvalRatio, d18(0), d18(1e16), shareToPoolQuote));
+        _assertEpochRatioEq(
+            shareClassId, USDC, 1, EpochRatio(d18(0), approvalRatio, d18(0), d18(1e16), d18(0), shareToPoolQuote)
+        );
     }
 
     function testClaimRedeemSingleEpoch(uint256 redeemAmount, uint128 navPerShare, uint128 approvalRatio_)
@@ -634,7 +666,9 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
             shares += shareToPoolQuote.reciprocalMulUint256(approvedPool);
 
             _assertEpochEq(shareClassId, i, Epoch(approvedPool, 0));
-            _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(d18(0), approvalRatio, d18(1e16), shareToPoolQuote));
+            _assertEpochRatioEq(
+                shareClassId, USDC, 1, EpochRatio(approvalRatio, d18(0), d18(1e16), d18(0), shareToPoolQuote, d18(0))
+            );
         }
         assertEq(shareClass.totalIssuance(shareClassId), shares, "totalIssuance mismatch");
         (D18 navPerShare, uint256 issuance) = shareClass.shareClassNavPerShare(poolId, shareClassId);
@@ -747,7 +781,9 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
             redeemedShares += approvedRedeems;
 
             _assertEpochEq(shareClassId, i, Epoch(0, approvedRedeems));
-            _assertEpochRatioEq(shareClassId, USDC, 1, EpochRatio(approvalRatio, d18(0), d18(1e16), shareToPoolQuote));
+            _assertEpochRatioEq(
+                shareClassId, USDC, 1, EpochRatio(d18(0), approvalRatio, d18(0), d18(1e16), d18(0), shareToPoolQuote)
+            );
         }
         assertEq(shareClass.totalIssuance(shareClassId), totalIssuance_);
         (D18 navPerShare, uint256 issuance) = shareClass.shareClassNavPerShare(poolId, shareClassId);
@@ -861,7 +897,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         _assertDepositRequestEq(shareClassId, USDC, investor, UserOrder(depositAmount, epochId));
         _assertRedeemRequestEq(shareClassId, USDC, investor, UserOrder(redeemAmount, epochId));
 
-        // Step 2d: Issue sahres
+        // Step 2d: Issue shares
         shareClass.issueShares(poolId, shareClassId, USDC, shareToPoolQuote);
         epochId += 1;
         shares += shareToPoolQuote.reciprocalMulUint256(usdcToPool(approvedDepositUSDC));
