@@ -895,6 +895,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     error ApprovalRequired();
     error UnrecognizedFileParam();
     error AlreadyApproved();
+    error MaxApprovalRatioExceeded();
 
     function testFile(bytes32 what) public {
         vm.assume(what != "poolRegistry");
@@ -1124,5 +1125,15 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
 
         vm.expectRevert(AlreadyApproved.selector);
         shareClass.approveRedeems(poolId, shareClassId, d18(1), USDC, oracleMock);
+    }
+
+    function testApproveDepositsRatioExcess() public {
+        vm.expectRevert(MaxApprovalRatioExceeded.selector);
+        shareClass.approveDeposits(poolId, shareClassId, d18(1e18 + 1), USDC, oracleMock);
+    }
+
+    function testApproveRedeemsRatioExcess() public {
+        vm.expectRevert(MaxApprovalRatioExceeded.selector);
+        shareClass.approveRedeems(poolId, shareClassId, d18(1e18 + 1), USDC, oracleMock);
     }
 }

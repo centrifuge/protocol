@@ -80,8 +80,9 @@ contract SingleShareClass is Auth, IShareClassManager {
     error Unauthorized();
     error ShareClassIdAlreadySet();
     error ApprovalRequired();
-    error UnrecognizedFileParam();
     error AlreadyApproved();
+    error UnrecognizedFileParam();
+    error MaxApprovalRatioExceeded();
 
     /// Events
     event File(bytes32 what, address who);
@@ -169,6 +170,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         IERC7726Ext valuation
     ) external auth returns (uint256 approvedPoolAmount, uint256 approvedAssetAmount) {
         _ensureShareClassExists(poolId, shareClassId);
+        require(approvalRatio.inner() <= 1e18, MaxApprovalRatioExceeded());
 
         // Advance epochId if it has not been advanced within this transaction (e.g. in case of multiCall context)
         uint32 approvalEpochId = _advanceEpoch(poolId);
@@ -219,6 +221,7 @@ contract SingleShareClass is Auth, IShareClassManager {
         IERC7726Ext valuation
     ) external auth returns (uint256 approvedShares, uint256 pendingShares) {
         _ensureShareClassExists(poolId, shareClassId);
+        require(approvalRatio.inner() <= 1e18, MaxApprovalRatioExceeded());
 
         // Advance epochId if it has not been advanced within this transaction (e.g. in case of multiCall context)
         uint32 approvalEpochId = _advanceEpoch(poolId);
