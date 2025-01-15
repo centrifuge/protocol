@@ -488,14 +488,11 @@ contract SingleShareClass is Auth, ISingleShareClass {
     /// @inheritdoc IShareClassManager
     function updateShareClassNav(PoolId poolId, bytes16 shareClassId_) external view auth returns (D18, uint256) {
         _ensureShareClassExists(poolId, shareClassId_);
-
-        // TODO(@mustermeiszer): Needed for single share class?
         revert("unsupported");
     }
 
     /// @inheritdoc IShareClassManager
     function update(PoolId, bytes calldata) external pure {
-        // TODO(@mustermeiszer): Needed for single share class?
         revert("unsupported");
     }
 
