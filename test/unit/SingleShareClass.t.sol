@@ -471,8 +471,9 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
 
         vm.expectEmit(true, true, true, true);
         emit IShareClassManager.UpdatedRedeemRequest(poolId, scId, 1, investor, USDC, 0, 0);
-        shareClass.cancelRedeemRequest(poolId, scId, investor, USDC);
+        (uint256 cancelledAmount) = shareClass.cancelRedeemRequest(poolId, scId, investor, USDC);
 
+        assertEq(cancelledAmount, amount);
         assertEq(shareClass.pendingRedeem(scId, USDC), 0);
         _assertRedeemRequestEq(scId, USDC, investor, UserOrder(0, 1));
     }

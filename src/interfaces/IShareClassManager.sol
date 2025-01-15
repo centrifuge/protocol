@@ -119,9 +119,9 @@ interface IShareClassManager {
     /// @param shareClassId Identifier of the share class
     /// @param investor Address of the entity which is depositing
     /// @param depositAssetId Identifier of the asset which the investor used for their deposit request
-    /// @return cancelledAssetAmount The deposit amount which was previously pending and now cancelled which was not
-    /// potentially (partially) swapped to the pool amount in case the deposit asset cannot be exchanged 1:1 into the
-    /// pool token
+    /// @return cancelledAssetAmount The deposit amount which was previously pending and is now cancelled. This amount
+    /// was not potentially (partially) swapped to the pool amount in case the deposit asset cannot be exchanged 1:1
+    /// into the pool token
     function cancelDepositRequest(PoolId poolId, bytes16 shareClassId, address investor, address depositAssetId)
         external
         returns (uint256 cancelledAssetAmount);
@@ -144,8 +144,10 @@ interface IShareClassManager {
     /// @param investor Address of the entity which is redeeming
     /// @param payoutAssetId Identifier of the asset which the investor eventually receives back for their redeemed
     /// share class tokens
+    /// @return cancelledAmount The redeem amount which was previously pending and is now cancelled
     function cancelRedeemRequest(PoolId poolId, bytes16 shareClassId, address investor, address payoutAssetId)
-        external;
+        external
+        returns (uint256 cancelledAmount);
 
     /// @notice Approves a percentage of all deposit requests for the given triplet of pool id, share class id and
     /// deposit asset id.
