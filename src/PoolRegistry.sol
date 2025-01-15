@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/Auth.sol";
 import {PoolId} from "src/types/PoolId.sol";
+import {AssetId} from "src/types/AssetId.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
 import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
@@ -17,6 +18,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
     mapping(PoolId => IERC20Metadata) public currency;
     mapping(PoolId => IShareClassManager) public shareClassManager;
     mapping(PoolId => mapping(address => bool)) public isAdmin;
+    mapping(PoolId => mapping(AssetId => bool)) public isInvestorAsset;
     mapping(PoolId => mapping(bytes32 key => address)) public addressFor;
 
     constructor(address deployer) Auth(deployer) {}
@@ -48,7 +50,17 @@ contract PoolRegistry is Auth, IPoolRegistry {
 
         isAdmin[poolId][admin_] = canManage;
 
-        emit UpdatedPoolAdmin(poolId, admin_);
+        emit UpdatedAdmin(poolId, admin_, canManage);
+    }
+
+    /// @inheritdoc IPoolRegistry
+    function allowInvestorAsset(PoolId poolId, AssetId assetId, bool isAllowed) external auth {
+        require(exists(poolId), NonExistingPool(poolId));
+        require(!assetId.isNull(), EmptyAsset());
+
+        isInvestorAsset[poolId][assetId] = isAllowed;
+
+        emit AllowedInvestorAsset(poolId, assetId, isAllowed);
     }
 
     /// @inheritdoc IPoolRegistry
@@ -57,7 +69,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
 
         metadata[poolId] = metadata_;
 
-        emit UpdatedPoolMetadata(poolId, metadata_);
+        emit UpdatedMetadata(poolId, metadata_);
     }
 
     /// @inheritdoc IPoolRegistry
@@ -77,12 +89,14 @@ contract PoolRegistry is Auth, IPoolRegistry {
 
         currency[poolId] = currency_;
 
-        emit UpdatedPoolCurrency(poolId, currency_);
+        emit UpdatedCurrency(poolId, currency_);
     }
 
     function setAddressFor(PoolId poolId, bytes32 key, address addr) external auth {
         require(exists(poolId), NonExistingPool(poolId));
         addressFor[poolId][key] = addr;
+
+        emit SetAddressFor(poolId, key, addr);
     }
 
     function exists(PoolId poolId) public view returns (bool) {
