@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/Auth.sol";
-import {PoolId} from "src/types/PoolId.sol";
+import {PoolId, PoolIdLib} from "src/types/PoolId.sol";
 import {AssetId} from "src/types/AssetId.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
@@ -11,8 +11,6 @@ import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 
 contract PoolRegistry is Auth, IPoolRegistry {
     using MathLib for uint256;
-
-    uint32 public latestId;
 
     mapping(PoolId => bytes) public metadata;
     mapping(PoolId => IERC20Metadata) public currency;
@@ -24,17 +22,18 @@ contract PoolRegistry is Auth, IPoolRegistry {
     constructor(address deployer) Auth(deployer) {}
 
     /// @inheritdoc IPoolRegistry
-    function registerPool(address admin_, IERC20Metadata currency_, IShareClassManager shareClassManager_)
-        external
-        auth
-        returns (PoolId poolId)
-    {
+    function registerPool(
+        uint32 localPoolId,
+        address admin_,
+        IERC20Metadata currency_,
+        IShareClassManager shareClassManager_
+    ) external auth returns (PoolId poolId) {
+        poolId = PoolIdLib.newFrom(localPoolId);
+
+        require(!exists(poolId), PoolAlreadyExists());
         require(admin_ != address(0), EmptyAdmin());
         require(address(currency_) != address(0), EmptyCurrency());
         require(address(shareClassManager_) != address(0), EmptyShareClassManager());
-
-        // TODO: Make this part of the library. Something like PoolId.generate();
-        poolId = PoolId.wrap((uint64(block.chainid.toUint32()) << 32) | uint64(++latestId));
 
         isAdmin[poolId][admin_] = true;
         currency[poolId] = currency_;
