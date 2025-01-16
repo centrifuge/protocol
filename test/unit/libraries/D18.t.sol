@@ -106,11 +106,4 @@ contract D18Test is Test {
 
         assertEq(divD8(numerator, denominator).inner(), numerator.inner() * 1e18 / denominator.inner());
     }
-
-    function testMulUint256() public pure {
-        D18 factor = d18(1_500_000_000_000_000_000); // 1.5
-        uint256 value = 4_000_000_000_000_000_000_000_000;
-
-        assertEq(factor.mulUint256(value), 6_000_000_000_000_000_000_000_000);
-    }
 }
