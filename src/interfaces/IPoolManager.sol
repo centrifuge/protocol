@@ -35,7 +35,15 @@ interface IPoolUnlockedMethods {
 
     function notifyAllowedAsset(ChainId chainId, ShareClassId scId, AssetId assetId, bool isAllowed) external;
 
-    function allowAsset(ShareClassId scId, AssetId assetId, bool isAllowed) external;
+    function setPoolMetadata(bytes calldata metadata) external;
+
+    function setPoolAdmin(address newAdmin, bool canManage) external;
+
+    function allowInvestorAsset(AssetId assetId, bool isAllowed) external;
+
+    function allowHoldingAsset(AssetId assetId, bool isAllowed) external;
+
+    function addShareClass(bytes calldata data) external returns (ShareClassId);
 
     function approveDeposit(ShareClassId scId, AssetId assetId, Ratio approvalRatio) external;
 

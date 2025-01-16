@@ -118,18 +118,45 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         gateway.sendNotifyAllowedAsset(chainId, unlockedPoolId(), scId, assetId, isAllowed);
     }
 
-    function allowAsset(ShareClassId scId, AssetId assetId, bool isAllowed) external poolUnlocked {
+    function setPoolMetadata(bytes calldata metadata) external {
+        poolRegistry.updateMetadata(unlockedPoolId(), metadata);
+    }
+
+    function setPoolAdmin(address newAdmin, bool canManage) external {
+        poolRegistry.updateAdmin(unlockedPoolId(), newAdmin, canManage);
+    }
+
+    function allowInvestorAsset(AssetId assetId, bool isAllowed) external {
+        PoolId poolId = unlockedPoolId();
+
+        require(assetManager.isRegistered(assetId), "AssetNotRegistered");
+        require(holdings.isAssetAllowed(poolId, assetId), "HoldingAssetNotAllowed");
+
+        poolRegistry.allowInvestorAsset(poolId, assetId, isAllowed);
+    }
+
+    function allowHoldingAsset(AssetId assetId, bool isAllowed) external {
+        PoolId poolId = unlockedPoolId();
+
+        if (!isAllowed) {
+            require(!poolRegistry.isInvestorAssetAllowed(poolId, assetId), "InvestorAssetMustBeDisallowed");
+        }
+
+        holdings.allowAsset(poolId, assetId, isAllowed);
+    }
+
+    function addShareClass(bytes calldata data) external returns (ShareClassId) {
         PoolId poolId = unlockedPoolId();
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        scm.allowAsset(unlockedPoolId(), scId, assetId, isAllowed);
+        return scm.addShareClass(poolId, data);
     }
 
     function approveDeposit(ShareClassId scId, AssetId assetId, Ratio approvalRatio) external poolUnlocked {
         PoolId poolId = unlockedPoolId();
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        ItemId itemId = holdings.itemIdFromAsset(poolId, scId, assetId);
+        ItemId itemId = holdings.itemId(poolId, scId, assetId);
         IERC7726 valuation = holdings.valuation(poolId, itemId);
 
         uint128 totalApproved = scm.approveDeposit(poolId, scId, assetId, approvalRatio, valuation);
@@ -146,7 +173,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         PoolId poolId = unlockedPoolId();
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        ItemId itemId = holdings.itemIdFromAsset(poolId, scId, assetId);
+        ItemId itemId = holdings.itemId(poolId, scId, assetId);
         IERC7726 valuation = holdings.valuation(poolId, itemId);
 
         scm.approveDeposit(poolId, scId, assetId, approvalRatio, valuation);

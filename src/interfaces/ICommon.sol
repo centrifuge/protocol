@@ -21,6 +21,7 @@ import {Auth} from "src/Auth.sol";
 interface IAssetManager is IERC6909 {
     function mint(address who, AssetId assetId, uint128 amount) external;
     function burn(address who, AssetId assetId, uint128 amount) external;
+    function isRegistered(AssetId assetId) external view returns (bool);
 }
 
 interface IAccounting {
