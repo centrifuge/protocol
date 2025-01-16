@@ -12,6 +12,8 @@ import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 contract PoolRegistry is Auth, IPoolRegistry {
     using MathLib for uint256;
 
+    uint32 public latestId;
+
     mapping(PoolId => bytes) public metadata;
     mapping(PoolId => IERC20Metadata) public currency;
     mapping(PoolId => IShareClassManager) public shareClassManager;
@@ -22,18 +24,16 @@ contract PoolRegistry is Auth, IPoolRegistry {
     constructor(address deployer) Auth(deployer) {}
 
     /// @inheritdoc IPoolRegistry
-    function registerPool(
-        uint32 localPoolId,
-        address admin_,
-        IERC20Metadata currency_,
-        IShareClassManager shareClassManager_
-    ) external auth returns (PoolId poolId) {
-        poolId = PoolIdLib.newFrom(localPoolId);
-
-        require(!exists(poolId), PoolAlreadyExists());
+    function registerPool(address admin_, IERC20Metadata currency_, IShareClassManager shareClassManager_)
+        external
+        auth
+        returns (PoolId poolId)
+    {
         require(admin_ != address(0), EmptyAdmin());
         require(address(currency_) != address(0), EmptyCurrency());
         require(address(shareClassManager_) != address(0), EmptyShareClassManager());
+
+        poolId = PoolIdLib.newFrom(++latestId);
 
         isAdmin[poolId][admin_] = true;
         currency[poolId] = currency_;

@@ -11,8 +11,6 @@ import {IAuth} from "src/interfaces/IAuth.sol";
 import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 
-uint32 constant LOCAL_POOL_ID = 1;
-
 contract PoolRegistryTest is Test {
     using MathLib for uint256;
 
@@ -37,29 +35,28 @@ contract PoolRegistryTest is Test {
     function testPoolRegistration(address fundAdmin) public nonZero(fundAdmin) notThisContract(fundAdmin) {
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.registerPool(LOCAL_POOL_ID, address(this), USD, shareClassManager);
+        registry.registerPool(address(this), USD, shareClassManager);
 
         vm.expectRevert(IPoolRegistry.EmptyShareClassManager.selector);
-        registry.registerPool(LOCAL_POOL_ID, address(this), USD, IShareClassManager(address(0)));
+        registry.registerPool(address(this), USD, IShareClassManager(address(0)));
 
         vm.expectRevert(IPoolRegistry.EmptyAdmin.selector);
-        registry.registerPool(LOCAL_POOL_ID, address(0), USD, shareClassManager);
+        registry.registerPool(address(0), USD, shareClassManager);
 
         vm.expectRevert(IPoolRegistry.EmptyCurrency.selector);
-        registry.registerPool(LOCAL_POOL_ID, address(this), IERC20Metadata(address(0)), shareClassManager);
+        registry.registerPool(address(this), IERC20Metadata(address(0)), shareClassManager);
 
         vm.expectEmit();
-        emit IPoolRegistry.NewPool(PoolIdLib.newFrom(LOCAL_POOL_ID), fundAdmin, shareClassManager, USD);
-        PoolId poolId = registry.registerPool(LOCAL_POOL_ID, fundAdmin, USD, shareClassManager);
+        emit IPoolRegistry.NewPool(PoolIdLib.newFrom(1), fundAdmin, shareClassManager, USD);
+        PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
+
         assertEq(poolId.chainId(), block.chainid.toUint32());
-        assertEq(poolId.localId(), LOCAL_POOL_ID);
+        assertEq(PoolId.unwrap(poolId), ((uint64(block.chainid.toUint32()) << 32) | 1));
+        assertEq(registry.latestId(), 1);
 
         assertTrue(registry.isAdmin(poolId, fundAdmin));
         assertFalse(registry.isAdmin(poolId, address(this)));
         assertEq(address(registry.shareClassManager(poolId)), address(shareClassManager));
-
-        vm.expectRevert(IPoolRegistry.PoolAlreadyExists.selector);
-        registry.registerPool(LOCAL_POOL_ID, address(this), IERC20Metadata(address(0)), shareClassManager);
     }
 
     function testUpdateAdmin(address fundAdmin, address additionalAdmin)
@@ -70,7 +67,7 @@ contract PoolRegistryTest is Test {
         notThisContract(additionalAdmin)
     {
         vm.assume(fundAdmin != additionalAdmin);
-        PoolId poolId = registry.registerPool(LOCAL_POOL_ID, fundAdmin, USD, shareClassManager);
+        PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
 
         assertFalse(registry.isAdmin(poolId, additionalAdmin));
 
@@ -99,7 +96,7 @@ contract PoolRegistryTest is Test {
     }
 
     function testAllowInvestorAsset(address fundAdmin) public nonZero(fundAdmin) notThisContract(fundAdmin) {
-        PoolId poolId = registry.registerPool(LOCAL_POOL_ID, fundAdmin, USD, shareClassManager);
+        PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
 
         AssetId validAsset = AssetId.wrap(address(1));
         assertFalse(registry.isInvestorAssetAllowed(poolId, validAsset));
@@ -131,7 +128,7 @@ contract PoolRegistryTest is Test {
     function testSetMetadata(bytes calldata metadata) public {
         address fundAdmin = makeAddr("fundAdmin");
 
-        PoolId poolId = registry.registerPool(LOCAL_POOL_ID, fundAdmin, USD, shareClassManager);
+        PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
 
         assertEq(registry.metadata(poolId).length, 0);
 
@@ -155,7 +152,7 @@ contract PoolRegistryTest is Test {
     {
         address fundAdmin = makeAddr("fundAdmin");
 
-        PoolId poolId = registry.registerPool(LOCAL_POOL_ID, fundAdmin, USD, shareClassManager);
+        PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
 
         assertEq(address(registry.shareClassManager(poolId)), address(shareClassManager));
 
@@ -179,7 +176,7 @@ contract PoolRegistryTest is Test {
     function testUpdateCurrency(IERC20Metadata currency) public nonZero(address(currency)) {
         address fundAdmin = makeAddr("fundAdmin");
 
-        PoolId poolId = registry.registerPool(LOCAL_POOL_ID, fundAdmin, USD, shareClassManager);
+        PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -200,7 +197,7 @@ contract PoolRegistryTest is Test {
     }
 
     function testSetAddressFor() public {
-        PoolId poolId = registry.registerPool(LOCAL_POOL_ID, makeAddr("fundManager"), USD, shareClassManager);
+        PoolId poolId = registry.registerPool(makeAddr("fundManager"), USD, shareClassManager);
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);
         vm.expectRevert(abi.encodeWithSelector(IPoolRegistry.NonExistingPool.selector, nonExistingPool));
@@ -217,7 +214,7 @@ contract PoolRegistryTest is Test {
     }
 
     function testExists() public {
-        PoolId poolId = registry.registerPool(LOCAL_POOL_ID, makeAddr("fundManager"), USD, shareClassManager);
+        PoolId poolId = registry.registerPool(makeAddr("fundManager"), USD, shareClassManager);
         assertEq(registry.exists(poolId), true);
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);

@@ -20,7 +20,6 @@ interface IPoolRegistry {
     event UpdatedCurrency(PoolId indexed poolId, IERC20Metadata currency);
     event SetAddressFor(PoolId indexed poolId, bytes32 key, address addr);
 
-    error PoolAlreadyExists();
     error NonExistingPool(PoolId id);
     error EmptyAdmin();
     error EmptyAsset();
@@ -28,13 +27,10 @@ interface IPoolRegistry {
     error EmptyShareClassManager();
 
     /// @notice Register a new pool.
-    /// @param localPoolId is used to generate the final returned PoolId.
-    function registerPool(
-        uint32 localPoolId,
-        address admin,
-        IERC20Metadata currency,
-        IShareClassManager shareClassManager
-    ) external returns (PoolId poolId);
+    /// @return a PoolId to identify the new pool.
+    function registerPool(address admin, IERC20Metadata currency, IShareClassManager shareClassManager)
+        external
+        returns (PoolId);
 
     /// @notice allow/disallow an address as an admin for the pool
     function updateAdmin(PoolId poolId, address newAdmin, bool canManage) external;
