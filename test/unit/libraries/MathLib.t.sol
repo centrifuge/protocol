@@ -7,7 +7,6 @@ import "src/libraries/MathLib.sol";
 contract MathLibTest is Test {
     using MathLib for uint256;
 
-    // TODO(@wischli): Fuzzing
     function testRpow() public pure {
         uint256 base = 10 ** 27;
         uint256 x = 2 * 10 ** 27;
@@ -99,5 +98,17 @@ contract MathLibTest is Test {
         vm.assume(x > type(uint32).max);
         vm.expectRevert(MathLib.Uint32_Overflow.selector);
         MathLib.toUint32(x);
+    }
+
+    function testMin(uint256 x, uint256 y) public pure {
+        vm.assume(x > 0);
+        y = uint256(bound(y, 0, x - 1));
+        assertEq(MathLib.min(x, y), y);
+    }
+
+    function testMax(uint256 x, uint256 y) public pure {
+        vm.assume(x > 0);
+        y = uint256(bound(y, 0, x - 1));
+        assertEq(MathLib.max(x, y), x);
     }
 }
