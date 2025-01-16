@@ -102,7 +102,7 @@ contract PoolRegistryTest is Test {
         PoolId poolId = registry.registerPool(LOCAL_POOL_ID, fundAdmin, USD, shareClassManager);
 
         AssetId validAsset = AssetId.wrap(address(1));
-        assertFalse(registry.isInvestorAsset(poolId, validAsset));
+        assertFalse(registry.isInvestorAssetAllowed(poolId, validAsset));
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -119,16 +119,16 @@ contract PoolRegistryTest is Test {
         vm.expectEmit();
         emit IPoolRegistry.AllowedInvestorAsset(poolId, validAsset, true);
         registry.allowInvestorAsset(poolId, validAsset, true);
-        assertTrue(registry.isInvestorAsset(poolId, validAsset));
+        assertTrue(registry.isInvestorAssetAllowed(poolId, validAsset));
 
         // Disallow an asset
         vm.expectEmit();
         emit IPoolRegistry.AllowedInvestorAsset(poolId, validAsset, false);
         registry.allowInvestorAsset(poolId, validAsset, false);
-        assertFalse(registry.isInvestorAsset(poolId, validAsset));
+        assertFalse(registry.isInvestorAssetAllowed(poolId, validAsset));
     }
 
-    function testUpdateMetadata(bytes calldata metadata) public {
+    function testSetMetadata(bytes calldata metadata) public {
         address fundAdmin = makeAddr("fundAdmin");
 
         PoolId poolId = registry.registerPool(LOCAL_POOL_ID, fundAdmin, USD, shareClassManager);
@@ -137,15 +137,15 @@ contract PoolRegistryTest is Test {
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.updateMetadata(poolId, metadata);
+        registry.setMetadata(poolId, metadata);
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);
         vm.expectRevert(abi.encodeWithSelector(IPoolRegistry.NonExistingPool.selector, nonExistingPool));
-        registry.updateMetadata(nonExistingPool, metadata);
+        registry.setMetadata(nonExistingPool, metadata);
 
         vm.expectEmit();
-        emit IPoolRegistry.UpdatedMetadata(poolId, metadata);
-        registry.updateMetadata(poolId, metadata);
+        emit IPoolRegistry.SetMetadata(poolId, metadata);
+        registry.setMetadata(poolId, metadata);
         assertEq(registry.metadata(poolId), metadata);
     }
 
@@ -176,7 +176,7 @@ contract PoolRegistryTest is Test {
         assertEq(address(registry.shareClassManager(poolId)), address(shareClassManager_));
     }
 
-    function testUpdatePoolCurrency(IERC20Metadata currency) public nonZero(address(currency)) {
+    function testUpdateCurrency(IERC20Metadata currency) public nonZero(address(currency)) {
         address fundAdmin = makeAddr("fundAdmin");
 
         PoolId poolId = registry.registerPool(LOCAL_POOL_ID, fundAdmin, USD, shareClassManager);

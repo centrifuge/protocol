@@ -16,7 +16,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
     mapping(PoolId => IERC20Metadata) public currency;
     mapping(PoolId => IShareClassManager) public shareClassManager;
     mapping(PoolId => mapping(address => bool)) public isAdmin;
-    mapping(PoolId => mapping(AssetId => bool)) public isInvestorAsset;
+    mapping(PoolId => mapping(AssetId => bool)) public isInvestorAssetAllowed;
     mapping(PoolId => mapping(bytes32 key => address)) public addressFor;
 
     constructor(address deployer) Auth(deployer) {}
@@ -57,18 +57,18 @@ contract PoolRegistry is Auth, IPoolRegistry {
         require(exists(poolId), NonExistingPool(poolId));
         require(!assetId.isNull(), EmptyAsset());
 
-        isInvestorAsset[poolId][assetId] = isAllowed;
+        isInvestorAssetAllowed[poolId][assetId] = isAllowed;
 
         emit AllowedInvestorAsset(poolId, assetId, isAllowed);
     }
 
     /// @inheritdoc IPoolRegistry
-    function updateMetadata(PoolId poolId, bytes calldata metadata_) external auth {
+    function setMetadata(PoolId poolId, bytes calldata metadata_) external auth {
         require(exists(poolId), NonExistingPool(poolId));
 
         metadata[poolId] = metadata_;
 
-        emit UpdatedMetadata(poolId, metadata_);
+        emit SetMetadata(poolId, metadata_);
     }
 
     /// @inheritdoc IPoolRegistry

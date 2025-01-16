@@ -15,7 +15,7 @@ interface IPoolRegistry {
     );
     event UpdatedAdmin(PoolId indexed poolId, address indexed admin, bool canManage);
     event AllowedInvestorAsset(PoolId indexed poolId, AssetId indexed assetId, bool isAllowed);
-    event UpdatedMetadata(PoolId indexed poolId, bytes metadata);
+    event SetMetadata(PoolId indexed poolId, bytes metadata);
     event UpdatedShareClassManager(PoolId indexed poolId, IShareClassManager indexed shareClassManager);
     event UpdatedCurrency(PoolId indexed poolId, IERC20Metadata currency);
     event SetAddressFor(PoolId indexed poolId, bytes32 key, address addr);
@@ -27,38 +27,51 @@ interface IPoolRegistry {
     error EmptyCurrency();
     error EmptyShareClassManager();
 
-    /// @notice TODO
+    /// @notice Register a new pool.
+    /// @param localPoolId is used to generate the final returned PoolId.
     function registerPool(
         uint32 localPoolId,
         address admin,
         IERC20Metadata currency,
         IShareClassManager shareClassManager
     ) external returns (PoolId poolId);
-    /// @notice TODO
+
+    /// @notice allow/disallow an address as an admin for the pool
     function updateAdmin(PoolId poolId, address newAdmin, bool canManage) external;
-    /// @notice TODO
+
+    /// @notice allow/disallow an investor asset to be used in this pool
     function allowInvestorAsset(PoolId poolId, AssetId assetId, bool isAllowed) external;
-    /// @notice TODO
-    function updateMetadata(PoolId poolId, bytes calldata metadata) external;
-    /// @notice TODO
+
+    /// @notice sets metadata for this pool
+    function setMetadata(PoolId poolId, bytes calldata metadata) external;
+
+    /// @notice updates the share class manager of the pool
     function updateShareClassManager(PoolId poolId, IShareClassManager shareClassManager) external;
-    /// @notice TODO
+
+    /// @notice updates the currency of the pool
     function updateCurrency(PoolId poolId, IERC20Metadata currency) external;
-    /// @notice TODO
+
+    /// @notice sets an address for an specific key
     function setAddressFor(PoolId poolid, bytes32 key, address addr) external;
 
-    /// @notice TODO
+    /// @notice returns the metadata attached to the pool, if any.
     function metadata(PoolId poolId) external view returns (bytes memory);
-    /// @notice TODO
+
+    /// @notice returns the currency of the pool
     function currency(PoolId poolId) external view returns (IERC20Metadata);
-    /// @notice TODO
+
+    /// @notice returns the shareClassManager used in the pool
     function shareClassManager(PoolId poolId) external view returns (IShareClassManager);
-    /// @notice TODO
+
+    /// @notice returns the existance of an admin
     function isAdmin(PoolId poolId, address admin) external view returns (bool);
-    /// @notice TODO
-    function isInvestorAsset(PoolId poolId, AssetId assetId) external view returns (bool);
-    /// @notice TODO
+
+    /// @notice returns the allowance of an investor asset
+    function isInvestorAssetAllowed(PoolId poolId, AssetId assetId) external view returns (bool);
+
+    /// @notice returns the address for an specific key
     function addressFor(PoolId poolId, bytes32 key) external view returns (address);
-    /// @notice TODO
+
+    /// @notice checks the existence of a pool
     function exists(PoolId poolId) external view returns (bool);
 }
