@@ -4,12 +4,6 @@ circle Vaults
 interface ERC6909 {
 }
 
-class Escrow<wards = Holdings> {
-    + deposit(account, assetId, amount) <<auth>>
-    + withdraw(account, assetId, amount) <<auth>>
-}
-Escrow -down-> ERC6909
-
 class Holdings<wards = PoolManager> <<(C, lightskyblue)>> {
     + create(poolId, shareClassId, assetId, valuation, accounts)
     + increase(poolId, shareClassId, assetId, valuation) -> increasedValue
@@ -83,6 +77,8 @@ class Multicall {
 
 class PoolLocker {
     + execute(poolId, targets, datas) -> results
+    # _beforeUnlock(poolId)
+    # _beforeLock()
 }
 
 PoolLocker -right-> Multicall
@@ -134,7 +130,7 @@ class PoolManager <<(C, lightskyblue)>> {
     + notifyLockedTokens()
 }
 
-PoolManager -up--> PoolLocker
+PoolManager -up--|> PoolLocker
 PoolManager -up-> EscrowType
 PoolManager -up-> AccountType
 PoolManager -up---> PoolRegistry
