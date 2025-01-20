@@ -65,6 +65,11 @@ function reciprocalMulUint256(D18 d, uint256 value) pure returns (uint256) {
     return MathLib.mulDiv(value, 1e18, d.inner());
 }
 
+/// TODO
+function inverse(D18 d) pure returns (D18) {
+    return d18(MathLib.mulDiv(1e18, 1e18, d.inner()).toUint128());
+}
+
 /// @dev Easy way to construct a decimal number
 function d18(uint128 value) pure returns (D18) {
     return D18.wrap(value);
@@ -76,5 +81,13 @@ function d18(uint128 num, uint128 den) pure returns (D18) {
 }
 
 using {
-    add as +, sub as -, divD8 as /, inner, mulD8 as *, mulUint128, mulUint256, reciprocalMulUint256
+    add as +,
+    sub as -,
+    divD8 as /,
+    inner,
+    mulD8 as *,
+    mulUint128,
+    mulUint256,
+    reciprocalMulUint256,
+    inverse
 } for D18 global;

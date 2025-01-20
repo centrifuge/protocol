@@ -8,6 +8,7 @@ import {IERC7726Ext} from "src/interfaces/IERC7726.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 import {ISingleShareClass} from "src/interfaces/ISingleShareClass.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
+import {Conversion} from "src/libraries/Conversion.sol";
 import {PoolId} from "src/types/PoolId.sol";
 
 struct Epoch {
@@ -172,8 +173,8 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
         // Increase approved
         address poolCurrency = address(poolRegistry.currency(poolId));
-        D18 paymentAssetPrice = valuation.getFactor(paymentAssetId, poolCurrency);
-        approvedPoolAmount = paymentAssetPrice.mulUint256(approvedAssetAmount);
+        D18 paymentAssetPrice = valuation.getPrice(paymentAssetId, poolCurrency);
+        approvedPoolAmount = valuation.getQuote(approvedAssetAmount, paymentAssetId, poolCurrency);
 
         // Update epoch data
         epoch[shareClassId_][approvalEpochId].approvedDepositAmount += approvedPoolAmount;
@@ -224,7 +225,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
         // Increase approved
         address poolCurrency = address(poolRegistry.currency(poolId));
-        D18 assetToPool = valuation.getFactor(payoutAssetId, poolCurrency);
+        D18 assetToPool = valuation.getPrice(payoutAssetId, poolCurrency);
 
         // Update epoch data
         epoch[shareClassId_][approvalEpochId].approvedShareAmount += approvedShareAmount;
@@ -344,7 +345,13 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
             epochRatio_.redeemShareToPoolQuote = navPerShare;
             payoutPoolAmount += epochPoolAmount;
-            payoutAssetAmount += epochRatio_.redeemAssetToPoolQuote.reciprocalMulUint256(epochPoolAmount);
+            payoutAssetAmount += Conversion.convertWithPrice(
+                epochPoolAmount,
+                address(poolRegistry.currency(poolId)),
+                payoutAssetId,
+                epochRatio_.redeemAssetToPoolQuote.inverse()
+            );
+
             totalIssuance_ -= revokedShareAmount;
             uint256 nav = navPerShare.mulUint256(totalIssuance_);
 
@@ -395,7 +402,12 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
             // #shares = poolAmount * poolToShares * poolAmount = (assetToPool * assetAmount) / shareToPool
             uint256 investorShareAmount = epochRatio_.depositShareToPoolQuote.reciprocalMulUint256(
-                epochRatio_.depositAssetToPoolQuote.mulUint256(approvedAssetAmount)
+                Conversion.convertWithPrice(
+                    approvedAssetAmount,
+                    depositAssetId,
+                    address(poolRegistry.currency(poolId)),
+                    epochRatio_.depositAssetToPoolQuote
+                )
             );
 
             userOrder.pending -= approvedAssetAmount;
@@ -453,10 +465,12 @@ contract SingleShareClass is Auth, ISingleShareClass {
             }
 
             uint256 approvedShareAmount = epochRatio_.redeemRatio.mulUint256(userOrder.pending);
-
-            // assetAmount = poolAmount * poolToAsset = poolAmount / assetToPool = (#shares * shareToPool) / assetToPool
-            uint256 approvedAssetAmount = epochRatio_.redeemAssetToPoolQuote.reciprocalMulUint256(
-                epochRatio_.redeemShareToPoolQuote.mulUint256(approvedShareAmount)
+            uint256 approvedPoolAmount = epochRatio_.redeemShareToPoolQuote.mulUint256(approvedShareAmount);
+            uint256 approvedAssetAmount = Conversion.convertWithPrice(
+                approvedPoolAmount,
+                address(poolRegistry.currency(poolId)),
+                payoutAssetId,
+                epochRatio_.redeemAssetToPoolQuote.inverse()
             );
 
             paymentShareAmount += approvedShareAmount;

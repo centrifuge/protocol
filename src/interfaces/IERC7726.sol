@@ -14,8 +14,8 @@ interface IERC7726 {
 }
 
 interface IERC7726Ext is IERC7726 {
-    /// @notice Returns the internal ratio used to convert base into quote, e.g. ETH to USDC
+    /// @notice Returns the current price used to convert base into quote, e.g. ETH to USDC
     /// @param base The numerator asset for the desired ratio
     /// @param quote The denominator asset
-    function getFactor(address base, address quote) external view returns (D18 factor);
+    function getPrice(address base, address quote) external view returns (D18 price);
 }

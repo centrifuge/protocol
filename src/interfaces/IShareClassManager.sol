@@ -175,7 +175,7 @@ interface IShareClassManager {
     /// @param approvalRatio Percentage of approved requests
     /// @param payoutAssetId Identifier of the asset for which all requests want to exchange their share class tokens
     /// for
-    /// @param valuation Converter for quotas, e.g. price ratio of share class token amount to pool amount
+    /// @param valuation Converter for quotas, e.g. price ratio of asset amount to pool amount
     /// @return approvedShareAmount Sum of redemption request amounts in pool amount which was approved
     /// @return pendingShareAmount Sum of redemption request amounts in share class token amount which was not approved
     function approveRedeems(

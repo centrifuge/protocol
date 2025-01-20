@@ -6,7 +6,7 @@ import {D18} from "src/types/D18.sol";
 
 import {Conversion} from "src/libraries/Conversion.sol";
 
-import {IERC7726} from "src/interfaces/IERC7726.sol";
+import {IERC7726, IERC7726Ext} from "src/interfaces/IERC7726.sol";
 import {ITransientValuation} from "src/interfaces/ITransientValuation.sol";
 
 contract TransientValuation is ITransientValuation {
@@ -21,5 +21,10 @@ contract TransientValuation is ITransientValuation {
     /// @inheritdoc IERC7726
     function getQuote(uint256 baseAmount, address base, address quote) external view returns (uint256 quoteAmount) {
         return Conversion.convertWithPrice(baseAmount, base, quote, price);
+    }
+
+    /// @inheritdoc IERC7726Ext
+    function getPrice(address, /*base*/ address /*quote*/ ) external view returns (D18) {
+        return price;
     }
 }

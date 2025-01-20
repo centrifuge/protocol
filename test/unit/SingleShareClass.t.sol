@@ -9,6 +9,7 @@ import {D18, d18} from "src/types/D18.sol";
 import {IERC7726Ext} from "src/interfaces/IERC7726.sol";
 import {IAuth} from "src/interfaces/IAuth.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
+import {Conversion} from "src/libraries/Conversion.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 import {ISingleShareClass} from "src/interfaces/ISingleShareClass.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
@@ -36,31 +37,12 @@ contract PoolRegistryMock {
 contract OracleMock is IERC7726Ext {
     using MathLib for uint256;
 
-    uint256 private constant _ONE = 1e18;
-
     function getQuote(uint256 baseAmount, address base, address quote) external view returns (uint256 quoteAmount) {
-        return this.getFactor(base, quote).mulUint256(baseAmount);
+        return Conversion.convertWithPrice(baseAmount, base, quote, getPrice(base, quote));
     }
 
-    function getFactor(address base, address quote) external pure returns (D18 factor) {
-        // NOTE: Implicitly refer to D18 factors, i.e. 0.1 = 1e17
-        if (base == USDC && quote == OTHER_STABLE) {
-            return d18(_ONE.mulDiv(DENO_OTHER_STABLE, DENO_USDC).toUint128());
-        } else if (base == USDC && quote == POOL_CURRENCY) {
-            return d18(_ONE.mulDiv(DENO_POOL, DENO_USDC).toUint128());
-        } else if (base == OTHER_STABLE && quote == USDC) {
-            return d18(_ONE.mulDiv(DENO_USDC, DENO_OTHER_STABLE).toUint128());
-        } else if (base == OTHER_STABLE && quote == POOL_CURRENCY) {
-            return d18(_ONE.mulDiv(DENO_POOL, DENO_OTHER_STABLE).toUint128());
-        } else if (base == POOL_CURRENCY && quote == USDC) {
-            return d18(_ONE.mulDiv(DENO_USDC, DENO_POOL).toUint128());
-        } else if (base == POOL_CURRENCY && quote == OTHER_STABLE) {
-            return d18(_ONE.mulDiv(DENO_OTHER_STABLE, DENO_POOL).toUint128());
-        } else if (base == POOL_CURRENCY && quote == address(bytes20(SHARE_CLASS_ID))) {
-            return d18(_ONE.toUint128());
-        } else {
-            revert("Unsupported factor pair");
-        }
+    function getPrice(address, /*base*/ address /*quote*/ ) public pure returns (D18 factor) {
+        return d18(1e18);
     }
 }
 
