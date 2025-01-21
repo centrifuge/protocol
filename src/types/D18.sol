@@ -70,6 +70,11 @@ function d18(uint128 value) pure returns (D18) {
     return D18.wrap(value);
 }
 
+/// @dev Easy way to construct a decimal number
+function d18(uint128 num, uint128 den) pure returns (D18) {
+    return D18.wrap(MathLib.mulDiv(num, 1e18, den).toUint128());
+}
+
 using {
     add as +, sub as -, divD8 as /, inner, mulD8 as *, mulUint128, mulUint256, reciprocalMulUint256
 } for D18 global;
