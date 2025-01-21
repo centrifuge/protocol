@@ -173,9 +173,4 @@ contract Holdings is Auth, IHoldings {
 
         return holding_.valuation;
     }
-
-    /// @inheritdoc IHoldings
-    function close(PoolId, /*poolId*/ ShareClassId, /*scId*/ AssetId /*assetId*/ ) external pure {
-        revert("unsupported");
-    }
 }
