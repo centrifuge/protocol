@@ -2,6 +2,8 @@
 circle Vaults
 
 interface ERC6909 {
+    + transfer(assetId, addr, amount)
+    + transferFrom(assetId, origin, addr, amount)
 }
 
 class Holdings<wards = PoolManager> <<(C, lightskyblue)>> {
@@ -17,22 +19,21 @@ class AssetManager<wards = PoolManager> {
     .. TODO ..
     - Investor => AssetId => Balance
     - AssetId => {originAddress, name, symbol, decimals}
-    + registerAsset(assetId, addr, name, decimals, symbol) <<auth>>
-    + mint(assetId, addr, amount) <<auth>>
-    + burn(assetId, addr, amount) <<auth>>
-    + transfer(assetId, addr, amount)
-    + authTransfer(assetId, sendAddr, recvAddr, amount) <<auth>>
+    + registerAsset(assetId, addr, name, decimals, symbol)
+    + mint(assetId, addr, amount)
+    + burn(assetId, addr, amount)
+    + authTransfer(assetId, sendAddr, recvAddr, amount)
 }
 AssetManager --|> ERC6909
 
 class PoolRegistry<wards = PoolManager> {
-    + registerPool(admin, currencyId, shareClassManagerAddress) -> poolId <<auth>>
-    + updateShareClassManager(poolId, scm) <<auth>>
-    + updateCurrency(poolId, currency) <<auth>>
-    + updateAdmin(poolId, admin, bool) <<auth>>
-    + allowInvestorAsset(poolId, asset, bool) <<auth>>
-    + setMetadata(poolId, metadata) <<auth>>
-    + setAddressFor(poolId, key, address) <<auth>>
+    + registerPool(admin, currencyId, shareClassManagerAddress) -> poolId
+    + updateShareClassManager(poolId, scm)
+    + updateCurrency(poolId, currency)
+    + updateAdmin(poolId, admin, bool)
+    + allowInvestorAsset(poolId, asset, bool)
+    + setMetadata(poolId, metadata)
+    + setAddressFor(poolId, key, address)
 }
 
 interface IShareClassManager {
@@ -66,9 +67,9 @@ SingleShareClass -down|> IShareClassManager
 class Accounting<wards = PoolManager> {
     .. TODO ..
     - PoolId => AccountId => Account
-    + unlock(poolId) <<auth>>
-    + createAccount() <<auth>>
-    + updateEntry(credit, debit, value) <<auth>>
+    + unlock(poolId)
+    + createAccount()
+    + updateEntry(credit, debit, value)
 }
 
 class Multicall {
@@ -140,8 +141,8 @@ PoolManager -down-->AssetManager
 PoolManager -down-> Holdings
 
 class Gateway<wards = PoolManager, Vaults> <<(C, lightskyblue)>> {
-    + sendXYZ(msg) <<auth>>
-    + handle(msg) <<auth>>
+    + sendXYZ(msg)
+    + handle(msg)
 }
 
 Gateway <-[thickness=4]right-> Vaults
