@@ -17,9 +17,6 @@ interface IHoldings {
     /// @notice Emitted when a holding is created
     event Created(PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, IERC7726 valuation);
 
-    /// @notice Emitted when a holding is closed
-    event Closed(PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId);
-
     /// @notice Emitted when a holding is increased
     event Increased(
         PoolId indexed,
@@ -76,10 +73,6 @@ interface IHoldings {
     /// @notice Creates a new holding in a pool using a valuation
     function create(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation, AccountId[] memory accounts)
         external;
-
-    /// @notice Closes a holding in a pool using a valuation
-    /// A holding can only be closed if their value is 0.
-    function close(PoolId poolId, ShareClassId scId, AssetId assetId) external;
 
     /// @notice Increments the amount of a holding and updates the value for that increment.
     /// @return value The value the holding has increment.

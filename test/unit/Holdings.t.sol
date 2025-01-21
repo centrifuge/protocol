@@ -386,10 +386,3 @@ contract TestValuation is TestCommon {
         holdings.valuation(POOL_A, SC_1, ASSET_A);
     }
 }
-
-contract TestUnsupported is TestCommon {
-    function testClose() public {
-        vm.expectRevert("unsupported");
-        holdings.close(POOL_A, SC_1, ASSET_A);
-    }
-}
