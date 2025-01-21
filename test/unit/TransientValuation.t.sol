@@ -20,7 +20,7 @@ contract C6 {
     }
 }
 
-contract TestPortfolio is Test {
+contract TestTransientValuation is Test {
     address c18 = address(new C18());
     address c6 = address(new C6());
     TransientValuation valuation = new TransientValuation();
