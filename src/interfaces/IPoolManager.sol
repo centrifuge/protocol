@@ -102,7 +102,7 @@ interface IFromGatewayMethods {
     function cancelRedeemRequest(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, GlobalAddress investor)
         external;
 
-    function notifyLockedTokens(AssetId assetId, address recvAddr, uint128 amount) external;
+    function notifyLockedTokens(ShareClassId scId, AssetId assetId, uint128 amount) external;
 }
 
 interface IPoolManager is IPoolUnlockedMethods, IFromGatewayMethods {
