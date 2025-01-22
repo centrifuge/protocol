@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ChainId} from "src/types/Domain.sol";
+import {ChainId} from "src/types/ChainId.sol";
 
 type GlobalAddress is uint256;
 

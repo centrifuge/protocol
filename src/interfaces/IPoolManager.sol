@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
-import {ChainId} from "src/types/Domain.sol";
+import {ChainId} from "src/types/ChainId.sol";
 import {ShareClassId} from "src/types/ShareClassId.sol";
 import {AssetId} from "src/types/AssetId.sol";
 import {GlobalAddress} from "src/types/GlobalAddress.sol";
