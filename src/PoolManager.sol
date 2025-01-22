@@ -127,23 +127,23 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         poolRegistry.updateAdmin(unlockedPoolId(), newAdmin, canManage);
     }
 
-    function allowInvestorAsset(AssetId assetId, bool isAllowed) external {
+    function allowInvestorAsset(AssetId assetId, bool allow) external {
         PoolId poolId = unlockedPoolId();
 
         require(assetManager.isRegistered(assetId), "AssetNotRegistered");
         require(holdings.isAssetAllowed(poolId, assetId), "HoldingAssetNotAllowed");
 
-        poolRegistry.allowInvestorAsset(poolId, assetId, isAllowed);
+        poolRegistry.allowInvestorAsset(poolId, assetId, allow);
     }
 
-    function allowHoldingAsset(AssetId assetId, bool isAllowed) external {
+    function allowHoldingAsset(AssetId assetId, bool allow) external {
         PoolId poolId = unlockedPoolId();
 
-        if (!isAllowed) {
-            require(!poolRegistry.isInvestorAssetAllowed(poolId, assetId), "InvestorAssetMustBeDisallowed");
+        if (!allow) {
+            require(!poolRegistry.isInvestorAssetAllowed(poolId, assetId), "InvestorAssetMustBeDisallowedFirst");
         }
 
-        holdings.allowAsset(poolId, assetId, isAllowed);
+        holdings.allowAsset(poolId, assetId, allow);
     }
 
     function addShareClass(bytes calldata data) external returns (ShareClassId) {
