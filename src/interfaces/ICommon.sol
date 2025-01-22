@@ -38,8 +38,7 @@ interface IGateway {
     // pools/shareClasses
     function sendNotifyPool(ChainId chainId, PoolId poolId) external;
     function sendNotifyShareClass(ChainId chainId, PoolId poolId, ShareClassId scId) external;
-    function sendNotifyAllowedAsset(ChainId chainId, PoolId poolId, ShareClassId scId, AssetId assetId, bool isAllowed)
-        external;
+    function sendNotifyAllowedAsset(PoolId poolId, ShareClassId scId, AssetId assetId, bool isAllowed) external;
     function sendFulfilledDepositRequest(
         PoolId poolId,
         ShareClassId scId,

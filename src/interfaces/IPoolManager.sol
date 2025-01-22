@@ -34,7 +34,7 @@ interface IPoolUnlockedMethods {
 
     function notifyShareClass(ChainId chainId, ShareClassId scId) external;
 
-    function notifyAllowedAsset(ChainId chainId, ShareClassId scId, AssetId assetId, bool isAllowed) external;
+    function notifyAllowedAsset(ShareClassId scId, AssetId assetId) external;
 
     function setPoolMetadata(bytes calldata metadata) external;
 

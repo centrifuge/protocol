@@ -3,18 +3,14 @@ pragma solidity 0.8.28;
 
 import {ChainId} from "src/types/ChainId.sol";
 
-type GlobalAddress is uint256;
+type GlobalAddress is bytes32;
 
 function addr(GlobalAddress addr_) pure returns (address) {
-    return address(uint160(GlobalAddress.unwrap(addr_)));
-}
-
-function chainId(GlobalAddress addr_) pure returns (ChainId) {
-    return ChainId.wrap(uint32(GlobalAddress.unwrap(addr_) >> 20));
+    return address(uint160(uint256(GlobalAddress.unwrap(addr_))));
 }
 
 function isNull(GlobalAddress addr_) pure returns (bool) {
     return GlobalAddress.unwrap(addr_) == 0;
 }
 
-using {addr, chainId, isNull} for GlobalAddress global;
+using {addr, isNull} for GlobalAddress global;

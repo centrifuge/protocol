@@ -109,14 +109,14 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     }
 
     function notifyShareClass(ChainId chainId, ShareClassId scId) external poolUnlocked {
+        // TODO: check scId existence
         gateway.sendNotifyShareClass(chainId, unlockedPoolId(), scId);
     }
 
-    function notifyAllowedAsset(ChainId chainId, ShareClassId scId, AssetId assetId, bool isAllowed)
-        external
-        poolUnlocked
-    {
-        gateway.sendNotifyAllowedAsset(chainId, unlockedPoolId(), scId, assetId, isAllowed);
+    function notifyAllowedAsset(ShareClassId scId, AssetId assetId) external poolUnlocked {
+        PoolId poolId = unlockedPoolId();
+
+        gateway.sendNotifyAllowedAsset(poolId, scId, assetId, poolRegistry.isInvestorAssetAllowed(poolId, assetId));
     }
 
     function setPoolMetadata(bytes calldata metadata) external {
