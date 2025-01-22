@@ -46,7 +46,7 @@ interface ISingleShareClass is IShareClassManager {
         address payoutAssetId,
         D18 navPerShare,
         uint32 endEpochId
-    ) external returns (uint256 payoutAssetAmount, uint256 payoutPoolAmount);
+    ) external returns (uint128 payoutAssetAmount, uint128 payoutPoolAmount);
 
     /// @notice Collects shares for an investor after their deposit request was (partially) approved and new shares were
     /// issued until the provided epoch.
@@ -64,7 +64,7 @@ interface ISingleShareClass is IShareClassManager {
         address investor,
         address depositAssetId,
         uint32 endEpochId
-    ) external returns (uint256 payoutShareAmount, uint256 paymentAssetAmount);
+    ) external returns (uint128 payoutShareAmount, uint128 paymentAssetAmount);
 
     /// @notice Reduces the share class token count of the investor in exchange for collecting an amount of payment
     /// asset for the specified range of epochs.
@@ -83,5 +83,5 @@ interface ISingleShareClass is IShareClassManager {
         address investor,
         address payoutAssetId,
         uint32 endEpochId
-    ) external returns (uint256 payoutAssetAmount, uint256 paymentShareAmount);
+    ) external returns (uint128 payoutAssetAmount, uint128 paymentShareAmount);
 }
