@@ -20,7 +20,7 @@ contract C6 {
     }
 }
 
-contract TestIden is Test {
+contract TestIdentityValuation is Test {
     address c18 = address(new C18());
     address c6 = address(new C6());
     IdentityValuation valuation = new IdentityValuation();
