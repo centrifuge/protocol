@@ -11,4 +11,8 @@ function equals(ShareClassId left, ShareClassId right) pure returns (bool) {
     return ShareClassId.unwrap(left) == ShareClassId.unwrap(right);
 }
 
-using {isNull, equals as ==} for ShareClassId global;
+function toBytes(ShareClassId scId) pure returns (bytes16) {
+    return bytes16(ShareClassId.unwrap(scId));
+}
+
+using {isNull, toBytes, equals as ==} for ShareClassId global;

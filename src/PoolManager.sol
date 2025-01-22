@@ -8,6 +8,7 @@ import {GlobalAddress} from "src/types/GlobalAddress.sol";
 import {ItemId} from "src/types/ItemId.sol";
 import {AccountId} from "src/types/AccountId.sol";
 import {PoolId} from "src/types/PoolId.sol";
+import {D18} from "src/types/D18.sol";
 
 import {IAssetManager, IAccounting, IGateway} from "src/interfaces/ICommon.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
@@ -17,7 +18,7 @@ import {IItemManager} from "src/interfaces/IItemManager.sol";
 import {IHoldings} from "src/interfaces/IHoldings.sol";
 import {IPoolManager, Escrow, AccountType} from "src/interfaces/IPoolManager.sol";
 import {IMulticall} from "src/interfaces/IMulticall.sol";
-import {IERC7726} from "src/interfaces/IERC7726.sol";
+import {IERC7726, IERC7726Ext} from "src/interfaces/IERC7726.sol";
 
 import {MathLib} from "src/libraries/MathLib.sol";
 
@@ -82,17 +83,17 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         return poolRegistry.registerPool(msg.sender, currency, shareClassManager);
     }
 
-    function claimShares(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor) external {
+    function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor) external {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
 
-        (uint128 shares, uint128 tokens) = scm.claimShares(poolId, scId, assetId, investor);
+        (uint128 shares, uint128 tokens) = scm.claimDeposit(poolId, scId.toBytes(), assetId.addr(), investor.addr());
         gateway.sendFulfilledDepositRequest(poolId, scId, assetId, investor, shares, tokens);
     }
 
-    function claimTokens(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor) external {
+    function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor) external {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
 
-        (uint128 shares, uint128 tokens) = scm.claimShares(poolId, scId, assetId, investor);
+        (uint128 shares, uint128 tokens) = scm.claimRedeem(poolId, scId.toBytes(), assetId.addr(), investor.addr());
 
         assetManager.burn(_escrow(poolId, scId, Escrow.PENDING_SHARE_CLASS), assetId, tokens);
 
@@ -119,7 +120,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     }
 
     function setPoolMetadata(bytes calldata metadata) external {
-        poolRegistry.updateMetadata(unlockedPoolId(), metadata);
+        poolRegistry.setMetadata(unlockedPoolId(), metadata);
     }
 
     function setPoolAdmin(address newAdmin, bool canManage) external {
@@ -149,56 +150,62 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         PoolId poolId = unlockedPoolId();
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        return scm.addShareClass(poolId, data);
+        return ShareClassId.wrap(uint128(scm.addShareClass(poolId, data)));
     }
 
-    function approveDeposit(ShareClassId scId, AssetId assetId, Ratio approvalRatio) external poolUnlocked {
+    function approveDeposits(ShareClassId scId, AssetId paymentAssetId, D18 approvalRatio) external poolUnlocked {
         PoolId poolId = unlockedPoolId();
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        ItemId itemId = holdings.itemId(poolId, scId, assetId);
+        ItemId itemId = holdings.itemId(poolId, scId, paymentAssetId);
         IERC7726 valuation = holdings.valuation(poolId, itemId);
 
-        uint128 totalApproved = scm.approveDeposit(poolId, scId, assetId, approvalRatio, valuation);
+        (, uint128 approvedAssetAmount) = scm.approveDeposits(
+            poolId, scId.toBytes(), approvalRatio, paymentAssetId.addr(), IERC7726Ext(address(valuation))
+        );
+
+        // TODO: approve this contract to perform the transfer on behalf.
 
         assetManager.transferFrom(
             _escrow(poolId, scId, Escrow.PENDING_SHARE_CLASS),
             _escrow(poolId, scId, Escrow.SHARE_CLASS),
-            uint256(uint160(AssetId.unwrap(assetId))),
-            totalApproved
+            uint256(uint160(AssetId.unwrap(paymentAssetId))),
+            approvedAssetAmount
         );
     }
 
-    function approveRedeem(ShareClassId scId, AssetId assetId, Ratio approvalRatio) external poolUnlocked {
+    function approveRedeems(ShareClassId scId, AssetId payoutAssetId, D18 approvalRatio) external poolUnlocked {
         PoolId poolId = unlockedPoolId();
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        ItemId itemId = holdings.itemId(poolId, scId, assetId);
+        ItemId itemId = holdings.itemId(poolId, scId, payoutAssetId);
         IERC7726 valuation = holdings.valuation(poolId, itemId);
 
-        scm.approveDeposit(poolId, scId, assetId, approvalRatio, valuation);
+        scm.approveRedeems(poolId, scId.toBytes(), approvalRatio, payoutAssetId.addr(), IERC7726Ext(address(valuation)));
     }
 
-    function issueShares(ShareClassId scId, uint128 navPerShare) external poolUnlocked {
+    function issueShares(ShareClassId scId, AssetId depositAssetId, D18 navPerShare) external poolUnlocked {
         PoolId poolId = unlockedPoolId();
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
 
-        scm.issueShares(poolId, scId, navPerShare);
+        scm.issueShares(poolId, scId.toBytes(), depositAssetId.addr(), navPerShare);
     }
 
-    function revokeShares(ShareClassId scId, AssetId assetId, uint128 navPerShare) external poolUnlocked {
+    function revokeShares(ShareClassId scId, AssetId payoutAssetId, D18 navPerShare) external poolUnlocked {
         PoolId poolId = unlockedPoolId();
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
 
-        uint128 amount = scm.revokeShares(poolId, scId, navPerShare);
+        (uint128 payoutAssetAmount,) = scm.revokeShares(poolId, scId.toBytes(), payoutAssetId.addr(), navPerShare);
+
+        // TODO: approve this contract to perform the transfer on behalf.
 
         assetManager.transferFrom(
             _escrow(poolId, scId, Escrow.SHARE_CLASS),
             _escrow(poolId, scId, Escrow.PENDING_SHARE_CLASS),
-            uint256(uint160(AssetId.unwrap(assetId))),
-            amount
+            uint256(uint160(AssetId.unwrap(payoutAssetId))),
+            payoutAssetAmount
         );
     }
 
@@ -286,46 +293,58 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         // TODO: register in the asset registry
     }
 
-    function requestDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor, uint128 amount)
-        external
-        onlyGateway
-    {
+    function requestDeposit(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId depositAssetId,
+        GlobalAddress investor,
+        uint128 amount
+    ) external onlyGateway {
         address pendingShareClassEscrow = _escrow(poolId, scId, Escrow.PENDING_SHARE_CLASS);
-        assetManager.mint(pendingShareClassEscrow, assetId, amount);
+        assetManager.mint(pendingShareClassEscrow, depositAssetId, amount);
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        scm.requestDeposit(poolId, scId, assetId, investor, amount);
+        scm.requestDeposit(poolId, scId.toBytes(), amount, investor.addr(), depositAssetId.addr());
     }
 
-    function requestRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor, uint128 amount)
+    function requestRedeem(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId payoutAssetId,
+        GlobalAddress investor,
+        uint128 amount
+    ) external onlyGateway {
+        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
+        scm.requestRedeem(poolId, scId.toBytes(), amount, investor.addr(), payoutAssetId.addr());
+    }
+
+    function cancelDepositRequest(PoolId poolId, ShareClassId scId, AssetId depositAssetId, GlobalAddress investor)
         external
         onlyGateway
     {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        scm.requestRedeem(poolId, scId, assetId, investor, amount);
-    }
-
-    function cancelDepositRequest(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor)
-        external
-        onlyGateway
-    {
-        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        (uint128 canceled, uint128 fulfilled) = scm.cancelDepositRequest(poolId, scId, assetId, investor);
+        (uint128 cancelledAssetAmount) =
+            scm.cancelDepositRequest(poolId, scId.toBytes(), investor.addr(), depositAssetId.addr());
 
         address pendingShareClassEscrow = _escrow(poolId, scId, Escrow.PENDING_SHARE_CLASS);
-        assetManager.burn(pendingShareClassEscrow, assetId, canceled);
+        assetManager.burn(pendingShareClassEscrow, depositAssetId, cancelledAssetAmount);
 
-        gateway.sendFulfilledCancelDepositRequest(poolId, scId, assetId, investor, canceled, fulfilled);
+        gateway.sendFulfilledCancelDepositRequest(
+            poolId, scId, depositAssetId, investor, cancelledAssetAmount, cancelledAssetAmount
+        );
     }
 
-    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor)
+    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, GlobalAddress investor)
         external
         onlyGateway
     {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        (uint128 canceled, uint128 fulfilled) = scm.cancelRedeemRequest(poolId, scId, assetId, investor);
+        uint128 cancelledAssetAmount =
+            scm.cancelRedeemRequest(poolId, scId.toBytes(), investor.addr(), payoutAssetId.addr());
 
-        gateway.sendFulfilledRedeemRequest(poolId, scId, assetId, investor, canceled, fulfilled);
+        gateway.sendFulfilledRedeemRequest(
+            poolId, scId, payoutAssetId, investor, cancelledAssetAmount, cancelledAssetAmount
+        );
     }
 
     function notifyLockedTokens(AssetId assetId, address recvAddr, uint128 amount) external onlyGateway {

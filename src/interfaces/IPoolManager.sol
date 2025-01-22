@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
-import {ChainId, Ratio} from "src/types/Domain.sol";
+import {ChainId} from "src/types/Domain.sol";
 import {ShareClassId} from "src/types/ShareClassId.sol";
 import {AssetId} from "src/types/AssetId.sol";
 import {GlobalAddress} from "src/types/GlobalAddress.sol";
 import {ItemId} from "src/types/ItemId.sol";
 import {AccountId} from "src/types/AccountId.sol";
 import {PoolId} from "src/types/PoolId.sol";
+import {D18} from "src/types/D18.sol";
 
 import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
@@ -45,13 +46,13 @@ interface IPoolUnlockedMethods {
 
     function addShareClass(bytes calldata data) external returns (ShareClassId);
 
-    function approveDeposit(ShareClassId scId, AssetId assetId, Ratio approvalRatio) external;
+    function approveDeposits(ShareClassId scId, AssetId paymetAssetId, D18 approvalRatio) external;
 
-    function approveRedeem(ShareClassId scId, AssetId assetId, Ratio approvalRatio) external;
+    function approveRedeems(ShareClassId scId, AssetId payoutAssetId, D18 approvalRatio) external;
 
-    function issueShares(ShareClassId id, uint128 nav) external;
+    function issueShares(ShareClassId id, AssetId depositAssetId, D18 navPerShare) external;
 
-    function revokeShares(ShareClassId scId, AssetId assetId, uint128 nav) external;
+    function revokeShares(ShareClassId scId, AssetId payoutAssetId, D18 navPerShare) external;
 
     function createItem(IItemManager im, IERC7726 valuation, AccountId[] memory accounts, bytes calldata data)
         external;
@@ -80,14 +81,26 @@ interface IFromGatewayMethods {
 
     function notifyRegisteredAsset(AssetId assetId) external;
 
-    function requestDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor, uint128 amount)
-        external;
+    function requestDeposit(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId depositAssetId,
+        GlobalAddress investor,
+        uint128 amount
+    ) external;
 
-    function requestRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor, uint128 amount)
-        external;
+    function requestRedeem(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId payoutAssetId,
+        GlobalAddress investor,
+        uint128 amount
+    ) external;
 
-    function cancelDepositRequest(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor) external;
-    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor) external;
+    function cancelDepositRequest(PoolId poolId, ShareClassId scId, AssetId depositAssetId, GlobalAddress investor)
+        external;
+    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, GlobalAddress investor)
+        external;
 
     function notifyLockedTokens(AssetId assetId, address recvAddr, uint128 amount) external;
 }
@@ -103,7 +116,7 @@ interface IPoolManager is IPoolUnlockedMethods, IFromGatewayMethods {
 
     function createPool(IERC20Metadata currency, IShareClassManager shareClassManager) external returns (PoolId);
 
-    function claimShares(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor) external;
+    function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor) external;
 
-    function claimTokens(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor) external;
+    function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor) external;
 }
