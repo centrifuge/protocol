@@ -14,8 +14,8 @@ interface IShareClassManager {
         uint32 indexed epoch,
         address investor,
         address assetId,
-        uint256 updatedAmountUser,
-        uint256 updatedAmountTotal
+        uint128 updatedAmountUser,
+        uint128 updatedAmountTotal
     );
     event UpdatedRedeemRequest(
         PoolId indexed poolId,
@@ -23,8 +23,8 @@ interface IShareClassManager {
         uint32 indexed epoch,
         address investor,
         address payoutAssetId,
-        uint256 updatedAmountUser,
-        uint256 updatedAmountTotal
+        uint128 updatedAmountUser,
+        uint128 updatedAmountTotal
     );
     event ApprovedDeposits(
         PoolId indexed poolId,
@@ -32,9 +32,9 @@ interface IShareClassManager {
         uint32 indexed epoch,
         address assetId,
         D18 approvalRatio,
-        uint256 approvedPoolAmount,
-        uint256 approvedAssetAmount,
-        uint256 pendingAssetAmount,
+        uint128 approvedPoolAmount,
+        uint128 approvedAssetAmount,
+        uint128 pendingAssetAmount,
         D18 assetToPool
     );
     event ApprovedRedeems(
@@ -43,8 +43,8 @@ interface IShareClassManager {
         uint32 indexed epoch,
         address assetId,
         D18 approvalRatio,
-        uint256 approvedShareClassAmount,
-        uint256 pending,
+        uint128 approvedShareClassAmount,
+        uint128 pending,
         D18 assetToPool
     );
     event IssuedShares(
@@ -52,8 +52,8 @@ interface IShareClassManager {
         bytes16 indexed shareClassId,
         uint32 indexed epoch,
         D18 navPerShare,
-        uint256 nav,
-        uint256 issuedShareAmount
+        uint128 nav,
+        uint128 issuedShareAmount
     );
 
     event RevokedShares(
@@ -61,8 +61,8 @@ interface IShareClassManager {
         bytes16 indexed shareClassId,
         uint32 indexed epoch,
         D18 navPerShare,
-        uint256 nav,
-        uint256 revokedShareAmount
+        uint128 nav,
+        uint128 revokedShareAmount
     );
 
     event ClaimedDeposit(
@@ -71,9 +71,9 @@ interface IShareClassManager {
         uint32 indexed epoch,
         address investor,
         address assetId,
-        uint256 approvedAssetAmount,
-        uint256 pendingAssetAmount,
-        uint256 claimedShareAmount
+        uint128 approvedAssetAmount,
+        uint128 pendingAssetAmount,
+        uint128 claimedShareAmount
     );
     event ClaimedRedeem(
         PoolId indexed poolId,
@@ -81,11 +81,11 @@ interface IShareClassManager {
         uint32 indexed epoch,
         address investor,
         address assetId,
-        uint256 approvedShareClassAmount,
-        uint256 pendingShareClassAmount,
-        uint256 claimedAssetAmount
+        uint128 approvedShareClassAmount,
+        uint128 pendingShareClassAmount,
+        uint128 claimedAssetAmount
     );
-    event UpdatedNav(PoolId indexed poolId, bytes16 indexed shareClassId, uint256 newAmount);
+    event UpdatedNav(PoolId indexed poolId, bytes16 indexed shareClassId, uint128 newAmount);
     event AddedShareClass(PoolId indexed poolId, bytes16 indexed shareClassId, string metadata);
 
     /// Errors
@@ -108,7 +108,7 @@ interface IShareClassManager {
     function requestDeposit(
         PoolId poolId,
         bytes16 shareClassId,
-        uint256 amount,
+        uint128 amount,
         address investor,
         address depositAssetId
     ) external;
@@ -124,7 +124,7 @@ interface IShareClassManager {
     /// into the pool token
     function cancelDepositRequest(PoolId poolId, bytes16 shareClassId, address investor, address depositAssetId)
         external
-        returns (uint256 cancelledAssetAmount);
+        returns (uint128 cancelledAssetAmount);
 
     /// @notice Creates or updates a request to redeem (exchange) share class tokens for some asset.
     ///
@@ -134,7 +134,7 @@ interface IShareClassManager {
     /// @param investor Address of the entity which is redeeming
     /// @param payoutAssetId Identifier of the asset which the investor eventually receives back for their redeemed
     /// share class tokens
-    function requestRedeem(PoolId poolId, bytes16 shareClassId, uint256 amount, address investor, address payoutAssetId)
+    function requestRedeem(PoolId poolId, bytes16 shareClassId, uint128 amount, address investor, address payoutAssetId)
         external;
 
     /// @notice Cancels a pending redeem request.
@@ -147,7 +147,7 @@ interface IShareClassManager {
     /// @return cancelledAmount The redeem amount which was previously pending and is now cancelled
     function cancelRedeemRequest(PoolId poolId, bytes16 shareClassId, address investor, address payoutAssetId)
         external
-        returns (uint256 cancelledAmount);
+        returns (uint128 cancelledAmount);
 
     /// @notice Approves a percentage of all deposit requests for the given triplet of pool id, share class id and
     /// deposit asset id.
@@ -165,7 +165,7 @@ interface IShareClassManager {
         D18 approvalRatio,
         address paymentAssetId,
         IERC7726Ext valuation
-    ) external returns (uint256 approvedPoolAmount, uint256 approvedAssetAmount);
+    ) external returns (uint128 approvedPoolAmount, uint128 approvedAssetAmount);
 
     /// @notice Approves a percentage of all redemption requests for the given triplet of pool id, share class id and
     /// deposit asset id.
@@ -184,7 +184,7 @@ interface IShareClassManager {
         D18 approvalRatio,
         address payoutAssetId,
         IERC7726Ext valuation
-    ) external returns (uint256 approvedShareAmount, uint256 pendingShareAmount);
+    ) external returns (uint128 approvedShareAmount, uint128 pendingShareAmount);
 
     /// @notice Emits new shares for the given identifier based on the provided NAV per share.
     ///
@@ -204,7 +204,7 @@ interface IShareClassManager {
     /// @return payoutPoolAmount Converted amount of pool currency based on number of revoked shares
     function revokeShares(PoolId poolId, bytes16 shareClassId, address payoutAssetId, D18 navPerShare)
         external
-        returns (uint256 payoutAssetAmount, uint256 payoutPoolAmount);
+        returns (uint128 payoutAssetAmount, uint128 payoutPoolAmount);
 
     /// @notice Collects shares for an investor after their deposit request was (partially) approved and new shares were
     /// issued.
@@ -217,7 +217,7 @@ interface IShareClassManager {
     /// @return paymentAssetAmount Amount of deposit asset which was taken as payment
     function claimDeposit(PoolId poolId, bytes16 shareClassId, address investor, address depositAssetId)
         external
-        returns (uint256 payoutShareAmount, uint256 paymentAssetAmount);
+        returns (uint128 payoutShareAmount, uint128 paymentAssetAmount);
 
     /// @notice Collects an asset amount for an investor after their redeem request was (partially) approved and shares
     /// were revoked.
@@ -231,7 +231,7 @@ interface IShareClassManager {
     /// @return paymentShareAmount Amount of shares which the investor redeemed
     function claimRedeem(PoolId poolId, bytes16 shareClassId, address investor, address payoutAssetId)
         external
-        returns (uint256 payoutAssetAmount, uint256 paymentShareAmount);
+        returns (uint128 payoutAssetAmount, uint128 paymentShareAmount);
 
     /// @notice Updates the NAV of a share class of a pool and returns it per share as well as the issuance.
     ///
@@ -241,7 +241,7 @@ interface IShareClassManager {
     /// @return issuance Total issuance of the share class
     function updateShareClassNav(PoolId poolId, bytes16 shareClassId)
         external
-        returns (D18 navPerShare, uint256 issuance);
+        returns (D18 navPerShare, uint128 issuance);
 
     /// @notice Generic update function for a pool.
     ///
@@ -265,5 +265,5 @@ interface IShareClassManager {
     function shareClassNavPerShare(PoolId poolId, bytes16 shareClassId)
         external
         view
-        returns (D18 navPerShare, uint256 issuance);
+        returns (D18 navPerShare, uint128 issuance);
 }

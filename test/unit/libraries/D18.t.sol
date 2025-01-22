@@ -65,16 +65,30 @@ contract D18Test is Test {
         assertEq(oneHundredPercent.mulUint256(a), a);
     }
 
-    function testReciprocalMulInt() public pure {
+    function testReciprocalMulInt128() public pure {
         D18 divisor = d18(2e18);
         uint128 multiplier = 1e20;
+
+        assertEq(divisor.reciprocalMulUint128(multiplier), 5e19);
+    }
+
+    function testFuzzReciprocalMulInt128(uint128 divisor_, uint128 multiplier) public pure {
+        D18 divisor = d18(uint128(bound(divisor_, 1e4, 1e20)));
+        multiplier = uint128(bound(multiplier, 0, type(uint128).max / 1e18));
+
+        assertEq(divisor.reciprocalMulUint128(multiplier), multiplier * 1e18 / divisor.inner());
+    }
+
+    function testReciprocalMulInt256() public pure {
+        D18 divisor = d18(2e18);
+        uint256 multiplier = 1e20;
 
         assertEq(divisor.reciprocalMulUint256(multiplier), 5e19);
     }
 
-    function testFuzzReciprocalMulInt(uint128 divisor_, uint128 multiplier) public pure {
+    function testFuzzReciprocalMulInt256(uint128 divisor_, uint256 multiplier) public pure {
         D18 divisor = d18(uint128(bound(divisor_, 1e4, 1e20)));
-        multiplier = uint128(bound(multiplier, 0, type(uint128).max / 1e18));
+        multiplier = bound(multiplier, 0, type(uint256).max / 1e18);
 
         assertEq(divisor.reciprocalMulUint256(multiplier), multiplier * 1e18 / divisor.inner());
     }
