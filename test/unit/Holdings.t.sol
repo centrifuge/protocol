@@ -16,9 +16,9 @@ import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 
 PoolId constant POOL_A = PoolId.wrap(42);
 ShareClassId constant SC_1 = ShareClassId.wrap(1);
-AssetId constant ASSET_A = AssetId.wrap(address(2));
+AssetId constant ASSET_A = AssetId.wrap(2);
 ShareClassId constant NON_SC = ShareClassId.wrap(0);
-AssetId constant NON_ASSET = AssetId.wrap(address(0));
+AssetId constant NON_ASSET = AssetId.wrap(0);
 IERC20Metadata constant POOL_CURRENCY = IERC20Metadata(address(1));
 
 contract PoolRegistryMock {
