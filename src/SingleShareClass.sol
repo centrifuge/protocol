@@ -18,12 +18,10 @@ struct Epoch {
 }
 
 struct EpochRatio {
-    /// @dev Percentage of approved deposits
-    D18 depositRatio;
+    uint128 approvedDepositAssetAmount;
+    uint128 approvedDepositPoolAmount;
     /// @dev Percentage of approved redemptions
     D18 redeemRatio;
-    /// @dev Price of one pool per asset token set during redeem approval
-    D18 depositAssetToPoolQuote;
     /// @dev Price of one pool per asset token set during redeem approval
     D18 redeemAssetToPoolQuote;
     /// @dev Price of one pool per share class token set during deposit flow
@@ -179,8 +177,8 @@ contract SingleShareClass is Auth, ISingleShareClass {
         epoch[shareClassId_][approvalEpochId].approvedDepositAmount += approvedPoolAmount;
 
         EpochRatio storage epochRatio_ = epochRatio[shareClassId_][paymentAssetId][approvalEpochId];
-        epochRatio_.depositRatio = approvalRatio;
-        epochRatio_.depositAssetToPoolQuote = paymentAssetPrice;
+        epochRatio_.approvedDepositAssetAmount = approvedAssetAmount;
+        epochRatio_.approvedDepositPoolAmount = approvedPoolAmount;
 
         assetEpochState[shareClassId_][paymentAssetId].latestDepositApproval = approvalEpochId;
 
@@ -278,7 +276,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
         for (uint32 epochId_ = startEpochId; epochId_ <= endEpochId; epochId_++) {
             // Skip redeem epochs
-            if (epochRatio[shareClassId_][depositAssetId][epochId_].depositRatio.inner() == 0) {
+            if (epochRatio[shareClassId_][depositAssetId][epochId_].approvedDepositAssetAmount == 0) {
                 continue;
             }
 
@@ -387,15 +385,16 @@ contract SingleShareClass is Auth, ISingleShareClass {
             EpochRatio memory epochRatio_ = epochRatio[shareClassId_][depositAssetId][epochId_];
 
             // Skip redeem epochs
-            if (epochRatio_.depositRatio.inner() == 0) {
+            if (epochRatio_.approvedDepositAssetAmount == 0) {
                 continue;
             }
 
-            uint128 approvedAssetAmount = epochRatio_.depositRatio.mulUint128(userOrder.pending);
+            D18 userRatio = d18(userOrder.pending, pendingDeposit[shareClassId_][depositAssetId]);
+            uint128 approvedAssetAmount = userRatio.mulUint128(epochRatio_.approvedDepositAssetAmount);
 
-            // #shares = poolAmount * poolToShares * poolAmount = (assetToPool * assetAmount) / shareToPool
+            // #shares = poolAmount / shareToPool
             uint128 investorShareAmount = epochRatio_.depositShareToPoolQuote.reciprocalMulUint128(
-                epochRatio_.depositAssetToPoolQuote.mulUint128(approvedAssetAmount)
+                userRatio.mulUint128(epochRatio_.approvedDepositPoolAmount)
             );
 
             userOrder.pending -= approvedAssetAmount;
