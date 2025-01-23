@@ -5,7 +5,6 @@ import {ChainId} from "src/types/ChainId.sol";
 import {ShareClassId} from "src/types/ShareClassId.sol";
 import {AssetId} from "src/types/AssetId.sol";
 import {GlobalAddress} from "src/types/GlobalAddress.sol";
-import {ItemId} from "src/types/ItemId.sol";
 import {AccountId} from "src/types/AccountId.sol";
 import {PoolId} from "src/types/PoolId.sol";
 import {D18} from "src/types/D18.sol";
@@ -14,7 +13,6 @@ import {IAssetManager, IAccounting, IGateway} from "src/interfaces/ICommon.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
 import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
-import {IItemManager} from "src/interfaces/IItemManager.sol";
 import {IHoldings} from "src/interfaces/IHoldings.sol";
 import {IPoolManager, Escrow, AccountType} from "src/interfaces/IPoolManager.sol";
 import {IMulticall} from "src/interfaces/IMulticall.sol";
@@ -157,8 +155,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         PoolId poolId = unlockedPoolId();
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        ItemId itemId = holdings.itemId(poolId, scId, paymentAssetId);
-        IERC7726 valuation = holdings.valuation(poolId, itemId);
+        IERC7726 valuation = holdings.valuation(poolId, scId, paymentAssetId);
 
         (, uint128 approvedAssetAmount) = scm.approveDeposits(
             poolId, scId.toBytes(), approvalRatio, paymentAssetId.addr(), IERC7726Ext(address(valuation))
@@ -178,8 +175,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         PoolId poolId = unlockedPoolId();
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        ItemId itemId = holdings.itemId(poolId, scId, payoutAssetId);
-        IERC7726 valuation = holdings.valuation(poolId, itemId);
+        IERC7726 valuation = holdings.valuation(poolId, scId, payoutAssetId);
 
         scm.approveRedeems(poolId, scId.toBytes(), approvalRatio, payoutAssetId.addr(), IERC7726Ext(address(valuation)));
     }
@@ -209,67 +205,69 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         );
     }
 
-    function createItem(IItemManager im, IERC7726 valuation, AccountId[] memory accounts, bytes calldata data)
+    function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, AccountId[] memory accounts)
         external
         poolUnlocked
     {
-        im.create(unlockedPoolId(), valuation, accounts, data);
+        holdings.create(unlockedPoolId(), scId, assetId, valuation, accounts);
     }
 
-    function closeItem(IItemManager im, ItemId itemId, bytes calldata data) external poolUnlocked {
-        im.close(unlockedPoolId(), itemId, data);
-    }
-
-    function increaseItem(IItemManager im, ItemId itemId, IERC7726 valuation, uint128 amount) external poolUnlocked {
+    function increaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount)
+        external
+        poolUnlocked
+    {
         PoolId poolId = unlockedPoolId();
 
-        uint128 valueChange = im.increase(poolId, itemId, valuation, amount);
+        uint128 valueChange = holdings.increase(poolId, scId, assetId, valuation, amount);
 
         accounting.updateEntry(
-            im.accountId(poolId, itemId, uint8(AccountType.EQUITY)),
-            im.accountId(poolId, itemId, uint8(AccountType.ASSET)),
+            holdings.accountId(poolId, scId, assetId, uint8(AccountType.EQUITY)),
+            holdings.accountId(poolId, scId, assetId, uint8(AccountType.ASSET)),
             valueChange
         );
     }
 
-    function decreaseItem(IItemManager im, ItemId itemId, IERC7726 valuation, uint128 amount) external poolUnlocked {
+    function decreaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount)
+        external
+        poolUnlocked
+    {
         PoolId poolId = unlockedPoolId();
 
-        uint128 valueChange = im.decrease(poolId, itemId, valuation, amount);
+        uint128 valueChange = holdings.decrease(poolId, scId, assetId, valuation, amount);
 
         accounting.updateEntry(
-            im.accountId(poolId, itemId, uint8(AccountType.ASSET)),
-            im.accountId(poolId, itemId, uint8(AccountType.EQUITY)),
+            holdings.accountId(poolId, scId, assetId, uint8(AccountType.ASSET)),
+            holdings.accountId(poolId, scId, assetId, uint8(AccountType.EQUITY)),
             valueChange
         );
     }
 
-    function updateItem(IItemManager im, ItemId itemId) external poolUnlocked {
+    function updateHolding(ShareClassId scId, AssetId assetId) external poolUnlocked {
         PoolId poolId = unlockedPoolId();
 
-        int128 diff = im.update(poolId, itemId);
+        int128 diff = holdings.update(poolId, scId, assetId);
 
         if (diff > 0) {
             accounting.updateEntry(
-                im.accountId(poolId, itemId, uint8(AccountType.GAIN)),
-                im.accountId(poolId, itemId, uint8(AccountType.ASSET)),
+                holdings.accountId(poolId, scId, assetId, uint8(AccountType.GAIN)),
+                holdings.accountId(poolId, scId, assetId, uint8(AccountType.ASSET)),
                 uint128(diff)
             );
         } else if (diff < 0) {
             accounting.updateEntry(
-                im.accountId(poolId, itemId, uint8(AccountType.ASSET)),
-                im.accountId(poolId, itemId, uint8(AccountType.LOSS)),
+                holdings.accountId(poolId, scId, assetId, uint8(AccountType.ASSET)),
+                holdings.accountId(poolId, scId, assetId, uint8(AccountType.LOSS)),
                 uint128(-diff)
             );
         }
     }
 
-    function updateItemValuation(IItemManager im, ItemId itemId, IERC7726 valuation) external poolUnlocked {
-        im.updateValuation(unlockedPoolId(), itemId, valuation);
+    function updateHoldingValuation(ShareClassId scId, AssetId assetId, IERC7726 valuation) external poolUnlocked {
+        holdings.updateValuation(unlockedPoolId(), scId, assetId, valuation);
     }
 
-    function setItemAccountId(IItemManager im, ItemId itemId, AccountId accountId) external poolUnlocked {
-        im.setAccountId(unlockedPoolId(), itemId, accountId);
+    function setHoldingAccountId(ShareClassId scId, AssetId assetId, AccountId accountId) external poolUnlocked {
+        holdings.setAccountId(unlockedPoolId(), scId, assetId, accountId);
     }
 
     function updateEntry(AccountId credit, AccountId debit, uint128 amount) external poolUnlocked {

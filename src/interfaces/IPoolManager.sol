@@ -5,14 +5,12 @@ import {ChainId} from "src/types/ChainId.sol";
 import {ShareClassId} from "src/types/ShareClassId.sol";
 import {AssetId} from "src/types/AssetId.sol";
 import {GlobalAddress} from "src/types/GlobalAddress.sol";
-import {ItemId} from "src/types/ItemId.sol";
 import {AccountId} from "src/types/AccountId.sol";
 import {PoolId} from "src/types/PoolId.sol";
 import {D18} from "src/types/D18.sol";
 
 import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
-import {IItemManager} from "src/interfaces/IItemManager.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
 
 enum Escrow {
@@ -54,20 +52,18 @@ interface IPoolUnlockedMethods {
 
     function revokeShares(ShareClassId scId, AssetId payoutAssetId, D18 navPerShare) external;
 
-    function createItem(IItemManager im, IERC7726 valuation, AccountId[] memory accounts, bytes calldata data)
+    function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, AccountId[] memory accounts)
         external;
 
-    function closeItem(IItemManager im, ItemId itemId, bytes calldata data) external;
+    function increaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount) external;
 
-    function increaseItem(IItemManager im, ItemId itemId, IERC7726 valuation, uint128 amount) external;
+    function decreaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount) external;
 
-    function decreaseItem(IItemManager im, ItemId itemId, IERC7726 valuation, uint128 amount) external;
+    function updateHolding(ShareClassId scId, AssetId assetId) external;
 
-    function updateItem(IItemManager im, ItemId itemId) external;
+    function updateHoldingValuation(ShareClassId scId, AssetId assetId, IERC7726 valuation) external;
 
-    function updateItemValuation(IItemManager im, ItemId itemId, IERC7726 valuation) external;
-
-    function setItemAccountId(IItemManager im, ItemId itemId, AccountId accountId) external;
+    function setHoldingAccountId(ShareClassId scId, AssetId assetId, AccountId accountId) external;
 
     function updateEntry(AccountId credit, AccountId debit, uint128 amount) external;
 
