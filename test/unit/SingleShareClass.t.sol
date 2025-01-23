@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 
 import {SingleShareClass, Epoch, EpochRatio, UserOrder, AssetEpochState} from "src/SingleShareClass.sol";
 import {PoolId} from "src/types/PoolId.sol";
+import {AssetId} from "src/types/AssetId.sol";
 import {D18, d18} from "src/types/D18.sol";
 import {IERC7726Ext} from "src/interfaces/IERC7726.sol";
 import {IAuth} from "src/interfaces/IAuth.sol";
@@ -12,7 +13,6 @@ import {MathLib} from "src/libraries/MathLib.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 import {ISingleShareClass} from "src/interfaces/ISingleShareClass.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
-import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 
 bool constant WITH_TRANSIENT = false;
 uint128 constant TRANSIENT_STORAGE_SHIFT = WITH_TRANSIENT ? 1 : 0;
@@ -28,8 +28,8 @@ uint128 constant MIN_REQUEST_AMOUNT = 1e10;
 uint128 constant MAX_REQUEST_AMOUNT = 1e30;
 
 contract PoolRegistryMock {
-    function currency(PoolId) external pure returns (IERC20Metadata) {
-        return IERC20Metadata(POOL_CURRENCY);
+    function currency(PoolId) external pure returns (AssetId) {
+        return AssetId.wrap(POOL_CURRENCY);
     }
 }
 
@@ -91,9 +91,9 @@ abstract contract SingleShareClassBaseTest is Test {
         vm.mockCall(
             poolRegistryAddress,
             abi.encodeWithSelector(IPoolRegistry.currency.selector, poolId),
-            abi.encode(IERC20Metadata(POOL_CURRENCY))
+            abi.encode(AssetId.wrap(POOL_CURRENCY))
         );
-        assertEq(IPoolRegistry(poolRegistryAddress).currency(poolId).addr(), address(IERC20Metadata(POOL_CURRENCY)));
+        assertEq(IPoolRegistry(poolRegistryAddress).currency(poolId).addr(), POOL_CURRENCY);
     }
 
     function _assertDepositRequestEq(bytes16 shareClassId_, address asset, address investor_, UserOrder memory expected)

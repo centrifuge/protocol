@@ -6,7 +6,6 @@ import "forge-std/Test.sol";
 import {D18, d18} from "src/types/D18.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {TransientValuation} from "src/TransientValuation.sol";
-import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 import {IAssetManager} from "src/interfaces/IAssetManager.sol";
 
 address constant C6 = address(6);
