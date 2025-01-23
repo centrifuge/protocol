@@ -9,7 +9,9 @@ import {Conversion} from "src/libraries/Conversion.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
 import {ITransientValuation} from "src/interfaces/ITransientValuation.sol";
 
-contract TransientValuation is ITransientValuation {
+import {BaseERC7726} from "src/BaseERC7726.sol";
+
+contract TransientValuation is BaseERC7726, ITransientValuation {
     /// @notice Temporal price set and used to obtain the quote.
     D18 public /*TODO: transient*/ price;
 
@@ -20,6 +22,6 @@ contract TransientValuation is ITransientValuation {
 
     /// @inheritdoc IERC7726
     function getQuote(uint256 baseAmount, address base, address quote) external view returns (uint256 quoteAmount) {
-        return Conversion.convertWithPrice(baseAmount, base, quote, price);
+        return Conversion.convertWithPrice(baseAmount, _getDecimals(base), _getDecimals(quote), price);
     }
 }
