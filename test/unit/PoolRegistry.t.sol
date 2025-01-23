@@ -15,7 +15,7 @@ contract PoolRegistryTest is Test {
     using MathLib for uint256;
 
     PoolRegistry registry;
-    IERC20Metadata USD = IERC20Metadata(address(840));
+    AssetId USD = AssetId.wrap(address(840));
     IShareClassManager shareClassManager = IShareClassManager(makeAddr("shareClassManager"));
 
     modifier nonZero(address addr) {
@@ -44,7 +44,7 @@ contract PoolRegistryTest is Test {
         registry.registerPool(address(0), USD, shareClassManager);
 
         vm.expectRevert(IPoolRegistry.EmptyCurrency.selector);
-        registry.registerPool(address(this), IERC20Metadata(address(0)), shareClassManager);
+        registry.registerPool(address(this), AssetId.wrap(address(0)), shareClassManager);
 
         vm.expectEmit();
         emit IPoolRegistry.NewPool(PoolIdLib.newFrom(1), fundAdmin, shareClassManager, USD);
@@ -173,7 +173,7 @@ contract PoolRegistryTest is Test {
         assertEq(address(registry.shareClassManager(poolId)), address(shareClassManager_));
     }
 
-    function testUpdateCurrency(IERC20Metadata currency) public nonZero(address(currency)) {
+    function testUpdateCurrency(AssetId currency) public nonZero(AssetId.unwrap(currency)) {
         address fundAdmin = makeAddr("fundAdmin");
 
         PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
@@ -187,13 +187,13 @@ contract PoolRegistryTest is Test {
         registry.updateCurrency(nonExistingPool, currency);
 
         vm.expectRevert(IPoolRegistry.EmptyCurrency.selector);
-        registry.updateCurrency(poolId, IERC20Metadata(address(0)));
+        registry.updateCurrency(poolId, AssetId.wrap(address(0)));
 
-        vm.assume(address(registry.currency(poolId)) != address(currency));
+        vm.assume(AssetId.unwrap(registry.currency(poolId)) != AssetId.unwrap(currency));
         vm.expectEmit();
         emit IPoolRegistry.UpdatedCurrency(poolId, currency);
         registry.updateCurrency(poolId, currency);
-        assertEq(address(registry.currency(poolId)), address(currency));
+        assertEq(AssetId.unwrap(registry.currency(poolId)), AssetId.unwrap(currency));
     }
 
     function testSetAddressFor() public {

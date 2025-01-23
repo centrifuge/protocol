@@ -7,4 +7,8 @@ function isNull(AssetId assetId) pure returns (bool) {
     return AssetId.unwrap(assetId) == address(0);
 }
 
-using {isNull} for AssetId global;
+function addr(AssetId assetId) pure returns (address) {
+    return address(AssetId.unwrap(assetId));
+}
+
+using {isNull, addr} for AssetId global;

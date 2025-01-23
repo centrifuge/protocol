@@ -6,14 +6,11 @@ import {MathLib} from "src/libraries/MathLib.sol";
 import {D18} from "src/types/D18.sol";
 
 library Conversion {
-    function convertWithPrice(uint256 baseAmount, address base, address quote, D18 price)
+    function convertWithPrice(uint256 baseAmount, uint8 baseDecimals, uint8 quoteDecimals, D18 price)
         external
-        view
+        pure
         returns (uint256 quoteAmount)
     {
-        uint8 baseDecimals = IERC20Metadata(base).decimals();
-        uint8 quoteDecimals = IERC20Metadata(quote).decimals();
-
         if (baseDecimals == quoteDecimals) {
             return price.mulUint256(baseAmount);
         }
