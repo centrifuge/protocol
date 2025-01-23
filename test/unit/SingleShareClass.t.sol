@@ -29,7 +29,7 @@ uint128 constant MAX_REQUEST_AMOUNT = 1e30;
 
 contract PoolRegistryMock {
     function currency(PoolId) external pure returns (AssetId) {
-        return AssetId.wrap(POOL_CURRENCY);
+        return AssetId.wrap(uint64(uint160(POOL_CURRENCY)));
     }
 }
 
@@ -91,7 +91,7 @@ abstract contract SingleShareClassBaseTest is Test {
         vm.mockCall(
             poolRegistryAddress,
             abi.encodeWithSelector(IPoolRegistry.currency.selector, poolId),
-            abi.encode(AssetId.wrap(POOL_CURRENCY))
+            abi.encode(AssetId.wrap(uint64(uint160(POOL_CURRENCY))))
         );
         assertEq(IPoolRegistry(poolRegistryAddress).currency(poolId).addr(), POOL_CURRENCY);
     }

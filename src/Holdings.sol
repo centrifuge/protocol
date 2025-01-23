@@ -81,8 +81,7 @@ contract Holdings is Auth, IHoldings {
         Holding storage holding_ = holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
-        amountValue =
-            valuation_.getQuote(amount_, AssetId.unwrap(assetId), poolRegistry.currency(poolId).addr()).toUint128();
+        amountValue = valuation_.getQuote(amount_, assetId.addr(), poolRegistry.currency(poolId).addr()).toUint128();
 
         holding_.assetAmount += amount_;
         holding_.assetAmountValue += amountValue;
@@ -101,8 +100,7 @@ contract Holdings is Auth, IHoldings {
         Holding storage holding_ = holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
-        amountValue =
-            valuation_.getQuote(amount_, AssetId.unwrap(assetId), poolRegistry.currency(poolId).addr()).toUint128();
+        amountValue = valuation_.getQuote(amount_, assetId.addr(), poolRegistry.currency(poolId).addr()).toUint128();
 
         holding_.assetAmount -= amount_;
         holding_.assetAmountValue -= amountValue;
@@ -116,7 +114,7 @@ contract Holdings is Auth, IHoldings {
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
         uint128 currentAmountValue = holding_.valuation.getQuote(
-            holding_.assetAmount, AssetId.unwrap(assetId), poolRegistry.currency(poolId).addr()
+            holding_.assetAmount, assetId.addr(), poolRegistry.currency(poolId).addr()
         ).toUint128();
 
         diffValue = currentAmountValue > holding_.assetAmountValue

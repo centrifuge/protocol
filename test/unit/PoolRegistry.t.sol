@@ -15,7 +15,7 @@ contract PoolRegistryTest is Test {
     using MathLib for uint256;
 
     PoolRegistry registry;
-    AssetId USD = AssetId.wrap(address(840));
+    AssetId USD = AssetId.wrap(840);
     IShareClassManager shareClassManager = IShareClassManager(makeAddr("shareClassManager"));
 
     modifier nonZero(address addr) {
@@ -44,7 +44,7 @@ contract PoolRegistryTest is Test {
         registry.registerPool(address(0), USD, shareClassManager);
 
         vm.expectRevert(IPoolRegistry.EmptyCurrency.selector);
-        registry.registerPool(address(this), AssetId.wrap(address(0)), shareClassManager);
+        registry.registerPool(address(this), AssetId.wrap(0), shareClassManager);
 
         vm.expectEmit();
         emit IPoolRegistry.NewPool(PoolIdLib.newFrom(1), fundAdmin, shareClassManager, USD);
@@ -98,7 +98,7 @@ contract PoolRegistryTest is Test {
     function testAllowInvestorAsset(address fundAdmin) public nonZero(fundAdmin) notThisContract(fundAdmin) {
         PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
 
-        AssetId validAsset = AssetId.wrap(address(1));
+        AssetId validAsset = AssetId.wrap(1);
         assertFalse(registry.isInvestorAssetAllowed(poolId, validAsset));
 
         vm.prank(makeAddr("unauthorizedAddress"));
@@ -110,7 +110,7 @@ contract PoolRegistryTest is Test {
         registry.allowInvestorAsset(nonExistingPool, validAsset, true);
 
         vm.expectRevert(IPoolRegistry.EmptyAsset.selector);
-        registry.allowInvestorAsset(poolId, AssetId.wrap(address(0)), true);
+        registry.allowInvestorAsset(poolId, AssetId.wrap(0), true);
 
         // Allow an asset
         vm.expectEmit();
@@ -173,7 +173,7 @@ contract PoolRegistryTest is Test {
         assertEq(address(registry.shareClassManager(poolId)), address(shareClassManager_));
     }
 
-    function testUpdateCurrency(AssetId currency) public nonZero(AssetId.unwrap(currency)) {
+    function testUpdateCurrency(AssetId currency) public nonZero(currency.addr()) {
         address fundAdmin = makeAddr("fundAdmin");
 
         PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
@@ -187,7 +187,7 @@ contract PoolRegistryTest is Test {
         registry.updateCurrency(nonExistingPool, currency);
 
         vm.expectRevert(IPoolRegistry.EmptyCurrency.selector);
-        registry.updateCurrency(poolId, AssetId.wrap(address(0)));
+        registry.updateCurrency(poolId, AssetId.wrap(0));
 
         vm.assume(AssetId.unwrap(registry.currency(poolId)) != AssetId.unwrap(currency));
         vm.expectEmit();
