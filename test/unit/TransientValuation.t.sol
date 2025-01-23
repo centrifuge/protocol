@@ -7,6 +7,7 @@ import {D18, d18} from "src/types/D18.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {TransientValuation} from "src/TransientValuation.sol";
 import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
+import {IAssetManager} from "src/interfaces/IAssetManager.sol";
 
 contract C18 {
     function decimals() external pure returns (uint8) {
@@ -23,7 +24,7 @@ contract C6 {
 contract TestTransientValuation is Test {
     address c18 = address(new C18());
     address c6 = address(new C6());
-    TransientValuation valuation = new TransientValuation();
+    TransientValuation valuation = new TransientValuation(IAssetManager(address(0)), address(0));
 
     function testSameDecimals() public {
         valuation.setPrice(d18(2, 1)); //2.0
