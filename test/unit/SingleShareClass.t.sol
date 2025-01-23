@@ -93,7 +93,7 @@ abstract contract SingleShareClassBaseTest is Test {
             abi.encodeWithSelector(IPoolRegistry.currency.selector, poolId),
             abi.encode(IERC20Metadata(POOL_CURRENCY))
         );
-        assertEq(address(IPoolRegistry(poolRegistryAddress).currency(poolId)), address(IERC20Metadata(POOL_CURRENCY)));
+        assertEq(IPoolRegistry(poolRegistryAddress).currency(poolId).addr(), address(IERC20Metadata(POOL_CURRENCY)));
     }
 
     function _assertDepositRequestEq(bytes16 shareClassId_, address asset, address investor_, UserOrder memory expected)

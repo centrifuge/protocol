@@ -13,9 +13,6 @@ import {IAssetManager} from "src/interfaces/IAssetManager.sol";
 import {Auth} from "src/Auth.sol";
 
 abstract contract BaseERC7726 is Auth, IBaseERC7726 {
-    /// @notice Max raw value an AssetId can be.
-    uint160 private constant MAX_ASSET_MANAGER_TOKEN_REPRESENTATION = type(uint64).max;
-
     /// @notice AssetManager dependency.
     IAssetManager public assetManager;
 
@@ -33,11 +30,6 @@ abstract contract BaseERC7726 is Auth, IBaseERC7726 {
 
     /// @notice Obtain the correct decimals given an asset address
     function _getDecimals(address asset) internal view returns (uint8) {
-        if (uint160(asset) <= MAX_ASSET_MANAGER_TOKEN_REPRESENTATION) {
-            // The address is a TokenId registered in the AssetManager
-            return assetManager.decimals(uint160(asset));
-        } else {
-            return IERC20Metadata(asset).decimals();
-        }
+        return assetManager.decimals(uint160(asset));
     }
 }

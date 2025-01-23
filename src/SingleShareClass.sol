@@ -171,7 +171,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         uint128 pendingDepositPostUpdate = pendingDeposit[shareClassId_][paymentAssetId];
 
         // Increase approved
-        address poolCurrency = address(poolRegistry.currency(poolId));
+        address poolCurrency = poolRegistry.currency(poolId).addr();
         D18 paymentAssetPrice = valuation.getFactor(paymentAssetId, poolCurrency);
         approvedPoolAmount = paymentAssetPrice.mulUint128(approvedAssetAmount);
 
@@ -223,7 +223,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         pendingShareAmount = pendingRedeem[shareClassId_][payoutAssetId];
 
         // Increase approved
-        address poolCurrency = address(poolRegistry.currency(poolId));
+        address poolCurrency = poolRegistry.currency(poolId).addr();
         D18 assetToPool = valuation.getFactor(payoutAssetId, poolCurrency);
 
         // Update epoch data

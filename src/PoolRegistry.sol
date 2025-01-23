@@ -6,7 +6,6 @@ import {PoolId, PoolIdLib} from "src/types/PoolId.sol";
 import {AssetId} from "src/types/AssetId.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
-import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 
 contract PoolRegistry is Auth, IPoolRegistry {
@@ -15,7 +14,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
     uint32 public latestId;
 
     mapping(PoolId => bytes) public metadata;
-    mapping(PoolId => IERC20Metadata) public currency;
+    mapping(PoolId => AssetId) public currency;
     mapping(PoolId => IShareClassManager) public shareClassManager;
     mapping(PoolId => mapping(address => bool)) public isAdmin;
     mapping(PoolId => mapping(AssetId => bool)) public isInvestorAssetAllowed;
@@ -24,13 +23,13 @@ contract PoolRegistry is Auth, IPoolRegistry {
     constructor(address deployer) Auth(deployer) {}
 
     /// @inheritdoc IPoolRegistry
-    function registerPool(address admin_, IERC20Metadata currency_, IShareClassManager shareClassManager_)
+    function registerPool(address admin_, AssetId currency_, IShareClassManager shareClassManager_)
         external
         auth
         returns (PoolId poolId)
     {
         require(admin_ != address(0), EmptyAdmin());
-        require(address(currency_) != address(0), EmptyCurrency());
+        require(!currency_.isNull(), EmptyCurrency());
         require(address(shareClassManager_) != address(0), EmptyShareClassManager());
 
         poolId = PoolIdLib.newFrom(++latestId);
@@ -82,9 +81,9 @@ contract PoolRegistry is Auth, IPoolRegistry {
     }
 
     /// @inheritdoc IPoolRegistry
-    function updateCurrency(PoolId poolId, IERC20Metadata currency_) external auth {
+    function updateCurrency(PoolId poolId, AssetId currency_) external auth {
         require(exists(poolId), NonExistingPool(poolId));
-        require(address(currency_) != address(0), EmptyCurrency());
+        require(!currency_.isNull(), EmptyCurrency());
 
         currency[poolId] = currency_;
 

@@ -3,21 +3,17 @@ pragma solidity 0.8.28;
 
 import {PoolId} from "src/types/PoolId.sol";
 import {AssetId} from "src/types/AssetId.sol";
-import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 
 interface IPoolRegistry {
     event NewPool(
-        PoolId poolId,
-        address indexed admin,
-        IShareClassManager indexed shareClassManager,
-        IERC20Metadata indexed currency
+        PoolId poolId, address indexed admin, IShareClassManager indexed shareClassManager, AssetId indexed currency
     );
     event UpdatedAdmin(PoolId indexed poolId, address indexed admin, bool canManage);
     event AllowedInvestorAsset(PoolId indexed poolId, AssetId indexed assetId, bool isAllowed);
     event SetMetadata(PoolId indexed poolId, bytes metadata);
     event UpdatedShareClassManager(PoolId indexed poolId, IShareClassManager indexed shareClassManager);
-    event UpdatedCurrency(PoolId indexed poolId, IERC20Metadata currency);
+    event UpdatedCurrency(PoolId indexed poolId, AssetId currency);
     event SetAddressFor(PoolId indexed poolId, bytes32 key, address addr);
 
     error NonExistingPool(PoolId id);
@@ -28,7 +24,7 @@ interface IPoolRegistry {
 
     /// @notice Register a new pool.
     /// @return a PoolId to identify the new pool.
-    function registerPool(address admin, IERC20Metadata currency, IShareClassManager shareClassManager)
+    function registerPool(address admin, AssetId currency, IShareClassManager shareClassManager)
         external
         returns (PoolId);
 
@@ -45,7 +41,7 @@ interface IPoolRegistry {
     function updateShareClassManager(PoolId poolId, IShareClassManager shareClassManager) external;
 
     /// @notice updates the currency of the pool
-    function updateCurrency(PoolId poolId, IERC20Metadata currency) external;
+    function updateCurrency(PoolId poolId, AssetId currency) external;
 
     /// @notice sets an address for an specific key
     function setAddressFor(PoolId poolid, bytes32 key, address addr) external;
@@ -54,7 +50,7 @@ interface IPoolRegistry {
     function metadata(PoolId poolId) external view returns (bytes memory);
 
     /// @notice returns the currency of the pool
-    function currency(PoolId poolId) external view returns (IERC20Metadata);
+    function currency(PoolId poolId) external view returns (AssetId);
 
     /// @notice returns the shareClassManager used in the pool
     function shareClassManager(PoolId poolId) external view returns (IShareClassManager);
