@@ -6,13 +6,13 @@ import {D18} from "src/types/D18.sol";
 
 import {Conversion} from "src/libraries/Conversion.sol";
 
-import {IBaseERC7726} from "src/interfaces/IBaseERC7726.sol";
+import {IBaseValuation} from "src/interfaces/IBaseValuation.sol";
 import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 import {IAssetManager} from "src/interfaces/IAssetManager.sol";
 
 import {Auth} from "src/Auth.sol";
 
-abstract contract BaseERC7726 is Auth, IBaseERC7726 {
+abstract contract BaseValuation is Auth, IBaseValuation {
     /// @notice AssetManager dependency.
     IAssetManager public assetManager;
 
@@ -20,7 +20,7 @@ abstract contract BaseERC7726 is Auth, IBaseERC7726 {
         assetManager = assetManager_;
     }
 
-    /// @inheritdoc IBaseERC7726
+    /// @inheritdoc IBaseValuation
     function file(bytes32 what, address data) external auth {
         if (what == "assetManager") assetManager = IAssetManager(data);
         else revert FileUnrecognizedWhat();

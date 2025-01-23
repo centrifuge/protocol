@@ -5,7 +5,7 @@ import {D18} from "src/types/D18.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
 
 /// Provides a base implementation for all ERC7726 valuation in the system
-interface IBaseERC7726 is IERC7726 {
+interface IBaseValuation is IERC7726 {
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 indexed what, address addr);
 

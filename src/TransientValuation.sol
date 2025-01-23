@@ -10,13 +10,13 @@ import {IERC7726} from "src/interfaces/IERC7726.sol";
 import {ITransientValuation} from "src/interfaces/ITransientValuation.sol";
 import {IAssetManager} from "src/interfaces/IAssetManager.sol";
 
-import {BaseERC7726} from "src/BaseERC7726.sol";
+import {BaseValuation} from "src/BaseValuation.sol";
 
-contract TransientValuation is BaseERC7726, ITransientValuation {
+contract TransientValuation is BaseValuation, ITransientValuation {
     /// @notice Temporal price set and used to obtain the quote.
     D18 public /*TODO: transient*/ price;
 
-    constructor(IAssetManager assetManager, address deployer) BaseERC7726(assetManager, deployer) {}
+    constructor(IAssetManager assetManager, address deployer) BaseValuation(assetManager, deployer) {}
 
     /// @inheritdoc ITransientValuation
     function setPrice(D18 price_) external {

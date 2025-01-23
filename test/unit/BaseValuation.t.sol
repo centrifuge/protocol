@@ -6,23 +6,23 @@ import "forge-std/Test.sol";
 import {D18, d18} from "src/types/D18.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {TransientValuation} from "src/TransientValuation.sol";
-import {BaseERC7726} from "src/BaseERC7726.sol";
+import {BaseValuation} from "src/BaseValuation.sol";
 import {IAuth} from "src/interfaces/IAuth.sol";
-import {IBaseERC7726} from "src/interfaces/IBaseERC7726.sol";
+import {IBaseValuation} from "src/interfaces/IBaseValuation.sol";
 import {IAssetManager} from "src/interfaces/IAssetManager.sol";
 
-contract BaseERC7726Impl is BaseERC7726 {
-    constructor(IAssetManager assetManager, address deployer) BaseERC7726(assetManager, deployer) {}
+contract BaseValuationImpl is BaseValuation {
+    constructor(IAssetManager assetManager, address deployer) BaseValuation(assetManager, deployer) {}
 
     function getQuote(uint256 baseAmount, address base, address quote) external view returns (uint256 quoteAmount) {}
 }
 
 contract TestFile is Test {
-    BaseERC7726Impl valuation = new BaseERC7726Impl(IAssetManager(address(42)), address(this));
+    BaseValuationImpl valuation = new BaseValuationImpl(IAssetManager(address(42)), address(this));
 
     function testSuccess() public {
         vm.expectEmit();
-        emit IBaseERC7726.File("assetManager", address(23));
+        emit IBaseValuation.File("assetManager", address(23));
         valuation.file("assetManager", address(23));
 
         assertEq(address(valuation.assetManager()), address(23));
@@ -35,7 +35,7 @@ contract TestFile is Test {
     }
 
     function testErrFileUnrecognizedWhat() public {
-        vm.expectRevert(abi.encodeWithSelector(IBaseERC7726.FileUnrecognizedWhat.selector));
+        vm.expectRevert(abi.encodeWithSelector(IBaseValuation.FileUnrecognizedWhat.selector));
         valuation.file("unrecongnizedWhat", address(23));
     }
 }
