@@ -6,12 +6,12 @@ import {D18, d18} from "src/types/D18.sol";
 import {Conversion} from "src/libraries/Conversion.sol";
 
 import {IERC7726, IERC7726Ext} from "src/interfaces/IERC7726.sol";
-import {IIdentityValuation} from "src/interfaces/IIdentityValuation.sol";
+import {IOneToOneValuation} from "src/interfaces/IOneToOneValuation.sol";
 import {IAssetManager} from "src/interfaces/IAssetManager.sol";
 
 import {BaseValuation} from "src/BaseValuation.sol";
 
-contract IdentityValuation is BaseValuation, IIdentityValuation {
+contract OneToOneValuation is BaseValuation, IOneToOneValuation {
     constructor(IAssetManager assetManager, address deployer) BaseValuation(assetManager, deployer) {}
 
     /// @inheritdoc IERC7726

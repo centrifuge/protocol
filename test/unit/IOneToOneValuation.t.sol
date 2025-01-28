@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 
 import {D18, d18} from "src/types/D18.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
-import {IdentityValuation} from "src/IdentityValuation.sol";
+import {OneToOneValuation} from "src/OneToOneValuation.sol";
 import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 import {IAssetManager} from "src/interfaces/IAssetManager.sol";
 
@@ -18,8 +18,8 @@ contract MockedAssetManager {
     }
 }
 
-contract TestIdentityValuation is Test {
-    IdentityValuation valuation = new IdentityValuation(IAssetManager(address(new MockedAssetManager())), address(0));
+contract TestOneToOneValuation is Test {
+    OneToOneValuation valuation = new OneToOneValuation(IAssetManager(address(new MockedAssetManager())), address(0));
 
     function testSameDecimals() public view {
         assertEq(valuation.getQuote(100 * 1e6, C6, C6), 100 * 1e6);
