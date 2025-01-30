@@ -30,6 +30,6 @@ abstract contract BaseValuation is Auth, IBaseValuation {
 
     /// @notice Obtain the correct decimals given an asset address
     function _getDecimals(address asset) internal view returns (uint8) {
-        return assetManager.decimals(uint160(asset));
+        return assetManager.decimals(asset);
     }
 }

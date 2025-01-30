@@ -7,18 +7,13 @@ import {D18, d18} from "src/types/D18.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {TransientValuation} from "src/TransientValuation.sol";
 import {IAssetManager} from "src/interfaces/IAssetManager.sol";
+import {MockAssetManager} from "test/mock/MockAssetManager.sol";
 
 address constant C6 = address(6);
 address constant C18 = address(18);
 
-contract MockedAssetManager {
-    function decimals(uint256 tokenId) external pure returns (uint8) {
-        return uint8(tokenId);
-    }
-}
-
 contract TestTransientValuation is Test {
-    TransientValuation valuation = new TransientValuation(IAssetManager(address(new MockedAssetManager())), address(0));
+    TransientValuation valuation = new TransientValuation(IAssetManager(address(new MockAssetManager())), address(0));
 
     function testSameDecimals() public {
         valuation.setPrice(d18(2, 1)); //2.0
