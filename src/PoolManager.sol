@@ -287,7 +287,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     // Gateway owner methods
     //----------------------------------------------------------------------------------------------
 
-    function notifyRegisteredAsset(AssetId assetId) external onlyGateway {
+    function handleRegisteredAsset(AssetId assetId) external onlyGateway {
         // TODO: register in the asset registry
     }
 
@@ -345,7 +345,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         );
     }
 
-    function notifyLockedTokens(ShareClassId scId, AssetId assetId, uint128 amount) external onlyGateway {
+    function handleLockedTokens(ShareClassId scId, AssetId assetId, uint128 amount) external onlyGateway {
         assetManager.mint(_escrow(unlockedPoolId(), scId, Escrow.SHARE_CLASS), assetId, amount);
     }
 

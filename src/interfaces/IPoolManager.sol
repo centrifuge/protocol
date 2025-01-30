@@ -75,7 +75,7 @@ interface IFromGatewayMethods {
     /// @notice Dispatched when an action that requires to be called from the gateway is calling from somebody else.
     error NotGateway();
 
-    function notifyRegisteredAsset(AssetId assetId) external;
+    function handleRegisteredAsset(AssetId assetId) external;
 
     function requestDeposit(
         PoolId poolId,
@@ -98,7 +98,7 @@ interface IFromGatewayMethods {
     function cancelRedeemRequest(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, GlobalAddress investor)
         external;
 
-    function notifyLockedTokens(ShareClassId scId, AssetId assetId, uint128 amount) external;
+    function handleLockedTokens(ShareClassId scId, AssetId assetId, uint128 amount) external;
 }
 
 interface IPoolManager is IPoolUnlockedMethods, IFromGatewayMethods {
