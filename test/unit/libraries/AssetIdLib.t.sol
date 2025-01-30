@@ -9,7 +9,7 @@ import {AssetIdLib} from "src/libraries/AssetIdLib.sol";
 contract AssetIdLibTest is Test {
     using AssetIdLib for address;
 
-    function testSuccessfulConversion() public view {
+    function testSuccessfulConversion() public pure {
         address assetId = address(uint160(type(uint128).max));
         assertEq(type(uint128).max, assetId.asAssetId().raw());
     }
