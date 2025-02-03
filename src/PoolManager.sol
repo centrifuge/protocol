@@ -364,8 +364,8 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         );
     }
 
-    function handleLockedTokens(ShareClassId scId, AssetId assetId, uint128 amount) external onlyGateway {
-        assetManager.mint(_escrow(unlockedPoolId(), scId, Escrow.SHARE_CLASS), assetId, amount);
+    function handleLockedTokens(address receiver, AssetId assetId, uint128 amount) external onlyGateway {
+        assetManager.mint(receiver, assetId, amount);
     }
 
     //----------------------------------------------------------------------------------------------
