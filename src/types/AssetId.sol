@@ -19,7 +19,7 @@ function raw(AssetId assetId) pure returns (uint128) {
     return AssetId.unwrap(assetId);
 }
 
-function addrToAssedId(address asset) pure returns (AssetId) {
+function addrToAssetId(address asset) pure returns (AssetId) {
     return AssetId.wrap(MathLib.toUint128(uint256(uint160(asset))));
 }
 

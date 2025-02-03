@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/Auth.sol";
-import {AssetId, addrToAssedId} from "src/types/AssetId.sol";
+import {AssetId, addrToAssetId} from "src/types/AssetId.sol";
 import {IAssetManager} from "src/interfaces/IAssetManager.sol";
 import {ERC6909Fungible} from "src/ERC6909/ERC6909Fungible.sol";
 
@@ -13,7 +13,7 @@ contract AssetManager is ERC6909Fungible, IAssetManager {
 
     /// @inheritdoc IAssetManager
     function decimals(address asset_) external view returns (uint8 decimals_) {
-        decimals_ = asset[addrToAssedId(asset_)].decimals;
+        decimals_ = asset[addrToAssetId(asset_)].decimals;
         require(decimals_ > 0, AssetNotFound());
     }
 
