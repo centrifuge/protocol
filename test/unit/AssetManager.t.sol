@@ -93,18 +93,34 @@ contract AssetManagementTest is AssetManagerBaseTest {
     }
 }
 
-contract AssetDecimalsRetrievalTest is AssetManagerBaseTest {
+contract AssetMetadataRetrievalTest is AssetManagerBaseTest {
     function setUp() public override {
         super.setUp();
         manager.registerAsset(assetId, name, symbol, decimals);
     }
 
-    function testSuccess() public view {
+    function testRetrievingDecimals() public view {
         assertEq(manager.decimals(assetId.addr()), decimals);
     }
 
     function testRevertWhenAssetDoesNotExist() public {
         vm.expectRevert(IAssetManager.AssetNotFound.selector);
         manager.decimals(AssetId.wrap(8337).addr());
+    }
+
+    function testRetrievingName() public view {
+        // when exists
+        assertEq(manager.name(assetId.addr()), name);
+
+        // when doesn't exist
+        assertEq(manager.name(AssetId.wrap(1234).addr()), "");
+    }
+
+    function testRetrivingSymbol() public view {
+        // when exists
+        assertEq(manager.symbol(assetId.addr()), symbol);
+
+        // when doesn't exist
+        assertEq(manager.symbol(AssetId.wrap(1234).addr()), bytes32(""));
     }
 }
