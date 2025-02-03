@@ -9,7 +9,7 @@ function kind(AccountId accountId_) pure returns (uint8) {
 }
 
 function accountId(uint24 id, uint8 kind_) pure returns (AccountId) {
-    return AccountId.wrap(id << 8 | kind_);
+    return AccountId.wrap(uint32(id) << 8 | kind_);
 }
 
 using {kind} for AccountId global;

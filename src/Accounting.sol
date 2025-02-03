@@ -10,8 +10,8 @@ import {Auth} from "src/Auth.sol";
 contract Accounting is Auth, IAccounting {
     mapping(PoolId => mapping(AccountId => Account)) public accounts;
 
-    uint128 private /*TODO: transient*/ _debited;
-    uint128 private /*TODO: transient*/ _credited;
+    uint128 public /*TODO: transient*/ debited;
+    uint128 public /*TODO: transient*/ credited;
     uint256 private /*TODO: transient*/ _transactionId;
     PoolId private /*TODO: transient*/ _currentPoolId;
 
@@ -19,17 +19,41 @@ contract Accounting is Auth, IAccounting {
 
     /// @inheritdoc IAccounting
     function updateEntry(AccountId creditAccount, AccountId debitAccount, uint128 value) external auth {
-        require(PoolId.unwrap(_currentPoolId) != 0, PoolLocked());
-        _debit(debitAccount, value);
-        _credit(creditAccount, value);
-        emit Entry(_currentPoolId, _transactionId, creditAccount, debitAccount, value);
+        addDebit(debitAccount, value);
+        addCredit(creditAccount, value);
+    }
+
+    /// @dev Debits an account. Increase the value of debit-normal accounts, decrease for credit-normal ones.
+    function addDebit(AccountId account, uint128 value) public auth {
+        require(!_currentPoolId.isNull(), AccountingLocked());
+
+        Account storage acc = accounts[_currentPoolId][account];
+        require(acc.lastUpdated != 0, AccountDoesNotExists());
+
+        acc.totalDebit += value;
+        debited += value;
+        acc.lastUpdated = uint64(block.timestamp);
+        emit Debit(_currentPoolId, _transactionId, account, value);
+    }
+
+    /// @dev Credits an account. Decrease the value of debit-normal accounts, increase for credit-normal ones.
+    function addCredit(AccountId account, uint128 value) public auth {
+        require(!_currentPoolId.isNull(), AccountingLocked());
+
+        Account storage acc = accounts[_currentPoolId][account];
+        require(acc.lastUpdated != 0, AccountDoesNotExists());
+
+        acc.totalCredit += value;
+        credited += value;
+        acc.lastUpdated = uint64(block.timestamp);
+        emit Credit(_currentPoolId, _transactionId, account, value);
     }
 
     /// @inheritdoc IAccounting
     function unlock(PoolId poolId) external auth {
-        require(PoolId.unwrap(_currentPoolId) == 0, PoolAlreadyUnlocked());
-        _debited = 0;
-        _credited = 0;
+        require(PoolId.unwrap(_currentPoolId) == 0, AccountingAlreadyUnlocked());
+        debited = 0;
+        credited = 0;
         /// @dev Include the previous transactionId in case there's multiple transactions in one block
         _transactionId = uint256(keccak256(abi.encodePacked(poolId, block.timestamp, _transactionId)));
         _currentPoolId = poolId;
@@ -37,53 +61,31 @@ contract Accounting is Auth, IAccounting {
 
     /// @inheritdoc IAccounting
     function lock() external auth {
-        require(_debited == _credited, Unbalanced());
+        require(debited == credited, Unbalanced());
         _currentPoolId = PoolId.wrap(0);
     }
 
     /// @inheritdoc IAccounting
-    function createAccount(PoolId poolId, AccountId account, bool isDebitNormal, bytes calldata metadata)
-        external
-        auth
-    {
+    function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) external auth {
         require(accounts[poolId][account].lastUpdated == 0, AccountExists());
-        accounts[poolId][account] = Account(0, metadata, isDebitNormal, uint64(block.timestamp));
+        accounts[poolId][account] = Account(0, 0, isDebitNormal, uint64(block.timestamp), "");
     }
 
-    /// @dev Debits an account. Increase the balance of debit-normal accounts, decrease for credit-normal ones.
-    function _debit(AccountId account, uint128 value) internal {
-        Account storage acc = accounts[_currentPoolId][account];
-
-        if (acc.isDebitNormal) {
-            acc.balance += int256(uint256(value));
-        } else {
-            acc.balance -= int256(uint256(value));
-        }
-        _debited += value;
-        acc.lastUpdated = uint64(block.timestamp);
-    }
-
-    /// @dev Credits an account. Decrease the balance of debit-normal accounts, increase for credit-normal ones.
-    function _credit(AccountId account, uint128 value) internal {
-        Account storage acc = accounts[_currentPoolId][account];
-
-        if (acc.isDebitNormal) {
-            acc.balance -= int256(uint256(value));
-        } else {
-            acc.balance += int256(uint256(value));
-        }
-        _credited += value;
-        acc.lastUpdated = uint64(block.timestamp);
+    function updateAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external auth {
+        Account storage acc = accounts[poolId][account];
+        acc.metadata = metadata;
     }
 
     /// @inheritdoc IAccounting
-    function getAccountValue(PoolId poolId, AccountId account) public view returns (int256) {
+    function getAccountValue(PoolId poolId, AccountId account) public view returns (int128) {
         Account storage acc = accounts[poolId][account];
 
         if (acc.isDebitNormal) {
-            return acc.balance;
+            // For debit-normal accounts: Value = Total Debit - Total Credit
+            return int128(acc.totalDebit) - int128(acc.totalCredit);
         } else {
-            return -acc.balance;
+            // For credit-normal accounts: Value = Total Credit - Total Debit
+            return int128(acc.totalCredit) - int128(acc.totalDebit);
         }
     }
 }
