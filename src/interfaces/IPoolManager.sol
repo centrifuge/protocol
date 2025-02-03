@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ChainId} from "src/types/ChainId.sol";
 import {ShareClassId} from "src/types/ShareClassId.sol";
 import {AssetId} from "src/types/AssetId.sol";
 import {GlobalAddress} from "src/types/GlobalAddress.sol";
@@ -30,9 +29,9 @@ interface IPoolUnlockedMethods {
     /// @notice Dispatched whem a holding asset is disallowed but the asset is still allowed for investor usage.
     error InvestorAssetStillAllowed();
 
-    function notifyPool(ChainId chainId) external;
+    function notifyPool(uint32 chainId) external;
 
-    function notifyShareClass(ChainId chainId, ShareClassId scId) external;
+    function notifyShareClass(uint32 chainId, ShareClassId scId) external;
 
     function notifyAllowedAsset(ShareClassId scId, AssetId assetId) external;
 

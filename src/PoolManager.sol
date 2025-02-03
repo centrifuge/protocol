@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ChainId} from "src/types/ChainId.sol";
 import {ShareClassId} from "src/types/ShareClassId.sol";
 import {AssetId} from "src/types/AssetId.sol";
 import {GlobalAddress} from "src/types/GlobalAddress.sol";
@@ -99,11 +98,11 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     // Pool admin methods
     //----------------------------------------------------------------------------------------------
 
-    function notifyPool(ChainId chainId) external poolUnlocked {
+    function notifyPool(uint32 chainId) external poolUnlocked {
         gateway.sendNotifyPool(chainId, unlockedPoolId());
     }
 
-    function notifyShareClass(ChainId chainId, ShareClassId scId) external poolUnlocked {
+    function notifyShareClass(uint32 chainId, ShareClassId scId) external poolUnlocked {
         PoolId poolId = unlockedPoolId();
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);

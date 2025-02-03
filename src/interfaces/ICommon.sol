@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 // NOTE: this is a pending interface until we split this into files
 
-import {ChainId} from "src/types/ChainId.sol";
 import {ShareClassId} from "src/types/ShareClassId.sol";
 import {AssetId} from "src/types/AssetId.sol";
 import {GlobalAddress} from "src/types/GlobalAddress.sol";
@@ -33,8 +32,8 @@ interface IGateway {
     // - allowed assets
     // That mapping would act as a whitelist for the Gateway to discard messages that contains not allowed
     // pools/shareClasses
-    function sendNotifyPool(ChainId chainId, PoolId poolId) external;
-    function sendNotifyShareClass(ChainId chainId, PoolId poolId, ShareClassId scId) external;
+    function sendNotifyPool(uint32 chainId, PoolId poolId) external;
+    function sendNotifyShareClass(uint32 chainId, PoolId poolId, ShareClassId scId) external;
     function sendNotifyAllowedAsset(PoolId poolId, ShareClassId scId, AssetId assetId, bool isAllowed) external;
     function sendFulfilledDepositRequest(
         PoolId poolId,

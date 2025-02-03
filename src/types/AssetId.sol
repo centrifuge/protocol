@@ -19,4 +19,12 @@ function raw(AssetId assetId) pure returns (uint128) {
     return AssetId.unwrap(assetId);
 }
 
+function newAssetId(uint32 chainId, uint32 counter) pure returns (AssetId) {
+    return AssetId.wrap(uint64(chainId) << 32 + counter);
+}
+
+function newAssetIdFromISO4217(uint32 isoCode) pure returns (AssetId) {
+    return AssetId.wrap(isoCode);
+}
+
 using {isNull, addr, raw} for AssetId global;
