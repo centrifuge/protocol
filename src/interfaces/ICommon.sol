@@ -11,21 +11,10 @@ import {AccountId} from "src/types/AccountId.sol";
 import {D18} from "src/types/D18.sol";
 import {PoolId} from "src/types/PoolId.sol";
 
-import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
 
 import {PoolLocker} from "src/PoolLocker.sol";
 import {Auth} from "src/Auth.sol";
-
-interface IAssetManager is IERC6909 {
-    error AssetNotFound();
-
-    function registerAsset(AssetId assetId, bytes calldata name, bytes32 symbol, uint8 decimals) external;
-    function isRegistered(AssetId assetId) external view returns (bool);
-    function mint(address who, AssetId assetId, uint128 amount) external;
-    function burn(address who, AssetId assetId, uint128 amount) external;
-    function authTransferFrom(address from, address to, uint256 asset, uint256 amount) external;
-}
 
 interface IAccounting {
     function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) external;

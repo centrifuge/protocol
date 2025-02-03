@@ -9,7 +9,6 @@ import {AccountId} from "src/types/AccountId.sol";
 import {PoolId} from "src/types/PoolId.sol";
 import {D18} from "src/types/D18.sol";
 
-import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
 
@@ -113,7 +112,7 @@ interface IPoolManager is IPoolUnlockedMethods, IFromGatewayMethods {
 
     function file(bytes32 what, address data) external;
 
-    function createPool(IERC20Metadata currency, IShareClassManager shareClassManager) external returns (PoolId);
+    function createPool(AssetId currency, IShareClassManager shareClassManager) external returns (PoolId);
 
     function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, GlobalAddress investor) external;
 

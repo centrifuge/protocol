@@ -36,7 +36,7 @@ contract TestCommon is Test {
         vm.mockCall(
             address(valuation),
             abi.encodeWithSelector(
-                IERC7726.getQuote.selector, uint256(baseAmount), AssetId.unwrap(ASSET_A), POOL_CURRENCY.addr()
+                IERC7726.getQuote.selector, uint256(baseAmount), ASSET_A.addr(), POOL_CURRENCY.addr()
             ),
             abi.encode(uint256(quoteAmount))
         );

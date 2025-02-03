@@ -9,9 +9,9 @@ import {AccountId} from "src/types/AccountId.sol";
 import {PoolId} from "src/types/PoolId.sol";
 import {D18} from "src/types/D18.sol";
 
-import {IAssetManager, IAccounting, IGateway} from "src/interfaces/ICommon.sol";
+import {IAccounting, IGateway} from "src/interfaces/ICommon.sol"; // TODO: remove import
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
-import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
+import {IAssetManager} from "src/interfaces/IAssetManager.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 import {IHoldings} from "src/interfaces/IHoldings.sol";
 import {IPoolManager, Escrow, AccountType} from "src/interfaces/IPoolManager.sol";
@@ -73,10 +73,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     // Permisionless methods
     //----------------------------------------------------------------------------------------------
 
-    function createPool(IERC20Metadata currency, IShareClassManager shareClassManager)
-        external
-        returns (PoolId poolId)
-    {
+    function createPool(AssetId currency, IShareClassManager shareClassManager) external returns (PoolId poolId) {
         // TODO: add fees
         return poolRegistry.registerPool(msg.sender, currency, shareClassManager);
     }
