@@ -8,7 +8,7 @@ import {IMulticall} from "src/interfaces/IMulticall.sol";
 contract UserContract {
     uint256 public state;
 
-    function setState() external returns (uint256) {
+    function updateState() external returns (uint256) {
         state += 100;
         return 23;
     }
@@ -25,15 +25,11 @@ contract MulticallTest is Test {
     function testSuccess() public {
         // Will revert the whole transaction when the first error appears
 
-        address[] memory targets = new address[](2);
-        targets[0] = address(userContract);
-        targets[1] = address(userContract);
+        IMulticall.Call[] memory calls = new IMulticall.Call[](2);
+        calls[0] = IMulticall.Call(address(userContract), abi.encodeWithSelector(userContract.updateState.selector));
+        calls[1] = IMulticall.Call(address(userContract), abi.encodeWithSelector(userContract.updateState.selector));
 
-        bytes[] memory methods = new bytes[](2);
-        methods[0] = abi.encodeWithSelector(userContract.setState.selector);
-        methods[1] = abi.encodeWithSelector(userContract.setState.selector);
-
-        multicall.aggregate(targets, methods);
+        multicall.aggregate(calls);
 
         assertEq(userContract.state(), 200);
     }
@@ -41,25 +37,13 @@ contract MulticallTest is Test {
     function testRevertAtError() public {
         // Will revert the whole transaction when the first error appears
 
-        address[] memory targets = new address[](2);
-        targets[0] = address(userContract);
-        targets[1] = address(userContract);
-
-        bytes[] memory methods = new bytes[](2);
-        methods[0] = abi.encodeWithSelector(userContract.setState.selector);
-        methods[1] = abi.encodeWithSelector(userContract.userFailMethod.selector);
+        IMulticall.Call[] memory calls = new IMulticall.Call[](2);
+        calls[0] = IMulticall.Call(address(userContract), abi.encodeWithSelector(userContract.updateState.selector));
+        calls[1] = IMulticall.Call(address(userContract), abi.encodeWithSelector(userContract.userFailMethod.selector));
 
         vm.expectRevert("user error");
-        multicall.aggregate(targets, methods);
+        multicall.aggregate(calls);
 
         assertEq(userContract.state(), 0);
-    }
-
-    function testErrWrongExecutionParams() public {
-        address[] memory targets = new address[](1);
-        bytes[] memory methods = new bytes[](2);
-
-        vm.expectRevert(IMulticall.WrongExecutionParams.selector);
-        multicall.aggregate(targets, methods);
     }
 }

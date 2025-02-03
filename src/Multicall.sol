@@ -5,13 +5,11 @@ import {IMulticall} from "src/interfaces/IMulticall.sol";
 
 contract Multicall is IMulticall {
     /// @dev Performs a generic multicall. It reverts the whole transaction if one call fails.
-    function aggregate(address[] calldata targets, bytes[] calldata datas) external returns (bytes[] memory results) {
-        require(targets.length == datas.length, WrongExecutionParams());
+    function aggregate(Call[] calldata calls) external returns (bytes[] memory results) {
+        results = new bytes[](calls.length);
 
-        results = new bytes[](datas.length);
-
-        for (uint32 i; i < targets.length; i++) {
-            (bool success, bytes memory result) = targets[i].call(datas[i]);
+        for (uint32 i; i < calls.length; i++) {
+            (bool success, bytes memory result) = calls[i].target.call(calls[i].data);
             // Forward the error happened in target.call().
             if (!success) {
                 assembly {
