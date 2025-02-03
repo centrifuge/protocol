@@ -2,10 +2,14 @@
 pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
+import {IERC165} from "forge-std/interfaces/IERC165.sol";
 import {AssetId} from "src/types/AssetId.sol";
 import {IAuth} from "src/interfaces/IAuth.sol";
 import {AssetManager} from "src/AssetManager.sol";
 import {IAssetManager} from "src/interfaces/IAssetManager.sol";
+import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
+import {IERC6909MetadataExt} from "src/interfaces/ERC6909/IERC6909MetadataExt.sol";
+import {IERC6909TotalSupplyExt} from "src/interfaces/ERC6909/IERC6909TotalSupplyExt.sol";
 
 abstract contract AssetManagerBaseTest is Test {
     address self;
@@ -122,5 +126,14 @@ contract AssetMetadataRetrievalTest is AssetManagerBaseTest {
 
         // when doesn't exist
         assertEq(manager.symbol(AssetId.wrap(1234).addr()), bytes32(""));
+    }
+}
+
+contract AssetManagerSupportedInterfacesTest is AssetManagerBaseTest {
+    function testSupport() public view {
+        assertTrue(manager.supportsInterface(type(IERC165).interfaceId));
+        assertTrue(manager.supportsInterface(type(IERC6909).interfaceId));
+        assertTrue(manager.supportsInterface(type(IERC6909MetadataExt).interfaceId));
+        assertTrue(manager.supportsInterface(type(IERC6909TotalSupplyExt).interfaceId));
     }
 }

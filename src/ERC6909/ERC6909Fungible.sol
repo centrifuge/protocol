@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/Auth.sol";
 import {ERC6909} from "src/ERC6909/ERC6909.sol";
+import {IERC165} from "forge-std/interfaces/IERC165.sol";
 import {IERC6909Fungible} from "src/interfaces/ERC6909/IERC6909Fungible.sol";
 import {IERC6909TotalSupplyExt} from "src/interfaces/ERC6909/IERC6909TotalSupplyExt.sol";
 
@@ -35,5 +36,9 @@ contract ERC6909Fungible is IERC6909Fungible, IERC6909TotalSupplyExt, ERC6909, A
         returns (bool)
     {
         return _transferFrom(spender, sender, receiver, tokenId, amount);
+    }
+
+    function supportsInterface(bytes4 interfaceId) public pure virtual override(ERC6909, IERC165) returns (bool) {
+        return type(IERC6909TotalSupplyExt).interfaceId == interfaceId || super.supportsInterface(interfaceId);
     }
 }

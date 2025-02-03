@@ -12,6 +12,25 @@ contract AssetManager is ERC6909Fungible, IAssetManager {
 
     constructor(address owner) ERC6909Fungible(owner) {}
 
+    /// @inheritdoc IAssetManager
+    function registerAsset(AssetId assetId_, bytes calldata name_, bytes32 symbol_, uint8 decimals_) external auth {
+        require(!assetId_.isNull(), IncorrectAssetId());
+        Asset storage asset_ = asset[assetId_];
+        asset_.name = name_;
+        asset_.symbol = symbol_;
+
+        if (asset_.decimals == 0) {
+            asset_.decimals = decimals_;
+        }
+
+        emit NewAssetEntry(assetId_, name_, symbol_, asset_.decimals);
+    }
+
+    /// @inheritdoc IAssetManager
+    function isRegistered(AssetId assetId) external view returns (bool) {
+        return asset[assetId].decimals > 0;
+    }
+
     /// @inheritdoc IERC6909MetadataExt
     function decimals(address asset_) external view returns (uint8 decimals_) {
         decimals_ = asset[addrToAssetId(asset_)].decimals;
@@ -28,23 +47,7 @@ contract AssetManager is ERC6909Fungible, IAssetManager {
         return asset[addrToAssetId(asset_)].symbol;
     }
 
-    /// @inheritdoc IAssetManager
-    function registerAsset(AssetId assetId_, bytes calldata name_, bytes32 symbol_, uint8 decimals_) external auth {
-        require(!assetId_.isNull(), IncorrectAssetId());
-        Asset storage asset_ = asset[assetId_];
-        asset_.name = name_;
-        asset_.symbol = symbol_;
-
-        if (asset_.decimals == 0) {
-            asset_.decimals = decimals_;
-        }
-
-        emit NewAssetEntry(assetId_, name_, symbol_, asset_.decimals);
-    }
-
-    /// @inheritdoc IAssetManager
-
-    function isRegistered(AssetId assetId) external view returns (bool) {
-        return asset[assetId].decimals > 0;
+    function supportsInterface(bytes4 interfaceId) public pure virtual override(ERC6909Fungible) returns (bool) {
+        return type(IERC6909MetadataExt).interfaceId == interfaceId || super.supportsInterface(interfaceId);
     }
 }

@@ -47,7 +47,7 @@ abstract contract ERC6909 is IERC6909 {
     }
 
     /// @inheritdoc IERC165
-    function supportsInterface(bytes4 interfaceId) public pure returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public pure virtual returns (bool) {
         return type(IERC6909).interfaceId == interfaceId || type(IERC165).interfaceId == interfaceId;
     }
 
