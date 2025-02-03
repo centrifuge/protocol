@@ -107,8 +107,12 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     }
 
     function notifyShareClass(ChainId chainId, ShareClassId scId) external poolUnlocked {
-        // TODO: check scId existence
-        gateway.sendNotifyShareClass(chainId, unlockedPoolId(), scId);
+        PoolId poolId = unlockedPoolId();
+
+        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
+        require(scm.exists(poolId, scId.toBytes()), IShareClassManager.ShareClassNotFound());
+
+        gateway.sendNotifyShareClass(chainId, poolId, scId);
     }
 
     function notifyAllowedAsset(ShareClassId scId, AssetId assetId) external poolUnlocked {
@@ -128,7 +132,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     function allowInvestorAsset(AssetId assetId, bool allow) external {
         PoolId poolId = unlockedPoolId();
 
-        require(assetManager.isRegistered(assetId), "AssetNotRegistered");
+        require(assetManager.isRegistered(assetId), IAssetManager.AssetNotFound());
         require(holdings.isAssetAllowed(poolId, assetId), "HoldingAssetNotAllowed");
 
         poolRegistry.allowInvestorAsset(poolId, assetId, allow);
@@ -138,7 +142,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         PoolId poolId = unlockedPoolId();
 
         if (!allow) {
-            require(!poolRegistry.isInvestorAssetAllowed(poolId, assetId), "InvestorAssetMustBeDisallowedFirst");
+            require(!poolRegistry.isInvestorAssetAllowed(poolId, assetId), "InvestorAssetIsAllowed");
         }
 
         holdings.allowAsset(poolId, assetId, allow);
@@ -299,8 +303,11 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     // Gateway owner methods
     //----------------------------------------------------------------------------------------------
 
-    function handleRegisteredAsset(AssetId assetId) external onlyGateway {
-        // TODO: register in the asset registry
+    function handleRegisteredAsset(AssetId assetId, bytes calldata name, bytes32 symbol, uint8 decimals)
+        external
+        onlyGateway
+    {
+        assetManager.registerAsset(assetId, name, symbol, decimals);
     }
 
     function requestDeposit(

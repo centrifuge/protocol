@@ -75,7 +75,7 @@ interface IFromGatewayMethods {
     /// @notice Dispatched when an action that requires to be called from the gateway is calling from somebody else.
     error NotGateway();
 
-    function handleRegisteredAsset(AssetId assetId) external;
+    function handleRegisteredAsset(AssetId assetId, bytes calldata name, bytes32 symbol, uint8 decimals) external;
 
     function requestDeposit(
         PoolId poolId,

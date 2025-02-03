@@ -18,9 +18,12 @@ import {PoolLocker} from "src/PoolLocker.sol";
 import {Auth} from "src/Auth.sol";
 
 interface IAssetManager is IERC6909 {
+    error AssetNotFound();
+
+    function registerAsset(AssetId assetId, bytes calldata name, bytes32 symbol, uint8 decimals) external;
+    function isRegistered(AssetId assetId) external view returns (bool);
     function mint(address who, AssetId assetId, uint128 amount) external;
     function burn(address who, AssetId assetId, uint128 amount) external;
-    function isRegistered(AssetId assetId) external view returns (bool);
     function authTransferFrom(address from, address to, uint256 asset, uint256 amount) external;
 }
 

@@ -212,6 +212,11 @@ contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
         assertEq(nav, 0);
         assertEq(navPerShare.inner(), 0);
     }
+
+    function testExistence() public view notThisContract(poolRegistryAddress) {
+        assert(shareClass.exists(poolId, scId));
+        assert(!shareClass.exists(poolId, bytes16(uint128(23))));
+    }
 }
 
 ///@dev Contains all deposit related tests which are expected to succeed and don't make use of transient storage

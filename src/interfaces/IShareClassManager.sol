@@ -277,4 +277,10 @@ interface IShareClassManager {
         external
         view
         returns (D18 navPerShare, uint128 issuance);
+
+    /// @notice Checks the existence of a share class.
+    ///
+    /// @param poolId Identifier of the pool
+    /// @param shareClassId Identifier of the share class
+    function exists(PoolId poolId, bytes16 shareClassId) external view returns (bool);
 }
