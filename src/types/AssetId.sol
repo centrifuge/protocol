@@ -19,8 +19,4 @@ function raw(AssetId assetId) pure returns (uint128) {
     return AssetId.unwrap(assetId);
 }
 
-function toUint256(AssetId assetId) pure returns (uint256) {
-    return uint256(assetId.raw());
-}
-
-using {isNull, addr, raw, toUint256} for AssetId global;
+using {isNull, addr, raw} for AssetId global;
