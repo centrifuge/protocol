@@ -21,11 +21,17 @@ interface IAssetManager is IERC6909 {
     function mint(address who, AssetId assetId, uint128 amount) external;
     function burn(address who, AssetId assetId, uint128 amount) external;
     function isRegistered(AssetId assetId) external view returns (bool);
+    function authTransferFrom(address from, address to, uint256 asset, uint256 amount) external;
 }
 
 interface IAccounting {
+    function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) external;
+    function setMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external;
     function updateEntry(AccountId credit, AccountId debit, uint128 value) external;
-    function lock(PoolId poolId) external;
+    function addDebit(AccountId account, uint128 value) external;
+    function addCredit(AccountId account, uint128 value) external;
+    function lock() external;
+    function unlock(PoolId poolId) external;
 }
 
 interface IGateway {

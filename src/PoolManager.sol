@@ -161,9 +161,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
             poolId, scId.toBytes(), approvalRatio, paymentAssetId.addr(), IERC7726Ext(address(valuation))
         );
 
-        // TODO: approve this contract to perform the transfer on behalf.
-
-        assetManager.transferFrom(
+        assetManager.authTransferFrom(
             _escrow(poolId, scId, Escrow.PENDING_SHARE_CLASS),
             _escrow(poolId, scId, Escrow.SHARE_CLASS),
             uint256(uint160(AssetId.unwrap(paymentAssetId))),
@@ -195,9 +193,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
 
         (uint128 payoutAssetAmount,) = scm.revokeShares(poolId, scId.toBytes(), payoutAssetId.addr(), navPerShare);
 
-        // TODO: approve this contract to perform the transfer on behalf.
-
-        assetManager.transferFrom(
+        assetManager.authTransferFrom(
             _escrow(poolId, scId, Escrow.SHARE_CLASS),
             _escrow(poolId, scId, Escrow.PENDING_SHARE_CLASS),
             uint256(uint160(AssetId.unwrap(payoutAssetId))),
@@ -270,8 +266,24 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         holdings.setAccountId(unlockedPoolId(), scId, assetId, accountId);
     }
 
+    function createAccount(AccountId account, bool isDebitNormal) external poolUnlocked {
+        accounting.createAccount(unlockedPoolId(), account, isDebitNormal);
+    }
+
+    function setAccountMetadata(AccountId account, bytes calldata metadata) external poolUnlocked {
+        accounting.setMetadata(unlockedPoolId(), account, metadata);
+    }
+
     function updateEntry(AccountId credit, AccountId debit, uint128 amount) external poolUnlocked {
         accounting.updateEntry(credit, debit, amount);
+    }
+
+    function addDebit(AccountId account, uint128 amount) external poolUnlocked {
+        accounting.addDebit(account, amount);
+    }
+
+    function addCredit(AccountId account, uint128 amount) external poolUnlocked {
+        accounting.addCredit(account, amount);
     }
 
     function unlockTokens(ShareClassId scId, AssetId assetId, GlobalAddress receiver, uint128 assetAmount)
@@ -354,11 +366,12 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     //----------------------------------------------------------------------------------------------
 
     function _beforeLock() internal override {
-        accounting.lock(unlockedPoolId());
+        accounting.lock();
     }
 
-    function _beforeUnlock(PoolId poolId) internal view override {
+    function _beforeUnlock(PoolId poolId) internal override {
         require(poolRegistry.isAdmin(poolId, msg.sender));
+        accounting.unlock(unlockedPoolId());
     }
 
     function _escrow(PoolId poolId, ShareClassId scId, Escrow escrow) private view returns (address) {
