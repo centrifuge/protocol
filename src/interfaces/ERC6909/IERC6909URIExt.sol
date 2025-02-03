@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-interface IERC6909URIExtension {
+interface IERC6909URIExt {
     /// Events
     event TokenURISet(uint256 indexed tokenId, string uri);
     event ContractURISet(address indexed target, string uri);
