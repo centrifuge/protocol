@@ -129,8 +129,8 @@ contract TestCreate is TestCommon {
         holdings.create(POOL_A, NON_SC, ASSET_A, itemValuation, new AccountId[](0));
     }
 
-    function testErrWrongAssetId() public {
-        vm.expectRevert(IHoldings.WrongAssetId.selector);
+    function testErrAssetNotAllowed() public {
+        vm.expectRevert(IHoldings.AssetNotAllowed.selector);
         holdings.create(POOL_A, SC_1, NON_ASSET, itemValuation, new AccountId[](0));
     }
 }

@@ -133,7 +133,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         PoolId poolId = unlockedPoolId();
 
         require(assetManager.isRegistered(assetId), IAssetManager.AssetNotFound());
-        require(holdings.isAssetAllowed(poolId, assetId), "HoldingAssetNotAllowed");
+        require(holdings.isAssetAllowed(poolId, assetId), IHoldings.AssetNotAllowed());
 
         poolRegistry.allowInvestorAsset(poolId, assetId, allow);
     }
@@ -142,7 +142,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         PoolId poolId = unlockedPoolId();
 
         if (!allow) {
-            require(!poolRegistry.isInvestorAssetAllowed(poolId, assetId), "InvestorAssetIsAllowed");
+            require(!poolRegistry.isInvestorAssetAllowed(poolId, assetId), InvestorAssetStillAllowed());
         }
 
         holdings.allowAsset(poolId, assetId, allow);

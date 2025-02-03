@@ -25,9 +25,12 @@ enum AccountType {
     GAIN
 }
 
-/// @dev interface for methods that requires the pool to be unlocked
+/// @dev Interface for methods that requires the pool to be unlocked
 /// NOTE: They do not require a poolId parameter although they acts over an specific pool
 interface IPoolUnlockedMethods {
+    /// @notice Dispatched whem a holding asset is disallowed but the asset is still allowed for investor usage.
+    error InvestorAssetStillAllowed();
+
     function notifyPool(ChainId chainId) external;
 
     function notifyShareClass(ChainId chainId, ShareClassId scId) external;
