@@ -80,7 +80,7 @@ abstract contract SingleShareClassBaseTest is Test {
     }
 
     function setUp() public virtual {
-        shareClass = new SingleShareClass(poolRegistryAddress, address(this));
+        shareClass = new SingleShareClass(IPoolRegistry(poolRegistryAddress), address(this));
         shareClass.addShareClass(poolId, bytes(""));
 
         // Mock IPoolRegistry.currency call
