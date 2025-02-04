@@ -7,22 +7,21 @@ import {D18} from "src/types/D18.sol";
 import {Conversion} from "src/libraries/Conversion.sol";
 
 import {IBaseValuation} from "src/interfaces/IBaseValuation.sol";
-import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
-import {IAssetManager} from "src/interfaces/IAssetManager.sol";
+import {IERC6909MetadataExt} from "src/interfaces/ERC6909/IERC6909MetadataExt.sol";
 
 import {Auth} from "src/Auth.sol";
 
 abstract contract BaseValuation is Auth, IBaseValuation {
-    /// @notice AssetManager dependency.
-    IAssetManager public assetManager;
+    /// @notice ERC6909 dependency.
+    IERC6909MetadataExt public erc6909;
 
-    constructor(IAssetManager assetManager_, address deployer) Auth(deployer) {
-        assetManager = assetManager_;
+    constructor(IERC6909MetadataExt erc6909_, address deployer) Auth(deployer) {
+        erc6909 = erc6909_;
     }
 
     /// @inheritdoc IBaseValuation
     function file(bytes32 what, address data) external auth {
-        if (what == "assetManager") assetManager = IAssetManager(data);
+        if (what == "erc6909") erc6909 = IERC6909MetadataExt(data);
         else revert FileUnrecognizedWhat();
 
         emit File(what, data);
@@ -30,6 +29,6 @@ abstract contract BaseValuation is Auth, IBaseValuation {
 
     /// @notice Obtain the correct decimals given an asset address
     function _getDecimals(address asset) internal view returns (uint8) {
-        return assetManager.decimals(uint160(asset));
+        return erc6909.decimals(uint160(asset));
     }
 }

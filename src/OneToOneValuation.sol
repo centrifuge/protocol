@@ -7,12 +7,12 @@ import {Conversion} from "src/libraries/Conversion.sol";
 
 import {IERC7726, IERC7726Ext} from "src/interfaces/IERC7726.sol";
 import {IOneToOneValuation} from "src/interfaces/IOneToOneValuation.sol";
-import {IAssetManager} from "src/interfaces/IAssetManager.sol";
+import {IERC6909MetadataExt} from "src/interfaces/ERC6909/IERC6909MetadataExt.sol";
 
 import {BaseValuation} from "src/BaseValuation.sol";
 
 contract OneToOneValuation is BaseValuation, IOneToOneValuation {
-    constructor(IAssetManager assetManager, address deployer) BaseValuation(assetManager, deployer) {}
+    constructor(IERC6909MetadataExt erc6909, address deployer) BaseValuation(erc6909, deployer) {}
 
     /// @inheritdoc IERC7726
     function getQuote(uint256 baseAmount, address base, address quote) external view returns (uint256 quoteAmount) {

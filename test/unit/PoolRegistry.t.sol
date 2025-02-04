@@ -8,7 +8,6 @@ import {AssetId} from "src/types/AssetId.sol";
 import {PoolRegistry} from "src/PoolRegistry.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
 import {IAuth} from "src/interfaces/IAuth.sol";
-import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 
 contract PoolRegistryTest is Test {

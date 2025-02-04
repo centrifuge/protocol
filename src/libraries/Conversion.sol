@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {D18} from "src/types/D18.sol";
 
