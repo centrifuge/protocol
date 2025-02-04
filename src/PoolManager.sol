@@ -8,7 +8,8 @@ import {AccountId} from "src/types/AccountId.sol";
 import {PoolId} from "src/types/PoolId.sol";
 import {D18} from "src/types/D18.sol";
 
-import {IAccounting, IGateway} from "src/interfaces/ICommon.sol"; // TODO: remove import
+import {IAccounting} from "src/interfaces/IAccounting.sol";
+import {IGateway} from "src/interfaces/IGateway.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
 import {IAssetManager} from "src/interfaces/IAssetManager.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";

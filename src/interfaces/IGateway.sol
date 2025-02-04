@@ -1,30 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-// NOTE: this is a pending interface until we split this into files
-
 import {ShareClassId} from "src/types/ShareClassId.sol";
 import {AssetId} from "src/types/AssetId.sol";
 import {GlobalAddress} from "src/types/GlobalAddress.sol";
-import {AccountId} from "src/types/AccountId.sol";
-import {D18} from "src/types/D18.sol";
 import {PoolId} from "src/types/PoolId.sol";
 
-import {IERC7726} from "src/interfaces/IERC7726.sol";
-
-import {PoolLocker} from "src/PoolLocker.sol";
-import {Auth} from "src/Auth.sol";
-
-interface IAccounting {
-    function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) external;
-    function setMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external;
-    function updateEntry(AccountId credit, AccountId debit, uint128 value) external;
-    function addDebit(AccountId account, uint128 value) external;
-    function addCredit(AccountId account, uint128 value) external;
-    function lock() external;
-    function unlock(PoolId poolId) external;
-}
-
+// WIP
 interface IGateway {
     // NOTE: Should the implementation store a mapping by chainId to track...?
     // - allowed pools
@@ -68,4 +50,5 @@ interface IGateway {
         uint128 fulfilledInvestedAmount
     ) external;
     function sendUnlockTokens(AssetId assetId, GlobalAddress receiver, uint128 assetAmount) external;
+    function handleMessage(bytes calldata message) external;
 }
