@@ -2,10 +2,12 @@
 pragma solidity 0.8.28;
 
 import {AssetId} from "src/types/AssetId.sol";
+
+import {IERC6909Fungible} from "src/interfaces/ERC6909/IERC6909Fungible.sol";
 import {IERC6909MetadataExt} from "src/interfaces/ERC6909/IERC6909MetadataExt.sol";
 
 // TODO
-interface IAssetManager is IERC6909MetadataExt {
+interface IAssetManager is IERC6909MetadataExt, IERC6909Fungible {
     event NewAssetEntry(AssetId indexed assetId, string name, string symbol, uint8 decimals);
 
     /// @dev Fired when id == 0

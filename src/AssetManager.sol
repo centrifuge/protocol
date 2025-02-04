@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/Auth.sol";
+import {IERC165} from "forge-std/interfaces/IERC165.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {AssetId} from "src/types/AssetId.sol";
 import {IAssetManager} from "src/interfaces/IAssetManager.sol";
@@ -53,7 +54,13 @@ contract AssetManager is ERC6909Fungible, IAssetManager {
         return asset[AssetId.wrap(asset_.toUint128())].symbol;
     }
 
-    function supportsInterface(bytes4 interfaceId) public pure virtual override(ERC6909Fungible) returns (bool) {
+    function supportsInterface(bytes4 interfaceId)
+        public
+        pure
+        virtual
+        override(ERC6909Fungible, IERC165)
+        returns (bool)
+    {
         return type(IERC6909MetadataExt).interfaceId == interfaceId || super.supportsInterface(interfaceId);
     }
 }
