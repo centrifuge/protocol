@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {D18} from "src/types/D18.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
 import {PoolId} from "src/types/PoolId.sol";
+import {AssetId} from "src/types/AssetId.sol";
 
 interface IShareClassManager {
     /// Events
@@ -13,7 +14,7 @@ interface IShareClassManager {
         bytes16 indexed shareClassId,
         uint32 indexed epoch,
         address investor,
-        address assetId,
+        AssetId assetId,
         uint128 updatedAmountUser,
         uint128 updatedAmountTotal
     );
@@ -22,7 +23,7 @@ interface IShareClassManager {
         bytes16 indexed shareClassId,
         uint32 indexed epoch,
         address investor,
-        address payoutAssetId,
+        AssetId payoutAssetId,
         uint128 updatedAmountUser,
         uint128 updatedAmountTotal
     );
@@ -30,7 +31,7 @@ interface IShareClassManager {
         PoolId indexed poolId,
         bytes16 indexed shareClassId,
         uint32 indexed epoch,
-        address assetId,
+        AssetId assetId,
         D18 approvalRatio,
         uint128 approvedPoolAmount,
         uint128 approvedAssetAmount,
@@ -40,7 +41,7 @@ interface IShareClassManager {
         PoolId indexed poolId,
         bytes16 indexed shareClassId,
         uint32 indexed epoch,
-        address assetId,
+        AssetId assetId,
         D18 approvalRatio,
         uint128 approvedShareClassAmount,
         uint128 pendingShareClassAmount
@@ -69,7 +70,7 @@ interface IShareClassManager {
         bytes16 indexed shareClassId,
         uint32 indexed epoch,
         address investor,
-        address assetId,
+        AssetId assetId,
         uint128 approvedAssetAmount,
         uint128 pendingAssetAmount,
         uint128 claimedShareAmount
@@ -79,7 +80,7 @@ interface IShareClassManager {
         bytes16 indexed shareClassId,
         uint32 indexed epoch,
         address investor,
-        address assetId,
+        AssetId assetId,
         uint128 approvedShareClassAmount,
         uint128 pendingShareClassAmount,
         uint128 claimedAssetAmount
@@ -109,7 +110,7 @@ interface IShareClassManager {
         bytes16 shareClassId,
         uint128 amount,
         address investor,
-        address depositAssetId
+        AssetId depositAssetId
     ) external;
 
     /// @notice Cancels a pending deposit request.
@@ -121,7 +122,7 @@ interface IShareClassManager {
     /// @return cancelledAssetAmount The deposit amount which was previously pending and is now cancelled. This amount
     /// was not potentially (partially) swapped to the pool amount in case the deposit asset cannot be exchanged 1:1
     /// into the pool token
-    function cancelDepositRequest(PoolId poolId, bytes16 shareClassId, address investor, address depositAssetId)
+    function cancelDepositRequest(PoolId poolId, bytes16 shareClassId, address investor, AssetId depositAssetId)
         external
         returns (uint128 cancelledAssetAmount);
 
@@ -133,7 +134,7 @@ interface IShareClassManager {
     /// @param investor Address of the entity which is redeeming
     /// @param payoutAssetId Identifier of the asset which the investor eventually receives back for their redeemed
     /// share class tokens
-    function requestRedeem(PoolId poolId, bytes16 shareClassId, uint128 amount, address investor, address payoutAssetId)
+    function requestRedeem(PoolId poolId, bytes16 shareClassId, uint128 amount, address investor, AssetId payoutAssetId)
         external;
 
     /// @notice Cancels a pending redeem request.
@@ -144,7 +145,7 @@ interface IShareClassManager {
     /// @param payoutAssetId Identifier of the asset which the investor eventually receives back for their redeemed
     /// share class tokens
     /// @return cancelledAmount The redeem amount which was previously pending and is now cancelled
-    function cancelRedeemRequest(PoolId poolId, bytes16 shareClassId, address investor, address payoutAssetId)
+    function cancelRedeemRequest(PoolId poolId, bytes16 shareClassId, address investor, AssetId payoutAssetId)
         external
         returns (uint128 cancelledAmount);
 
@@ -162,7 +163,7 @@ interface IShareClassManager {
         PoolId poolId,
         bytes16 shareClassId,
         D18 approvalRatio,
-        address paymentAssetId,
+        AssetId paymentAssetId,
         IERC7726 valuation
     ) external returns (uint128 approvedPoolAmount, uint128 approvedAssetAmount);
 
@@ -181,7 +182,7 @@ interface IShareClassManager {
         PoolId poolId,
         bytes16 shareClassId,
         D18 approvalRatio,
-        address payoutAssetId,
+        AssetId payoutAssetId,
         IERC7726 valuation
     ) external returns (uint128 approvedShareAmount, uint128 pendingShareAmount);
 
@@ -191,7 +192,7 @@ interface IShareClassManager {
     /// @param shareClassId Identifier of the share class
     /// @param depositAssetId Identifier of the deposit asset for which shares should be issued
     /// @param navPerShare Total value of assets of the pool and share class per share
-    function issueShares(PoolId poolId, bytes16 shareClassId, address depositAssetId, D18 navPerShare) external;
+    function issueShares(PoolId poolId, bytes16 shareClassId, AssetId depositAssetId, D18 navPerShare) external;
 
     /// @notice Take back shares for the given identifier based on the provided NAV per share.
     ///
@@ -205,7 +206,7 @@ interface IShareClassManager {
     function revokeShares(
         PoolId poolId,
         bytes16 shareClassId,
-        address payoutAssetId,
+        AssetId payoutAssetId,
         D18 navPerShare,
         IERC7726 valuation
     ) external returns (uint128 payoutAssetAmount, uint128 payoutPoolAmount);
@@ -219,7 +220,7 @@ interface IShareClassManager {
     /// @param depositAssetId Identifier of the asset which the investor used for their deposit request
     /// @return payoutShareAmount Amount of shares which the investor receives
     /// @return paymentAssetAmount Amount of deposit asset which was taken as payment
-    function claimDeposit(PoolId poolId, bytes16 shareClassId, address investor, address depositAssetId)
+    function claimDeposit(PoolId poolId, bytes16 shareClassId, address investor, AssetId depositAssetId)
         external
         returns (uint128 payoutShareAmount, uint128 paymentAssetAmount);
 
@@ -233,7 +234,7 @@ interface IShareClassManager {
     /// shares
     /// @return payoutAssetAmount Amount of payout amount which the investor receives
     /// @return paymentShareAmount Amount of shares which the investor redeemed
-    function claimRedeem(PoolId poolId, bytes16 shareClassId, address investor, address payoutAssetId)
+    function claimRedeem(PoolId poolId, bytes16 shareClassId, address investor, AssetId payoutAssetId)
         external
         returns (uint128 payoutAssetAmount, uint128 paymentShareAmount);
 

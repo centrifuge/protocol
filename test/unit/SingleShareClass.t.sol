@@ -13,14 +13,17 @@ import {MathLib} from "src/libraries/MathLib.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 import {ISingleShareClass} from "src/interfaces/ISingleShareClass.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
+import {AssetId} from "src/types/AssetId.sol";
 
 bool constant WITH_TRANSIENT = false;
 uint128 constant TRANSIENT_STORAGE_SHIFT = WITH_TRANSIENT ? 1 : 0;
 uint64 constant POOL_ID = 42;
 bytes16 constant SHARE_CLASS_ID = bytes16(uint128(POOL_ID));
 address constant POOL_CURRENCY = address(840);
-address constant USDC = address(0x0123456);
-address constant OTHER_STABLE = address(0x01234567);
+AssetId constant USDC = AssetId.wrap(69);
+address constant USDC_ADDR = address(uint160(AssetId.unwrap(USDC)));
+AssetId constant OTHER_STABLE = AssetId.wrap(1337);
+address constant OTHER_STABLE_ADDR = address(uint160(AssetId.unwrap(OTHER_STABLE)));
 uint128 constant DENO_USDC = 10 ** 6;
 uint128 constant DENO_OTHER_STABLE = 10 ** 12;
 uint128 constant DENO_POOL = 10 ** 4;
@@ -38,17 +41,17 @@ contract OracleMock is IERC7726 {
     using MathLib for uint256;
 
     function getQuote(uint256 baseAmount, address base, address quote) external pure returns (uint256 quoteAmount) {
-        if (base == USDC && quote == OTHER_STABLE) {
+        if (base == USDC.addr() && quote == OTHER_STABLE.addr()) {
             return baseAmount.mulDiv(DENO_OTHER_STABLE, DENO_USDC);
-        } else if (base == USDC && quote == POOL_CURRENCY) {
+        } else if (base == USDC.addr() && quote == POOL_CURRENCY) {
             return baseAmount.mulDiv(DENO_POOL, DENO_USDC);
-        } else if (base == OTHER_STABLE && quote == USDC) {
+        } else if (base == OTHER_STABLE.addr() && quote == USDC.addr()) {
             return baseAmount.mulDiv(DENO_USDC, DENO_OTHER_STABLE);
-        } else if (base == OTHER_STABLE && quote == POOL_CURRENCY) {
+        } else if (base == OTHER_STABLE.addr() && quote == POOL_CURRENCY) {
             return baseAmount.mulDiv(DENO_POOL, DENO_OTHER_STABLE);
-        } else if (base == POOL_CURRENCY && quote == USDC) {
+        } else if (base == POOL_CURRENCY && quote == USDC.addr()) {
             return baseAmount.mulDiv(DENO_USDC, DENO_POOL);
-        } else if (base == POOL_CURRENCY && quote == OTHER_STABLE) {
+        } else if (base == POOL_CURRENCY && quote == OTHER_STABLE.addr()) {
             return baseAmount.mulDiv(DENO_OTHER_STABLE, DENO_POOL);
         } else if (base == POOL_CURRENCY && quote == address(bytes20(SHARE_CLASS_ID))) {
             return baseAmount;
@@ -90,7 +93,7 @@ abstract contract SingleShareClassBaseTest is Test {
         assertEq(IPoolRegistry(poolRegistryAddress).currency(poolId).addr(), POOL_CURRENCY);
     }
 
-    function _assertDepositRequestEq(bytes16 shareClassId_, address asset, address investor_, UserOrder memory expected)
+    function _assertDepositRequestEq(bytes16 shareClassId_, AssetId asset, address investor_, UserOrder memory expected)
         internal
         view
     {
@@ -100,7 +103,7 @@ abstract contract SingleShareClassBaseTest is Test {
         assertEq(lastUpdate, expected.lastUpdate, "lastUpdate mismatch");
     }
 
-    function _assertRedeemRequestEq(bytes16 shareClassId_, address asset, address investor_, UserOrder memory expected)
+    function _assertRedeemRequestEq(bytes16 shareClassId_, AssetId asset, address investor_, UserOrder memory expected)
         internal
         view
     {
@@ -110,7 +113,7 @@ abstract contract SingleShareClassBaseTest is Test {
         assertEq(lastUpdate, expected.lastUpdate, "lastUpdate mismatch");
     }
 
-    function _assertEpochAmountsEq(bytes16 shareClassId_, address assetId, uint32 epochId, EpochAmounts memory expected)
+    function _assertEpochAmountsEq(bytes16 shareClassId_, AssetId assetId, uint32 epochId, EpochAmounts memory expected)
         internal
         view
     {
@@ -133,7 +136,7 @@ abstract contract SingleShareClassBaseTest is Test {
         assertEq(redeemSharesRevoked, expected.redeemSharesRevoked, "redeemSharesRevoked mismatch");
     }
 
-    function _assertEpochPointersEq(bytes16 shareClassId_, address assetId, EpochPointers memory expected)
+    function _assertEpochPointersEq(bytes16 shareClassId_, AssetId assetId, EpochPointers memory expected)
         internal
         view
     {
@@ -166,11 +169,11 @@ abstract contract SingleShareClassBaseTest is Test {
     }
 
     function usdcToPool(uint128 usdcAmount) internal view returns (uint128 poolAmount) {
-        return oracleMock.getQuote(uint256(usdcAmount), USDC, POOL_CURRENCY).toUint128();
+        return oracleMock.getQuote(uint256(usdcAmount), USDC.addr(), POOL_CURRENCY).toUint128();
     }
 
     function poolToUsdc(uint128 poolAmount) internal view returns (uint128 usdcAmount) {
-        return oracleMock.getQuote(uint256(poolAmount), POOL_CURRENCY, USDC).toUint128();
+        return oracleMock.getQuote(uint256(poolAmount), POOL_CURRENCY, USDC.addr()).toUint128();
     }
 }
 

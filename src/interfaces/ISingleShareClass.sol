@@ -5,6 +5,7 @@ import {D18} from "src/types/D18.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
 import {PoolId} from "src/types/PoolId.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
+import {AssetId} from "src/types/AssetId.sol";
 
 interface ISingleShareClass is IShareClassManager {
     /// Events
@@ -25,7 +26,7 @@ interface ISingleShareClass is IShareClassManager {
     function issueSharesUntilEpoch(
         PoolId poolId,
         bytes16 shareClassId,
-        address depositAssetId,
+        AssetId depositAssetId,
         D18 navPerShare,
         uint32 endEpochId
     ) external;
@@ -44,7 +45,7 @@ interface ISingleShareClass is IShareClassManager {
     function revokeSharesUntilEpoch(
         PoolId poolId,
         bytes16 shareClassId,
-        address payoutAssetId,
+        AssetId payoutAssetId,
         D18 navPerShare,
         IERC7726 valuation,
         uint32 endEpochId
@@ -64,7 +65,7 @@ interface ISingleShareClass is IShareClassManager {
         PoolId poolId,
         bytes16 shareClassId,
         address investor,
-        address depositAssetId,
+        AssetId depositAssetId,
         uint32 endEpochId
     ) external returns (uint128 payoutShareAmount, uint128 paymentAssetAmount);
 
@@ -83,7 +84,7 @@ interface ISingleShareClass is IShareClassManager {
         PoolId poolId,
         bytes16 shareClassId,
         address investor,
-        address payoutAssetId,
+        AssetId payoutAssetId,
         uint32 endEpochId
     ) external returns (uint128 payoutAssetAmount, uint128 paymentShareAmount);
 }
