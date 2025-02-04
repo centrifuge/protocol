@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {D18} from "src/types/D18.sol";
+import {IERC7726} from "src/interfaces/IERC7726.sol";
 import {PoolId} from "src/types/PoolId.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 
@@ -30,13 +31,13 @@ interface ISingleShareClass is IShareClassManager {
     ) external;
 
     /// @notice Revokes shares for an epoch span and sets the price based on amount of approved redemption shares and
-    /// the
-    /// provided NAV.
+    /// the provided NAV.
     ///
     /// @param poolId Identifier of the pool
     /// @param shareClassId Identifier of the share class
     /// @param payoutAssetId Identifier of the payout asset
     /// @param navPerShare Total value of assets of the pool and share class per share
+    /// @param valuation Source of truth for quotas, e.g. the price of a share class token amount to pool amount
     /// @param endEpochId Identifier of the maximum epoch until which shares are revoked
     /// @return payoutAssetAmount Converted amount of payout asset based on number of revoked shares
     /// @return payoutPoolAmount Converted amount of pool currency based on number of revoked shares
@@ -45,6 +46,7 @@ interface ISingleShareClass is IShareClassManager {
         bytes16 shareClassId,
         address payoutAssetId,
         D18 navPerShare,
+        IERC7726 valuation,
         uint32 endEpochId
     ) external returns (uint128 payoutAssetAmount, uint128 payoutPoolAmount);
 
