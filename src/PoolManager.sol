@@ -18,12 +18,16 @@ import {IMulticall} from "src/interfaces/IMulticall.sol";
 import {IERC7726, IERC7726Ext} from "src/interfaces/IERC7726.sol";
 
 import {MathLib} from "src/libraries/MathLib.sol";
+import {CastLib} from "src/libraries/CastLib.sol";
 
 import {PoolLocker} from "src/PoolLocker.sol";
 import {Auth} from "src/Auth.sol";
 
 contract PoolManager is Auth, PoolLocker, IPoolManager {
     using MathLib for uint256;
+    using CastLib for bytes;
+    using CastLib for bytes32;
+    using CastLib for address;
 
     IPoolRegistry poolRegistry;
     IAssetManager assetManager;
@@ -91,7 +95,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         (uint128 shares, uint128 tokens) =
             scm.claimRedeem(poolId, scId.toBytes(), assetId.addr(), address(uint160(uint256(investor))));
 
-        assetManager.burn(_escrow(poolId, scId, Escrow.PENDING_SHARE_CLASS), assetId, tokens);
+        assetManager.burn(_escrow(poolId, scId, Escrow.PENDING_SHARE_CLASS), assetId.raw(), tokens);
 
         gateway.sendFulfilledRedeemRequest(poolId, scId, assetId, investor, shares, tokens);
     }
@@ -292,7 +296,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         external
         poolUnlocked
     {
-        assetManager.burn(_escrow(unlockedPoolId(), scId, Escrow.SHARE_CLASS), assetId, assetAmount);
+        assetManager.burn(_escrow(unlockedPoolId(), scId, Escrow.SHARE_CLASS), assetId.raw(), assetAmount);
 
         gateway.sendUnlockTokens(assetId, receiver, assetAmount);
     }
@@ -305,7 +309,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         external
         onlyGateway
     {
-        assetManager.registerAsset(assetId, name, symbol, decimals);
+        assetManager.registerAsset(assetId, name.bytes128ToString(), symbol.toString(), decimals);
     }
 
     function requestDeposit(PoolId poolId, ShareClassId scId, AssetId depositAssetId, bytes32 investor, uint128 amount)
@@ -313,7 +317,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         onlyGateway
     {
         address pendingShareClassEscrow = _escrow(poolId, scId, Escrow.PENDING_SHARE_CLASS);
-        assetManager.mint(pendingShareClassEscrow, depositAssetId, amount);
+        assetManager.mint(pendingShareClassEscrow, depositAssetId.raw(), amount);
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
         scm.requestDeposit(poolId, scId.toBytes(), amount, address(uint160(uint256(investor))), depositAssetId.addr());
@@ -336,7 +340,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
             scm.cancelDepositRequest(poolId, scId.toBytes(), address(uint160(uint256(investor))), depositAssetId.addr());
 
         address pendingShareClassEscrow = _escrow(poolId, scId, Escrow.PENDING_SHARE_CLASS);
-        assetManager.burn(pendingShareClassEscrow, depositAssetId, cancelledAssetAmount);
+        assetManager.burn(pendingShareClassEscrow, depositAssetId.raw(), cancelledAssetAmount);
 
         gateway.sendFulfilledCancelDepositRequest(
             poolId, scId, depositAssetId, investor, cancelledAssetAmount, cancelledAssetAmount
@@ -357,7 +361,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     }
 
     function handleLockedTokens(address receiver, AssetId assetId, uint128 amount) external onlyGateway {
-        assetManager.mint(receiver, assetId, amount);
+        assetManager.mint(receiver, assetId.raw(), amount);
     }
 
     //----------------------------------------------------------------------------------------------
