@@ -18,7 +18,7 @@ contract Accounting is Auth, IAccounting {
 
     constructor(address deployer) Auth(deployer) {}
 
-/// @inheritdoc IAccounting
+    /// @inheritdoc IAccounting
     function addDebit(AccountId account, uint128 value) public auth {
         require(!_currentPoolId.isNull(), AccountingLocked());
 
