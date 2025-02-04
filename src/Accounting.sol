@@ -9,14 +9,13 @@ import {Auth} from "src/Auth.sol";
 
 contract Accounting is Auth, IAccounting {
     mapping(PoolId => mapping(AccountId => Account)) public accounts;
-    mapping(PoolId => uint128) private _transactionCounter;
 
     uint128 public /*TODO: transient*/ debited;
     uint128 public /*TODO: transient*/ credited;
-    uint256 private /*TODO: transient*/ _transactionId;
+    bytes32 private /*TODO: transient*/ _transactionId;
     PoolId private /*TODO: transient*/ _currentPoolId;
 
-    constructor(address deployer) Auth(deployer) {}
+    constructor(address deployer) Auth(deployer) {    }
 
     /// @inheritdoc IAccounting
     function addDebit(AccountId account, uint128 value) public auth {
@@ -45,12 +44,11 @@ contract Accounting is Auth, IAccounting {
     }
 
     /// @inheritdoc IAccounting
-    function unlock(PoolId poolId) external auth {
+    function unlock(PoolId poolId, bytes32 transactionId) external auth {
         require(PoolId.unwrap(_currentPoolId) == 0, AccountingAlreadyUnlocked());
         debited = 0;
         credited = 0;
-        _transactionCounter[poolId]++;
-        _transactionId = uint256(keccak256(abi.encodePacked(poolId, block.timestamp, _transactionCounter[poolId])));
+        _transactionId = transactionId;
         _currentPoolId = poolId;
     }
 

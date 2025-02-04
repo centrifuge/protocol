@@ -39,14 +39,14 @@ contract AccountingTest is Test {
     }
 
     function testDebitsAndCredits() public {
-        accounting.unlock(POOL_A);
+        accounting.unlock(POOL_A, bytes32("1"));
 
-        vm.expectEmit(true, false, true, true);
-        emit IAccounting.Debit(POOL_A, 0, CASH_ACCOUNT, 500);
+        vm.expectEmit();
+        emit IAccounting.Debit(POOL_A, bytes32("1"), CASH_ACCOUNT, 500);
         accounting.addDebit(CASH_ACCOUNT, 500);
 
         vm.expectEmit(true, false, true, true);
-        emit IAccounting.Credit(POOL_A, 0, EQUITY_ACCOUNT, 500);
+        emit IAccounting.Credit(POOL_A, bytes32("1"), EQUITY_ACCOUNT, 500);
         accounting.addCredit(EQUITY_ACCOUNT, 500);
 
         accounting.addDebit(BOND1_INVESTMENT_ACCOUNT, 245);
@@ -64,12 +64,12 @@ contract AccountingTest is Test {
         accounting.createAccount(POOL_B, CASH_ACCOUNT, true);
         accounting.createAccount(POOL_B, EQUITY_ACCOUNT, false);
 
-        accounting.unlock(POOL_A);
+        accounting.unlock(POOL_A, bytes32("1"));
         accounting.addDebit(CASH_ACCOUNT, 500);
         accounting.addCredit(EQUITY_ACCOUNT, 500);
         accounting.lock();
 
-        accounting.unlock(POOL_B);
+        accounting.unlock(POOL_B, bytes32("2"));
         accounting.addDebit(CASH_ACCOUNT, 120);
         accounting.addCredit(EQUITY_ACCOUNT, 120);
         accounting.lock();
@@ -84,7 +84,7 @@ contract AccountingTest is Test {
         vm.assume(v != 5);
         vm.assume(v < type(uint128).max - 250);
 
-        accounting.unlock(POOL_A);
+        accounting.unlock(POOL_A, bytes32("1"));
         accounting.addDebit(CASH_ACCOUNT, 500);
         accounting.addCredit(EQUITY_ACCOUNT, 500);
         accounting.addDebit(BOND1_INVESTMENT_ACCOUNT, 245);
@@ -96,10 +96,10 @@ contract AccountingTest is Test {
     }
 
     function testDoubleUnlock() public {
-        accounting.unlock(POOL_A);
+        accounting.unlock(POOL_A, bytes32("1"));
 
         vm.expectRevert(IAccounting.AccountingAlreadyUnlocked.selector);
-        accounting.unlock(POOL_B);
+        accounting.unlock(POOL_B, bytes32("1"));
     }
 
     function testUpdateEntryWithoutUnlocking() public {
@@ -114,9 +114,9 @@ contract AccountingTest is Test {
         address unauthorized = makeAddr("unauthorized");
         vm.prank(unauthorized);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        accounting.unlock(POOL_A);
+        accounting.unlock(POOL_A, bytes32("1"));
 
-        accounting.unlock(POOL_A);
+        accounting.unlock(POOL_A, bytes32("1"));
 
         vm.startPrank(unauthorized);
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -136,7 +136,7 @@ contract AccountingTest is Test {
     }
 
     function testUpdatingNonExistentAccount() public {
-        accounting.unlock(POOL_A);
+        accounting.unlock(POOL_A, bytes32("1"));
         vm.expectRevert(IAccounting.AccountDoesNotExist.selector);
         accounting.addDebit(NON_INITIALIZED_ACCOUNT, 500);
 

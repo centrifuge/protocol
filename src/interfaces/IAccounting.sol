@@ -6,8 +6,8 @@ import {PoolId} from "src/types/PoolId.sol";
 
 interface IAccounting {
     /// @notice Emitted when a an entry is done
-    event Credit(PoolId indexed poolId, uint256 indexed transactionId, AccountId indexed account, uint128 value);
-    event Debit(PoolId indexed poolId, uint256 indexed transactionId, AccountId indexed account, uint128 value);
+    event Credit(PoolId indexed poolId, bytes32 indexed transactionId, AccountId indexed account, uint128 value);
+    event Debit(PoolId indexed poolId, bytes32 indexed transactionId, AccountId indexed account, uint128 value);
 
     /// @notice Dispatched when the pool is already unlocked.
     error AccountingAlreadyUnlocked();
@@ -39,8 +39,8 @@ interface IAccounting {
     /// @notice Credits an account. Decrease the value of debit-normal accounts, increase for credit-normal ones.
     function addCredit(AccountId account, uint128 value) external;
 
-    /// @notice Sets the pool for the coming transaction.
-    function unlock(PoolId poolId) external;
+    /// @notice Sets the pool ID and transaction ID for the coming transaction.
+    function unlock(PoolId poolId, bytes32 transactionId) external;
 
     /// @notice Closes the transaction and checks if the entries are balanced.
     function lock() external;
