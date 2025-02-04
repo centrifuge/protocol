@@ -14,7 +14,7 @@ import {IERC7726} from "src/interfaces/IERC7726.sol";
 import {IHoldings} from "src/interfaces/IHoldings.sol";
 
 PoolId constant POOL_A = PoolId.wrap(42);
-ShareClassId constant SC_1 = ShareClassId.wrap(1);
+ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("1"));
 AssetId constant ASSET_A = AssetId.wrap(2);
 ShareClassId constant NON_SC = ShareClassId.wrap(0);
 AssetId constant NON_ASSET = AssetId.wrap(0);

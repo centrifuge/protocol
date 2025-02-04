@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {ShareClassId} from "src/types/ShareClassId.sol";
 import {AssetId} from "src/types/AssetId.sol";
-import {GlobalAddress} from "src/types/GlobalAddress.sol";
 import {PoolId} from "src/types/PoolId.sol";
 
 // WIP
@@ -21,7 +20,7 @@ interface IGateway {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        GlobalAddress investor,
+        bytes32 investor,
         uint128 shares,
         uint128 investedAmount
     ) external;
@@ -29,7 +28,7 @@ interface IGateway {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        GlobalAddress investor,
+        bytes32 investor,
         uint128 shares,
         uint128 investedAmount
     ) external;
@@ -37,7 +36,7 @@ interface IGateway {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        GlobalAddress investor,
+        bytes32 investor,
         uint128 canceledAmount,
         uint128 fulfilledInvestedAmount
     ) external;
@@ -45,10 +44,10 @@ interface IGateway {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        GlobalAddress investor,
+        bytes32 investor,
         uint128 canceledShares,
         uint128 fulfilledInvestedAmount
     ) external;
-    function sendUnlockTokens(AssetId assetId, GlobalAddress receiver, uint128 assetAmount) external;
+    function sendUnlockTokens(AssetId assetId, bytes32 receiver, uint128 assetAmount) external;
     function handleMessage(bytes calldata message) external;
 }
