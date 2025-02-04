@@ -22,7 +22,7 @@ interface IAccounting {
     error AccountExists();
 
     /// @notice Dispatched when trying debit or credit an account that doesn't exists.
-    error AccountDoesNotExists();
+    error AccountDoesNotExist();
 
     /// @notice
     struct Account {
@@ -33,8 +33,11 @@ interface IAccounting {
         bytes metadata;
     }
 
-    /// @notice Logs an entry where one account is debited and another is credited.
-    function updateEntry(AccountId creditAccount, AccountId debitAccount, uint128 value) external;
+    /// @notice Debits an account. Increase the value of debit-normal accounts, decrease for credit-normal ones.
+    function addDebit(AccountId account, uint128 value) external;
+
+    /// @notice Credits an account. Decrease the value of debit-normal accounts, increase for credit-normal ones.
+    function addCredit(AccountId account, uint128 value) external;
 
     /// @notice Sets the pool for the coming transaction.
     function unlock(PoolId poolId) external;
@@ -46,9 +49,9 @@ interface IAccounting {
     function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) external;
 
     /// @notice Creates an account.
-    function updateAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external;
+    function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external;
 
     /// @notice Returns the value of an account, returns a negative value for positive balances of credt-normal
     /// accounts.
-    function getAccountValue(PoolId poolId, AccountId account) external returns (int128);
+    function accountValue(PoolId poolId, AccountId account) external returns (int128);
 }

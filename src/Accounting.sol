@@ -17,18 +17,12 @@ contract Accounting is Auth, IAccounting {
 
     constructor(address deployer) Auth(deployer) {}
 
-    /// @inheritdoc IAccounting
-    function updateEntry(AccountId creditAccount, AccountId debitAccount, uint128 value) external auth {
-        addDebit(debitAccount, value);
-        addCredit(creditAccount, value);
-    }
-
-    /// @dev Debits an account. Increase the value of debit-normal accounts, decrease for credit-normal ones.
+/// @inheritdoc IAccounting
     function addDebit(AccountId account, uint128 value) public auth {
         require(!_currentPoolId.isNull(), AccountingLocked());
 
         Account storage acc = accounts[_currentPoolId][account];
-        require(acc.lastUpdated != 0, AccountDoesNotExists());
+        require(acc.lastUpdated != 0, AccountDoesNotExist());
 
         acc.totalDebit += value;
         debited += value;
@@ -36,12 +30,12 @@ contract Accounting is Auth, IAccounting {
         emit Debit(_currentPoolId, _transactionId, account, value);
     }
 
-    /// @dev Credits an account. Decrease the value of debit-normal accounts, increase for credit-normal ones.
+    /// @inheritdoc IAccounting
     function addCredit(AccountId account, uint128 value) public auth {
         require(!_currentPoolId.isNull(), AccountingLocked());
 
         Account storage acc = accounts[_currentPoolId][account];
-        require(acc.lastUpdated != 0, AccountDoesNotExists());
+        require(acc.lastUpdated != 0, AccountDoesNotExist());
 
         acc.totalCredit += value;
         credited += value;
@@ -54,7 +48,7 @@ contract Accounting is Auth, IAccounting {
         require(PoolId.unwrap(_currentPoolId) == 0, AccountingAlreadyUnlocked());
         debited = 0;
         credited = 0;
-        /// @dev Include the previous transactionId in case there's multiple transactions in one block
+        // Include the previous transactionId in case there's multiple transactions in one block
         _transactionId = uint256(keccak256(abi.encodePacked(poolId, block.timestamp, _transactionId)));
         _currentPoolId = poolId;
     }
@@ -71,13 +65,13 @@ contract Accounting is Auth, IAccounting {
         accounts[poolId][account] = Account(0, 0, isDebitNormal, uint64(block.timestamp), "");
     }
 
-    function updateAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external auth {
+    function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external auth {
         Account storage acc = accounts[poolId][account];
         acc.metadata = metadata;
     }
 
     /// @inheritdoc IAccounting
-    function getAccountValue(PoolId poolId, AccountId account) public view returns (int128) {
+    function accountValue(PoolId poolId, AccountId account) public view returns (int128) {
         Account storage acc = accounts[poolId][account];
 
         if (acc.isDebitNormal) {
