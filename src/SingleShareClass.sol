@@ -65,9 +65,9 @@ contract SingleShareClass is Auth, ISingleShareClass {
     mapping(ShareClassId scId => mapping(AssetId paymentAssetId => uint128 pending)) public pendingDeposit;
     mapping(ShareClassId scId => mapping(AssetId assetId => mapping(uint32 epochId_ => EpochAmounts epoch))) public
         epochAmounts;
-    mapping(ShareClassId scId => mapping(AssetId payoutAssetId => mapping(address investor => UserOrder pending)))
+    mapping(ShareClassId scId => mapping(AssetId payoutAssetId => mapping(bytes32 investor => UserOrder pending)))
         public redeemRequest;
-    mapping(ShareClassId scId => mapping(AssetId paymentAssetId => mapping(address investor => UserOrder pending)))
+    mapping(ShareClassId scId => mapping(AssetId paymentAssetId => mapping(bytes32 investor => UserOrder pending)))
         public depositRequest;
 
     constructor(address poolRegistry_, address deployer) Auth(deployer) {
@@ -99,7 +99,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         PoolId poolId,
         ShareClassId shareClassId_,
         uint128 amount,
-        address investor,
+        bytes32 investor,
         AssetId depositAssetId
     ) external auth {
         _ensureShareClassExists(poolId, shareClassId_);
@@ -107,7 +107,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         _updateDepositRequest(poolId, shareClassId_, int128(amount), investor, depositAssetId);
     }
 
-    function cancelDepositRequest(PoolId poolId, ShareClassId shareClassId_, address investor, AssetId depositAssetId)
+    function cancelDepositRequest(PoolId poolId, ShareClassId shareClassId_, bytes32 investor, AssetId depositAssetId)
         external
         auth
         returns (uint128 cancelledAssetAmount)
@@ -124,7 +124,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         PoolId poolId,
         ShareClassId shareClassId_,
         uint128 amount,
-        address investor,
+        bytes32 investor,
         AssetId payoutAssetId
     ) external auth {
         _ensureShareClassExists(poolId, shareClassId_);
@@ -133,7 +133,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     }
 
     /// @inheritdoc IShareClassManager
-    function cancelRedeemRequest(PoolId poolId, ShareClassId shareClassId_, address investor, AssetId payoutAssetId)
+    function cancelRedeemRequest(PoolId poolId, ShareClassId shareClassId_, bytes32 investor, AssetId payoutAssetId)
         external
         auth
         returns (uint128 cancelledShareAmount)
@@ -393,7 +393,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     }
 
     /// @inheritdoc IShareClassManager
-    function claimDeposit(PoolId poolId, ShareClassId shareClassId_, address investor, AssetId depositAssetId)
+    function claimDeposit(PoolId poolId, ShareClassId shareClassId_, bytes32 investor, AssetId depositAssetId)
         external
         returns (uint128 payoutShareAmount, uint128 paymentAssetAmount)
     {
@@ -406,7 +406,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     function claimDepositUntilEpoch(
         PoolId poolId,
         ShareClassId shareClassId_,
-        address investor,
+        bytes32 investor,
         AssetId depositAssetId,
         uint32 endEpochId
     ) public returns (uint128 payoutShareAmount, uint128 paymentAssetAmount) {
@@ -448,7 +448,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     }
 
     /// @inheritdoc IShareClassManager
-    function claimRedeem(PoolId poolId, ShareClassId shareClassId_, address investor, AssetId payoutAssetId)
+    function claimRedeem(PoolId poolId, ShareClassId shareClassId_, bytes32 investor, AssetId payoutAssetId)
         external
         returns (uint128 payoutAssetAmount, uint128 paymentShareAmount)
     {
@@ -461,7 +461,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     function claimRedeemUntilEpoch(
         PoolId poolId,
         ShareClassId shareClassId_,
-        address investor,
+        bytes32 investor,
         AssetId payoutAssetId,
         uint32 endEpochId
     ) public returns (uint128 payoutAssetAmount, uint128 paymentShareAmount) {
@@ -536,7 +536,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         PoolId poolId,
         ShareClassId shareClassId_,
         int128 amount,
-        address investor,
+        bytes32 investor,
         AssetId depositAssetId
     ) private {
         UserOrder storage userOrder = depositRequest[shareClassId_][depositAssetId][investor];
@@ -578,7 +578,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         PoolId poolId,
         ShareClassId shareClassId_,
         int128 amount,
-        address investor,
+        bytes32 investor,
         AssetId payoutAssetId
     ) private {
         UserOrder storage userOrder = redeemRequest[shareClassId_][payoutAssetId][investor];

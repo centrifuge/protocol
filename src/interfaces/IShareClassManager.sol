@@ -14,7 +14,7 @@ interface IShareClassManager {
         PoolId indexed poolId,
         ShareClassId indexed shareClassId,
         uint32 indexed epoch,
-        address investor,
+        bytes32 investor,
         AssetId assetId,
         uint128 updatedAmountUser,
         uint128 updatedAmountTotal
@@ -23,7 +23,7 @@ interface IShareClassManager {
         PoolId indexed poolId,
         ShareClassId indexed shareClassId,
         uint32 indexed epoch,
-        address investor,
+        bytes32 investor,
         AssetId payoutAssetId,
         uint128 updatedAmountUser,
         uint128 updatedAmountTotal
@@ -70,7 +70,7 @@ interface IShareClassManager {
         PoolId indexed poolId,
         ShareClassId indexed shareClassId,
         uint32 indexed epoch,
-        address investor,
+        bytes32 investor,
         AssetId assetId,
         uint128 approvedAssetAmount,
         uint128 pendingAssetAmount,
@@ -80,7 +80,7 @@ interface IShareClassManager {
         PoolId indexed poolId,
         ShareClassId indexed shareClassId,
         uint32 indexed epoch,
-        address investor,
+        bytes32 investor,
         AssetId assetId,
         uint128 approvedShareClassAmount,
         uint128 pendingShareClassAmount,
@@ -104,13 +104,13 @@ interface IShareClassManager {
     /// @param poolId Identifier of the pool
     /// @param shareClassId Identifier of the share class
     /// @param amount Asset token amount which is deposited
-    /// @param investor Address of the entity which is depositing
+    /// @param investor Centrifuge Vault address of the entity which is depositing
     /// @param depositAssetId Identifier of the asset which the investor used for their deposit request
     function requestDeposit(
         PoolId poolId,
         ShareClassId shareClassId,
         uint128 amount,
-        address investor,
+        bytes32 investor,
         AssetId depositAssetId
     ) external;
 
@@ -118,12 +118,12 @@ interface IShareClassManager {
     ///
     /// @param poolId Identifier of the pool
     /// @param shareClassId Identifier of the share class
-    /// @param investor Address of the entity which is depositing
+    /// @param investor Centrifuge Vault address of the entity which is cancelling
     /// @param depositAssetId Identifier of the asset which the investor used for their deposit request
     /// @return cancelledAssetAmount The deposit amount which was previously pending and is now cancelled. This amount
     /// was not potentially (partially) swapped to the pool amount in case the deposit asset cannot be exchanged 1:1
     /// into the pool token
-    function cancelDepositRequest(PoolId poolId, ShareClassId shareClassId, address investor, AssetId depositAssetId)
+    function cancelDepositRequest(PoolId poolId, ShareClassId shareClassId, bytes32 investor, AssetId depositAssetId)
         external
         returns (uint128 cancelledAssetAmount);
 
@@ -132,14 +132,14 @@ interface IShareClassManager {
     /// @param poolId Identifier of the pool
     /// @param shareClassId Identifier of the share class
     /// @param amount Share class token amount which should be redeemed
-    /// @param investor Address of the entity which is redeeming
+    /// @param investor Centrifuge Vault address of the entity which is redeeming
     /// @param payoutAssetId Identifier of the asset which the investor eventually receives back for their redeemed
     /// share class tokens
     function requestRedeem(
         PoolId poolId,
         ShareClassId shareClassId,
         uint128 amount,
-        address investor,
+        bytes32 investor,
         AssetId payoutAssetId
     ) external;
 
@@ -147,11 +147,11 @@ interface IShareClassManager {
     ///
     /// @param poolId Identifier of the pool
     /// @param shareClassId Identifier of the share class
-    /// @param investor Address of the entity which is redeeming
+    /// @param investor Centrifuge Vault address of the entity which is cancelling
     /// @param payoutAssetId Identifier of the asset which the investor eventually receives back for their redeemed
     /// share class tokens
     /// @return cancelledShareAmount The redeem amount which was previously pending and is now cancelled
-    function cancelRedeemRequest(PoolId poolId, ShareClassId shareClassId, address investor, AssetId payoutAssetId)
+    function cancelRedeemRequest(PoolId poolId, ShareClassId shareClassId, bytes32 investor, AssetId payoutAssetId)
         external
         returns (uint128 cancelledShareAmount);
 
@@ -222,11 +222,11 @@ interface IShareClassManager {
     ///
     /// @param poolId Identifier of the pool
     /// @param shareClassId Identifier of the share class
-    /// @param investor Address of the recipient address of the share class tokens
+    /// @param investor Centrifuge Vault address of the recipient of the claimed share class tokens
     /// @param depositAssetId Identifier of the asset which the investor used for their deposit request
     /// @return payoutShareAmount Amount of shares which the investor receives
     /// @return paymentAssetAmount Amount of deposit asset which was taken as payment
-    function claimDeposit(PoolId poolId, ShareClassId shareClassId, address investor, AssetId depositAssetId)
+    function claimDeposit(PoolId poolId, ShareClassId shareClassId, bytes32 investor, AssetId depositAssetId)
         external
         returns (uint128 payoutShareAmount, uint128 paymentAssetAmount);
 
@@ -235,12 +235,12 @@ interface IShareClassManager {
     ///
     /// @param poolId Identifier of the pool
     /// @param shareClassId Identifier of the share class
-    /// @param investor Address of the recipient address of the asset amount
+    /// @param investor Centrifuge Vault address of the recipient of the claimed asset amount
     /// @param payoutAssetId Identifier of the asset which the investor requested to receive back for their redeemed
     /// shares
     /// @return payoutAssetAmount Amount of payout amount which the investor receives
     /// @return paymentShareAmount Amount of shares which the investor redeemed
-    function claimRedeem(PoolId poolId, ShareClassId shareClassId, address investor, AssetId payoutAssetId)
+    function claimRedeem(PoolId poolId, ShareClassId shareClassId, bytes32 investor, AssetId payoutAssetId)
         external
         returns (uint128 payoutAssetAmount, uint128 paymentShareAmount);
 

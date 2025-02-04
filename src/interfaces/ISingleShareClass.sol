@@ -57,7 +57,7 @@ interface ISingleShareClass is IShareClassManager {
     ///
     /// @param poolId Identifier of the pool
     /// @param shareClassId Identifier of the share class
-    /// @param investor Address of the recipient of the share class tokens
+    /// @param investor Centrifuge Vault address of the recipient of the claimed share class tokens
     /// @param depositAssetId Identifier of the asset which the investor used for their deposit request
     /// @param endEpochId Identifier of the maximum epoch until it is claimed claim
     /// @return payoutShareAmount Amount of shares which the investor receives
@@ -65,7 +65,7 @@ interface ISingleShareClass is IShareClassManager {
     function claimDepositUntilEpoch(
         PoolId poolId,
         ShareClassId shareClassId,
-        address investor,
+        bytes32 investor,
         AssetId depositAssetId,
         uint32 endEpochId
     ) external returns (uint128 payoutShareAmount, uint128 paymentAssetAmount);
@@ -75,7 +75,7 @@ interface ISingleShareClass is IShareClassManager {
     ///
     /// @param poolId Identifier of the pool
     /// @param shareClassId Identifier of the share class
-    /// @param investor Address of the recipient of the payout asset
+    /// @param investor Centrifuge Vault address of the recipient of the claimed payout asset amount
     /// @param payoutAssetId Identifier of the asset which the investor committed to as payout when requesting the
     /// redemption
     /// @param endEpochId Identifier of the maximum epoch until it is claimed claim
@@ -84,7 +84,7 @@ interface ISingleShareClass is IShareClassManager {
     function claimRedeemUntilEpoch(
         PoolId poolId,
         ShareClassId shareClassId,
-        address investor,
+        bytes32 investor,
         AssetId payoutAssetId,
         uint32 endEpochId
     ) external returns (uint128 payoutAssetAmount, uint128 paymentShareAmount);
