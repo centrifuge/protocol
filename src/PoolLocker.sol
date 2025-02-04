@@ -25,15 +25,12 @@ abstract contract PoolLocker is IPoolLocker {
 
     /// @inheritdoc IPoolLocker
     /// @dev All calls with `poolUnlocked` modifier are able to be called inside this method
-    function execute(PoolId poolId, address[] calldata targets, bytes[] calldata datas)
-        external
-        returns (bytes[] memory results)
-    {
+    function execute(PoolId poolId, IMulticall.Call[] calldata calls) external returns (bytes[] memory results) {
         require(PoolId.unwrap(_unlockedPoolId) == 0, PoolAlreadyUnlocked());
         _beforeUnlock(poolId);
         _unlockedPoolId = poolId;
 
-        results = multicall.aggregate(targets, datas);
+        results = multicall.aggregate(calls);
 
         _beforeLock();
         _unlockedPoolId = PoolId.wrap(0);

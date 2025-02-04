@@ -8,18 +8,13 @@ import {MathLib} from "src/libraries/MathLib.sol";
 import {OneToOneValuation} from "src/OneToOneValuation.sol";
 import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 import {IAssetManager} from "src/interfaces/IAssetManager.sol";
+import {MockAssetManager} from "test/mock/MockAssetManager.sol";
 
 address constant C6 = address(6);
 address constant C18 = address(18);
 
-contract MockedAssetManager {
-    function decimals(uint256 tokenId) external pure returns (uint8) {
-        return uint8(tokenId);
-    }
-}
-
 contract TestOneToOneValuation is Test {
-    OneToOneValuation valuation = new OneToOneValuation(IAssetManager(address(new MockedAssetManager())), address(0));
+    OneToOneValuation valuation = new OneToOneValuation(IAssetManager(address(new MockAssetManager())), address(0));
 
     function testSameDecimals() public view {
         assertEq(valuation.getQuote(100 * 1e6, C6, C6), 100 * 1e6);

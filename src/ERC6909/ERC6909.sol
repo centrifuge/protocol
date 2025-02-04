@@ -25,15 +25,7 @@ abstract contract ERC6909 is IERC6909 {
         virtual
         returns (bool)
     {
-        if (msg.sender != sender && !isOperator[sender][msg.sender]) {
-            uint256 allowed = allowance[sender][msg.sender][tokenId];
-            if (allowed != type(uint256).max) {
-                require(amount <= allowed, InsufficientAllowance(msg.sender, tokenId));
-                allowance[sender][msg.sender][tokenId] -= amount;
-            }
-        }
-
-        return _transfer(sender, receiver, tokenId, amount);
+        return _transferFrom(msg.sender, sender, receiver, tokenId, amount);
     }
 
     /// @inheritdoc IERC6909
@@ -55,7 +47,7 @@ abstract contract ERC6909 is IERC6909 {
     }
 
     /// @inheritdoc IERC165
-    function supportsInterface(bytes4 interfaceId) public pure returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public pure virtual returns (bool) {
         return type(IERC6909).interfaceId == interfaceId || type(IERC165).interfaceId == interfaceId;
     }
 
@@ -81,7 +73,22 @@ abstract contract ERC6909 is IERC6909 {
         emit Transfer(owner, owner, address(0), tokenId, amount);
     }
 
-    function _transfer(address sender, address receiver, uint256 tokenId, uint256 amount) private returns (bool) {
+    function _transferFrom(address spender, address sender, address receiver, uint256 tokenId, uint256 amount)
+        internal
+        returns (bool)
+    {
+        if (spender != sender && !isOperator[sender][spender]) {
+            uint256 allowed = allowance[sender][spender][tokenId];
+            if (allowed != type(uint256).max) {
+                require(amount <= allowed, InsufficientAllowance(spender, tokenId));
+                allowance[sender][spender][tokenId] -= amount;
+            }
+        }
+
+        return _transfer(sender, receiver, tokenId, amount);
+    }
+
+    function _transfer(address sender, address receiver, uint256 tokenId, uint256 amount) internal returns (bool) {
         uint256 senderBalance = balanceOf[sender][tokenId];
         require(senderBalance >= amount, InsufficientBalance(sender, tokenId));
 

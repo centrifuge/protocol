@@ -5,7 +5,7 @@ import {ERC6909} from "src/ERC6909/ERC6909.sol";
 import {StringLib} from "src/libraries/StringLib.sol";
 import {Auth} from "src/Auth.sol";
 import {IERC6909NFT} from "src/interfaces/ERC6909/IERC6909NFT.sol";
-import {IERC6909URIExtension} from "src/interfaces/ERC6909/IERC6909URIExtension.sol";
+import {IERC6909URIExt} from "src/interfaces/ERC6909/IERC6909URIExt.sol";
 
 contract ERC6909NFT is IERC6909NFT, ERC6909, Auth {
     using StringLib for string;
@@ -14,9 +14,9 @@ contract ERC6909NFT is IERC6909NFT, ERC6909, Auth {
 
     uint256 public latestTokenId;
 
-    /// @inheritdoc IERC6909URIExtension
+    /// @inheritdoc IERC6909URIExt
     string public contractURI;
-    /// @inheritdoc IERC6909URIExtension
+    /// @inheritdoc IERC6909URIExt
     mapping(uint256 tokenId => string URI) public tokenURI;
 
     constructor(address _owner) Auth(_owner) {}
