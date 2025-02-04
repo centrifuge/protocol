@@ -15,7 +15,7 @@ contract Accounting is Auth, IAccounting {
     bytes32 private /*TODO: transient*/ _transactionId;
     PoolId private /*TODO: transient*/ _currentPoolId;
 
-    constructor(address deployer) Auth(deployer) {    }
+    constructor(address deployer) Auth(deployer) {}
 
     /// @inheritdoc IAccounting
     function addDebit(AccountId account, uint128 value) public auth {
