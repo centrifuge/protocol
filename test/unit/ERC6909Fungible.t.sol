@@ -53,7 +53,7 @@ contract ERC6909FungibleAuthTest is ERC6909FungibleBaseTest {
     function testRevertOnUnauthorizedTransfer() public {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(makeAddr("unauthorized"));
-        token.authTransferFrom(self, makeAddr("from"), makeAddr("to"), 1, 1000);
+        token.authTransferFrom(makeAddr("from"), makeAddr("to"), 1, 1000);
     }
 }
 
@@ -158,7 +158,7 @@ contract ERC6909FungibleAuthorizedTransferTest is ERC6909FungibleBaseTest {
         token.mint(owner, tokenId, amount);
         assertEq(token.balanceOf(owner, tokenId), 1000);
 
-        token.authTransferFrom(owner, owner, self, tokenId, amount);
+        token.authTransferFrom(owner, self, tokenId, amount);
         assertEq(token.balanceOf(owner, tokenId), 0);
         assertEq(token.balanceOf(self, tokenId), amount);
     }

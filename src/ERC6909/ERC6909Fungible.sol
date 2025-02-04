@@ -30,12 +30,12 @@ contract ERC6909Fungible is IERC6909Fungible, IERC6909TotalSupplyExt, ERC6909, A
     }
 
     /// @inheritdoc IERC6909Fungible
-    function authTransferFrom(address spender, address sender, address receiver, uint256 tokenId, uint256 amount)
+    function authTransferFrom(address sender, address receiver, uint256 tokenId, uint256 amount)
         external
         auth
         returns (bool)
     {
-        return _transferFrom(spender, sender, receiver, tokenId, amount);
+        return _transfer(sender, receiver, tokenId, amount);
     }
 
     function supportsInterface(bytes4 interfaceId) public pure virtual override(ERC6909, IERC165) returns (bool) {

@@ -21,16 +21,12 @@ interface IERC6909Fungible is IERC6909 {
 
     /// @notice             Enforces a transfer from `spender` point of view.
     ///
-    /// @param spender      Address which could be:
-    ///                     - owner of the `tokenId`
-    ///                     - operator for `sender`
-    ///                     - has allowance for `sender`
     ///
     /// @param sender       The owner of the `tokenId`
     /// @param receiver     Address of the receiving party
     /// @param tokenId      Token Id
     /// @param amount       Amount to be transferred
-    function authTransferFrom(address spender, address sender, address receiver, uint256 tokenId, uint256 amount)
+    function authTransferFrom(address sender, address receiver, uint256 tokenId, uint256 amount)
         external
         returns (bool);
 }
