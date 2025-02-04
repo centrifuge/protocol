@@ -3,7 +3,7 @@ pragma solidity ^0.8.28;
 
 import "forge-std/Test.sol";
 
-import {SingleShareClass, EpochAmounts, UserOrder, AssetEpochState} from "src/SingleShareClass.sol";
+import {SingleShareClass, EpochAmounts, UserOrder, EpochPointers} from "src/SingleShareClass.sol";
 import {PoolId} from "src/types/PoolId.sol";
 import {AssetId} from "src/types/AssetId.sol";
 import {D18, d18} from "src/types/D18.sol";
@@ -133,12 +133,12 @@ abstract contract SingleShareClassBaseTest is Test {
         assertEq(redeemSharesRevoked, expected.redeemSharesRevoked, "redeemSharesRevoked mismatch");
     }
 
-    function _assertAssetEpochStateEq(bytes16 shareClassId_, address assetId, AssetEpochState memory expected)
+    function _assertEpochPointersEq(bytes16 shareClassId_, address assetId, EpochPointers memory expected)
         internal
         view
     {
         (uint32 latestDepositApproval, uint32 latestRedeemApproval, uint32 latestIssuance, uint32 latestRevocation) =
-            shareClass.assetEpochState(shareClassId_, assetId);
+            shareClass.epochPointers(shareClassId_, assetId);
 
         assertEq(latestDepositApproval, expected.latestDepositApproval, "latestDepositApproval mismatch");
         assertEq(latestRedeemApproval, expected.latestRedeemApproval, "latestRedeemApproval mismatch");
@@ -327,11 +327,11 @@ contract SingleShareClassDepositsNonTransientTest is SingleShareClassBaseTest {
         shareClass.approveDeposits(poolId, scId, approvalRatio, USDC, oracleMock);
 
         assertEq(shareClass.totalIssuance(scId), 0);
-        _assertAssetEpochStateEq(scId, USDC, AssetEpochState(1, 0, 0, 0));
+        _assertEpochPointersEq(scId, USDC, EpochPointers(1, 0, 0, 0));
 
         shareClass.issueShares(poolId, scId, USDC, shareToPoolQuote);
         assertEq(shareClass.totalIssuance(scId), shares);
-        _assertAssetEpochStateEq(scId, USDC, AssetEpochState(1, 0, 1, 0));
+        _assertEpochPointersEq(scId, USDC, EpochPointers(1, 0, 1, 0));
         _assertEpochAmountsEq(
             scId, USDC, 1, EpochAmounts(approvalRatio, d18(0), approvedUSDC, approvedPool, shares, 0, 0)
         );
@@ -525,7 +525,7 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
         shareClass.approveRedeems(poolId, scId, approvalRatio, USDC, oracleMock);
 
         assertEq(shareClass.totalIssuance(scId), redeemAmount);
-        _assertAssetEpochStateEq(scId, USDC, AssetEpochState(0, 1, 0, 0));
+        _assertEpochPointersEq(scId, USDC, EpochPointers(0, 1, 0, 0));
 
         (uint128 payoutAssetAmount, uint128 payoutPoolAmount) =
             shareClass.revokeShares(poolId, scId, USDC, shareToPoolQuote, oracleMock);
@@ -533,7 +533,7 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
         assertEq(poolAmount, payoutPoolAmount, "payout pool amount mismatch");
 
         assertEq(shareClass.totalIssuance(scId), redeemAmount - approvedRedeem);
-        _assertAssetEpochStateEq(scId, USDC, AssetEpochState(0, 1, 0, 1));
+        _assertEpochPointersEq(scId, USDC, EpochPointers(0, 1, 0, 1));
 
         _assertEpochAmountsEq(scId, USDC, 1, EpochAmounts(d18(0), approvalRatio, 0, 0, 0, assetAmount, approvedRedeem));
     }
@@ -646,7 +646,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         }
 
         shareClass.issueShares(poolId, scId, USDC, shareToPoolQuote);
-        _assertAssetEpochStateEq(scId, USDC, AssetEpochState(maxEpochId - 1, 0, maxEpochId - 1, 0));
+        _assertEpochPointersEq(scId, USDC, EpochPointers(maxEpochId - 1, 0, maxEpochId - 1, 0));
 
         // Ensure each epoch is issued separately
         pendingUSDC = depositAmount;
@@ -765,7 +765,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         }
 
         shareClass.revokeShares(poolId, scId, USDC, shareToPoolQuote, oracleMock);
-        _assertAssetEpochStateEq(scId, USDC, AssetEpochState(0, maxEpochId - 1, 0, maxEpochId - 1));
+        _assertEpochPointersEq(scId, USDC, EpochPointers(0, maxEpochId - 1, 0, maxEpochId - 1));
 
         // Ensure each epoch was revoked separately
         pendingRedeems = redeemAmount;
