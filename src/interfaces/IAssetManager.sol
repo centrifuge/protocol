@@ -6,20 +6,20 @@ import {IERC6909MetadataExt} from "src/interfaces/ERC6909/IERC6909MetadataExt.so
 
 // TODO
 interface IAssetManager is IERC6909MetadataExt {
-    event NewAssetEntry(AssetId indexed assetId, bytes name, bytes32 symbol, uint8 decimals);
+    event NewAssetEntry(AssetId indexed assetId, string name, string symbol, uint8 decimals);
 
     /// @dev Fired when id == 0
     error IncorrectAssetId();
     error AssetNotFound();
 
     struct Asset {
-        bytes name;
-        bytes32 symbol;
+        string name;
+        string symbol;
         uint8 decimals;
     }
 
     /// @notice             A getter function to get an Asset based on AssetId
-    function asset(AssetId assetId) external view returns (bytes memory name, bytes32 symbol, uint8 decimals);
+    function asset(AssetId assetId) external view returns (string memory name, string memory symbol, uint8 decimals);
 
     /// @notice             Checks whether an asset is registered or nto
     function isRegistered(AssetId assetId) external view returns (bool);
@@ -28,5 +28,5 @@ interface IAssetManager is IERC6909MetadataExt {
     /// @dev                This is expected to be called by PoolManager only.
     ///                     Adding new assets happens from the Vault's side.
     ///                     `decimals` MUST be different than 0.
-    function registerAsset(AssetId assetId, bytes calldata name, bytes32 symbol, uint8 decimals) external;
+    function registerAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals) external;
 }

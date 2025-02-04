@@ -13,12 +13,6 @@ import {MockAssetManager} from "test/mock/MockAssetManager.sol";
 address constant C6 = address(6);
 address constant C18 = address(18);
 
-contract MockedAssetManager {
-    function decimals(uint256 tokenId) external pure returns (uint8) {
-        return uint8(tokenId);
-    }
-}
-
 contract TestOneToOneValuation is Test {
     OneToOneValuation valuation = new OneToOneValuation(IAssetManager(address(new MockAssetManager())), address(0));
 

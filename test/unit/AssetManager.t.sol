@@ -3,8 +3,10 @@ pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 import {IERC165} from "forge-std/interfaces/IERC165.sol";
+
 import {AssetId} from "src/types/AssetId.sol";
 import {IAuth} from "src/interfaces/IAuth.sol";
+import {MathLib} from "src/libraries/MathLib.sol";
 import {AssetManager} from "src/AssetManager.sol";
 import {IAssetManager} from "src/interfaces/IAssetManager.sol";
 import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
@@ -15,8 +17,8 @@ abstract contract AssetManagerBaseTest is Test {
     address self;
     AssetManager manager;
     AssetId assetId = AssetId.wrap(1);
-    bytes name = "MyTestAsset";
-    bytes32 symbol = "MTA";
+    string name = "MyTestAsset";
+    string symbol = "MTA";
     uint8 decimals = 18;
 
     function setUp() public virtual {
@@ -57,9 +59,9 @@ contract AssetManagementTest is AssetManagerBaseTest {
         manager.registerAsset(assetId, name, symbol, decimals);
         assertTrue(manager.isRegistered(assetId));
 
-        (bytes memory name_, bytes32 symbol_, uint8 decimals_) = manager.asset(assetId);
+        (string memory name_, string memory symbol_, uint8 decimals_) = manager.asset(assetId);
 
-        assertEq(keccak256(name_), keccak256(name));
+        assertEq(keccak256(abi.encodePacked(name_)), keccak256(abi.encodePacked(name)));
         assertEq(symbol_, symbol);
         assertEq(decimals_, decimals);
     }
@@ -79,8 +81,8 @@ contract AssetManagementTest is AssetManagerBaseTest {
         emit IAssetManager.NewAssetEntry(assetId, name, symbol, decimals);
         manager.registerAsset(assetId, name, symbol, 6);
 
-        (bytes memory name_, bytes32 symbol_, uint8 decimals_) = manager.asset(assetId);
-        assertEq(keccak256(name_), keccak256(name));
+        (string memory name_, string memory symbol_, uint8 decimals_) = manager.asset(assetId);
+        assertEq(keccak256(abi.encodePacked(name_)), keccak256(abi.encodePacked(name)));
         assertEq(symbol_, symbol);
         assertEq(decimals_, decimals);
     }
@@ -98,34 +100,39 @@ contract AssetManagementTest is AssetManagerBaseTest {
 }
 
 contract AssetMetadataRetrievalTest is AssetManagerBaseTest {
+    using MathLib for uint128;
+
+    uint256 rawAssetId;
+
     function setUp() public override {
         super.setUp();
+        rawAssetId = uint256(assetId.raw());
         manager.registerAsset(assetId, name, symbol, decimals);
     }
 
     function testRetrievingDecimals() public view {
-        assertEq(manager.decimals(assetId.addr()), decimals);
+        assertEq(manager.decimals(rawAssetId), decimals);
     }
 
     function testRevertWhenAssetDoesNotExist() public {
         vm.expectRevert(IAssetManager.AssetNotFound.selector);
-        manager.decimals(AssetId.wrap(8337).addr());
+        manager.decimals(8337);
     }
 
     function testRetrievingName() public view {
         // when exists
-        assertEq(manager.name(assetId.addr()), name);
+        assertEq(manager.name(uint256(assetId.raw())), name);
 
         // when doesn't exist
-        assertEq(manager.name(AssetId.wrap(1234).addr()), "");
+        assertEq(manager.name(1234), "");
     }
 
     function testRetrivingSymbol() public view {
         // when exists
-        assertEq(manager.symbol(assetId.addr()), symbol);
+        assertEq(manager.symbol(rawAssetId), symbol);
 
         // when doesn't exist
-        assertEq(manager.symbol(AssetId.wrap(1234).addr()), bytes32(""));
+        assertEq(manager.symbol(1234), "");
     }
 }
 
