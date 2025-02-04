@@ -6,6 +6,7 @@ import {IERC7726} from "src/interfaces/IERC7726.sol";
 import {PoolId} from "src/types/PoolId.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 import {AssetId} from "src/types/AssetId.sol";
+import {ShareClassId} from "src/types/ShareClassId.sol";
 
 interface ISingleShareClass is IShareClassManager {
     /// Events
@@ -25,7 +26,7 @@ interface ISingleShareClass is IShareClassManager {
     /// @param endEpochId Identifier of the maximum epoch until which shares are issued
     function issueSharesUntilEpoch(
         PoolId poolId,
-        bytes16 shareClassId,
+        ShareClassId shareClassId,
         AssetId depositAssetId,
         D18 navPerShare,
         uint32 endEpochId
@@ -44,7 +45,7 @@ interface ISingleShareClass is IShareClassManager {
     /// @return payoutPoolAmount Converted amount of pool currency based on number of revoked shares
     function revokeSharesUntilEpoch(
         PoolId poolId,
-        bytes16 shareClassId,
+        ShareClassId shareClassId,
         AssetId payoutAssetId,
         D18 navPerShare,
         IERC7726 valuation,
@@ -63,7 +64,7 @@ interface ISingleShareClass is IShareClassManager {
     /// @return paymentAssetAmount Amount of deposit asset which was taken as payment
     function claimDepositUntilEpoch(
         PoolId poolId,
-        bytes16 shareClassId,
+        ShareClassId shareClassId,
         address investor,
         AssetId depositAssetId,
         uint32 endEpochId
@@ -82,7 +83,7 @@ interface ISingleShareClass is IShareClassManager {
     /// @return paymentShareAmount Amount of shares which the investor redeemed
     function claimRedeemUntilEpoch(
         PoolId poolId,
-        bytes16 shareClassId,
+        ShareClassId shareClassId,
         address investor,
         AssetId payoutAssetId,
         uint32 endEpochId

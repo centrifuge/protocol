@@ -14,11 +14,12 @@ import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 import {ISingleShareClass} from "src/interfaces/ISingleShareClass.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
 import {AssetId} from "src/types/AssetId.sol";
+import {ShareClassId} from "src/types/ShareClassId.sol";
 
 bool constant WITH_TRANSIENT = false;
 uint128 constant TRANSIENT_STORAGE_SHIFT = WITH_TRANSIENT ? 1 : 0;
 uint64 constant POOL_ID = 42;
-bytes16 constant SHARE_CLASS_ID = bytes16(uint128(POOL_ID));
+ShareClassId constant SHARE_CLASS_ID = ShareClassId.wrap(uint128(POOL_ID));
 address constant POOL_CURRENCY = address(840);
 AssetId constant USDC = AssetId.wrap(69);
 address constant USDC_ADDR = address(uint160(AssetId.unwrap(USDC)));
@@ -53,7 +54,7 @@ contract OracleMock is IERC7726 {
             return baseAmount.mulDiv(DENO_USDC, DENO_POOL);
         } else if (base == POOL_CURRENCY && quote == OTHER_STABLE.addr()) {
             return baseAmount.mulDiv(DENO_OTHER_STABLE, DENO_POOL);
-        } else if (base == POOL_CURRENCY && quote == address(bytes20(SHARE_CLASS_ID))) {
+        } else if (base == POOL_CURRENCY && quote == address(uint160(ShareClassId.unwrap(SHARE_CLASS_ID)))) {
             return baseAmount;
         } else {
             revert("Unsupported factor pair");
@@ -71,7 +72,7 @@ abstract contract SingleShareClassBaseTest is Test {
     PoolRegistryMock poolRegistryMock = new PoolRegistryMock();
 
     PoolId poolId = PoolId.wrap(POOL_ID);
-    bytes16 scId = SHARE_CLASS_ID;
+    ShareClassId scId = SHARE_CLASS_ID;
     address poolRegistryAddress = makeAddr("poolRegistry");
     address investor = makeAddr("investor");
 
@@ -93,30 +94,36 @@ abstract contract SingleShareClassBaseTest is Test {
         assertEq(IPoolRegistry(poolRegistryAddress).currency(poolId).addr(), POOL_CURRENCY);
     }
 
-    function _assertDepositRequestEq(bytes16 shareClassId_, AssetId asset, address investor_, UserOrder memory expected)
-        internal
-        view
-    {
+    function _assertDepositRequestEq(
+        ShareClassId shareClassId_,
+        AssetId asset,
+        address investor_,
+        UserOrder memory expected
+    ) internal view {
         (uint128 pending, uint32 lastUpdate) = shareClass.depositRequest(shareClassId_, asset, investor_);
 
         assertEq(pending, expected.pending, "pending mismatch");
         assertEq(lastUpdate, expected.lastUpdate, "lastUpdate mismatch");
     }
 
-    function _assertRedeemRequestEq(bytes16 shareClassId_, AssetId asset, address investor_, UserOrder memory expected)
-        internal
-        view
-    {
+    function _assertRedeemRequestEq(
+        ShareClassId shareClassId_,
+        AssetId asset,
+        address investor_,
+        UserOrder memory expected
+    ) internal view {
         (uint128 pending, uint32 lastUpdate) = shareClass.redeemRequest(shareClassId_, asset, investor_);
 
         assertEq(pending, expected.pending, "pending mismatch");
         assertEq(lastUpdate, expected.lastUpdate, "lastUpdate mismatch");
     }
 
-    function _assertEpochAmountsEq(bytes16 shareClassId_, AssetId assetId, uint32 epochId, EpochAmounts memory expected)
-        internal
-        view
-    {
+    function _assertEpochAmountsEq(
+        ShareClassId shareClassId_,
+        AssetId assetId,
+        uint32 epochId,
+        EpochAmounts memory expected
+    ) internal view {
         (
             D18 depositApprovalRate,
             D18 redeemApprovalRate,
@@ -136,7 +143,7 @@ abstract contract SingleShareClassBaseTest is Test {
         assertEq(redeemSharesRevoked, expected.redeemSharesRevoked, "redeemSharesRevoked mismatch");
     }
 
-    function _assertEpochPointersEq(bytes16 shareClassId_, AssetId assetId, EpochPointers memory expected)
+    function _assertEpochPointersEq(ShareClassId shareClassId_, AssetId assetId, EpochPointers memory expected)
         internal
         view
     {
@@ -185,7 +192,7 @@ contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
         vm.assume(nonWard != address(shareClass.poolRegistry()) && nonWard != address(this));
 
         assertEq(address(shareClass.poolRegistry()), poolRegistryAddress);
-        assertEq(shareClass.shareClassId(poolId), scId);
+        assertEq(ShareClassId.unwrap(shareClass.shareClassId(poolId)), ShareClassId.unwrap(scId));
 
         assertEq(shareClass.wards(address(this)), 1);
         assertEq(shareClass.wards(address(shareClass.poolRegistry())), 0);
@@ -934,7 +941,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
 contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     using MathLib for uint128;
 
-    bytes16 wrongShareClassId = bytes16("otherId");
+    ShareClassId wrongShareClassId = ShareClassId.wrap(uint128(POOL_ID + 1));
     address unauthorized = makeAddr("unauthorizedAddress");
 
     function testFile(bytes32 what) public {
