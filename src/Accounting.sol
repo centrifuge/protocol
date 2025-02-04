@@ -65,8 +65,7 @@ contract Accounting is Auth, IAccounting {
     }
 
     function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external auth {
-        Account storage acc = accounts[poolId][account];
-        acc.metadata = metadata;
+        accounts[poolId][account].metadata = metadata;
     }
 
     /// @inheritdoc IAccounting

@@ -45,7 +45,7 @@ contract AccountingTest is Test {
         emit IAccounting.Debit(POOL_A, bytes32("1"), CASH_ACCOUNT, 500);
         accounting.addDebit(CASH_ACCOUNT, 500);
 
-        vm.expectEmit(true, false, true, true);
+        vm.expectEmit();
         emit IAccounting.Credit(POOL_A, bytes32("1"), EQUITY_ACCOUNT, 500);
         accounting.addCredit(EQUITY_ACCOUNT, 500);
 
