@@ -34,13 +34,10 @@ contract PoolLockerTest is Test {
     PoolManagerMock poolManager = new PoolManagerMock(multicall);
 
     function testWithPoolUnlockerMethod() public {
-        address[] memory targets = new address[](1);
-        targets[0] = address(poolManager);
+        IMulticall.Call[] memory calls = new IMulticall.Call[](1);
+        calls[0] = IMulticall.Call(address(poolManager), abi.encodeWithSelector(poolManager.poolRelatedMethod.selector));
 
-        bytes[] memory methods = new bytes[](1);
-        methods[0] = abi.encodeWithSelector(poolManager.poolRelatedMethod.selector);
-
-        bytes[] memory results = poolManager.execute(POOL_A, targets, methods);
+        bytes[] memory results = poolManager.execute(POOL_A, calls);
         assertEq(PoolId.unwrap(abi.decode(results[0], (PoolId))), PoolId.unwrap(POOL_A));
 
         assertEq(PoolId.unwrap(poolManager.wasUnlockWithPool()), PoolId.unwrap(POOL_A));
@@ -48,20 +45,17 @@ contract PoolLockerTest is Test {
     }
 
     function testErrPoolAlreadyUnlocked() public {
-        address[] memory innerTargets = new address[](1);
-        innerTargets[0] = address(poolManager);
+        IMulticall.Call[] memory innerCalls = new IMulticall.Call[](1);
+        innerCalls[0] =
+            IMulticall.Call(address(poolManager), abi.encodeWithSelector(poolManager.poolRelatedMethod.selector));
 
-        bytes[] memory innerMethods = new bytes[](1);
-        innerMethods[0] = abi.encodeWithSelector(poolManager.poolRelatedMethod.selector);
-
-        address[] memory targets = new address[](1);
-        targets[0] = address(poolManager);
-
-        bytes[] memory methods = new bytes[](1);
-        methods[0] = abi.encodeWithSelector(poolManager.execute.selector, POOL_A, innerTargets, innerMethods);
+        IMulticall.Call[] memory calls = new IMulticall.Call[](1);
+        calls[0] = IMulticall.Call(
+            address(poolManager), abi.encodeWithSelector(poolManager.execute.selector, POOL_A, innerCalls)
+        );
 
         vm.expectRevert(IPoolLocker.PoolAlreadyUnlocked.selector);
-        poolManager.execute(POOL_A, targets, methods);
+        poolManager.execute(POOL_A, calls);
     }
 
     function testErrPoolLocked() public {

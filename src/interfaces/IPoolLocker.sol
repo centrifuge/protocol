@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {PoolId} from "src/types/PoolId.sol";
+import {IMulticall} from "src/interfaces/IMulticall.sol";
 
 /// @notice Abstract the mechanism to unlock pools
 interface IPoolLocker {
@@ -16,9 +17,7 @@ interface IPoolLocker {
     error PoolLocked();
 
     /// @notice Execute a multicall inside of an unlocked pool.
-    function execute(PoolId poolId, address[] calldata targets, bytes[] calldata datas)
-        external
-        returns (bytes[] memory results);
+    function execute(PoolId poolId, IMulticall.Call[] calldata calls) external returns (bytes[] memory results);
 
     /// @notice Returns the unlocked poolId.
     /// In only will contain a non-zero value if called inside `execute()`
