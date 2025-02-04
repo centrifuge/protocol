@@ -9,6 +9,7 @@ import {Auth} from "src/Auth.sol";
 
 contract Accounting is Auth, IAccounting {
     mapping(PoolId => mapping(AccountId => Account)) public accounts;
+    mapping(PoolId => uint128) private _transactionCounter;
 
     uint128 public /*TODO: transient*/ debited;
     uint128 public /*TODO: transient*/ credited;
@@ -48,8 +49,8 @@ contract Accounting is Auth, IAccounting {
         require(PoolId.unwrap(_currentPoolId) == 0, AccountingAlreadyUnlocked());
         debited = 0;
         credited = 0;
-        // Include the previous transactionId in case there's multiple transactions in one block
-        _transactionId = uint256(keccak256(abi.encodePacked(poolId, block.timestamp, _transactionId)));
+        _transactionCounter[poolId]++;
+        _transactionId = uint256(keccak256(abi.encodePacked(poolId, block.timestamp, _transactionCounter[poolId])));
         _currentPoolId = poolId;
     }
 
