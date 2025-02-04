@@ -3,8 +3,11 @@ pragma solidity 0.8.28;
 
 /// @notice Allows to call several calls in the same transactions
 interface IMulticall {
+    /// @notice Identify a call method.
     struct Call {
+        /// @notice Contract from where to perform the call
         address target;
+        /// @notice Encoding of selector + parameters of the method
         bytes data;
     }
 
