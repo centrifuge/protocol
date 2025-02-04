@@ -147,7 +147,7 @@ interface IShareClassManager {
     /// @return cancelledAmount The redeem amount which was previously pending and is now cancelled
     function cancelRedeemRequest(PoolId poolId, bytes16 shareClassId, address investor, AssetId payoutAssetId)
         external
-        returns (uint128 cancelledAmount);
+        returns (uint128 cancelledShareAmount);
 
     /// @notice Approves a percentage of all deposit requests for the given triplet of pool id, share class id and
     /// deposit asset id.
