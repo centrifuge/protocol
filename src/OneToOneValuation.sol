@@ -5,7 +5,7 @@ import {D18, d18} from "src/types/D18.sol";
 
 import {Conversion} from "src/libraries/Conversion.sol";
 
-import {IERC7726, IERC7726Ext} from "src/interfaces/IERC7726.sol";
+import {IERC7726} from "src/interfaces/IERC7726.sol";
 import {IOneToOneValuation} from "src/interfaces/IOneToOneValuation.sol";
 import {IAssetManager} from "src/interfaces/IAssetManager.sol";
 
