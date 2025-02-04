@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import {ERC6909NFT} from "src/ERC6909/ERC6909NFT.sol";
 import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
 import {IERC6909NFT} from "src/interfaces/ERC6909/IERC6909NFT.sol";
-import {IERC6909URIExtension} from "src/interfaces/ERC6909/IERC6909URIExtension.sol";
+import {IERC6909URIExt} from "src/interfaces/ERC6909/IERC6909URIExt.sol";
 import {StringLib} from "src/libraries/StringLib.sol";
 import {IERC6909} from "src/interfaces/ERC6909/IERC6909.sol";
 import {IERC165} from "forge-std/interfaces/IERC165.sol";
@@ -58,7 +58,7 @@ contract ERC6909NFTTest is Test {
         vm.expectRevert(IERC6909.EmptyOwner.selector);
         token.mint(address(0), URI);
 
-        vm.expectRevert(IERC6909URIExtension.EmptyURI.selector);
+        vm.expectRevert(IERC6909URIExt.EmptyURI.selector);
         token.mint(owner, "");
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
