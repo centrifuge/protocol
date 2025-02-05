@@ -22,16 +22,16 @@ contract TestFile is Test {
 
     function testSuccess() public {
         vm.expectEmit();
-        emit IBaseValuation.File("assetManager", address(23));
-        valuation.file("assetManager", address(23));
+        emit IBaseValuation.File("erc6909", address(23));
+        valuation.file("erc6909", address(23));
 
-        assertEq(address(valuation.assetManager()), address(23));
+        assertEq(address(valuation.erc6909()), address(23));
     }
 
     function testErrNotAuthorized() public {
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        valuation.file("assetManager", address(23));
+        valuation.file("erc6909", address(23));
     }
 
     function testErrFileUnrecognizedWhat() public {

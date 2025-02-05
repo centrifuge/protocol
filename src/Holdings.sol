@@ -6,7 +6,6 @@ import {AssetId} from "src/types/AssetId.sol";
 import {ShareClassId} from "src/types/ShareClassId.sol";
 import {AccountId} from "src/types/AccountId.sol";
 
-import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 import {IHoldings} from "src/interfaces/IHoldings.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
