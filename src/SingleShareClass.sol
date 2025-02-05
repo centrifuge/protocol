@@ -75,9 +75,9 @@ contract SingleShareClass is Auth, ISingleShareClass {
     }
 
     function file(bytes32 what, address data) external auth {
-        require(what == "poolRegistry", ISingleShareClass.UnrecognizedFileParam());
+        require(what == "poolRegistry", UnrecognizedFileParam());
         poolRegistry = IPoolRegistry(data);
-        emit ISingleShareClass.File(what, data);
+        emit File(what, data);
     }
 
     /// @inheritdoc IShareClassManager
@@ -86,7 +86,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         auth
         returns (ShareClassId shareClassId_)
     {
-        require(shareClassId[poolId].isNull(), IShareClassManager.MaxShareClassNumberExceeded(1));
+        require(shareClassId[poolId].isNull(), MaxShareClassNumberExceeded(1));
 
         shareClassId_ = ShareClassId.wrap(uint128(PoolId.unwrap(poolId)));
 
@@ -154,15 +154,14 @@ contract SingleShareClass is Auth, ISingleShareClass {
         IERC7726 valuation
     ) external auth returns (uint128 approvedAssetAmount, uint128 approvedPoolAmount) {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
-        require(approvalRatio.inner() <= 1e18, ISingleShareClass.MaxApprovalRatioExceeded());
+        require(approvalRatio.inner() <= 1e18, MaxApprovalRatioExceeded());
 
         // Advance epochId if it has not been advanced within this transaction (e.g. in case of multiCall context)
         uint32 approvalEpochId = _advanceEpoch(poolId);
 
         // Block approvals for the same asset in the same epoch
         require(
-            epochPointers[shareClassId_][paymentAssetId].latestDepositApproval != approvalEpochId,
-            ISingleShareClass.AlreadyApproved()
+            epochPointers[shareClassId_][paymentAssetId].latestDepositApproval != approvalEpochId, AlreadyApproved()
         );
 
         // Reduce pending
@@ -182,7 +181,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         epochAmounts_.depositPoolAmount = approvedPoolAmount;
         epochPointers[shareClassId_][paymentAssetId].latestDepositApproval = approvalEpochId;
 
-        emit IShareClassManager.ApprovedDeposits(
+        emit ApprovedDeposits(
             poolId,
             shareClassId_,
             approvalEpochId,
@@ -203,16 +202,13 @@ contract SingleShareClass is Auth, ISingleShareClass {
         IERC7726 /* valuation */
     ) external auth returns (uint128 approvedShareAmount, uint128 pendingShareAmount) {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
-        require(approvalRatio.inner() <= 1e18, ISingleShareClass.MaxApprovalRatioExceeded());
+        require(approvalRatio.inner() <= 1e18, MaxApprovalRatioExceeded());
 
         // Advance epochId if it has not been advanced within this transaction (e.g. in case of multiCall context)
         uint32 approvalEpochId = _advanceEpoch(poolId);
 
         // Block approvals for the same asset in the same epoch
-        require(
-            epochPointers[shareClassId_][payoutAssetId].latestRedeemApproval != approvalEpochId,
-            ISingleShareClass.AlreadyApproved()
-        );
+        require(epochPointers[shareClassId_][payoutAssetId].latestRedeemApproval != approvalEpochId, AlreadyApproved());
 
         // Reduce pending
         approvedShareAmount = approvalRatio.mulUint128(pendingRedeem[shareClassId_][payoutAssetId]);
@@ -226,7 +222,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
         epochPointers[shareClassId_][payoutAssetId].latestRedeemApproval = approvalEpochId;
 
-        emit IShareClassManager.ApprovedRedeems(
+        emit ApprovedRedeems(
             poolId,
             shareClassId_,
             approvalEpochId,
@@ -243,9 +239,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         auth
     {
         EpochPointers storage epochPointers_ = epochPointers[shareClassId_][depositAssetId];
-        require(
-            epochPointers_.latestDepositApproval > epochPointers_.latestIssuance, ISingleShareClass.ApprovalRequired()
-        );
+        require(epochPointers_.latestDepositApproval > epochPointers_.latestIssuance, ApprovalRequired());
 
         issueSharesUntilEpoch(poolId, shareClassId_, depositAssetId, navPerShare, epochPointers_.latestDepositApproval);
     }
@@ -259,7 +253,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         uint32 endEpochId
     ) public auth {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
-        require(endEpochId < epochId[poolId], IShareClassManager.EpochNotFound());
+        require(endEpochId < epochId[poolId], EpochNotFound());
 
         uint128 totalIssuance_ = totalIssuance[shareClassId_];
 
@@ -279,7 +273,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
             totalIssuance_ += newShareAmount;
             uint128 nav = navPerShare.mulUint128(totalIssuance_);
 
-            emit IShareClassManager.IssuedShares(poolId, shareClassId_, epochId_, navPerShare, nav, newShareAmount);
+            emit IssuedShares(poolId, shareClassId_, epochId_, navPerShare, nav, newShareAmount);
         }
 
         totalIssuance[shareClassId_] = totalIssuance_;
@@ -296,9 +290,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         IERC7726 valuation
     ) external auth returns (uint128 payoutAssetAmount, uint128 payoutPoolAmount) {
         EpochPointers storage epochPointers_ = epochPointers[shareClassId_][payoutAssetId];
-        require(
-            epochPointers_.latestRedeemApproval > epochPointers_.latestRevocation, ISingleShareClass.ApprovalRequired()
-        );
+        require(epochPointers_.latestRedeemApproval > epochPointers_.latestRevocation, ApprovalRequired());
 
         return revokeSharesUntilEpoch(
             poolId, shareClassId_, payoutAssetId, navPerShare, valuation, epochPointers_.latestRedeemApproval
@@ -315,7 +307,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         uint32 endEpochId
     ) public auth returns (uint128 payoutAssetAmount, uint128 payoutPoolAmount) {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
-        require(endEpochId < epochId[poolId], IShareClassManager.EpochNotFound());
+        require(endEpochId < epochId[poolId], EpochNotFound());
 
         uint128 totalIssuance_ = totalIssuance[shareClassId_];
         address poolCurrency = poolRegistry.currency(poolId).addr();
@@ -370,7 +362,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         uint32 endEpochId
     ) public returns (uint128 payoutShareAmount, uint128 paymentAssetAmount) {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
-        require(endEpochId < epochId[poolId], IShareClassManager.EpochNotFound());
+        require(endEpochId < epochId[poolId], EpochNotFound());
 
         UserOrder storage userOrder = depositRequest[shareClassId_][depositAssetId][investor];
 
@@ -391,7 +383,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
             payoutShareAmount += claimableShareAmount;
             paymentAssetAmount += approvedAssetAmount;
 
-            emit IShareClassManager.ClaimedDeposit(
+            emit ClaimedDeposit(
                 poolId,
                 shareClassId_,
                 epochId_,
@@ -425,7 +417,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         uint32 endEpochId
     ) public returns (uint128 payoutAssetAmount, uint128 paymentShareAmount) {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
-        require(endEpochId < epochId[poolId], IShareClassManager.EpochNotFound());
+        require(endEpochId < epochId[poolId], EpochNotFound());
 
         UserOrder storage userOrder = redeemRequest[shareClassId_][payoutAssetId][investor];
 
@@ -447,7 +439,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
             userOrder.pending -= approvedShareAmount;
 
-            emit IShareClassManager.ClaimedRedeem(
+            emit ClaimedRedeem(
                 poolId,
                 shareClassId_,
                 epochId_,
@@ -514,7 +506,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
             IERC7726(valuation).getQuote(payoutPoolAmount, poolCurrency, payoutAssetId.addr()).toUint128();
 
         uint128 nav = navPerShare.mulUint128(totalIssuance_ - epochAmounts_.redeemSharesRevoked);
-        emit IShareClassManager.RevokedShares(
+        emit RevokedShares(
             poolId,
             shareClassId_,
             epochId_,
@@ -546,7 +538,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         uint32 latestApproval = epochPointers[shareClassId_][depositAssetId].latestDepositApproval;
         require(
             userOrder.pending == 0 || latestApproval == 0 || userOrder.lastUpdate > latestApproval,
-            IShareClassManager.ClaimDepositRequired()
+            ClaimDepositRequired()
         );
 
         userOrder.lastUpdate = epochId[poolId];
@@ -556,7 +548,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
             ? pendingDeposit[shareClassId_][depositAssetId] + uint128(amount)
             : pendingDeposit[shareClassId_][depositAssetId] - uint128(-amount);
 
-        emit IShareClassManager.UpdatedDepositRequest(
+        emit UpdatedDepositRequest(
             poolId,
             shareClassId_,
             epochId[poolId],
@@ -587,7 +579,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         uint32 latestApproval = epochPointers[shareClassId_][payoutAssetId].latestRedeemApproval;
         require(
             userOrder.pending == 0 || latestApproval == 0 || userOrder.lastUpdate > latestApproval,
-            IShareClassManager.ClaimRedeemRequired()
+            ClaimRedeemRequired()
         );
 
         userOrder.lastUpdate = epochId[poolId];
@@ -597,7 +589,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
             ? pendingRedeem[shareClassId_][payoutAssetId] + uint128(amount)
             : pendingRedeem[shareClassId_][payoutAssetId] - uint128(-amount);
 
-        emit IShareClassManager.UpdatedRedeemRequest(
+        emit UpdatedRedeemRequest(
             poolId,
             shareClassId_,
             epochId[poolId],
@@ -624,7 +616,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
             uint32 newEpochId = epochId_ + 1;
             epochId[poolId] = newEpochId;
 
-            emit IShareClassManager.NewEpoch(poolId, newEpochId);
+            emit NewEpoch(poolId, newEpochId);
 
             return epochId_;
         } else {
