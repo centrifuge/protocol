@@ -15,4 +15,8 @@ library PoolIdLib {
     function newFrom(uint32 localPoolId) internal view returns (PoolId) {
         return PoolId.wrap((uint64(block.chainid.toUint32()) << 32) | uint64(localPoolId));
     }
+
+    function isNull(PoolId assetId) internal pure returns (bool) {
+        return PoolId.unwrap(assetId) == 0;
+    }
 }

@@ -12,17 +12,16 @@ import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
 import {IAuth} from "src/interfaces/IAuth.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
 import {IHoldings} from "src/interfaces/IHoldings.sol";
-import {IERC20Metadata} from "src/interfaces/IERC20Metadata.sol";
 
 PoolId constant POOL_A = PoolId.wrap(42);
 ShareClassId constant SC_1 = ShareClassId.wrap(1);
 AssetId constant ASSET_A = AssetId.wrap(2);
 ShareClassId constant NON_SC = ShareClassId.wrap(0);
 AssetId constant NON_ASSET = AssetId.wrap(0);
-IERC20Metadata constant POOL_CURRENCY = IERC20Metadata(address(1));
+AssetId constant POOL_CURRENCY = AssetId.wrap(23);
 
 contract PoolRegistryMock {
-    function currency(PoolId) external pure returns (IERC20Metadata) {
+    function currency(PoolId) external pure returns (AssetId) {
         return POOL_CURRENCY;
     }
 }
@@ -37,7 +36,7 @@ contract TestCommon is Test {
         vm.mockCall(
             address(valuation),
             abi.encodeWithSelector(
-                IERC7726.getQuote.selector, uint256(baseAmount), AssetId.unwrap(ASSET_A), address(POOL_CURRENCY)
+                IERC7726.getQuote.selector, uint256(baseAmount), AssetId.unwrap(ASSET_A), POOL_CURRENCY.addr()
             ),
             abi.encode(uint256(quoteAmount))
         );

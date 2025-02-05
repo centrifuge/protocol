@@ -163,15 +163,15 @@ interface IShareClassManager {
     /// @param approvalRatio Percentage of approved requests
     /// @param paymentAssetId Identifier of the asset locked for the deposit request
     /// @param valuation Source of truth for quotas, e.g. the price of an asset amount to pool amount
-    /// @return approvedPoolAmount Sum of deposit request amounts in pool amount which was approved
     /// @return approvedAssetAmount Sum of deposit request amounts in asset amount which was not approved
+    /// @return approvedPoolAmount Sum of deposit request amounts in pool amount which was approved
     function approveDeposits(
         PoolId poolId,
         ShareClassId shareClassId,
         D18 approvalRatio,
         AssetId paymentAssetId,
         IERC7726 valuation
-    ) external returns (uint128 approvedPoolAmount, uint128 approvedAssetAmount);
+    ) external returns (uint128 approvedAssetAmount, uint128 approvedPoolAmount);
 
     /// @notice Approves a percentage of all redemption requests for the given triplet of pool id, share class id and
     /// deposit asset id.
