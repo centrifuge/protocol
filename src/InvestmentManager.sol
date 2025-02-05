@@ -106,6 +106,8 @@ contract InvestmentManager is Auth, IInvestmentManager {
         // You cannot redeem using a disallowed asset, instead another vault will have to be used
         require(poolManager.isAllowedAsset(vault_.poolId(), vault_.asset()), "InvestmentManager/asset-not-allowed");
 
+        require(_canTransfer(vault, controller, address(escrow), shares), "InvestmentManager/transfer-not-allowed");
+
         return _processRedeemRequest(vault, _shares, controller, source, false);
     }
 
@@ -527,6 +529,11 @@ contract InvestmentManager is Auth, IInvestmentManager {
         address receiver
     ) internal {
         IERC7540Vault vault_ = IERC7540Vault(vault);
+        require(
+            _canTransfer(vault, receiver, address(0), convertToShares(vault, assetsDown)),
+            "InvestmentManager/transfer-not-allowed"
+        );
+
         require(assetsUp <= state.maxWithdraw, "InvestmentManager/exceeds-redeem-limits");
         state.maxWithdraw = state.maxWithdraw > assetsUp ? state.maxWithdraw - assetsUp : 0;
         if (assetsDown > 0) SafeTransferLib.safeTransferFrom(vault_.asset(), address(escrow), receiver, assetsDown);

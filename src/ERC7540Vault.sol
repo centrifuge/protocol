@@ -28,7 +28,8 @@ contract ERC7540Vault is Auth, IERC7540Vault {
     uint256 private constant REQUEST_ID = 0;
 
     IRoot public immutable root;
-    address public immutable escrow;
+
+    address public escrow;
     IInvestmentManager public manager;
 
     /// @inheritdoc IERC7540Vault
@@ -87,6 +88,7 @@ contract ERC7540Vault is Auth, IERC7540Vault {
     // --- Administration ---
     function file(bytes32 what, address data) external auth {
         if (what == "manager") manager = IInvestmentManager(data);
+        else if (what == "escrow") escrow = data;
         else revert("ERC7540Vault/file-unrecognized-param");
         emit File(what, data);
     }
@@ -312,7 +314,7 @@ contract ERC7540Vault is Auth, IERC7540Vault {
     function deposit(uint256 assets, address receiver, address controller) public returns (uint256 shares) {
         _validateController(controller);
         shares = manager.deposit(address(this), assets, receiver, controller);
-        emit Deposit(receiver, controller, assets, shares);
+        emit Deposit(controller, receiver, assets, shares);
     }
 
     /// @inheritdoc IERC7575
@@ -331,7 +333,7 @@ contract ERC7540Vault is Auth, IERC7540Vault {
     function mint(uint256 shares, address receiver, address controller) public returns (uint256 assets) {
         _validateController(controller);
         assets = manager.mint(address(this), shares, receiver, controller);
-        emit Deposit(receiver, controller, assets, shares);
+        emit Deposit(controller, receiver, assets, shares);
     }
 
     /// @inheritdoc IERC7575
@@ -388,33 +390,38 @@ contract ERC7540Vault is Auth, IERC7540Vault {
     }
 
     // --- Event emitters ---
+    /// @inheritdoc IERC7540Vault
     function onRedeemRequest(address controller, address owner, uint256 shares) public auth {
         emit RedeemRequest(controller, owner, REQUEST_ID, msg.sender, shares);
     }
 
+    /// @inheritdoc IERC7540Vault
     function onDepositClaimable(address controller, uint256 assets, uint256 shares) public auth {
         emit DepositClaimable(controller, REQUEST_ID, assets, shares);
     }
 
+    /// @inheritdoc IERC7540Vault
     function onRedeemClaimable(address controller, uint256 assets, uint256 shares) public auth {
         emit RedeemClaimable(controller, REQUEST_ID, assets, shares);
     }
 
+    /// @inheritdoc IERC7540Vault
     function onCancelDepositClaimable(address controller, uint256 assets) public auth {
         emit CancelDepositClaimable(controller, REQUEST_ID, assets);
     }
 
+    /// @inheritdoc IERC7540Vault
     function onCancelRedeemClaimable(address controller, uint256 shares) public auth {
         emit CancelRedeemClaimable(controller, REQUEST_ID, shares);
     }
 
     // --- Helpers ---
-    /// @notice Price of 1 unit of share, quoted in the decimals of the asset.
+    /// @inheritdoc IERC7540Vault
     function pricePerShare() external view returns (uint256) {
         return convertToAssets(10 ** _shareDecimals);
     }
 
-    /// @notice Returns timestamp of the last share price update.
+    /// @inheritdoc IERC7540Vault
     function priceLastUpdated() external view returns (uint64) {
         return manager.priceLastUpdated(address(this));
     }
