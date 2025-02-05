@@ -5,7 +5,7 @@ import {ShareClassId} from "src/types/ShareClassId.sol";
 import {AssetId} from "src/types/AssetId.sol";
 import {PoolId} from "src/types/PoolId.sol";
 
-// WIP
+// TODO: WIP
 interface IGateway {
     // NOTE: Should the implementation store a mapping by chainId to track...?
     // - allowed pools
