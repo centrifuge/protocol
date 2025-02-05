@@ -74,7 +74,7 @@ abstract contract SingleShareClassBaseTest is Test {
     PoolId poolId = PoolId.wrap(POOL_ID);
     ShareClassId scId = SHARE_CLASS_ID;
     address poolRegistryAddress = makeAddr("poolRegistry");
-    bytes32 investor = bytes32(uint256(uint160(makeAddr("investor"))));
+    bytes32 investor = bytes32("investor");
 
     modifier notThisContract(address addr) {
         vm.assume(address(this) != addr);
@@ -294,8 +294,8 @@ contract SingleShareClassDepositsNonTransientTest is SingleShareClassBaseTest {
         uint128 depositAmountOther = uint128(bound(depositAmount, 1e8, MAX_REQUEST_AMOUNT));
         D18 approvalRatioUsdc = d18(uint128(bound(approvalRatio, 1e14, 1e18)));
         D18 approvalRatioOther = d18(uint128(bound(approvalRatio, 1e14, 1e18)));
-        bytes32 investorUsdc = bytes32(uint256(uint160(makeAddr("investorUsdc"))));
-        bytes32 investorOther = bytes32(uint256(uint160(makeAddr("investorOther"))));
+        bytes32 investorUsdc = bytes32("investorUsdc");
+        bytes32 investorOther = bytes32("investorOther");
 
         uint128 approvedAssetUsdc = approvalRatioUsdc.mulUint128(depositAmountUsdc);
         uint128 approvedAssetOther = approvalRatioOther.mulUint128(depositAmountOther);
@@ -484,8 +484,8 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
         D18 approvalRatioUsdc = d18(uint128(bound(approvalRatio, 1e14, 1e18)));
         D18 approvalRatioOther = d18(uint128(bound(approvalRatio, 1e14, 1e18)));
 
-        bytes32 investorUsdc = bytes32(uint256(uint160(makeAddr("investorUsdc"))));
-        bytes32 investorOther = bytes32(uint256(uint160(makeAddr("investorOther"))));
+        bytes32 investorUsdc = bytes32("investorUsdc");
+        bytes32 investorOther = bytes32("investorOther");
         uint128 approvedSharesUsdc = approvalRatioUsdc.mulUint128(redeemAmountUsdc);
         uint128 approvedSharesOther = approvalRatioOther.mulUint128(redeemAmountOther);
         uint128 pendingUsdc = redeemAmountUsdc - approvedSharesUsdc;
