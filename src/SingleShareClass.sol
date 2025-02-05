@@ -352,47 +352,6 @@ contract SingleShareClass is Auth, ISingleShareClass {
         _shareClassNavPerShare[shareClassId_] = navPerShare;
     }
 
-    /// @notice Revokes shares for a single epoch, updates epoch ratio and emits event.
-    ///
-    /// @param poolId Identifier of the pool
-    /// @param shareClassId_ Identifier of the share class
-    /// @param payoutAssetId Identifier of the payout asset
-    /// @param navPerShare Total value of assets of the pool and share class per share
-    /// @param valuation Source of truth for quotas, e.g. the price of a pool amount in payout asset
-    /// @param poolCurrency The address of the pool currency
-    /// @param epochAmounts_ Epoch ratio storage for the amount of revoked share class tokens and the corresponding
-    /// amount
-    /// in payout asset
-    /// @param totalIssuance_ Total issuance of share class tokens before revoking
-    /// @param epochId_ Identifier of the epoch for which we revoke
-    /// @return payoutPoolAmount Converted amount of pool currency based on number of revoked shares
-    function revokeEpochShares(
-        PoolId poolId,
-        ShareClassId shareClassId_,
-        AssetId payoutAssetId,
-        D18 navPerShare,
-        IERC7726 valuation,
-        address poolCurrency,
-        EpochAmounts storage epochAmounts_,
-        uint128 totalIssuance_,
-        uint32 epochId_
-    ) internal returns (uint128 payoutPoolAmount) {
-        payoutPoolAmount = navPerShare.mulUint128(epochAmounts_.redeemSharesRevoked);
-        epochAmounts_.redeemAssetAmount =
-            IERC7726(valuation).getQuote(payoutPoolAmount, poolCurrency, payoutAssetId.addr()).toUint128();
-
-        uint128 nav = navPerShare.mulUint128(totalIssuance_ - epochAmounts_.redeemSharesRevoked);
-        emit IShareClassManager.RevokedShares(
-            poolId,
-            shareClassId_,
-            epochId_,
-            navPerShare,
-            nav,
-            epochAmounts_.redeemSharesRevoked,
-            epochAmounts_.redeemAssetAmount
-        );
-    }
-
     /// @inheritdoc IShareClassManager
     function claimDeposit(PoolId poolId, ShareClassId shareClassId_, bytes32 investor, AssetId depositAssetId)
         external
