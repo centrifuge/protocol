@@ -7,4 +7,8 @@ function isNull(ShareClassId scId) pure returns (bool) {
     return ShareClassId.unwrap(scId) == 0;
 }
 
-using {isNull} for ShareClassId global;
+function equals(ShareClassId left, ShareClassId right) pure returns (bool) {
+    return ShareClassId.unwrap(left) == ShareClassId.unwrap(right);
+}
+
+using {isNull, equals} for ShareClassId global;
