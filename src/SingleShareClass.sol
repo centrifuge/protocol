@@ -235,7 +235,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
     /// @inheritdoc IShareClassManager
     function issueShares(PoolId poolId, bytes16 shareClassId_, address depositAssetId, D18 navPerShare) external auth {
-        EpochPointers memory epochPointers_ = epochPointers[shareClassId_][depositAssetId];
+        EpochPointers storage epochPointers_ = epochPointers[shareClassId_][depositAssetId];
         require(
             epochPointers_.latestDepositApproval > epochPointers_.latestIssuance, ISingleShareClass.ApprovalRequired()
         );
@@ -288,7 +288,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         D18 navPerShare,
         IERC7726 valuation
     ) external auth returns (uint128 payoutAssetAmount, uint128 payoutPoolAmount) {
-        EpochPointers memory epochPointers_ = epochPointers[shareClassId_][payoutAssetId];
+        EpochPointers storage epochPointers_ = epochPointers[shareClassId_][payoutAssetId];
         require(
             epochPointers_.latestRedeemApproval > epochPointers_.latestRevocation, ISingleShareClass.ApprovalRequired()
         );
@@ -464,7 +464,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         UserOrder storage userOrder = redeemRequest[shareClassId_][payoutAssetId][investor];
 
         for (uint32 epochId_ = userOrder.lastUpdate; epochId_ <= endEpochId; epochId_++) {
-            EpochAmounts memory epochAmounts_ = epochAmounts[shareClassId_][payoutAssetId][epochId_];
+            EpochAmounts storage epochAmounts_ = epochAmounts[shareClassId_][payoutAssetId][epochId_];
 
             // Skip deposit epochs
             if (epochAmounts_.redeemApprovalRate.inner() == 0) {
