@@ -628,15 +628,4 @@ contract SingleShareClass is Auth, ISingleShareClass {
             return uint32(uint128(epochId_ - 1).max(1));
         }
     }
-<<<<<<< HEAD
-=======
-
-    /// @notice Ensures the given share class id is linked to the given pool id. If not, reverts.
-    ///
-    /// @param poolId Identifier of the pool.
-    /// @param shareClassId_ Identifier of the share class to be checked.
-    function _ensureShareClassExists(PoolId poolId, bytes16 shareClassId_) private view {
-        require(exists(poolId, shareClassId_), IShareClassManager.ShareClassNotFound());
-    }
->>>>>>> bee8a59 (add shareClass existence)
 }

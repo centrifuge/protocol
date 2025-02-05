@@ -337,13 +337,13 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function unlockTokens(ShareClassId scId, AssetId assetId, bytes32 receiver, uint128 assetAmount)
+    function unlockAssets(ShareClassId scId, AssetId assetId, bytes32 receiver, uint128 assetAmount)
         external
         poolUnlocked
     {
         assetManager.burn(escrow(unlockedPoolId(), scId, EscrowId.SHARE_CLASS), assetId.raw(), assetAmount);
 
-        gateway.sendUnlockTokens(assetId, receiver, assetAmount);
+        gateway.sendUnlockAssets(assetId, receiver, assetAmount);
     }
 
     //----------------------------------------------------------------------------------------------

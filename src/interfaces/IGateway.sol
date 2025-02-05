@@ -48,6 +48,6 @@ interface IGateway {
         uint128 canceledShares,
         uint128 fulfilledInvestedAmount
     ) external;
-    function sendUnlockTokens(AssetId assetId, bytes32 receiver, uint128 assetAmount) external;
+    function sendUnlockAssets(AssetId assetId, bytes32 receiver, uint128 assetAmount) external;
     function handleMessage(bytes calldata message) external;
 }
