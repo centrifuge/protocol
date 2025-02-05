@@ -195,23 +195,6 @@ contract PoolRegistryTest is Test {
         assertEq(AssetId.unwrap(registry.currency(poolId)), AssetId.unwrap(currency));
     }
 
-    function testSetAddressFor() public {
-        PoolId poolId = registry.registerPool(makeAddr("fundManager"), USD, shareClassManager);
-
-        PoolId nonExistingPool = PoolId.wrap(0xDEAD);
-        vm.expectRevert(abi.encodeWithSelector(IPoolRegistry.NonExistingPool.selector, nonExistingPool));
-        registry.setAddressFor(nonExistingPool, "key", address(1));
-
-        vm.prank(makeAddr("unauthorizedAddress"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.setAddressFor(poolId, "key", address(1));
-
-        vm.expectEmit();
-        emit IPoolRegistry.SetAddressFor(poolId, "key", address(1));
-        registry.setAddressFor(poolId, "key", address(1));
-        assertEq(address(registry.addressFor(poolId, "key")), address(1));
-    }
-
     function testExists() public {
         PoolId poolId = registry.registerPool(makeAddr("fundManager"), USD, shareClassManager);
         assertEq(registry.exists(poolId), true);
