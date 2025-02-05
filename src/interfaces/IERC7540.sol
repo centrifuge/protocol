@@ -322,4 +322,10 @@ interface IERC7540Vault is
 
     /// @notice Callback when a claim redeem Request becomes claimable
     function onCancelRedeemClaimable(address owner, uint256 shares) external;
+
+    /// @notice Price of 1 unit of share, quoted in the decimals of the asset.
+    function pricePerShare() external view returns (uint256);
+
+    /// @notice Returns timestamp of the last share price update.
+    function priceLastUpdated() external view returns (uint64);
 }

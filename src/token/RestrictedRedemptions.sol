@@ -75,7 +75,6 @@ contract RestrictedRedemptions is Auth, IRestrictionManager, IHook {
             return false;
         }
 
-        uint128 toHookData = uint128(hookData.to);
         if (toHookData.getBit(FREEZE_BIT) == true) {
             // Destination is frozen
             return false;
