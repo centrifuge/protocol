@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {D18} from "src/types/D18.sol";
-import {IERC7726Ext} from "src/interfaces/IERC7726.sol";
+import {IERC7726} from "src/interfaces/IERC7726.sol";
 import {PoolId} from "src/types/PoolId.sol";
 
 interface IShareClassManager {
@@ -34,8 +34,7 @@ interface IShareClassManager {
         D18 approvalRatio,
         uint128 approvedPoolAmount,
         uint128 approvedAssetAmount,
-        uint128 pendingAssetAmount,
-        D18 assetToPool
+        uint128 pendingAssetAmount
     );
     event ApprovedRedeems(
         PoolId indexed poolId,
@@ -44,8 +43,7 @@ interface IShareClassManager {
         address assetId,
         D18 approvalRatio,
         uint128 approvedShareClassAmount,
-        uint128 pending,
-        D18 assetToPool
+        uint128 pendingShareClassAmount
     );
     event IssuedShares(
         PoolId indexed poolId,
@@ -62,7 +60,8 @@ interface IShareClassManager {
         uint32 indexed epoch,
         D18 navPerShare,
         uint128 nav,
-        uint128 revokedShareAmount
+        uint128 revokedShareAmount,
+        uint128 revokedAssetAmount
     );
 
     event ClaimedDeposit(
@@ -156,16 +155,16 @@ interface IShareClassManager {
     /// @param shareClassId Identifier of the share class
     /// @param approvalRatio Percentage of approved requests
     /// @param paymentAssetId Identifier of the asset locked for the deposit request
-    /// @param valuation Converter for quotas, e.g. price ratio of asset amount to pool amount
-    /// @return approvedPoolAmount Sum of deposit request amounts in pool amount which was approved
+    /// @param valuation Source of truth for quotas, e.g. the price of an asset amount to pool amount
     /// @return approvedAssetAmount Sum of deposit request amounts in asset amount which was not approved
+    /// @return approvedPoolAmount Sum of deposit request amounts in pool amount which was approved
     function approveDeposits(
         PoolId poolId,
         bytes16 shareClassId,
         D18 approvalRatio,
         address paymentAssetId,
-        IERC7726Ext valuation
-    ) external returns (uint128 approvedPoolAmount, uint128 approvedAssetAmount);
+        IERC7726 valuation
+    ) external returns (uint128 approvedAssetAmount, uint128 approvedPoolAmount);
 
     /// @notice Approves a percentage of all redemption requests for the given triplet of pool id, share class id and
     /// deposit asset id.
@@ -175,7 +174,7 @@ interface IShareClassManager {
     /// @param approvalRatio Percentage of approved requests
     /// @param payoutAssetId Identifier of the asset for which all requests want to exchange their share class tokens
     /// for
-    /// @param valuation Converter for quotas, e.g. price ratio of share class token amount to pool amount
+    /// @param valuation Source of truth for quotas, e.g. the price of a share class token amount to pool amount
     /// @return approvedShareAmount Sum of redemption request amounts in pool amount which was approved
     /// @return pendingShareAmount Sum of redemption request amounts in share class token amount which was not approved
     function approveRedeems(
@@ -183,7 +182,7 @@ interface IShareClassManager {
         bytes16 shareClassId,
         D18 approvalRatio,
         address payoutAssetId,
-        IERC7726Ext valuation
+        IERC7726 valuation
     ) external returns (uint128 approvedShareAmount, uint128 pendingShareAmount);
 
     /// @notice Emits new shares for the given identifier based on the provided NAV per share.
@@ -200,11 +199,16 @@ interface IShareClassManager {
     /// @param shareClassId Identifier of the share class
     /// @param payoutAssetId Identifier of the payout asset
     /// @param navPerShare Total value of assets of the pool and share class per share
+    /// @param valuation Source of truth for quotas, e.g. the price of a share class token amount to pool amount
     /// @return payoutAssetAmount Converted amount of payout asset based on number of revoked shares
     /// @return payoutPoolAmount Converted amount of pool currency based on number of revoked shares
-    function revokeShares(PoolId poolId, bytes16 shareClassId, address payoutAssetId, D18 navPerShare)
-        external
-        returns (uint128 payoutAssetAmount, uint128 payoutPoolAmount);
+    function revokeShares(
+        PoolId poolId,
+        bytes16 shareClassId,
+        address payoutAssetId,
+        D18 navPerShare,
+        IERC7726 valuation
+    ) external returns (uint128 payoutAssetAmount, uint128 payoutPoolAmount);
 
     /// @notice Collects shares for an investor after their deposit request was (partially) approved and new shares were
     /// issued.
