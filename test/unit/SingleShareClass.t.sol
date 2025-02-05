@@ -13,14 +13,16 @@ import {MathLib} from "src/libraries/MathLib.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 import {ISingleShareClass} from "src/interfaces/ISingleShareClass.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
+import {AssetId} from "src/types/AssetId.sol";
+import {ShareClassId} from "src/types/ShareClassId.sol";
 
 bool constant WITH_TRANSIENT = false;
 uint128 constant TRANSIENT_STORAGE_SHIFT = WITH_TRANSIENT ? 1 : 0;
 uint64 constant POOL_ID = 42;
-bytes16 constant SHARE_CLASS_ID = bytes16(uint128(POOL_ID));
+ShareClassId constant SHARE_CLASS_ID = ShareClassId.wrap(uint128(POOL_ID));
 address constant POOL_CURRENCY = address(840);
-address constant USDC = address(0x0123456);
-address constant OTHER_STABLE = address(0x01234567);
+AssetId constant USDC = AssetId.wrap(69);
+AssetId constant OTHER_STABLE = AssetId.wrap(1337);
 uint128 constant DENO_USDC = 10 ** 6;
 uint128 constant DENO_OTHER_STABLE = 10 ** 12;
 uint128 constant DENO_POOL = 10 ** 4;
@@ -38,19 +40,19 @@ contract OracleMock is IERC7726 {
     using MathLib for uint256;
 
     function getQuote(uint256 baseAmount, address base, address quote) external pure returns (uint256 quoteAmount) {
-        if (base == USDC && quote == OTHER_STABLE) {
+        if (base == USDC.addr() && quote == OTHER_STABLE.addr()) {
             return baseAmount.mulDiv(DENO_OTHER_STABLE, DENO_USDC);
-        } else if (base == USDC && quote == POOL_CURRENCY) {
+        } else if (base == USDC.addr() && quote == POOL_CURRENCY) {
             return baseAmount.mulDiv(DENO_POOL, DENO_USDC);
-        } else if (base == OTHER_STABLE && quote == USDC) {
+        } else if (base == OTHER_STABLE.addr() && quote == USDC.addr()) {
             return baseAmount.mulDiv(DENO_USDC, DENO_OTHER_STABLE);
-        } else if (base == OTHER_STABLE && quote == POOL_CURRENCY) {
+        } else if (base == OTHER_STABLE.addr() && quote == POOL_CURRENCY) {
             return baseAmount.mulDiv(DENO_POOL, DENO_OTHER_STABLE);
-        } else if (base == POOL_CURRENCY && quote == USDC) {
+        } else if (base == POOL_CURRENCY && quote == USDC.addr()) {
             return baseAmount.mulDiv(DENO_USDC, DENO_POOL);
-        } else if (base == POOL_CURRENCY && quote == OTHER_STABLE) {
+        } else if (base == POOL_CURRENCY && quote == OTHER_STABLE.addr()) {
             return baseAmount.mulDiv(DENO_OTHER_STABLE, DENO_POOL);
-        } else if (base == POOL_CURRENCY && quote == address(bytes20(SHARE_CLASS_ID))) {
+        } else if (base == POOL_CURRENCY && quote == address(uint160(ShareClassId.unwrap(SHARE_CLASS_ID)))) {
             return baseAmount;
         } else {
             revert("Unsupported factor pair");
@@ -68,9 +70,9 @@ abstract contract SingleShareClassBaseTest is Test {
     PoolRegistryMock poolRegistryMock = new PoolRegistryMock();
 
     PoolId poolId = PoolId.wrap(POOL_ID);
-    bytes16 scId = SHARE_CLASS_ID;
+    ShareClassId scId = SHARE_CLASS_ID;
     address poolRegistryAddress = makeAddr("poolRegistry");
-    address investor = makeAddr("investor");
+    bytes32 investor = bytes32("investor");
 
     modifier notThisContract(address addr) {
         vm.assume(address(this) != addr);
@@ -90,30 +92,36 @@ abstract contract SingleShareClassBaseTest is Test {
         assertEq(IPoolRegistry(poolRegistryAddress).currency(poolId).addr(), POOL_CURRENCY);
     }
 
-    function _assertDepositRequestEq(bytes16 shareClassId_, address asset, address investor_, UserOrder memory expected)
-        internal
-        view
-    {
+    function _assertDepositRequestEq(
+        ShareClassId shareClassId_,
+        AssetId asset,
+        bytes32 investor_,
+        UserOrder memory expected
+    ) internal view {
         (uint128 pending, uint32 lastUpdate) = shareClass.depositRequest(shareClassId_, asset, investor_);
 
         assertEq(pending, expected.pending, "pending mismatch");
         assertEq(lastUpdate, expected.lastUpdate, "lastUpdate mismatch");
     }
 
-    function _assertRedeemRequestEq(bytes16 shareClassId_, address asset, address investor_, UserOrder memory expected)
-        internal
-        view
-    {
+    function _assertRedeemRequestEq(
+        ShareClassId shareClassId_,
+        AssetId asset,
+        bytes32 investor_,
+        UserOrder memory expected
+    ) internal view {
         (uint128 pending, uint32 lastUpdate) = shareClass.redeemRequest(shareClassId_, asset, investor_);
 
         assertEq(pending, expected.pending, "pending mismatch");
         assertEq(lastUpdate, expected.lastUpdate, "lastUpdate mismatch");
     }
 
-    function _assertEpochAmountsEq(bytes16 shareClassId_, address assetId, uint32 epochId, EpochAmounts memory expected)
-        internal
-        view
-    {
+    function _assertEpochAmountsEq(
+        ShareClassId shareClassId_,
+        AssetId assetId,
+        uint32 epochId,
+        EpochAmounts memory expected
+    ) internal view {
         (
             D18 depositApprovalRate,
             D18 redeemApprovalRate,
@@ -133,7 +141,7 @@ abstract contract SingleShareClassBaseTest is Test {
         assertEq(redeemSharesRevoked, expected.redeemSharesRevoked, "redeemSharesRevoked mismatch");
     }
 
-    function _assertEpochPointersEq(bytes16 shareClassId_, address assetId, EpochPointers memory expected)
+    function _assertEpochPointersEq(ShareClassId shareClassId_, AssetId assetId, EpochPointers memory expected)
         internal
         view
     {
@@ -166,11 +174,11 @@ abstract contract SingleShareClassBaseTest is Test {
     }
 
     function usdcToPool(uint128 usdcAmount) internal view returns (uint128 poolAmount) {
-        return oracleMock.getQuote(uint256(usdcAmount), USDC, POOL_CURRENCY).toUint128();
+        return oracleMock.getQuote(uint256(usdcAmount), USDC.addr(), POOL_CURRENCY).toUint128();
     }
 
     function poolToUsdc(uint128 poolAmount) internal view returns (uint128 usdcAmount) {
-        return oracleMock.getQuote(uint256(poolAmount), POOL_CURRENCY, USDC).toUint128();
+        return oracleMock.getQuote(uint256(poolAmount), POOL_CURRENCY, USDC.addr()).toUint128();
     }
 }
 
@@ -182,7 +190,7 @@ contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
         vm.assume(nonWard != address(shareClass.poolRegistry()) && nonWard != address(this));
 
         assertEq(address(shareClass.poolRegistry()), poolRegistryAddress);
-        assertEq(shareClass.shareClassId(poolId), scId);
+        assertEq(ShareClassId.unwrap(shareClass.shareClassId(poolId)), ShareClassId.unwrap(scId));
 
         assertEq(shareClass.wards(address(this)), 1);
         assertEq(shareClass.wards(address(shareClass.poolRegistry())), 0);
@@ -248,7 +256,7 @@ contract SingleShareClassDepositsNonTransientTest is SingleShareClassBaseTest {
 
         uint128 deposits = 0;
         for (uint16 i = 0; i < numInvestors; i++) {
-            address investor = address(uint160(uint256(keccak256(abi.encodePacked("investor_", i)))));
+            bytes32 investor = bytes32(uint256(keccak256(abi.encodePacked("investor_", i))));
             uint128 investorDeposit = depositAmount + i;
             deposits += investorDeposit;
             shareClass.requestDeposit(poolId, scId, investorDeposit, investor, USDC);
@@ -284,8 +292,8 @@ contract SingleShareClassDepositsNonTransientTest is SingleShareClassBaseTest {
         uint128 depositAmountOther = uint128(bound(depositAmount, 1e8, MAX_REQUEST_AMOUNT));
         D18 approvalRatioUsdc = d18(uint128(bound(approvalRatio, 1e14, 1e18)));
         D18 approvalRatioOther = d18(uint128(bound(approvalRatio, 1e14, 1e18)));
-        address investorUsdc = makeAddr("investorUsdc");
-        address investorOther = makeAddr("investorOther");
+        bytes32 investorUsdc = bytes32("investorUsdc");
+        bytes32 investorOther = bytes32("investorOther");
 
         uint128 approvedAssetUsdc = approvalRatioUsdc.mulUint128(depositAmountUsdc);
         uint128 approvedAssetOther = approvalRatioOther.mulUint128(depositAmountOther);
@@ -439,7 +447,7 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
 
         uint128 totalRedeems = 0;
         for (uint16 i = 0; i < numInvestors; i++) {
-            address investor = address(uint160(uint256(keccak256(abi.encodePacked("investor_", i)))));
+            bytes32 investor = bytes32(uint256(keccak256(abi.encodePacked("investor_", i))));
             uint128 investorRedeem = amount + i;
             totalRedeems += investorRedeem;
             shareClass.requestRedeem(poolId, scId, investorRedeem, investor, USDC);
@@ -474,8 +482,8 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
         D18 approvalRatioUsdc = d18(uint128(bound(approvalRatio, 1e14, 1e18)));
         D18 approvalRatioOther = d18(uint128(bound(approvalRatio, 1e14, 1e18)));
 
-        address investorUsdc = makeAddr("investorUsdc");
-        address investorOther = makeAddr("investorOther");
+        bytes32 investorUsdc = bytes32("investorUsdc");
+        bytes32 investorOther = bytes32("investorOther");
         uint128 approvedSharesUsdc = approvalRatioUsdc.mulUint128(redeemAmountUsdc);
         uint128 approvedSharesOther = approvalRatioOther.mulUint128(redeemAmountOther);
         uint128 pendingUsdc = redeemAmountUsdc - approvedSharesUsdc;
@@ -625,7 +633,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
 
         // Bump up latestApproval epochs
         for (uint8 i = 1; i < maxEpochId; i++) {
-            address investor = address(uint160(uint256(keccak256(abi.encodePacked("investor_", i)))));
+            bytes32 investor = bytes32(uint256(keccak256(abi.encodePacked("investor_", i))));
             _resetTransientEpochIncrement();
             shareClass.requestDeposit(poolId, scId, depositAmount, investor, USDC);
             shareClass.approveDeposits(poolId, scId, approvalRatio, USDC, oracleMock);
@@ -743,7 +751,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
 
         // Bump up latestApproval epochs
         for (uint8 i = 1; i < maxEpochId; i++) {
-            address investor = address(uint160(uint256(keccak256(abi.encodePacked("investor_", i)))));
+            bytes32 investor = bytes32(uint256(keccak256(abi.encodePacked("investor_", i))));
             _resetTransientEpochIncrement();
             shareClass.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
             shareClass.approveRedeems(poolId, scId, approvalRatio, USDC, oracleMock);
@@ -931,7 +939,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
 contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     using MathLib for uint128;
 
-    bytes16 wrongShareClassId = bytes16("otherId");
+    ShareClassId wrongShareClassId = ShareClassId.wrap(uint128(POOL_ID + 1));
     address unauthorized = makeAddr("unauthorizedAddress");
 
     function testFile(bytes32 what) public {
