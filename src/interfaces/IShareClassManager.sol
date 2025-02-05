@@ -282,5 +282,5 @@ interface IShareClassManager {
     ///
     /// @param poolId Identifier of the pool
     /// @param shareClassId Identifier of the share class
-    function exists(PoolId poolId, bytes16 shareClassId) external view returns (bool);
+    function exists(PoolId poolId, ShareClassId shareClassId) external view returns (bool);
 }

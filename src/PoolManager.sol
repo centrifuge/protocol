@@ -21,7 +21,7 @@ import {
     AccountType
 } from "src/interfaces/IPoolManager.sol";
 import {IMulticall} from "src/interfaces/IMulticall.sol";
-import {IERC7726, IERC7726Ext} from "src/interfaces/IERC7726.sol";
+import {IERC7726} from "src/interfaces/IERC7726.sol";
 
 import {MathLib} from "src/libraries/MathLib.sol";
 import {CastLib} from "src/libraries/CastLib.sol";
@@ -94,8 +94,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
     function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
 
-        (uint128 shares, uint128 tokens) =
-            scm.claimDeposit(poolId, scId.toBytes(), assetId.addr(), address(uint160(uint256(investor))));
+        (uint128 shares, uint128 tokens) = scm.claimDeposit(poolId, scId, investor, assetId);
         gateway.sendFulfilledDepositRequest(poolId, scId, assetId, investor, shares, tokens);
     }
 
@@ -103,8 +102,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
     function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
 
-        (uint128 shares, uint128 tokens) =
-            scm.claimRedeem(poolId, scId.toBytes(), assetId.addr(), address(uint160(uint256(investor))));
+        (uint128 shares, uint128 tokens) = scm.claimRedeem(poolId, scId, investor, assetId);
 
         assetManager.burn(escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS), assetId.raw(), tokens);
 
@@ -125,7 +123,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
         PoolId poolId = unlockedPoolId();
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        require(scm.exists(poolId, scId.toBytes()), IShareClassManager.ShareClassNotFound());
+        require(scm.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
         gateway.sendNotifyShareClass(chainId, poolId, scId);
     }
@@ -173,7 +171,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
         PoolId poolId = unlockedPoolId();
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        return ShareClassId.wrap(scm.addShareClass(poolId, data));
+        return scm.addShareClass(poolId, data);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
@@ -185,9 +183,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
 
-        (, uint128 approvedAssetAmount) = scm.approveDeposits(
-            poolId, scId.toBytes(), approvalRatio, paymentAssetId.addr(), IERC7726Ext(address(valuation))
-        );
+        (, uint128 approvedAssetAmount) = scm.approveDeposits(poolId, scId, approvalRatio, paymentAssetId, valuation);
 
         assetManager.authTransferFrom(
             escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS),
@@ -204,9 +200,9 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
         PoolId poolId = unlockedPoolId();
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        IERC7726 valuation = holdings.valuation(poolId, scId, payoutAssetId);
+        IERC7726 valuation = holdings.valuation(poolId, scId, payoutAssetId); // TODO: remove
 
-        scm.approveRedeems(poolId, scId.toBytes(), approvalRatio, payoutAssetId.addr(), IERC7726Ext(address(valuation)));
+        scm.approveRedeems(poolId, scId, approvalRatio, payoutAssetId, valuation);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
@@ -215,7 +211,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
 
-        scm.issueShares(poolId, scId.toBytes(), depositAssetId.addr(), navPerShare);
+        scm.issueShares(poolId, scId, depositAssetId, navPerShare);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
@@ -227,7 +223,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
 
-        (uint128 payoutAssetAmount,) = scm.revokeShares(poolId, scId.toBytes(), payoutAssetId.addr(), navPerShare);
+        (uint128 payoutAssetAmount,) = scm.revokeShares(poolId, scId, payoutAssetId, navPerShare, valuation);
 
         assetManager.authTransferFrom(
             escrow(poolId, scId, EscrowId.SHARE_CLASS),
@@ -370,7 +366,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
         assetManager.mint(pendingShareClassEscrow, depositAssetId.raw(), amount);
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        scm.requestDeposit(poolId, scId.toBytes(), amount, address(uint160(uint256(investor))), depositAssetId.addr());
+        scm.requestDeposit(poolId, scId, amount, investor, depositAssetId);
     }
 
     /// @inheritdoc IPoolManagerHandlers
@@ -382,7 +378,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
         uint128 amount
     ) external onlyGateway {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        scm.requestRedeem(poolId, scId.toBytes(), amount, address(uint160(uint256(investor))), payoutAssetId.addr());
+        scm.requestRedeem(poolId, scId, amount, investor, payoutAssetId);
     }
 
     /// @inheritdoc IPoolManagerHandlers
@@ -391,8 +387,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
         onlyGateway
     {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        (uint128 cancelledAssetAmount) =
-            scm.cancelDepositRequest(poolId, scId.toBytes(), address(uint160(uint256(investor))), depositAssetId.addr());
+        (uint128 cancelledAssetAmount) = scm.cancelDepositRequest(poolId, scId, investor, depositAssetId);
 
         address pendingShareClassEscrow = escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS);
         assetManager.burn(pendingShareClassEscrow, depositAssetId.raw(), cancelledAssetAmount);
@@ -408,8 +403,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
         onlyGateway
     {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        uint128 cancelledAssetAmount =
-            scm.cancelRedeemRequest(poolId, scId.toBytes(), address(uint160(uint256(investor))), payoutAssetId.addr());
+        uint128 cancelledAssetAmount = scm.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
 
         gateway.sendFulfilledRedeemRequest(
             poolId, scId, payoutAssetId, investor, cancelledAssetAmount, cancelledAssetAmount

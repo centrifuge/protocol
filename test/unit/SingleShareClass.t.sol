@@ -19,7 +19,7 @@ import {ShareClassId} from "src/types/ShareClassId.sol";
 bool constant WITH_TRANSIENT = false;
 uint128 constant TRANSIENT_STORAGE_SHIFT = WITH_TRANSIENT ? 1 : 0;
 uint64 constant POOL_ID = 42;
-ShareClassId constant SHARE_CLASS_ID = ShareClassId.wrap(uint128(POOL_ID));
+ShareClassId constant SHARE_CLASS_ID = ShareClassId.wrap(bytes16(uint128(POOL_ID)));
 address constant POOL_CURRENCY = address(840);
 AssetId constant USDC = AssetId.wrap(69);
 AssetId constant OTHER_STABLE = AssetId.wrap(1337);
@@ -52,7 +52,7 @@ contract OracleMock is IERC7726 {
             return baseAmount.mulDiv(DENO_USDC, DENO_POOL);
         } else if (base == POOL_CURRENCY && quote == OTHER_STABLE.addr()) {
             return baseAmount.mulDiv(DENO_OTHER_STABLE, DENO_POOL);
-        } else if (base == POOL_CURRENCY && quote == address(uint160(ShareClassId.unwrap(SHARE_CLASS_ID)))) {
+        } else if (base == POOL_CURRENCY && quote == address(bytes20(ShareClassId.unwrap(SHARE_CLASS_ID)))) {
             return baseAmount;
         } else {
             revert("Unsupported factor pair");
@@ -215,7 +215,7 @@ contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
 
     function testExistence() public view notThisContract(poolRegistryAddress) {
         assert(shareClass.exists(poolId, scId));
-        assert(!shareClass.exists(poolId, bytes16(uint128(23))));
+        assert(!shareClass.exists(poolId, ShareClassId.wrap(bytes16(0))));
     }
 }
 
@@ -944,7 +944,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
 contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     using MathLib for uint128;
 
-    ShareClassId wrongShareClassId = ShareClassId.wrap(uint128(POOL_ID + 1));
+    ShareClassId wrongShareClassId = ShareClassId.wrap(bytes16(uint128(POOL_ID + 1)));
     address unauthorized = makeAddr("unauthorizedAddress");
 
     function testFile(bytes32 what) public {

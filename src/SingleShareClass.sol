@@ -88,7 +88,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     {
         require(shareClassId[poolId].isNull(), MaxShareClassNumberExceeded(1));
 
-        shareClassId_ = ShareClassId.wrap(uint128(PoolId.unwrap(poolId)));
+        shareClassId_ = ShareClassId.wrap(bytes16(uint128(PoolId.unwrap(poolId))));
 
         shareClassId[poolId] = shareClassId_;
         epochId[poolId] = 1;
@@ -518,7 +518,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     }
 
     /// @inheritdoc IShareClassManager
-    function exists(PoolId poolId, bytes16 shareClassId_) public view returns (bool) {
+    function exists(PoolId poolId, ShareClassId shareClassId_) public view returns (bool) {
         return shareClassId[poolId] == shareClassId_;
     }
 
