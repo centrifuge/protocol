@@ -222,7 +222,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
 
         uint128 valueChange = holdings.increase(poolId, scId, assetId, valuation, amount);
 
-        accounting.updateEntry(
+        updateEntry(
             holdings.accountId(poolId, scId, assetId, uint8(AccountType.EQUITY)),
             holdings.accountId(poolId, scId, assetId, uint8(AccountType.ASSET)),
             valueChange
@@ -237,7 +237,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
 
         uint128 valueChange = holdings.decrease(poolId, scId, assetId, valuation, amount);
 
-        accounting.updateEntry(
+        updateEntry(
             holdings.accountId(poolId, scId, assetId, uint8(AccountType.ASSET)),
             holdings.accountId(poolId, scId, assetId, uint8(AccountType.EQUITY)),
             valueChange
@@ -250,13 +250,13 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         int128 diff = holdings.update(poolId, scId, assetId);
 
         if (diff > 0) {
-            accounting.updateEntry(
+            updateEntry(
                 holdings.accountId(poolId, scId, assetId, uint8(AccountType.GAIN)),
                 holdings.accountId(poolId, scId, assetId, uint8(AccountType.ASSET)),
                 uint128(diff)
             );
         } else if (diff < 0) {
-            accounting.updateEntry(
+            updateEntry(
                 holdings.accountId(poolId, scId, assetId, uint8(AccountType.ASSET)),
                 holdings.accountId(poolId, scId, assetId, uint8(AccountType.LOSS)),
                 uint128(-diff)
@@ -277,11 +277,12 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     }
 
     function setAccountMetadata(AccountId account, bytes calldata metadata) external poolUnlocked {
-        accounting.setMetadata(unlockedPoolId(), account, metadata);
+        accounting.setAccountMetadata(unlockedPoolId(), account, metadata);
     }
 
-    function updateEntry(AccountId credit, AccountId debit, uint128 amount) external poolUnlocked {
-        accounting.updateEntry(credit, debit, amount);
+    function updateEntry(AccountId credit, AccountId debit, uint128 amount) public poolUnlocked {
+        accounting.addCredit(credit, amount);
+        accounting.addDebit(debit, amount);
     }
 
     function addDebit(AccountId account, uint128 amount) external poolUnlocked {
@@ -374,7 +375,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
 
     function _beforeUnlock(PoolId poolId) internal override {
         require(poolRegistry.isAdmin(poolId, msg.sender));
-        accounting.unlock(unlockedPoolId());
+        accounting.unlock(unlockedPoolId(), bytes32("TODO"));
     }
 
     function _escrow(PoolId poolId, ShareClassId scId, Escrow escrow) private view returns (address) {
