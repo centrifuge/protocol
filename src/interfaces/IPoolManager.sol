@@ -34,7 +34,7 @@ enum AccountType {
 
 /// @notice Interface for methods that requires the pool to be unlocked
 /// They do not require a poolId parameter, all acts over the unlocked pool
-interface IPoolUnlockedMethods {
+interface IPoolManagerAdminMethods {
     /// @notice Dispatched whem a holding asset is disallowed but the asset is still allowed for investor usage.
     error InvestorAssetStillAllowed();
 
@@ -50,7 +50,7 @@ interface IPoolUnlockedMethods {
     /// @dev Note: the chainId is retriver from the assetId
     function notifyAllowedAsset(ShareClassId scId, AssetId assetId) external;
 
-    /// @notice attach custom data to a pool
+    /// @notice Attach custom data to a pool
     function setPoolMetadata(bytes calldata metadata) external;
 
     /// @notice Allow/disallow an account to interact as pool admin
@@ -111,53 +111,98 @@ interface IPoolUnlockedMethods {
     /// @param valuation Used to transform between payment assets and pool currency
     function updateHoldingValuation(ShareClassId scId, AssetId assetId, IERC7726 valuation) external;
 
-    /// @notice Set an account of a holding.
+    /// @notice Set an account of a holding
     function setHoldingAccountId(ShareClassId scId, AssetId assetId, AccountId accountId) external;
 
-    /// @notice Adds a double accounting entry.
+    /// @notice Creates an account
+    /// @param accountId Then new AccountId used
+    /// @param isDebitNormal Determines if the account should be used as debit-normal or credit-normal
+    function createAccount(AccountId accountId, bool isDebitNormal) external;
+
+    /// @notice Attach custom data to an account
+    function setAccountMetadata(AccountId account, bytes calldata metadata) external;
+
+    /// @notice Adds a double accounting entry
     /// @param credit Account to add credit
     /// @param debit Account to add debit
     function updateEntry(AccountId credit, AccountId debit, uint128 amount) external;
 
-    /// @notice Unlock tokens from a share class escrow in CV side.
+    /// @notice Add debit an account. Increase the value of debit-normal accounts, decrease for credit-normal ones.
+    function addDebit(AccountId account, uint128 amount) external;
+
+    /// @notice Add credit an account. Decrease the value of debit-normal accounts, increase for credit-normal ones.
+    function addCredit(AccountId account, uint128 amount) external;
+
+    /// @notice Unlock tokens from a share class escrow in CV side
     /// @param scId share class Id associated to the escrow from where unlock the tokens
     /// @param receiver Address in CV where to deposit the unlocked tokens
     /// @dev Note: the chainId is retriver from the assetId
     function unlockTokens(ShareClassId scId, AssetId assetId, bytes32 receiver, uint128 assetAmount) external;
 }
 
-/// @dev interface for methods called by the gateway
-interface IFromGatewayMethods {
-    /// @notice Dispatched when an action that requires to be called from the gateway is calling from somebody else.
-    error NotGateway();
-
-    function handleRegisteredAsset(AssetId assetId, bytes calldata name, bytes32 symbol, uint8 decimals) external;
-
-    function requestDeposit(PoolId poolId, ShareClassId scId, AssetId depositAssetId, bytes32 investor, uint128 amount)
-        external;
-
-    function requestRedeem(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, bytes32 investor, uint128 amount)
-        external;
-
-    function cancelDepositRequest(PoolId poolId, ShareClassId scId, AssetId depositAssetId, bytes32 investor)
-        external;
-    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, bytes32 investor) external;
-
-    function handleLockedTokens(address receiver, AssetId assetId, uint128 amount) external;
-}
-
-interface IPoolManager is IPoolUnlockedMethods, IFromGatewayMethods {
+/// @notice Interface with all methods available in the system used by actors
+interface IPoolManager is IPoolManagerAdminMethods {
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 what, address addr);
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedWhat();
 
+    /// @notice Updates a contract parameter.
+    /// @param what Name of the parameter to update.
+    /// Accepts a `bytes32` representation of 'poolRegistry', 'assetManager', 'accounting', 'holdings', 'gateway' as
+    /// string value.
     function file(bytes32 what, address data) external;
 
+    /// @notice Creates a new pool. `msg.sender` will be the admin of the created pool.
+    /// @param currency The pool currency. Usually an AssetId identifying by a ISO4217 code.
+    /// @param shareClassManager The share class manager used for this pool.
+    /// @return The id of the new pool.
     function createPool(AssetId currency, IShareClassManager shareClassManager) external returns (PoolId);
 
+    /// @notice Claim a deposit for an investor address located in the chain where the asset belongs
     function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external;
 
+    /// @notice Claim a redemption for an investor address located in the chain where the asset belongs
     function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external;
+}
+
+/// @notice Interface for methods called by the gateway
+interface IPoolManagerHandlers {
+    /// @notice Dispatched when an action that requires to be called from the gateway is calling from somebody else.
+    error NotGateway();
+
+    /// @notice Tells that an asset was already registered in CV, in order to perform the corresponding register.
+    /// @dev The same asset can be re-registered using this. Decimals can not change.
+    function handleRegisterAsset(AssetId assetId, bytes calldata name, bytes32 symbol, uint8 decimals) external;
+
+    /// @notice Perform a deposit that was requested from CV.
+    function handleRequestDeposit(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId depositAssetId,
+        bytes32 investor,
+        uint128 amount
+    ) external;
+
+    /// @notice Perform a redeem that was requested from CV.
+    function handleRequestRedeem(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId payoutAssetId,
+        bytes32 investor,
+        uint128 amount
+    ) external;
+
+    /// @notice Perform a deposit cancellation that was requested from CV.
+    function handleCancelDepositRequest(PoolId poolId, ShareClassId scId, AssetId depositAssetId, bytes32 investor)
+        external;
+
+    /// @notice Perform a redeem cancellation that was requested from CV.
+    function handleCancelRedeemRequest(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, bytes32 investor)
+        external;
+
+    /// @notice Tells that an asset was locked in CV.
+    /// @param receiver The escrow where to handle the locked tokens.
+    function handleLockedTokens(address receiver, AssetId assetId, uint128 amount) external;
 }
