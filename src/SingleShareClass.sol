@@ -148,7 +148,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         D18 approvalRatio,
         address paymentAssetId,
         IERC7726 valuation
-    ) external auth returns (uint128 approvedPoolAmount, uint128 approvedAssetAmount) {
+    ) external auth returns (uint128 approvedAssetAmount, uint128 approvedPoolAmount) {
         _ensureShareClassExists(poolId, shareClassId_);
         require(approvalRatio.inner() <= 1e18, ISingleShareClass.MaxApprovalRatioExceeded());
 
@@ -324,7 +324,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
                 continue;
             }
 
-            payoutPoolAmount += revokeEpochShares(
+            payoutPoolAmount += _revokeEpochShares(
                 poolId,
                 shareClassId_,
                 payoutAssetId,
@@ -358,7 +358,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     /// @param totalIssuance_ Total issuance of share class tokens before revoking
     /// @param epochId_ Identifier of the epoch for which we revoke
     /// @return payoutPoolAmount Converted amount of pool currency based on number of revoked shares
-    function revokeEpochShares(
+    function _revokeEpochShares(
         PoolId poolId,
         bytes16 shareClassId_,
         address payoutAssetId,
