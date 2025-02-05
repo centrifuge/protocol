@@ -409,7 +409,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         UserOrder storage userOrder = depositRequest[shareClassId_][depositAssetId][investor];
 
         for (uint32 epochId_ = userOrder.lastUpdate; epochId_ <= endEpochId; epochId_++) {
-            EpochAmounts memory epochAmounts_ = epochAmounts[shareClassId_][depositAssetId][epochId_];
+            EpochAmounts storage epochAmounts_ = epochAmounts[shareClassId_][depositAssetId][epochId_];
 
             // Skip redeem epochs
             if (epochAmounts_.depositApprovalRate.inner() == 0) {
