@@ -29,17 +29,18 @@ import {CastLib} from "src/libraries/CastLib.sol";
 import {PoolLocker} from "src/PoolLocker.sol";
 import {Auth} from "src/Auth.sol";
 
+// @inheritdoc IPoolManager
 contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
     using MathLib for uint256;
     using CastLib for bytes;
     using CastLib for bytes32;
     using CastLib for address;
 
-    IPoolRegistry poolRegistry;
-    IAssetManager assetManager;
-    IAccounting accounting;
-    IHoldings holdings;
-    IGateway gateway;
+    IPoolRegistry public poolRegistry;
+    IAssetManager public assetManager;
+    IAccounting public accounting;
+    IHoldings public holdings;
+    IGateway public gateway;
 
     /// @dev A requirement for methods that needs to be called by the gateway
     modifier onlyGateway() {
@@ -105,7 +106,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
         (uint128 shares, uint128 tokens) =
             scm.claimRedeem(poolId, scId.toBytes(), assetId.addr(), address(uint160(uint256(investor))));
 
-        assetManager.burn(_escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS), assetId.raw(), tokens);
+        assetManager.burn(escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS), assetId.raw(), tokens);
 
         gateway.sendFulfilledRedeemRequest(poolId, scId, assetId, investor, shares, tokens);
     }
@@ -189,8 +190,8 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
         );
 
         assetManager.authTransferFrom(
-            _escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS),
-            _escrow(poolId, scId, EscrowId.SHARE_CLASS),
+            escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS),
+            escrow(poolId, scId, EscrowId.SHARE_CLASS),
             uint256(uint160(AssetId.unwrap(paymentAssetId))),
             approvedAssetAmount
         );
@@ -229,8 +230,8 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
         (uint128 payoutAssetAmount,) = scm.revokeShares(poolId, scId.toBytes(), payoutAssetId.addr(), navPerShare);
 
         assetManager.authTransferFrom(
-            _escrow(poolId, scId, EscrowId.SHARE_CLASS),
-            _escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS),
+            escrow(poolId, scId, EscrowId.SHARE_CLASS),
+            escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS),
             uint256(uint160(AssetId.unwrap(payoutAssetId))),
             payoutAssetAmount
         );
@@ -340,7 +341,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
         external
         poolUnlocked
     {
-        assetManager.burn(_escrow(unlockedPoolId(), scId, EscrowId.SHARE_CLASS), assetId.raw(), assetAmount);
+        assetManager.burn(escrow(unlockedPoolId(), scId, EscrowId.SHARE_CLASS), assetId.raw(), assetAmount);
 
         gateway.sendUnlockTokens(assetId, receiver, assetAmount);
     }
@@ -365,7 +366,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
         bytes32 investor,
         uint128 amount
     ) external onlyGateway {
-        address pendingShareClassEscrow = _escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS);
+        address pendingShareClassEscrow = escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS);
         assetManager.mint(pendingShareClassEscrow, depositAssetId.raw(), amount);
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
@@ -393,7 +394,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
         (uint128 cancelledAssetAmount) =
             scm.cancelDepositRequest(poolId, scId.toBytes(), address(uint160(uint256(investor))), depositAssetId.addr());
 
-        address pendingShareClassEscrow = _escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS);
+        address pendingShareClassEscrow = escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS);
         assetManager.burn(pendingShareClassEscrow, depositAssetId.raw(), cancelledAssetAmount);
 
         gateway.sendFulfilledCancelDepositRequest(
@@ -421,7 +422,15 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
     }
 
     //----------------------------------------------------------------------------------------------
-    // internal / private
+    // view / pure methods
+    //----------------------------------------------------------------------------------------------
+
+    function escrow(PoolId poolId, ShareClassId scId, EscrowId escrow_) public pure returns (address) {
+        return address(bytes20(keccak256(abi.encodePacked("escrow", poolId, scId, escrow_))));
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // internal / private methods
     //----------------------------------------------------------------------------------------------
 
     function _beforeLock() internal override {
@@ -431,10 +440,5 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
     function _beforeUnlock(PoolId poolId) internal override {
         require(poolRegistry.isAdmin(poolId, msg.sender));
         accounting.unlock(unlockedPoolId(), bytes32("TODO"));
-    }
-
-    function _escrow(PoolId poolId, ShareClassId scId, EscrowId escrow) private view returns (address) {
-        bytes32 key = keccak256(abi.encodePacked(scId, "escrow", escrow));
-        return poolRegistry.addressFor(poolId, key);
     }
 }

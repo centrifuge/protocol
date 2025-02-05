@@ -165,6 +165,10 @@ interface IPoolManager is IPoolManagerAdminMethods {
 
     /// @notice Claim a redemption for an investor address located in the chain where the asset belongs
     function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external;
+
+    /// @notice Compute the escrow address used for a share class
+    /// @return The escrow address
+    function escrow(PoolId poolId, ShareClassId scId, EscrowId escrow_) external returns (address);
 }
 
 /// @notice Interface for methods called by the gateway
