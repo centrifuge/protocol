@@ -18,7 +18,6 @@ contract PoolRegistry is Auth, IPoolRegistry {
     mapping(PoolId => IShareClassManager) public shareClassManager;
     mapping(PoolId => mapping(address => bool)) public isAdmin;
     mapping(PoolId => mapping(AssetId => bool)) public isInvestorAssetAllowed;
-    mapping(PoolId => mapping(bytes32 key => address)) public addressFor;
 
     constructor(address deployer) Auth(deployer) {}
 
@@ -88,13 +87,6 @@ contract PoolRegistry is Auth, IPoolRegistry {
         currency[poolId] = currency_;
 
         emit UpdatedCurrency(poolId, currency_);
-    }
-
-    function setAddressFor(PoolId poolId, bytes32 key, address addr) external auth {
-        require(exists(poolId), NonExistingPool(poolId));
-        addressFor[poolId][key] = addr;
-
-        emit SetAddressFor(poolId, key, addr);
     }
 
     function exists(PoolId poolId) public view returns (bool) {
