@@ -258,11 +258,9 @@ contract RedeemTest is BaseTest {
             uint128(amount)
         );
 
-        assertApproxEqAbs(tranche.balanceOf(address(escrow)), 0, 1);
-        assertApproxEqAbs(erc20.balanceOf(address(escrow)), amount, 1);
+        vm.expectRevert(bytes("InvestmentManager/transfer-not-allowed"));
         vm.prank(investor);
         vault.redeem(amount, investor, investor);
-        assertApproxEqAbs(erc20.balanceOf(investor), investorBalanceBefore + amount, 1);
     }
 
     function testTriggerRedeemRequestTokensWithCancellation(uint128 amount) public {
@@ -345,12 +343,9 @@ contract RedeemTest is BaseTest {
             uint128(amount)
         );
 
-        assertApproxEqAbs(tranche.balanceOf(address(escrow)), 0, 1);
-        assertApproxEqAbs(erc20.balanceOf(address(escrow)), amount, 1);
+        vm.expectRevert(bytes("InvestmentManager/transfer-not-allowed"));
         vm.prank(investor);
         vault.redeem(amount, investor, investor);
-
-        assertApproxEqAbs(erc20.balanceOf(investor), investorBalanceBefore + amount, 1);
     }
 
     function testPartialRedemptionExecutions() public {
