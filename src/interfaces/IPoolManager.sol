@@ -44,13 +44,14 @@ interface IPoolUnlockedMethods {
 
     function addShareClass(bytes calldata data) external returns (ShareClassId);
 
-    function approveDeposits(ShareClassId scId, AssetId paymetAssetId, D18 approvalRatio) external;
+    function approveDeposits(ShareClassId scId, AssetId paymetAssetId, D18 approvalRatio, IERC7726 valuation)
+        external;
 
     function approveRedeems(ShareClassId scId, AssetId payoutAssetId, D18 approvalRatio) external;
 
     function issueShares(ShareClassId id, AssetId depositAssetId, D18 navPerShare) external;
 
-    function revokeShares(ShareClassId scId, AssetId payoutAssetId, D18 navPerShare) external;
+    function revokeShares(ShareClassId scId, AssetId payoutAssetId, D18 navPerShare, IERC7726 valuation) external;
 
     function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, AccountId[] memory accounts)
         external;

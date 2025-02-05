@@ -157,11 +157,13 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         return ShareClassId.wrap(scm.addShareClass(poolId, data));
     }
 
-    function approveDeposits(ShareClassId scId, AssetId paymentAssetId, D18 approvalRatio) external poolUnlocked {
+    function approveDeposits(ShareClassId scId, AssetId paymentAssetId, D18 approvalRatio, IERC7726 valuation)
+        external
+        poolUnlocked
+    {
         PoolId poolId = unlockedPoolId();
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        IERC7726 valuation = holdings.valuation(poolId, scId, paymentAssetId);
 
         (, uint128 approvedAssetAmount) = scm.approveDeposits(
             poolId, scId.toBytes(), approvalRatio, paymentAssetId.addr(), IERC7726Ext(address(valuation))
@@ -173,6 +175,8 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
             uint256(uint160(AssetId.unwrap(paymentAssetId))),
             approvedAssetAmount
         );
+
+        increaseHolding(scId, paymentAssetId, valuation, approvedAssetAmount);
     }
 
     function approveRedeems(ShareClassId scId, AssetId payoutAssetId, D18 approvalRatio) external poolUnlocked {
@@ -192,7 +196,10 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
         scm.issueShares(poolId, scId.toBytes(), depositAssetId.addr(), navPerShare);
     }
 
-    function revokeShares(ShareClassId scId, AssetId payoutAssetId, D18 navPerShare) external poolUnlocked {
+    function revokeShares(ShareClassId scId, AssetId payoutAssetId, D18 navPerShare, IERC7726 valuation)
+        external
+        poolUnlocked
+    {
         PoolId poolId = unlockedPoolId();
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
@@ -205,6 +212,8 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
             uint256(uint160(AssetId.unwrap(payoutAssetId))),
             payoutAssetAmount
         );
+
+        decreaseHolding(scId, payoutAssetId, valuation, payoutAssetAmount);
     }
 
     function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, AccountId[] memory accounts)
@@ -215,7 +224,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     }
 
     function increaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount)
-        external
+        public
         poolUnlocked
     {
         PoolId poolId = unlockedPoolId();
@@ -230,7 +239,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager {
     }
 
     function decreaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount)
-        external
+        public
         poolUnlocked
     {
         PoolId poolId = unlockedPoolId();
