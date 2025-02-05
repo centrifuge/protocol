@@ -5,7 +5,6 @@ import {Auth} from "src/Auth.sol";
 import {D18, d18} from "src/types/D18.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
-import {IERC7726} from "src/interfaces/IERC7726.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 import {ISingleShareClass} from "src/interfaces/ISingleShareClass.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
