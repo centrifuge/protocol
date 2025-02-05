@@ -102,7 +102,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         bytes32 investor,
         AssetId depositAssetId
     ) external auth {
-        require(shareClassId_.equals(shareClassId[poolId]), ShareClassNotFound);
+        require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
 
         _updateDepositRequest(poolId, shareClassId_, int128(amount), investor, depositAssetId);
     }
@@ -112,7 +112,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         auth
         returns (uint128 cancelledAssetAmount)
     {
-        require(shareClassId_.equals(shareClassId[poolId]), ShareClassNotFound);
+        require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
 
         cancelledAssetAmount = depositRequest[shareClassId_][depositAssetId][investor].pending;
 
@@ -127,7 +127,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         bytes32 investor,
         AssetId payoutAssetId
     ) external auth {
-        require(shareClassId_.equals(shareClassId[poolId]), ShareClassNotFound);
+        require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
 
         _updateRedeemRequest(poolId, shareClassId_, int128(amount), investor, payoutAssetId);
     }
@@ -138,7 +138,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         auth
         returns (uint128 cancelledShareAmount)
     {
-        require(shareClassId_.equals(shareClassId[poolId]), ShareClassNotFound);
+        require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
 
         cancelledShareAmount = redeemRequest[shareClassId_][payoutAssetId][investor].pending;
 
@@ -153,7 +153,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         AssetId paymentAssetId,
         IERC7726 valuation
     ) external auth returns (uint128 approvedAssetAmount, uint128 approvedPoolAmount) {
-        require(shareClassId_.equals(shareClassId[poolId]), ShareClassNotFound);
+        require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
         require(approvalRatio.inner() <= 1e18, ISingleShareClass.MaxApprovalRatioExceeded());
 
         // Advance epochId if it has not been advanced within this transaction (e.g. in case of multiCall context)
@@ -202,7 +202,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         AssetId payoutAssetId,
         IERC7726 /* valuation */
     ) external auth returns (uint128 approvedShareAmount, uint128 pendingShareAmount) {
-        require(shareClassId_.equals(shareClassId[poolId]), ShareClassNotFound);
+        require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
         require(approvalRatio.inner() <= 1e18, ISingleShareClass.MaxApprovalRatioExceeded());
 
         // Advance epochId if it has not been advanced within this transaction (e.g. in case of multiCall context)
@@ -258,7 +258,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         D18 navPerShare,
         uint32 endEpochId
     ) public auth {
-        require(shareClassId_.equals(shareClassId[poolId]), ShareClassNotFound);
+        require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
         require(endEpochId < epochId[poolId], IShareClassManager.EpochNotFound());
 
         uint128 totalIssuance_ = totalIssuance[shareClassId_];
@@ -314,7 +314,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         IERC7726 valuation,
         uint32 endEpochId
     ) public auth returns (uint128 payoutAssetAmount, uint128 payoutPoolAmount) {
-        require(shareClassId_.equals(shareClassId[poolId]), ShareClassNotFound);
+        require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
         require(endEpochId < epochId[poolId], IShareClassManager.EpochNotFound());
 
         uint128 totalIssuance_ = totalIssuance[shareClassId_];
@@ -369,7 +369,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         AssetId depositAssetId,
         uint32 endEpochId
     ) public returns (uint128 payoutShareAmount, uint128 paymentAssetAmount) {
-        require(shareClassId_.equals(shareClassId[poolId]), ShareClassNotFound);
+        require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
         require(endEpochId < epochId[poolId], IShareClassManager.EpochNotFound());
 
         UserOrder storage userOrder = depositRequest[shareClassId_][depositAssetId][investor];
@@ -424,7 +424,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         AssetId payoutAssetId,
         uint32 endEpochId
     ) public returns (uint128 payoutAssetAmount, uint128 paymentShareAmount) {
-        require(shareClassId_.equals(shareClassId[poolId]), ShareClassNotFound);
+        require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
         require(endEpochId < epochId[poolId], IShareClassManager.EpochNotFound());
 
         UserOrder storage userOrder = redeemRequest[shareClassId_][payoutAssetId][investor];
@@ -464,7 +464,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
     /// @inheritdoc IShareClassManager
     function updateShareClassNav(PoolId poolId, ShareClassId shareClassId_) external view auth returns (D18, uint128) {
-        require(shareClassId_.equals(shareClassId[poolId]), ShareClassNotFound);
+        require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
         revert("unsupported");
     }
 
@@ -479,7 +479,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         view
         returns (D18 navPerShare, uint128 issuance)
     {
-        require(shareClassId_.equals(shareClassId[poolId]), ShareClassNotFound);
+        require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
 
         return (_shareClassNavPerShare[shareClassId_], totalIssuance[shareClassId_]);
     }

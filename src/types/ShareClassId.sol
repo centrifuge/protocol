@@ -11,4 +11,4 @@ function equals(ShareClassId left, ShareClassId right) pure returns (bool) {
     return ShareClassId.unwrap(left) == ShareClassId.unwrap(right);
 }
 
-using {isNull, equals} for ShareClassId global;
+using {isNull, equals as ==} for ShareClassId global;
