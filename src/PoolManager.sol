@@ -191,7 +191,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
 
-        (, uint128 approvedAssetAmount) = scm.approveDeposits(poolId, scId, approvalRatio, paymentAssetId, valuation);
+        (uint128 approvedAssetAmount,) = scm.approveDeposits(poolId, scId, approvalRatio, paymentAssetId, valuation);
 
         assetManager.authTransferFrom(
             escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS),
