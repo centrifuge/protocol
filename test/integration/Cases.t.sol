@@ -34,9 +34,6 @@ contract TestCommon is Deployer, Test {
 
     MockCentrifugeVaults cv;
 
-    /// Auxliar storage to create multicalls easily.
-    IMulticall.Call[] calls; // current calls
-
     function setUp() public {
         deploy();
 
@@ -64,14 +61,13 @@ contract TestCommon is Deployer, Test {
         vm.chainId(CHAIN_1);
     }
 
-    /// @dev Reset current calls
-    function _resetCalls() internal {
-        delete calls;
-    }
+    /// @dev Transform a list of encoding methods in PoolManager calls
+    function _fromPoolManager(bytes[] memory encodedMethods) internal view returns (IMulticall.Call[] memory calls) {
+        calls = new IMulticall.Call[](encodedMethods.length);
 
-    /// @dev Creates a PoolMananger call
-    function _createCall(bytes memory encoding) internal view returns (IMulticall.Call memory) {
-        return IMulticall.Call(address(poolManager), encoding);
+        for (uint256 i; i < encodedMethods.length; i++) {
+            calls[i] = IMulticall.Call(address(poolManager), encodedMethods[i]);
+        }
     }
 }
 
@@ -94,14 +90,14 @@ contract TestConfiguration is TestCommon {
 
         scId = shareClassIdFor(poolId);
 
-        _resetCalls();
-        calls.push(_createCall(abi.encodeWithSelector(poolManager.setPoolMetadata.selector, bytes("Testing pool"))));
-        calls.push(_createCall(abi.encodeWithSelector(poolManager.addShareClass.selector, bytes(""))));
-        calls.push(_createCall(abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_2)));
-        calls.push(_createCall(abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_2, scId)));
+        (bytes[] memory calls, uint256 c) = (new bytes[](4), 0);
+        calls[c++] = abi.encodeWithSelector(poolManager.setPoolMetadata.selector, bytes("Testing pool"));
+        calls[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, bytes(""));
+        calls[c++] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_2);
+        calls[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_2, scId);
 
         vm.prank(FM);
-        poolManager.execute(poolId, calls);
+        poolManager.execute(poolId, _fromPoolManager(calls));
 
         assertEq(poolRegistry.metadata(poolId), "Testing pool");
         assertEq(cv.lastMessages(0), abi.encodePacked(MessageType.AddPool, poolId.raw()));
@@ -133,25 +129,22 @@ contract TestConfiguration is TestCommon {
         accounts[2] = AccountId.wrap(0x100 | uint8(AccountType.LOSS));
         accounts[3] = AccountId.wrap(0x100 | uint8(AccountType.GAIN));
 
-        _resetCalls();
-        calls.push(_createCall(abi.encodeWithSelector(poolManager.addShareClass.selector, bytes(""))));
-        calls.push(_createCall(abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_2)));
-        calls.push(_createCall(abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_2, scId)));
-        calls.push(_createCall(abi.encodeWithSelector(poolManager.allowHoldingAsset.selector, USDC_C2, true)));
-        calls.push(_createCall(abi.encodeWithSelector(poolManager.createAccount.selector, accounts[0], true)));
-        calls.push(_createCall(abi.encodeWithSelector(poolManager.createAccount.selector, accounts[1], false)));
-        calls.push(_createCall(abi.encodeWithSelector(poolManager.createAccount.selector, accounts[2], false)));
-        calls.push(_createCall(abi.encodeWithSelector(poolManager.createAccount.selector, accounts[3], false)));
-        calls.push(
-            _createCall(
-                abi.encodeWithSelector(poolManager.createHolding.selector, scId, USDC_C2, oneToOneValuation, accounts)
-            )
-        );
-        calls.push(_createCall(abi.encodeWithSelector(poolManager.allowInvestorAsset.selector, USDC_C2, true)));
-        calls.push(_createCall(abi.encodeWithSelector(poolManager.notifyAllowedAsset.selector, scId, USDC_C2)));
+        (bytes[] memory calls, uint256 c) = (new bytes[](11), 0);
+        calls[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, bytes(""));
+        calls[c++] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_2);
+        calls[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_2, scId);
+        calls[c++] = abi.encodeWithSelector(poolManager.allowHoldingAsset.selector, USDC_C2, true);
+        calls[c++] = abi.encodeWithSelector(poolManager.createAccount.selector, accounts[0], true);
+        calls[c++] = abi.encodeWithSelector(poolManager.createAccount.selector, accounts[1], false);
+        calls[c++] = abi.encodeWithSelector(poolManager.createAccount.selector, accounts[2], false);
+        calls[c++] = abi.encodeWithSelector(poolManager.createAccount.selector, accounts[3], false);
+        calls[c++] =
+            abi.encodeWithSelector(poolManager.createHolding.selector, scId, USDC_C2, oneToOneValuation, accounts);
+        calls[c++] = abi.encodeWithSelector(poolManager.allowInvestorAsset.selector, USDC_C2, true);
+        calls[c++] = abi.encodeWithSelector(poolManager.notifyAllowedAsset.selector, scId, USDC_C2);
 
         vm.prank(FM);
-        poolManager.execute(poolId, calls);
+        poolManager.execute(poolId, _fromPoolManager(calls));
 
         // From this point, pool is ready for investing from CV side
     }
@@ -171,16 +164,12 @@ contract TestInvesting is TestConfiguration {
 
         IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
 
-        _resetCalls();
-        calls.push(
-            _createCall(
-                abi.encodeWithSelector(poolManager.approveDeposits.selector, scId, USDC_C2, PERCENT_20, valuation)
-            )
-        );
-        calls.push(_createCall(abi.encodeWithSelector(poolManager.issueShares.selector, scId, USDC_C2, NAV_PER_SHARE)));
+        (bytes[] memory calls, uint256 c) = (new bytes[](2), 0);
+        calls[c++] = abi.encodeWithSelector(poolManager.approveDeposits.selector, scId, USDC_C2, PERCENT_20, valuation);
+        calls[c++] = abi.encodeWithSelector(poolManager.issueShares.selector, scId, USDC_C2, NAV_PER_SHARE);
 
         vm.prank(FM);
-        poolManager.execute(poolId, calls);
+        poolManager.execute(poolId, _fromPoolManager(calls));
 
         vm.prank(ANY);
         poolManager.claimDeposit(poolId, scId, USDC_C2, INVESTOR);
