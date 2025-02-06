@@ -7,12 +7,6 @@ import {PoolId} from "src/types/PoolId.sol";
 
 // TODO: WIP
 interface IGateway {
-    // NOTE: Should the implementation store a mapping by chainId to track...?
-    // - allowed pools
-    // - allowed share classes
-    // - allowed assets
-    // That mapping would act as a whitelist for the Gateway to discard messages that contains not allowed
-    // pools/shareClasses
     function sendNotifyPool(uint32 chainId, PoolId poolId) external;
     function sendNotifyShareClass(
         uint32 chainId,
@@ -55,5 +49,4 @@ interface IGateway {
         uint128 cancelledShares
     ) external;
     function sendUnlockAssets(AssetId assetId, bytes32 receiver, uint128 assetAmount) external;
-    function handleMessage(bytes calldata message) external;
 }
