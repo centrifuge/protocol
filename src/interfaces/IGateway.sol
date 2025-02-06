@@ -7,6 +7,8 @@ import {PoolId} from "src/types/PoolId.sol";
 
 // TODO: WIP
 interface IGateway {
+    error InvalidMessage(uint8 code);
+
     function sendNotifyPool(uint32 chainId, PoolId poolId) external;
     function sendNotifyShareClass(
         uint32 chainId,

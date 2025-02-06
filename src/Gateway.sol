@@ -51,7 +51,7 @@ contract Gateway is Auth, IGateway {
                 MessageType.AddTranche,
                 poolId.raw(),
                 scId.raw(),
-                bytes(name), /* Must be exactly 128 bytes */
+                name.stringToBytes128(),
                 symbol.toBytes32(),
                 decimals,
                 hook
@@ -172,6 +172,38 @@ contract Gateway is Auth, IGateway {
             handler.handleLockedTokens(
                 AssetId.wrap(message.toUint128(1)), address(bytes20(message.toBytes32(9))), message.toUint128(39)
             );
+        } else if (kind == MessageType.DepositRequest) {
+            handler.handleRequestDeposit(
+                PoolId.wrap(message.toUint64(1)),
+                ShareClassId.wrap(message.toBytes16(9)),
+                AssetId.wrap(message.toUint128(25)),
+                message.toBytes32(41),
+                message.toUint128(73)
+            );
+        } else if (kind == MessageType.RedeemRequest) {
+            handler.handleRequestRedeem(
+                PoolId.wrap(message.toUint64(1)),
+                ShareClassId.wrap(message.toBytes16(9)),
+                AssetId.wrap(message.toUint128(25)),
+                message.toBytes32(41),
+                message.toUint128(73)
+            );
+        } else if (kind == MessageType.CancelDepositRequest) {
+            handler.handleCancelDepositRequest(
+                PoolId.wrap(message.toUint64(1)),
+                ShareClassId.wrap(message.toBytes16(9)),
+                AssetId.wrap(message.toUint128(25)),
+                message.toBytes32(41)
+            );
+        } else if (kind == MessageType.CancelRedeemRequest) {
+            handler.handleCancelRedeemRequest(
+                PoolId.wrap(message.toUint64(1)),
+                ShareClassId.wrap(message.toBytes16(9)),
+                AssetId.wrap(message.toUint128(25)),
+                message.toBytes32(41)
+            );
+        } else {
+            revert InvalidMessage(uint8(kind));
         }
     }
 }
