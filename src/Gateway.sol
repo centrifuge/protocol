@@ -34,7 +34,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
     /// @inheritdoc IGateway
     function file(bytes32 what, address data) external auth {
         if (what == "router") router = IRouter(data);
-        if (what == "handler") handler = IPoolManagerHandler(data);
+        else if (what == "handler") handler = IPoolManagerHandler(data);
         else revert FileUnrecognizedWhat();
 
         emit File(what, data);
@@ -171,10 +171,10 @@ contract Gateway is Auth, IGateway, IMessageHandler {
 
         if (kind == MessageType.RegisterAsset) {
             handler.handleRegisterAsset(
-                AssetId.wrap(message.toUint64(1)),
-                message.slice(9, 128).bytes128ToString(),
-                message.toBytes32(137).toString(),
-                message.toUint8(169)
+                AssetId.wrap(message.toUint128(1)),
+                message.slice(17, 128).bytes128ToString(),
+                message.toBytes32(145).toString(),
+                message.toUint8(177)
             );
         } else if (kind == MessageType.TransferAssets) {
             handler.handleLockedTokens(
