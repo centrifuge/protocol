@@ -47,6 +47,7 @@ struct EpochPointers {
     uint32 latestRevocation;
 }
 
+/// Utility method to determine the ShareClassId for a PoolId
 function shareClassIdFor(PoolId poolId) pure returns (ShareClassId) {
     return ShareClassId.wrap(bytes16(uint128(PoolId.unwrap(poolId))));
 }

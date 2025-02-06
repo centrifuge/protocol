@@ -36,6 +36,7 @@ contract TestCommon is Deployer, Test {
         // Adapting the CV mock
         cv = new MockCentrifugeVaults(gateway);
         gateway.file("router", address(cv));
+        gateway.rely(address(cv));
 
         removeDeployerAccess();
 
@@ -63,6 +64,15 @@ contract TestCommon is Deployer, Test {
 }
 
 contract TestConfiguration is TestCommon {
+    function testAssetRegistration() public {
+        cv.registerAsset(USDC_C2, "USD Coin", "USDC", 6);
+
+        (string memory name, string memory symbol, uint8 decimals) = assetManager.asset(USDC_C2);
+        assertEq(name, "USD Coin");
+        assertEq(symbol, "USDC");
+        assertEq(decimals, 6);
+    }
+
     function testBaseConfigurationPool() public returns (PoolId poolId, ShareClassId scId) {
         cv.registerAsset(USDC_C2, "USD Coin", "USDC", 6);
 
