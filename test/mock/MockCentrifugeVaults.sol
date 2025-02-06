@@ -19,8 +19,8 @@ contract MockCentrifugeVaults is Test, IRouter {
 
     IMessageHandler public handler;
 
-    uint32 public lastChainId;
-    bytes public lastMessage;
+    uint32[] public lastChainDestinations;
+    bytes[] public lastMessages;
 
     constructor(IMessageHandler handler_) {
         handler = handler_;
@@ -43,7 +43,12 @@ contract MockCentrifugeVaults is Test, IRouter {
     }
 
     function send(uint32 chainId, bytes calldata message) external {
-        lastChainId = chainId;
-        lastMessage = message;
+        lastChainDestinations.push(chainId);
+        lastMessages.push(message);
+    }
+
+    function resetMessages() external {
+        delete lastChainDestinations;
+        delete lastMessages;
     }
 }
