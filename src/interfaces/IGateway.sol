@@ -45,16 +45,14 @@ interface IGateway {
         ShareClassId scId,
         AssetId assetId,
         bytes32 investor,
-        uint128 canceledAmount,
-        uint128 fulfilledInvestedAmount
+        uint128 cancelledAmount
     ) external;
     function sendFulfilledCancelRedeemRequest(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
         bytes32 investor,
-        uint128 canceledShares,
-        uint128 fulfilledInvestedAmount
+        uint128 cancelledShares
     ) external;
     function sendUnlockAssets(AssetId assetId, bytes32 receiver, uint128 assetAmount) external;
     function handleMessage(bytes calldata message) external;

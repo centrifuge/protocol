@@ -400,9 +400,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
         address pendingShareClassEscrow = escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS);
         assetManager.burn(pendingShareClassEscrow, depositAssetId.raw(), cancelledAssetAmount);
 
-        gateway.sendFulfilledCancelDepositRequest(
-            poolId, scId, depositAssetId, investor, cancelledAssetAmount, cancelledAssetAmount
-        );
+        gateway.sendFulfilledCancelDepositRequest(poolId, scId, depositAssetId, investor, cancelledAssetAmount);
     }
 
     /// @inheritdoc IPoolManagerHandler
@@ -411,11 +409,9 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
         onlyGateway
     {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        uint128 cancelledAssetAmount = scm.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
+        uint128 cancelledShareAmount = scm.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
 
-        gateway.sendFulfilledRedeemRequest(
-            poolId, scId, payoutAssetId, investor, cancelledAssetAmount, cancelledAssetAmount
-        );
+        gateway.sendFulfilledCancelRedeemRequest(poolId, scId, payoutAssetId, investor, cancelledShareAmount);
     }
 
     /// @inheritdoc IPoolManagerHandler
