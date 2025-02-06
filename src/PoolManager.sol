@@ -431,12 +431,12 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
     // internal / private methods
     //----------------------------------------------------------------------------------------------
 
-    function _beforeLock() internal override {
-        accounting.lock();
-    }
-
     function _beforeUnlock(PoolId poolId) internal override {
         require(poolRegistry.isAdmin(poolId, msg.sender));
-        accounting.unlock(unlockedPoolId(), bytes32("TODO"));
+        accounting.unlock(poolId, bytes32("TODO"));
+    }
+
+    function _beforeLock() internal override {
+        accounting.lock();
     }
 }
