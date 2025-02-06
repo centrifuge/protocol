@@ -20,12 +20,9 @@ import {IGateway} from "src/interfaces/IGateway.sol";
 import {IRouter} from "src/interfaces/IRouter.sol";
 
 contract Deployer is Script {
-    /// @dev Identifies an address that requires to be overwrited by a `file()` method.
+    /// @dev Identifies an address that requires to be overwritten by a `file()` method before ending the deployment.
+    /// Just a placesholder and visual indicator.
     address constant ADDRESS_TO_FILE = address(123);
-
-    // Utilities
-    TransientValuation public transientValuation;
-    OneToOneValuation public oneToOneValuation;
 
     // Core contracts
     Multicall public multicall;
@@ -37,14 +34,15 @@ contract Deployer is Script {
     PoolManager public poolManager;
     Gateway public gateway;
 
+    // Utilities
+    TransientValuation public transientValuation;
+    OneToOneValuation public oneToOneValuation;
+
     // Data
     AssetId immutable USD = newAssetId(840);
 
     function deploy() public {
         multicall = new Multicall();
-
-        transientValuation = new TransientValuation(assetManager, address(this));
-        oneToOneValuation = new OneToOneValuation(assetManager, address(this));
 
         poolRegistry = new PoolRegistry(address(this));
         assetManager = new AssetManager(address(this));
@@ -56,6 +54,9 @@ contract Deployer is Script {
             multicall, poolRegistry, assetManager, accounting, holdings, IGateway(ADDRESS_TO_FILE), address(this)
         );
         gateway = new Gateway(IRouter(address(0 /* TODO */ )), poolManager, address(this));
+
+        transientValuation = new TransientValuation(assetManager, address(this));
+        oneToOneValuation = new OneToOneValuation(assetManager, address(this));
 
         _file();
         _rely();
@@ -81,8 +82,6 @@ contract Deployer is Script {
     }
 
     function removeDeployerAccess() public {
-        transientValuation.deny(address(this));
-        oneToOneValuation.deny(address(this));
         poolRegistry.deny(address(this));
         assetManager.deny(address(this));
         accounting.deny(address(this));
@@ -90,5 +89,8 @@ contract Deployer is Script {
         singleShareClass.deny(address(this));
         poolManager.deny(address(this));
         gateway.deny(address(this));
+
+        transientValuation.deny(address(this));
+        oneToOneValuation.deny(address(this));
     }
 }

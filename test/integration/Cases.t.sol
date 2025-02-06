@@ -11,6 +11,7 @@ import {shareClassIdFor} from "src/SingleShareClass.sol";
 
 import {AccountType} from "src/interfaces/IPoolManager.sol";
 import {IMulticall} from "src/interfaces/IMulticall.sol";
+import {IERC7726} from "src/interfaces/IERC7726.sol";
 
 import {Deployer} from "script/Deployer.s.sol";
 
@@ -125,8 +126,12 @@ contract TestInvesting is TestConfiguration {
             poolId, shareClassIdFor(poolId), USDC_C2, INVESTOR, INVESTOR_AMOUNT ** assetManager.decimals(USDC_C2.raw())
         );
 
+        IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
+
         IMulticall.Call[] memory calls = new IMulticall.Call[](2);
-        calls[0] = _createCall(abi.encodeWithSelector(poolManager.approveDeposits.selector, scId, USDC_C2, PERCENT_20));
+        calls[0] = _createCall(
+            abi.encodeWithSelector(poolManager.approveDeposits.selector, scId, USDC_C2, PERCENT_20, valuation)
+        );
         calls[1] = _createCall(abi.encodeWithSelector(poolManager.issueShares.selector, scId, USDC_C2, NAV_PER_SHARE));
 
         vm.prank(FM);
