@@ -31,6 +31,15 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         handler = handler_;
     }
 
+    /// @inheritdoc IGateway
+    function file(bytes32 what, address data) external auth {
+        if (what == "router") router = IRouter(data);
+        if (what == "handler") handler = IPoolManagerHandler(data);
+        else revert FileUnrecognizedWhat();
+
+        emit File(what, data);
+    }
+
     function sendNotifyPool(uint32 chainId, PoolId poolId) external auth {
         router.send(chainId, abi.encodePacked(MessageType.AddPool, poolId.raw()));
     }
