@@ -172,13 +172,14 @@ interface IPoolManager is IPoolManagerAdminMethods {
 }
 
 /// @notice Interface for methods called by the gateway
-interface IPoolManagerHandlers {
+interface IPoolManagerHandler {
     /// @notice Dispatched when an action that requires to be called from the gateway is calling from somebody else.
     error NotGateway();
 
     /// @notice Tells that an asset was already registered in CV, in order to perform the corresponding register.
     /// @dev The same asset can be re-registered using this. Decimals can not change.
-    function handleRegisterAsset(AssetId assetId, bytes calldata name, bytes32 symbol, uint8 decimals) external;
+    function handleRegisterAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals)
+        external;
 
     /// @notice Perform a deposit that was requested from CV.
     function handleRequestDeposit(
@@ -208,5 +209,5 @@ interface IPoolManagerHandlers {
 
     /// @notice Tells that an asset was locked in CV.
     /// @param receiver The escrow where to handle the locked tokens.
-    function handleLockedTokens(address receiver, AssetId assetId, uint128 amount) external;
+    function handleLockedTokens(AssetId assetId, address receiver, uint128 amount) external;
 }

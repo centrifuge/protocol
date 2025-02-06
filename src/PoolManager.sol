@@ -16,7 +16,7 @@ import {IHoldings} from "src/interfaces/IHoldings.sol";
 import {
     IPoolManager,
     IPoolManagerAdminMethods,
-    IPoolManagerHandlers,
+    IPoolManagerHandler,
     EscrowId,
     AccountType
 } from "src/interfaces/IPoolManager.sol";
@@ -30,7 +30,7 @@ import {PoolLocker} from "src/PoolLocker.sol";
 import {Auth} from "src/Auth.sol";
 
 // @inheritdoc IPoolManager
-contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
+contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
     using MathLib for uint256;
     using CastLib for bytes;
     using CastLib for bytes32;
@@ -125,7 +125,15 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
         require(scm.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
-        gateway.sendNotifyShareClass(chainId, poolId, scId);
+        gateway.sendNotifyShareClass(
+            chainId,
+            poolId,
+            scId,
+            string("TODO"),
+            string("TODO"),
+            assetManager.decimals(poolRegistry.currency(poolId).raw()),
+            bytes32("TODO")
+        );
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
@@ -346,15 +354,15 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
     // Gateway owner methods
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IPoolManagerHandlers
-    function handleRegisterAsset(AssetId assetId, bytes calldata name, bytes32 symbol, uint8 decimals)
+    /// @inheritdoc IPoolManagerHandler
+    function handleRegisterAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals)
         external
         onlyGateway
     {
-        assetManager.registerAsset(assetId, name.bytes128ToString(), symbol.toString(), decimals);
+        assetManager.registerAsset(assetId, name, symbol, decimals);
     }
 
-    /// @inheritdoc IPoolManagerHandlers
+    /// @inheritdoc IPoolManagerHandler
     function handleRequestDeposit(
         PoolId poolId,
         ShareClassId scId,
@@ -369,7 +377,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
         scm.requestDeposit(poolId, scId, amount, investor, depositAssetId);
     }
 
-    /// @inheritdoc IPoolManagerHandlers
+    /// @inheritdoc IPoolManagerHandler
     function handleRequestRedeem(
         PoolId poolId,
         ShareClassId scId,
@@ -381,7 +389,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
         scm.requestRedeem(poolId, scId, amount, investor, payoutAssetId);
     }
 
-    /// @inheritdoc IPoolManagerHandlers
+    /// @inheritdoc IPoolManagerHandler
     function handleCancelDepositRequest(PoolId poolId, ShareClassId scId, AssetId depositAssetId, bytes32 investor)
         external
         onlyGateway
@@ -397,7 +405,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
         );
     }
 
-    /// @inheritdoc IPoolManagerHandlers
+    /// @inheritdoc IPoolManagerHandler
     function handleCancelRedeemRequest(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, bytes32 investor)
         external
         onlyGateway
@@ -410,8 +418,8 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandlers {
         );
     }
 
-    /// @inheritdoc IPoolManagerHandlers
-    function handleLockedTokens(address receiver, AssetId assetId, uint128 amount) external onlyGateway {
+    /// @inheritdoc IPoolManagerHandler
+    function handleLockedTokens(AssetId assetId, address receiver, uint128 amount) external onlyGateway {
         assetManager.mint(receiver, assetId.raw(), amount);
     }
 

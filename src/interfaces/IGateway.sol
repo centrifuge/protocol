@@ -14,7 +14,15 @@ interface IGateway {
     // That mapping would act as a whitelist for the Gateway to discard messages that contains not allowed
     // pools/shareClasses
     function sendNotifyPool(uint32 chainId, PoolId poolId) external;
-    function sendNotifyShareClass(uint32 chainId, PoolId poolId, ShareClassId scId) external;
+    function sendNotifyShareClass(
+        uint32 chainId,
+        PoolId poolId,
+        ShareClassId scId,
+        string memory name,
+        string memory symbol,
+        uint8 decimals,
+        bytes32 hook
+    ) external;
     function sendNotifyAllowedAsset(PoolId poolId, ShareClassId scId, AssetId assetId, bool isAllowed) external;
     function sendFulfilledDepositRequest(
         PoolId poolId,
