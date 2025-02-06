@@ -9,27 +9,18 @@ import {IGateway} from "src/interfaces/IGateway.sol";
 import {IPoolManagerHandler} from "src/interfaces/IPoolManager.sol";
 
 import {CastLib} from "src/libraries/CastLib.sol";
+import {BytesLib} from "src/libraries/BytesLib.sol";
+import {MessageType, MessageLib} from "src/libraries/MessageLib.sol";
 
 import {Auth} from "src/Auth.sol";
-
-import {
-    MessageType,
-    SerializationLib,
-    DeserializationLib,
-    RegisterAssetMsg,
-    AddPoolMsg,
-    AddTrancheMsg,
-    AllowAssetMsg,
-    DisallowAssetMsg,
-    TransferAssetsMsg
-} from "src/libraries/MessageLib.sol";
 
 interface IRouter {
     function sendMessage(uint32 chainId, bytes memory message) external;
 }
 
 contract Gateway is Auth, IGateway {
-    using DeserializationLib for bytes;
+    using MessageLib for bytes;
+    using BytesLib for bytes;
     using CastLib for string;
     using CastLib for bytes;
     using CastLib for bytes32;
@@ -42,7 +33,7 @@ contract Gateway is Auth, IGateway {
     }
 
     function sendNotifyPool(uint32 chainId, PoolId poolId) external auth {
-        router.sendMessage(chainId, AddPoolMsg(poolId.raw()).serialize());
+        router.sendMessage(chainId, abi.encodePacked(MessageType.AddPool, poolId.raw()));
     }
 
     function sendNotifyShareClass(
@@ -56,14 +47,23 @@ contract Gateway is Auth, IGateway {
     ) external auth {
         router.sendMessage(
             chainId,
-            AddTrancheMsg(poolId.raw(), scId.toBytes(), bytes(name), symbol.toBytes32(), decimals, hook).serialize()
+            abi.encodePacked(
+                MessageType.AddTranche,
+                poolId.raw(),
+                scId.raw(),
+                bytes(name), /* Must be exactly 128 bytes */
+                symbol.toBytes32(),
+                decimals,
+                hook
+            )
         );
     }
 
     function sendNotifyAllowedAsset(PoolId poolId, ShareClassId scId, AssetId assetId, bool isAllowed) external auth {
         bytes memory message = isAllowed
-            ? AllowAssetMsg(poolId.raw(), assetId.raw()).serialize()
-            : DisallowAssetMsg(poolId.raw(), assetId.raw()).serialize();
+            ? abi.encodePacked(MessageType.AllowAsset, poolId.raw(), assetId.raw())
+            : abi.encodePacked(MessageType.DisallowAsset, poolId.raw(), assetId.raw());
+
         router.sendMessage(assetId.chainId(), message);
     }
 
@@ -75,7 +75,18 @@ contract Gateway is Auth, IGateway {
         uint128 shares,
         uint128 investedAmount
     ) external auth {
-        //TODO
+        router.sendMessage(
+            assetId.chainId(),
+            abi.encodePacked(
+                MessageType.FulfilledDepositRequest,
+                poolId.raw(),
+                scId.raw(),
+                assetId.raw(),
+                investor,
+                shares,
+                investedAmount
+            )
+        );
     }
 
     function sendFulfilledRedeemRequest(
@@ -86,7 +97,18 @@ contract Gateway is Auth, IGateway {
         uint128 shares,
         uint128 investedAmount
     ) external auth {
-        //TODO
+        router.sendMessage(
+            assetId.chainId(),
+            abi.encodePacked(
+                MessageType.FulfilledRedeemRequest,
+                poolId.raw(),
+                scId.raw(),
+                assetId.raw(),
+                investor,
+                shares,
+                investedAmount
+            )
+        );
     }
 
     function sendFulfilledCancelDepositRequest(
@@ -94,10 +116,20 @@ contract Gateway is Auth, IGateway {
         ShareClassId scId,
         AssetId assetId,
         bytes32 investor,
-        uint128 canceledAmount,
-        uint128 fulfilledInvestedAmount
+        uint128 cancelledAmount
     ) external auth {
-        //TODO
+        router.sendMessage(
+            assetId.chainId(),
+            abi.encodePacked(
+                MessageType.FulfilledCancelDepositRequest,
+                poolId.raw(),
+                scId.raw(),
+                assetId.raw(),
+                investor,
+                cancelledAmount,
+                cancelledAmount
+            )
+        );
     }
 
     function sendFulfilledCancelRedeemRequest(
@@ -105,27 +137,41 @@ contract Gateway is Auth, IGateway {
         ShareClassId scId,
         AssetId assetId,
         bytes32 investor,
-        uint128 canceledShares,
-        uint128 fulfilledInvestedAmount
+        uint128 cancelledShares
     ) external auth {
-        //TODO
+        router.sendMessage(
+            assetId.chainId(),
+            abi.encodePacked(
+                MessageType.FulfilledCancelRedeemRequest,
+                poolId.raw(),
+                scId.raw(),
+                assetId.raw(),
+                investor,
+                cancelledShares
+            )
+        );
     }
 
     function sendUnlockAssets(AssetId assetId, bytes32 receiver, uint128 assetAmount) external auth {
-        router.sendMessage(assetId.chainId(), TransferAssetsMsg(assetId.raw(), receiver, assetAmount).serialize());
+        router.sendMessage(
+            assetId.chainId(), abi.encodePacked(MessageType.TransferAssets, assetId.raw(), receiver, assetAmount)
+        );
     }
 
     function handleMessage(bytes calldata message) external auth {
         MessageType kind = message.messageType();
 
         if (kind == MessageType.RegisterAsset) {
-            RegisterAssetMsg memory data = message.deserializeRegisterAssetMsg();
             handler.handleRegisterAsset(
-                AssetId.wrap(data.assetId), data.name.bytes128ToString(), data.symbol.toString(), data.decimals
+                AssetId.wrap(message.toUint64(1)),
+                message.slice(9, 128).bytes128ToString(),
+                message.toBytes32(137).toString(),
+                message.toUint8(169)
             );
         } else if (kind == MessageType.TransferAssets) {
-            TransferAssetsMsg memory data = message.deserializeTransferAssetsMsg();
-            handler.handleLockedTokens(AssetId.wrap(data.assetId), address(bytes20(data.receiver)), data.amount);
+            handler.handleLockedTokens(
+                AssetId.wrap(message.toUint128(1)), address(bytes20(message.toBytes32(9))), message.toUint128(39)
+            );
         }
     }
 }
