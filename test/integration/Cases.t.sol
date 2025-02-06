@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {AssetId, newAssetIdFromISO4217, newAssetId} from "src/types/AssetId.sol";
+import {AssetId, newAssetId} from "src/types/AssetId.sol";
 import {PoolId} from "src/types/PoolId.sol";
 import {AccountId} from "src/types/AccountId.sol";
 import {ShareClassId} from "src/types/ShareClassId.sol";
@@ -31,12 +31,11 @@ contract TestCommon is Deployer, Test {
     MockCentrifugeVaults cv;
 
     function setUp() public {
-        // Deployment
         deploy();
 
-        cv = new MockCentrifugeVaults(poolManager);
-
-        poolManager.rely(address(cv)); // TODO: remove this the Gateway is implemented.
+        // Adapting the CV mock
+        cv = new MockCentrifugeVaults(gateway);
+        gateway.file("router", address(cv));
 
         removeDeployerAccess();
 
@@ -70,7 +69,7 @@ contract TestConfiguration is TestCommon {
         vm.prank(FM);
         poolId = poolManager.createPool(USD, singleShareClass);
 
-        scId = ShareClassId.wrap(shareClassIdFor(poolId));
+        scId = shareClassIdFor(poolId);
 
         AccountId[] memory accounts = new AccountId[](4);
         accounts[0] = AccountId.wrap(0x100 | uint8(AccountType.ASSET));
@@ -113,11 +112,7 @@ contract TestInvesting is TestConfiguration {
         (PoolId poolId, ShareClassId scId) = testBaseConfigurationPool();
 
         cv.requestDeposit(
-            poolId,
-            ShareClassId.wrap(shareClassIdFor(poolId)),
-            USDC_C2,
-            INVESTOR,
-            INVESTOR_AMOUNT ** assetManager.decimals(USDC_C2.raw())
+            poolId, shareClassIdFor(poolId), USDC_C2, INVESTOR, INVESTOR_AMOUNT ** assetManager.decimals(USDC_C2.raw())
         );
 
         IMulticall.Call[] memory calls = new IMulticall.Call[](2);

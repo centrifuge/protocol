@@ -5,27 +5,38 @@ import "forge-std/Test.sol";
 
 import {AssetId} from "src/types/AssetId.sol";
 import {PoolId} from "src/types/PoolId.sol";
-import {IPoolManager} from "src/interfaces/IPoolManager.sol"; // TODO: remove import
 import {ShareClassId} from "src/types/ShareClassId.sol";
 
-contract MockCentrifugeVaults is Test {
-    IPoolManager poolManager; // TODO: change to gateway when it's implemented
+import {CastLib} from "src/libraries/CastLib.sol";
+import {BytesLib} from "src/libraries/BytesLib.sol";
 
-    constructor(IPoolManager poolManager_) {
-        poolManager = poolManager_;
+import {IMessageHandler} from "src/interfaces/IMessageHandler.sol";
+import {IRouter} from "src/Gateway.sol"; // TODO: Fix me
+
+contract MockCentrifugeVaults is Test, IRouter {
+    using CastLib for string;
+
+    IMessageHandler public handler;
+
+    uint32 public lastChainId;
+    bytes public lastMessage;
+
+    constructor(IMessageHandler handler_) {
+        handler = handler_;
     }
 
-    function registerAsset(AssetId assetId, bytes calldata name, bytes32 symbol, uint8 decimals) public {
-        // TODO: Create message and send message to the Gateway
-        // But by now, we bypass the gateway:
-        poolManager.handleRegisteredAsset(assetId, name, symbol, decimals);
+    function registerAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals) public {
+        handler.handle(abi.encodePacked(assetId.raw(), name.stringToBytes128(), symbol.toBytes32(), decimals));
     }
 
-    function requestDeposit(PoolId poolId, ShareClassId scId, AssetId depositAssetId, bytes32 investor, uint128 amount)
+    function requestDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint128 amount)
         public
     {
-        // TODO: Create message and send message to the Gateway
-        // But by now, we bypass the gateway:
-        poolManager.requestDeposit(poolId, scId, depositAssetId, investor, amount);
+        handler.handle(abi.encodePacked(poolId.raw(), scId.raw(), assetId.raw(), investor, amount));
+    }
+
+    function send(uint32 chainId, bytes calldata message) external {
+        lastChainId = chainId;
+        lastMessage = message;
     }
 }

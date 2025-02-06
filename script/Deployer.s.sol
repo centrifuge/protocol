@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import "forge-std/Script.sol";
 
-import {AssetId, newAssetIdFromISO4217} from "src/types/AssetId.sol";
+import {AssetId, newAssetId} from "src/types/AssetId.sol";
 
 import {TransientValuation} from "src/TransientValuation.sol";
 import {OneToOneValuation} from "src/OneToOneValuation.sol";
@@ -12,13 +12,17 @@ import {Multicall} from "src/Multicall.sol";
 import {SingleShareClass} from "src/SingleShareClass.sol";
 import {Holdings} from "src/Holdings.sol";
 import {AssetManager} from "src/AssetManager.sol";
-//import {Accounting} from "src/Accounting.sol";
-import {IAccounting} from "src/interfaces/IAccounting.sol"; // TODO: remove import
-//import {Gateway} from "src/Gateway.sol";
-import {IGateway} from "src/interfaces/IGateway.sol"; // TODO: remove import
+import {Accounting} from "src/Accounting.sol";
+import {Gateway} from "src/Gateway.sol";
 import {PoolManager, IPoolManager} from "src/PoolManager.sol";
 
+import {IGateway} from "src/interfaces/IGateway.sol";
+import {IRouter} from "src/interfaces/IRouter.sol";
+
 contract Deployer is Script {
+    /// @dev Identifies an address that requires to be overwrited by a `file()` method.
+    address constant ADDRESS_TO_FILE = address(123);
+
     // Utilities
     TransientValuation public transientValuation;
     OneToOneValuation public oneToOneValuation;
@@ -27,14 +31,14 @@ contract Deployer is Script {
     Multicall public multicall;
     PoolRegistry public poolRegistry;
     AssetManager public assetManager;
-    IAccounting public accounting = IAccounting(address(0));
+    Accounting public accounting;
     Holdings public holdings;
     SingleShareClass public singleShareClass;
     PoolManager public poolManager;
-    IGateway public gateway = IGateway(address(0));
+    Gateway public gateway;
 
     // Data
-    AssetId immutable USD = newAssetIdFromISO4217(840);
+    AssetId immutable USD = newAssetId(840);
 
     function deploy() public {
         multicall = new Multicall();
@@ -44,26 +48,32 @@ contract Deployer is Script {
 
         poolRegistry = new PoolRegistry(address(this));
         assetManager = new AssetManager(address(this));
-        // TODO: initialize Accounting
+        accounting = new Accounting(address(this));
         holdings = new Holdings(poolRegistry, address(this));
 
         singleShareClass = new SingleShareClass(poolRegistry, address(this));
-        poolManager =
-            new PoolManager(multicall, poolRegistry, assetManager, accounting, holdings, gateway, address(this));
-        // TODO: initialize Gateway
+        poolManager = new PoolManager(
+            multicall, poolRegistry, assetManager, accounting, holdings, IGateway(ADDRESS_TO_FILE), address(this)
+        );
+        gateway = new Gateway(IRouter(address(0 /* TODO */ )), poolManager, address(this));
 
+        _file();
         _rely();
         _initialConfig();
+    }
+
+    function _file() public {
+        poolManager.file("gateway", address(gateway));
     }
 
     function _rely() private {
         poolRegistry.rely(address(poolManager));
         assetManager.rely(address(poolManager));
         holdings.rely(address(poolManager));
-        //accounting.rely(address(accounting));
+        accounting.rely(address(poolManager));
         singleShareClass.rely(address(poolManager));
         poolManager.rely(address(gateway));
-        //gateway.rely(address(poolManager));
+        gateway.rely(address(poolManager));
     }
 
     function _initialConfig() private {
@@ -75,10 +85,10 @@ contract Deployer is Script {
         oneToOneValuation.deny(address(this));
         poolRegistry.deny(address(this));
         assetManager.deny(address(this));
-        // TODO: deny accounting
+        accounting.deny(address(this));
         holdings.deny(address(this));
         singleShareClass.deny(address(this));
         poolManager.deny(address(this));
-        // TODO: deny gateway
+        gateway.deny(address(this));
     }
 }
