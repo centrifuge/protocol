@@ -47,12 +47,8 @@ contract ERC7540VaultTest is BaseTest {
         vm.expectRevert(bytes("Auth/not-authorized"));
         vault.file("manager", self);
 
-        vm.expectRevert(bytes("Auth/not-authorized"));
-        vault.file("escrow", self);
-
         root.relyContract(vault_, self);
         vault.file("manager", self);
-        vault.file("escrow", self);
 
         vm.expectRevert(bytes("ERC7540Vault/file-unrecognized-param"));
         vault.file("random", self);

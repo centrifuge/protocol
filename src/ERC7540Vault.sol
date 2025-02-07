@@ -88,7 +88,6 @@ contract ERC7540Vault is Auth, IERC7540Vault {
     // --- Administration ---
     function file(bytes32 what, address data) external auth {
         if (what == "manager") manager = IInvestmentManager(data);
-        else if (what == "escrow") escrow = data;
         else revert("ERC7540Vault/file-unrecognized-param");
         emit File(what, data);
     }
@@ -108,7 +107,7 @@ contract ERC7540Vault is Auth, IERC7540Vault {
             manager.requestDeposit(address(this), assets, controller, owner, msg.sender),
             "ERC7540Vault/request-deposit-failed"
         );
-        SafeTransferLib.safeTransferFrom(asset, owner, address(escrow), assets);
+        SafeTransferLib.safeTransferFrom(asset, owner, manager.escrow(), assets);
 
         emit DepositRequest(controller, owner, REQUEST_ID, msg.sender, assets);
         return REQUEST_ID;
@@ -137,14 +136,13 @@ contract ERC7540Vault is Auth, IERC7540Vault {
             "ERC7540Vault/request-redeem-failed"
         );
 
-        require(
-            ITranche(share).checkTransferRestriction(owner, address(escrow), shares), "ERC7540Vault/restrictions-failed"
-        );
+        address escrow = manager.escrow();
+        require(ITranche(share).checkTransferRestriction(owner, escrow, shares), "ERC7540Vault/restrictions-failed");
 
-        try ITranche(share).authTransferFrom(sender, owner, address(escrow), shares) returns (bool) {}
+        try ITranche(share).authTransferFrom(sender, owner, escrow, shares) returns (bool) {}
         catch {
             // Support tranche tokens that block authTransferFrom. In this case ERC20 approval needs to be set
-            require(ITranche(share).transferFrom(owner, address(escrow), shares), "ERC7540Vault/transfer-from-failed");
+            require(ITranche(share).transferFrom(owner, escrow, shares), "ERC7540Vault/transfer-from-failed");
         }
 
         emit RedeemRequest(controller, owner, REQUEST_ID, msg.sender, shares);
