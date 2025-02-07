@@ -64,19 +64,25 @@ contract RestrictedRedemptions is Auth, IRestrictionManager, IHook {
         view
         returns (bool)
     {
-        if (uint128(hookData.from).getBit(FREEZE_BIT) == true && !root.endorsed(from)) {
+        uint128 fromHookData = uint128(hookData.from);
+        if (fromHookData.getBit(FREEZE_BIT) == true && !root.endorsed(from)) {
             // Source is frozen and not endorsed
             return false;
         }
 
         uint128 toHookData = uint128(hookData.to);
-        if (to == escrow && toHookData >> 64 < block.timestamp) {
-            // Destination is escrow, so it's a redemption request, and the user is not a member
+        if (toHookData.getBit(FREEZE_BIT) == true) {
+            // Destination is frozen
             return false;
         }
 
-        if (toHookData.getBit(FREEZE_BIT) == true) {
-            // Destination is frozen
+        if (from == address(0) && to == escrow) {
+            // Deposit request fulfillment
+            return true;
+        }
+
+        if (to == escrow && fromHookData >> 64 < block.timestamp) {
+            // Destination is escrow, so it's a redemption request, and the user is not a member
             return false;
         }
 

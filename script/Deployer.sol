@@ -8,6 +8,7 @@ import {InvestmentManager} from "src/InvestmentManager.sol";
 import {TrancheFactory} from "src/factories/TrancheFactory.sol";
 import {ERC7540VaultFactory} from "src/factories/ERC7540VaultFactory.sol";
 import {RestrictionManager} from "src/token/RestrictionManager.sol";
+import {RestrictedRedemptions} from "src/token/RestrictedRedemptions.sol";
 import {TransferProxyFactory} from "src/factories/TransferProxyFactory.sol";
 import {PoolManager} from "src/PoolManager.sol";
 import {Escrow} from "src/Escrow.sol";
@@ -33,6 +34,7 @@ contract Deployer is Script {
     TransferProxyFactory public transferProxyFactory;
     address public vaultFactory;
     address public restrictionManager;
+    address public restrictedRedemptions;
     address public trancheFactory;
 
     function deploy(address deployer) public {
@@ -52,6 +54,7 @@ contract Deployer is Script {
         root = new Root{salt: salt}(address(escrow), delay, deployer);
         vaultFactory = address(new ERC7540VaultFactory(address(root)));
         restrictionManager = address(new RestrictionManager{salt: salt}(address(root), deployer));
+        restrictedRedemptions = address(new RestrictedRedemptions{salt: salt}(address(root), address(escrow), deployer));
         trancheFactory = address(new TrancheFactory{salt: salt}(address(root), deployer));
         investmentManager = new InvestmentManager(address(root), address(escrow));
         poolManager = new PoolManager(address(escrow), vaultFactory, trancheFactory);
@@ -77,6 +80,7 @@ contract Deployer is Script {
         IAuth(vaultFactory).rely(address(poolManager));
         IAuth(trancheFactory).rely(address(poolManager));
         IAuth(restrictionManager).rely(address(poolManager));
+        IAuth(restrictedRedemptions).rely(address(poolManager));
 
         // Rely on Root
         router.rely(address(root));
@@ -90,6 +94,7 @@ contract Deployer is Script {
         IAuth(vaultFactory).rely(address(root));
         IAuth(trancheFactory).rely(address(root));
         IAuth(restrictionManager).rely(address(root));
+        IAuth(restrictedRedemptions).rely(address(root));
 
         // Rely on guardian
         root.rely(address(guardian));
@@ -130,6 +135,7 @@ contract Deployer is Script {
         IAuth(vaultFactory).deny(deployer);
         IAuth(trancheFactory).deny(deployer);
         IAuth(restrictionManager).deny(deployer);
+        IAuth(restrictedRedemptions).deny(deployer);
         transferProxyFactory.deny(deployer);
         root.deny(deployer);
         investmentManager.deny(deployer);
