@@ -31,6 +31,14 @@ contract LocalAdapter is Auth, IAdapter {
     // --- Events ---
     event RouteToDomain(string destinationChain, string destinationContractAddress, bytes payload);
     event RouteToCentrifuge(bytes32 commandId, string sourceChain, string sourceAddress, bytes payload);
+    event NativeGasPaidForContractCall(
+        address sender,
+        string destinationChain,
+        string destinationAddress,
+        bytes32 payload,
+        uint256 gas,
+        address refundAddress
+    );
     event File(bytes32 indexed what, address addr);
     event File(bytes32 indexed what, string data);
 
@@ -78,6 +86,20 @@ contract LocalAdapter is Auth, IAdapter {
         precompile.execute(FAKE_COMMAND_ID, sourceChain, sourceAddress, message);
 
         emit RouteToCentrifuge(FAKE_COMMAND_ID, sourceChain, sourceAddress, message);
+    }
+
+    function payNativeGasForContractCall(
+        address sender,
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        bytes calldata payload,
+        address refundAddress
+    ) external payable {
+        require(msg.value != 0, "Nothing Paid");
+
+        emit NativeGasPaidForContractCall(
+            sender, destinationChain, destinationAddress, keccak256(payload), msg.value, refundAddress
+        );
     }
 
     /// @inheritdoc IAdapter
