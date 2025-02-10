@@ -40,7 +40,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
     }
 
     function sendNotifyPool(uint32 chainId, PoolId poolId) external auth {
-        adapter.send(chainId, abi.encodePacked(MessageType.AddPool, poolId.raw()));
+        _send(chainId, abi.encodePacked(MessageType.AddPool, poolId.raw()));
     }
 
     function sendNotifyShareClass(
@@ -52,7 +52,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         uint8 decimals,
         bytes32 hook
     ) external auth {
-        adapter.send(
+        _send(
             chainId,
             abi.encodePacked(
                 MessageType.AddTranche,
@@ -74,7 +74,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
             ? abi.encodePacked(MessageType.AllowAsset, poolId.raw(), assetId.raw())
             : abi.encodePacked(MessageType.DisallowAsset, poolId.raw(), assetId.raw());
 
-        adapter.send(assetId.chainId(), message);
+        _send(assetId.chainId(), message);
     }
 
     function sendFulfilledDepositRequest(
@@ -85,7 +85,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         uint128 shares,
         uint128 investedAmount
     ) external auth {
-        adapter.send(
+        _send(
             assetId.chainId(),
             abi.encodePacked(
                 MessageType.FulfilledDepositRequest,
@@ -107,7 +107,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         uint128 shares,
         uint128 investedAmount
     ) external auth {
-        adapter.send(
+        _send(
             assetId.chainId(),
             abi.encodePacked(
                 MessageType.FulfilledRedeemRequest,
@@ -128,7 +128,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         bytes32 investor,
         uint128 cancelledAmount
     ) external auth {
-        adapter.send(
+        _send(
             assetId.chainId(),
             abi.encodePacked(
                 MessageType.FulfilledCancelDepositRequest,
@@ -149,7 +149,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         bytes32 investor,
         uint128 cancelledShares
     ) external auth {
-        adapter.send(
+        _send(
             assetId.chainId(),
             abi.encodePacked(
                 MessageType.FulfilledCancelRedeemRequest,
@@ -163,9 +163,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
     }
 
     function sendUnlockAssets(AssetId assetId, bytes32 receiver, uint128 assetAmount) external auth {
-        adapter.send(
-            assetId.chainId(), abi.encodePacked(MessageType.TransferAssets, assetId.raw(), receiver, assetAmount)
-        );
+        _send(assetId.chainId(), abi.encodePacked(MessageType.TransferAssets, assetId.raw(), receiver, assetAmount));
     }
 
     function handle(bytes calldata message) external auth {
@@ -215,5 +213,10 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         } else {
             revert InvalidMessage(uint8(kind));
         }
+    }
+
+    function _send(uint32 chainId, bytes memory message) private {
+        // TODO: generate proofs and send message through handlers
+        _send(chainId, message);
     }
 }
