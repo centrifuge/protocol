@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {ShareClassId} from "src/types/ShareClassId.sol";
 import {AssetId} from "src/types/AssetId.sol";
-import {AccountId} from "src/types/AccountId.sol";
+import {AccountId, newAccountId} from "src/types/AccountId.sol";
 import {PoolId} from "src/types/PoolId.sol";
 import {D18} from "src/types/D18.sol";
 
@@ -244,10 +244,21 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, AccountId[] memory accounts)
+    function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint24 rawAccountId)
         external
         poolUnlocked
     {
+        AccountId[] memory accounts = new AccountId[](4);
+        accounts[0] = newAccountId(rawAccountId, uint8(AccountType.ASSET));
+        accounts[1] = newAccountId(rawAccountId, uint8(AccountType.EQUITY));
+        accounts[2] = newAccountId(rawAccountId, uint8(AccountType.LOSS));
+        accounts[3] = newAccountId(rawAccountId, uint8(AccountType.GAIN));
+
+        createAccount(accounts[0], true);
+        createAccount(accounts[1], false);
+        createAccount(accounts[2], false);
+        createAccount(accounts[3], false);
+
         holdings.create(unlockedPoolId(), scId, assetId, valuation, accounts);
     }
 
@@ -315,7 +326,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function createAccount(AccountId account, bool isDebitNormal) external poolUnlocked {
+    function createAccount(AccountId account, bool isDebitNormal) public poolUnlocked {
         accounting.createAccount(unlockedPoolId(), account, isDebitNormal);
     }
 

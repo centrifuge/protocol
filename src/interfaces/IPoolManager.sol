@@ -92,9 +92,8 @@ interface IPoolManagerAdminMethods {
 
     /// @notice Create a new holding associated to the asset in a share class.
     /// @param valuation Used to transform between payment assets and pool currency
-    /// @param accounts Associated accounting accounts to this holding
-    function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, AccountId[] memory accounts)
-        external;
+    /// @param rawAccountId Value use for the accountIds
+    function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint24 rawAccountId) external;
 
     /// @notice Increase the amount of a holding.
     /// @param valuation Used to transform between payment assets and pool currency
