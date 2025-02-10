@@ -5,7 +5,7 @@ import {ShareClassId} from "src/types/ShareClassId.sol";
 import {AssetId} from "src/types/AssetId.sol";
 import {PoolId} from "src/types/PoolId.sol";
 
-/// @notice Interface for a gateway
+/// @notice Interface for dispatch-only gateway
 interface IGateway {
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 indexed what, address addr);
@@ -15,7 +15,7 @@ interface IGateway {
 
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
-    /// Accepts a `bytes32` representation of 'router' and 'handler' string values.
+    /// Accepts a `bytes32` representation of 'handler' string value.
     /// @param data New value given to the `what` parameter
     function file(bytes32 what, address data) external;
 

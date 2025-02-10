@@ -358,8 +358,8 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
     function handleRequestDeposit(
         PoolId poolId,
         ShareClassId scId,
-        AssetId depositAssetId,
         bytes32 investor,
+        AssetId depositAssetId,
         uint128 amount
     ) external onlyGateway {
         address pendingShareClassEscrow = escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS);
@@ -373,8 +373,8 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
     function handleRequestRedeem(
         PoolId poolId,
         ShareClassId scId,
-        AssetId payoutAssetId,
         bytes32 investor,
+        AssetId payoutAssetId,
         uint128 amount
     ) external onlyGateway {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
@@ -382,7 +382,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerHandler
-    function handleCancelDepositRequest(PoolId poolId, ShareClassId scId, AssetId depositAssetId, bytes32 investor)
+    function handleCancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
         external
         onlyGateway
     {
@@ -396,7 +396,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerHandler
-    function handleCancelRedeemRequest(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, bytes32 investor)
+    function handleCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
         external
         onlyGateway
     {

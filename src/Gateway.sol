@@ -7,7 +7,7 @@ import {PoolId} from "src/types/PoolId.sol";
 
 import {IGateway} from "src/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/interfaces/IMessageHandler.sol";
-import {IRouter} from "src/interfaces/IRouter.sol";
+import {IAdapter} from "src/interfaces/IAdapter.sol";
 import {IPoolManagerHandler} from "src/interfaces/IPoolManager.sol";
 
 import {CastLib} from "src/libraries/CastLib.sol";
@@ -23,25 +23,24 @@ contract Gateway is Auth, IGateway, IMessageHandler {
     using CastLib for bytes;
     using CastLib for bytes32;
 
-    IRouter public router;
+    IAdapter public adapter; // TODO: several adapters
     IPoolManagerHandler public handler;
 
-    constructor(IRouter router_, IPoolManagerHandler handler_, address deployer) Auth(deployer) {
-        router = router_;
+    constructor(IAdapter adapter_, IPoolManagerHandler handler_, address deployer) Auth(deployer) {
+        adapter = adapter_;
         handler = handler_;
     }
 
     /// @inheritdoc IGateway
     function file(bytes32 what, address data) external auth {
-        if (what == "router") router = IRouter(data);
-        else if (what == "handler") handler = IPoolManagerHandler(data);
+        if (what == "handler") handler = IPoolManagerHandler(data);
         else revert FileUnrecognizedWhat();
 
         emit File(what, data);
     }
 
     function sendNotifyPool(uint32 chainId, PoolId poolId) external auth {
-        router.send(chainId, abi.encodePacked(MessageType.AddPool, poolId.raw()));
+        adapter.send(chainId, abi.encodePacked(MessageType.AddPool, poolId.raw()));
     }
 
     function sendNotifyShareClass(
@@ -53,7 +52,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         uint8 decimals,
         bytes32 hook
     ) external auth {
-        router.send(
+        adapter.send(
             chainId,
             abi.encodePacked(
                 MessageType.AddTranche,
@@ -75,7 +74,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
             ? abi.encodePacked(MessageType.AllowAsset, poolId.raw(), assetId.raw())
             : abi.encodePacked(MessageType.DisallowAsset, poolId.raw(), assetId.raw());
 
-        router.send(assetId.chainId(), message);
+        adapter.send(assetId.chainId(), message);
     }
 
     function sendFulfilledDepositRequest(
@@ -86,14 +85,14 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         uint128 shares,
         uint128 investedAmount
     ) external auth {
-        router.send(
+        adapter.send(
             assetId.chainId(),
             abi.encodePacked(
                 MessageType.FulfilledDepositRequest,
                 poolId.raw(),
                 scId.raw(),
-                assetId.raw(),
                 investor,
+                assetId.raw(),
                 shares,
                 investedAmount
             )
@@ -108,14 +107,14 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         uint128 shares,
         uint128 investedAmount
     ) external auth {
-        router.send(
+        adapter.send(
             assetId.chainId(),
             abi.encodePacked(
                 MessageType.FulfilledRedeemRequest,
                 poolId.raw(),
                 scId.raw(),
-                assetId.raw(),
                 investor,
+                assetId.raw(),
                 shares,
                 investedAmount
             )
@@ -129,14 +128,14 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         bytes32 investor,
         uint128 cancelledAmount
     ) external auth {
-        router.send(
+        adapter.send(
             assetId.chainId(),
             abi.encodePacked(
                 MessageType.FulfilledCancelDepositRequest,
                 poolId.raw(),
                 scId.raw(),
-                assetId.raw(),
                 investor,
+                assetId.raw(),
                 cancelledAmount,
                 cancelledAmount
             )
@@ -150,21 +149,21 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         bytes32 investor,
         uint128 cancelledShares
     ) external auth {
-        router.send(
+        adapter.send(
             assetId.chainId(),
             abi.encodePacked(
                 MessageType.FulfilledCancelRedeemRequest,
                 poolId.raw(),
                 scId.raw(),
-                assetId.raw(),
                 investor,
+                assetId.raw(),
                 cancelledShares
             )
         );
     }
 
     function sendUnlockAssets(AssetId assetId, bytes32 receiver, uint128 assetAmount) external auth {
-        router.send(
+        adapter.send(
             assetId.chainId(), abi.encodePacked(MessageType.TransferAssets, assetId.raw(), receiver, assetAmount)
         );
     }
@@ -187,31 +186,31 @@ contract Gateway is Auth, IGateway, IMessageHandler {
             handler.handleRequestDeposit(
                 PoolId.wrap(message.toUint64(1)),
                 ShareClassId.wrap(message.toBytes16(9)),
-                AssetId.wrap(message.toUint128(25)),
-                message.toBytes32(41),
+                message.toBytes32(25),
+                AssetId.wrap(message.toUint128(57)),
                 message.toUint128(73)
             );
         } else if (kind == MessageType.RedeemRequest) {
             handler.handleRequestRedeem(
                 PoolId.wrap(message.toUint64(1)),
                 ShareClassId.wrap(message.toBytes16(9)),
-                AssetId.wrap(message.toUint128(25)),
-                message.toBytes32(41),
+                message.toBytes32(25),
+                AssetId.wrap(message.toUint128(57)),
                 message.toUint128(73)
             );
         } else if (kind == MessageType.CancelDepositRequest) {
             handler.handleCancelDepositRequest(
                 PoolId.wrap(message.toUint64(1)),
                 ShareClassId.wrap(message.toBytes16(9)),
-                AssetId.wrap(message.toUint128(25)),
-                message.toBytes32(41)
+                message.toBytes32(25),
+                AssetId.wrap(message.toUint128(57))
             );
         } else if (kind == MessageType.CancelRedeemRequest) {
             handler.handleCancelRedeemRequest(
                 PoolId.wrap(message.toUint64(1)),
                 ShareClassId.wrap(message.toBytes16(9)),
-                AssetId.wrap(message.toUint128(25)),
-                message.toBytes32(41)
+                message.toBytes32(25),
+                AssetId.wrap(message.toUint128(57))
             );
         } else {
             revert InvalidMessage(uint8(kind));
