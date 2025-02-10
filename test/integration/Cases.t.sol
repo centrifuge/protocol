@@ -90,14 +90,14 @@ contract TestConfiguration is TestCommon {
 
         scId = shareClassIdFor(poolId);
 
-        (bytes[] memory calls, uint256 c) = (new bytes[](4), 0);
-        calls[c++] = abi.encodeWithSelector(poolManager.setPoolMetadata.selector, bytes("Testing pool"));
-        calls[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, bytes(""));
-        calls[c++] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_2);
-        calls[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_2, scId);
+        (bytes[] memory cs, uint256 c) = (new bytes[](4), 0);
+        cs[c++] = abi.encodeWithSelector(poolManager.setPoolMetadata.selector, bytes("Testing pool"));
+        cs[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, bytes(""));
+        cs[c++] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_2);
+        cs[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_2, scId);
 
         vm.prank(FM);
-        poolManager.execute(poolId, _fromPoolManager(calls));
+        poolManager.execute(poolId, _fromPoolManager(cs));
 
         assertEq(poolRegistry.metadata(poolId), "Testing pool");
         assertEq(cv.lastMessages(0), abi.encodePacked(MessageType.AddPool, poolId.raw()));
@@ -115,6 +115,8 @@ contract TestConfiguration is TestCommon {
         );
     }
 
+    // testHoldingAccountsRegistration
+
     function testGeneralConfigurationPool() public returns (PoolId poolId, ShareClassId scId) {
         cv.registerAsset(USDC_C2, "USD Coin", "USDC", 6);
 
@@ -129,22 +131,21 @@ contract TestConfiguration is TestCommon {
         accounts[2] = AccountId.wrap(0x100 | uint8(AccountType.LOSS));
         accounts[3] = AccountId.wrap(0x100 | uint8(AccountType.GAIN));
 
-        (bytes[] memory calls, uint256 c) = (new bytes[](11), 0);
-        calls[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, bytes(""));
-        calls[c++] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_2);
-        calls[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_2, scId);
-        calls[c++] = abi.encodeWithSelector(poolManager.allowHoldingAsset.selector, USDC_C2, true);
-        calls[c++] = abi.encodeWithSelector(poolManager.createAccount.selector, accounts[0], true);
-        calls[c++] = abi.encodeWithSelector(poolManager.createAccount.selector, accounts[1], false);
-        calls[c++] = abi.encodeWithSelector(poolManager.createAccount.selector, accounts[2], false);
-        calls[c++] = abi.encodeWithSelector(poolManager.createAccount.selector, accounts[3], false);
-        calls[c++] =
-            abi.encodeWithSelector(poolManager.createHolding.selector, scId, USDC_C2, oneToOneValuation, accounts);
-        calls[c++] = abi.encodeWithSelector(poolManager.allowInvestorAsset.selector, USDC_C2, true);
-        calls[c++] = abi.encodeWithSelector(poolManager.notifyAllowedAsset.selector, scId, USDC_C2);
+        (bytes[] memory cs, uint256 c) = (new bytes[](11), 0);
+        cs[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, bytes(""));
+        cs[c++] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_2);
+        cs[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_2, scId);
+        cs[c++] = abi.encodeWithSelector(poolManager.allowHoldingAsset.selector, USDC_C2, true);
+        cs[c++] = abi.encodeWithSelector(poolManager.createAccount.selector, accounts[0], true);
+        cs[c++] = abi.encodeWithSelector(poolManager.createAccount.selector, accounts[1], false);
+        cs[c++] = abi.encodeWithSelector(poolManager.createAccount.selector, accounts[2], false);
+        cs[c++] = abi.encodeWithSelector(poolManager.createAccount.selector, accounts[3], false);
+        cs[c++] = abi.encodeWithSelector(poolManager.createHolding.selector, scId, USDC_C2, oneToOneValuation, accounts);
+        cs[c++] = abi.encodeWithSelector(poolManager.allowInvestorAsset.selector, USDC_C2, true);
+        cs[c++] = abi.encodeWithSelector(poolManager.notifyAllowedAsset.selector, scId, USDC_C2);
 
         vm.prank(FM);
-        poolManager.execute(poolId, _fromPoolManager(calls));
+        poolManager.execute(poolId, _fromPoolManager(cs));
 
         // From this point, pool is ready for investing from CV side
     }
@@ -164,12 +165,12 @@ contract TestInvesting is TestConfiguration {
 
         IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
 
-        (bytes[] memory calls, uint256 c) = (new bytes[](2), 0);
-        calls[c++] = abi.encodeWithSelector(poolManager.approveDeposits.selector, scId, USDC_C2, PERCENT_20, valuation);
-        calls[c++] = abi.encodeWithSelector(poolManager.issueShares.selector, scId, USDC_C2, NAV_PER_SHARE);
+        (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
+        cs[c++] = abi.encodeWithSelector(poolManager.approveDeposits.selector, scId, USDC_C2, PERCENT_20, valuation);
+        cs[c++] = abi.encodeWithSelector(poolManager.issueShares.selector, scId, USDC_C2, NAV_PER_SHARE);
 
         vm.prank(FM);
-        poolManager.execute(poolId, _fromPoolManager(calls));
+        poolManager.execute(poolId, _fromPoolManager(cs));
 
         vm.prank(ANY);
         poolManager.claimDeposit(poolId, scId, USDC_C2, INVESTOR);
