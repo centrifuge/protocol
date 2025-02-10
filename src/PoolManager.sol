@@ -271,11 +271,8 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
 
         uint128 valueChange = holdings.increase(poolId, scId, assetId, valuation, amount);
 
-        updateEntry(
-            holdings.accountId(poolId, scId, assetId, uint8(AccountType.EQUITY)),
-            holdings.accountId(poolId, scId, assetId, uint8(AccountType.ASSET)),
-            valueChange
-        );
+        accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.EQUITY)), valueChange);
+        accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.ASSET)), valueChange);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
@@ -287,11 +284,8 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
 
         uint128 valueChange = holdings.decrease(poolId, scId, assetId, valuation, amount);
 
-        updateEntry(
-            holdings.accountId(poolId, scId, assetId, uint8(AccountType.ASSET)),
-            holdings.accountId(poolId, scId, assetId, uint8(AccountType.EQUITY)),
-            valueChange
-        );
+        accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.ASSET)), valueChange);
+        accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.EQUITY)), valueChange);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
@@ -301,17 +295,11 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
         int128 diff = holdings.update(poolId, scId, assetId);
 
         if (diff > 0) {
-            updateEntry(
-                holdings.accountId(poolId, scId, assetId, uint8(AccountType.GAIN)),
-                holdings.accountId(poolId, scId, assetId, uint8(AccountType.ASSET)),
-                uint128(diff)
-            );
+            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.GAIN)), uint128(diff));
+            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.ASSET)), uint128(diff));
         } else if (diff < 0) {
-            updateEntry(
-                holdings.accountId(poolId, scId, assetId, uint8(AccountType.ASSET)),
-                holdings.accountId(poolId, scId, assetId, uint8(AccountType.LOSS)),
-                uint128(-diff)
-            );
+            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.ASSET)), uint128(diff));
+            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.LOSS)), uint128(diff));
         }
     }
 
@@ -333,12 +321,6 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
     /// @inheritdoc IPoolManagerAdminMethods
     function setAccountMetadata(AccountId account, bytes calldata metadata) external poolUnlocked {
         accounting.setAccountMetadata(unlockedPoolId(), account, metadata);
-    }
-
-    /// @inheritdoc IPoolManagerAdminMethods
-    function updateEntry(AccountId credit, AccountId debit, uint128 amount) public poolUnlocked {
-        accounting.addCredit(credit, amount);
-        accounting.addDebit(debit, amount);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods

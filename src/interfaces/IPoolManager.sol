@@ -121,11 +121,6 @@ interface IPoolManagerAdminMethods {
     /// @notice Attach custom data to an account
     function setAccountMetadata(AccountId account, bytes calldata metadata) external;
 
-    /// @notice Adds a double accounting entry
-    /// @param credit Account to add credit
-    /// @param debit Account to add debit
-    function updateEntry(AccountId credit, AccountId debit, uint128 amount) external;
-
     /// @notice Add debit an account. Increase the value of debit-normal accounts, decrease for credit-normal ones.
     function addDebit(AccountId account, uint128 amount) external;
 
