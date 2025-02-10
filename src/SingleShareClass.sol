@@ -48,12 +48,10 @@ struct EpochPointers {
 }
 
 /// Utility method to determine the ShareClassId for a PoolId
-function shareClassIdFor(PoolId poolId) pure returns (ShareClassId) {
+function previewShareClassId(PoolId poolId) pure returns (ShareClassId) {
     return ShareClassId.wrap(bytes16(uint128(PoolId.unwrap(poolId))));
 }
 
-// Assumptions:
-// * ShareClassId is unique and derived from pool, i.e. bytes16(keccak256(poolId + salt))
 contract SingleShareClass is Auth, ISingleShareClass {
     using MathLib for D18;
     using MathLib for uint128;
@@ -95,7 +93,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     {
         require(shareClassId[poolId].isNull(), MaxShareClassNumberExceeded(1));
 
-        shareClassId_ = shareClassIdFor(poolId);
+        shareClassId_ = previewShareClassId(poolId);
 
         shareClassId[poolId] = shareClassId_;
         epochId[poolId] = 1;

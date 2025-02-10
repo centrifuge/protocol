@@ -14,7 +14,7 @@ import {AccountType} from "src/interfaces/IPoolManager.sol";
 import {IMulticall} from "src/interfaces/IMulticall.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
 
-import {shareClassIdFor} from "src/SingleShareClass.sol";
+import {previewShareClassId} from "src/SingleShareClass.sol";
 
 import {Deployer} from "script/Deployer.s.sol";
 
@@ -88,7 +88,7 @@ contract TestConfiguration is TestCommon {
         vm.prank(FM);
         poolId = poolManager.createPool(USD, singleShareClass);
 
-        scId = shareClassIdFor(poolId);
+        scId = previewShareClassId(poolId);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](4), 0);
         cs[c++] = abi.encodeWithSelector(poolManager.setPoolMetadata.selector, bytes("Testing pool"));
@@ -115,15 +115,13 @@ contract TestConfiguration is TestCommon {
         );
     }
 
-    // testHoldingAccountsRegistration
-
     function testGeneralConfigurationPool() public returns (PoolId poolId, ShareClassId scId) {
         cv.registerAsset(USDC_C2, "USD Coin", "USDC", 6);
 
         vm.prank(FM);
         poolId = poolManager.createPool(USD, singleShareClass);
 
-        scId = shareClassIdFor(poolId);
+        scId = previewShareClassId(poolId);
 
         AccountId[] memory accounts = new AccountId[](4);
         accounts[0] = AccountId.wrap(0x100 | uint8(AccountType.ASSET));
@@ -159,9 +157,7 @@ contract TestInvesting is TestConfiguration {
     function testBaseFlow() public {
         (PoolId poolId, ShareClassId scId) = testGeneralConfigurationPool();
 
-        cv.requestDeposit(
-            poolId, shareClassIdFor(poolId), USDC_C2, INVESTOR, INVESTOR_AMOUNT ** assetManager.decimals(USDC_C2.raw())
-        );
+        cv.requestDeposit(poolId, scId, USDC_C2, INVESTOR, INVESTOR_AMOUNT ** assetManager.decimals(USDC_C2.raw()));
 
         IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
 
