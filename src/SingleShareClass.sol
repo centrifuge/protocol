@@ -194,13 +194,11 @@ contract SingleShareClass is Auth, ISingleShareClass {
     }
 
     /// @inheritdoc IShareClassManager
-    function approveRedeems(
-        PoolId poolId,
-        ShareClassId shareClassId_,
-        D18 approvalRatio,
-        AssetId payoutAssetId,
-        IERC7726 /* valuation */
-    ) external auth returns (uint128 approvedShareAmount, uint128 pendingShareAmount) {
+    function approveRedeems(PoolId poolId, ShareClassId shareClassId_, D18 approvalRatio, AssetId payoutAssetId)
+        external
+        auth
+        returns (uint128 approvedShareAmount, uint128 pendingShareAmount)
+    {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
         require(approvalRatio.inner() <= 1e18, MaxApprovalRatioExceeded());
 

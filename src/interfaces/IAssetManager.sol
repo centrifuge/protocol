@@ -6,7 +6,7 @@ import {AssetId} from "src/types/AssetId.sol";
 import {IERC6909Fungible} from "src/interfaces/ERC6909/IERC6909Fungible.sol";
 import {IERC6909MetadataExt} from "src/interfaces/ERC6909/IERC6909MetadataExt.sol";
 
-/// @notice Interface for register and handling assets
+/// @notice Interface for registering and handling assets
 interface IAssetManager is IERC6909MetadataExt, IERC6909Fungible {
     event NewAssetEntry(AssetId indexed assetId, string name, string symbol, uint8 decimals);
 

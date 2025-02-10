@@ -33,9 +33,9 @@ enum AccountType {
 }
 
 /// @notice Interface for methods that requires the pool to be unlocked
-/// They do not require a poolId parameter, all acts over the unlocked pool
+/// They do not require a poolId parameter, all act over the unlocked pool
 interface IPoolManagerAdminMethods {
-    /// @notice Dispatched whem a holding asset is disallowed but the asset is still allowed for investor usage.
+    /// @notice Dispatched when a holding asset is disallowed but the asset is still allowed for investor usage.
     error InvestorAssetStillAllowed();
 
     /// @notice Notify to a CV instance that a new pool is available
@@ -91,9 +91,10 @@ interface IPoolManagerAdminMethods {
     function revokeShares(ShareClassId scId, AssetId payoutAssetId, D18 navPerShare, IERC7726 valuation) external;
 
     /// @notice Create a new holding associated to the asset in a share class.
+    /// It will generate and register the different accounts used for holdings.
     /// @param valuation Used to transform between payment assets and pool currency
-    /// @param rawAccountId Value use for the accountIds
-    function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint24 rawAccountId) external;
+    /// @param prefix Account prefix used for generating the account ids
+    function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint24 prefix) external;
 
     /// @notice Increase the amount of a holding.
     /// @param valuation Used to transform between payment assets and pool currency

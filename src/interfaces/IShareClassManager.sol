@@ -181,16 +181,11 @@ interface IShareClassManager {
     /// @param approvalRatio Percentage of approved requests
     /// @param payoutAssetId Identifier of the asset for which all requests want to exchange their share class tokens
     /// for
-    /// @param valuation Source of truth for quotas, e.g. the price of a share class token amount to pool amount
     /// @return approvedShareAmount Sum of redemption request amounts in pool amount which was approved
     /// @return pendingShareAmount Sum of redemption request amounts in share class token amount which was not approved
-    function approveRedeems(
-        PoolId poolId,
-        ShareClassId shareClassId,
-        D18 approvalRatio,
-        AssetId payoutAssetId,
-        IERC7726 valuation
-    ) external returns (uint128 approvedShareAmount, uint128 pendingShareAmount);
+    function approveRedeems(PoolId poolId, ShareClassId shareClassId, D18 approvalRatio, AssetId payoutAssetId)
+        external
+        returns (uint128 approvedShareAmount, uint128 pendingShareAmount);
 
     /// @notice Emits new shares for the given identifier based on the provided NAV per share.
     ///
