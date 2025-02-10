@@ -35,6 +35,9 @@ enum AccountType {
 /// @notice Interface for methods that requires the pool to be unlocked
 /// They do not require a poolId parameter, all act over the unlocked pool
 interface IPoolManagerAdminMethods {
+    /// @notice Dispatched when the pool can not be unlocked by the caller
+    error NotAuthorizedAdmin();
+
     /// @notice Dispatched when a holding asset is disallowed but the asset is still allowed for investor usage.
     error InvestorAssetStillAllowed();
 
