@@ -1,10 +1,28 @@
 @startuml
 circle Vaults
 
-interface ERC6909 {
+interface IERC6909 {
     + transfer(assetId, addr, amount)
     + transferFrom(assetId, origin, addr, amount)
 }
+
+abstract ERC6909 { }
+
+ERC6909 --|> IERC6909
+
+class IERC6909Fungible<wards = PoolManager> {
+    + mint(assetId, addr, amount)
+    + burn(assetId, addr, amount)
+    + authTransfer(assetId, sendAddr, recvAddr, amount)
+}
+
+IERC6909Fungible --|> ERC6909
+
+class AssetManager {
+    + registerAsset(assetId, name, decimals, symbol)
+}
+
+AssetManager --|> IERC6909Fungible
 
 class Holdings<wards = PoolManager> <<(C, lightskyblue)>> {
     + create(poolId, shareClassId, assetId, valuation, accounts)
@@ -15,17 +33,6 @@ class Holdings<wards = PoolManager> <<(C, lightskyblue)>> {
     + setAccountId(poolId, shareClassId, assetId)
 }
 
-class AssetManager<wards = PoolManager> {
-    .. TODO ..
-    - Investor => AssetId => Balance
-    - AssetId => {originAddress, name, symbol, decimals}
-    + registerAsset(assetId, addr, name, decimals, symbol)
-    + mint(assetId, addr, amount)
-    + burn(assetId, addr, amount)
-    + authTransfer(assetId, sendAddr, recvAddr, amount)
-}
-AssetManager --|> ERC6909
-
 class PoolRegistry<wards = PoolManager> {
     + registerPool(admin, currencyId, shareClassManagerAddress) -> poolId
     + updateShareClassManager(poolId, scm)
@@ -33,7 +40,6 @@ class PoolRegistry<wards = PoolManager> {
     + updateAdmin(poolId, admin, bool)
     + allowInvestorAsset(poolId, asset, bool)
     + setMetadata(poolId, metadata)
-    + setAddressFor(poolId, key, address)
 }
 
 interface IShareClassManager {
@@ -50,26 +56,18 @@ interface IShareClassManager {
     + claimRedeem(poolId, shareClassId, assetId, investor) -> (assetAmount, shareAmount)
     + updateShareClassNav(poolId, shareClassId)
     + update(poolId, data)
-    .. pending to add ..
-    + addEquity(poolId, shareClassID, accountId)
-    + removeEquity(poolId, shareClassID, accountId)
-    + addInterest(poolId, shareClassID, accountId)
-    + removeInterest(poolId, shareClassID, accountId)
-    + distributeInterest(poolId, shareClassID)
-    + addPrincipal(poolId, shareClassID, accountId)
-    + removePrincipal(poolId, shareClassID, accountId)
-    + distributePrincipal(poolId, shareClassID)
 }
 
 class SingleShareClass<wards = PoolManager> <<(C, lightskyblue)>>{ }
 SingleShareClass -down|> IShareClassManager
 
 class Accounting<wards = PoolManager> {
-    .. TODO ..
-    - PoolId => AccountId => Account
-    + unlock(poolId)
-    + createAccount()
-    + updateEntry(credit, debit, value)
+    + createAccount(poolId, account, isDebitNormal)
+    + setAccountMetadata(poolId, account, metadata)
+    + lock(poolId, transactionId)
+    + unlock()
+    + addCredit(account, value)
+    + addDebit(account, value)
 }
 
 class Multicall {
@@ -96,11 +94,20 @@ enum AccountType {
     GAIN,
 }
 
+interface IPoolManagerHandler {
+    + handleRegisterAsset()
+    + handleRequestDeposit()
+    + handleRequestRedeem()
+    + handleCancelDepositRequest()
+    + handleCancelRedeemRequest()
+    + handleLockedTokens()
+}
+
 class PoolManager <<(C, lightskyblue)>> {
     -- pemisionless --
     + createPool()
-    + claimShares()
-    + claimTokens()
+    + claimRedeem()
+    + claimDeposit()
     -- pool admin --
     + notifyPool()
     + notifyShareClass()
@@ -120,25 +127,23 @@ class PoolManager <<(C, lightskyblue)>> {
     + updateHolding()
     + updateHoldingValuation()
     + setHoldingAccountId()
-    + updateAccountingEntry()
+    + createAccount()
+    + setAccountMetadata()
+    + addDebit()
+    + addCredit()
     + unlockTokens()
-    -- gateway owner methods --
-    + notifyRegisteredAsset()
-    + requestDeposit()
-    + requestRedeem()
-    + cancelDepositRequest()
-    + cancelRedeemRequest()
-    + notifyLockedTokens()
 }
 
+PoolManager -up-|> IPoolManagerHandler
 PoolManager -up--|> PoolLocker
 PoolManager -up-> EscrowType
 PoolManager -up-> AccountType
-PoolManager -up---> PoolRegistry
+PoolManager -down---> PoolRegistry
 PoolManager -left-> IShareClassManager
-PoolManager -down->Accounting
-PoolManager -down-->AssetManager
-PoolManager -down-> Holdings
+PoolManager -down--> Accounting
+PoolManager -down-> AssetManager
+PoolManager -down--> Holdings
+PoolManager -right-> Gateway
 
 class Gateway<wards = PoolManager, Vaults> <<(C, lightskyblue)>> {
     + sendXYZ(msg)
@@ -146,6 +151,6 @@ class Gateway<wards = PoolManager, Vaults> <<(C, lightskyblue)>> {
 }
 
 Gateway <-[thickness=4]right-> Vaults
-Gateway <-left-> PoolManager
+Gateway -up-> IPoolManagerHandler
 
 @enduml
