@@ -19,9 +19,10 @@ import {
     IPoolManagerHandler,
     EscrowId,
     AccountType,
-    MULTICALL_ESCROW_KEY
+    CALL_ESCROW_KEY
 } from "src/interfaces/IPoolManager.sol";
 import {IMulticall} from "src/interfaces/IMulticall.sol";
+import {ICallEscrow} from "src/interfaces/ICallEscrow.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
 
 import {MathLib} from "src/libraries/MathLib.sol";
@@ -424,11 +425,11 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
     // internal / private methods
     //----------------------------------------------------------------------------------------------
 
-    function _beforeUnlock(PoolId poolId) internal override returns (IMulticall) {
+    function _beforeUnlock(PoolId poolId) internal override returns (ICallEscrow) {
         require(poolRegistry.isAdmin(poolId, msg.sender), NotAuthorizedAdmin());
         accounting.unlock(poolId, bytes32("TODO"));
 
-        return IMulticall(poolRegistry.addressFor(poolId, MULTICALL_ESCROW_KEY));
+        return ICallEscrow(poolRegistry.addressFor(poolId, CALL_ESCROW_KEY));
     }
 
     function _beforeLock() internal override {

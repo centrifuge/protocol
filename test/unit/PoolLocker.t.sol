@@ -6,6 +6,7 @@ import {PoolId} from "src/types/PoolId.sol";
 import {PoolLocker} from "src/PoolLocker.sol";
 import {IPoolLocker} from "src/interfaces/IPoolLocker.sol";
 import {IMulticall} from "src/interfaces/IMulticall.sol";
+import {ICallEscrow} from "src/interfaces/ICallEscrow.sol";
 import {Multicall} from "src/Multicall.sol";
 
 contract PoolManagerMock is PoolLocker {
@@ -18,8 +19,9 @@ contract PoolManagerMock is PoolLocker {
         return unlockedPoolId();
     }
 
-    function _beforeUnlock(PoolId poolId) internal override {
+    function _beforeUnlock(PoolId poolId) internal override returns (ICallEscrow) {
         wasUnlockWithPool = poolId;
+        return ICallEscrow(address(0));
     }
 
     function _beforeLock() internal override {

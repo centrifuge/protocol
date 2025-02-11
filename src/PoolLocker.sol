@@ -4,10 +4,11 @@ pragma solidity 0.8.28;
 import {PoolId} from "src/types/PoolId.sol";
 import {IPoolLocker} from "src/interfaces/IPoolLocker.sol";
 import {IMulticall} from "src/interfaces/IMulticall.sol";
+import {ICallEscrow} from "src/interfaces/ICallEscrow.sol";
 
 abstract contract PoolLocker is IPoolLocker {
     /// Contract for the multicall
-    IMulticall private immutable defaultMulticall;
+    IMulticall private immutable multicall;
 
     /// @dev Represents the unlocked pool Id
     PoolId private /*TODO: transient*/ _unlockedPoolId;
@@ -20,7 +21,7 @@ abstract contract PoolLocker is IPoolLocker {
     }
 
     constructor(IMulticall multicall_) {
-        defaultMulticall = multicall_;
+        multicall = multicall_;
     }
 
     /// @inheritdoc IPoolLocker
@@ -28,12 +29,24 @@ abstract contract PoolLocker is IPoolLocker {
     function execute(PoolId poolId, IMulticall.Call[] calldata calls) external returns (bytes[] memory results) {
         require(PoolId.unwrap(_unlockedPoolId) == 0, PoolAlreadyUnlocked());
 
-        IMulticall multicallEscrow = _beforeUnlock(poolId);
+        ICallEscrow callEscrow = _beforeUnlock(poolId);
         _unlockedPoolId = poolId;
 
-        IMulticall multicall = address(multicallEscrow) != address(0) ? multicallEscrow : defaultMulticall;
+        if (address(callEscrow) != address(0)) {
+            // We wrap the calls to be called by the custom escrow
 
-        results = multicall.aggregate(calls);
+            IMulticall.Call[] memory wrapCalls = new IMulticall.Call[](calls.length);
+            for (uint256 i; i < calls.length; i++) {
+                wrapCalls[i] = IMulticall.Call(
+                    address(callEscrow),
+                    abi.encodeWithSelector(callEscrow.call.selector, calls[i].target, calls[i].data)
+                );
+            }
+
+            results = multicall.aggregate(wrapCalls);
+        } else {
+            results = multicall.aggregate(calls);
+        }
 
         _beforeLock();
         _unlockedPoolId = PoolId.wrap(0);
@@ -45,7 +58,7 @@ abstract contract PoolLocker is IPoolLocker {
     }
 
     /// @dev This method is called first in the multicall execution
-    function _beforeUnlock(PoolId poolId) internal virtual returns (IMulticall);
+    function _beforeUnlock(PoolId poolId) internal virtual returns (ICallEscrow);
 
     /// @dev This method is called last in the multicall execution
     function _beforeLock() internal virtual;

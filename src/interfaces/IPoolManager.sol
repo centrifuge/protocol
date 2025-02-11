@@ -10,7 +10,7 @@ import {D18} from "src/types/D18.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
 
-bytes32 constant MULTICALL_ESCROW_KEY = bytes32("multicall-escrow");
+bytes32 constant CALL_ESCROW_KEY = bytes32("multicall-escrow");
 
 /// @notice AssetManager accounts identifications used by the PoolManager
 enum EscrowId {
