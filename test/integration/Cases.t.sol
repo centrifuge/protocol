@@ -39,7 +39,7 @@ contract TestCommon is Deployer, Test {
 
         // Adapting the CV mock
         cv = new MockCentrifugeVaults(gateway);
-        gateway.file("router", address(cv));
+        gateway.file("adapter", address(cv));
         gateway.rely(address(cv));
 
         removeDeployerAccess();
@@ -123,22 +123,12 @@ contract TestConfiguration is TestCommon {
 
         scId = previewShareClassId(poolId);
 
-        AccountId[] memory accounts = new AccountId[](4);
-        accounts[0] = AccountId.wrap(0x100 | uint8(AccountType.ASSET));
-        accounts[1] = AccountId.wrap(0x100 | uint8(AccountType.EQUITY));
-        accounts[2] = AccountId.wrap(0x100 | uint8(AccountType.LOSS));
-        accounts[3] = AccountId.wrap(0x100 | uint8(AccountType.GAIN));
-
-        (bytes[] memory cs, uint256 c) = (new bytes[](11), 0);
+        (bytes[] memory cs, uint256 c) = (new bytes[](7), 0);
         cs[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, bytes(""));
         cs[c++] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_2);
         cs[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_2, scId);
         cs[c++] = abi.encodeWithSelector(poolManager.allowHoldingAsset.selector, USDC_C2, true);
-        cs[c++] = abi.encodeWithSelector(poolManager.createAccount.selector, accounts[0], true);
-        cs[c++] = abi.encodeWithSelector(poolManager.createAccount.selector, accounts[1], false);
-        cs[c++] = abi.encodeWithSelector(poolManager.createAccount.selector, accounts[2], false);
-        cs[c++] = abi.encodeWithSelector(poolManager.createAccount.selector, accounts[3], false);
-        cs[c++] = abi.encodeWithSelector(poolManager.createHolding.selector, scId, USDC_C2, oneToOneValuation, accounts);
+        cs[c++] = abi.encodeWithSelector(poolManager.createHolding.selector, scId, USDC_C2, oneToOneValuation, 0x01);
         cs[c++] = abi.encodeWithSelector(poolManager.allowInvestorAsset.selector, USDC_C2, true);
         cs[c++] = abi.encodeWithSelector(poolManager.notifyAllowedAsset.selector, scId, USDC_C2);
 

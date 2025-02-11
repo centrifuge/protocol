@@ -15,7 +15,7 @@ interface IGateway {
 
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
-    /// Accepts a `bytes32` representation of 'handler' string value.
+    /// Accepts a `bytes32` representation of 'adapter' or 'handler' string values.
     /// @param data New value given to the `what` parameter
     function file(bytes32 what, address data) external;
 

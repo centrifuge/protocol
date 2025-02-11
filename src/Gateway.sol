@@ -33,7 +33,8 @@ contract Gateway is Auth, IGateway, IMessageHandler {
 
     /// @inheritdoc IGateway
     function file(bytes32 what, address data) external auth {
-        if (what == "handler") handler = IPoolManagerHandler(data);
+        if (what == "adapter") adapter = IAdapter(data);
+        else if (what == "handler") handler = IPoolManagerHandler(data);
         else revert FileUnrecognizedWhat();
 
         emit File(what, data);
@@ -217,6 +218,6 @@ contract Gateway is Auth, IGateway, IMessageHandler {
 
     function _send(uint32 chainId, bytes memory message) private {
         // TODO: generate proofs and send message through handlers
-        _send(chainId, message);
+        adapter.send(chainId, message);
     }
 }

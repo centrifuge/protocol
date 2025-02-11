@@ -10,11 +10,11 @@ import {BytesLib} from "src/libraries/BytesLib.sol";
 import {MessageType} from "src/libraries/MessageLib.sol";
 
 import {IMessageHandler} from "src/interfaces/IMessageHandler.sol";
-import {IRouter} from "src/Gateway.sol"; // TODO: Fix me
+import {IAdapter} from "src/Gateway.sol"; // TODO: Fix me
 
 import "forge-std/Test.sol";
 
-contract MockCentrifugeVaults is Test, IRouter {
+contract MockCentrifugeVaults is Test, IAdapter {
     using CastLib for string;
 
     IMessageHandler public handler;
@@ -38,7 +38,7 @@ contract MockCentrifugeVaults is Test, IRouter {
         public
     {
         handler.handle(
-            abi.encodePacked(MessageType.DepositRequest, poolId.raw(), scId.raw(), assetId.raw(), investor, amount)
+            abi.encodePacked(MessageType.DepositRequest, poolId.raw(), scId.raw(), investor, assetId.raw(), amount)
         );
     }
 

@@ -17,7 +17,7 @@ import {Gateway} from "src/Gateway.sol";
 import {PoolManager, IPoolManager} from "src/PoolManager.sol";
 
 import {IGateway} from "src/interfaces/IGateway.sol";
-import {IRouter} from "src/interfaces/IRouter.sol";
+import {IAdapter} from "src/interfaces/IAdapter.sol";
 
 contract Deployer is Script {
     /// @dev Identifies an address that requires to be overwritten by a `file()` method before ending the deployment.
@@ -53,7 +53,7 @@ contract Deployer is Script {
         poolManager = new PoolManager(
             multicall, poolRegistry, assetManager, accounting, holdings, IGateway(ADDRESS_TO_FILE), address(this)
         );
-        gateway = new Gateway(IRouter(address(0 /* TODO */ )), poolManager, address(this));
+        gateway = new Gateway(IAdapter(address(0 /* TODO */ )), poolManager, address(this));
 
         transientValuation = new TransientValuation(assetManager, address(this));
         oneToOneValuation = new OneToOneValuation(assetManager, address(this));
