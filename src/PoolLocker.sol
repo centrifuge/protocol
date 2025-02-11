@@ -7,7 +7,7 @@ import {IMulticall} from "src/interfaces/IMulticall.sol";
 
 abstract contract PoolLocker is IPoolLocker {
     /// Contract for the multicall
-    IMulticall private immutable multicall;
+    IMulticall private immutable defaultMulticall;
 
     /// @dev Represents the unlocked pool Id
     PoolId private /*TODO: transient*/ _unlockedPoolId;
@@ -20,15 +20,18 @@ abstract contract PoolLocker is IPoolLocker {
     }
 
     constructor(IMulticall multicall_) {
-        multicall = multicall_;
+        defaultMulticall = multicall_;
     }
 
     /// @inheritdoc IPoolLocker
     /// @dev All calls with `poolUnlocked` modifier are able to be called inside this method
     function execute(PoolId poolId, IMulticall.Call[] calldata calls) external returns (bytes[] memory results) {
         require(PoolId.unwrap(_unlockedPoolId) == 0, PoolAlreadyUnlocked());
-        _beforeUnlock(poolId);
+
+        IMulticall multicallEscrow = _beforeUnlock(poolId);
         _unlockedPoolId = poolId;
+
+        IMulticall multicall = address(multicallEscrow) != address(0) ? multicallEscrow : defaultMulticall;
 
         results = multicall.aggregate(calls);
 
@@ -42,7 +45,7 @@ abstract contract PoolLocker is IPoolLocker {
     }
 
     /// @dev This method is called first in the multicall execution
-    function _beforeUnlock(PoolId poolId) internal virtual;
+    function _beforeUnlock(PoolId poolId) internal virtual returns (IMulticall);
 
     /// @dev This method is called last in the multicall execution
     function _beforeLock() internal virtual;
