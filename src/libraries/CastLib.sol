@@ -30,6 +30,16 @@ library CastLib {
         return string(bytesArray);
     }
 
+    function stringToBytes128(string memory str) internal pure returns (bytes memory) {
+        bytes memory bytes128 = new bytes(128);
+
+        for (uint256 i; i < 128 && bytes(str)[i] != 0; i++) {
+            bytes128[i] = bytes(str)[i];
+        }
+
+        return bytes128;
+    }
+
     function toString(bytes32 _bytes32) internal pure returns (string memory) {
         uint8 i = 0;
         while (i < 32 && _bytes32[i] != 0) {

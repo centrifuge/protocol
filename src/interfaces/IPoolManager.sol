@@ -183,8 +183,8 @@ interface IPoolManagerHandler {
     function handleRequestDeposit(
         PoolId poolId,
         ShareClassId scId,
-        AssetId depositAssetId,
         bytes32 investor,
+        AssetId depositAssetId,
         uint128 amount
     ) external;
 
@@ -192,17 +192,17 @@ interface IPoolManagerHandler {
     function handleRequestRedeem(
         PoolId poolId,
         ShareClassId scId,
-        AssetId payoutAssetId,
         bytes32 investor,
+        AssetId payoutAssetId,
         uint128 amount
     ) external;
 
     /// @notice Perform a deposit cancellation that was requested from CV.
-    function handleCancelDepositRequest(PoolId poolId, ShareClassId scId, AssetId depositAssetId, bytes32 investor)
+    function handleCancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
         external;
 
     /// @notice Perform a redeem cancellation that was requested from CV.
-    function handleCancelRedeemRequest(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, bytes32 investor)
+    function handleCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
         external;
 
     /// @notice Tells that an asset was locked in CV.
