@@ -14,6 +14,7 @@ interface IPoolRegistry {
     event SetMetadata(PoolId indexed poolId, bytes metadata);
     event UpdatedShareClassManager(PoolId indexed poolId, IShareClassManager indexed shareClassManager);
     event UpdatedCurrency(PoolId indexed poolId, AssetId currency);
+    event SetAddressFor(PoolId indexed poolId, bytes32 key, address addr);
 
     error NonExistingPool(PoolId id);
     error EmptyAdmin();
@@ -42,6 +43,9 @@ interface IPoolRegistry {
     /// @notice updates the currency of the pool
     function updateCurrency(PoolId poolId, AssetId currency) external;
 
+    /// @notice sets an address for an specific key
+    function setAddressFor(PoolId poolid, bytes32 key, address addr) external;
+
     /// @notice returns the metadata attached to the pool, if any.
     function metadata(PoolId poolId) external view returns (bytes memory);
 
@@ -56,6 +60,9 @@ interface IPoolRegistry {
 
     /// @notice returns the allowance of an investor asset
     function isInvestorAssetAllowed(PoolId poolId, AssetId assetId) external view returns (bool);
+
+    /// @notice returns the address for an specific key
+    function addressFor(PoolId poolId, bytes32 key) external view returns (address);
 
     /// @notice checks the existence of a pool
     function exists(PoolId poolId) external view returns (bool);
