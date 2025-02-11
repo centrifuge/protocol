@@ -16,7 +16,7 @@ interface ISingleShareClass is IShareClassManager {
     error ApprovalRequired();
     error AlreadyApproved();
     error UnrecognizedFileParam();
-    error MaxApprovalRatioExceeded();
+    error ApprovalRatioOutOfBounds();
 
     /// @notice Emits new shares for the given identifier based on the provided NAV up to the desired epoch.
     ///

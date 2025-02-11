@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {console} from "forge-std/Console.sol";
+
 import {Auth} from "src/Auth.sol";
 import {D18, d18} from "src/types/D18.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
@@ -109,6 +111,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     ) external auth {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
 
+        // NOTE: CV ensures amount > 0
         _updateDepositRequest(poolId, shareClassId_, int128(amount), investor, depositAssetId);
     }
 
@@ -134,6 +137,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     ) external auth {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
 
+        // NOTE: CV ensures amount > 0
         _updateRedeemRequest(poolId, shareClassId_, int128(amount), investor, payoutAssetId);
     }
 
@@ -159,7 +163,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         IERC7726 valuation
     ) external auth returns (uint128 approvedAssetAmount, uint128 approvedPoolAmount) {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
-        require(approvalRatio.inner() <= 1e18, MaxApprovalRatioExceeded());
+        require(approvalRatio.inner() > 0 && approvalRatio.inner() <= 1e18, ApprovalRatioOutOfBounds());
 
         // Advance epochId if it has not been advanced within this transaction (e.g. in case of multiCall context)
         uint32 approvalEpochId = _advanceEpoch(poolId);
@@ -205,7 +209,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         returns (uint128 approvedShareAmount, uint128 pendingShareAmount)
     {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
-        require(approvalRatio.inner() <= 1e18, MaxApprovalRatioExceeded());
+        require(approvalRatio.inner() > 0 && approvalRatio.inner() <= 1e18, ApprovalRatioOutOfBounds());
 
         // Advance epochId if it has not been advanced within this transaction (e.g. in case of multiCall context)
         uint32 approvalEpochId = _advanceEpoch(poolId);
@@ -377,25 +381,35 @@ contract SingleShareClass is Auth, ISingleShareClass {
                 continue;
             }
 
+            // Skip if nothing is user cannot claim
             uint128 approvedAssetAmount = epochAmounts_.depositApprovalRate.mulUint128(userOrder.pending);
+            if (approvedAssetAmount == 0) {
+                continue;
+            }
+
             uint128 claimableShareAmount = uint256(approvedAssetAmount).mulDiv(
                 epochAmounts_.depositSharesIssued, epochAmounts_.depositAssetAmount
             ).toUint128();
 
-            userOrder.pending -= approvedAssetAmount;
-            payoutShareAmount += claimableShareAmount;
-            paymentAssetAmount += approvedAssetAmount;
+            if (claimableShareAmount > 0) {
+                userOrder.pending -= approvedAssetAmount;
+                payoutShareAmount += claimableShareAmount;
+                paymentAssetAmount += approvedAssetAmount;
 
-            emit ClaimedDeposit(
-                poolId,
-                shareClassId_,
-                epochId_,
-                investor,
-                depositAssetId,
-                approvedAssetAmount,
-                userOrder.pending,
-                claimableShareAmount
-            );
+                emit ClaimedDeposit(
+                    poolId,
+                    shareClassId_,
+                    epochId_,
+                    investor,
+                    depositAssetId,
+                    approvedAssetAmount,
+                    userOrder.pending,
+                    claimableShareAmount
+                );
+            } else {
+                // Increase pending by approved amount as it did not lead to claimable amount
+                pendingDeposit[shareClassId_][depositAssetId] += approvedAssetAmount;
+            }
         }
 
         userOrder.lastUpdate = endEpochId + 1;
@@ -549,8 +563,8 @@ contract SingleShareClass is Auth, ISingleShareClass {
             ClaimDepositRequired()
         );
 
-        userOrder.lastUpdate = epochId[poolId];
         userOrder.pending = amount >= 0 ? userOrder.pending + uint128(amount) : userOrder.pending - uint128(-amount);
+        userOrder.lastUpdate = epochId[poolId];
 
         pendingDeposit[shareClassId_][depositAssetId] = amount >= 0
             ? pendingDeposit[shareClassId_][depositAssetId] + uint128(amount)

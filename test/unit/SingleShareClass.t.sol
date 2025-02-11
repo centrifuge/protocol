@@ -100,8 +100,8 @@ abstract contract SingleShareClassBaseTest is Test {
     ) internal view {
         (uint128 pending, uint32 lastUpdate) = shareClass.depositRequest(shareClassId_, asset, investor_);
 
-        assertEq(pending, expected.pending, "pending mismatch");
-        assertEq(lastUpdate, expected.lastUpdate, "lastUpdate mismatch");
+        assertEq(pending, expected.pending, "pending deposit mismatch");
+        assertEq(lastUpdate, expected.lastUpdate, "lastUpdate deposit mismatch");
     }
 
     function _assertRedeemRequestEq(
@@ -112,8 +112,8 @@ abstract contract SingleShareClassBaseTest is Test {
     ) internal view {
         (uint128 pending, uint32 lastUpdate) = shareClass.redeemRequest(shareClassId_, asset, investor_);
 
-        assertEq(pending, expected.pending, "pending mismatch");
-        assertEq(lastUpdate, expected.lastUpdate, "lastUpdate mismatch");
+        assertEq(pending, expected.pending, "pending redeem mismatch");
+        assertEq(lastUpdate, expected.lastUpdate, "lastUpdate redeem mismatch");
     }
 
     function _assertEpochAmountsEq(
@@ -716,14 +716,17 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         pending = depositAmount;
         for (uint8 i = 1; i < maxEpochId; i++) {
             uint128 epochShares = shareToPoolQuote.reciprocalMulUint128(usdcToPool(approvalRatio.mulUint128(pending)));
-            uint128 epochApprovedUSDC = approvalRatio.mulUint128(pending);
-            approvedUSDC += epochApprovedUSDC;
-            pending -= epochApprovedUSDC;
 
-            vm.expectEmit(true, true, true, true);
-            emit IShareClassManager.ClaimedDeposit(
-                poolId, scId, i, investor, USDC, epochApprovedUSDC, pending, epochShares
-            );
+            if (epochShares > 0) {
+                uint128 epochApprovedUSDC = approvalRatio.mulUint128(pending);
+                approvedUSDC += epochApprovedUSDC;
+                pending -= epochApprovedUSDC;
+
+                vm.expectEmit(true, true, true, true);
+                emit IShareClassManager.ClaimedDeposit(
+                    poolId, scId, i, investor, USDC, epochApprovedUSDC, pending, epochShares
+                );
+            }
         }
         (uint128 userShares, uint128 payment) = shareClass.claimDeposit(poolId, scId, investor, USDC);
 
@@ -857,7 +860,6 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
     }
 
     function testDepositsWithRedeemsFullFlow(uint128 amount, uint128 approvalRatio, uint128 navPerShare_)
-        // uint8 maxEpochId
         public
         notThisContract(poolRegistryAddress)
     {
@@ -911,6 +913,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         _assertEpochAmountsEq(scId, USDC, epochId, epochAmounts);
 
         // Step 2d: Issue shares
+        console.log("2d");
         shareClass.issueShares(poolId, scId, USDC, shareToPoolQuote);
         epochAmounts.depositSharesIssued =
             shareToPoolQuote.reciprocalMulUint128(usdcToPool(epochAmounts.depositAssetAmount));
@@ -919,6 +922,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         _assertEpochAmountsEq(scId, USDC, epochId, epochAmounts);
 
         // Step 2e: Revoke shares
+        console.log("2e");
         shareClass.revokeShares(poolId, scId, USDC, navPerShareRedeem, oracleMock);
         shares -= epochAmounts.redeemSharesRevoked;
         (D18 navPerShare, uint128 issuance) = shareClass.shareClassNavPerShare(poolId, scId);
@@ -928,16 +932,109 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         _assertEpochAmountsEq(scId, USDC, epochId, epochAmounts);
 
         // Step 2f: Claim deposit and redeem
+        console.log("2f");
         epochId += 1;
-        shareClass.claimDeposit(poolId, scId, investor, USDC);
+        (, uint128 claimDepositAssetPaymentAmount) = shareClass.claimDeposit(poolId, scId, investor, USDC);
         shareClass.claimRedeem(poolId, scId, investor, USDC);
-        pendingDepositUSDC -= epochAmounts.depositAssetAmount;
+        pendingDepositUSDC -= claimDepositAssetPaymentAmount == 0 ? 0 : epochAmounts.depositAssetAmount;
         _assertDepositRequestEq(scId, USDC, investor, UserOrder(pendingDepositUSDC, epochId));
         uint128 pendingRedeem = redeemAmount - epochAmounts.redeemSharesRevoked;
         _assertRedeemRequestEq(scId, USDC, investor, UserOrder(pendingRedeem, epochId));
         _assertEpochAmountsEq(scId, USDC, 2, epochAmounts);
         _assertEpochAmountsEq(scId, USDC, epochId, EpochAmounts(d18(0), d18(0), 0, 0, 0, 0, 0));
     }
+}
+
+///@dev Contains all tests which deal with rounding edge cases
+contract SingleShareClassRoundingEdgeCases is SingleShareClassBaseTest {
+    using MathLib for uint128;
+
+    bytes32 constant INVESTOR_A = bytes32("investorA");
+    bytes32 constant INVESTOR_B = bytes32("investorB");
+    bytes32 constant INVESTOR_C = bytes32("investorC");
+
+    function _approveAllAndIssue(uint128 expectedIssuedShares, D18 navPerShare) private {
+        shareClass.approveDeposits(poolId, scId, d18(1e18), USDC, oracleMock);
+        shareClass.issueShares(poolId, scId, USDC, navPerShare);
+        assertEq(shareClass.totalIssuance(scId), expectedIssuedShares, "Mismatch in expected shares");
+    }
+
+    // function _assertEvenClaims(bytes32[] memory investors) {
+    //     uint128 totalClaimed
+    //     uint128[] paid;
+
+    //     for (uint8 i = 0; i < investors.length; i++) {
+    //         (uint128 claim, uint128 payment) = shareClass.claimDeposit(poolId, scId, investors[i], USDC);
+    //         claimed.push(claim);
+    //         paid.push(payment);
+    //     }
+
+    //     // sum of claimed == issuedShares - 1
+    //     // payment !=
+    // }
+
+    /// @dev Investors cannot claim the single issued share
+    function testClaimDepositSingleShare() public notThisContract(poolRegistryAddress) {
+        uint128 approvedAssetAmount = 100 * DENO_USDC;
+        uint128 issuedShares = 1;
+        D18 navPerShare = d18(usdcToPool(approvedAssetAmount) / issuedShares * 1e18);
+
+        shareClass.requestDeposit(poolId, scId, 1, INVESTOR_A, USDC);
+        shareClass.requestDeposit(poolId, scId, approvedAssetAmount - 1, INVESTOR_B, USDC);
+        _approveAllAndIssue(issuedShares, navPerShare);
+
+        (uint128 claimedA, uint128 paymentA) = shareClass.claimDeposit(poolId, scId, INVESTOR_A, USDC);
+        (uint128 claimedB, uint128 paymentB) = shareClass.claimDeposit(poolId, scId, INVESTOR_B, USDC);
+
+        assertEq(claimedA, claimedB, "Claimed shares should be equal");
+        assertEq(claimedA + claimedB + 1, issuedShares, "System should have 1 share class token surplus");
+        assertEq(paymentA + paymentB, 0, "Payment should be zero since neither investor could claim single share");
+
+        _assertDepositRequestEq(scId, USDC, INVESTOR_A, UserOrder(1, 2));
+        _assertDepositRequestEq(scId, USDC, INVESTOR_B, UserOrder(approvedAssetAmount - 1, 2));
+    }
+
+    /// @dev Investors can claim 50% rounded down of an uneven number of shares => 1 share surplus
+    function testClaimDepositEvenInvestorsUnevenClaimable() public notThisContract(poolRegistryAddress) {
+        uint128 approvedAssetAmount = 100 * DENO_USDC;
+        uint128 issuedShares = 11;
+        D18 navPerShare = d18(usdcToPool(approvedAssetAmount) / issuedShares * 1e18);
+
+        shareClass.requestDeposit(poolId, scId, 49 * approvedAssetAmount / 100, INVESTOR_A, USDC);
+        shareClass.requestDeposit(poolId, scId, 51 * approvedAssetAmount / 100, INVESTOR_B, USDC);
+        _approveAllAndIssue(issuedShares, navPerShare);
+
+        (uint128 claimedA, uint128 paymentA) = shareClass.claimDeposit(poolId, scId, INVESTOR_A, USDC);
+        (uint128 claimedB, uint128 paymentB) = shareClass.claimDeposit(poolId, scId, INVESTOR_B, USDC);
+
+        assertEq(claimedA, claimedB, "Claimed shares should be equal");
+        assertEq(claimedA + claimedB + 1, issuedShares, "System should have 1 share class token surplus");
+        assert(paymentA != paymentB);
+    }
+
+    /// @dev Investors can claim 1/3 of an even number of shares => 1 share surplus
+    function testClaimDepositUnevenInvestorsEvenClaimable() public notThisContract(poolRegistryAddress) {
+        uint128 approvedAssetAmount = 100 * DENO_USDC;
+        uint128 issuedShares = 10;
+        D18 navPerShare = d18(usdcToPool(approvedAssetAmount) / issuedShares * 1e18);
+
+        shareClass.requestDeposit(poolId, scId, 30 * approvedAssetAmount / 100, INVESTOR_A, USDC);
+        shareClass.requestDeposit(poolId, scId, 31 * approvedAssetAmount / 100, INVESTOR_B, USDC);
+        shareClass.requestDeposit(poolId, scId, 39 * approvedAssetAmount / 100, INVESTOR_C, USDC);
+        _approveAllAndIssue(issuedShares, navPerShare);
+
+        (uint128 claimedA, uint128 paymentA) = shareClass.claimDeposit(poolId, scId, INVESTOR_A, USDC);
+        (uint128 claimedB, uint128 paymentB) = shareClass.claimDeposit(poolId, scId, INVESTOR_B, USDC);
+        (uint128 claimedC, uint128 paymentC) = shareClass.claimDeposit(poolId, scId, INVESTOR_C, USDC);
+
+        assertEq(claimedA, claimedB, "Claimed shares should be equal");
+        assertEq(claimedB, claimedC, "Claimed shares should be equal");
+        assertEq(claimedA + claimedB + claimedC + 1, issuedShares, "System should have 1 share class token surplus");
+        assert(paymentA != paymentB && paymentB != paymentC && paymentC != paymentA);
+    }
+
+    // TODO: Same scenarios for claimRedeem
+    // TODO: Approve with low rate such that during claiming the pending amount decreases but the claimed amount is 0
 }
 
 ///@dev Contains all tests which are expected to revert
@@ -1165,7 +1262,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
         shareClass.approveDeposits(poolId, scId, d18(1), USDC, oracleMock);
     }
 
-    function testApproveRedeemssAlreadyApproved() public {
+    function testApproveRedeemsAlreadyApproved() public {
         shareClass.approveRedeems(poolId, scId, d18(1), USDC);
 
         vm.expectRevert(ISingleShareClass.AlreadyApproved.selector);
@@ -1173,12 +1270,22 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     }
 
     function testApproveDepositsRatioExcess() public {
-        vm.expectRevert(ISingleShareClass.MaxApprovalRatioExceeded.selector);
+        vm.expectRevert(ISingleShareClass.ApprovalRatioOutOfBounds.selector);
         shareClass.approveDeposits(poolId, scId, d18(1e18 + 1), USDC, oracleMock);
     }
 
     function testApproveRedeemsRatioExcess() public {
-        vm.expectRevert(ISingleShareClass.MaxApprovalRatioExceeded.selector);
+        vm.expectRevert(ISingleShareClass.ApprovalRatioOutOfBounds.selector);
         shareClass.approveRedeems(poolId, scId, d18(1e18 + 1), USDC);
+    }
+
+    function testApproveDepositsRatioInsufficient() public {
+        vm.expectRevert(ISingleShareClass.ApprovalRatioOutOfBounds.selector);
+        shareClass.approveDeposits(poolId, scId, d18(0), USDC, oracleMock);
+    }
+
+    function testApproveRedeemsRatioInsufficient() public {
+        vm.expectRevert(ISingleShareClass.ApprovalRatioOutOfBounds.selector);
+        shareClass.approveRedeems(poolId, scId, d18(0), USDC);
     }
 }
