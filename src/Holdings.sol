@@ -56,7 +56,7 @@ contract Holdings is Auth, IHoldings {
         auth
     {
         require(!scId.isNull(), WrongShareClassId());
-        require(isAssetAllowed[poolId][assetId], WrongAssetId());
+        require(isAssetAllowed[poolId][assetId], AssetNotAllowed());
         require(address(valuation_) != address(0), WrongValuation());
 
         holding[poolId][scId][assetId] = Holding(0, 0, valuation_);

@@ -14,7 +14,7 @@ import {IERC7726} from "src/interfaces/IERC7726.sol";
 import {IHoldings} from "src/interfaces/IHoldings.sol";
 
 PoolId constant POOL_A = PoolId.wrap(42);
-ShareClassId constant SC_1 = ShareClassId.wrap(1);
+ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("1"));
 AssetId constant ASSET_A = AssetId.wrap(2);
 ShareClassId constant NON_SC = ShareClassId.wrap(0);
 AssetId constant NON_ASSET = AssetId.wrap(0);
@@ -36,7 +36,7 @@ contract TestCommon is Test {
         vm.mockCall(
             address(valuation),
             abi.encodeWithSelector(
-                IERC7726.getQuote.selector, uint256(baseAmount), AssetId.unwrap(ASSET_A), POOL_CURRENCY.addr()
+                IERC7726.getQuote.selector, uint256(baseAmount), ASSET_A.addr(), POOL_CURRENCY.addr()
             ),
             abi.encode(uint256(quoteAmount))
         );
@@ -129,8 +129,8 @@ contract TestCreate is TestCommon {
         holdings.create(POOL_A, NON_SC, ASSET_A, itemValuation, new AccountId[](0));
     }
 
-    function testErrWrongAssetId() public {
-        vm.expectRevert(IHoldings.WrongAssetId.selector);
+    function testErrAssetNotAllowed() public {
+        vm.expectRevert(IHoldings.AssetNotAllowed.selector);
         holdings.create(POOL_A, SC_1, NON_ASSET, itemValuation, new AccountId[](0));
     }
 }

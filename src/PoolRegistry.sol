@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/Auth.sol";
-import {PoolId, PoolIdLib} from "src/types/PoolId.sol";
+import {PoolId, newPoolId} from "src/types/PoolId.sol";
 import {AssetId} from "src/types/AssetId.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
@@ -31,7 +31,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
         require(!currency_.isNull(), EmptyCurrency());
         require(address(shareClassManager_) != address(0), EmptyShareClassManager());
 
-        poolId = PoolIdLib.newFrom(++latestId);
+        poolId = newPoolId(++latestId);
 
         isAdmin[poolId][admin_] = true;
         currency[poolId] = currency_;

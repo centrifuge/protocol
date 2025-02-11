@@ -55,11 +55,14 @@ interface IHoldings {
     /// @notice Valuation is not valid.
     error WrongValuation();
 
+    /// @notice ShareClassId is not valid.
+    error WrongShareClassId();
+
     /// @notice AssetId is not valid.
     error WrongAssetId();
 
-    /// @notice ShareClassId is not valid.
-    error WrongShareClassId();
+    /// @notice AssetId not allowed.
+    error AssetNotAllowed();
 
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.

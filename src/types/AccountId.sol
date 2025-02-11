@@ -8,7 +8,7 @@ function kind(AccountId accountId_) pure returns (uint8) {
     return uint8(AccountId.unwrap(accountId_) & 0x000000FF);
 }
 
-function accountId(uint24 id, uint8 kind_) pure returns (AccountId) {
+function newAccountId(uint24 id, uint8 kind_) pure returns (AccountId) {
     return AccountId.wrap(uint32(id) << 8 | kind_);
 }
 

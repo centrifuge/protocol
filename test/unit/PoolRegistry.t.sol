@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 import {MathLib} from "src/libraries/MathLib.sol";
-import {PoolId, PoolIdLib} from "src/types/PoolId.sol";
+import {PoolId, newPoolId} from "src/types/PoolId.sol";
 import {AssetId} from "src/types/AssetId.sol";
 import {PoolRegistry} from "src/PoolRegistry.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
@@ -46,7 +46,7 @@ contract PoolRegistryTest is Test {
         registry.registerPool(address(this), AssetId.wrap(0), shareClassManager);
 
         vm.expectEmit();
-        emit IPoolRegistry.NewPool(PoolIdLib.newFrom(1), fundAdmin, shareClassManager, USD);
+        emit IPoolRegistry.NewPool(newPoolId(1), fundAdmin, shareClassManager, USD);
         PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
 
         assertEq(poolId.chainId(), block.chainid.toUint32());
