@@ -59,9 +59,6 @@ interface IPoolManagerAdminMethods {
     /// @notice Allow/disallow an account to interact as pool admin
     function allowPoolAdmin(address account, bool allow) external;
 
-    /// @notice Allow/disallow an asset for holdings
-    function allowHoldingAsset(AssetId assetId, bool allow) external;
-
     /// @notice Allow/disallow an asset for investment
     function allowInvestorAsset(AssetId assetId, bool allow) external;
 

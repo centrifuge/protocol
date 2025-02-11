@@ -154,17 +154,6 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function allowHoldingAsset(AssetId assetId, bool allow) external poolUnlocked {
-        PoolId poolId = unlockedPoolId();
-
-        if (!allow) {
-            require(!poolRegistry.isInvestorAssetAllowed(poolId, assetId), InvestorAssetStillAllowed());
-        }
-
-        holdings.allowAsset(poolId, assetId, allow);
-    }
-
-    /// @inheritdoc IPoolManagerAdminMethods
     function allowInvestorAsset(AssetId assetId, bool allow) external poolUnlocked {
         PoolId poolId = unlockedPoolId();
 
