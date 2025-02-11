@@ -10,7 +10,7 @@ import {D18} from "src/types/D18.sol";
 import {IShareClassManager} from "src/interfaces/IShareClassManager.sol";
 import {IERC7726} from "src/interfaces/IERC7726.sol";
 
-bytes32 constant CALL_ESCROW_KEY = bytes32("multicall-escrow");
+bytes32 constant CALL_ESCROW_KEY = bytes32("call-escrow");
 
 /// @notice AssetManager accounts identifications used by the PoolManager
 enum EscrowId {
@@ -42,6 +42,10 @@ interface IPoolManagerAdminMethods {
 
     /// @notice Dispatched when a holding asset is disallowed but the asset is still allowed for investor usage.
     error InvestorAssetStillAllowed();
+
+    /// @notice Set an address attached to the pool by a given key
+    /// @param key Identification of the address
+    function setAddressFor(bytes32 key, address value) external;
 
     /// @notice Notify to a CV instance that a new pool is available
     /// @param chainId Chain where CV instance lives

@@ -32,9 +32,8 @@ abstract contract PoolLocker is IPoolLocker {
         ICallEscrow callEscrow = _beforeUnlock(poolId);
         _unlockedPoolId = poolId;
 
+        // If custom escrow, we wrap the calls to be called by it as msg.sender
         if (address(callEscrow) != address(0)) {
-            // We wrap the calls to be called by the custom escrow
-
             IMulticall.Call[] memory wrapCalls = new IMulticall.Call[](calls.length);
             for (uint256 i; i < calls.length; i++) {
                 wrapCalls[i] = IMulticall.Call(

@@ -116,6 +116,11 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IPoolManagerAdminMethods
+    function setAddressFor(bytes32 key, address value) external {
+        poolRegistry.setAddressFor(unlockedPoolId(), key, value);
+    }
+
+    /// @inheritdoc IPoolManagerAdminMethods
     function notifyPool(uint32 chainId) external poolUnlocked {
         gateway.sendNotifyPool(chainId, unlockedPoolId());
     }
