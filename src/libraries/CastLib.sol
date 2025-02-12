@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {MathLib} from "src/libraries/MathLib.sol";
+
 /// @title  CastLib
 library CastLib {
     function toBytes32(address addr) internal pure returns (bytes32) {
@@ -33,7 +35,9 @@ library CastLib {
     function stringToBytes128(string memory str) internal pure returns (bytes memory) {
         bytes memory bytes128 = new bytes(128);
 
-        for (uint256 i; i < 128 && bytes(str)[i] != 0; i++) {
+        uint32 length = uint32(MathLib.min(128, bytes(str).length));
+
+        for (uint256 i; i < length && bytes(str)[i] != 0; i++) {
             bytes128[i] = bytes(str)[i];
         }
 

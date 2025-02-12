@@ -47,6 +47,11 @@ struct EpochPointers {
     uint32 latestRevocation;
 }
 
+/// Utility method to determine the ShareClassId for a PoolId
+function previewShareClassId(PoolId poolId) pure returns (ShareClassId) {
+    return ShareClassId.wrap(bytes16(uint128(PoolId.unwrap(poolId))));
+}
+
 contract SingleShareClass is Auth, ISingleShareClass {
     using MathLib for D18;
     using MathLib for uint128;
@@ -70,8 +75,8 @@ contract SingleShareClass is Auth, ISingleShareClass {
     mapping(ShareClassId scId => mapping(AssetId paymentAssetId => mapping(bytes32 investor => UserOrder pending)))
         public depositRequest;
 
-    constructor(address poolRegistry_, address deployer) Auth(deployer) {
-        poolRegistry = IPoolRegistry(poolRegistry_);
+    constructor(IPoolRegistry poolRegistry_, address deployer) Auth(deployer) {
+        poolRegistry = poolRegistry_;
     }
 
     function file(bytes32 what, address data) external auth {
@@ -88,7 +93,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     {
         require(shareClassId[poolId].isNull(), MaxShareClassNumberExceeded(1));
 
-        shareClassId_ = ShareClassId.wrap(bytes16(uint128(PoolId.unwrap(poolId))));
+        shareClassId_ = previewShareClassId(poolId);
 
         shareClassId[poolId] = shareClassId_;
         epochId[poolId] = 1;
