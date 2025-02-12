@@ -38,8 +38,8 @@ interface IPoolManagerAdminMethods {
     /// @notice Dispatched when the pool can not be unlocked by the caller
     error NotAuthorizedAdmin();
 
-    /// @notice Dispatched when a holding asset is disallowed but the asset is still allowed for investor usage.
-    error InvestorAssetStillAllowed();
+    /// @notice Dispatched when a holding asset is not yet created and therefore allowed for investing.
+    error HoldingAssetNotAllowed();
 
     /// @notice Notify to a CV instance that a new pool is available
     /// @param chainId Chain where CV instance lives

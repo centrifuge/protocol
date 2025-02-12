@@ -158,7 +158,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
         PoolId poolId = unlockedPoolId();
 
         require(assetManager.isRegistered(assetId), IAssetManager.AssetNotFound());
-        require(holdings.isAssetAllowed(poolId, assetId), IHoldings.AssetNotAllowed());
+        require(holdings.isAssetAllowed(poolId, assetId), IPoolManagerAdminMethods.HoldingAssetNotAllowed());
 
         poolRegistry.allowInvestorAsset(poolId, assetId, allow);
     }

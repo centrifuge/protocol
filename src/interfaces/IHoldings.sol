@@ -58,9 +58,6 @@ interface IHoldings {
     /// @notice AssetId is not valid.
     error WrongAssetId();
 
-    /// @notice AssetId not allowed.
-    error AssetNotAllowed();
-
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
     /// Accepts a `bytes32` representation of 'poolRegistry' string value.
