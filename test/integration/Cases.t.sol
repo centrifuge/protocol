@@ -23,14 +23,14 @@ import {MockCentrifugeVaults} from "test/mock/MockCentrifugeVaults.sol";
 import "forge-std/Test.sol";
 
 contract TestCommon is Deployer, Test {
-    uint32 constant CHAIN_1 = 1;
-    uint32 constant CHAIN_2 = 2;
+    uint32 constant CHAIN_CP = 1;
+    uint32 constant CHAIN_CV = 2;
 
     address immutable FM = makeAddr("FM");
     address immutable ANY = makeAddr("Anyone");
     bytes32 immutable INVESTOR = bytes32("Investor");
 
-    AssetId immutable USDC_C2 = newAssetId(CHAIN_2, 1);
+    AssetId immutable USDC_C2 = newAssetId(CHAIN_CV, 1);
 
     MockCentrifugeVaults cv;
 
@@ -57,8 +57,8 @@ contract TestCommon is Deployer, Test {
         vm.label(address(gateway), "Gateway");
         vm.label(address(cv), "CV");
 
-        // We decide CP is located at CHAIN_1 for messaging
-        vm.chainId(CHAIN_1);
+        // We decide CP is located at CHAIN_CP for messaging
+        vm.chainId(CHAIN_CP);
     }
 
     /// @dev Transform a list of encoding methods in PoolManager calls
@@ -93,8 +93,8 @@ contract TestConfiguration is TestCommon {
         (bytes[] memory cs, uint256 c) = (new bytes[](4), 0);
         cs[c++] = abi.encodeWithSelector(poolManager.setPoolMetadata.selector, bytes("Testing pool"));
         cs[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, bytes(""));
-        cs[c++] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_2);
-        cs[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_2, scId);
+        cs[c++] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_CV);
+        cs[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_CV, scId);
 
         vm.prank(FM);
         poolManager.execute(poolId, _fromPoolManager(cs));
@@ -125,8 +125,8 @@ contract TestConfiguration is TestCommon {
 
         (bytes[] memory cs, uint256 c) = (new bytes[](7), 0);
         cs[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, bytes(""));
-        cs[c++] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_2);
-        cs[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_2, scId);
+        cs[c++] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_CV);
+        cs[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_CV, scId);
         cs[c++] = abi.encodeWithSelector(poolManager.allowHoldingAsset.selector, USDC_C2, true);
         cs[c++] = abi.encodeWithSelector(poolManager.createHolding.selector, scId, USDC_C2, oneToOneValuation, 0x01);
         cs[c++] = abi.encodeWithSelector(poolManager.allowInvestorAsset.selector, USDC_C2, true);
