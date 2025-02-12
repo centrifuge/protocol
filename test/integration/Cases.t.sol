@@ -135,19 +135,22 @@ contract TestConfiguration is TestCommon {
         vm.prank(FM);
         poolManager.execute(poolId, _fromPoolManager(cs));
 
+        // TODO: checks
+
         // From this point, pool is ready for investing from CV side
     }
 }
 
-contract TestInvesting is TestConfiguration {
-    uint128 constant INVESTOR_AMOUNT = 100;
+contract TestInvestments is TestConfiguration {
+    uint128 constant INVESTOR_AMOUNT = 100 * 1e18; // USDC_C2
+    uint128 constant SHARE_AMOUNT = 50 * 1e6; // Share from USD
     D18 immutable PERCENT_20 = d18(1, 5);
     D18 immutable NAV_PER_SHARE = d18(2, 1);
 
-    function testBaseFlow() public {
-        (PoolId poolId, ShareClassId scId) = testGeneralConfigurationPool();
+    function testDeposit() public returns (PoolId poolId, ShareClassId scId) {
+        (poolId, scId) = testGeneralConfigurationPool();
 
-        cv.requestDeposit(poolId, scId, USDC_C2, INVESTOR, INVESTOR_AMOUNT ** assetManager.decimals(USDC_C2.raw()));
+        cv.requestDeposit(poolId, scId, USDC_C2, INVESTOR, INVESTOR_AMOUNT);
 
         IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
 
@@ -160,5 +163,29 @@ contract TestInvesting is TestConfiguration {
 
         vm.prank(ANY);
         poolManager.claimDeposit(poolId, scId, USDC_C2, INVESTOR);
+
+        // TODO: checks
+        // claimed amount == SHARE_AMOUNT
+    }
+
+    function testRedeem() public returns (PoolId poolId, ShareClassId scId) {
+        (poolId, scId) = testDeposit();
+
+        cv.requestRedeem(poolId, scId, USDC_C2, INVESTOR, SHARE_AMOUNT);
+
+        IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
+
+        (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
+        cs[c++] = abi.encodeWithSelector(poolManager.approveRedeems.selector, scId, USDC_C2, PERCENT_20);
+        cs[c++] = abi.encodeWithSelector(poolManager.revokeShares.selector, scId, USDC_C2, NAV_PER_SHARE, valuation);
+
+        vm.prank(FM);
+        poolManager.execute(poolId, _fromPoolManager(cs));
+
+        vm.prank(ANY);
+        poolManager.claimRedeem(poolId, scId, USDC_C2, INVESTOR);
+
+        // TODO: checks
+        // claimed amount == INVESTOR_AMOUNT
     }
 }

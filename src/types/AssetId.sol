@@ -24,7 +24,7 @@ function chainId(AssetId assetId) pure returns (uint32) {
 }
 
 function newAssetId(uint32 chainId_, uint32 counter) pure returns (AssetId) {
-    return AssetId.wrap(uint64(chainId_) << 32 + counter);
+    return AssetId.wrap((uint64(chainId_) << 32) + counter);
 }
 
 function newAssetId(uint32 isoCode) pure returns (AssetId) {

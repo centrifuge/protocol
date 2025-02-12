@@ -42,6 +42,14 @@ contract MockCentrifugeVaults is Test, IAdapter {
         );
     }
 
+    function requestRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint128 amount)
+        public
+    {
+        handler.handle(
+            abi.encodePacked(MessageType.RedeemRequest, poolId.raw(), scId.raw(), investor, assetId.raw(), amount)
+        );
+    }
+
     function send(uint32 chainId, bytes calldata message) external {
         lastChainDestinations.push(chainId);
         lastMessages.push(message);
