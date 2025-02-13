@@ -122,7 +122,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
         cancelledAssetAmount = depositRequest[shareClassId_][depositAssetId][investor].pending;
 
-        _updateDepositRequest(poolId, shareClassId_, -int128(cancelledAssetAmount), investor, depositAssetId);
+        _updateDepositRequest(poolId, shareClassId_, -(cancelledAssetAmount.toInt128()), investor, depositAssetId);
     }
 
     /// @inheritdoc IShareClassManager
@@ -149,7 +149,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
         cancelledShareAmount = redeemRequest[shareClassId_][payoutAssetId][investor].pending;
 
-        _updateRedeemRequest(poolId, shareClassId_, -int128(cancelledShareAmount), investor, payoutAssetId);
+        _updateRedeemRequest(poolId, shareClassId_, -(cancelledShareAmount.toInt128()), investor, payoutAssetId);
     }
 
     /// @inheritdoc IShareClassManager
