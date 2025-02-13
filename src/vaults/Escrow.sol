@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {Auth} from "src/Auth.sol";
-import {IEscrow} from "src/interfaces/IEscrow.sol";
-import {IERC20} from "src/interfaces/IERC20.sol";
-import {SafeTransferLib} from "src/libraries/SafeTransferLib.sol";
+import {Auth} from "src/vaults/Auth.sol";
+import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
+import {IERC20} from "src/vaults/interfaces/IERC20.sol";
+import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
 
 /// @title  Escrow
 /// @notice Escrow contract that holds tokens.

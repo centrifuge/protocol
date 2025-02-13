@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
-import {Auth} from "src/Auth.sol";
-import {MessagesLib} from "src/libraries/MessagesLib.sol";
-import {BytesLib} from "src/libraries/BytesLib.sol";
-import {IRoot, IRecoverable} from "src/interfaces/IRoot.sol";
-import {IAuth} from "src/interfaces/IAuth.sol";
+import {Auth} from "src/vaults/Auth.sol";
+import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
+import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
+import {IRoot, IRecoverable} from "src/vaults/interfaces/IRoot.sol";
+import {IAuth} from "src/vaults/interfaces/IAuth.sol";
 
 /// @title  Root
 /// @notice Core contract that is a ward on all other deployed contracts.

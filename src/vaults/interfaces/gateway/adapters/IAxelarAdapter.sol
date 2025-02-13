@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >=0.5.0;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {IAdapter} from "src/interfaces/gateway/IAdapter.sol";
+import {IAdapter} from "src/vaults/interfaces/gateway/IAdapter.sol";
 
 interface IAxelarGateway {
     function callContract(string calldata destinationChain, string calldata contractAddress, bytes calldata payload)

@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >=0.5.0;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
 /**
  * @dev Interface of the ERC165 standard, as defined in the

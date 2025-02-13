@@ -1,19 +1,19 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {Auth} from "src/Auth.sol";
-import {CastLib} from "src/libraries/CastLib.sol";
-import {MathLib} from "src/libraries/MathLib.sol";
-import {SafeTransferLib} from "src/libraries/SafeTransferLib.sol";
-import {MessagesLib} from "src/libraries/MessagesLib.sol";
-import {BytesLib} from "src/libraries/BytesLib.sol";
-import {IERC20, IERC20Metadata} from "src/interfaces/IERC20.sol";
-import {IPoolManager} from "src/interfaces/IPoolManager.sol";
-import {IInvestmentManager, InvestmentState} from "src/interfaces/IInvestmentManager.sol";
-import {ITranche} from "src/interfaces/token/ITranche.sol";
-import {IERC7540Vault} from "src/interfaces/IERC7540.sol";
-import {IGateway} from "src/interfaces/gateway/IGateway.sol";
-import {IRecoverable} from "src/interfaces/IRoot.sol";
+import {Auth} from "src/vaults/Auth.sol";
+import {CastLib} from "src/vaults/libraries/CastLib.sol";
+import {MathLib} from "src/vaults/libraries/MathLib.sol";
+import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
+import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
+import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
+import {IERC20, IERC20Metadata} from "src/vaults/interfaces/IERC20.sol";
+import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
+import {IInvestmentManager, InvestmentState} from "src/vaults/interfaces/IInvestmentManager.sol";
+import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
+import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
+import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
+import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 
 /// @title  Investment Manager
 /// @notice This is the main contract vaults interact with for

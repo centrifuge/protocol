@@ -1,17 +1,17 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {Auth} from "src/Auth.sol";
-import {IRoot} from "src/interfaces/IRoot.sol";
-import {EIP712Lib} from "src/libraries/EIP712Lib.sol";
-import {IRecoverable} from "src/interfaces/IRoot.sol";
-import {ITranche} from "src/interfaces/token/ITranche.sol";
-import {SignatureLib} from "src/libraries/SignatureLib.sol";
-import {SafeTransferLib} from "src/libraries/SafeTransferLib.sol";
-import {IInvestmentManager} from "src/interfaces/IInvestmentManager.sol";
-import "src/interfaces/IERC7540.sol";
-import "src/interfaces/IERC7575.sol";
-import "src/interfaces/IERC20.sol";
+import {Auth} from "src/vaults/Auth.sol";
+import {IRoot} from "src/vaults/interfaces/IRoot.sol";
+import {EIP712Lib} from "src/vaults/libraries/EIP712Lib.sol";
+import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
+import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
+import {SignatureLib} from "src/vaults/libraries/SignatureLib.sol";
+import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
+import {IInvestmentManager} from "src/vaults/interfaces/IInvestmentManager.sol";
+import "src/vaults/interfaces/IERC7540.sol";
+import "src/vaults/interfaces/IERC7575.sol";
+import "src/vaults/interfaces/IERC20.sol";
 
 /// @title  ERC7540Vault
 /// @notice Asynchronous Tokenized Vault standard implementation for Centrifuge pools

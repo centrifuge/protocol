@@ -1,13 +1,13 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {Auth} from "src/Auth.sol";
-import {IERC20} from "src/interfaces/IERC20.sol";
-import {MathLib} from "src/libraries/MathLib.sol";
-import {IRecoverable} from "src/interfaces/IRoot.sol";
-import {IPoolManager} from "src/interfaces/IPoolManager.sol";
-import {SafeTransferLib} from "src/libraries/SafeTransferLib.sol";
-import {ITransferProxy, ITransferProxyFactory} from "src/interfaces/factories/ITransferProxy.sol";
+import {Auth} from "src/vaults/Auth.sol";
+import {IERC20} from "src/vaults/interfaces/IERC20.sol";
+import {MathLib} from "src/vaults/libraries/MathLib.sol";
+import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
+import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
+import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
+import {ITransferProxy, ITransferProxyFactory} from "src/vaults/interfaces/factories/ITransferProxy.sol";
 
 contract TransferProxy is Auth, ITransferProxy {
     using MathLib for uint256;

@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >=0.5.0;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {Domain} from "src/interfaces/IPoolManager.sol";
-import {IRecoverable} from "src/interfaces/IRoot.sol";
+import {Domain} from "src/vaults/interfaces/IPoolManager.sol";
+import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 
 interface ICentrifugeRouter is IRecoverable {
     // --- Events ---

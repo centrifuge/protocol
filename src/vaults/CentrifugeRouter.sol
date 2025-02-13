@@ -1,20 +1,20 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {Auth} from "src/Auth.sol";
-import {MathLib} from "src/libraries/MathLib.sol";
-import {SafeTransferLib} from "src/libraries/SafeTransferLib.sol";
-import {CastLib} from "src/libraries/CastLib.sol";
-import {IERC20, IERC20Permit, IERC20Wrapper} from "src/interfaces/IERC20.sol";
-import {IERC7540Vault} from "src/interfaces/IERC7540.sol";
-import {ICentrifugeRouter} from "src/interfaces/ICentrifugeRouter.sol";
-import {IPoolManager, Domain} from "src/interfaces/IPoolManager.sol";
-import {IEscrow} from "src/interfaces/IEscrow.sol";
-import {ITranche} from "src/interfaces/token/ITranche.sol";
-import {IGateway} from "src/interfaces/gateway/IGateway.sol";
-import {TransientStorage} from "src/libraries/TransientStorage.sol";
-import {IRecoverable} from "src/interfaces/IRoot.sol";
-import {ITransferProxy} from "src/interfaces/factories/ITransferProxy.sol";
+import {Auth} from "src/vaults/Auth.sol";
+import {MathLib} from "src/vaults/libraries/MathLib.sol";
+import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
+import {CastLib} from "src/vaults/libraries/CastLib.sol";
+import {IERC20, IERC20Permit, IERC20Wrapper} from "src/vaults/interfaces/IERC20.sol";
+import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
+import {ICentrifugeRouter} from "src/vaults/interfaces/ICentrifugeRouter.sol";
+import {IPoolManager, Domain} from "src/vaults/interfaces/IPoolManager.sol";
+import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
+import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
+import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
+import {TransientStorage} from "src/vaults/libraries/TransientStorage.sol";
+import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
+import {ITransferProxy} from "src/vaults/interfaces/factories/ITransferProxy.sol";
 
 /// @title  CentrifugeRouter
 /// @notice This is a helper contract, designed to be the entrypoint for EOAs.

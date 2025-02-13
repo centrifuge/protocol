@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {ERC7540Vault} from "src/ERC7540Vault.sol";
-import {IERC7540VaultFactory} from "src/interfaces/factories/IERC7540VaultFactory.sol";
-import {Auth} from "src/Auth.sol";
+import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
+import {IERC7540VaultFactory} from "src/vaults/interfaces/factories/IERC7540VaultFactory.sol";
+import {Auth} from "src/vaults/Auth.sol";
 
 /// @title  ERC7540 Vault Factory
 /// @dev    Utility for deploying new vault contracts

@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {Auth} from "src/Auth.sol";
-import {IGasService} from "src/interfaces/gateway/IGasService.sol";
-import {MathLib} from "src/libraries/MathLib.sol";
-import {BytesLib} from "src/libraries/BytesLib.sol";
-import {MessagesLib} from "src/libraries/MessagesLib.sol";
+import {Auth} from "src/vaults/Auth.sol";
+import {IGasService} from "src/vaults/interfaces/gateway/IGasService.sol";
+import {MathLib} from "src/vaults/libraries/MathLib.sol";
+import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
+import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
 
 /// @title  GasService
 /// @notice This is a utility contract used in calculations of the

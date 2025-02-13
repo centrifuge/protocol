@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {Auth} from "src/Auth.sol";
-import {IAxelarGateway} from "src/gateway/adapters/axelar/Adapter.sol";
-import {IPrecompile} from "src/interfaces/misc/IPrecompile.sol";
+import {Auth} from "src/vaults/Auth.sol";
+import {IAxelarGateway} from "src/vaults/gateway/adapters/axelar/Adapter.sol";
+import {IPrecompile} from "src/vaults/interfaces/misc/IPrecompile.sol";
 
 // A contract to be deployed on Centrifuge-EVM in order to forward axelar tx to
 // the precompile.

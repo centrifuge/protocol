@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {IAuth} from "src/interfaces/IAuth.sol";
+import {IAuth} from "src/vaults/interfaces/IAuth.sol";
 
 /// @title  Auth
 /// @notice Simple authentication pattern

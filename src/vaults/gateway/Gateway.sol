@@ -1,18 +1,18 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {Auth} from "src/Auth.sol";
-import {ArrayLib} from "src/libraries/ArrayLib.sol";
-import {BytesLib} from "src/libraries/BytesLib.sol";
-import {MathLib} from "src/libraries/MathLib.sol";
-import {MessagesLib} from "src/libraries/MessagesLib.sol";
-import {SafeTransferLib} from "src/libraries/SafeTransferLib.sol";
-import {TransientStorage} from "src/libraries/TransientStorage.sol";
-import {IGateway, IMessageHandler} from "src/interfaces/gateway/IGateway.sol";
-import {IRoot} from "src/interfaces/IRoot.sol";
-import {IGasService} from "src/interfaces/gateway/IGasService.sol";
-import {IAdapter} from "src/interfaces/gateway/IAdapter.sol";
-import {IRecoverable} from "src/interfaces/IRoot.sol";
+import {Auth} from "src/vaults/Auth.sol";
+import {ArrayLib} from "src/vaults/libraries/ArrayLib.sol";
+import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
+import {MathLib} from "src/vaults/libraries/MathLib.sol";
+import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
+import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
+import {TransientStorage} from "src/vaults/libraries/TransientStorage.sol";
+import {IGateway, IMessageHandler} from "src/vaults/interfaces/gateway/IGateway.sol";
+import {IRoot} from "src/vaults/interfaces/IRoot.sol";
+import {IGasService} from "src/vaults/interfaces/gateway/IGasService.sol";
+import {IAdapter} from "src/vaults/interfaces/gateway/IAdapter.sol";
+import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 
 /// @title  Gateway
 /// @notice Routing contract that forwards outgoing messages to multiple adapters (1 full message, n-1 proofs)

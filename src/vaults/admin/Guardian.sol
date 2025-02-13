@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {Root} from "src/Root.sol";
-import {IGuardian} from "src/interfaces/IGuardian.sol";
-import {IGateway} from "src/interfaces/gateway/IGateway.sol";
+import {Root} from "src/vaults/Root.sol";
+import {IGuardian} from "src/vaults/interfaces/IGuardian.sol";
+import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
 
 interface ISafe {
     function isOwner(address signer) external view returns (bool);

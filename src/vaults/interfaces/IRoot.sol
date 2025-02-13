@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >=0.5.0;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {IMessageHandler} from "src/interfaces/gateway/IGateway.sol";
+import {IMessageHandler} from "src/vaults/interfaces/gateway/IGateway.sol";
 
 interface IRecoverable {
     /// @notice Used to recover any ERC-20 token.

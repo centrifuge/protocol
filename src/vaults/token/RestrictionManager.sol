@@ -1,15 +1,15 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {Auth} from "src/Auth.sol";
-import {IRoot} from "src/interfaces/IRoot.sol";
-import {ITranche} from "src/interfaces/token/ITranche.sol";
-import {IHook, HookData} from "src/interfaces/token/IHook.sol";
-import {MessagesLib} from "src/libraries/MessagesLib.sol";
-import {BitmapLib} from "src/libraries/BitmapLib.sol";
-import {BytesLib} from "src/libraries/BytesLib.sol";
-import {IERC165} from "src/interfaces/IERC7575.sol";
-import {RestrictionUpdate, IRestrictionManager} from "src/interfaces/token/IRestrictionManager.sol";
+import {Auth} from "src/vaults/Auth.sol";
+import {IRoot} from "src/vaults/interfaces/IRoot.sol";
+import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
+import {IHook, HookData} from "src/vaults/interfaces/token/IHook.sol";
+import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
+import {BitmapLib} from "src/vaults/libraries/BitmapLib.sol";
+import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
+import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
+import {RestrictionUpdate, IRestrictionManager} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 
 /// @title  Restriction Manager
 /// @notice Hook implementation that:
