@@ -11,9 +11,6 @@ interface IHoldings {
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 indexed what, address addr);
 
-    /// @notice Emitted when a call to `file()` was performed.
-    event AllowedAsset(PoolId indexed poolId, AssetId indexed assetId, bool isAllow);
-
     /// @notice Emitted when a holding is created
     event Created(PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, IERC7726 valuation);
 
@@ -61,17 +58,11 @@ interface IHoldings {
     /// @notice AssetId is not valid.
     error WrongAssetId();
 
-    /// @notice AssetId not allowed.
-    error AssetNotAllowed();
-
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
     /// Accepts a `bytes32` representation of 'poolRegistry' string value.
     /// @param data New value given to the `what` parameter
     function file(bytes32 what, address data) external;
-
-    /// @notice Allows an asset to be used as a holding
-    function allowAsset(PoolId poolId, AssetId assetId, bool isAllow) external;
 
     /// @notice Creates a new holding in a pool using a valuation
     function create(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation, AccountId[] memory accounts)

@@ -95,6 +95,7 @@ contract TestConfiguration is TestCommon {
         cs[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, bytes(""));
         cs[c++] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_CV);
         cs[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_CV, scId);
+        assertEq(c, cs.length);
 
         vm.prank(FM);
         poolManager.execute(poolId, _fromPoolManager(cs));
@@ -123,14 +124,14 @@ contract TestConfiguration is TestCommon {
 
         scId = previewShareClassId(poolId);
 
-        (bytes[] memory cs, uint256 c) = (new bytes[](7), 0);
+        (bytes[] memory cs, uint256 c) = (new bytes[](6), 0);
         cs[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, bytes(""));
         cs[c++] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_CV);
         cs[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_CV, scId);
-        cs[c++] = abi.encodeWithSelector(poolManager.allowHoldingAsset.selector, USDC_C2, true);
         cs[c++] = abi.encodeWithSelector(poolManager.createHolding.selector, scId, USDC_C2, oneToOneValuation, 0x01);
         cs[c++] = abi.encodeWithSelector(poolManager.allowInvestorAsset.selector, USDC_C2, true);
         cs[c++] = abi.encodeWithSelector(poolManager.notifyAllowedAsset.selector, scId, USDC_C2);
+        assertEq(c, cs.length);
 
         vm.prank(FM);
         poolManager.execute(poolId, _fromPoolManager(cs));
@@ -157,6 +158,7 @@ contract TestInvestments is TestConfiguration {
         (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
         cs[c++] = abi.encodeWithSelector(poolManager.approveDeposits.selector, scId, USDC_C2, PERCENT_20, valuation);
         cs[c++] = abi.encodeWithSelector(poolManager.issueShares.selector, scId, USDC_C2, NAV_PER_SHARE);
+        assertEq(c, cs.length);
 
         vm.prank(FM);
         poolManager.execute(poolId, _fromPoolManager(cs));
@@ -178,6 +180,7 @@ contract TestInvestments is TestConfiguration {
         (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
         cs[c++] = abi.encodeWithSelector(poolManager.approveRedeems.selector, scId, USDC_C2, PERCENT_20);
         cs[c++] = abi.encodeWithSelector(poolManager.revokeShares.selector, scId, USDC_C2, NAV_PER_SHARE, valuation);
+        assertEq(c, cs.length);
 
         vm.prank(FM);
         poolManager.execute(poolId, _fromPoolManager(cs));

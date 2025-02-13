@@ -42,24 +42,15 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @inheritdoc IHoldings
-    function allowAsset(PoolId poolId, AssetId assetId, bool isAllow) external auth {
-        require(!assetId.isNull(), WrongAssetId());
-
-        isAssetAllowed[poolId][assetId] = isAllow;
-
-        emit AllowedAsset(poolId, assetId, isAllow);
-    }
-
-    /// @inheritdoc IHoldings
     function create(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation_, AccountId[] memory accounts)
         external
         auth
     {
         require(!scId.isNull(), WrongShareClassId());
-        require(isAssetAllowed[poolId][assetId], AssetNotAllowed());
         require(address(valuation_) != address(0), WrongValuation());
 
         holding[poolId][scId][assetId] = Holding(0, 0, valuation_);
+        isAssetAllowed[poolId][assetId] = true;
 
         for (uint256 i; i < accounts.length; i++) {
             AccountId accountId_ = accounts[i];
