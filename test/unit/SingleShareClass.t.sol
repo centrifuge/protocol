@@ -1025,9 +1025,113 @@ contract SingleShareClassRoundingEdgeCasesDeposit is SingleShareClassBaseTest {
         assertEq(claimedA + claimedB + claimedC + 1, issuedShares, "System should have 1 share class token surplus");
         assert(paymentA != paymentB && paymentB != paymentC && paymentC != paymentA);
     }
+}
 
-    // TODO: Same scenarios for claimRedeem
-    // TODO: Approve with low rate such that during claiming the pending amount decreases but the claimed amount is 0
+///@dev Contains all deposit tests which deal with rounding edge cases
+contract SingleShareClassRoundingEdgeCasesRedeem is SingleShareClassBaseTest {
+    using MathLib for uint128;
+    using MathLib for uint256;
+
+    bytes32 constant INVESTOR_A = bytes32("investorA");
+    bytes32 constant INVESTOR_B = bytes32("investorB");
+    bytes32 constant INVESTOR_C = bytes32("investorC");
+    uint128 TOTAL_ISSUANCE = 1000 * DENO_POOL;
+
+    function setUp() public override {
+        SingleShareClassBaseTest.setUp();
+
+        // Mock total issuance such that we can redeem
+        vm.store(
+            address(shareClass),
+            keccak256(abi.encode(scId, uint256(3 + TRANSIENT_STORAGE_SHIFT))),
+            bytes32(uint256(TOTAL_ISSUANCE))
+        );
+    }
+
+    function _approveAllRedeemsAndRevoke(uint128 approvedShareAmount, uint128 expectedAssetPayout, D18 navPerShare)
+        private
+    {
+        shareClass.approveRedeems(poolId, scId, d18(1e18), USDC);
+        (uint128 assetPayout,) = shareClass.revokeShares(poolId, scId, USDC, navPerShare, oracleMock);
+        assertEq(shareClass.totalIssuance(scId), TOTAL_ISSUANCE - approvedShareAmount, "Mismatch in expected shares");
+        assertEq(shareClass.pendingRedeem(scId, USDC), 0, "Pending redeem should have decreased");
+        assertEq(assetPayout, expectedAssetPayout, "Mismatch in expected asset payout");
+    }
+
+    /// @dev Investors cannot claim anything despite
+    function testClaimRedeemSingleAssetAtom() public notThisContract(poolRegistryAddress) {
+        uint128 approvedShareAmount = DENO_POOL / DENO_USDC;
+        uint128 assetPayout = 1;
+        uint128 poolPayout = usdcToPool(assetPayout);
+        D18 navPerShare = d18(poolPayout * 1e18 / approvedShareAmount); // = 1e18
+
+        shareClass.requestRedeem(poolId, scId, 1, INVESTOR_A, USDC);
+        shareClass.requestRedeem(poolId, scId, approvedShareAmount - 1, INVESTOR_B, USDC);
+        _approveAllRedeemsAndRevoke(approvedShareAmount, assetPayout, navPerShare);
+
+        (uint128 claimedA, uint128 paymentA) = shareClass.claimRedeem(poolId, scId, INVESTOR_A, USDC);
+        (uint128 claimedB, uint128 paymentB) = shareClass.claimRedeem(poolId, scId, INVESTOR_B, USDC);
+
+        assertEq(claimedA, claimedB, "Both investors should have claimed same amount");
+        assertEq(claimedA + claimedB, 0, "Claimed amount should be zero for both investors");
+        assertEq(paymentA + paymentB, 0, "Payment should be zero since neither investor could claim anything");
+        assertEq(shareClass.pendingRedeem(scId, USDC), approvedShareAmount, "Pending redeem should have reset");
+
+        _assertRedeemRequestEq(scId, USDC, INVESTOR_A, UserOrder(1, 2));
+        _assertRedeemRequestEq(scId, USDC, INVESTOR_B, UserOrder(approvedShareAmount - 1, 2));
+    }
+
+    /// @dev Investors can claim 50% rounded down of an uneven number of asset amount => 1 asset amount surplus in
+    /// system
+    function testClaimRedeemEvenInvestorsUnevenClaimable() public notThisContract(poolRegistryAddress) {
+        uint128 approvedShareAmount = DENO_POOL / DENO_USDC;
+        uint128 assetPayout = 11;
+        uint128 poolPayout = usdcToPool(assetPayout);
+        D18 navPerShare = d18(poolPayout * 1e18 / approvedShareAmount);
+
+        shareClass.requestRedeem(poolId, scId, 49 * approvedShareAmount / 100, INVESTOR_A, USDC);
+        shareClass.requestRedeem(poolId, scId, 51 * approvedShareAmount / 100, INVESTOR_B, USDC);
+        _approveAllRedeemsAndRevoke(approvedShareAmount, assetPayout, navPerShare);
+
+        (uint128 claimedA, uint128 paymentA) = shareClass.claimRedeem(poolId, scId, INVESTOR_A, USDC);
+        (uint128 claimedB, uint128 paymentB) = shareClass.claimRedeem(poolId, scId, INVESTOR_B, USDC);
+
+        assertEq(claimedA, claimedB, "Claimed asset amount should be equal");
+        assertEq(claimedA + claimedB + 1, assetPayout, "System should have 1 asset amount atom surplus");
+        assert(paymentA != paymentB);
+        assertEq(shareClass.pendingRedeem(scId, USDC), 0, "Pending redeem should not have reset");
+
+        _assertRedeemRequestEq(scId, USDC, INVESTOR_A, UserOrder(0, 2));
+        _assertRedeemRequestEq(scId, USDC, INVESTOR_B, UserOrder(0, 2));
+    }
+
+    /// @dev Investors can claim 50% rounded down of an uneven number of asset amount => 1 asset amount surplus in
+    /// system
+    function testClaimRedeemUnevenInvestorsEvenClaimable() public notThisContract(poolRegistryAddress) {
+        uint128 approvedShareAmount = DENO_POOL / DENO_USDC;
+        uint128 assetPayout = 10;
+        uint128 poolPayout = usdcToPool(assetPayout);
+        D18 navPerShare = d18(poolPayout * 1e18 / approvedShareAmount);
+
+        shareClass.requestRedeem(poolId, scId, 30 * approvedShareAmount / 100, INVESTOR_A, USDC);
+        shareClass.requestRedeem(poolId, scId, 31 * approvedShareAmount / 100, INVESTOR_B, USDC);
+        shareClass.requestRedeem(poolId, scId, 39 * approvedShareAmount / 100, INVESTOR_C, USDC);
+        _approveAllRedeemsAndRevoke(approvedShareAmount, assetPayout, navPerShare);
+
+        (uint128 claimedA, uint128 paymentA) = shareClass.claimRedeem(poolId, scId, INVESTOR_A, USDC);
+        (uint128 claimedB, uint128 paymentB) = shareClass.claimRedeem(poolId, scId, INVESTOR_B, USDC);
+        (uint128 claimedC, uint128 paymentC) = shareClass.claimRedeem(poolId, scId, INVESTOR_C, USDC);
+
+        assertEq(claimedA, claimedB, "Claimed asset amount should be equal");
+        assertEq(claimedB, claimedC, "Claimed asset amount should be equal");
+        assertEq(claimedA + claimedB + claimedC + 1, assetPayout, "System should have 1 asset amount atom surplus");
+        assert(paymentA != paymentB && paymentB != paymentC && paymentC != paymentA);
+        assertEq(shareClass.pendingRedeem(scId, USDC), 0, "Pending redeem should not have reset");
+
+        _assertRedeemRequestEq(scId, USDC, INVESTOR_A, UserOrder(0, 2));
+        _assertRedeemRequestEq(scId, USDC, INVESTOR_B, UserOrder(0, 2));
+        _assertRedeemRequestEq(scId, USDC, INVESTOR_C, UserOrder(0, 2));
+    }
 }
 
 ///@dev Contains all tests which are expected to revert
