@@ -379,7 +379,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
                 continue;
             }
 
-            // Skip if nothing is user cannot claim
+            // Skip epoch if user cannot claim
             uint128 approvedAssetAmount = epochAmounts_.depositApprovalRate.mulUint128(userOrder.pending);
             if (approvedAssetAmount == 0) {
                 continue;
@@ -444,7 +444,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
                 continue;
             }
 
-            // Skip if nothing is user cannot claim
+            // Skip epoch if user cannot claim
             uint128 approvedShareAmount = epochAmounts_.redeemApprovalRate.mulUint128(userOrder.pending);
             if (approvedShareAmount == 0) {
                 continue;
