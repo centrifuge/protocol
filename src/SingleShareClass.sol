@@ -110,7 +110,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
 
         // NOTE: CV ensures amount > 0
-        _updateDepositRequest(poolId, shareClassId_, int128(amount), investor, depositAssetId);
+        _updateDepositRequest(poolId, shareClassId_, amount.toInt128(), investor, depositAssetId);
     }
 
     function cancelDepositRequest(PoolId poolId, ShareClassId shareClassId_, bytes32 investor, AssetId depositAssetId)
@@ -136,7 +136,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
 
         // NOTE: CV ensures amount > 0
-        _updateRedeemRequest(poolId, shareClassId_, int128(amount), investor, payoutAssetId);
+        _updateRedeemRequest(poolId, shareClassId_, amount.toInt128(), investor, payoutAssetId);
     }
 
     /// @inheritdoc IShareClassManager
