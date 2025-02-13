@@ -1,8 +1,8 @@
-pragma solidity 0.8.26;
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {Guardian} from "src/admin/Guardian.sol";
-import "test/BaseTest.sol";
+import {Guardian} from "src/vaults/admin/Guardian.sol";
+import "test/vaults/BaseTest.sol";
 
 contract GuardianTest is BaseTest {
     function testGuardian() public {

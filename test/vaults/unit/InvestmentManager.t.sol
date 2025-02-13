@@ -1,8 +1,8 @@
-pragma solidity 0.8.26;
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 pragma abicoder v2;
 
-import "test/BaseTest.sol";
+import "test/vaults/BaseTest.sol";
 
 interface VaultLike {
     function priceComputedAt() external view returns (uint64);

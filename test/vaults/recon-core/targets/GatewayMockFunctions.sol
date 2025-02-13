@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
 // Recon Deps
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
@@ -7,12 +7,12 @@ import {Properties} from "../Properties.sol";
 import {vm} from "@chimera/Hevm.sol";
 
 // Src Deps | For cycling of values
-import {ERC7540Vault} from "src/ERC7540Vault.sol";
-import {ERC20} from "src/token/ERC20.sol";
-import {Tranche} from "src/token/Tranche.sol";
-import {RestrictionManager} from "src/token/RestrictionManager.sol";
-import {RestrictionUpdate} from "src/interfaces/token/IRestrictionManager.sol";
-import {CastLib} from "src/libraries/CastLib.sol";
+import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
+import {ERC20} from "src/vaults/token/ERC20.sol";
+import {Tranche} from "src/vaults/token/Tranche.sol";
+import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
+import {RestrictionUpdate} from "src/vaults/interfaces/token/IRestrictionManager.sol";
+import {CastLib} from "src/vaults/libraries/CastLib.sol";
 
 // @dev A way to separately code and maintain a mocked implementation of `Gateway`
 // Based on

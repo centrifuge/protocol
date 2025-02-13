@@ -1,13 +1,13 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {Tranche} from "src/token/Tranche.sol";
-import {MockRoot} from "test/mocks/MockRoot.sol";
-import {IHook} from "src/interfaces/token/IHook.sol";
-import {RestrictionManager} from "src/token/RestrictionManager.sol";
-import {RestrictionUpdate} from "src/interfaces/token/IRestrictionManager.sol";
-import {MessagesLib} from "src/libraries/MessagesLib.sol";
-import {IERC165} from "src/interfaces/IERC7575.sol";
+import {Tranche} from "src/vaults/token/Tranche.sol";
+import {MockRoot} from "test/vaults/mocks/MockRoot.sol";
+import {IHook} from "src/vaults/interfaces/token/IHook.sol";
+import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
+import {RestrictionUpdate} from "src/vaults/interfaces/token/IRestrictionManager.sol";
+import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
+import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 import "forge-std/Test.sol";
 
 contract RestrictionManagerTest is Test {

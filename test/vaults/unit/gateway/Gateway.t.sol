@@ -1,17 +1,17 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
-import {ERC20} from "src/token/ERC20.sol";
-import {Gateway} from "src/gateway/Gateway.sol";
-import {MockGateway} from "test/mocks/MockGateway.sol";
-import {MockAdapter} from "test/mocks/MockAdapter.sol";
-import {MockRoot} from "test/mocks/MockRoot.sol";
-import {MockManager} from "test/mocks/MockManager.sol";
-import {MockAxelarGasService} from "test/mocks/MockAxelarGasService.sol";
-import {MockGasService} from "test/mocks/MockGasService.sol";
-import {CastLib} from "src/libraries/CastLib.sol";
-import {MessagesLib} from "src/libraries/MessagesLib.sol";
+import {ERC20} from "src/vaults/token/ERC20.sol";
+import {Gateway} from "src/vaults/gateway/Gateway.sol";
+import {MockGateway} from "test/vaults/mocks/MockGateway.sol";
+import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
+import {MockRoot} from "test/vaults/mocks/MockRoot.sol";
+import {MockManager} from "test/vaults/mocks/MockManager.sol";
+import {MockAxelarGasService} from "test/vaults/mocks/MockAxelarGasService.sol";
+import {MockGasService} from "test/vaults/mocks/MockGasService.sol";
+import {CastLib} from "src/vaults/libraries/CastLib.sol";
+import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
 
 contract GatewayTest is Test {
     using CastLib for *;

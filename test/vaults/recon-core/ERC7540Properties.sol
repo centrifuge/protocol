@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
 import {Asserts} from "@chimera/Asserts.sol";
 import {Setup} from "./Setup.sol";
-import {IERC7540Vault} from "src/interfaces/IERC7540.sol";
-import {IERC20Metadata} from "src/interfaces/IERC20.sol";
+import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
+import {IERC20Metadata} from "src/vaults/interfaces/IERC20.sol";
 import "forge-std/console2.sol";
 
 /// @dev ERC-7540 Properties

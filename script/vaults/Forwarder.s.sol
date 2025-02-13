@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {AxelarForwarder} from "src/gateway/adapters/axelar/Forwarder.sol";
+import {AxelarForwarder} from "src/vaults/gateway/adapters/axelar/Forwarder.sol";
 import "forge-std/Script.sol";
 
 // Script to deploy Axelar over XCM relayer.

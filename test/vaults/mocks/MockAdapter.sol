@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
-import {Auth} from "src/Auth.sol";
-import "test/mocks/Mock.sol";
+import {Auth} from "src/vaults/Auth.sol";
+import "test/vaults/mocks/Mock.sol";
 
 interface GatewayLike {
     function handle(bytes memory message) external;

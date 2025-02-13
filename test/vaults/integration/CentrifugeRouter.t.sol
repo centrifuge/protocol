@@ -1,13 +1,13 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import "test/BaseTest.sol";
-import "src/interfaces/IERC7575.sol";
-import "src/interfaces/IERC7540.sol";
-import "src/interfaces/IERC20.sol";
-import {CentrifugeRouter} from "src/CentrifugeRouter.sol";
-import {MockERC20Wrapper} from "test/mocks/MockERC20Wrapper.sol";
-import {MockReentrantERC20Wrapper1, MockReentrantERC20Wrapper2} from "test/mocks/MockReentrantERC20Wrapper.sol";
+import "test/vaults/BaseTest.sol";
+import "src/vaults/interfaces/IERC7575.sol";
+import "src/vaults/interfaces/IERC7540.sol";
+import "src/vaults/interfaces/IERC20.sol";
+import {CentrifugeRouter} from "src/vaults/CentrifugeRouter.sol";
+import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
+import {MockReentrantERC20Wrapper1, MockReentrantERC20Wrapper2} from "test/vaults/mocks/MockReentrantERC20Wrapper.sol";
 
 contract CentrifugeRouterTest is BaseTest {
     uint256 constant GAS_BUFFER = 10 gwei;

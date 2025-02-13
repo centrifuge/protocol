@@ -1,15 +1,15 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import "test/BaseTest.sol";
-import "src/interfaces/IERC7575.sol";
-import "src/interfaces/IERC7540.sol";
-import "src/interfaces/IERC20.sol";
-import {CentrifugeRouter} from "src/CentrifugeRouter.sol";
-import {MockERC20Wrapper} from "test/mocks/MockERC20Wrapper.sol";
-import {CastLib} from "src/libraries/CastLib.sol";
-import {Domain} from "src/interfaces/IPoolManager.sol";
-import {ITransferProxyFactory} from "src/interfaces/factories/ITransferProxy.sol";
+import "test/vaults/BaseTest.sol";
+import "src/vaults/interfaces/IERC7575.sol";
+import "src/vaults/interfaces/IERC7540.sol";
+import "src/vaults/interfaces/IERC20.sol";
+import {CentrifugeRouter} from "src/vaults/CentrifugeRouter.sol";
+import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
+import {CastLib} from "src/vaults/libraries/CastLib.sol";
+import {Domain} from "src/vaults/interfaces/IPoolManager.sol";
+import {ITransferProxyFactory} from "src/vaults/interfaces/factories/ITransferProxy.sol";
 
 interface Authlike {
     function rely(address) external;

@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {ERC20} from "src/token/ERC20.sol";
-import {IERC20Wrapper, IERC20Metadata} from "src/interfaces/IERC20.sol";
-import {ICentrifugeRouter} from "src/interfaces/ICentrifugeRouter.sol";
-import {Mock} from "test/mocks/Mock.sol";
+import {ERC20} from "src/vaults/token/ERC20.sol";
+import {IERC20Wrapper, IERC20Metadata} from "src/vaults/interfaces/IERC20.sol";
+import {ICentrifugeRouter} from "src/vaults/interfaces/ICentrifugeRouter.sol";
+import {Mock} from "test/vaults/mocks/Mock.sol";
 import "forge-std/Test.sol";
 
 contract MockReentrantERC20Wrapper1 is ERC20, Mock, IERC20Wrapper {

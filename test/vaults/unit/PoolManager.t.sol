@@ -1,12 +1,12 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import "test/BaseTest.sol";
-import {CastLib} from "src/libraries/CastLib.sol";
-import {Domain} from "src/interfaces/IPoolManager.sol";
-import {IRestrictionManager} from "src/interfaces/token/IRestrictionManager.sol";
-import {MockHook} from "test/mocks/MockHook.sol";
-import {RestrictionUpdate} from "src/interfaces/token/IRestrictionManager.sol";
+import "test/vaults/BaseTest.sol";
+import {CastLib} from "src/vaults/libraries/CastLib.sol";
+import {Domain} from "src/vaults/interfaces/IPoolManager.sol";
+import {IRestrictionManager} from "src/vaults/interfaces/token/IRestrictionManager.sol";
+import {MockHook} from "test/vaults/mocks/MockHook.sol";
+import {RestrictionUpdate} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 
 contract PoolManagerTest is BaseTest {
     using CastLib for *;

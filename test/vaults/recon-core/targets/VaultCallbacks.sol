@@ -1,7 +1,7 @@
 /// Callbacks for ERC7540Vault
 
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
 // Recon Deps
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
@@ -9,10 +9,10 @@ import {Properties} from "../Properties.sol";
 import {vm} from "@chimera/Hevm.sol";
 
 // Src Deps | For cycling of values
-import {ERC7540Vault} from "src/ERC7540Vault.sol";
-import {ERC20} from "src/token/ERC20.sol";
-import {Tranche} from "src/token/Tranche.sol";
-import {RestrictionManager} from "src/token/RestrictionManager.sol";
+import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
+import {ERC20} from "src/vaults/token/ERC20.sol";
+import {Tranche} from "src/vaults/token/Tranche.sol";
+import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
 
 /// @dev Separate the 5 Callbacks that go from Gateway to InvestmentManager
 /**

@@ -1,29 +1,29 @@
-pragma solidity 0.8.26;
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 pragma abicoder v2;
 
 // core contracts
-import {Root} from "src/Root.sol";
-import {InvestmentManager} from "src/InvestmentManager.sol";
-import {PoolManager} from "src/PoolManager.sol";
-import {Escrow} from "src/Escrow.sol";
-import {ERC7540VaultFactory} from "src/factories/ERC7540VaultFactory.sol";
-import {TrancheFactory} from "src/factories/TrancheFactory.sol";
-import {ERC7540Vault} from "src/ERC7540Vault.sol";
-import {Tranche} from "src/token/Tranche.sol";
-import {ITranche} from "src/interfaces/token/ITranche.sol";
-import {ERC20} from "src/token/ERC20.sol";
-import {Gateway} from "src/gateway/Gateway.sol";
-import {RestrictionManager} from "src/token/RestrictionManager.sol";
-import {MessagesLib} from "src/libraries/MessagesLib.sol";
-import {Deployer} from "script/Deployer.sol";
-import {MockSafe} from "test/mocks/MockSafe.sol";
-import "src/interfaces/IERC20.sol";
+import {Root} from "src/vaults/Root.sol";
+import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
+import {PoolManager} from "src/vaults/PoolManager.sol";
+import {Escrow} from "src/vaults/Escrow.sol";
+import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
+import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
+import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
+import {Tranche} from "src/vaults/token/Tranche.sol";
+import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
+import {ERC20} from "src/vaults/token/ERC20.sol";
+import {Gateway} from "src/vaults/gateway/Gateway.sol";
+import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
+import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
+import {Deployer} from "script/vaults/Deployer.sol";
+import {MockSafe} from "test/vaults/mocks/MockSafe.sol";
+import "src/vaults/interfaces/IERC20.sol";
 
 // mocks
-import {MockCentrifugeChain} from "test/mocks/MockCentrifugeChain.sol";
-import {MockGasService} from "test/mocks/MockGasService.sol";
-import {MockAdapter} from "test/mocks/MockAdapter.sol";
+import {MockCentrifugeChain} from "test/vaults/mocks/MockCentrifugeChain.sol";
+import {MockGasService} from "test/vaults/mocks/MockGasService.sol";
+import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
 
 // test env
 import "forge-std/Test.sol";

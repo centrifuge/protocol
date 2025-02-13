@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {TrancheFactory} from "src/factories/TrancheFactory.sol";
-import {Tranche} from "src/token/Tranche.sol";
-import {Root} from "src/Root.sol";
-import {Escrow} from "src/Escrow.sol";
-import {BaseTest} from "test/BaseTest.sol";
+import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
+import {Tranche} from "src/vaults/token/Tranche.sol";
+import {Root} from "src/vaults/Root.sol";
+import {Escrow} from "src/vaults/Escrow.sol";
+import {BaseTest} from "test/vaults/BaseTest.sol";
 import "forge-std/Test.sol";
 
 interface PoolManagerLike {

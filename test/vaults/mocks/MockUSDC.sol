@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {Auth} from "src/Auth.sol";
-import {EIP712Lib} from "src/libraries/EIP712Lib.sol";
-import {SignatureLib} from "src/libraries/SignatureLib.sol";
-import {IERC20, IERC20Metadata} from "src/interfaces/IERC20.sol";
+import {Auth} from "src/vaults/Auth.sol";
+import {EIP712Lib} from "src/vaults/libraries/EIP712Lib.sol";
+import {SignatureLib} from "src/vaults/libraries/SignatureLib.sol";
+import {IERC20, IERC20Metadata} from "src/vaults/interfaces/IERC20.sol";
 
 /// @title  ERC20
 /// @notice Standard ERC-20 implementation, with mint/burn functionality.

@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {PermissionlessAdapter} from "test/mocks/PermissionlessAdapter.sol";
-import {InvestmentManager} from "src/InvestmentManager.sol";
-import {Deployer} from "script/Deployer.sol";
+import {PermissionlessAdapter} from "test/vaults/mocks/PermissionlessAdapter.sol";
+import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
+import {Deployer} from "script/vaults/Deployer.sol";
 
 // Script to deploy Liquidity Pools with a permissionless adapter for testing.
 contract PermissionlessScript is Deployer {

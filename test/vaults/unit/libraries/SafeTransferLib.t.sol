@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
-import {IERC20} from "src/interfaces/IERC20.sol";
-import {SafeTransferLib} from "src/libraries/SafeTransferLib.sol";
+import {IERC20} from "src/vaults/interfaces/IERC20.sol";
+import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
 
 /// @dev Token not returning any boolean.
 contract ERC20WithoutBoolean {

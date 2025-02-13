@@ -4,9 +4,9 @@ pragma solidity ^0.8.0;
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {Properties} from "../Properties.sol";
 import {vm} from "@chimera/Hevm.sol";
-import {MockAdapter} from "test/mocks/MockAdapter.sol";
+import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
 
-import {MessagesLib} from "src/libraries/MessagesLib.sol";
+import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
 
 abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
     mapping(uint256 => uint256) primaryIndex;

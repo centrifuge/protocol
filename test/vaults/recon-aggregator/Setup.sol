@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import {BaseSetup} from "@chimera/BaseSetup.sol";
 import {Asserts} from "@chimera/Asserts.sol";
 
-import "src/gateway/Gateway.sol";
-import {MockAdapter} from "test/mocks/MockAdapter.sol";
+import "src/vaults/gateway/Gateway.sol";
+import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
 
 // What happens if we add more adapters later?
 

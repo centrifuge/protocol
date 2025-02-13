@@ -1,13 +1,13 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {TransferProxy, TransferProxyFactory} from "src/factories/TransferProxyFactory.sol";
-import {ERC20} from "src/token/ERC20.sol";
-import {MockUSDC} from "test/mocks/MockUSDC.sol";
-import {MockGateway} from "test/mocks/MockGateway.sol";
-import {MockPoolManager} from "test/mocks/MockPoolManager.sol";
-import {ITransferProxyFactory} from "src/interfaces/factories/ITransferProxy.sol";
-import "test/BaseTest.sol";
+import {TransferProxy, TransferProxyFactory} from "src/vaults/factories/TransferProxyFactory.sol";
+import {ERC20} from "src/vaults/token/ERC20.sol";
+import {MockUSDC} from "test/vaults/mocks/MockUSDC.sol";
+import {MockGateway} from "test/vaults/mocks/MockGateway.sol";
+import {MockPoolManager} from "test/vaults/mocks/MockPoolManager.sol";
+import {ITransferProxyFactory} from "src/vaults/interfaces/factories/ITransferProxy.sol";
+import "test/vaults/BaseTest.sol";
 
 contract TransferProxyFactoryTest is BaseTest {
     function testFile() public {

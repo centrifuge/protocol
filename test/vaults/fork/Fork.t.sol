@@ -1,23 +1,23 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {Root} from "src/Root.sol";
-import {InvestmentManager} from "src/InvestmentManager.sol";
-import {RestrictionManager} from "src/token/RestrictionManager.sol";
-import {PoolManager} from "src/PoolManager.sol";
-import {Escrow} from "src/Escrow.sol";
-import {Tranche} from "src/token/Tranche.sol";
-import {Gateway} from "src/gateway/Gateway.sol";
-import {CentrifugeRouter} from "src/CentrifugeRouter.sol";
-import {AxelarAdapter} from "src/gateway/adapters/axelar/Adapter.sol";
-import {GasService} from "src/gateway/GasService.sol";
-import {ERC7540VaultFactory} from "src/factories/ERC7540VaultFactory.sol";
-import {TrancheFactory} from "src/factories/TrancheFactory.sol";
-import {ERC7540VaultFactory} from "src/factories/ERC7540VaultFactory.sol";
-import {TransferProxyFactory} from "src/factories/TransferProxyFactory.sol";
-import {Guardian} from "src/admin/Guardian.sol";
-import {IAuth} from "src/interfaces/IAuth.sol";
-import {IERC20Metadata} from "src/interfaces/IERC20.sol";
+import {Root} from "src/vaults/Root.sol";
+import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
+import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
+import {PoolManager} from "src/vaults/PoolManager.sol";
+import {Escrow} from "src/vaults/Escrow.sol";
+import {Tranche} from "src/vaults/token/Tranche.sol";
+import {Gateway} from "src/vaults/gateway/Gateway.sol";
+import {CentrifugeRouter} from "src/vaults/CentrifugeRouter.sol";
+import {AxelarAdapter} from "src/vaults/gateway/adapters/axelar/Adapter.sol";
+import {GasService} from "src/vaults/gateway/GasService.sol";
+import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
+import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
+import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
+import {TransferProxyFactory} from "src/vaults/factories/TransferProxyFactory.sol";
+import {Guardian} from "src/vaults/admin/Guardian.sol";
+import {IAuth} from "src/vaults/interfaces/IAuth.sol";
+import {IERC20Metadata} from "src/vaults/interfaces/IERC20.sol";
 import "forge-std/Test.sol";
 import "forge-std/StdJson.sol";
 

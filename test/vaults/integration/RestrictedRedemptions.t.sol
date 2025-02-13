@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import "test/BaseTest.sol";
-import {CastLib} from "src/libraries/CastLib.sol";
-import {RestrictedRedemptions} from "src/token/RestrictedRedemptions.sol";
+import "test/vaults/BaseTest.sol";
+import {CastLib} from "src/vaults/libraries/CastLib.sol";
+import {RestrictedRedemptions} from "src/vaults/token/RestrictedRedemptions.sol";
 
 contract RedeemTest is BaseTest {
     using CastLib for *;

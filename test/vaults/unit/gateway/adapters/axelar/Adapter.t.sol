@@ -1,13 +1,13 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
-import {AxelarAdapter} from "src/gateway/adapters/axelar/Adapter.sol";
-import {MockAxelarGateway} from "test/mocks/MockAxelarGateway.sol";
-import {MockGateway} from "test/mocks/MockGateway.sol";
-import {MockAxelarGasService} from "test/mocks/MockAxelarGasService.sol";
-import {AxelarForwarder} from "src/gateway/adapters/axelar/Forwarder.sol";
-import {BytesLib} from "src/libraries/BytesLib.sol";
+import {AxelarAdapter} from "src/vaults/gateway/adapters/axelar/Adapter.sol";
+import {MockAxelarGateway} from "test/vaults/mocks/MockAxelarGateway.sol";
+import {MockGateway} from "test/vaults/mocks/MockGateway.sol";
+import {MockAxelarGasService} from "test/vaults/mocks/MockAxelarGasService.sol";
+import {AxelarForwarder} from "src/vaults/gateway/adapters/axelar/Forwarder.sol";
+import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
 
 contract AxelarAdapterTest is Test {
     MockAxelarGateway axelarGateway;

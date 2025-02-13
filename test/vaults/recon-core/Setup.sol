@@ -1,22 +1,22 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
 import {BaseSetup} from "@chimera/BaseSetup.sol";
-import {Escrow} from "src/Escrow.sol";
-import {InvestmentManager} from "src/InvestmentManager.sol";
-import {PoolManager} from "src/PoolManager.sol";
-import {ERC7540Vault} from "src/ERC7540Vault.sol";
-import {Root} from "src/Root.sol";
-import {Tranche} from "src/token/Tranche.sol";
+import {Escrow} from "src/vaults/Escrow.sol";
+import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
+import {PoolManager} from "src/vaults/PoolManager.sol";
+import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
+import {Root} from "src/vaults/Root.sol";
+import {Tranche} from "src/vaults/token/Tranche.sol";
 
-import {ERC7540VaultFactory} from "src/factories/ERC7540VaultFactory.sol";
-import {TrancheFactory} from "src/factories/TrancheFactory.sol";
+import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
+import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
 
-import {RestrictionManager} from "src/token/RestrictionManager.sol";
-import {ERC20} from "src/token/ERC20.sol";
+import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
+import {ERC20} from "src/vaults/token/ERC20.sol";
 
 // Mocks
-import {IRoot} from "src/interfaces/IRoot.sol";
+import {IRoot} from "src/vaults/interfaces/IRoot.sol";
 
 // Storage
 import {SharedStorage} from "./SharedStorage.sol";

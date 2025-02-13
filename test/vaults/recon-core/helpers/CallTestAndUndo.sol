@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
 /// @dev Helpful Abstract Contract to set up stateful fuzz tests
 /// By using this you can undo all state changes, without using vm.snapshot and vm.revertTo

@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
-import {ArrayLib} from "src/libraries/ArrayLib.sol";
+import {ArrayLib} from "src/vaults/libraries/ArrayLib.sol";
 
 contract ArrayLibTest is Test {
     // Used for testDecreaseFirstNValues (which requires storage pointers)

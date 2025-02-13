@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
-import {IERC20} from "src/interfaces/IERC20.sol";
-import {MathLib} from "src/libraries/MathLib.sol";
+import {IERC20} from "src/vaults/interfaces/IERC20.sol";
+import {MathLib} from "src/vaults/libraries/MathLib.sol";
 
 /// @author Modified from https://github.com/morpho-org/morpho-blue/blob/main/test/forge/libraries/MathLibTest.sol
 contract MathLibTest is Test {

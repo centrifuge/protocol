@@ -1,8 +1,8 @@
-pragma solidity 0.8.26;
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {Escrow} from "src/Escrow.sol";
-import "test/BaseTest.sol";
+import {Escrow} from "src/vaults/Escrow.sol";
+import "test/vaults/BaseTest.sol";
 
 contract EscrowTest is BaseTest {
     function testApproveMax() public {

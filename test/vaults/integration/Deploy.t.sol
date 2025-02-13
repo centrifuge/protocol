@@ -1,24 +1,24 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {InvestmentManager} from "src/InvestmentManager.sol";
-import {RestrictionUpdate} from "src/interfaces/token/IRestrictionManager.sol";
-import {Gateway} from "src/gateway/Gateway.sol";
-import {MockCentrifugeChain} from "test/mocks/MockCentrifugeChain.sol";
-import {Escrow} from "src/Escrow.sol";
-import {Guardian} from "src/admin/Guardian.sol";
-import {MockAdapter} from "test/mocks/MockAdapter.sol";
-import {MockSafe} from "test/mocks/MockSafe.sol";
-import {PoolManager, Pool} from "src/PoolManager.sol";
-import {ERC20} from "src/token/ERC20.sol";
-import {Tranche} from "src/token/Tranche.sol";
-import {ERC7540VaultTest} from "test/unit/ERC7540Vault.t.sol";
-import {PermissionlessAdapter} from "test/mocks/PermissionlessAdapter.sol";
-import {Root} from "src/Root.sol";
-import {ERC7540Vault} from "src/ERC7540Vault.sol";
-import {AxelarScript} from "script/Axelar.s.sol";
-import "script/Deployer.sol";
-import "src/libraries/MathLib.sol";
+import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
+import {RestrictionUpdate} from "src/vaults/interfaces/token/IRestrictionManager.sol";
+import {Gateway} from "src/vaults/gateway/Gateway.sol";
+import {MockCentrifugeChain} from "test/vaults/mocks/MockCentrifugeChain.sol";
+import {Escrow} from "src/vaults/Escrow.sol";
+import {Guardian} from "src/vaults/admin/Guardian.sol";
+import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
+import {MockSafe} from "test/vaults/mocks/MockSafe.sol";
+import {PoolManager, Pool} from "src/vaults/PoolManager.sol";
+import {ERC20} from "src/vaults/token/ERC20.sol";
+import {Tranche} from "src/vaults/token/Tranche.sol";
+import {ERC7540VaultTest} from "test/vaults/unit/ERC7540Vault.t.sol";
+import {PermissionlessAdapter} from "test/vaults/mocks/PermissionlessAdapter.sol";
+import {Root} from "src/vaults/Root.sol";
+import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
+import {AxelarScript} from "script/vaults/Axelar.s.sol";
+import "script/vaults/Deployer.sol";
+import "src/vaults/libraries/MathLib.sol";
 import "forge-std/Test.sol";
 
 interface ApproveLike {

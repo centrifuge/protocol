@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import {MessagesLib} from "src/libraries/MessagesLib.sol";
-import {CastLib} from "src/libraries/CastLib.sol";
-import {BytesLib} from "src/libraries/BytesLib.sol";
+import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
+import {CastLib} from "src/vaults/libraries/CastLib.sol";
+import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
 import "forge-std/Test.sol";
 
 contract MessagesLibTest is Test {

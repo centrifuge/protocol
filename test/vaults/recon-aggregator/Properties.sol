@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {Setup} from "./Setup.sol";
-import {ArrayLib} from "src/libraries/ArrayLib.sol";
+import {ArrayLib} from "src/vaults/libraries/ArrayLib.sol";
 
 abstract contract Properties is Setup {
     using ArrayLib for uint16[8];

@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import "src/interfaces/IERC7575.sol";
-import "src/interfaces/IERC7540.sol";
-import {Tranche} from "src/token/Tranche.sol";
-import {MockRoot} from "test/mocks/MockRoot.sol";
-import {MockRestrictionManager} from "test/mocks/MockRestrictionManager.sol";
+import "src/vaults/interfaces/IERC7575.sol";
+import "src/vaults/interfaces/IERC7540.sol";
+import {Tranche} from "src/vaults/token/Tranche.sol";
+import {MockRoot} from "test/vaults/mocks/MockRoot.sol";
+import {MockRestrictionManager} from "test/vaults/mocks/MockRestrictionManager.sol";
 import "forge-std/Test.sol";
 import {GasSnapshot} from "forge-gas-snapshot/GasSnapshot.sol";
 

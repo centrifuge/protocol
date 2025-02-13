@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-import "test/mocks/Mock.sol";
-import {BytesLib} from "src/libraries/BytesLib.sol";
-import {MessagesLib} from "src/libraries/MessagesLib.sol";
+import "test/vaults/mocks/Mock.sol";
+import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
+import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
 
 contract MockGasService is Mock {
     using BytesLib for bytes;

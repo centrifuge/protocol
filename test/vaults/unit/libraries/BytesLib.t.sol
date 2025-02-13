@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
-import {BytesLib} from "src/libraries/BytesLib.sol";
+import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
 
 contract BytesLibTest is Test {
     function testSlice(bytes memory data, bytes memory randomStart, bytes memory randomEnd) public {
