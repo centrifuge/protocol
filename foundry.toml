@@ -4,7 +4,7 @@ out = 'out'
 libs = ['lib']
 no_match_contract = "CryticTester"
 
-solc_version = "0.8.26"
+solc_version = "0.8.28"
 evm_version = "cancun"
 
 optimizer = true
@@ -77,4 +77,4 @@ fail_on_revert = false
 
 [rpc_endpoints]
 ethereum-mainnet = "https://mainnet.infura.io/v3/${INFURA_API_KEY}"
-polygon-mainnet = "https://polygon-mainnet.infura.io/v3/${INFURA_API_KEY}" 
+polygon-mainnet = "https://polygon-mainnet.infura.io/v3/${INFURA_API_KEY}"
