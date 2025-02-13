@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {console} from "forge-std/Console.sol";
-
 import {Auth} from "src/Auth.sol";
 import {D18, d18} from "src/types/D18.sol";
 import {IPoolRegistry} from "src/interfaces/IPoolRegistry.sol";
@@ -446,26 +444,35 @@ contract SingleShareClass is Auth, ISingleShareClass {
                 continue;
             }
 
+            // Skip if nothing is user cannot claim
             uint128 approvedShareAmount = epochAmounts_.redeemApprovalRate.mulUint128(userOrder.pending);
+            if (approvedShareAmount == 0) {
+                continue;
+            }
+
             uint128 claimableAssetAmount = uint256(approvedShareAmount).mulDiv(
                 epochAmounts_.redeemAssetAmount, epochAmounts_.redeemSharesRevoked
             ).toUint128();
 
-            paymentShareAmount += approvedShareAmount;
-            payoutAssetAmount += claimableAssetAmount;
+            if (claimableAssetAmount > 0) {
+                paymentShareAmount += approvedShareAmount;
+                payoutAssetAmount += claimableAssetAmount;
+                userOrder.pending -= approvedShareAmount;
 
-            userOrder.pending -= approvedShareAmount;
-
-            emit ClaimedRedeem(
-                poolId,
-                shareClassId_,
-                epochId_,
-                investor,
-                payoutAssetId,
-                approvedShareAmount,
-                userOrder.pending,
-                claimableAssetAmount
-            );
+                emit ClaimedRedeem(
+                    poolId,
+                    shareClassId_,
+                    epochId_,
+                    investor,
+                    payoutAssetId,
+                    approvedShareAmount,
+                    userOrder.pending,
+                    claimableAssetAmount
+                );
+            } else {
+                // Increase pending by approved amount as it did not lead to claimable amount
+                pendingRedeem[shareClassId_][payoutAssetId] += approvedShareAmount;
+            }
         }
 
         userOrder.lastUpdate = endEpochId + 1;
