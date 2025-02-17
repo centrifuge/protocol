@@ -261,7 +261,6 @@ contract PoolManagerTest is BaseTest {
         vm.assume(amount > 0);
         uint128 assetId = defaultAssetId;
         address recipient = makeAddr("recipient");
-        bytes32 sender = makeAddr("sender").toBytes32();
 
         vm.expectRevert(bytes("PoolManager/unknown-asset"));
         centrifugeChain.incomingTransfer(assetId, bytes32(bytes20(recipient)), amount);

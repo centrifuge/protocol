@@ -86,7 +86,7 @@ contract GasServiceTest is Test {
         service.updateTokenPrice(value);
     }
 
-    function testEstimateFunction(bytes calldata message) public {
+    function testEstimateFunction(bytes calldata message) public view {
         vm.assume(message.length > 1);
         vm.assume(message.toUint8(0) != uint8(MessagesLib.Call.MessageProof) && message.toUint8(0) <= 28);
         bytes memory proof = abi.encodePacked(uint8(MessagesLib.Call.MessageProof), keccak256(message));

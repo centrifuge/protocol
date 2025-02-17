@@ -60,7 +60,7 @@ contract TrancheTest is Test, GasSnapshot {
     }
 
     // --- erc165 checks ---
-    function testERC165Support(bytes4 unsupportedInterfaceId) public {
+    function testERC165Support(bytes4 unsupportedInterfaceId) public view {
         bytes4 erc165 = 0x01ffc9a7;
         bytes4 erc7575Share = 0xf815c03d;
 
@@ -76,7 +76,7 @@ contract TrancheTest is Test, GasSnapshot {
     }
 
     // --- erc1404 checks ---
-    function testERC1404Support() public {
+    function testERC1404Support() public view {
         assertEq(token.messageForTransferRestriction(0), "transfer-allowed");
         assertEq(token.messageForTransferRestriction(1), "transfer-blocked");
     }
@@ -211,7 +211,7 @@ contract TrancheTest is Test, GasSnapshot {
         token.mint(targetUser, amount);
     }
 
-    function afterTransferAssumptions(address from, address to, uint256 value) internal {
+    function afterTransferAssumptions(address from, address to, uint256 value) internal view {
         assertEq(restrictionManager.values_address("onERC20Transfer_from"), from);
         assertEq(restrictionManager.values_address("onERC20Transfer_to"), to);
         assertEq(restrictionManager.values_uint256("onERC20Transfer_value"), value);

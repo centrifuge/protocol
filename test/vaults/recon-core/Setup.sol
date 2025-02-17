@@ -54,6 +54,8 @@ abstract contract Setup is BaseSetup, SharedStorage {
         // Basically we will receive `root.rely, etc..`
     }
 
+    receive() external payable {}
+
     function setup() internal virtual override {
         // Put self so we can perform settings
         centrifugeChain = address(this);
@@ -137,16 +139,23 @@ abstract contract Setup is BaseSetup, SharedStorage {
 
     function _getDepositAndRedeemPrice() internal view returns (uint256, uint256) {
         (
-            uint128 maxMint,
-            uint128 maxWithdraw,
+            /*uint128 maxMint*/
+            ,
+            /*uint128 maxWithdraw*/
+            ,
             uint256 depositPrice,
             uint256 redeemPrice,
-            uint128 pendingDepositRequest,
-            uint128 pendingRedeemRequest,
-            uint128 claimableCancelDepositRequest,
-            uint128 claimableCancelRedeemRequest,
-            bool pendingCancelDepositRequest,
-            bool pendingCancelRedeemRequest
+            /*uint128 pendingDepositRequest*/
+            ,
+            /*uint128 pendingRedeemRequest*/
+            ,
+            /*uint128 claimableCancelDepositRequest*/
+            ,
+            /*uint128 claimableCancelRedeemRequest*/
+            ,
+            /*bool pendingCancelDepositRequest*/
+            ,
+            /*bool pendingCancelRedeemRequest*/
         ) = investmentManager.investments(address(vault), address(actor));
 
         return (depositPrice, redeemPrice);

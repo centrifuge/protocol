@@ -13,7 +13,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
 
     /// @dev This Property demonstrates that the current actor can reach a non-zero balance
     // This helps get coverage in other areas
-    function invariant_sentinel_tranche_balance() public returns (bool) {
+    function invariant_sentinel_tranche_balance() public view returns (bool) {
         if (!RECON_USE_SENTINEL_TESTS) {
             return true; // Skip if setting is off
         }
@@ -30,7 +30,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
     event DebugNumber(uint256);
 
     // Sum of tranche tokens received on `deposit` and `mint` <= sum of fulfilledDepositRequest.shares
-    function invariant_global_1() public returns (bool) {
+    function invariant_global_1() public view returns (bool) {
         if (address(trancheToken) == address(0)) {
             return true; // Skip
         }
@@ -41,7 +41,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
         <= sumOfFullfilledDeposits[address(trancheToken)];
     }
 
-    function invariant_global_2() public returns (bool) {
+    function invariant_global_2() public view returns (bool) {
         if (address(token) == address(0)) {
             return true; // Skip
         }
@@ -52,7 +52,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
         <= mintedByCurrencyPayout[address(token)];
     }
 
-    function invariant_global_3() public returns (bool) {
+    function invariant_global_3() public view returns (bool) {
         if (address(trancheToken) == address(0)) {
             return true; // Skip
         }
@@ -72,7 +72,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
     /// @dev Lists out all system addresses, used to check that no dust is left behind
     /// NOTE: A more advanced dust check would have 100% of actors withdraw, to ensure that the sum of operations is
     /// sound
-    function _getSystemAddresses() internal returns (address[] memory) {
+    function _getSystemAddresses() internal view returns (address[] memory) {
         uint256 SYSTEM_ADDRESSES_LENGTH = 9;
 
         address[] memory systemAddresses = new address[](SYSTEM_ADDRESSES_LENGTH);
@@ -87,11 +87,13 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
         systemAddresses[5] = address(token);
         systemAddresses[6] = address(trancheToken);
         systemAddresses[7] = address(restrictionManager);
+
+        return systemAddresses;
     }
 
     /// @dev Can we donate to this address?
     /// We explicitly preventing donations since we check for exact balances
-    function _canDonate(address to) internal returns (bool) {
+    function _canDonate(address to) internal view returns (bool) {
         if (to == address(escrow)) {
             return false;
         }
@@ -100,7 +102,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
     }
 
     /// @dev utility to ensure the target is not in the system addresses
-    function _isInSystemAddress(address x) internal returns (bool) {
+    function _isInSystemAddress(address x) internal view returns (bool) {
         address[] memory systemAddresses = _getSystemAddresses();
         uint256 SYSTEM_ADDRESSES_LENGTH = systemAddresses.length;
 
@@ -131,7 +133,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
     }
 
     // Sum of assets received on `claimCancelDepositRequest`<= sum of fulfillCancelDepositRequest.assets
-    function invariant_global_5() public returns (bool) {
+    function invariant_global_5() public view returns (bool) {
         if (address(token) == address(0)) {
             return true; // Skip
         }
@@ -144,7 +146,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
 
     // Sum of tranche tokens received on `claimCancelRedeemRequest`<= sum of
     // fulfillCancelRedeemRequest.shares
-    function invariant_global_6() public returns (bool) {
+    function invariant_global_6() public view returns (bool) {
         if (address(trancheToken) == address(0)) {
             return true; // Skip
         }
@@ -162,7 +164,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
     // TODO: Actors
     // TODO: Targets / Tranches
     /// @notice Sum of balances equals total supply
-    function invariant_tt_2() public returns (bool) {
+    function invariant_tt_2() public view returns (bool) {
         if (address(trancheToken) == address(0)) {
             return true; // Skip
         }
@@ -183,7 +185,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
         return acc <= trancheToken.totalSupply();
     }
 
-    function invariant_IM_1() public returns (bool) {
+    function invariant_IM_1() public view returns (bool) {
         if (address(investmentManager) == address(0)) {
             return true;
         }
@@ -214,7 +216,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
         return true;
     }
 
-    function invariant_IM_2() public returns (bool) {
+    function invariant_IM_2() public view returns (bool) {
         if (address(investmentManager) == address(0)) {
             return true;
         }
@@ -253,7 +255,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
      *
      *     NOTE: Ignores donations
      */
-    function invariant_E_1() public returns (bool) {
+    function invariant_E_1() public view returns (bool) {
         if (address(escrow) == address(0)) {
             return true;
         }
@@ -289,7 +291,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
      *
      *     NOTE: Ignores donations
      */
-    function invariant_E_2() public returns (bool) {
+    function invariant_E_2() public view returns (bool) {
         if (address(trancheToken) == address(0)) {
             return true;
         }

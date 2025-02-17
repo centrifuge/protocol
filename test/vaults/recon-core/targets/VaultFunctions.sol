@@ -274,7 +274,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
         uint256 tokenUserB4 = token.balanceOf(actor);
         uint256 tokenEscrowB4 = token.balanceOf(address(escrow));
 
-        uint256 shares = vault.withdraw(assets, actor, to);
+        vault.withdraw(assets, actor, to);
 
         // E-1
         sumOfClaimedRedemptions[address(token)] += assets;

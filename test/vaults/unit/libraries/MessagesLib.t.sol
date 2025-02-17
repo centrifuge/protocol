@@ -12,7 +12,7 @@ contract MessagesLibTest is Test {
 
     function setUp() public {}
 
-    function testMessageType() public {
+    function testMessageType() public pure {
         uint64 poolId = 1;
         bytes memory payload = abi.encodePacked(uint8(MessagesLib.Call.AddPool), poolId);
 

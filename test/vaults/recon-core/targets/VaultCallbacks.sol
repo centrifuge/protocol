@@ -22,21 +22,29 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
     function investmentManager_fulfillDepositRequest(
         uint128 currencyPayout,
         uint128 trancheTokenPayout,
-        uint128 decreaseByAmount
+        uint128 /*decreaseByAmount*/
     ) public {
         /// === CLAMP `currencyPayout` === ///
         {
             (
-                uint128 maxMint,
-                uint128 maxWithdraw,
-                uint256 depositPrice,
-                uint256 redeemPrice,
+                /*uint128 maxMint*/
+                ,
+                /*uint128 maxWithdraw*/
+                ,
+                /*uint256 depositPrice*/
+                ,
+                /*uint256 redeemPrice*/
+                ,
                 uint128 pendingDepositRequest,
-                uint128 pendingRedeemRequest,
-                uint128 claimableCancelDepositRequest,
-                uint128 claimableCancelRedeemRequest,
-                bool pendingCancelDepositRequest,
-                bool pendingCancelRedeemRequest
+                /*uint128 pendingRedeemRequest*/
+                ,
+                /*uint128 claimableCancelDepositRequest*/
+                ,
+                /*uint128 claimableCancelRedeemRequest*/
+                ,
+                /*bool pendingCancelDepositRequest*/
+                ,
+                /*bool pendingCancelRedeemRequest*/
             ) = investmentManager.investments(address(vault), address(actor));
 
             /// @audit DANGEROUS TODO: Clamp so we ensure we never give remaining above what was sent, fully trusted
@@ -71,16 +79,24 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
         /// === CLAMP `trancheTokenPayout` === ///
         {
             (
-                uint128 maxMint,
-                uint128 maxWithdraw,
-                uint256 depositPrice,
-                uint256 redeemPrice,
-                uint128 pendingDepositRequest,
+                /*uint128 maxMint*/
+                ,
+                /*uint128 maxWithdraw*/
+                ,
+                /*uint256 depositPrice*/
+                ,
+                /*uint256 redeemPrice*/
+                ,
+                /*uint128 pendingDepositRequest*/
+                ,
                 uint128 pendingRedeemRequest,
-                uint128 claimableCancelDepositRequest,
-                uint128 claimableCancelRedeemRequest,
-                bool pendingCancelDepositRequest,
-                bool pendingCancelRedeemRequest
+                /*uint128 claimableCancelDepositRequest*/
+                ,
+                /*uint128 claimableCancelRedeemRequest*/
+                ,
+                /*bool pendingCancelDepositRequest*/
+                ,
+                /*bool pendingCancelRedeemRequest*/
             ) = investmentManager.investments(address(vault), address(actor));
 
             /// @audit DANGEROUS TODO: Clamp so we ensure we never give remaining above what was sent, fully trusted
@@ -128,16 +144,24 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
         require(vault.pendingCancelDepositRequest(0, actor));
         {
             (
-                uint128 maxMint,
-                uint128 maxWithdraw,
-                uint256 depositPrice,
-                uint256 redeemPrice,
+                /*uint128 maxMint*/
+                ,
+                /*uint128 maxWithdraw*/
+                ,
+                /*uint256 depositPrice*/
+                ,
+                /*uint256 redeemPrice*/
+                ,
                 uint128 pendingDepositRequest,
-                uint128 pendingRedeemRequest,
-                uint128 claimableCancelDepositRequest,
-                uint128 claimableCancelRedeemRequest,
-                bool pendingCancelDepositRequest,
-                bool pendingCancelRedeemRequest
+                /*uint128 pendingRedeemRequest*/
+                ,
+                /*uint128 claimableCancelDepositRequest*/
+                ,
+                /*uint128 claimableCancelRedeemRequest*/
+                ,
+                /*bool pendingCancelDepositRequest*/
+                ,
+                /*bool pendingCancelRedeemRequest*/
             ) = investmentManager.investments(address(vault), address(actor));
 
             /// @audit DANGEROUS TODO: Clamp so we ensure we never give remaining above what was sent, fully trusted
@@ -177,16 +201,24 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
 
         {
             (
-                uint128 maxMint,
-                uint128 maxWithdraw,
-                uint256 depositPrice,
-                uint256 redeemPrice,
-                uint128 pendingDepositRequest,
+                /*uint128 maxMint*/
+                ,
+                /*uint128 maxWithdraw*/
+                ,
+                /*uint256 depositPrice*/
+                ,
+                /*uint256 redeemPrice*/
+                ,
+                /*uint128 pendingDepositRequest*/
+                ,
                 uint128 pendingRedeemRequest,
-                uint128 claimableCancelDepositRequest,
-                uint128 claimableCancelRedeemRequest,
-                bool pendingCancelDepositRequest,
-                bool pendingCancelRedeemRequest
+                /*uint128 claimableCancelDepositRequest*/
+                ,
+                /*uint128 claimableCancelRedeemRequest*/
+                ,
+                /*bool pendingCancelDepositRequest*/
+                ,
+                /*bool pendingCancelRedeemRequest*/
             ) = investmentManager.investments(address(vault), address(actor));
 
             /// @audit DANGEROUS TODO: Clamp so we ensure we never give remaining above what was sent, fully trusted

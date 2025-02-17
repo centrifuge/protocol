@@ -113,7 +113,7 @@ contract AssetShareConversionTest is BaseTest {
         address vault_ =
             deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, assetId, address(asset));
         ERC7540Vault vault = ERC7540Vault(vault_);
-        ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
+        ITranche(address(ERC7540Vault(vault_).share()));
 
         assertEq(vault.priceLastUpdated(), block.timestamp);
         assertEq(vault.pricePerShare(), 1e6);

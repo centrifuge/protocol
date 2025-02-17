@@ -82,7 +82,7 @@ contract DeployTest is Test, Deployer {
         assertEq(router.wards(self), 0);
     }
 
-    function testAdminSetup(address nonAdmin, address nonPauser) public {
+    function testAdminSetup(address nonAdmin, address nonPauser) public view {
         vm.assume(nonAdmin != adminSafe);
         vm.assume(nonPauser != accounts[0] && nonPauser != accounts[1] && nonPauser != accounts[2]);
 
@@ -128,7 +128,7 @@ contract DeployTest is Test, Deployer {
         assertEq(investmentManager.wards(vaultFactory), 1);
     }
 
-    function testFilings() public {
+    function testFilings() public view {
         assertEq(poolManager.investmentManager(), address(investmentManager));
         assertEq(address(poolManager.gateway()), address(gateway));
         assertEq(address(poolManager.gasService()), address(gasService));
@@ -140,7 +140,7 @@ contract DeployTest is Test, Deployer {
         assertTrue(gateway.payers(address(router)));
     }
 
-    function testEndorsements() public {
+    function testEndorsements() public view {
         assertTrue(root.endorsed(address(escrow)));
         assertTrue(root.endorsed(address(router)));
     }

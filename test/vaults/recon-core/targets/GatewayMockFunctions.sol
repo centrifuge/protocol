@@ -138,7 +138,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         string memory tokenName,
         string memory tokenSymbol,
         uint8 decimals,
-        address hook
+        address /*hook*/
     ) public {
         poolManager.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, address(restrictionManager));
     }
@@ -227,7 +227,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     // A Vault can belong to a tranche and a currency
 
     // Step 6
-    function deployTranche(uint64 poolId, bytes16 trancheId) public returns (address) {
+    function deployTranche(uint64 poolId, bytes16 trancheId) public {
         address newTranche = poolManager.deployTranche(poolId, trancheId);
 
         trancheTokens.push(newTranche);
@@ -236,7 +236,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     // Step 7 is copied from step 5, ignore
 
     // Step 8, deploy the pool
-    function deployVault(uint64 poolId, bytes16 trancheId, address currency) public returns (address) {
+    function deployVault(uint64 poolId, bytes16 trancheId, address currency) public {
         address newVault = poolManager.deployVault(poolId, trancheId, currency);
 
         vaults.push(newVault);

@@ -570,7 +570,7 @@ contract CentrifugeRouterTest is BaseTest {
         assertEq(erc20.balanceOf(self), balance);
     }
 
-    function testEstimate() public {
+    function testEstimate() public view {
         bytes memory message = "IRRELEVANT";
         uint256 estimated = router.estimate(message);
         (, uint256 gatewayEstimated) = gateway.estimate(message);

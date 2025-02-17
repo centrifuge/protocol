@@ -76,7 +76,7 @@ contract RestrictionManagerTest is Test {
     }
 
     // --- erc165 checks ---
-    function testERC165Support(bytes4 unsupportedInterfaceId) public {
+    function testERC165Support(bytes4 unsupportedInterfaceId) public view {
         bytes4 erc165 = 0x01ffc9a7;
         bytes4 hook = 0xad4e9d84;
 

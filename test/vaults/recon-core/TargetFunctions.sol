@@ -37,7 +37,7 @@ abstract contract TargetFunctions is
     /**
      * INVESTOR FUNCTIONS
      */
-    function invariant_doesTokenGetDeployed() public returns (bool) {
+    function invariant_doesTokenGetDeployed() public view returns (bool) {
         if (RECON_TOGGLE_CANARY_TESTS) {
             return allTokens.length < 10;
         }
@@ -45,7 +45,7 @@ abstract contract TargetFunctions is
         return true;
     }
 
-    function invariant_doesTranchesGetDeployed() public returns (bool) {
+    function invariant_doesTranchesGetDeployed() public view returns (bool) {
         if (RECON_TOGGLE_CANARY_TESTS) {
             return trancheTokens.length < 10;
         }
@@ -53,7 +53,7 @@ abstract contract TargetFunctions is
         return true;
     }
 
-    function invariant_doesVaultsGetDeployed() public returns (bool) {
+    function invariant_doesVaultsGetDeployed() public view returns (bool) {
         if (RECON_TOGGLE_CANARY_TESTS) {
             return vaults.length < 10;
         }

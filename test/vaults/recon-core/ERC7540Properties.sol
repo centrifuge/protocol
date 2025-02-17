@@ -97,9 +97,6 @@ abstract contract ERC7540Properties is Setup, Asserts {
             // We want this to be hit
             return true; // So we explicitly return here, as a means to ensure that this is the code path
         }
-
-        // NOTE: This code path is never hit per the above
-        return false;
     }
 
     function erc7540_6_mint(address erc7540Target, uint256 amt) public virtual returns (bool) {
@@ -121,9 +118,6 @@ abstract contract ERC7540Properties is Setup, Asserts {
             // We want this to be hit
             return true; // So we explicitly return here, as a means to ensure that this is the code path
         }
-
-        // NOTE: This code path is never hit per the above
-        return false;
     }
 
     function erc7540_6_withdraw(address erc7540Target, uint256 amt) public virtual returns (bool) {
@@ -145,9 +139,6 @@ abstract contract ERC7540Properties is Setup, Asserts {
             // We want this to be hit
             return true; // So we explicitly return here, as a means to ensure that this is the code path
         }
-
-        // NOTE: This code path is never hit per the above
-        return false;
     }
 
     function erc7540_6_redeem(address erc7540Target, uint256 amt) public virtual returns (bool) {
@@ -169,8 +160,6 @@ abstract contract ERC7540Properties is Setup, Asserts {
             // We want this to be hit
             return true; // So we explicitly return here, as a means to ensure that this is the code path
         }
-
-        return false;
     }
 
     /// == END erc7540_6 == //
@@ -200,8 +189,6 @@ abstract contract ERC7540Properties is Setup, Asserts {
             hasReverted = 1; // 1 = has reverted
             return true;
         }
-
-        return false;
     }
 
     /// @dev 7540-8	preview* always reverts
@@ -239,8 +226,6 @@ abstract contract ERC7540Properties is Setup, Asserts {
         } catch {
             return false;
         }
-
-        return false;
     }
 
     function erc7540_9_mint(address erc7540Target) public virtual returns (bool) {
@@ -256,8 +241,6 @@ abstract contract ERC7540Properties is Setup, Asserts {
         } catch {
             return false;
         }
-
-        return false;
     }
 
     function erc7540_9_withdraw(address erc7540Target) public virtual returns (bool) {
@@ -275,8 +258,6 @@ abstract contract ERC7540Properties is Setup, Asserts {
         } catch {
             return false;
         }
-
-        return false;
     }
 
     function erc7540_9_redeem(address erc7540Target) public virtual returns (bool) {
@@ -294,8 +275,6 @@ abstract contract ERC7540Properties is Setup, Asserts {
         } catch {
             return false;
         }
-
-        return false;
     }
 
     /// == END erc7540_9 == //

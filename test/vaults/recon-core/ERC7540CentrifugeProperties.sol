@@ -171,7 +171,7 @@ abstract contract ERC7540CentrifugeProperties is Setup, Asserts, CallTestAndUndo
         return asBool;
     }
 
-    function _centrifugeSpecificPreChecks() internal {
+    function _centrifugeSpecificPreChecks() internal view {
         require(msg.sender == address(this)); // Enforces external call to ensure it's not state altering
         require(_canCheckProperties()); // Early revert to prevent false positives
     }

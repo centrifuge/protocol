@@ -59,8 +59,7 @@ contract GatewayTest is BaseTest {
 
     function testBatchedMessageWithLengthProvidedButNoMessageBytes() public {
         uint64 poolId = 999;
-        uint128 assetId = defaultAssetId + 1;
-        MockERC20 newAsset = deployMockERC20("newAsset", "NEW", 18);
+        deployMockERC20("newAsset", "NEW", 18);
         bytes memory _addPool = abi.encodePacked(uint8(MessagesLib.Call.AddPool), poolId);
 
         bytes memory _message =

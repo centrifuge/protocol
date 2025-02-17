@@ -29,11 +29,11 @@ abstract contract RestrictionManagerFunctions is BaseTargetFunctions, Properties
     }
 
     // TODO: Actor Cycling
-    function restrictionManager_freeze(address user) public {
+    function restrictionManager_freeze(address /*user*/ ) public {
         restrictionManager.freeze(address(trancheToken), actor);
     }
 
-    function restrictionManager_unfreeze(address user) public {
+    function restrictionManager_unfreeze(address /*user*/ ) public {
         restrictionManager.unfreeze(address(trancheToken), actor);
     }
 

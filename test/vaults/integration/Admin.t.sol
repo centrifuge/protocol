@@ -8,7 +8,7 @@ import {CastLib} from "src/vaults/libraries/CastLib.sol";
 contract AdminTest is BaseTest {
     using CastLib for *;
 
-    function testDeployment() public {
+    function testDeployment() public view {
         // values set correctly
         assertEq(address(root.escrow()), address(escrow));
         assertEq(root.paused(), false);
@@ -76,7 +76,7 @@ contract AdminTest is BaseTest {
         string memory tokenSymbol,
         uint8 decimals,
         uint128 assetId,
-        bytes32 sender,
+        bytes32, /*sender*/
         address recipient,
         uint128 amount
     ) public {
@@ -105,7 +105,7 @@ contract AdminTest is BaseTest {
         string memory tokenSymbol,
         uint8 decimals,
         uint128 assetId,
-        bytes32 sender,
+        bytes32, /*sender*/
         address recipient,
         uint128 amount
     ) public {

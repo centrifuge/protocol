@@ -9,7 +9,7 @@ contract ArrayLibTest is Test {
     uint16[8] initialArray;
     uint16[8] decreasedArray;
 
-    function testCountNonZeroValues(uint8 numNonZeroes) public {
+    function testCountNonZeroValues(uint8 numNonZeroes) public view {
         numNonZeroes = uint8(bound(numNonZeroes, 0, 8));
         uint16[8] memory arr = _randomArray(numNonZeroes);
 
@@ -28,7 +28,7 @@ contract ArrayLibTest is Test {
         assertEq(_count(initialArray) - _count(decreasedArray), _min(numNonZeroes, numValuesToDecrease));
     }
 
-    function testIsEmpty(uint8 numNonZeroes) public {
+    function testIsEmpty(uint8 numNonZeroes) public view {
         numNonZeroes = uint8(bound(numNonZeroes, 0, 8));
         uint16[8] memory arr = _randomArray(numNonZeroes);
 

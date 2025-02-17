@@ -873,7 +873,7 @@ contract GatewayTest is Test {
         assertEq(total, totalEstimate);
     }
 
-    function assertVotes(bytes memory message, uint16 r1, uint16 r2, uint16 r3) internal {
+    function assertVotes(bytes memory message, uint16 r1, uint16 r2, uint16 r3) internal view {
         uint16[8] memory votes = gateway.votes(keccak256(message));
         assertEq(votes[0], r1);
         assertEq(votes[1], r2);

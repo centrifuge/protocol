@@ -217,7 +217,6 @@ contract RedeemTest is BaseTest {
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         deposit(vault_, investor, amount, false); // request and execute deposit, but don't claim
-        uint256 investorBalanceBefore = erc20.balanceOf(investor);
         assertEq(vault.maxMint(investor), amount);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
@@ -306,7 +305,6 @@ contract RedeemTest is BaseTest {
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         deposit(vault_, investor, amount, false); // request and execute deposit, but don't claim
-        uint256 investorBalanceBefore = erc20.balanceOf(investor);
         assertEq(vault.maxMint(investor), amount);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();

@@ -100,7 +100,7 @@ contract ForkTest is Test {
         }
     }
 
-    function _verifyRoot(Deployment memory deployment) internal {
+    function _verifyRoot(Deployment memory deployment) internal view {
         address root = deployment.root;
         address escrow = deployment.escrow;
         address gateway = deployment.gateway;
@@ -123,7 +123,7 @@ contract ForkTest is Test {
         assertTrue(_root.endorsed(escrow));
     }
 
-    function _verifyGuardian(Deployment memory deployment) internal {
+    function _verifyGuardian(Deployment memory deployment) internal view {
         address guardian = deployment.guardian;
         address gateway = deployment.gateway;
         address root = deployment.root;
@@ -136,7 +136,7 @@ contract ForkTest is Test {
         assertEq(address(_guardian.safe()), safe);
     }
 
-    function _verifyRestrictionManager(Deployment memory deployment) internal {
+    function _verifyRestrictionManager(Deployment memory deployment) internal view {
         address manager = deployment.restrictionManager;
         address root = deployment.root;
         address poolManager = deployment.poolManager;
@@ -151,7 +151,7 @@ contract ForkTest is Test {
         assertEq(_restrictionManager.wards(deployer), 0);
     }
 
-    function _verifyInvestmentManager(Deployment memory deployment) internal {
+    function _verifyInvestmentManager(Deployment memory deployment) internal view {
         address manager = deployment.investmentManager;
         address root = deployment.root;
         address escrow = deployment.escrow;
@@ -173,7 +173,7 @@ contract ForkTest is Test {
         assertEq(_investmentManager.wards(deployer), 0);
     }
 
-    function _verifyPoolmanager(Deployment memory deployment) internal {
+    function _verifyPoolmanager(Deployment memory deployment) internal view {
         address manager = deployment.poolManager;
         address escrow = deployment.escrow;
         address gateway = deployment.gateway;
@@ -198,7 +198,7 @@ contract ForkTest is Test {
         assertEq(_poolManager.wards(deployer), 0);
     }
 
-    function _verifyRouter(Deployment memory deployment) internal {
+    function _verifyRouter(Deployment memory deployment) internal view {
         address router = deployment.centrifugeRouter;
         address escrow = deployment.routerEscrow;
         address gateway = deployment.gateway;
@@ -216,7 +216,7 @@ contract ForkTest is Test {
         assertEq(_router.wards(deployer), 0);
     }
 
-    function _verifyGateway(Deployment memory deployment) internal {
+    function _verifyGateway(Deployment memory deployment) internal view {
         address payable gateway = payable(deployment.gateway);
         address root = deployment.root;
         address poolManager = deployment.poolManager;
@@ -244,7 +244,7 @@ contract ForkTest is Test {
         assertEq(_gateway.wards(deployer), 0);
     }
 
-    function _verifyGasService(Deployment memory deployment) internal {
+    function _verifyGasService(Deployment memory deployment) internal view {
         address gasService = deployment.gasService;
         address root = deployment.root;
         address gateway = deployment.gateway;
@@ -257,7 +257,7 @@ contract ForkTest is Test {
         assertEq(_gasService.wards(deployer), 0);
     }
 
-    function _verifyEscrow(Deployment memory deployment) internal {
+    function _verifyEscrow(Deployment memory deployment) internal view {
         address escrow = deployment.escrow;
         address root = deployment.root;
         address poolManager = deployment.poolManager;
@@ -270,7 +270,7 @@ contract ForkTest is Test {
         assertEq(_escrow.wards(deployer), 0);
     }
 
-    function _verifyRouterEscrow(Deployment memory deployment) internal {
+    function _verifyRouterEscrow(Deployment memory deployment) internal view {
         address escrow = deployment.routerEscrow;
         address root = deployment.root;
         address router = deployment.centrifugeRouter;
@@ -283,7 +283,7 @@ contract ForkTest is Test {
         assertEq(_routerEscrow.wards(deployer), 0);
     }
 
-    function _verifyAxelarAdapter(Deployment memory deployment) internal {
+    function _verifyAxelarAdapter(Deployment memory deployment) internal view {
         address adapter = deployment.adapter;
         address gateway = deployment.gateway;
         address root = deployment.root;
@@ -311,7 +311,7 @@ contract ForkTest is Test {
         }
     }
 
-    function _verifyTrancheFactory(Deployment memory deployment) internal {
+    function _verifyTrancheFactory(Deployment memory deployment) internal view {
         address trancheFactory = deployment.trancheFactory;
         address root = deployment.root;
         address poolManager = deployment.poolManager;
@@ -326,7 +326,7 @@ contract ForkTest is Test {
         assertEq(_trancheFactory.wards(deployer), 0);
     }
 
-    function _verifyVaultFactory(Deployment memory deployment) internal {
+    function _verifyVaultFactory(Deployment memory deployment) internal view {
         address vaultFactory = deployment.vaultFactory;
         address root = deployment.root;
         address poolManager = deployment.poolManager;
@@ -340,7 +340,7 @@ contract ForkTest is Test {
         assertEq(_vaultFactory.wards(deployer), 0);
     }
 
-    function _verifyTransferProxyFactory(Deployment memory deployment) internal {
+    function _verifyTransferProxyFactory(Deployment memory deployment) internal view {
         address transferProxyFactory = deployment.transferProxyFactory;
         address root = deployment.root;
         address poolManager = deployment.poolManager;
