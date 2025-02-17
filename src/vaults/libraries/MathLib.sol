@@ -17,7 +17,7 @@ library MathLib {
     /// @dev    Original credit to Remco Bloemen under MIT license (https://xn--2-umb.com/21/muldiv)
     ///         with further edits by Uniswap Labs also under MIT license.
     // slither-disable-start divide-before-multiply
-    function mulDiv(uint256 x, uint256 y, uint256 denominator) internal pure returns (uint256 result) {
+    function mulDiv(uint256 x, uint256 y, uint256 denominator) public pure returns (uint256 result) {
         unchecked {
             // 512-bit multiply [prod1 prod0] = x * y. Compute the product mod 2^256 and mod 2^256 - 1, then use
             // use the Chinese Remainder Theorem to reconstruct the 512 bit result. The result is stored in two 256
@@ -102,7 +102,7 @@ library MathLib {
     // slither-disable-end divide-before-multiply
 
     /// @notice Calculates x * y / denominator with full precision, following the selected rounding direction.
-    function mulDiv(uint256 x, uint256 y, uint256 denominator, Rounding rounding) internal pure returns (uint256) {
+    function mulDiv(uint256 x, uint256 y, uint256 denominator, Rounding rounding) public pure returns (uint256) {
         uint256 result = mulDiv(x, y, denominator);
         if (rounding == Rounding.Up && mulmod(x, y, denominator) > 0) {
             result += 1;
@@ -111,7 +111,7 @@ library MathLib {
     }
 
     /// @notice Safe type conversion from uint256 to uint8.
-    function toUint8(uint256 value) internal pure returns (uint8) {
+    function toUint8(uint256 value) public pure returns (uint8) {
         if (value > type(uint8).max) {
             revert("MathLib/uint8-overflow");
         }
@@ -119,7 +119,7 @@ library MathLib {
     }
 
     /// @notice Safe type conversion from uint256 to uint128.
-    function toUint128(uint256 _value) internal pure returns (uint128 value) {
+    function toUint128(uint256 _value) public pure returns (uint128 value) {
         if (_value > type(uint128).max) {
             revert("MathLib/uint128-overflow");
         } else {
@@ -128,7 +128,7 @@ library MathLib {
     }
 
     /// @notice Returns the smallest of two numbers.
-    function min(uint256 a, uint256 b) internal pure returns (uint256) {
+    function min(uint256 a, uint256 b) public pure returns (uint256) {
         return a > b ? b : a;
     }
 }
