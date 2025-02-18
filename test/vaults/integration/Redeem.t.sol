@@ -66,7 +66,8 @@ contract RedeemTest is BaseTest {
         // can redeem to self
         vault.redeem(amount / 2, self, self); // redeem half the amount to own wallet
 
-        // can also redeem to another user
+        // can also redeem to another user on the memberlist
+        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
         vault.redeem(amount / 2, investor, self); // redeem half the amount to investor wallet
 
         assertEq(tranche.balanceOf(self), 0);
@@ -117,7 +118,8 @@ contract RedeemTest is BaseTest {
         // can redeem to self
         vault.withdraw(amount / 2, self, self); // redeem half the amount to own wallet
 
-        // can also withdraw to another user
+        // can also withdraw to another user on the memberlist
+        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
         vault.withdraw(amount / 2, investor, self); // redeem half the amount to investor wallet
 
         assertTrue(tranche.balanceOf(self) <= 1);

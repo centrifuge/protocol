@@ -130,8 +130,6 @@ contract ERC7540Vault is Auth, IERC7540Vault {
         );
 
         address escrow = manager.escrow();
-        require(ITranche(share).checkTransferRestriction(owner, escrow, shares), "ERC7540Vault/restrictions-failed");
-
         try ITranche(share).authTransferFrom(sender, owner, escrow, shares) returns (bool) {}
         catch {
             // Support tranche tokens that block authTransferFrom. In this case ERC20 approval needs to be set
@@ -177,7 +175,7 @@ contract ERC7540Vault is Auth, IERC7540Vault {
     {
         _validateController(controller);
         assets = manager.claimCancelDepositRequest(address(this), receiver, controller);
-        emit CancelDepositClaim(receiver, controller, REQUEST_ID, msg.sender, assets);
+        emit CancelDepositClaim(controller, receiver, REQUEST_ID, msg.sender, assets);
     }
 
     /// @inheritdoc IERC7540CancelRedeem
@@ -204,7 +202,7 @@ contract ERC7540Vault is Auth, IERC7540Vault {
     {
         _validateController(controller);
         shares = manager.claimCancelRedeemRequest(address(this), receiver, controller);
-        emit CancelRedeemClaim(receiver, controller, REQUEST_ID, msg.sender, shares);
+        emit CancelRedeemClaim(controller, receiver, REQUEST_ID, msg.sender, shares);
     }
 
     /// @inheritdoc IERC7540Operator
@@ -338,7 +336,6 @@ contract ERC7540Vault is Auth, IERC7540Vault {
     }
 
     /// @inheritdoc IERC7575
-    /// @notice     DOES NOT support controller != msg.sender since shares are already transferred on requestRedeem
     function withdraw(uint256 assets, address receiver, address controller) public returns (uint256 shares) {
         _validateController(controller);
         shares = manager.withdraw(address(this), assets, receiver, controller);
@@ -351,8 +348,7 @@ contract ERC7540Vault is Auth, IERC7540Vault {
     }
 
     /// @inheritdoc IERC7575
-    /// @notice     DOES NOT support controller != msg.sender since shares are already transferred on requestRedeem.
-    ///             When claiming redemption requests using redeem(), there can be some precision loss leading to dust.
+    /// @notice     When claiming redemption requests using redeem(), there can be some precision loss leading to dust.
     ///             It is recommended to use withdraw() to claim redemption requests instead.
     function redeem(uint256 shares, address receiver, address controller) external returns (uint256 assets) {
         _validateController(controller);
