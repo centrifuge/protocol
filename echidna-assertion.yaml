@@ -1,4 +1,3 @@
-
 testMode: "assertion"
 prefix: "invariant_"
 coverage: true
