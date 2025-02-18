@@ -66,13 +66,10 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         );
     }
 
-    function sendNotifyAllowedAsset(PoolId poolId, ShareClassId, /*scId*/ AssetId assetId, bool isAllowed)
-        external
-        auth
-    {
+    function sendNotifyAllowedAsset(PoolId poolId, ShareClassId scId, AssetId assetId, bool isAllowed) external auth {
         bytes memory message = isAllowed
-            ? abi.encodePacked(MessageType.AllowAsset, poolId.raw(), assetId.raw())
-            : abi.encodePacked(MessageType.DisallowAsset, poolId.raw(), assetId.raw());
+            ? abi.encodePacked(MessageType.AllowAsset, poolId.raw(), scId.raw(), assetId.raw())
+            : abi.encodePacked(MessageType.DisallowAsset, poolId.raw(), scId.raw(), assetId.raw());
 
         _send(assetId.chainId(), message);
     }

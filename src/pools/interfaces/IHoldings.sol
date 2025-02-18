@@ -106,6 +106,6 @@ interface IHoldings {
         view
         returns (AccountId);
 
-    /// @notice returns the allowance of an asset as a holding
-    function isAssetAllowed(PoolId poolId, AssetId assetId) external returns (bool);
+    /// @notice Tells if the holding exists for an asset in a share class
+    function exists(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool);
 }

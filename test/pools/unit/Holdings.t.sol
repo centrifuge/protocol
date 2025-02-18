@@ -354,3 +354,12 @@ contract TestValuation is TestCommon {
         holdings.valuation(POOL_A, SC_1, ASSET_A);
     }
 }
+
+contract TestExists is TestCommon {
+    function testSuccess() public {
+        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, new AccountId[](0));
+
+        assert(holdings.exists(POOL_A, SC_1, ASSET_A));
+        assert(!holdings.exists(POOL_A, SC_1, POOL_CURRENCY));
+    }
+}

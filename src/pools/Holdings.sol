@@ -21,7 +21,6 @@ contract Holdings is Auth, IHoldings {
         IERC7726 valuation; // Used for existance
     }
 
-    mapping(PoolId => mapping(AssetId => bool)) public isAssetAllowed;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => Holding))) public holding;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => mapping(uint8 kind => AccountId)))) public accountId;
 
@@ -48,7 +47,6 @@ contract Holdings is Auth, IHoldings {
         require(address(valuation_) != address(0), WrongValuation());
 
         holding[poolId][scId][assetId] = Holding(0, 0, valuation_);
-        isAssetAllowed[poolId][assetId] = true;
 
         for (uint256 i; i < accounts.length; i++) {
             AccountId accountId_ = accounts[i];
@@ -158,5 +156,9 @@ contract Holdings is Auth, IHoldings {
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
         return holding_.valuation;
+    }
+
+    function exists(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool) {
+        return address(holding[poolId][scId][assetId].valuation) != address(0);
     }
 }

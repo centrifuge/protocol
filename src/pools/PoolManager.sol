@@ -135,13 +135,6 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function notifyAllowedAsset(ShareClassId scId, AssetId assetId) external poolUnlocked {
-        PoolId poolId = unlockedPoolId();
-
-        gateway.sendNotifyAllowedAsset(poolId, scId, assetId, poolRegistry.isInvestorAssetAllowed(poolId, assetId));
-    }
-
-    /// @inheritdoc IPoolManagerAdminMethods
     function setPoolMetadata(bytes calldata metadata) external poolUnlocked {
         poolRegistry.setMetadata(unlockedPoolId(), metadata);
     }
@@ -152,13 +145,13 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function allowInvestorAsset(AssetId assetId, bool allow) external poolUnlocked {
+    function allowInvestorAsset(ShareClassId scId, AssetId assetId, bool allow) external poolUnlocked {
         PoolId poolId = unlockedPoolId();
-
-        require(assetManager.isRegistered(assetId), IAssetManager.AssetNotFound());
-        require(holdings.isAssetAllowed(poolId, assetId), IPoolManagerAdminMethods.HoldingAssetNotAllowed());
+        require(holdings.exists(poolId, scId, assetId), IHoldings.HoldingNotFound());
 
         poolRegistry.allowInvestorAsset(poolId, assetId, allow);
+
+        gateway.sendNotifyAllowedAsset(poolId, scId, assetId, poolRegistry.isInvestorAssetAllowed(poolId, assetId));
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
@@ -234,6 +227,8 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
         external
         poolUnlocked
     {
+        require(assetManager.isRegistered(assetId), IAssetManager.AssetNotFound());
+
         AccountId[] memory accounts = new AccountId[](4);
         accounts[0] = newAccountId(prefix, uint8(AccountType.ASSET));
         accounts[1] = newAccountId(prefix, uint8(AccountType.EQUITY));
