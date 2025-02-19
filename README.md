@@ -35,14 +35,14 @@ forge test
 
 To run the invariant tests using [echidna](https://github.com/crytic/echidna):
 ```sh
-echidna . --contract CryticTester --config echidna-property.yaml
-echidna . --contract CryticTester --config echidna-assertion.yaml
+echidna . --contract CryticTester --config test/vaults/fuzzing/recon-core/echidna.yaml --test-mode assertion
+echidna . --contract CryticTester --config test/vaults/fuzzing/recon-core/echidna.yaml --test-mode property
 ```
 
 To run the invariant tests using [medusa](https://github.com/crytic/medusa/):
 ```sh
-medusa fuzz --config medusa-core.json
-medusa fuzz --config medusa-aggregator.json
+medusa fuzz --config test/vaults/fuzzing/recon-core/medusa-core.json
+medusa fuzz --config test/vaults/fuzzing/recon-aggregator/medusa-aggregator.json
 ```
 
 ## Audit reports
