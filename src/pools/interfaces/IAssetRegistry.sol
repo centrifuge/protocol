@@ -6,7 +6,7 @@ import {IERC6909Fungible, IERC6909MetadataExt} from "src/misc/interfaces/IERC690
 import {AssetId} from "src/pools/types/AssetId.sol";
 
 /// @notice Interface for registering and handling assets
-interface IAssetManager is IERC6909MetadataExt, IERC6909Fungible {
+interface IAssetRegistry is IERC6909MetadataExt, IERC6909Fungible {
     event NewAssetEntry(AssetId indexed assetId, string name, string symbol, uint8 decimals);
 
     /// @dev Fired when id == 0

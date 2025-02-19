@@ -16,7 +16,7 @@ import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
 import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
-import {IAssetManager} from "src/pools/interfaces/IAssetManager.sol";
+import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 import {IGateway} from "src/pools/interfaces/IGateway.sol";
 import {IPoolLocker} from "src/pools/interfaces/IPoolLocker.sol";
@@ -31,13 +31,13 @@ contract TestCommon is Test {
     IPoolRegistry immutable poolRegistry = IPoolRegistry(makeAddr("PoolRegistry"));
     IHoldings immutable holdings = IHoldings(makeAddr("Holdings"));
     IAccounting immutable accounting = IAccounting(makeAddr("Accounting"));
-    IAssetManager immutable assetManager = IAssetManager(makeAddr("AssetManager"));
+    IAssetRegistry immutable assetRegistry = IAssetRegistry(makeAddr("AssetRegistry"));
     IGateway immutable gateway = IGateway(makeAddr("Gateway"));
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
 
     Multicall multicall = new Multicall();
     PoolManager poolManager =
-        new PoolManager(multicall, poolRegistry, assetManager, accounting, holdings, gateway, address(0));
+        new PoolManager(multicall, poolRegistry, assetRegistry, accounting, holdings, gateway, address(0));
 
     function _mockSuccessfulMulticall() private {
         vm.mockCall(
@@ -207,8 +207,8 @@ contract TestAllowInvestorAsset is TestCommon {
 contract TestCreateHolding is TestCommon {
     function testErrAssetNotFound() public {
         vm.mockCall(
-            address(assetManager),
-            abi.encodeWithSelector(assetManager.isRegistered.selector, ASSET_A),
+            address(assetRegistry),
+            abi.encodeWithSelector(assetRegistry.isRegistered.selector, ASSET_A),
             abi.encode(false)
         );
 
@@ -218,7 +218,7 @@ contract TestCreateHolding is TestCommon {
             abi.encodeWithSelector(poolManager.createHolding.selector, SC_A, ASSET_A, address(1), 0)
         );
 
-        vm.expectRevert(IAssetManager.AssetNotFound.selector);
+        vm.expectRevert(IAssetRegistry.AssetNotFound.selector);
         poolManager.execute(POOL_A, calls);
     }
 }
