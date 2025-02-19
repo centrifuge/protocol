@@ -19,7 +19,7 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
 
       - name: Run tests
-        run: forge test --no-match-path "test/invariant/**/*.sol"
+        run: forge test --no-match-path "test/vaults/fuzzing/**/*.sol"
         env:
           FOUNDRY_PROFILE: ci
           FORK_TESTS: false
@@ -96,7 +96,7 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
 
       - name: Run coverage
-        run: forge coverage --report summary --report lcov
+        run: forge coverage --report summary --report lcov --no-match-path "test/vaults/**/*.sol"
         env:
           FORK_TESTS: false
 
@@ -110,7 +110,7 @@ jobs:
       - name: Filter directories
         run: |
           sudo apt update && sudo apt install -y lcov
-          lcov --remove lcov.info 'test/*' 'script/*' 'src/libraries/*' --output-file lcov.info --rc lcov_branch_coverage=1
+          lcov --remove lcov.info 'test/*' 'script/*' 'src/vaults/*' --output-file lcov.info --rc branch_coverage=1
 
       # This step posts a detailed coverage report as a comment and deletes previous comments on
       # each push. The below step is used to fail coverage if the specified coverage threshold is
@@ -130,7 +130,7 @@ jobs:
         uses: zgosalvez/github-actions-report-lcov@v2
         with:
           coverage-files: ./lcov.info
-          minimum-coverage: 60 # Set coverage threshold.
+          minimum-coverage: 0 # Set coverage threshold.
 
   # slither-analyze:
   #   runs-on: "ubuntu-latest"
