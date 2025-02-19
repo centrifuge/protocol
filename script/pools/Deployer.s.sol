@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import "forge-std/Script.sol";
 
 import {TransientValuation} from "src/misc/TransientValuation.sol";
-import {OneToOneValuation} from "src/misc/OneToOneValuation.sol";
+import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 import {Multicall} from "src/misc/Multicall.sol";
 
 import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
@@ -35,7 +35,7 @@ contract Deployer is Script {
 
     // Utilities
     TransientValuation public transientValuation;
-    OneToOneValuation public oneToOneValuation;
+    IdentityValuation public identityValuation;
 
     // Data
     AssetId immutable USD = newAssetId(840);
@@ -55,7 +55,7 @@ contract Deployer is Script {
         gateway = new Gateway(IAdapter(address(0 /* TODO */ )), poolManager, address(this));
 
         transientValuation = new TransientValuation(assetRegistry, address(this));
-        oneToOneValuation = new OneToOneValuation(assetRegistry, address(this));
+        identityValuation = new IdentityValuation(assetRegistry, address(this));
 
         _file();
         _rely();
@@ -90,6 +90,6 @@ contract Deployer is Script {
         gateway.deny(address(this));
 
         transientValuation.deny(address(this));
-        oneToOneValuation.deny(address(this));
+        identityValuation.deny(address(this));
     }
 }

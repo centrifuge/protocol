@@ -45,7 +45,7 @@ contract TestCommon is Deployer, Test {
 
         // Label contracts & actors (for debugging)
         vm.label(address(transientValuation), "TransientValuation");
-        vm.label(address(oneToOneValuation), "OneToOneValuation");
+        vm.label(address(identityValuation), "IdentityValuation");
         vm.label(address(multicall), "Multicall");
         vm.label(address(poolRegistry), "PoolRegistry");
         vm.label(address(assetRegistry), "AssetRegistry");
@@ -127,7 +127,7 @@ contract TestConfiguration is TestCommon {
         cs[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, bytes(""));
         cs[c++] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_CV);
         cs[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_CV, scId);
-        cs[c++] = abi.encodeWithSelector(poolManager.createHolding.selector, scId, USDC_C2, oneToOneValuation, 0x01);
+        cs[c++] = abi.encodeWithSelector(poolManager.createHolding.selector, scId, USDC_C2, identityValuation, 0x01);
         cs[c++] = abi.encodeWithSelector(poolManager.allowInvestorAsset.selector, scId, USDC_C2, true);
         assertEq(c, cs.length);
 
