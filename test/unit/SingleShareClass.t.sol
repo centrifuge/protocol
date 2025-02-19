@@ -980,8 +980,8 @@ contract SingleShareClassRoundingEdgeCasesDeposit is SingleShareClassBaseTest {
         (uint128 claimedB, uint128 paymentB) = shareClass.claimDeposit(poolId, scId, INVESTOR_B, USDC);
 
         assertEq(claimedA, claimedB, "Claimed shares should be equal");
-        assertEq(claimedA + claimedB + 1, issuedShares, "System should have 1 share class token surplus");
-        assertEq(paymentA + paymentB, 0, "Payment should be zero since neither investor could claim single share");
+        assertEq(claimedA + claimedB + 1, issuedShares, "System should have 1 share class token atom surplus");
+        assertEq(paymentA + paymentB, 0, "Payment should be zero since neither investor could claim single share atom");
 
         _assertDepositRequestEq(scId, USDC, INVESTOR_A, UserOrder(1, 2));
         _assertDepositRequestEq(scId, USDC, INVESTOR_B, UserOrder(approvedAssetAmount - 1, 2));
@@ -1001,7 +1001,7 @@ contract SingleShareClassRoundingEdgeCasesDeposit is SingleShareClassBaseTest {
         (uint128 claimedB, uint128 paymentB) = shareClass.claimDeposit(poolId, scId, INVESTOR_B, USDC);
 
         assertEq(claimedA, claimedB, "Claimed shares should be equal");
-        assertEq(claimedA + claimedB + 1, issuedShares, "System should have 1 share class token surplus");
+        assertEq(claimedA + claimedB + 1, issuedShares, "System should have 1 share class token atom surplus");
         assert(paymentA != paymentB);
     }
 
@@ -1022,7 +1022,9 @@ contract SingleShareClassRoundingEdgeCasesDeposit is SingleShareClassBaseTest {
 
         assertEq(claimedA, claimedB, "Claimed shares should be equal");
         assertEq(claimedB, claimedC, "Claimed shares should be equal");
-        assertEq(claimedA + claimedB + claimedC + 1, issuedShares, "System should have 1 share class token surplus");
+        assertEq(
+            claimedA + claimedB + claimedC + 1, issuedShares, "System should have 1 share class token atom surplus"
+        );
         assert(paymentA != paymentB && paymentB != paymentC && paymentC != paymentA);
     }
 }
