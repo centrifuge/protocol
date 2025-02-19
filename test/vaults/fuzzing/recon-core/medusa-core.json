@@ -5,19 +5,19 @@
     "timeout": 0,
     "testLimit": 0,
     "callSequenceLength": 100,
-    "corpusDirectory": "medusa-aggregator",
+    "corpusDirectory": "medusa-core",
     "coverageEnabled": true,
     "deploymentOrder": [
-      "CryticAggregatorTester"
+      "CryticTester"
     ],
     "targetContracts": [
-      "CryticAggregatorTester"
+      "CryticTester"
     ],
     "targetContractsBalances": [
       "0x27b46536c66c8e3000000"
     ],
     "constructorArgs": {},
-    "deployerAddress": "0x30000",
+    "deployerAddress": "0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38",
     "senderAddresses": [
       "0x10000",
       "0x20000",

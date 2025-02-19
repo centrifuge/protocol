@@ -39,9 +39,10 @@ jobs:
       - name: Run Echidna
         uses: crytic/echidna-action@v2
         with:
+          test-mode: property
           files: .
           contract: CryticTester
-          config: echidna-property.yaml
+          config: test/vaults/fuzzing/recon-core/echidna.yaml
           test-limit: 100000
 
   echidna-assertion:
@@ -59,9 +60,10 @@ jobs:
       - name: Run Echidna
         uses: crytic/echidna-action@v2
         with:
+          test-mode: assertion
           files: .
           contract: CryticTester
-          config: echidna-assertion.yaml
+          config: test/vaults/fuzzing/recon-core/echidna.yaml
           test-limit: 100000
 
   lint:

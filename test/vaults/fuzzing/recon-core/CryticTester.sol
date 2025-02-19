@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {TargetFunctions} from "test/vaults/recon-core/TargetFunctions.sol";
+import {TargetFunctions} from "./TargetFunctions.sol";
 import {CryticAsserts} from "@chimera/CryticAsserts.sol";
 
 // echidna . --contract CryticTester --config echidna.yaml
