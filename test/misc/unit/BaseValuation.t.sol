@@ -11,7 +11,7 @@ import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
 import {BaseValuation} from "src/misc/BaseValuation.sol";
 
 contract BaseValuationImpl is BaseValuation {
-    constructor(IERC6909MetadataExt assetManager, address deployer) BaseValuation(assetManager, deployer) {}
+    constructor(IERC6909MetadataExt assetRegistry, address deployer) BaseValuation(assetRegistry, deployer) {}
 
     function getQuote(uint256 baseAmount, address base, address quote) external view returns (uint256 quoteAmount) {}
 }

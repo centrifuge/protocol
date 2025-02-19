@@ -9,12 +9,12 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IERC6909, IERC6909MetadataExt, IERC6909TotalSupplyExt} from "src/misc/interfaces/IERC6909.sol";
 
 import {AssetId} from "src/pools/types/AssetId.sol";
-import {AssetManager} from "src/pools/AssetManager.sol";
-import {IAssetManager} from "src/pools/interfaces/IAssetManager.sol";
+import {AssetRegistry} from "src/pools/AssetRegistry.sol";
+import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 
-abstract contract AssetManagerBaseTest is Test {
+abstract contract AssetRegistryBaseTest is Test {
     address self;
-    AssetManager manager;
+    AssetRegistry manager;
     AssetId assetId = AssetId.wrap(1);
     string name = "MyTestAsset";
     string symbol = "MTA";
@@ -22,11 +22,11 @@ abstract contract AssetManagerBaseTest is Test {
 
     function setUp() public virtual {
         self = address(this);
-        manager = new AssetManager(self);
+        manager = new AssetRegistry(self);
     }
 }
 
-contract AuthTest is AssetManagerBaseTest {
+contract AuthTest is AssetRegistryBaseTest {
     function testAssignedWardsOnInitialization() public view {
         assertEq(manager.wards(self), 1);
     }
@@ -51,10 +51,10 @@ contract AuthTest is AssetManagerBaseTest {
     }
 }
 
-contract AssetManagementTest is AssetManagerBaseTest {
+contract AssetManagementTest is AssetRegistryBaseTest {
     function testRegistrationOfANewAsset() public {
         vm.expectEmit();
-        emit IAssetManager.NewAssetEntry(assetId, name, symbol, decimals);
+        emit IAssetRegistry.NewAssetEntry(assetId, name, symbol, decimals);
         manager.registerAsset(assetId, name, symbol, decimals);
         assertTrue(manager.isRegistered(assetId));
 
@@ -66,7 +66,7 @@ contract AssetManagementTest is AssetManagerBaseTest {
     }
 
     function testRevertOnNewAssetRegistration() public {
-        vm.expectRevert(IAssetManager.IncorrectAssetId.selector);
+        vm.expectRevert(IAssetRegistry.IncorrectAssetId.selector);
         manager.registerAsset(AssetId.wrap(0), "AssetWithEmptyId", "N/A", 18);
     }
 
@@ -77,7 +77,7 @@ contract AssetManagementTest is AssetManagerBaseTest {
         symbol = "MNUA";
 
         vm.expectEmit();
-        emit IAssetManager.NewAssetEntry(assetId, name, symbol, decimals);
+        emit IAssetRegistry.NewAssetEntry(assetId, name, symbol, decimals);
         manager.registerAsset(assetId, name, symbol, 6);
 
         (string memory name_, string memory symbol_, uint8 decimals_) = manager.asset(assetId);
@@ -89,7 +89,7 @@ contract AssetManagementTest is AssetManagerBaseTest {
     function testRevertOnUpdateAnExistingAsset() public {
         manager.registerAsset(assetId, "MyNewAsset", "MNA", 18);
 
-        vm.expectRevert(IAssetManager.IncorrectAssetId.selector);
+        vm.expectRevert(IAssetRegistry.IncorrectAssetId.selector);
         manager.registerAsset(AssetId.wrap(0), "MyUpdatedAsset", "MUNA", 18);
     }
 
@@ -98,7 +98,7 @@ contract AssetManagementTest is AssetManagerBaseTest {
     }
 }
 
-contract AssetMetadataRetrievalTest is AssetManagerBaseTest {
+contract AssetMetadataRetrievalTest is AssetRegistryBaseTest {
     using MathLib for uint128;
 
     uint256 rawAssetId;
@@ -114,7 +114,7 @@ contract AssetMetadataRetrievalTest is AssetManagerBaseTest {
     }
 
     function testRevertWhenAssetDoesNotExist() public {
-        vm.expectRevert(IAssetManager.AssetNotFound.selector);
+        vm.expectRevert(IAssetRegistry.AssetNotFound.selector);
         manager.decimals(8337);
     }
 
@@ -135,7 +135,7 @@ contract AssetMetadataRetrievalTest is AssetManagerBaseTest {
     }
 }
 
-contract AssetManagerSupportedInterfacesTest is AssetManagerBaseTest {
+contract AssetRegistrySupportedInterfacesTest is AssetRegistryBaseTest {
     function testSupport() public view {
         assertTrue(manager.supportsInterface(type(IERC165).interfaceId));
         assertTrue(manager.supportsInterface(type(IERC6909).interfaceId));

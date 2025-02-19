@@ -10,7 +10,7 @@ import {AccountId} from "src/pools/types/AccountId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
-/// @notice AssetManager accounts identifications used by the PoolManager
+/// @notice AssetRegistry accounts identifications used by the PoolManager
 enum EscrowId {
     /// @notice Represents the escrow for undeployed capital in the share class.
     /// Contains the already invested but not yet approved funds.
@@ -141,7 +141,7 @@ interface IPoolManager is IPoolManagerAdminMethods {
 
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
-    /// Accepts a `bytes32` representation of 'poolRegistry', 'assetManager', 'accounting', 'holdings', 'gateway' as
+    /// Accepts a `bytes32` representation of 'poolRegistry', 'assetRegistry', 'accounting', 'holdings', 'gateway' as
     /// string value.
     function file(bytes32 what, address data) external;
 

@@ -18,11 +18,11 @@ class IERC6909Fungible<wards = PoolManager> {
 
 IERC6909Fungible --|> ERC6909
 
-class AssetManager {
+class AssetRegistry {
     + registerAsset(assetId, name, decimals, symbol)
 }
 
-AssetManager --|> IERC6909Fungible
+AssetRegistry --|> IERC6909Fungible
 
 class Holdings<wards = PoolManager> <<(C, lightskyblue)>> {
     + create(poolId, shareClassId, assetId, valuation, accounts)
@@ -139,7 +139,7 @@ PoolManager -up-> AccountType
 PoolManager -down---> PoolRegistry
 PoolManager -left-> IShareClassManager
 PoolManager -down--> Accounting
-PoolManager -down-> AssetManager
+PoolManager -down-> AssetRegistry
 PoolManager -down--> Holdings
 PoolManager -right-> Gateway
 

@@ -9,16 +9,16 @@ import {ERC6909Fungible} from "src/misc/ERC6909Fungible.sol";
 import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
 
 import {AssetId} from "src/pools/types/AssetId.sol";
-import {IAssetManager} from "src/pools/interfaces/IAssetManager.sol";
+import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 
-contract AssetManager is ERC6909Fungible, IAssetManager {
+contract AssetRegistry is ERC6909Fungible, IAssetRegistry {
     using MathLib for uint256;
 
     mapping(AssetId => Asset) public asset;
 
     constructor(address owner) ERC6909Fungible(owner) {}
 
-    /// @inheritdoc IAssetManager
+    /// @inheritdoc IAssetRegistry
     function registerAsset(AssetId assetId_, string calldata name_, string calldata symbol_, uint8 decimals_)
         external
         auth
@@ -35,7 +35,7 @@ contract AssetManager is ERC6909Fungible, IAssetManager {
         emit NewAssetEntry(assetId_, name_, symbol_, asset_.decimals);
     }
 
-    /// @inheritdoc IAssetManager
+    /// @inheritdoc IAssetRegistry
     function isRegistered(AssetId assetId) external view returns (bool) {
         return asset[assetId].decimals > 0;
     }
