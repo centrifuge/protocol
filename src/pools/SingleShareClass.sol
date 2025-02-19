@@ -383,6 +383,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
             // Skip epoch if user cannot claim
             uint128 approvedAssetAmount = epochAmounts_.depositApprovalRate.mulUint128(userOrder.pending);
             if (approvedAssetAmount == 0) {
+                emit ClaimedDeposit(poolId, shareClassId_, epochId_, investor, depositAssetId, 0, userOrder.pending, 0);
                 continue;
             }
 
@@ -394,21 +395,21 @@ contract SingleShareClass is Auth, ISingleShareClass {
                 userOrder.pending -= approvedAssetAmount;
                 payoutShareAmount += claimableShareAmount;
                 paymentAssetAmount += approvedAssetAmount;
-
-                emit ClaimedDeposit(
-                    poolId,
-                    shareClassId_,
-                    epochId_,
-                    investor,
-                    depositAssetId,
-                    approvedAssetAmount,
-                    userOrder.pending,
-                    claimableShareAmount
-                );
             } else {
                 // Increase pending by approved amount as it did not lead to claimable amount
                 pendingDeposit[shareClassId_][depositAssetId] += approvedAssetAmount;
             }
+
+            emit ClaimedDeposit(
+                poolId,
+                shareClassId_,
+                epochId_,
+                investor,
+                depositAssetId,
+                approvedAssetAmount,
+                userOrder.pending,
+                claimableShareAmount
+            );
         }
 
         userOrder.lastUpdate = endEpochId + 1;
@@ -448,6 +449,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
             // Skip epoch if user cannot claim
             uint128 approvedShareAmount = epochAmounts_.redeemApprovalRate.mulUint128(userOrder.pending);
             if (approvedShareAmount == 0) {
+                emit ClaimedRedeem(poolId, shareClassId_, epochId_, investor, payoutAssetId, 0, userOrder.pending, 0);
                 continue;
             }
 
@@ -459,21 +461,21 @@ contract SingleShareClass is Auth, ISingleShareClass {
                 paymentShareAmount += approvedShareAmount;
                 payoutAssetAmount += claimableAssetAmount;
                 userOrder.pending -= approvedShareAmount;
-
-                emit ClaimedRedeem(
-                    poolId,
-                    shareClassId_,
-                    epochId_,
-                    investor,
-                    payoutAssetId,
-                    approvedShareAmount,
-                    userOrder.pending,
-                    claimableAssetAmount
-                );
             } else {
                 // Increase pending by approved amount as it did not lead to claimable amount
                 pendingRedeem[shareClassId_][payoutAssetId] += approvedShareAmount;
             }
+
+            emit ClaimedRedeem(
+                poolId,
+                shareClassId_,
+                epochId_,
+                investor,
+                payoutAssetId,
+                approvedShareAmount,
+                userOrder.pending,
+                claimableAssetAmount
+            );
         }
 
         userOrder.lastUpdate = endEpochId + 1;

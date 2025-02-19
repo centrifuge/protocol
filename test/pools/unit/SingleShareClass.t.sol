@@ -723,17 +723,16 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         pending = depositAmount;
         for (uint8 i = 1; i < maxEpochId; i++) {
             uint128 epochShares = shareToPoolQuote.reciprocalMulUint128(usdcToPool(approvalRatio.mulUint128(pending)));
+            uint128 epochApprovedUSDC = approvalRatio.mulUint128(pending);
 
             if (epochShares > 0) {
-                uint128 epochApprovedUSDC = approvalRatio.mulUint128(pending);
                 approvedUSDC += epochApprovedUSDC;
                 pending -= epochApprovedUSDC;
-
-                vm.expectEmit(true, true, true, true);
-                emit IShareClassManager.ClaimedDeposit(
-                    poolId, scId, i, investor, USDC, epochApprovedUSDC, pending, epochShares
-                );
             }
+            vm.expectEmit(true, true, true, true);
+            emit IShareClassManager.ClaimedDeposit(
+                poolId, scId, i, investor, USDC, epochApprovedUSDC, pending, epochShares
+            );
         }
         (uint128 userShares, uint128 payment) = shareClass.claimDeposit(poolId, scId, investor, USDC);
 
@@ -854,12 +853,11 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
                 pendingRedeem -= approvalRatio.mulUint128(pendingRedeem);
                 payout += epochPayout;
                 approvedRedeem += epochApproved;
-
-                vm.expectEmit(true, true, true, true);
-                emit IShareClassManager.ClaimedRedeem(
-                    poolId, scId, i, investor, USDC, epochApproved, pendingRedeem, epochPayout
-                );
             }
+            vm.expectEmit(true, true, true, true);
+            emit IShareClassManager.ClaimedRedeem(
+                poolId, scId, i, investor, USDC, epochApproved, pendingRedeem, epochPayout
+            );
         }
         (uint128 payoutAssetAmount, uint128 paymentShareAmount) = shareClass.claimRedeem(poolId, scId, investor, USDC);
 
