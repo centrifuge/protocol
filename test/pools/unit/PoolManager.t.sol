@@ -69,16 +69,13 @@ contract TestMainMethodsChecks is TestCommon {
         poolManager.notifyShareClass(0, ShareClassId.wrap(0));
 
         vm.expectRevert(IPoolLocker.PoolLocked.selector);
-        poolManager.notifyAllowedAsset(ShareClassId.wrap(0), AssetId.wrap(0));
-
-        vm.expectRevert(IPoolLocker.PoolLocked.selector);
         poolManager.setPoolMetadata(bytes(""));
 
         vm.expectRevert(IPoolLocker.PoolLocked.selector);
         poolManager.allowPoolAdmin(address(0), false);
 
         vm.expectRevert(IPoolLocker.PoolLocked.selector);
-        poolManager.allowInvestorAsset(AssetId.wrap(0), false);
+        poolManager.allowInvestorAsset(ShareClassId.wrap(0), AssetId.wrap(0), false);
 
         vm.expectRevert(IPoolLocker.PoolLocked.selector);
         poolManager.addShareClass(bytes(""));
@@ -154,7 +151,9 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.stopPrank();
     }
+}
 
+contract TestExecute is TestCommon {
     function testErrNotAuthoredAdmin() public {
         vm.mockCall(
             address(poolRegistry),
@@ -188,7 +187,25 @@ contract TestNotifyShareClass is TestCommon {
 }
 
 contract TestAllowInvestorAsset is TestCommon {
-    function testErrHoldingAssetNotFound() public {
+    function testErrHoldingNotFound() public {
+        vm.mockCall(
+            address(holdings),
+            abi.encodeWithSelector(holdings.exists.selector, POOL_A, SC_A, ASSET_A),
+            abi.encode(false)
+        );
+
+        IMulticall.Call[] memory calls = new IMulticall.Call[](1);
+        calls[0] = IMulticall.Call(
+            address(poolManager), abi.encodeWithSelector(poolManager.allowInvestorAsset.selector, SC_A, ASSET_A, false)
+        );
+
+        vm.expectRevert(IHoldings.HoldingNotFound.selector);
+        poolManager.execute(POOL_A, calls);
+    }
+}
+
+contract TestCreateHolding is TestCommon {
+    function testErrAssetNotFound() public {
         vm.mockCall(
             address(assetManager),
             abi.encodeWithSelector(assetManager.isRegistered.selector, ASSET_A),
@@ -197,30 +214,11 @@ contract TestAllowInvestorAsset is TestCommon {
 
         IMulticall.Call[] memory calls = new IMulticall.Call[](1);
         calls[0] = IMulticall.Call(
-            address(poolManager), abi.encodeWithSelector(poolManager.allowInvestorAsset.selector, ASSET_A, false)
+            address(poolManager),
+            abi.encodeWithSelector(poolManager.createHolding.selector, SC_A, ASSET_A, address(1), 0)
         );
 
         vm.expectRevert(IAssetManager.AssetNotFound.selector);
-        poolManager.execute(POOL_A, calls);
-    }
-
-    function testErrAssetNotAllowed() public {
-        vm.mockCall(
-            address(assetManager), abi.encodeWithSelector(assetManager.isRegistered.selector, ASSET_A), abi.encode(true)
-        );
-
-        vm.mockCall(
-            address(holdings),
-            abi.encodeWithSelector(holdings.isAssetAllowed.selector, POOL_A, ASSET_A),
-            abi.encode(false)
-        );
-
-        IMulticall.Call[] memory calls = new IMulticall.Call[](1);
-        calls[0] = IMulticall.Call(
-            address(poolManager), abi.encodeWithSelector(poolManager.allowInvestorAsset.selector, ASSET_A, false)
-        );
-
-        vm.expectRevert(IPoolManagerAdminMethods.HoldingAssetNotAllowed.selector);
         poolManager.execute(POOL_A, calls);
     }
 }

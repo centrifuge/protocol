@@ -38,9 +38,6 @@ interface IPoolManagerAdminMethods {
     /// @notice Dispatched when the pool can not be unlocked by the caller
     error NotAuthorizedAdmin();
 
-    /// @notice Dispatched when a holding asset is not yet created and therefore allowed for investing.
-    error HoldingAssetNotAllowed();
-
     /// @notice Notify to a CV instance that a new pool is available
     /// @param chainId Chain where CV instance lives
     function notifyPool(uint32 chainId) external;
@@ -49,9 +46,7 @@ interface IPoolManagerAdminMethods {
     /// @param chainId Chain where CV instance lives
     function notifyShareClass(uint32 chainId, ShareClassId scId) external;
 
-    /// @notice Notify to a CV instance that a new asset in a share class is available for investing
     /// @dev Note: the chainId is retriver from the assetId
-    function notifyAllowedAsset(ShareClassId scId, AssetId assetId) external;
 
     /// @notice Attach custom data to a pool
     function setPoolMetadata(bytes calldata metadata) external;
@@ -59,8 +54,9 @@ interface IPoolManagerAdminMethods {
     /// @notice Allow/disallow an account to interact as pool admin
     function allowPoolAdmin(address account, bool allow) external;
 
-    /// @notice Allow/disallow an asset for investment
-    function allowInvestorAsset(AssetId assetId, bool allow) external;
+    /// @notice Allow/disallow an asset for investment.
+    /// Notify to the CV instance of that asset that the asset is available for investing for such share class id
+    function allowInvestorAsset(ShareClassId scId, AssetId assetId, bool allow) external;
 
     /// @notice Add a new share class to the pool
     /// @return The new share class Id

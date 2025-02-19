@@ -111,7 +111,6 @@ class PoolManager <<(C, lightskyblue)>> {
     -- pool admin --
     + notifyPool()
     + notifyShareClass()
-    + notifyAllowedAsset()
     + setPoolMetadata()
     + setPoolAdmin()
     + allowInvestorAsset()
