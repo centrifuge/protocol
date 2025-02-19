@@ -1,0 +1,154 @@
+@startuml
+circle Vaults
+
+interface IERC6909 {
+    + transfer(assetId, addr, amount)
+    + transferFrom(assetId, origin, addr, amount)
+}
+
+abstract ERC6909 { }
+
+ERC6909 --|> IERC6909
+
+class IERC6909Fungible<wards = PoolManager> {
+    + mint(assetId, addr, amount)
+    + burn(assetId, addr, amount)
+    + authTransfer(assetId, sendAddr, recvAddr, amount)
+}
+
+IERC6909Fungible --|> ERC6909
+
+class AssetRegistry {
+    + registerAsset(assetId, name, decimals, symbol)
+}
+
+AssetRegistry --|> IERC6909Fungible
+
+class Holdings<wards = PoolManager> <<(C, lightskyblue)>> {
+    + create(poolId, shareClassId, assetId, valuation, accounts)
+    + increase(poolId, shareClassId, assetId, valuation) -> increasedValue
+    + decrease(poolId, shareClassId, assetId, valuation) -> decreasedValue
+    + update(poolId, shareClassId, assetId) -> diff
+    + updateValuation(poolId, shareClassId, assetId)
+    + setAccountId(poolId, shareClassId, assetId)
+}
+
+class PoolRegistry<wards = PoolManager> {
+    + registerPool(admin, currencyId, shareClassManagerAddress) -> poolId
+    + updateShareClassManager(poolId, scm)
+    + updateCurrency(poolId, currency)
+    + updateAdmin(poolId, admin, bool)
+    + allowInvestorAsset(poolId, asset, bool)
+    + setMetadata(poolId, metadata)
+}
+
+interface IShareClassManager {
+    + addShareClass(poolId, data) -> newScId
+    + requestDeposit(poolId, scId, assetId, investor, amount)
+    + cancelDepositRequest(poolId, scId, assetId, investor) -> (cancelled)
+    + requestRedeem(poolId, scId, assetId, investor, amount)
+    + cancelRedeemRequest(poolId, scId, assetId, investor) -> (cancelled)
+    + approveDeposits(poolId, shareClassId, assetId, ratio, valuation) -> (approve, pending)
+    + approveRedeems(poolId, shareClassId, assetId, ratio, valuation) -> (approve, pending)
+    + issueShares(poolId, shareClassId, assetId, navPerShare)
+    + revokeShares(poolId, shareClassId, assetId, navPerShare) -> (assetAmount, poolAmount)
+    + claimDeposit(poolId, shareClassId, assetId, investor) -> (assetAmount, shareAmount)
+    + claimRedeem(poolId, shareClassId, assetId, investor) -> (assetAmount, shareAmount)
+    + updateShareClassNav(poolId, shareClassId)
+    + update(poolId, data)
+}
+
+class SingleShareClass<wards = PoolManager> <<(C, lightskyblue)>>{ }
+SingleShareClass -down|> IShareClassManager
+
+class Accounting<wards = PoolManager> {
+    + createAccount(poolId, account, isDebitNormal)
+    + setAccountMetadata(poolId, account, metadata)
+    + lock(poolId, transactionId)
+    + unlock()
+    + addCredit(account, value)
+    + addDebit(account, value)
+}
+
+class Multicall {
+    + aggregate(targets, datas) -> results
+}
+
+class PoolLocker {
+    + execute(poolId, targets, datas) -> results
+    # _beforeUnlock(poolId)
+    # _beforeLock()
+}
+
+PoolLocker -right-> Multicall
+
+enum EscrowType {
+    SHARE_CLASS
+    PENDING_SHARE_CLASS
+}
+
+enum AccountType {
+    ASSET,
+    EQUITY,
+    LOSS,
+    GAIN,
+}
+
+interface IPoolManagerHandler {
+    + handleRegisterAsset()
+    + handleRequestDeposit()
+    + handleRequestRedeem()
+    + handleCancelDepositRequest()
+    + handleCancelRedeemRequest()
+    + handleLockedTokens()
+}
+
+class PoolManager <<(C, lightskyblue)>> {
+    -- pemisionless --
+    + createPool()
+    + claimRedeem()
+    + claimDeposit()
+    -- pool admin --
+    + notifyPool()
+    + notifyShareClass()
+    + setPoolMetadata()
+    + setPoolAdmin()
+    + allowInvestorAsset()
+    + addShareClass()
+    + approveDeposit()
+    + approveRedeem()
+    + issueShares()
+    + revokeShares()
+    + createHolding()
+    + increaseHolding()
+    + decreaseHolding()
+    + updateHolding()
+    + updateHoldingValuation()
+    + setHoldingAccountId()
+    + createAccount()
+    + setAccountMetadata()
+    + addDebit()
+    + addCredit()
+    + unlockTokens()
+}
+
+PoolManager -up-|> IPoolManagerHandler
+PoolManager -up--|> PoolLocker
+PoolManager -up-> EscrowType
+PoolManager -up-> AccountType
+PoolManager -down---> PoolRegistry
+PoolManager -left-> IShareClassManager
+PoolManager -down--> Accounting
+PoolManager -down-> AssetRegistry
+PoolManager -down--> Holdings
+PoolManager -right-> Gateway
+
+class Gateway<wards = PoolManager, Vaults> <<(C, lightskyblue)>> {
+    + sendXYZ(msg)
+    + handle(msg)
+}
+
+Gateway <-[thickness=4]right-> Vaults
+Gateway -up-> IPoolManagerHandler
+
+@enduml
