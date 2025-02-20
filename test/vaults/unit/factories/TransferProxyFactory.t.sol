@@ -3,12 +3,23 @@ pragma solidity 0.8.28;
 
 import {TransferProxy, TransferProxyFactory} from "src/vaults/factories/TransferProxyFactory.sol";
 import {ERC20} from "src/vaults/token/ERC20.sol";
-import {MockUSDC} from "test/vaults/mocks/MockUSDC.sol";
 import {MockGateway} from "test/vaults/mocks/MockGateway.sol";
 import {MockPoolManager} from "test/vaults/mocks/MockPoolManager.sol";
 import {ITransferProxyFactory} from "src/vaults/interfaces/factories/ITransferProxy.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import "test/vaults/BaseTest.sol";
+
+import {MockERC20} from "forge-std/mocks/MockERC20.sol";
+
+contract MockUSDC is MockERC20 {
+    constructor() {
+        initialize("usdc", "usdc", 6);
+    }
+
+    function mint(address to, uint256 amount) public {
+        _mint(to, amount);
+    }
+}
 
 contract TransferProxyFactoryTest is BaseTest {
     function testFile() public {
@@ -79,7 +90,7 @@ contract TransferProxyFactoryTest is BaseTest {
         ITransferProxyFactory factory = ITransferProxyFactory(transferProxyFactory);
         TransferProxy proxy = TransferProxy(factory.newTransferProxy(destination));
 
-        MockUSDC usdc = new MockUSDC(6);
+        MockUSDC usdc = new MockUSDC();
         usdc.mint(address(this), 100);
         usdc.transfer(address(proxy), 100);
         poolManager.addAsset(1, address(usdc));
