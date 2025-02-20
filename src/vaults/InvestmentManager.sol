@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {Auth} from "src/misc/Auth.sol";
 import {CastLib} from "src/vaults/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
 import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
 import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";

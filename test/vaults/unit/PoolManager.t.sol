@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
+
 import "test/vaults/BaseTest.sol";
 import {CastLib} from "src/vaults/libraries/CastLib.sol";
 import {Domain} from "src/vaults/interfaces/IPoolManager.sol";
 import {IRestrictionManager} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 import {MockHook} from "test/vaults/mocks/MockHook.sol";
 import {RestrictionUpdate} from "src/vaults/interfaces/token/IRestrictionManager.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 contract PoolManagerTest is BaseTest {
     using CastLib for *;
@@ -267,10 +269,10 @@ contract PoolManagerTest is BaseTest {
         centrifugeChain.incomingTransfer(assetId, bytes32(bytes20(recipient)), amount);
         centrifugeChain.addAsset(assetId, address(erc20));
 
-        vm.expectRevert(bytes("SafeTransferLib/safe-transfer-from-failed"));
+        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
         centrifugeChain.incomingTransfer(assetId, bytes32(bytes20(recipient)), amount);
 
-        vm.expectRevert(bytes("SafeTransferLib/safe-transfer-from-failed"));
+        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
         centrifugeChain.incomingTransfer(assetId, bytes32(bytes20(recipient)), amount);
 
         erc20.mint(address(poolManager.escrow()), amount); // fund escrow

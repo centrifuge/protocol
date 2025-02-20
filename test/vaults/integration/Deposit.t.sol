@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+
 import "test/vaults/BaseTest.sol";
 import {CastLib} from "src/vaults/libraries/CastLib.sol";
 
@@ -36,7 +38,7 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(amount, nonMember, self);
 
         // will fail - user did not give asset allowance to vault
-        vm.expectRevert(bytes("SafeTransferLib/safe-transfer-from-failed"));
+        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
         vault.requestDeposit(amount, self, self);
 
         // will fail - zero deposit not allowed

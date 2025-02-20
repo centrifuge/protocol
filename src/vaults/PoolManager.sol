@@ -7,7 +7,7 @@ import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 import {IERC20Metadata, IERC20Wrapper} from "src/misc/interfaces/IERC20.sol";
 import {Auth} from "src/misc/Auth.sol";
-import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
 import {CastLib} from "src/vaults/libraries/CastLib.sol";

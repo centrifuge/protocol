@@ -6,7 +6,7 @@ import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
-import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {ITransferProxy, ITransferProxyFactory} from "src/vaults/interfaces/factories/ITransferProxy.sol";
 
 contract TransferProxy is Auth, ITransferProxy {
