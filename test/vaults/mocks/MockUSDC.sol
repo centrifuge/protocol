@@ -2,8 +2,8 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
-import {EIP712Lib} from "src/vaults/libraries/EIP712Lib.sol";
-import {SignatureLib} from "src/vaults/libraries/SignatureLib.sol";
+import {EIP712Lib} from "src/misc/libraries/EIP712Lib.sol";
+import {SignatureLib} from "src/misc/libraries/SignatureLib.sol";
 import {IERC20, IERC20Metadata} from "src/vaults/interfaces/IERC20.sol";
 
 /// @title  ERC20

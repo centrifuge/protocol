@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ERC20} from "src/vaults/token/ERC20.sol";
-import {IERC1271} from "src/vaults/libraries/SignatureLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {IERC1271} from "src/misc/libraries/SignatureLib.sol";
+
+import {ERC20} from "src/vaults/token/ERC20.sol";
+
 import "forge-std/Test.sol";
 
 contract MockMultisig is IERC1271 {
