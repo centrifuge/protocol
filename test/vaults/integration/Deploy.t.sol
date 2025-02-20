@@ -19,7 +19,7 @@ import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
 import {AxelarScript} from "script/vaults/Axelar.s.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import "script/vaults/Deployer.sol";
-import "src/vaults/libraries/MathLib.sol";
+import "src/misc/libraries/MathLib.sol";
 import "forge-std/Test.sol";
 
 interface ApproveLike {

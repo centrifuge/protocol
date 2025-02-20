@@ -13,7 +13,7 @@ import {
 } from "src/vaults/interfaces/token/IHook.sol";
 import {IERC7575Share, IERC165} from "src/vaults/interfaces/IERC7575.sol";
 import {ITranche, IERC1404} from "src/vaults/interfaces/token/ITranche.sol";
-import {MathLib} from "src/vaults/libraries/MathLib.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
 
 /// @title  Tranche Token
 /// @notice Extension of ERC20 + ERC1404 for tranche tokens,
