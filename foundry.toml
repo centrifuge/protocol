@@ -2,7 +2,6 @@
 src = 'src'
 out = 'out'
 libs = ['lib']
-# no_match_contract = "CryticTester" # This should be active when we integrate invariant testing
 
 solc_version = "0.8.28"
 evm_version = "cancun"
@@ -12,6 +11,7 @@ optimizer_runs = 500
 verbosity = 3
 
 ffi = true
+fs_permissions = [{ access = "read-write", path = ".forge-snapshots/"}, { access = "read", path = "./deployments"}]
 
 [profile.default.fuzz]
 runs = 100
@@ -48,6 +48,15 @@ fail_on_revert = false
   ]
 
 [profile.smt.model_checker.contracts]
+  "src/vaults/ERC7540Vault.sol" = ["ERC7540Vault"]
+  "src/vaults/InvestmentManager.sol" = ["InvestmentManager"]
+  "src/vaults/PoolManager.sol" = ["PoolManager"]
+  "src/vaults/Escrow.sol" = ["Escrow"]
+  "src/vaults/Root.sol" = ["Root"]
+  "src/vaults/token/ERC20.sol" = ["ERC20"]
+  "src/vaults/token/Tranche.sol" = ["Tranche"]
+  "src/vaults/token/RestrictionManager.sol" = ["RestrictionManager"]
+  "src/vaults/admin/Guardian.sol" = ["Guardian"]
 
 [doc]
   ignore = ["**/*.t.sol", "**/*.s.sol"]

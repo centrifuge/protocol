@@ -1,0 +1,7 @@
+prefix: "invariant_"
+coverage: true
+corpusDir: "echidna"
+balanceAddr: 0x1043561a8829300000
+balanceContract: 0x1043561a8829300000
+filterFunctions: []
+cryticArgs: ["--foundry-compile-all"]
