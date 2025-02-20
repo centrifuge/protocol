@@ -164,7 +164,11 @@ contract ERC7540Vault is Auth, IERC7540Vault {
     }
 
     /// @inheritdoc IERC7540CancelDeposit
-    function claimableCancelDepositRequest(uint256, address controller) external view returns (uint256 claimableAssets) {
+    function claimableCancelDepositRequest(uint256, address controller)
+        external
+        view
+        returns (uint256 claimableAssets)
+    {
         claimableAssets = manager.claimableCancelDepositRequest(address(this), controller);
     }
 
@@ -191,7 +195,11 @@ contract ERC7540Vault is Auth, IERC7540Vault {
     }
 
     /// @inheritdoc IERC7540CancelRedeem
-    function claimableCancelRedeemRequest(uint256, address controller) external view returns (uint256 claimableShares) {
+    function claimableCancelRedeemRequest(uint256, address controller)
+        external
+        view
+        returns (uint256 claimableShares)
+    {
         claimableShares = manager.claimableCancelRedeemRequest(address(this), controller);
     }
 
