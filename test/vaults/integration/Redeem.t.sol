@@ -260,7 +260,7 @@ contract RedeemTest is BaseTest {
             uint128(amount)
         );
 
-        vm.expectRevert(bytes("InvestmentManager/transfer-not-allowed"));
+        vm.expectRevert(bytes("InvestmentManager/exceeds-max-redeem"));
         vm.prank(investor);
         vault.redeem(amount, investor, investor);
     }
@@ -344,7 +344,7 @@ contract RedeemTest is BaseTest {
             uint128(amount)
         );
 
-        vm.expectRevert(bytes("InvestmentManager/transfer-not-allowed"));
+        vm.expectRevert(bytes("InvestmentManager/exceeds-max-redeem"));
         vm.prank(investor);
         vault.redeem(amount, investor, investor);
     }

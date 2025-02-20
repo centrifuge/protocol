@@ -408,11 +408,13 @@ contract InvestmentManager is Auth, IInvestmentManager {
 
     /// @inheritdoc IInvestmentManager
     function maxWithdraw(address vault, address user) public view returns (uint256 assets) {
+        if (!_canTransfer(vault, user, address(0), 0)) return 0;
         assets = uint256(investments[vault][user].maxWithdraw);
     }
 
     /// @inheritdoc IInvestmentManager
     function maxRedeem(address vault, address user) public view returns (uint256 shares) {
+        if (!_canTransfer(vault, user, address(0), 0)) return 0;
         InvestmentState memory state = investments[vault][user];
         shares = uint256(_calculateShares(state.maxWithdraw, vault, state.redeemPrice, MathLib.Rounding.Down));
     }
