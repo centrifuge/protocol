@@ -14,7 +14,6 @@ import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
 import {TransientStorage} from "src/vaults/libraries/TransientStorage.sol";
 import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
-import {ITransferProxy} from "src/vaults/interfaces/factories/ITransferProxy.sol";
 
 /// @title  CentrifugeRouter
 /// @notice This is a helper contract, designed to be the entrypoint for EOAs.
@@ -238,16 +237,6 @@ contract CentrifugeRouter is Auth, ICentrifugeRouter {
         protected
     {
         transferAssets(asset, recipient.toBytes32(), amount, topUpAmount);
-    }
-
-    /// @inheritdoc ICentrifugeRouter
-    function transferAssetsFromProxy(address transferProxy, address asset, uint256 topUpAmount)
-        external
-        payable
-        protected
-    {
-        _pay(topUpAmount);
-        ITransferProxy(transferProxy).transfer(asset);
     }
 
     /// @inheritdoc ICentrifugeRouter

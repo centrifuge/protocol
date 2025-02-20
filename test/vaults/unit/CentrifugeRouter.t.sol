@@ -391,35 +391,6 @@ contract CentrifugeRouterTest is BaseTest {
         assertEq(erc20.balanceOf(address(escrow)), amount);
     }
 
-    function testTransferAssetsUsingTransferProxy() public {
-        address vault_ = deploySimpleVault();
-        vm.label(vault_, "vault");
-
-        uint256 amount = 100 * 10 ** 18;
-        bytes32 recipient = address(2).toBytes32();
-
-        uint256 fuel = estimateGas();
-        vm.deal(address(this), 10 ether);
-
-        address proxy = ITransferProxyFactory(transferProxyFactory).newTransferProxy(recipient);
-        erc20.mint(address(proxy), amount);
-
-        vm.expectRevert("CentrifugeRouter/insufficient-funds");
-        router.transferAssetsFromProxy(proxy, address(erc20), fuel);
-
-        vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        router.transferAssetsFromProxy{value: fuel}(proxy, address(erc20), 0);
-
-        vm.expectRevert("Gateway/not-enough-gas-funds");
-        router.transferAssetsFromProxy{value: fuel}(proxy, address(erc20), fuel - 1);
-
-        assertEq(erc20.balanceOf(address(escrow)), 0);
-
-        router.transferAssetsFromProxy{value: fuel}(proxy, address(erc20), fuel);
-
-        assertEq(erc20.balanceOf(address(escrow)), amount);
-    }
-
     function testTranferTrancheTokensToAddressDestination() public {
         address vault_ = deploySimpleVault();
         vm.label(vault_, "vault");
