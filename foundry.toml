@@ -2,7 +2,6 @@
 src = 'src'
 out = 'out'
 libs = ['lib']
-no_match_contract = "CryticTester"
 
 solc_version = "0.8.28"
 evm_version = "cancun"
@@ -49,20 +48,20 @@ fail_on_revert = false
   ]
 
 [profile.smt.model_checker.contracts]
-  "src/ERC7540Vault.sol" = ["ERC7540Vault"]
-  "src/InvestmentManager.sol" = ["InvestmentManager"]
-  "src/PoolManager.sol" = ["PoolManager"]
-  "src/Escrow.sol" = ["Escrow"]
-  "src/Root.sol" = ["Root"]
-  "src/token/ERC20.sol" = ["ERC20"]
-  "src/token/Tranche.sol" = ["Tranche"]
-  "src/token/RestrictionManager.sol" = ["RestrictionManager"]
-  "src/admin/Guardian.sol" = ["Guardian"]
+  "src/vaults/ERC7540Vault.sol" = ["ERC7540Vault"]
+  "src/vaults/InvestmentManager.sol" = ["InvestmentManager"]
+  "src/vaults/PoolManager.sol" = ["PoolManager"]
+  "src/vaults/Escrow.sol" = ["Escrow"]
+  "src/vaults/Root.sol" = ["Root"]
+  "src/vaults/token/ERC20.sol" = ["ERC20"]
+  "src/vaults/token/Tranche.sol" = ["Tranche"]
+  "src/vaults/token/RestrictionManager.sol" = ["RestrictionManager"]
+  "src/vaults/admin/Guardian.sol" = ["Guardian"]
 
 [doc]
   ignore = ["**/*.t.sol", "**/*.s.sol"]
   out = "docs"
-  repository = "https://github.com/centrifuge/liquidity-pools"
+  repository = "https://github.com/centrifuge/asset-pools"
 
 [fmt]
   line_length = 120

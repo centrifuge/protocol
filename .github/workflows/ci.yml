@@ -19,52 +19,10 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
 
       - name: Run tests
-        run: forge test --no-match-path "test/vaults/fuzzing/**/*.sol"
+        run: forge test --no-match-path "test/vaults/fuzzing/**/*.sol" --deny-warnings
         env:
           FOUNDRY_PROFILE: ci
           FORK_TESTS: false
-
-  #  echidna-property:
-  #    runs-on: ubuntu-latest
-  #    steps:
-  #      - uses: actions/checkout@v3
-  #
-  #      - name: Install Foundry
-  #        uses: foundry-rs/foundry-toolchain@v1
-  #
-  #      - name: Compile contracts
-  #        run: |
-  #          forge build --build-info
-  #
-  #      - name: Run Echidna
-  #        uses: crytic/echidna-action@v2
-  #        with:
-  #          test-mode: property
-  #          files: .
-  #          contract: CryticTester
-  #          config: test/vaults/fuzzing/recon-core/echidna.yaml
-  #          test-limit: 100000
-  #
-  #  echidna-assertion:
-  #    runs-on: ubuntu-latest
-  #    steps:
-  #      - uses: actions/checkout@v3
-  #
-  #      - name: Install Foundry
-  #        uses: foundry-rs/foundry-toolchain@v1
-  #
-  #      - name: Compile contracts
-  #        run: |
-  #          forge build --build-info
-  #
-  #      - name: Run Echidna
-  #        uses: crytic/echidna-action@v2
-  #        with:
-  #          test-mode: assertion
-  #          files: .
-  #          contract: CryticTester
-  #          config: test/vaults/fuzzing/recon-core/echidna.yaml
-  #          test-limit: 100000
 
   lint:
     runs-on: ubuntu-latest
@@ -77,7 +35,7 @@ jobs:
       - name: Build contracts
         run: |
           forge --version
-          forge build --sizes --skip test
+          forge build --sizes --skip test --deny-warnings
 
       - name: Check formatting
         run: forge fmt --check
@@ -132,33 +90,3 @@ jobs:
           coverage-files: ./lcov.info
           minimum-coverage: 0 # Set coverage threshold.
 
-  # slither-analyze:
-  #   runs-on: "ubuntu-latest"
-  #   permissions:
-  #     actions: "read"
-  #     contents: "read"
-  #     security-events: "write"
-  #   steps:
-  #     - name: "Check out the repo"
-  #       uses: "actions/checkout@v3"
-  #       with:
-  #         submodules: "recursive"
-
-  #     - name: "Run Slither analysis"
-  #       uses: "crytic/slither-action@v0.3.0"
-  #       id: "slither"
-  #       with:
-  #         fail-on: "none"
-  #         sarif: "results.sarif"
-  #         solc-version: "0.8.26"
-  #         target: "src/"
-
-  #     - name: Upload SARIF file
-  #       uses: github/codeql-action/upload-sarif@v2
-  #       with:
-  #         sarif_file: ${{ steps.slither.outputs.sarif }}
-
-  #     - name: "Add Slither summary"
-  #       run: |
-  #         echo "## Slither result" >> $GITHUB_STEP_SUMMARY
-  #         echo "✅ Uploaded to GitHub code scanning" >> $GITHUB_STEP_SUMMARY

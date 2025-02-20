@@ -6,7 +6,6 @@ broadcast/
 .DS_Store
 .env.*
 lcov.info
-docs
 .vscode
 
 ## Recon
