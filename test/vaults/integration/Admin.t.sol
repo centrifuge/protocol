@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import "test/vaults/BaseTest.sol";
 import {MockManager} from "test/vaults/mocks/MockManager.sol";
 import {CastLib} from "src/vaults/libraries/CastLib.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 contract AdminTest is BaseTest {
     using CastLib for *;
@@ -321,7 +322,7 @@ contract AdminTest is BaseTest {
 
         // veto
         root.deny(endorser);
-        vm.expectRevert(bytes("Auth/not-authorized")); // fail no auth permissions
+        vm.expectRevert(IAuth.NotAuthorized.selector); // fail no auth permissions
         vm.prank(endorser);
         root.veto(router);
 

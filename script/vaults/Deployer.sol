@@ -14,7 +14,7 @@ import {PoolManager} from "src/vaults/PoolManager.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
 import {CentrifugeRouter} from "src/vaults/CentrifugeRouter.sol";
 import {Guardian} from "src/vaults/admin/Guardian.sol";
-import {IAuth} from "src/vaults/interfaces/IAuth.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import "forge-std/Script.sol";
 
 contract Deployer is Script {

@@ -17,6 +17,7 @@ import {PermissionlessAdapter} from "test/vaults/mocks/PermissionlessAdapter.sol
 import {Root} from "src/vaults/Root.sol";
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
 import {AxelarScript} from "script/vaults/Axelar.s.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import "script/vaults/Deployer.sol";
 import "src/vaults/libraries/MathLib.sol";
 import "forge-std/Test.sol";
@@ -64,7 +65,7 @@ contract DeployTest is Test, Deployer {
     }
 
     function testDeployerHasNoAccess() public {
-        vm.expectRevert("Auth/not-authorized");
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         root.relyContract(address(investmentManager), address(1));
 
         // checking in the same order as they are deployed

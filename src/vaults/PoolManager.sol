@@ -6,7 +6,7 @@ import {ITrancheFactory} from "src/vaults/interfaces/factories/ITrancheFactory.s
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 import {IERC20Metadata, IERC20Wrapper} from "src/vaults/interfaces/IERC20.sol";
-import {Auth} from "src/vaults/Auth.sol";
+import {Auth} from "src/misc/Auth.sol";
 import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
 import {MathLib} from "src/vaults/libraries/MathLib.sol";
 import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
@@ -24,7 +24,7 @@ import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
 import {IGasService} from "src/vaults/interfaces/gateway/IGasService.sol";
-import {IAuth} from "src/vaults/interfaces/IAuth.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 
 /// @title  Pool Manager

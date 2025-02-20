@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {ERC20} from "src/vaults/token/ERC20.sol";
 import {IERC1271} from "src/vaults/libraries/SignatureLib.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import "forge-std/Test.sol";
 
 contract MockMultisig is IERC1271 {
@@ -66,7 +67,7 @@ contract ERC20Test is Test {
         vm.assume(invalidOrigin != address(this));
 
         vm.prank(invalidOrigin);
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         token.file("name", newName);
 
         vm.expectRevert(bytes("ERC20/file-unrecognized-param"));

@@ -7,6 +7,7 @@ import {MockUSDC} from "test/vaults/mocks/MockUSDC.sol";
 import {MockGateway} from "test/vaults/mocks/MockGateway.sol";
 import {MockPoolManager} from "test/vaults/mocks/MockPoolManager.sol";
 import {ITransferProxyFactory} from "src/vaults/interfaces/factories/ITransferProxy.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import "test/vaults/BaseTest.sol";
 
 contract TransferProxyFactoryTest is BaseTest {
@@ -14,7 +15,7 @@ contract TransferProxyFactoryTest is BaseTest {
         ITransferProxyFactory factory = ITransferProxyFactory(transferProxyFactory);
 
         root.denyContract(address(factory), self);
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         factory.file("poolManager", self);
 
         root.relyContract(address(factory), self);
@@ -27,7 +28,7 @@ contract TransferProxyFactoryTest is BaseTest {
 
         TransferProxy proxy = TransferProxy(factory.newTransferProxy(""));
 
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         proxy.file("poolManager", self);
 
         root.relyContract(address(proxy), self);
@@ -104,7 +105,7 @@ contract TransferProxyFactoryTest is BaseTest {
 
         assertEq(erc20.balanceOf(address(proxy)), 100);
 
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         proxy.recoverTokens(address(erc20), to, 100);
 
         root.recoverTokens(address(proxy), address(erc20), to, 100);

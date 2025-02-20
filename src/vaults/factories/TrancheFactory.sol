@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {Tranche} from "src/vaults/token/Tranche.sol";
 import {ITrancheFactory} from "src/vaults/interfaces/factories/ITrancheFactory.sol";
-import {Auth} from "src/vaults/Auth.sol";
+import {Auth} from "src/misc/Auth.sol";
 
 /// @title  Tranche Token Factory
 /// @dev    Utility for deploying new tranche token contracts

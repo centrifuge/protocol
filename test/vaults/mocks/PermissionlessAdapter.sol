@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "src/vaults/Auth.sol";
+import "src/misc/Auth.sol";
 
 interface GatewayLike {
     function handle(bytes memory message) external;

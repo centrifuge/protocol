@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import "test/vaults/BaseTest.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 import "src/vaults/interfaces/IERC7540.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 contract ERC7540VaultTest is BaseTest {
     // Deployment
@@ -44,7 +45,7 @@ contract ERC7540VaultTest is BaseTest {
         address vault_ = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
 
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         vault.file("manager", self);
 
         root.relyContract(vault_, self);

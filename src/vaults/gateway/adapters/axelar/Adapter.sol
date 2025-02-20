@@ -8,7 +8,7 @@ import {
     IAxelarGasService
 } from "src/vaults/interfaces/gateway/adapters/IAxelarAdapter.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
-import {Auth} from "src/vaults/Auth.sol";
+import {Auth} from "src/misc/Auth.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
 
 /// @title  Axelar Adapter

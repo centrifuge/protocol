@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import {MockAxelarPrecompile} from "test/vaults/mocks/MockAxelarPrecompile.sol";
 import {MockAxelarGateway} from "test/vaults/mocks/MockAxelarGateway.sol";
 import {AxelarForwarder} from "src/vaults/gateway/adapters/axelar/Forwarder.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 contract AxelarForwarderTest is Test {
     // Represents the precompile address on Centrifuge. Precompile is located at `address(2048)` which is
@@ -34,7 +35,7 @@ contract AxelarForwarderTest is Test {
         vm.assume(invalidOrigin != address(this));
 
         vm.prank(invalidOrigin);
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         forwarder.file("axelarGateway", anotherAxelarGateway);
 
         forwarder.file("axelarGateway", anotherAxelarGateway);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/vaults/Auth.sol";
+import {Auth} from "src/misc/Auth.sol";
 import {IERC20} from "src/vaults/interfaces/IERC20.sol";
 import {MathLib} from "src/vaults/libraries/MathLib.sol";
 import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";

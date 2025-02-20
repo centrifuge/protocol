@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 pragma abicoder v2;
 
 import "test/vaults/BaseTest.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 interface VaultLike {
     function priceComputedAt() external view returns (uint64);
@@ -57,7 +58,7 @@ contract InvestmentManagerTest is BaseTest {
         // remove self from wards
         investmentManager.deny(self);
         // auth fail
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         investmentManager.file("poolManager", randomUser);
     }
 

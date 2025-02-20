@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
 import {IERC7540VaultFactory} from "src/vaults/interfaces/factories/IERC7540VaultFactory.sol";
-import {Auth} from "src/vaults/Auth.sol";
+import {Auth} from "src/misc/Auth.sol";
 
 /// @title  ERC7540 Vault Factory
 /// @dev    Utility for deploying new vault contracts

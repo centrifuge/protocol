@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import "test/vaults/BaseTest.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 contract MintTest is BaseTest {
     function testMint(uint256 amount) public {
@@ -13,7 +14,7 @@ contract MintTest is BaseTest {
         ITranche tranche = ITranche(address(vault.share()));
         root.denyContract(address(tranche), self);
 
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         tranche.mint(investor, amount);
 
         root.relyContract(address(tranche), self); // give self auth permissions
