@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import "test/vaults/BaseTest.sol";
 import {MockManager} from "test/vaults/mocks/MockManager.sol";
-import {CastLib} from "src/vaults/libraries/CastLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 contract AdminTest is BaseTest {

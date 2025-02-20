@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
 import "test/vaults/BaseTest.sol";
-import {CastLib} from "src/vaults/libraries/CastLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 contract DepositTest is BaseTest {
     using CastLib for *;

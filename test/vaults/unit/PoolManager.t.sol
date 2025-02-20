@@ -5,7 +5,7 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import "test/vaults/BaseTest.sol";
-import {CastLib} from "src/vaults/libraries/CastLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {Domain} from "src/vaults/interfaces/IPoolManager.sol";
 import {IRestrictionManager} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 import {MockHook} from "test/vaults/mocks/MockHook.sol";

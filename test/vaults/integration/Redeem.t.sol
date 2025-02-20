@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import "test/vaults/BaseTest.sol";
-import {CastLib} from "src/vaults/libraries/CastLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 contract RedeemTest is BaseTest {
     using CastLib for *;

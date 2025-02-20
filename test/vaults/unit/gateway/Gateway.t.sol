@@ -10,7 +10,7 @@ import {MockRoot} from "test/vaults/mocks/MockRoot.sol";
 import {MockManager} from "test/vaults/mocks/MockManager.sol";
 import {MockAxelarGasService} from "test/vaults/mocks/MockAxelarGasService.sol";
 import {MockGasService} from "test/vaults/mocks/MockGasService.sol";
-import {CastLib} from "src/vaults/libraries/CastLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 

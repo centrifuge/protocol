@@ -7,7 +7,7 @@ import "src/vaults/interfaces/IERC7540.sol";
 import "src/misc/interfaces/IERC20.sol";
 import {CentrifugeRouter} from "src/vaults/CentrifugeRouter.sol";
 import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
-import {CastLib} from "src/vaults/libraries/CastLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {Domain} from "src/vaults/interfaces/IPoolManager.sol";
 import {ITransferProxyFactory} from "src/vaults/interfaces/factories/ITransferProxy.sol";
 

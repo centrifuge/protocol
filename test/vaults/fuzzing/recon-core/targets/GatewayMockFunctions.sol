@@ -12,7 +12,7 @@ import {ERC20} from "src/misc/ERC20.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
 import {RestrictionUpdate} from "src/vaults/interfaces/token/IRestrictionManager.sol";
-import {CastLib} from "src/vaults/libraries/CastLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 // @dev A way to separately code and maintain a mocked implementation of `Gateway`
 // Based on
