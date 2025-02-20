@@ -7,7 +7,7 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
 import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
 import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
-import {IERC20, IERC20Metadata} from "src/vaults/interfaces/IERC20.sol";
+import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IInvestmentManager, InvestmentState} from "src/vaults/interfaces/IInvestmentManager.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";

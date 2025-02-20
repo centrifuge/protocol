@@ -5,7 +5,7 @@ import {Auth} from "src/misc/Auth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
 import {CastLib} from "src/vaults/libraries/CastLib.sol";
-import {IERC20, IERC20Permit, IERC20Wrapper} from "src/vaults/interfaces/IERC20.sol";
+import {IERC20, IERC20Permit, IERC20Wrapper} from "src/misc/interfaces/IERC20.sol";
 import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
 import {ICentrifugeRouter} from "src/vaults/interfaces/ICentrifugeRouter.sol";
 import {IPoolManager, Domain} from "src/vaults/interfaces/IPoolManager.sol";

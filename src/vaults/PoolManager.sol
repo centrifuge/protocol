@@ -5,7 +5,7 @@ import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol"
 import {ITrancheFactory} from "src/vaults/interfaces/factories/ITrancheFactory.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
-import {IERC20Metadata, IERC20Wrapper} from "src/vaults/interfaces/IERC20.sol";
+import {IERC20Metadata, IERC20Wrapper} from "src/misc/interfaces/IERC20.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";

@@ -12,7 +12,7 @@ import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
 import {IInvestmentManager} from "src/vaults/interfaces/IInvestmentManager.sol";
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/vaults/interfaces/IERC7575.sol";
-import "src/vaults/interfaces/IERC20.sol";
+import "src/misc/interfaces/IERC20.sol";
 
 /// @title  ERC7540Vault
 /// @notice Asynchronous Tokenized Vault standard implementation for Centrifuge pools

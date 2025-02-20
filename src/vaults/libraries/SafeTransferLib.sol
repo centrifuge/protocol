@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IERC20} from "src/vaults/interfaces/IERC20.sol";
+import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
 /// @title  Safe Transfer Lib
 /// @author Modified from Uniswap v3 Periphery (libraries/TransferHelper.sol)

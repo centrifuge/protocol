@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
-import {ERC20} from "src/vaults/token/ERC20.sol";
+import {ERC20} from "src/misc/ERC20.sol";
 import {Gateway} from "src/vaults/gateway/Gateway.sol";
 import {MockGateway} from "test/vaults/mocks/MockGateway.sol";
 import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";

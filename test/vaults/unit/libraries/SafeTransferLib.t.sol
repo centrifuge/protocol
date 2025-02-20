@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
-import {IERC20} from "src/vaults/interfaces/IERC20.sol";
+import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
 
 /// @dev Token not returning any boolean.

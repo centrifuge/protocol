@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
-import {IERC20} from "src/vaults/interfaces/IERC20.sol";
+import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
 
 /// @title  Escrow

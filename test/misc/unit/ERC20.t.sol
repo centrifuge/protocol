@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IERC1271} from "src/misc/libraries/SignatureLib.sol";
 
-import {ERC20} from "src/vaults/token/ERC20.sol";
+import {ERC20} from "src/misc/ERC20.sol";
 
 import "forge-std/Test.sol";
 

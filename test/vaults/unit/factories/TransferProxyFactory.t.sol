@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {TransferProxy, TransferProxyFactory} from "src/vaults/factories/TransferProxyFactory.sol";
-import {ERC20} from "src/vaults/token/ERC20.sol";
+import {ERC20} from "src/misc/ERC20.sol";
 import {MockGateway} from "test/vaults/mocks/MockGateway.sol";
 import {MockPoolManager} from "test/vaults/mocks/MockPoolManager.sol";
 import {ITransferProxyFactory} from "src/vaults/interfaces/factories/ITransferProxy.sol";

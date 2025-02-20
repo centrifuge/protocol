@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
-import {IERC20} from "src/vaults/interfaces/IERC20.sol";
+import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
