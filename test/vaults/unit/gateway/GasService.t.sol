@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {Test} from "forge-std/Test.sol";
 import {GasService} from "src/vaults/gateway/GasService.sol";
 import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
-import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 contract GasServiceTest is Test {

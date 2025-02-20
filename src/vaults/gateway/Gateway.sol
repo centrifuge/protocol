@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {ArrayLib} from "src/vaults/libraries/ArrayLib.sol";
-import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";

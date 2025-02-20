@@ -6,7 +6,7 @@ import {AxelarAdapter} from "src/vaults/gateway/adapters/axelar/Adapter.sol";
 import {MockAxelarGateway} from "test/vaults/mocks/MockAxelarGateway.sol";
 import {MockGateway} from "test/vaults/mocks/MockGateway.sol";
 import {MockAxelarGasService} from "test/vaults/mocks/MockAxelarGasService.sol";
-import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 contract AxelarAdapterTest is Test {

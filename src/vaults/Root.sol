@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
-import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IRoot, IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 

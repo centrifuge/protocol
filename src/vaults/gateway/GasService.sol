@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {Auth} from "src/misc/Auth.sol";
 import {IGasService} from "src/vaults/interfaces/gateway/IGasService.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
 
 /// @title  GasService

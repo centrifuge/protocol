@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
-import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 contract BytesLibTest is Test {
     function testSlice(bytes memory data, bytes memory randomStart, bytes memory randomEnd) public pure {
@@ -23,6 +23,11 @@ contract BytesLibTest is Test {
     function testToUint16(uint16 number, bytes memory randomStart, bytes memory randomEnd) public pure {
         bytes memory value = bytes.concat(bytes.concat(randomStart, abi.encodePacked(number)), randomEnd);
         assertEq(BytesLib.toUint16(value, randomStart.length), number);
+    }
+
+    function testToUint32(uint32 number, bytes memory randomStart, bytes memory randomEnd) public pure {
+        bytes memory value = bytes.concat(bytes.concat(randomStart, abi.encodePacked(number)), randomEnd);
+        assertEq(BytesLib.toUint32(value, randomStart.length), number);
     }
 
     function testToUint64(uint64 number, bytes memory randomStart, bytes memory randomEnd) public pure {

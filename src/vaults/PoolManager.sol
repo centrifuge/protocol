@@ -20,7 +20,7 @@ import {
     Domain,
     IPoolManager
 } from "src/vaults/interfaces/IPoolManager.sol";
-import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
 import {IGasService} from "src/vaults/interfaces/gateway/IGasService.sol";

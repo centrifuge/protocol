@@ -6,7 +6,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
-import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IInvestmentManager, InvestmentState} from "src/vaults/interfaces/IInvestmentManager.sol";

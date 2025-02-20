@@ -7,7 +7,7 @@ import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IHook, HookData} from "src/vaults/interfaces/token/IHook.sol";
 import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
 import {BitmapLib} from "src/vaults/libraries/BitmapLib.sol";
-import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 import {RestrictionUpdate, IRestrictionManager} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 
