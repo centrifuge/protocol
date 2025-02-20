@@ -110,7 +110,8 @@ contract SingleShareClass is Auth, ISingleShareClass {
     ) external auth {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
 
-        _updateDepositRequest(poolId, shareClassId_, int128(amount), investor, depositAssetId);
+        // NOTE: CV ensures amount > 0
+        _updateDepositRequest(poolId, shareClassId_, amount.toInt128(), investor, depositAssetId);
     }
 
     function cancelDepositRequest(PoolId poolId, ShareClassId shareClassId_, bytes32 investor, AssetId depositAssetId)
@@ -122,7 +123,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
         cancelledAssetAmount = depositRequest[shareClassId_][depositAssetId][investor].pending;
 
-        _updateDepositRequest(poolId, shareClassId_, -int128(cancelledAssetAmount), investor, depositAssetId);
+        _updateDepositRequest(poolId, shareClassId_, -(cancelledAssetAmount.toInt128()), investor, depositAssetId);
     }
 
     /// @inheritdoc IShareClassManager
@@ -135,7 +136,8 @@ contract SingleShareClass is Auth, ISingleShareClass {
     ) external auth {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
 
-        _updateRedeemRequest(poolId, shareClassId_, int128(amount), investor, payoutAssetId);
+        // NOTE: CV ensures amount > 0
+        _updateRedeemRequest(poolId, shareClassId_, amount.toInt128(), investor, payoutAssetId);
     }
 
     /// @inheritdoc IShareClassManager
@@ -148,7 +150,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
         cancelledShareAmount = redeemRequest[shareClassId_][payoutAssetId][investor].pending;
 
-        _updateRedeemRequest(poolId, shareClassId_, -int128(cancelledShareAmount), investor, payoutAssetId);
+        _updateRedeemRequest(poolId, shareClassId_, -(cancelledShareAmount.toInt128()), investor, payoutAssetId);
     }
 
     /// @inheritdoc IShareClassManager
@@ -160,7 +162,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         IERC7726 valuation
     ) external auth returns (uint128 approvedAssetAmount, uint128 approvedPoolAmount) {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
-        require(approvalRatio.inner() <= 1e18, MaxApprovalRatioExceeded());
+        require(approvalRatio.inner() > 0 && approvalRatio.inner() <= 1e18, ApprovalRatioOutOfBounds());
 
         // Advance epochId if it has not been advanced within this transaction (e.g. in case of multiCall context)
         uint32 approvalEpochId = _advanceEpoch(poolId);
@@ -206,7 +208,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         returns (uint128 approvedShareAmount, uint128 pendingShareAmount)
     {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
-        require(approvalRatio.inner() <= 1e18, MaxApprovalRatioExceeded());
+        require(approvalRatio.inner() > 0 && approvalRatio.inner() <= 1e18, ApprovalRatioOutOfBounds());
 
         // Advance epochId if it has not been advanced within this transaction (e.g. in case of multiCall context)
         uint32 approvalEpochId = _advanceEpoch(poolId);
@@ -378,14 +380,25 @@ contract SingleShareClass is Auth, ISingleShareClass {
                 continue;
             }
 
+            // Skip epoch if user cannot claim
             uint128 approvedAssetAmount = epochAmounts_.depositApprovalRate.mulUint128(userOrder.pending);
+            if (approvedAssetAmount == 0) {
+                emit ClaimedDeposit(poolId, shareClassId_, epochId_, investor, depositAssetId, 0, userOrder.pending, 0);
+                continue;
+            }
+
             uint128 claimableShareAmount = uint256(approvedAssetAmount).mulDiv(
                 epochAmounts_.depositSharesIssued, epochAmounts_.depositAssetAmount
             ).toUint128();
 
-            userOrder.pending -= approvedAssetAmount;
-            payoutShareAmount += claimableShareAmount;
-            paymentAssetAmount += approvedAssetAmount;
+            if (claimableShareAmount > 0) {
+                userOrder.pending -= approvedAssetAmount;
+                payoutShareAmount += claimableShareAmount;
+                paymentAssetAmount += approvedAssetAmount;
+            } else {
+                // Increase pending by approved amount as it did not lead to claimable amount
+                pendingDeposit[shareClassId_][depositAssetId] += approvedAssetAmount;
+            }
 
             emit ClaimedDeposit(
                 poolId,
@@ -433,15 +446,25 @@ contract SingleShareClass is Auth, ISingleShareClass {
                 continue;
             }
 
+            // Skip epoch if user cannot claim
             uint128 approvedShareAmount = epochAmounts_.redeemApprovalRate.mulUint128(userOrder.pending);
+            if (approvedShareAmount == 0) {
+                emit ClaimedRedeem(poolId, shareClassId_, epochId_, investor, payoutAssetId, 0, userOrder.pending, 0);
+                continue;
+            }
+
             uint128 claimableAssetAmount = uint256(approvedShareAmount).mulDiv(
                 epochAmounts_.redeemAssetAmount, epochAmounts_.redeemSharesRevoked
             ).toUint128();
 
-            paymentShareAmount += approvedShareAmount;
-            payoutAssetAmount += claimableAssetAmount;
-
-            userOrder.pending -= approvedShareAmount;
+            if (claimableAssetAmount > 0) {
+                paymentShareAmount += approvedShareAmount;
+                payoutAssetAmount += claimableAssetAmount;
+                userOrder.pending -= approvedShareAmount;
+            } else {
+                // Increase pending by approved amount as it did not lead to claimable amount
+                pendingRedeem[shareClassId_][payoutAssetId] += approvedShareAmount;
+            }
 
             emit ClaimedRedeem(
                 poolId,
@@ -550,8 +573,8 @@ contract SingleShareClass is Auth, ISingleShareClass {
             ClaimDepositRequired()
         );
 
-        userOrder.lastUpdate = epochId[poolId];
         userOrder.pending = amount >= 0 ? userOrder.pending + uint128(amount) : userOrder.pending - uint128(-amount);
+        userOrder.lastUpdate = epochId[poolId];
 
         pendingDeposit[shareClassId_][depositAssetId] = amount >= 0
             ? pendingDeposit[shareClassId_][depositAssetId] + uint128(amount)
