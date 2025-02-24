@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import "test/vaults/BaseTest.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
 contract RedeemTest is BaseTest {
     using CastLib for *;
@@ -141,7 +142,7 @@ contract RedeemTest is BaseTest {
 
         deposit(vault_, investor, amount); // deposit funds first // deposit funds first
 
-        vm.expectRevert(bytes("ERC20/insufficient-allowance"));
+        vm.expectRevert(IERC20.InsufficientAllowance.selector);
         vault.requestRedeem(amount, investor, investor);
 
         assertEq(tranche.allowance(investor, address(this)), 0);
@@ -229,7 +230,7 @@ contract RedeemTest is BaseTest {
         assertApproxEqAbs(vault.maxMint(investor), amount / 2, 1);
 
         // Fail - Redeem amount too big
-        vm.expectRevert(bytes("ERC20/insufficient-balance"));
+        vm.expectRevert(IERC20.InsufficientBalance.selector);
         centrifugeChain.triggerIncreaseRedeemOrder(poolId, trancheId, investor, defaultAssetId, uint128(amount + 1));
 
         //Fail - Tranche token amount zero
@@ -310,7 +311,7 @@ contract RedeemTest is BaseTest {
         bytes16 trancheId = vault.trancheId();
 
         // Fail - Redeem amount too big
-        vm.expectRevert(bytes("ERC20/insufficient-balance"));
+        vm.expectRevert(IERC20.InsufficientBalance.selector);
         centrifugeChain.triggerIncreaseRedeemOrder(poolId, trancheId, investor, defaultAssetId, uint128(amount + 1));
 
         // should work even if investor is frozen

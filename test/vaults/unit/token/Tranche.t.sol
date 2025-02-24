@@ -9,6 +9,7 @@ import {MockRestrictionManager} from "test/vaults/mocks/MockRestrictionManager.s
 import "forge-std/Test.sol";
 import {GasSnapshot} from "forge-gas-snapshot/GasSnapshot.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
 interface ERC20Like {
     function balanceOf(address) external view returns (uint256);
@@ -130,7 +131,7 @@ contract TrancheTest is Test, GasSnapshot {
 
         restrictionManager.updateMember(address(token), targetUser, uint64(validUntil));
 
-        vm.expectRevert(bytes("ERC20/insufficient-allowance"));
+        vm.expectRevert(IERC20.InsufficientAllowance.selector);
         token.transferFrom(sender, targetUser, amount);
 
         vm.prank(sender);

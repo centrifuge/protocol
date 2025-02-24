@@ -11,6 +11,8 @@ import {IERC20, IERC20Metadata, IERC20Permit} from "src/misc/interfaces/IERC20.s
 /// @notice Standard ERC-20 implementation, with mint/burn functionality and permit logic.
 /// @author Modified from https://github.com/makerdao/xdomain-dss/blob/master/src/Dai.sol
 contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
+    error FileUnrecognizedWhat();
+
     /// @inheritdoc IERC20Metadata
     string public name;
     /// @inheritdoc IERC20Metadata
@@ -71,16 +73,16 @@ contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
     function file(bytes32 what, string memory data) public virtual auth {
         if (what == "name") name = data;
         else if (what == "symbol") symbol = data;
-        else revert("ERC20/file-unrecognized-param");
+        else revert FileUnrecognizedWhat();
         emit File(what, data);
     }
 
     // --- ERC20 Mutations ---
     /// @inheritdoc IERC20
     function transfer(address to, uint256 value) public virtual returns (bool) {
-        require(to != address(0) && to != address(this), "ERC20/invalid-address");
+        require(to != address(0) && to != address(this), InvalidAddress());
         uint256 balance = balanceOf(msg.sender);
-        require(balance >= value, "ERC20/insufficient-balance");
+        require(balance >= value, InsufficientBalance());
 
         unchecked {
             _setBalance(msg.sender, _balanceOf(msg.sender) - value);
@@ -99,14 +101,14 @@ contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
     }
 
     function _transferFrom(address sender, address from, address to, uint256 value) internal virtual returns (bool) {
-        require(to != address(0) && to != address(this), "ERC20/invalid-address");
+        require(to != address(0) && to != address(this), InvalidAddress());
         uint256 balance = balanceOf(from);
-        require(balance >= value, "ERC20/insufficient-balance");
+        require(balance >= value, InsufficientBalance());
 
         if (from != sender) {
             uint256 allowed = allowance[from][sender];
             if (allowed != type(uint256).max) {
-                require(allowed >= value, "ERC20/insufficient-allowance");
+                require(allowed >= value, InsufficientAllowance());
                 unchecked {
                     allowance[from][sender] = allowed - value;
                 }
@@ -135,7 +137,7 @@ contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
 
     // --- Mint/Burn ---
     function mint(address to, uint256 value) public virtual auth {
-        require(to != address(0) && to != address(this), "ERC20/invalid-address");
+        require(to != address(0) && to != address(this), InvalidAddress());
         unchecked {
             // We don't need an overflow check here b/c balances[to] <= totalSupply
             // and there is an overflow check below
@@ -148,12 +150,12 @@ contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
 
     function burn(address from, uint256 value) public virtual auth {
         uint256 balance = balanceOf(from);
-        require(balance >= value, "ERC20/insufficient-balance");
+        require(balance >= value, InsufficientBalance());
 
         if (from != msg.sender) {
             uint256 allowed = allowance[from][msg.sender];
             if (allowed != type(uint256).max) {
-                require(allowed >= value, "ERC20/insufficient-allowance");
+                require(allowed >= value, InsufficientAllowance());
 
                 unchecked {
                     allowance[from][msg.sender] = allowed - value;
@@ -172,7 +174,7 @@ contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
 
     // --- Approve by signature ---
     function permit(address owner, address spender, uint256 value, uint256 deadline, bytes memory signature) public {
-        require(block.timestamp <= deadline, "ERC20/permit-expired");
+        require(block.timestamp <= deadline, PermitExpired());
 
         uint256 nonce;
         unchecked {
@@ -187,7 +189,7 @@ contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
             )
         );
 
-        require(SignatureLib.isValidSignature(owner, digest, signature), "ERC20/invalid-permit");
+        require(SignatureLib.isValidSignature(owner, digest, signature), InvalidPermit());
 
         allowance[owner][spender] = value;
         emit Approval(owner, spender, value);
