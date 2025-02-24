@@ -31,8 +31,8 @@ library MessagesLib {
         /// 8 - Update Centrifuge gas price
         UpdateCentrifugeGasPrice,
         // --- Pool Manager ---
-        /// 9 - Add an asset id -> EVM address mapping
-        AddAsset,
+        /// 9 - Notify CP side of an existing asset on the CV side
+        RegisterAsset,
         /// 10 - Add Pool
         AddPool,
         /// 11 - Add a Pool's Tranche Token

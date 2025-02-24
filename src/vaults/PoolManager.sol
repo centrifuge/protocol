@@ -6,6 +6,7 @@ import {ITrancheFactory} from "src/vaults/interfaces/factories/ITrancheFactory.s
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 import {IERC20Metadata, IERC20Wrapper} from "src/vaults/interfaces/IERC20.sol";
+import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
 import {Auth} from "src/vaults/Auth.sol";
 import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
 import {MathLib} from "src/vaults/libraries/MathLib.sol";
@@ -26,6 +27,7 @@ import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
 import {IGasService} from "src/vaults/interfaces/gateway/IGasService.sol";
 import {IAuth} from "src/vaults/interfaces/IAuth.sol";
 import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
+import {ERC6909} from "../misc/ERC6909.sol";
 
 /// @title  Pool Manager
 /// @notice This contract manages which pools & tranches exist,
@@ -46,14 +48,19 @@ contract PoolManager is Auth, IPoolManager {
     ITrancheFactory public trancheFactory;
     IGasService public gasService;
 
+    struct AssetIdKey {
+        address asset;
+        uint256 tokenId;
+    }
+
     mapping(uint64 poolId => Pool) internal _pools;
     mapping(address => VaultAsset) internal _vaultToAsset;
     mapping(uint64 poolId => mapping(bytes16 => UndeployedTranche)) internal _undeployedTranches;
 
     /// @inheritdoc IPoolManager
-    mapping(uint128 assetId => address) public idToAsset;
+    mapping(uint128 assetId => AssetIdKey) public idToAsset;
     /// @inheritdoc IPoolManager
-    mapping(address => uint128 assetId) public assetToId;
+    mapping(AssetIdKey assedIdKey => uint128 assetId) public assetToId;
 
     constructor(address escrow_, address vaultFactory_, address trancheFactory_) Auth(msg.sender) {
         escrow = IEscrow(escrow_);
@@ -80,8 +87,9 @@ contract PoolManager is Auth, IPoolManager {
 
     // --- Outgoing message handling ---
     /// @inheritdoc IPoolManager
+    // TODO: Remove in separate PR - not needed anymore
     function transferAssets(address asset, bytes32 recipient, uint128 amount) external {
-        uint128 assetId = assetToId[asset];
+        uint128 assetId = assetToId[_formatAssetIdKey(asset, 0)];
         require(assetId != 0, "PoolManager/unknown-asset");
 
         SafeTransferLib.safeTransferFrom(asset, msg.sender, address(escrow), amount);
@@ -115,14 +123,76 @@ contract PoolManager is Auth, IPoolManager {
         emit TransferTrancheTokens(poolId, trancheId, msg.sender, destinationDomain, destinationId, recipient, amount);
     }
 
+    // @inheritdoc IPoolManager
+    function registerAsset(address asset, uint256 tokenId, uint32 destinationChain) external returns (uint128 assetId) {
+        string memory name;
+        string memory symbol;
+        uint8 decimals;
+
+        if (tokenId == 0) {
+            try IERC20Metadata(asset).name() returns (string memory _name) {
+                name = string(bytes(_name).sliceZeroPadded(0, 128));
+            } catch {}
+
+            try IERC20Metadata(asset).symbol() returns (string memory _symbol) {
+                symbol = _symbol;
+            } catch {}
+
+            try IERC20Metadata(asset).decimals() returns (uint8 _decimals) {
+                require(_decimals >= MIN_DECIMALS, "PoolManager/too-few-asset-decimals");
+                require(_decimals <= MAX_DECIMALS, "PoolManager/too-many-asset-decimals");
+                decimals = _decimals;
+            } catch {
+                revert("PoolManager/asset-missing-decimals");
+            }
+        } else {
+            try IERC6909MetadataExt(asset, tokenId).name() returns (string memory _name) {
+                name = string(bytes(_name).sliceZeroPadded(0, 128));
+            } catch {}
+
+            try IERC6909MetadataExt(asset, tokenId).symbol() returns (string memory _symbol) {
+                symbol = _symbol;
+            } catch {}
+
+            try IERC6909MetadataExt(asset, tokenId).decimals() returns (uint8 _decimals) {
+                require(_decimals >= MIN_DECIMALS, "PoolManager/too-few-asset-decimals");
+                require(_decimals <= MAX_DECIMALS, "PoolManager/too-many-asset-decimals");
+                decimals = _decimals;
+            } catch {
+                revert("PoolManager/asset-missing-decimals");
+            }
+        }
+
+        AssetIdKey key = _formatAssetIdKey(asset, tokenId);
+        assetId = assetToId[key];
+        if (assetId == 0) {
+            _assetCounter++;
+            assetId = uint128(bytes16(abi.encodePacked(uint32(block.chainid), _assetCounter)));
+
+            idToAsset[assetId] = key;
+            assetToId[key] = assetId;
+
+            // Give investment manager infinite approval for asset
+            // in the escrow to transfer to the user on redeem or withdraw
+            // TODO: Fix for ERC6909 once escrow PR is in
+            escrow.approveMax(asset, investmentManager);
+        }
+
+        gateway.send(
+            abi.encodePacked(uint8(MessagesLib.Call.RegisterAsset), assetId, name, symbol.toBytes32(), decimals),
+            address(this),
+            destinationChain
+        );
+
+        emit RegisterAsset(assetId, asset, tokenId, name, symbol, decimals);
+    }
+
     // --- Incoming message handling ---
     /// @inheritdoc IPoolManager
     function handle(bytes calldata message) external auth {
         MessagesLib.Call call = MessagesLib.messageType(message);
 
-        if (call == MessagesLib.Call.AddAsset) {
-            addAsset(message.toUint128(1), message.toAddress(17));
-        } else if (call == MessagesLib.Call.AddPool) {
+        if (call == MessagesLib.Call.AddPool) {
             addPool(message.toUint64(1));
         } else if (call == MessagesLib.Call.AddTranche) {
             addTranche(
@@ -178,8 +248,10 @@ contract PoolManager is Auth, IPoolManager {
     /// @inheritdoc IPoolManager
     function allowAsset(uint64 poolId, uint128 assetId) public auth {
         require(isPoolActive(poolId), "PoolManager/invalid-pool");
-        address asset = idToAsset[assetId];
-        require(asset != address(0), "PoolManager/unknown-asset");
+        AssetIdKey key = idToAsset[assetId];
+        require(key.asset != address(0), "PoolManager/unknown-asset");
+
+        // TODO: Fix for ERC6909 once escrow PR is in
 
         _pools[poolId].allowedAssets[asset] = true;
         emit AllowAsset(poolId, asset);
@@ -279,36 +351,12 @@ contract PoolManager is Auth, IPoolManager {
     }
 
     /// @inheritdoc IPoolManager
-    function addAsset(uint128 assetId, address asset) public auth {
-        // Currency index on the Centrifuge side should start at 1
-        require(assetId != 0, "PoolManager/asset-id-has-to-be-greater-than-0");
-        require(idToAsset[assetId] == address(0), "PoolManager/asset-id-in-use");
-        require(assetToId[asset] == 0, "PoolManager/asset-address-in-use");
-
-        uint8 assetDecimals = IERC20Metadata(asset).decimals();
-        require(assetDecimals >= MIN_DECIMALS, "PoolManager/too-few-asset-decimals");
-        require(assetDecimals <= MAX_DECIMALS, "PoolManager/too-many-asset-decimals");
-
-        idToAsset[assetId] = asset;
-        assetToId[asset] = assetId;
-
-        // Give investment manager infinite approval for asset
-        // in the escrow to transfer to the user on redeem or withdraw
-        escrow.approveMax(asset, investmentManager);
-
-        // Give pool manager infinite approval for asset
-        // in the escrow to transfer to the user on transfer
-        escrow.approveMax(asset, address(this));
-
-        emit AddAsset(assetId, asset);
-    }
-
-    /// @inheritdoc IPoolManager
+    // TODO: Remove in separate PR - not needed anymore
     function handleTransfer(uint128 assetId, address recipient, uint128 amount) public auth {
-        address asset = idToAsset[assetId];
-        require(asset != address(0), "PoolManager/unknown-asset");
+        AssetIdKey key = idToAsset[assetId];
+        require(key.asset != address(0), "PoolManager/unknown-asset");
 
-        SafeTransferLib.safeTransferFrom(asset, address(escrow), recipient, amount);
+        SafeTransferLib.safeTransferFrom(key.asset, address(escrow), recipient, amount);
     }
 
     /// @inheritdoc IPoolManager
@@ -467,5 +515,9 @@ contract PoolManager is Auth, IPoolManager {
 
     function _formatDomain(Domain domain, uint64 chainId) internal pure returns (bytes9) {
         return bytes9(BytesLib.slice(abi.encodePacked(uint8(domain), chainId), 0, 9));
+    }
+
+    function _formatAssetIdKey(address asset, uint256 tokenId) internal pure returns (AssetIdKey memory) {
+        return AssetIdKey(asset, tokenId);
     }
 }

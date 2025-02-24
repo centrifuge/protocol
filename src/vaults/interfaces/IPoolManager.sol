@@ -52,7 +52,7 @@ enum Domain {
 
 interface IPoolManager is IMessageHandler, IRecoverable {
     event File(bytes32 indexed what, address data);
-    event AddAsset(uint128 indexed assetId, address indexed asset);
+    event RegisterAsset(uint128 indexed assetId, address indexed asset, uint256 indexed tokenId, string name, string symbol, uint8 decimals);
     event AddPool(uint64 indexed poolId);
     event AllowAsset(uint64 indexed poolId, address indexed asset);
     event DisallowAsset(uint64 indexed poolId, address indexed asset);
@@ -159,11 +159,10 @@ interface IPoolManager is IMessageHandler, IRecoverable {
     /// @param  hook The new hook addres
     function updateTrancheHook(uint64 poolId, bytes16 trancheId, address hook) external;
 
-    /// @notice A global chain agnostic asset index is maintained on Centrifuge. This function maps
-    ///         a asset from the Centrifuge index to its corresponding address on the evm chain.
-    ///         The chain agnostic asset id has to be used to pass asset information to the Centrifuge.
-    /// @dev    This function can only be executed by the gateway contract.
-    function addAsset(uint128 assetId, address asset) external;
+    /// @notice     Registers an ERC-20 or ERC-6909 asset in another chain.
+    /// @dev        `decimals()` MUST return a `uint8` value between 2 and 18.
+    ///             `name()` and `symbol()` MAY return no values.
+    function registerAsset(address asset, uint256 tokenId, uint32 destinationChain) external returns (uint128 assetId);
 
     /// @notice Executes a message from the gateway
     /// @dev    The function can only be executed by the gateway contract.
