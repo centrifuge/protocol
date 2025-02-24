@@ -80,10 +80,10 @@ contract SignatureLibTest is Test {
         assertFalse(isValid);
     }
 
-    function testFailingContractSignature() public {
+    function testErrContractSignature() public {
         MockFailingSigner signer = new MockFailingSigner();
+        vm.expectRevert(SignatureLib.InvalidSigner.selector);
         SignatureLib.isValidSignature(address(signer), DIGEST, DUMMY_SIGNATURE);
-        vm.expectRevert("Signature validation failed");
     }
 
     function testSignatureReplay() public view {

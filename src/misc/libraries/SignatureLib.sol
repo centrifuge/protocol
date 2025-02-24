@@ -7,12 +7,14 @@ interface IERC1271 {
 
 /// @title  Signature Lib
 library SignatureLib {
+    error InvalidSigner();
+
     function isValidSignature(address signer, bytes32 digest, bytes memory signature)
         internal
         view
         returns (bool valid)
     {
-        require(signer != address(0), "SignatureLib/invalid-signer");
+        require(signer != address(0), InvalidSigner());
 
         if (signature.length == 65) {
             bytes32 r;
