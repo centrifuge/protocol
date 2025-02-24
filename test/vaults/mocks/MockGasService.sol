@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import "test/vaults/mocks/Mock.sol";
-import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
 
 contract MockGasService is Mock {

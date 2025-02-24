@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/vaults/Auth.sol";
-import {ArrayLib} from "src/vaults/libraries/ArrayLib.sol";
-import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
-import {MathLib} from "src/vaults/libraries/MathLib.sol";
+import {Auth} from "src/misc/Auth.sol";
+import {ArrayLib} from "src/misc/libraries/ArrayLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+
 import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
-import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
 import {TransientStorage} from "src/vaults/libraries/TransientStorage.sol";
 import {IGateway, IMessageHandler} from "src/vaults/interfaces/gateway/IGateway.sol";
 import {IRoot} from "src/vaults/interfaces/IRoot.sol";

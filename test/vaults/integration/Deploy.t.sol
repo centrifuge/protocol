@@ -10,15 +10,16 @@ import {Guardian} from "src/vaults/admin/Guardian.sol";
 import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
 import {MockSafe} from "test/vaults/mocks/MockSafe.sol";
 import {PoolManager, Pool} from "src/vaults/PoolManager.sol";
-import {ERC20} from "src/vaults/token/ERC20.sol";
+import {ERC20} from "src/misc/ERC20.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 import {ERC7540VaultTest} from "test/vaults/unit/ERC7540Vault.t.sol";
 import {PermissionlessAdapter} from "test/vaults/mocks/PermissionlessAdapter.sol";
 import {Root} from "src/vaults/Root.sol";
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
 import {AxelarScript} from "script/vaults/Axelar.s.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import "script/vaults/Deployer.sol";
-import "src/vaults/libraries/MathLib.sol";
+import "src/misc/libraries/MathLib.sol";
 import "forge-std/Test.sol";
 
 interface ApproveLike {
@@ -64,7 +65,7 @@ contract DeployTest is Test, Deployer {
     }
 
     function testDeployerHasNoAccess() public {
-        vm.expectRevert("Auth/not-authorized");
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         root.relyContract(address(investmentManager), address(1));
 
         // checking in the same order as they are deployed

@@ -13,7 +13,7 @@ import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol"
 import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
 
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
-import {ERC20} from "src/vaults/token/ERC20.sol";
+import {ERC20} from "src/misc/ERC20.sol";
 
 // Mocks
 import {IRoot} from "src/vaults/interfaces/IRoot.sol";

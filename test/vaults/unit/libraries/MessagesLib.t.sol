@@ -2,8 +2,8 @@
 pragma solidity 0.8.28;
 
 import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
-import {CastLib} from "src/vaults/libraries/CastLib.sol";
-import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import "forge-std/Test.sol";
 
 contract MessagesLibTest is Test {

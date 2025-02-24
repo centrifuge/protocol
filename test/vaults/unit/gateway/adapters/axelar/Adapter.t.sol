@@ -6,8 +6,8 @@ import {AxelarAdapter} from "src/vaults/gateway/adapters/axelar/Adapter.sol";
 import {MockAxelarGateway} from "test/vaults/mocks/MockAxelarGateway.sol";
 import {MockGateway} from "test/vaults/mocks/MockGateway.sol";
 import {MockAxelarGasService} from "test/vaults/mocks/MockAxelarGasService.sol";
-import {AxelarForwarder} from "src/vaults/gateway/adapters/axelar/Forwarder.sol";
-import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 contract AxelarAdapterTest is Test {
     MockAxelarGateway axelarGateway;
@@ -56,7 +56,7 @@ contract AxelarAdapterTest is Test {
         adapter.file("random", value);
 
         vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert("Auth/not-authorized");
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         adapter.file("axelarCost", value);
     }
 

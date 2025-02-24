@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
-import {ERC20} from "src/vaults/token/ERC20.sol";
+import {ERC20} from "src/misc/ERC20.sol";
 import {Gateway} from "src/vaults/gateway/Gateway.sol";
 import {MockGateway} from "test/vaults/mocks/MockGateway.sol";
 import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
@@ -10,8 +10,9 @@ import {MockRoot} from "test/vaults/mocks/MockRoot.sol";
 import {MockManager} from "test/vaults/mocks/MockManager.sol";
 import {MockAxelarGasService} from "test/vaults/mocks/MockAxelarGasService.sol";
 import {MockGasService} from "test/vaults/mocks/MockGasService.sol";
-import {CastLib} from "src/vaults/libraries/CastLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 contract GatewayTest is Test {
     using CastLib for *;
@@ -117,7 +118,7 @@ contract GatewayTest is Test {
         // remove self from wards
         gateway.deny(self);
         // auth fail
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         gateway.file("poolManager", self);
     }
 
@@ -218,7 +219,7 @@ contract GatewayTest is Test {
         gateway.file("adapters", twoDuplicateMockAdapters);
 
         gateway.deny(address(this));
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         gateway.file("adapters", threeMockAdapters);
     }
 
@@ -835,7 +836,7 @@ contract GatewayTest is Test {
         assertEq(address(gateway).balance, INITIAL_BALANCE);
         assertEq(receiver.balance, 0);
 
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(makeAddr("UnauthorizedCaller"));
         gateway.recoverTokens(ETH, receiver, INITIAL_BALANCE);
 

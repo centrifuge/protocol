@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
+
 import "test/vaults/BaseTest.sol";
-import {CastLib} from "src/vaults/libraries/CastLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {Domain} from "src/vaults/interfaces/IPoolManager.sol";
 import {IRestrictionManager} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 import {MockHook} from "test/vaults/mocks/MockHook.sol";
@@ -65,7 +68,7 @@ contract PoolManagerTest is BaseTest {
         vm.expectRevert(bytes("PoolManager/pool-already-added"));
         centrifugeChain.addPool(poolId);
 
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
         poolManager.addPool(poolId);
     }
@@ -87,7 +90,7 @@ contract PoolManagerTest is BaseTest {
         centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook);
         centrifugeChain.addPool(poolId);
 
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
         poolManager.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook);
 
@@ -266,10 +269,10 @@ contract PoolManagerTest is BaseTest {
         centrifugeChain.incomingTransfer(assetId, bytes32(bytes20(recipient)), amount);
         centrifugeChain.addAsset(assetId, address(erc20));
 
-        vm.expectRevert(bytes("SafeTransferLib/safe-transfer-from-failed"));
+        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
         centrifugeChain.incomingTransfer(assetId, bytes32(bytes20(recipient)), amount);
 
-        vm.expectRevert(bytes("SafeTransferLib/safe-transfer-from-failed"));
+        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
         centrifugeChain.incomingTransfer(assetId, bytes32(bytes20(recipient)), amount);
 
         erc20.mint(address(poolManager.escrow()), amount); // fund escrow
@@ -415,7 +418,7 @@ contract PoolManagerTest is BaseTest {
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
         IRestrictionManager hook = IRestrictionManager(tranche.hook());
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
         hook.updateMember(address(tranche), randomUser, validUntil);
 
@@ -478,7 +481,7 @@ contract PoolManagerTest is BaseTest {
         vm.expectRevert(bytes("PoolManager/unknown-token"));
         centrifugeChain.updateTrancheMetadata(100, bytes16(bytes("100")), updatedTokenName, updatedTokenSymbol);
 
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
         poolManager.updateTrancheMetadata(poolId, trancheId, updatedTokenName, updatedTokenSymbol);
 
@@ -505,7 +508,7 @@ contract PoolManagerTest is BaseTest {
         vm.expectRevert(bytes("PoolManager/unknown-token"));
         centrifugeChain.updateTrancheHook(100, bytes16(bytes("100")), newHook);
 
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
         poolManager.updateTrancheHook(poolId, trancheId, newHook);
 
@@ -530,7 +533,7 @@ contract PoolManagerTest is BaseTest {
         vm.expectRevert(bytes("PoolManager/unknown-token"));
         poolManager.updateRestriction(100, bytes16(bytes("100")), update);
 
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
         poolManager.updateRestriction(poolId, trancheId, update);
 
@@ -602,7 +605,7 @@ contract PoolManagerTest is BaseTest {
         // Allows us to go back in time later
         vm.warp(block.timestamp + 1 days);
 
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
         poolManager.updateTranchePrice(poolId, trancheId, assetId, price, uint64(block.timestamp));
 
@@ -625,7 +628,7 @@ contract PoolManagerTest is BaseTest {
         Tranche tranche = Tranche(tranche_);
 
         poolManager.deny(address(this));
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         poolManager.removeVault(poolId, trancheId, asset);
 
         root.relyContract(address(poolManager), address(this));

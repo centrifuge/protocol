@@ -7,7 +7,7 @@ import {Properties} from "../Properties.sol";
 import {vm} from "@chimera/Hevm.sol";
 
 // Dependencies
-import {ERC20} from "src/vaults/token/ERC20.sol";
+import {ERC20} from "src/misc/ERC20.sol";
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
 
 // Only for Tranche

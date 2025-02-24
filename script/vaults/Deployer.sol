@@ -9,12 +9,11 @@ import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
 import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
 import {RestrictedRedemptions} from "src/vaults/token/RestrictedRedemptions.sol";
-import {TransferProxyFactory} from "src/vaults/factories/TransferProxyFactory.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
 import {CentrifugeRouter} from "src/vaults/CentrifugeRouter.sol";
 import {Guardian} from "src/vaults/admin/Guardian.sol";
-import {IAuth} from "src/vaults/interfaces/IAuth.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import "forge-std/Script.sol";
 
 contract Deployer is Script {
@@ -31,7 +30,6 @@ contract Deployer is Script {
     Gateway public gateway;
     GasService public gasService;
     CentrifugeRouter public router;
-    TransferProxyFactory public transferProxyFactory;
     address public vaultFactory;
     address public restrictionManager;
     address public restrictedRedemptions;
@@ -58,7 +56,6 @@ contract Deployer is Script {
         trancheFactory = address(new TrancheFactory{salt: salt}(address(root), deployer));
         investmentManager = new InvestmentManager(address(root), address(escrow));
         poolManager = new PoolManager(address(escrow), vaultFactory, trancheFactory);
-        transferProxyFactory = new TransferProxyFactory{salt: salt}(address(root), deployer);
         gasService = new GasService(messageCost, proofCost, gasPrice, tokenPrice);
         gateway = new Gateway(address(root), address(poolManager), address(investmentManager), address(gasService));
         router = new CentrifugeRouter(address(routerEscrow), address(gateway), address(poolManager));
@@ -90,7 +87,6 @@ contract Deployer is Script {
         gasService.rely(address(root));
         escrow.rely(address(root));
         routerEscrow.rely(address(root));
-        transferProxyFactory.rely(address(root));
         IAuth(vaultFactory).rely(address(root));
         IAuth(trancheFactory).rely(address(root));
         IAuth(restrictionManager).rely(address(root));
@@ -120,8 +116,6 @@ contract Deployer is Script {
         investmentManager.file("gateway", address(gateway));
 
         gateway.file("payers", address(router), true);
-
-        transferProxyFactory.file("poolManager", address(poolManager));
     }
 
     function wire(address adapter) public {
@@ -136,7 +130,6 @@ contract Deployer is Script {
         IAuth(trancheFactory).deny(deployer);
         IAuth(restrictionManager).deny(deployer);
         IAuth(restrictedRedemptions).deny(deployer);
-        transferProxyFactory.deny(deployer);
         root.deny(deployer);
         investmentManager.deny(deployer);
         poolManager.deny(deployer);

@@ -3,6 +3,8 @@ pragma solidity 0.8.28;
 
 /// @title  ArrayLib
 library ArrayLib {
+    error InvalidValues();
+
     function countNonZeroValues(uint16[8] memory arr) internal pure returns (uint8 count) {
         uint256 elementsCount = arr.length;
         for (uint256 i; i < elementsCount; i++) {
@@ -21,7 +23,7 @@ library ArrayLib {
             }
         }
 
-        require(numValues == 0, "ArrayLib/invalid-values");
+        require(numValues == 0, InvalidValues());
     }
 
     function isEmpty(uint16[8] memory arr) internal pure returns (bool) {

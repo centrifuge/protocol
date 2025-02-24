@@ -4,7 +4,8 @@ pragma solidity 0.8.28;
 import {Test} from "forge-std/Test.sol";
 import {GasService} from "src/vaults/gateway/GasService.sol";
 import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
-import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 contract GasServiceTest is Test {
     using BytesLib for bytes;
@@ -43,7 +44,7 @@ contract GasServiceTest is Test {
         service.file(what, messageCost);
 
         vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert("Auth/not-authorized");
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         service.file("messageCost", messageCost);
     }
 
@@ -73,7 +74,7 @@ contract GasServiceTest is Test {
         assertEq(service.lastUpdatedAt(), futureDate);
 
         vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert("Auth/not-authorized");
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         service.updateGasPrice(value, futureDate);
     }
 
@@ -82,7 +83,7 @@ contract GasServiceTest is Test {
         assertEq(service.tokenPrice(), value);
 
         vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert("Auth/not-authorized");
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         service.updateTokenPrice(value);
     }
 

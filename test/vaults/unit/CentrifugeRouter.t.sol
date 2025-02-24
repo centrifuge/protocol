@@ -4,12 +4,11 @@ pragma solidity 0.8.28;
 import "test/vaults/BaseTest.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 import "src/vaults/interfaces/IERC7540.sol";
-import "src/vaults/interfaces/IERC20.sol";
+import "src/misc/interfaces/IERC20.sol";
 import {CentrifugeRouter} from "src/vaults/CentrifugeRouter.sol";
 import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
-import {CastLib} from "src/vaults/libraries/CastLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {Domain} from "src/vaults/interfaces/IPoolManager.sol";
-import {ITransferProxyFactory} from "src/vaults/interfaces/factories/ITransferProxy.sol";
 
 interface Authlike {
     function rely(address) external;
@@ -387,35 +386,6 @@ contract CentrifugeRouterTest is BaseTest {
         router.transferAssets{value: fuel}(address(erc20), recipient, uint128(amount), fuel - 1);
 
         router.transferAssets{value: fuel}(address(erc20), recipient, uint128(amount), fuel);
-
-        assertEq(erc20.balanceOf(address(escrow)), amount);
-    }
-
-    function testTransferAssetsUsingTransferProxy() public {
-        address vault_ = deploySimpleVault();
-        vm.label(vault_, "vault");
-
-        uint256 amount = 100 * 10 ** 18;
-        bytes32 recipient = address(2).toBytes32();
-
-        uint256 fuel = estimateGas();
-        vm.deal(address(this), 10 ether);
-
-        address proxy = ITransferProxyFactory(transferProxyFactory).newTransferProxy(recipient);
-        erc20.mint(address(proxy), amount);
-
-        vm.expectRevert("CentrifugeRouter/insufficient-funds");
-        router.transferAssetsFromProxy(proxy, address(erc20), fuel);
-
-        vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        router.transferAssetsFromProxy{value: fuel}(proxy, address(erc20), 0);
-
-        vm.expectRevert("Gateway/not-enough-gas-funds");
-        router.transferAssetsFromProxy{value: fuel}(proxy, address(erc20), fuel - 1);
-
-        assertEq(erc20.balanceOf(address(escrow)), 0);
-
-        router.transferAssetsFromProxy{value: fuel}(proxy, address(erc20), fuel);
 
         assertEq(erc20.balanceOf(address(escrow)), amount);
     }

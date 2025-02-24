@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/vaults/Auth.sol";
+import {Auth} from "src/misc/Auth.sol";
+import {EIP712Lib} from "src/misc/libraries/EIP712Lib.sol";
+import {SignatureLib} from "src/misc/libraries/SignatureLib.sol";
+
 import {IRoot} from "src/vaults/interfaces/IRoot.sol";
-import {EIP712Lib} from "src/vaults/libraries/EIP712Lib.sol";
 import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
-import {SignatureLib} from "src/vaults/libraries/SignatureLib.sol";
-import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IInvestmentManager} from "src/vaults/interfaces/IInvestmentManager.sol";
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/vaults/interfaces/IERC7575.sol";
-import "src/vaults/interfaces/IERC20.sol";
+import "src/misc/interfaces/IERC20.sol";
 
 /// @title  ERC7540Vault
 /// @notice Asynchronous Tokenized Vault standard implementation for Centrifuge pools

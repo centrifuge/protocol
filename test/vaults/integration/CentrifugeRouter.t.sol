@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import "src/misc/interfaces/IERC20.sol";
+
 import "test/vaults/BaseTest.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 import "src/vaults/interfaces/IERC7540.sol";
-import "src/vaults/interfaces/IERC20.sol";
 import {CentrifugeRouter} from "src/vaults/CentrifugeRouter.sol";
 import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
 import {MockReentrantERC20Wrapper1, MockReentrantERC20Wrapper2} from "test/vaults/mocks/MockReentrantERC20Wrapper.sol";
@@ -38,7 +40,7 @@ contract CentrifugeRouterTest is BaseTest {
 
         uint256 gas = estimateGas() + GAS_BUFFER;
 
-        vm.expectRevert(bytes("SafeTransferLib/safe-transfer-from-failed"));
+        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
         router.requestDeposit{value: gas}(vault_, amount, self, self, gas);
         erc20.approve(vault_, amount);
 
@@ -582,7 +584,7 @@ contract CentrifugeRouterTest is BaseTest {
         uint256 underlyingBalance = erc20.balanceOf(self);
         deposit = underlyingBalance + 1;
         remainingUnderlying = underlyingBalance;
-        vm.expectRevert(bytes("SafeTransferLib/safe-transfer-from-failed"));
+        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
         router.enableLockDepositRequest(vault_, deposit);
         assertEq(wrapper.balanceOf(routerEscrowAddress), escrowBalance);
         assertEq(wrapper.balanceOf(self), 0);

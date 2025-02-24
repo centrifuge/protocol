@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
-import {ArrayLib} from "src/vaults/libraries/ArrayLib.sol";
+import {ArrayLib} from "src/misc/libraries/ArrayLib.sol";
 
 contract ArrayLibTest is Test {
     // Used for testDecreaseFirstNValues (which requires storage pointers)

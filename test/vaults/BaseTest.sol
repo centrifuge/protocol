@@ -12,13 +12,13 @@ import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
-import {ERC20} from "src/vaults/token/ERC20.sol";
+import {ERC20} from "src/misc/ERC20.sol";
 import {Gateway} from "src/vaults/gateway/Gateway.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
 import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
 import {Deployer} from "script/vaults/Deployer.sol";
 import {MockSafe} from "test/vaults/mocks/MockSafe.sol";
-import "src/vaults/interfaces/IERC20.sol";
+import "src/misc/interfaces/IERC20.sol";
 
 // mocks
 import {MockCentrifugeChain} from "test/vaults/mocks/MockCentrifugeChain.sol";

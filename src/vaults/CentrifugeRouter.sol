@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/vaults/Auth.sol";
-import {MathLib} from "src/vaults/libraries/MathLib.sol";
-import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
-import {CastLib} from "src/vaults/libraries/CastLib.sol";
-import {IERC20, IERC20Permit, IERC20Wrapper} from "src/vaults/interfaces/IERC20.sol";
+import {Auth} from "src/misc/Auth.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {IERC20, IERC20Permit, IERC20Wrapper} from "src/misc/interfaces/IERC20.sol";
 import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
 import {ICentrifugeRouter} from "src/vaults/interfaces/ICentrifugeRouter.sol";
 import {IPoolManager, Domain} from "src/vaults/interfaces/IPoolManager.sol";
@@ -14,7 +14,6 @@ import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
 import {TransientStorage} from "src/vaults/libraries/TransientStorage.sol";
 import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
-import {ITransferProxy} from "src/vaults/interfaces/factories/ITransferProxy.sol";
 
 /// @title  CentrifugeRouter
 /// @notice This is a helper contract, designed to be the entrypoint for EOAs.
@@ -238,16 +237,6 @@ contract CentrifugeRouter is Auth, ICentrifugeRouter {
         protected
     {
         transferAssets(asset, recipient.toBytes32(), amount, topUpAmount);
-    }
-
-    /// @inheritdoc ICentrifugeRouter
-    function transferAssetsFromProxy(address transferProxy, address asset, uint256 topUpAmount)
-        external
-        payable
-        protected
-    {
-        _pay(topUpAmount);
-        ITransferProxy(transferProxy).transfer(asset);
     }
 
     /// @inheritdoc ICentrifugeRouter

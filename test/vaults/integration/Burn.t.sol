@@ -2,6 +2,8 @@
 pragma solidity 0.8.28;
 
 import "test/vaults/BaseTest.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
 contract BurnTest is BaseTest {
     function testBurn(uint256 amount) public {
@@ -18,11 +20,11 @@ contract BurnTest is BaseTest {
         tranche.mint(investor, amount);
         root.denyContract(address(tranche), self); // remove auth permissions from self
 
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         tranche.burn(investor, amount);
 
         root.relyContract(address(tranche), self); // give self auth permissions
-        vm.expectRevert(bytes("ERC20/insufficient-allowance"));
+        vm.expectRevert(IERC20.InsufficientAllowance.selector);
         tranche.burn(investor, amount);
 
         // success

@@ -5,12 +5,12 @@ import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol"
 import {ITrancheFactory} from "src/vaults/interfaces/factories/ITrancheFactory.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
-import {IERC20Metadata, IERC20Wrapper} from "src/vaults/interfaces/IERC20.sol";
-import {Auth} from "src/vaults/Auth.sol";
-import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
-import {MathLib} from "src/vaults/libraries/MathLib.sol";
+import {IERC20Metadata, IERC20Wrapper} from "src/misc/interfaces/IERC20.sol";
+import {Auth} from "src/misc/Auth.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
-import {CastLib} from "src/vaults/libraries/CastLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {
     Pool,
     TrancheDetails,
@@ -20,11 +20,11 @@ import {
     Domain,
     IPoolManager
 } from "src/vaults/interfaces/IPoolManager.sol";
-import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
 import {IGasService} from "src/vaults/interfaces/gateway/IGasService.sol";
-import {IAuth} from "src/vaults/interfaces/IAuth.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 
 /// @title  Pool Manager

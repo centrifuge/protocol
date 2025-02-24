@@ -169,9 +169,6 @@ interface ICentrifugeRouter is IRecoverable {
     /// @dev the recipient address is padded to 32 bytes internally
     function transferAssets(address asset, address recipient, uint128 amount, uint256 topUpAmount) external payable;
 
-    /// @notice Trigger a transfer of assets from a TransferProxy contract.
-    function transferAssetsFromProxy(address transferProxy, address asset, uint256 topUpAmount) external payable;
-
     /// @notice Check `IPoolManager.transferTrancheTokens`.
     /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
     ///         The caller must call `CentrifugeRouter.estimate` to get estimates how much the deposit will cost.
