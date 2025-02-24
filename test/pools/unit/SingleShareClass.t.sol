@@ -61,11 +61,21 @@ contract OracleMock is IERC7726 {
     }
 }
 
+contract SingleShareClassExt is SingleShareClass {
+    constructor(IPoolRegistry poolRegistry, address deployer) SingleShareClass(poolRegistry, deployer) {
+        poolRegistry = poolRegistry;
+    }
+
+    function setEpochIncrement(uint32 epochIncrement) public {
+        _epochIncrement = epochIncrement;
+    }
+}
+
 abstract contract SingleShareClassBaseTest is Test {
     using MathLib for uint128;
     using MathLib for uint256;
 
-    SingleShareClass public shareClass;
+    SingleShareClassExt public shareClass;
 
     OracleMock oracleMock = new OracleMock();
     PoolRegistryMock poolRegistryMock = new PoolRegistryMock();
@@ -81,7 +91,7 @@ abstract contract SingleShareClassBaseTest is Test {
     }
 
     function setUp() public virtual {
-        shareClass = new SingleShareClass(IPoolRegistry(poolRegistryAddress), address(this));
+        shareClass = new SingleShareClassExt(IPoolRegistry(poolRegistryAddress), address(this));
         shareClass.addShareClass(poolId, bytes(""));
 
         // Mock IPoolRegistry.currency call
@@ -155,22 +165,9 @@ abstract contract SingleShareClassBaseTest is Test {
         assertEq(latestRevocation, expected.latestRevocation, "latestRevocation mismatch");
     }
 
-    /// @dev Temporarily necessary for tests until forge supports transient storage setting, i.e.
-    /// https://github.com/foundry-rs/foundry/issues/8165 is merged
     function _resetTransientEpochIncrement() internal {
         if (!WITH_TRANSIENT) {
-            // Slot 1 for `_epochIncrement`, `poolRegistry`, and `shareClassIdCounter`
-            bytes32 slot = bytes32(uint256(1));
-
-            // Load the current value of the storage slot
-            bytes32 currentValue = vm.load(address(shareClass), slot);
-
-            // Clear only the first 4 bytes (corresponding to `_epochIncrement`)
-            // and preserve the rest
-            bytes32 clearedValue = currentValue & ~bytes32(uint256(0xFFFFFFFF));
-
-            // Set `_epochIncrement` to 0
-            vm.store(address(shareClass), slot, clearedValue);
+            shareClass.setEpochIncrement(0);
         }
     }
 

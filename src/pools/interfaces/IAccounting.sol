@@ -48,7 +48,7 @@ interface IAccounting {
     /// @notice Creates an account.
     function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) external;
 
-    /// @notice Creates an account.
+    /// @notice Sets metadata associated to an existent account.
     function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external;
 
     /// @notice Returns the value of an account, returns a negative value for positive balances of credt-normal

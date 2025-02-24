@@ -13,7 +13,7 @@ import {BaseValuation} from "src/misc/BaseValuation.sol";
 
 contract TransientValuation is BaseValuation, ITransientValuation {
     /// @notice Temporal price set and used to obtain the quote.
-    mapping(address base => mapping(address quite => D18)) public /*TODO: transient*/ price;
+    mapping(address base => mapping(address quite => D18)) public /*transient*/ price; // FIX
 
     constructor(IERC6909MetadataExt erc6909, address deployer) BaseValuation(erc6909, deployer) {}
 

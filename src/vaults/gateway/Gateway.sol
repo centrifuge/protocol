@@ -25,13 +25,12 @@ contract Gateway is Auth, IGateway, IRecoverable {
     using ArrayLib for uint16[8];
     using BytesLib for bytes;
     using MathLib for uint256;
-    using TransientStorage for bytes32;
-
-    bytes32 public constant QUOTA_SLOT = bytes32(uint256(keccak256("Centrifuge/quota")) - 1);
 
     uint8 public constant MAX_ADAPTER_COUNT = 8;
     uint8 public constant PRIMARY_ADAPTER_ID = 1;
     uint256 public constant RECOVERY_CHALLENGE_PERIOD = 7 days;
+
+    uint256 public transient fuel;
 
     IRoot public immutable root;
 
@@ -302,7 +301,6 @@ contract Gateway is Auth, IGateway, IRecoverable {
         uint256 numAdapters = adapters.length;
         require(numAdapters != 0, "Gateway/not-initialized");
 
-        uint256 fuel = QUOTA_SLOT.tloadUint256();
         uint256 messageCost = gasService.estimate(message);
         uint256 proofCost = gasService.estimate(proof);
 
@@ -322,7 +320,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
                 currentAdapter.send(payload);
             }
-            QUOTA_SLOT.tstore(0);
+            fuel = 0;
         } else if (gasService.shouldRefuel(source, message)) {
             for (uint256 i; i < numAdapters; i++) {
                 IAdapter currentAdapter = IAdapter(adapters[i]);
@@ -348,7 +346,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
     function topUp() external payable {
         require(payers[msg.sender], "Gateway/only-payers-can-top-up");
         require(msg.value != 0, "Gateway/cannot-topup-with-nothing");
-        QUOTA_SLOT.tstore(msg.value);
+        fuel = msg.value;
     }
 
     // --- Helpers ---
