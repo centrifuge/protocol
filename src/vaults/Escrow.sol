@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
+import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
 import {IPerPoolEscrow, IEscrow} from "src/vaults/interfaces/IEscrow.sol";
@@ -60,8 +61,16 @@ contract Escrow is Auth, IPerPoolEscrow, IEscrow {
     {
         require(pendingDeposits[token][tokenId][poolId][scId] >= value, "Escrow/insufficient-pending-deposits");
 
-        pendingDeposits[token][tokenId][poolId][scId] -= value;
+        uint256 prevHoldings = holdings[token][tokenId][poolId][scId];
+        if (tokenId == 0) {
+            uint256 curHoldings = IERC20(token).balanceOf(address(this));
+            require(curHoldings >= prevHoldings + value, "Escrow/insufficient-balance-increase");
+        } else {
+            uint256 curHoldings = IERC6909(token).balanceOf(address(this), tokenId);
+            require(curHoldings >= prevHoldings + value, "Escrow/insufficient-balance-increase");
+        }
 
+        pendingDeposits[token][tokenId][poolId][scId] -= value;
         holdings[token][tokenId][poolId][scId] += value;
     }
 
