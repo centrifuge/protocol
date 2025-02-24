@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
-import "src/libraries/SignatureLib.sol";
-import "src/libraries/EIP712Lib.sol";
+import "src/misc/libraries/SignatureLib.sol";
+import "src/misc/libraries/EIP712Lib.sol";
 
 contract MockValidSigner {
     function isValidSignature(bytes32, bytes memory) public pure returns (bytes4) {
@@ -44,7 +44,7 @@ contract SignatureLibTest is Test {
         (wrongOwner, wrongOwnerPk) = makeAddrAndKey("wrongOwner");
     }
 
-    function testValidEOASignature() public {
+    function testValidEOASignature() public view {
         bytes32 digest = _calculateTestDigest();
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
@@ -52,7 +52,7 @@ contract SignatureLibTest is Test {
         assertTrue(SignatureLib.isValidSignature(owner, digest, signature));
     }
 
-    function testInvalidEOASignature() public {
+    function testInvalidEOASignature() public view {
         bytes32 digest = _calculateTestDigest();
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(wrongOwnerPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
@@ -60,7 +60,7 @@ contract SignatureLibTest is Test {
         assertFalse(SignatureLib.isValidSignature(owner, digest, signature));
     }
 
-    function testWrongDigestEOASignature() public {
+    function testWrongDigestEOASignature() public view {
         bytes32 digest = _calculateTestDigest();
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
@@ -86,7 +86,7 @@ contract SignatureLibTest is Test {
         vm.expectRevert("Signature validation failed");
     }
 
-    function testSignatureReplay() public {
+    function testSignatureReplay() public view {
         bytes32 digest1 = _calculateTestDigest();
         bytes32 digest2 = keccak256("Different message");
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerPk, digest1);
