@@ -48,6 +48,7 @@ contract PoolManager is Auth, Multicall, IPoolManager, IPoolManagerHandler {
         _;
     }
 
+    /// @dev A requirement for methods that needs to be called through `execute()`
     modifier poolUnlocked() {
         require(!unlockedPoolId.isNull(), IPoolManagerAdminMethods.PoolLocked());
         _;

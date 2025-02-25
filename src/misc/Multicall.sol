@@ -4,25 +4,25 @@ pragma solidity ^0.8.28;
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 
 abstract contract Multicall is IMulticall {
-    address public transient initiator;
+    address private transient _initiator;
 
     modifier protected() {
-        if (initiator == address(0)) {
+        if (_initiator == address(0)) {
             // Single call re-entrancy lock
-            initiator = msg.sender;
+            _initiator = msg.sender;
             _;
-            initiator = address(0);
+            _initiator = address(0);
         } else {
             // Multicall re-entrancy lock
-            require(msg.sender == initiator, UnauthorizedSender());
+            require(msg.sender == _initiator, UnauthorizedSender());
             _;
         }
     }
 
     function multicall(bytes[] calldata data) public payable {
-        require(initiator == address(0), AlreadyInitiated());
+        require(_initiator == address(0), AlreadyInitiated());
 
-        initiator = msg.sender;
+        _initiator = msg.sender;
 
         uint256 totalBytes = data.length;
         for (uint256 i; i < totalBytes; ++i) {
@@ -37,6 +37,6 @@ abstract contract Multicall is IMulticall {
             }
         }
 
-        initiator = address(0);
+        _initiator = address(0);
     }
 }
