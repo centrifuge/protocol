@@ -19,7 +19,7 @@ abstract contract Multicall is IMulticall {
         }
     }
 
-    function multicall(bytes[] calldata data) external payable {
+    function multicall(bytes[] calldata data) public payable {
         require(initiator == address(0), AlreadyInitiated());
 
         initiator = msg.sender;

@@ -46,7 +46,7 @@ interface IPoolManagerAdminMethods {
     error PoolLocked();
 
     /// @notice Main method to unlock the pool and call the rest of the admin methods
-    function execute(PoolId poolId, bytes[] memory data) external payable;
+    function execute(PoolId poolId, bytes[] calldata data) external payable;
 
     /// @notice Notify to a CV instance that a new pool is available
     /// @param chainId Chain where CV instance lives

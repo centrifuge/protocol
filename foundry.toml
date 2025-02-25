@@ -75,11 +75,10 @@ fail_on_revert = false
   ignore = [
     "test/*.sol",
     #Check if https://github.com/foundry-rs/foundry/issues/9088 is fixed to remove the following:
-    "src/misc/TransientValuation.sol", #Because transient keyword
+    "src/misc/Multicall.sol", #Because transient keyword
     "src/pools/Accounting.sol", #Because transient keyword
-    "src/pools/PoolLocker.sol", #Because transient keyword
+    #"src/pools/PoolManager.sol", #Because transient keyword
     "src/pools/SingleShareClass.sol", #Because transient keyword
-    "src/vaults/CentrifugeRouter.sol", #Because transient keyword
     "src/vaults/gateway/Gateway.sol", #Because transient keyword
   ]
 
