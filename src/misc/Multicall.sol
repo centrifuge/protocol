@@ -3,22 +3,40 @@ pragma solidity ^0.8.28;
 
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 
-contract Multicall is IMulticall {
-    /// @dev Performs a generic multicall. It reverts the whole transaction if one call fails.
-    function aggregate(Call[] calldata calls) external returns (bytes[] memory results) {
-        results = new bytes[](calls.length);
+abstract contract Multicall is IMulticall {
+    address public transient initiator;
 
-        for (uint32 i; i < calls.length; i++) {
-            (bool success, bytes memory result) = calls[i].target.call(calls[i].data);
-            // Forward the error happened in target.call().
+    modifier protected() {
+        if (initiator == address(0)) {
+            // Single call re-entrancy lock
+            initiator = msg.sender;
+            _;
+            initiator = address(0);
+        } else {
+            // Multicall re-entrancy lock
+            require(msg.sender == initiator, UnauthorizedSender());
+            _;
+        }
+    }
+
+    function multicall(bytes[] calldata data) external payable {
+        require(initiator == address(0), AlreadyInitiated());
+
+        initiator = msg.sender;
+
+        uint256 totalBytes = data.length;
+        for (uint256 i; i < totalBytes; ++i) {
+            (bool success, bytes memory returnData) = address(this).delegatecall(data[i]);
             if (!success) {
-                assembly {
-                    // Reverting the error originated in the above call.
-                    // First 32 bytes contains the size of the array, rest the error data
-                    revert(add(result, 32), mload(result))
+                uint256 length = returnData.length;
+                require(length != 0, CallFailed());
+
+                assembly ("memory-safe") {
+                    revert(add(32, returnData), length)
                 }
             }
-            results[i] = result;
         }
+
+        initiator = address(0);
     }
 }
