@@ -46,7 +46,6 @@ contract TestCommon is Deployer, Test {
         // Label contracts & actors (for debugging)
         vm.label(address(transientValuation), "TransientValuation");
         vm.label(address(identityValuation), "IdentityValuation");
-        vm.label(address(multicall), "Multicall");
         vm.label(address(poolRegistry), "PoolRegistry");
         vm.label(address(assetRegistry), "AssetRegistry");
         vm.label(address(accounting), "Accounting");
@@ -58,15 +57,6 @@ contract TestCommon is Deployer, Test {
 
         // We decide CP is located at CHAIN_CP for messaging
         vm.chainId(CHAIN_CP);
-    }
-
-    /// @dev Transform a list of encoding methods in PoolManager calls
-    function _fromPoolManager(bytes[] memory encodedMethods) internal view returns (IMulticall.Call[] memory calls) {
-        calls = new IMulticall.Call[](encodedMethods.length);
-
-        for (uint256 i; i < encodedMethods.length; i++) {
-            calls[i] = IMulticall.Call(address(poolManager), encodedMethods[i]);
-        }
     }
 }
 
@@ -97,7 +87,7 @@ contract TestConfiguration is TestCommon {
         assertEq(c, cs.length);
 
         vm.prank(FM);
-        poolManager.execute(poolId, _fromPoolManager(cs));
+        poolManager.execute(poolId, cs);
 
         assertEq(poolRegistry.metadata(poolId), "Testing pool");
         assertEq(cv.lastMessages(0), abi.encodePacked(MessageType.AddPool, poolId.raw()));
@@ -132,7 +122,7 @@ contract TestConfiguration is TestCommon {
         assertEq(c, cs.length);
 
         vm.prank(FM);
-        poolManager.execute(poolId, _fromPoolManager(cs));
+        poolManager.execute(poolId, cs);
 
         // TODO: checks
 
@@ -159,7 +149,7 @@ contract TestInvestments is TestConfiguration {
         assertEq(c, cs.length);
 
         vm.prank(FM);
-        poolManager.execute(poolId, _fromPoolManager(cs));
+        poolManager.execute(poolId, cs);
 
         vm.prank(ANY);
         poolManager.claimDeposit(poolId, scId, USDC_C2, INVESTOR);
@@ -181,7 +171,7 @@ contract TestInvestments is TestConfiguration {
         assertEq(c, cs.length);
 
         vm.prank(FM);
-        poolManager.execute(poolId, _fromPoolManager(cs));
+        poolManager.execute(poolId, cs);
 
         vm.prank(ANY);
         poolManager.claimRedeem(poolId, scId, USDC_C2, INVESTOR);

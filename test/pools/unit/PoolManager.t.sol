@@ -19,7 +19,6 @@ import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
 import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 import {IGateway} from "src/pools/interfaces/IGateway.sol";
-import {IPoolLocker} from "src/pools/interfaces/IPoolLocker.sol";
 import {IPoolManager, IPoolManagerHandler, IPoolManagerAdminMethods} from "src/pools/interfaces/IPoolManager.sol";
 import {PoolManager} from "src/pools/PoolManager.sol";
 
@@ -36,8 +35,7 @@ contract TestCommon is Test {
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
 
     Multicall multicall = new Multicall();
-    PoolManager poolManager =
-        new PoolManager(multicall, poolRegistry, assetRegistry, accounting, holdings, gateway, address(0));
+    PoolManager poolManager = new PoolManager(poolRegistry, assetRegistry, accounting, holdings, gateway, address(0));
 
     function _mockSuccessfulMulticall() private {
         vm.mockCall(
@@ -62,64 +60,64 @@ contract TestMainMethodsChecks is TestCommon {
     function testErrPoolLocked() public {
         vm.startPrank(makeAddr("notPoolAdmin"));
 
-        vm.expectRevert(IPoolLocker.PoolLocked.selector);
+        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
         poolManager.notifyPool(0);
 
-        vm.expectRevert(IPoolLocker.PoolLocked.selector);
+        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
         poolManager.notifyShareClass(0, ShareClassId.wrap(0));
 
-        vm.expectRevert(IPoolLocker.PoolLocked.selector);
+        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
         poolManager.setPoolMetadata(bytes(""));
 
-        vm.expectRevert(IPoolLocker.PoolLocked.selector);
+        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
         poolManager.allowPoolAdmin(address(0), false);
 
-        vm.expectRevert(IPoolLocker.PoolLocked.selector);
+        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
         poolManager.allowInvestorAsset(ShareClassId.wrap(0), AssetId.wrap(0), false);
 
-        vm.expectRevert(IPoolLocker.PoolLocked.selector);
+        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
         poolManager.addShareClass(bytes(""));
 
-        vm.expectRevert(IPoolLocker.PoolLocked.selector);
+        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
         poolManager.approveDeposits(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
 
-        vm.expectRevert(IPoolLocker.PoolLocked.selector);
+        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
         poolManager.approveRedeems(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
 
-        vm.expectRevert(IPoolLocker.PoolLocked.selector);
+        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
         poolManager.issueShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
 
-        vm.expectRevert(IPoolLocker.PoolLocked.selector);
+        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
         poolManager.revokeShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
 
-        vm.expectRevert(IPoolLocker.PoolLocked.selector);
+        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
         poolManager.createHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
 
-        vm.expectRevert(IPoolLocker.PoolLocked.selector);
+        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
         poolManager.increaseHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
 
-        vm.expectRevert(IPoolLocker.PoolLocked.selector);
+        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
         poolManager.decreaseHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
 
-        vm.expectRevert(IPoolLocker.PoolLocked.selector);
+        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
         poolManager.updateHolding(ShareClassId.wrap(0), AssetId.wrap(0));
 
-        vm.expectRevert(IPoolLocker.PoolLocked.selector);
+        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
         poolManager.updateHoldingValuation(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)));
 
-        vm.expectRevert(IPoolLocker.PoolLocked.selector);
+        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
         poolManager.setHoldingAccountId(ShareClassId.wrap(0), AssetId.wrap(0), AccountId.wrap(0));
 
-        vm.expectRevert(IPoolLocker.PoolLocked.selector);
+        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
         poolManager.createAccount(AccountId.wrap(0), false);
 
-        vm.expectRevert(IPoolLocker.PoolLocked.selector);
+        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
         poolManager.setAccountMetadata(AccountId.wrap(0), bytes(""));
 
-        vm.expectRevert(IPoolLocker.PoolLocked.selector);
+        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
         poolManager.addDebit(AccountId.wrap(0), 0);
 
-        vm.expectRevert(IPoolLocker.PoolLocked.selector);
+        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
         poolManager.addCredit(AccountId.wrap(0), 0);
 
         vm.stopPrank();
@@ -156,7 +154,7 @@ contract TestExecute is TestCommon {
         );
 
         vm.expectRevert(IPoolManagerAdminMethods.NotAuthorizedAdmin.selector);
-        poolManager.execute(PoolId.wrap(1), new IMulticall.Call[](0));
+        poolManager.execute(PoolId.wrap(1), new bytes[](0));
     }
 }
 
@@ -170,10 +168,8 @@ contract TestNotifyShareClass is TestCommon {
 
         vm.mockCall(address(scm), abi.encodeWithSelector(scm.exists.selector, POOL_A, SC_A), abi.encode(false));
 
-        IMulticall.Call[] memory calls = new IMulticall.Call[](1);
-        calls[0] = IMulticall.Call(
-            address(poolManager), abi.encodeWithSelector(poolManager.notifyShareClass.selector, 23, SC_A)
-        );
+        bytes[] memory calls = new bytes[](1);
+        calls[0] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, 23, SC_A);
 
         vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
         poolManager.execute(POOL_A, calls);
@@ -188,10 +184,8 @@ contract TestAllowInvestorAsset is TestCommon {
             abi.encode(false)
         );
 
-        IMulticall.Call[] memory calls = new IMulticall.Call[](1);
-        calls[0] = IMulticall.Call(
-            address(poolManager), abi.encodeWithSelector(poolManager.allowInvestorAsset.selector, SC_A, ASSET_A, false)
-        );
+        bytes[] memory calls = new bytes[](1);
+        calls[0] = abi.encodeWithSelector(poolManager.allowInvestorAsset.selector, SC_A, ASSET_A, false);
 
         vm.expectRevert(IHoldings.HoldingNotFound.selector);
         poolManager.execute(POOL_A, calls);
@@ -206,11 +200,8 @@ contract TestCreateHolding is TestCommon {
             abi.encode(false)
         );
 
-        IMulticall.Call[] memory calls = new IMulticall.Call[](1);
-        calls[0] = IMulticall.Call(
-            address(poolManager),
-            abi.encodeWithSelector(poolManager.createHolding.selector, SC_A, ASSET_A, address(1), 0)
-        );
+        bytes[] memory calls = new bytes[](1);
+        calls[0] = abi.encodeWithSelector(poolManager.createHolding.selector, SC_A, ASSET_A, address(1), 0);
 
         vm.expectRevert(IAssetRegistry.AssetNotFound.selector);
         poolManager.execute(POOL_A, calls);

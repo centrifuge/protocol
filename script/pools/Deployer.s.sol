@@ -5,7 +5,6 @@ import "forge-std/Script.sol";
 
 import {TransientValuation} from "src/misc/TransientValuation.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
-import {Multicall} from "src/misc/Multicall.sol";
 
 import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
 import {IGateway} from "src/pools/interfaces/IGateway.sol";
@@ -24,7 +23,6 @@ contract Deployer is Script {
     address constant ADDRESS_TO_FILE = address(123);
 
     // Core contracts
-    Multicall public multicall;
     PoolRegistry public poolRegistry;
     AssetRegistry public assetRegistry;
     Accounting public accounting;
@@ -41,17 +39,14 @@ contract Deployer is Script {
     AssetId immutable USD = newAssetId(840);
 
     function deploy() public {
-        multicall = new Multicall();
-
         poolRegistry = new PoolRegistry(address(this));
         assetRegistry = new AssetRegistry(address(this));
         accounting = new Accounting(address(this));
         holdings = new Holdings(poolRegistry, address(this));
 
         singleShareClass = new SingleShareClass(poolRegistry, address(this));
-        poolManager = new PoolManager(
-            multicall, poolRegistry, assetRegistry, accounting, holdings, IGateway(ADDRESS_TO_FILE), address(this)
-        );
+        poolManager =
+            new PoolManager(poolRegistry, assetRegistry, accounting, holdings, IGateway(ADDRESS_TO_FILE), address(this));
         gateway = new Gateway(IAdapter(address(0 /* TODO */ )), poolManager, address(this));
 
         transientValuation = new TransientValuation(assetRegistry, address(this));
