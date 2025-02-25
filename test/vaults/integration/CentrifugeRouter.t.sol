@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import "src/misc/interfaces/IERC20.sol";
+import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 
 import "test/vaults/BaseTest.sol";
 import "src/vaults/interfaces/IERC7575.sol";
@@ -719,7 +720,7 @@ contract CentrifugeRouterTest is BaseTest {
         // Investor locks deposit request and enables permissionless lcaiming
         vm.startPrank(investor);
         erc20.approve(address(router), amount);
-        vm.expectRevert(bytes("CentrifugeRouter/unauthorized-sender"));
+        vm.expectRevert(IMulticall.UnauthorizedSender.selector);
         router.enableLockDepositRequest(vault_, amount);
         vm.stopPrank();
     }
@@ -741,7 +742,7 @@ contract CentrifugeRouterTest is BaseTest {
         // Investor locks deposit request and enables permissionless lcaiming
         vm.startPrank(investor);
         erc20.approve(address(router), amount);
-        vm.expectRevert(bytes("CentrifugeRouter/already-initiated"));
+        vm.expectRevert(IMulticall.AlreadyInitiated.selector);
         router.enableLockDepositRequest(vault_, amount);
         vm.stopPrank();
     }
