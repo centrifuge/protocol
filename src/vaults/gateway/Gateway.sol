@@ -8,7 +8,6 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
 import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
-import {TransientStorage} from "src/vaults/libraries/TransientStorage.sol";
 import {IGateway, IMessageHandler} from "src/vaults/interfaces/gateway/IGateway.sol";
 import {IRoot} from "src/vaults/interfaces/IRoot.sol";
 import {IGasService} from "src/vaults/interfaces/gateway/IGasService.sol";

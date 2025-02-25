@@ -12,7 +12,6 @@ import {IPoolManager, Domain} from "src/vaults/interfaces/IPoolManager.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
-import {TransientStorage} from "src/vaults/libraries/TransientStorage.sol";
 import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 
 /// @title  CentrifugeRouter
@@ -25,7 +24,6 @@ import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 ///         CentrifugeRouter. Any funds that do remain are at risk of being taken by other users.
 contract CentrifugeRouter is Auth, ICentrifugeRouter {
     using CastLib for address;
-    using TransientStorage for bytes32;
 
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
     uint256 private constant REQUEST_ID = 0;
