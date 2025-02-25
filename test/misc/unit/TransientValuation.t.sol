@@ -47,6 +47,16 @@ contract TestTransientValuation is Test {
         assertEq(valuation.getQuote(100 * 1e6, C6, C18), 33_333_333_333_333_333_300);
     }
 
+    function testMultiplePricesAtTheSameTime() public {
+        valuation.setPrice(C6, C6, d18(2, 1)); //2.0
+        valuation.setPrice(C6, C18, d18(3, 1)); //3.0
+        valuation.setPrice(C18, C18, d18(4, 1)); //4.0
+
+        assertEq(valuation.getQuote(1e6, C6, C6), 2 * 1e6);
+        assertEq(valuation.getQuote(1e6, C6, C18), 3 * 1e18);
+        assertEq(valuation.getQuote(1e18, C18, C18), 4 * 1e18);
+    }
+
     function testErrPriceNotSet() public {
         vm.expectRevert(abi.encodeWithSelector(ITransientValuation.PriceNotSet.selector, C6, C18));
         valuation.getQuote(1 * 1e6, C6, C18);

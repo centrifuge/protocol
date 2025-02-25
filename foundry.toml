@@ -72,7 +72,16 @@ fail_on_revert = false
   quote_style = "double"
   number_underscore = "preserve"
   wrap_comments = true
-  ignore = ["test/*.sol"]
+  ignore = [
+    "test/*.sol",
+    #Check if https://github.com/foundry-rs/foundry/issues/9088 is fixed to remove the following:
+    "src/misc/TransientValuation.sol", #Because transient keyword
+    "src/pools/Accounting.sol", #Because transient keyword
+    "src/pools/PoolLocker.sol", #Because transient keyword
+    "src/pools/SingleShareClass.sol", #Because transient keyword
+    "src/vaults/CentrifugeRouter.sol", #Because transient keyword
+    "src/vaults/gateway/Gateway.sol", #Because transient keyword
+  ]
 
 [rpc_endpoints]
 ethereum-mainnet = "https://mainnet.infura.io/v3/${INFURA_API_KEY}"

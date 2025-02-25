@@ -12,7 +12,6 @@ import {IPoolManager, Domain} from "src/vaults/interfaces/IPoolManager.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
-import {TransientStorage} from "src/vaults/libraries/TransientStorage.sol";
 import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 
 /// @title  CentrifugeRouter
@@ -25,12 +24,11 @@ import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 ///         CentrifugeRouter. Any funds that do remain are at risk of being taken by other users.
 contract CentrifugeRouter is Auth, ICentrifugeRouter {
     using CastLib for address;
-    using TransientStorage for bytes32;
 
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
     uint256 private constant REQUEST_ID = 0;
 
-    bytes32 public constant INITIATOR_SLOT = bytes32(uint256(keccak256("Centrifuge/initiator")) - 1);
+    address public transient initiator;
 
     IEscrow public immutable escrow;
     IGateway public immutable gateway;
@@ -46,15 +44,14 @@ contract CentrifugeRouter is Auth, ICentrifugeRouter {
     }
 
     modifier protected() {
-        address currentInitiator = INITIATOR_SLOT.tloadAddress();
-        if (currentInitiator == address(0)) {
+        if (initiator == address(0)) {
             // Single call re-entrancy lock
-            INITIATOR_SLOT.tstore(msg.sender);
+            initiator = msg.sender;
             _;
-            INITIATOR_SLOT.tstore(0);
+            initiator = address(0);
         } else {
             // Multicall re-entrancy lock
-            require(msg.sender == currentInitiator, "CentrifugeRouter/unauthorized-sender");
+            require(msg.sender == initiator, "CentrifugeRouter/unauthorized-sender");
             _;
         }
     }
@@ -301,9 +298,9 @@ contract CentrifugeRouter is Auth, ICentrifugeRouter {
     // --- Batching ---
     /// @inheritdoc ICentrifugeRouter
     function multicall(bytes[] memory data) external payable {
-        require(INITIATOR_SLOT.tloadAddress() == address(0), "CentrifugeRouter/already-initiated");
+        require(initiator == address(0), "CentrifugeRouter/already-initiated");
 
-        INITIATOR_SLOT.tstore(msg.sender);
+        initiator = msg.sender;
         uint256 totalBytes = data.length;
         for (uint256 i; i < totalBytes; ++i) {
             (bool success, bytes memory returnData) = address(this).delegatecall(data[i]);
@@ -316,7 +313,7 @@ contract CentrifugeRouter is Auth, ICentrifugeRouter {
                 }
             }
         }
-        INITIATOR_SLOT.tstore(0);
+        initiator = address(0);
     }
 
     // --- View Methods ---

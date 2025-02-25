@@ -17,8 +17,6 @@ import {ISingleShareClass} from "src/pools/interfaces/ISingleShareClass.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {SingleShareClass, EpochAmounts, UserOrder, EpochPointers} from "src/pools/SingleShareClass.sol";
 
-bool constant WITH_TRANSIENT = false;
-uint128 constant TRANSIENT_STORAGE_SHIFT = WITH_TRANSIENT ? 1 : 0;
 uint64 constant POOL_ID = 42;
 ShareClassId constant SHARE_CLASS_ID = ShareClassId.wrap(bytes16(uint128(POOL_ID)));
 address constant POOL_CURRENCY = address(840);
@@ -61,11 +59,21 @@ contract OracleMock is IERC7726 {
     }
 }
 
+contract SingleShareClassExt is SingleShareClass {
+    constructor(IPoolRegistry poolRegistry, address deployer) SingleShareClass(poolRegistry, deployer) {
+        poolRegistry = poolRegistry;
+    }
+
+    function setEpochIncrement(uint32 epochIncrement) public {
+        _epochIncrement = epochIncrement;
+    }
+}
+
 abstract contract SingleShareClassBaseTest is Test {
     using MathLib for uint128;
     using MathLib for uint256;
 
-    SingleShareClass public shareClass;
+    SingleShareClassExt public shareClass;
 
     OracleMock oracleMock = new OracleMock();
     PoolRegistryMock poolRegistryMock = new PoolRegistryMock();
@@ -81,7 +89,7 @@ abstract contract SingleShareClassBaseTest is Test {
     }
 
     function setUp() public virtual {
-        shareClass = new SingleShareClass(IPoolRegistry(poolRegistryAddress), address(this));
+        shareClass = new SingleShareClassExt(IPoolRegistry(poolRegistryAddress), address(this));
         shareClass.addShareClass(poolId, bytes(""));
 
         // Mock IPoolRegistry.currency call
@@ -155,23 +163,8 @@ abstract contract SingleShareClassBaseTest is Test {
         assertEq(latestRevocation, expected.latestRevocation, "latestRevocation mismatch");
     }
 
-    /// @dev Temporarily necessary for tests until forge supports transient storage setting, i.e.
-    /// https://github.com/foundry-rs/foundry/issues/8165 is merged
     function _resetTransientEpochIncrement() internal {
-        if (!WITH_TRANSIENT) {
-            // Slot 1 for `_epochIncrement`, `poolRegistry`, and `shareClassIdCounter`
-            bytes32 slot = bytes32(uint256(1));
-
-            // Load the current value of the storage slot
-            bytes32 currentValue = vm.load(address(shareClass), slot);
-
-            // Clear only the first 4 bytes (corresponding to `_epochIncrement`)
-            // and preserve the rest
-            bytes32 clearedValue = currentValue & ~bytes32(uint256(0xFFFFFFFF));
-
-            // Set `_epochIncrement` to 0
-            vm.store(address(shareClass), slot, clearedValue);
-        }
+        shareClass.setEpochIncrement(0);
     }
 
     function usdcToPool(uint128 usdcAmount) internal view returns (uint128 poolAmount) {
@@ -392,7 +385,7 @@ contract SingleShareClassDepositsNonTransientTest is SingleShareClassBaseTest {
         // Mock latestIssuance to 10
         vm.store(
             address(shareClass),
-            keccak256(abi.encode(USDC, keccak256(abi.encode(scId, uint256(6 + TRANSIENT_STORAGE_SHIFT))))),
+            keccak256(abi.encode(USDC, keccak256(abi.encode(scId, uint256(6))))),
             bytes32(
                 (uint256(0)) // latestDepositApproval
                     | (uint256(0) << 32) // latestRedeemApproval
@@ -401,11 +394,7 @@ contract SingleShareClassDepositsNonTransientTest is SingleShareClassBaseTest {
             )
         );
         // Mock epochId to 11
-        vm.store(
-            address(shareClass),
-            keccak256(abi.encode(poolId, uint256(4 + TRANSIENT_STORAGE_SHIFT))),
-            bytes32(uint256(mockEpochId))
-        );
+        vm.store(address(shareClass), keccak256(abi.encode(poolId, uint256(4))), bytes32(uint256(mockEpochId)));
 
         (uint128 payout, uint128 payment) = shareClass.claimDeposit(poolId, scId, investor, USDC);
         assertEq(payout + payment, 0);
@@ -528,11 +517,7 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
         uint128 assetAmount = poolToUsdc(poolAmount);
 
         // Mock total issuance to equal redeemAmount
-        vm.store(
-            address(shareClass),
-            keccak256(abi.encode(scId, uint256(3 + TRANSIENT_STORAGE_SHIFT))),
-            bytes32(uint256(redeemAmount))
-        );
+        vm.store(address(shareClass), keccak256(abi.encode(scId, uint256(3))), bytes32(uint256(redeemAmount)));
         assertEq(shareClass.totalIssuance(scId), redeemAmount);
 
         shareClass.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
@@ -564,11 +549,7 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
         uint128 payout = poolToUsdc(shareToPoolQuote.mulUint128(approvedRedeem));
 
         // Mock total issuance to equal redeemAmount
-        vm.store(
-            address(shareClass),
-            keccak256(abi.encode(scId, uint256(3 + TRANSIENT_STORAGE_SHIFT))),
-            bytes32(uint256(redeemAmount))
-        );
+        vm.store(address(shareClass), keccak256(abi.encode(scId, uint256(3))), bytes32(uint256(redeemAmount)));
         assertEq(shareClass.totalIssuance(scId), redeemAmount);
 
         shareClass.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
@@ -605,7 +586,7 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
         // Mock latestRevocation to 10
         vm.store(
             address(shareClass),
-            keccak256(abi.encode(USDC, keccak256(abi.encode(scId, uint256(6 + TRANSIENT_STORAGE_SHIFT))))),
+            keccak256(abi.encode(USDC, keccak256(abi.encode(scId, uint256(6))))),
             bytes32(
                 (uint256(0)) // latestDepositApproval
                     | (uint256(0) << 32) // latestRedeemApproval
@@ -614,11 +595,7 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
             )
         );
         // Mock epochId to 11
-        vm.store(
-            address(shareClass),
-            keccak256(abi.encode(poolId, uint256(4 + TRANSIENT_STORAGE_SHIFT))),
-            bytes32(uint256(mockEpochId))
-        );
+        vm.store(address(shareClass), keccak256(abi.encode(poolId, uint256(4))), bytes32(uint256(mockEpochId)));
 
         (uint128 payout, uint128 payment) = shareClass.claimRedeem(poolId, scId, investor, USDC);
         assertEq(payout + payment, 0);
@@ -757,11 +734,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         uint128 pendingRedeems = redeemAmount;
 
         // Mock total issuance to equal total redeemAmount
-        vm.store(
-            address(shareClass),
-            keccak256(abi.encode(scId, uint256(3 + TRANSIENT_STORAGE_SHIFT))),
-            bytes32(uint256(totalIssuance_))
-        );
+        vm.store(address(shareClass), keccak256(abi.encode(scId, uint256(3))), bytes32(uint256(totalIssuance_)));
 
         // Bump up latestApproval epochs
         for (uint8 i = 1; i < maxEpochId; i++) {
@@ -826,11 +799,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         uint128 approvedRedeem = 0;
 
         // Mock total issuance to equal total redeemAmount
-        vm.store(
-            address(shareClass),
-            keccak256(abi.encode(scId, uint256(3 + TRANSIENT_STORAGE_SHIFT))),
-            bytes32(uint256(redeemAmount))
-        );
+        vm.store(address(shareClass), keccak256(abi.encode(scId, uint256(3))), bytes32(uint256(redeemAmount)));
 
         shareClass.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
 
@@ -1042,11 +1011,7 @@ contract SingleShareClassRoundingEdgeCasesRedeem is SingleShareClassBaseTest {
         SingleShareClassBaseTest.setUp();
 
         // Mock total issuance such that we can redeem
-        vm.store(
-            address(shareClass),
-            keccak256(abi.encode(scId, uint256(3 + TRANSIENT_STORAGE_SHIFT))),
-            bytes32(uint256(TOTAL_ISSUANCE))
-        );
+        vm.store(address(shareClass), keccak256(abi.encode(scId, uint256(3))), bytes32(uint256(TOTAL_ISSUANCE)));
     }
 
     function _approveAllRedeemsAndRevoke(uint128 approvedShareAmount, uint128 expectedAssetPayout, D18 navPerShare)
@@ -1211,7 +1176,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
         // Mock latestDepositApproval to epoch 1
         vm.store(
             address(shareClass),
-            keccak256(abi.encode(USDC, keccak256(abi.encode(wrongShareClassId, uint256(6 + TRANSIENT_STORAGE_SHIFT))))),
+            keccak256(abi.encode(USDC, keccak256(abi.encode(wrongShareClassId, uint256(6))))),
             bytes32(
                 (uint256(1)) // latestDepositApproval
                     | (uint256(0) << 32) // latestRedeemApproval
@@ -1241,7 +1206,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
         // Mock latestRedeemApproval to epoch 1
         vm.store(
             address(shareClass),
-            keccak256(abi.encode(USDC, keccak256(abi.encode(wrongShareClassId, uint256(6 + TRANSIENT_STORAGE_SHIFT))))),
+            keccak256(abi.encode(USDC, keccak256(abi.encode(wrongShareClassId, uint256(6))))),
             bytes32(
                 (uint256(0)) // latestDepositApproval
                     | (uint256(1) << 32) // latestRedeemApproval

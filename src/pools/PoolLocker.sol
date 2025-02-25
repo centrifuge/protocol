@@ -11,7 +11,7 @@ abstract contract PoolLocker is IPoolLocker {
     IMulticall private immutable multicall;
 
     /// @dev Represents the unlocked pool Id
-    PoolId private /*TODO: transient*/ _unlockedPoolId;
+    PoolId private transient _unlockedPoolId;
 
     /// @dev allows to execute a method only if the pool is unlocked.
     /// The method can only be execute as part of `execute()`

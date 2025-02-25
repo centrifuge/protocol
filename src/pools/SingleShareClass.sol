@@ -59,8 +59,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     using MathLib for uint256;
 
     /// Storage
-    // uint32 private transient _epochIncrement;
-    uint32 private /*transient*/ _epochIncrement;
+    uint32 internal transient _epochIncrement;
     IPoolRegistry public poolRegistry;
     mapping(PoolId poolId => ShareClassId) public shareClassId;
     mapping(ShareClassId scId => uint128) public totalIssuance;
