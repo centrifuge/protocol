@@ -80,19 +80,6 @@ contract PoolManager is Auth, IPoolManager {
 
     // --- Outgoing message handling ---
     /// @inheritdoc IPoolManager
-    function transferAssets(address asset, bytes32 recipient, uint128 amount) external {
-        uint128 assetId = assetToId[asset];
-        require(assetId != 0, "PoolManager/unknown-asset");
-
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(escrow), amount);
-
-        gateway.send(
-            abi.encodePacked(uint8(MessagesLib.Call.TransferAssets), assetId, recipient, amount), address(this)
-        );
-        emit TransferAssets(asset, msg.sender, recipient, amount);
-    }
-
-    /// @inheritdoc IPoolManager
     function transferTrancheTokens(
         uint64 poolId,
         bytes16 trancheId,
@@ -154,8 +141,6 @@ contract PoolManager is Auth, IPoolManager {
             );
         } else if (call == MessagesLib.Call.UpdateTrancheHook) {
             updateTrancheHook(message.toUint64(1), message.toBytes16(9), message.toAddress(25));
-        } else if (call == MessagesLib.Call.TransferAssets) {
-            handleTransfer(message.toUint128(1), message.toAddress(17), message.toUint128(49));
         } else if (call == MessagesLib.Call.TransferTrancheTokens) {
             handleTransferTrancheTokens(
                 message.toUint64(1), message.toBytes16(9), message.toAddress(34), message.toUint128(66)
@@ -301,14 +286,6 @@ contract PoolManager is Auth, IPoolManager {
         escrow.approveMax(asset, address(this));
 
         emit AddAsset(assetId, asset);
-    }
-
-    /// @inheritdoc IPoolManager
-    function handleTransfer(uint128 assetId, address recipient, uint128 amount) public auth {
-        address asset = idToAsset[assetId];
-        require(asset != address(0), "PoolManager/unknown-asset");
-
-        SafeTransferLib.safeTransferFrom(asset, address(escrow), recipient, amount);
     }
 
     /// @inheritdoc IPoolManager

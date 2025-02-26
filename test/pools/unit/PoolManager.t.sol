@@ -122,9 +122,6 @@ contract TestMainMethodsChecks is TestCommon {
         vm.expectRevert(IPoolLocker.PoolLocked.selector);
         poolManager.addCredit(AccountId.wrap(0), 0);
 
-        vm.expectRevert(IPoolLocker.PoolLocked.selector);
-        poolManager.unlockAssets(ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), 0);
-
         vm.stopPrank();
     }
 
@@ -145,9 +142,6 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IPoolManagerHandler.NotGateway.selector);
         poolManager.handleCancelRedeemRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
-
-        vm.expectRevert(IPoolManagerHandler.NotGateway.selector);
-        poolManager.handleLockedTokens(AssetId.wrap(0), address(0), 0);
 
         vm.stopPrank();
     }

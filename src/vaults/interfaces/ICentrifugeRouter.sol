@@ -155,20 +155,6 @@ interface ICentrifugeRouter is IRecoverable {
     function claimCancelRedeemRequest(address vault, address receiver, address controller) external payable;
 
     // --- Transfer ---
-    /// @notice Check `IPoolManager.transferAssets`.
-    /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
-    ///         The caller must call `CentrifugeRouter.estimate` to get estimates how much the deposit will cost.
-    ///
-    /// @param  asset Check `IPoolManager.transferAssets.asset`
-    /// @param  recipient Check `IPoolManager.transferAssets.recipient`
-    /// @param  amount Check `IPoolManager.transferAssets.amount`
-    /// @param  topUpAmount Amount that covers all costs outside EVM
-    function transferAssets(address asset, bytes32 recipient, uint128 amount, uint256 topUpAmount) external payable;
-
-    /// @notice This is a more friendly version where the recipient is and EVM address
-    /// @dev the recipient address is padded to 32 bytes internally
-    function transferAssets(address asset, address recipient, uint128 amount, uint256 topUpAmount) external payable;
-
     /// @notice Check `IPoolManager.transferTrancheTokens`.
     /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
     ///         The caller must call `CentrifugeRouter.estimate` to get estimates how much the deposit will cost.

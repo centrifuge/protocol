@@ -12,7 +12,6 @@ enum MessageType {
     AddTranche,
     AllowAsset,
     DisallowAsset,
-    TransferAssets,
     DepositRequest,
     RedeemRequest,
     FulfilledDepositRequest,
