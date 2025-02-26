@@ -1436,8 +1436,8 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     function testAddShareClassInvalidMetadata(bytes memory metadata) public {
         vm.assume(metadata.length < 128 + 128 + 32);
 
-        vm.expectRevert(ISingleShareClass.InvalidMetadataName.selector);
-        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), _encodeMetadata("", SC_META_SYMBOL, SC_META_HOOK));
+        vm.expectRevert(ISingleShareClass.InvalidMetadataSize.selector);
+        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), metadata);
     }
 
     function testAddShareClassInvalidName() public {
@@ -1463,8 +1463,8 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     function testSetMetadataInvalidMetadata(bytes memory metadata) public {
         vm.assume(metadata.length < 128 + 128 + 32);
 
-        vm.expectRevert(ISingleShareClass.InvalidMetadataName.selector);
-        shareClass.setMetadata(poolId, scId, _encodeMetadata("", SC_META_SYMBOL, SC_META_HOOK));
+        vm.expectRevert(ISingleShareClass.InvalidMetadataSize.selector);
+        shareClass.setMetadata(poolId, scId, metadata);
     }
 
     function testSetMetadataInvalidName() public {
