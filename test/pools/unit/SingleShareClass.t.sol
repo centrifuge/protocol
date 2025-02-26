@@ -106,6 +106,8 @@ abstract contract SingleShareClassBaseTest is Test {
     function setUp() public virtual {
         shareClass = new SingleShareClassExt(IPoolRegistry(poolRegistryAddress), address(this));
 
+        vm.expectEmit();
+        emit ISingleShareClass.AddedShareClass(poolId, scId, SC_META_NAME, SC_META_SYMBOL, SC_META_HOOK);
         shareClass.addShareClass(poolId, _encodeMetadata(SC_META_NAME, SC_META_SYMBOL, SC_META_HOOK));
 
         // Mock IPoolRegistry.currency call
@@ -253,6 +255,8 @@ contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
         vm.assume(bytes(symbol).length > 0);
         vm.assume(hook != bytes32(0));
 
+        vm.expectEmit();
+        emit ISingleShareClass.UpdatedMetadata(poolId, scId, name, symbol, hook);
         shareClass.setMetadata(poolId, scId, _encodeMetadata(name, symbol, hook));
 
         (string memory name_, string memory symbol_, bytes32 hook_) = shareClass.metadata(scId);

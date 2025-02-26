@@ -109,7 +109,9 @@ contract SingleShareClass is Auth, ISingleShareClass {
         shareClassId[poolId] = shareClassId_;
         epochId[poolId] = 1;
 
-        _setMetadata(shareClassId_, data);
+        (string memory name, string memory symbol, bytes32 hook) = _setMetadata(shareClassId_, data);
+
+        emit AddedShareClass(poolId, shareClassId_, name, symbol, hook);
     }
 
     /// @inheritdoc IShareClassManager
@@ -493,6 +495,15 @@ contract SingleShareClass is Auth, ISingleShareClass {
         userOrder.lastUpdate = endEpochId + 1;
     }
 
+    function setMetadata(PoolId poolId, ShareClassId shareClassId_, bytes calldata metadata_) external auth {
+        require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
+
+        (string memory name, string memory symbol, bytes32 hook) = _setMetadata(shareClassId_, metadata_);
+
+        emit UpdatedMetadata(poolId, shareClassId_, name, symbol, hook);
+    }
+
+
     /// @inheritdoc IShareClassManager
     function updateShareClassNav(PoolId poolId, ShareClassId shareClassId_) external view auth returns (D18, uint128) {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
@@ -513,12 +524,6 @@ contract SingleShareClass is Auth, ISingleShareClass {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
 
         return (_shareClassNavPerShare[shareClassId_], totalIssuance[shareClassId_]);
-    }
-
-    function setMetadata(PoolId poolId, ShareClassId shareClassId_, bytes calldata metadata_) external {
-        require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
-
-        _setMetadata(shareClassId_, metadata_);
     }
 
     /// @notice Revokes shares for a single epoch, updates epoch ratio and emits event.
@@ -650,16 +655,16 @@ contract SingleShareClass is Auth, ISingleShareClass {
         );
     }
 
-    function _setMetadata(ShareClassId shareClassId_, bytes calldata metadata_) private {
+    function _setMetadata(ShareClassId shareClassId_, bytes calldata metadata_) private returns (string memory name, string memory symbol, bytes32 hook) {
         require(metadata_.length == META_NAME_LENGTH + META_SYMBOL_LENGTH + META_HOOK_LENGTH, InvalidMetadataSize());
 
-        string memory name = metadata_.slice(0, 128).bytes128ToString();
+        name = metadata_.slice(0, 128).bytes128ToString();
         require(bytes(name).length != 0, InvalidMetadataName());
 
-        string memory symbol = metadata_.slice(128, 128).bytes128ToString();
+        symbol = metadata_.slice(128, 128).bytes128ToString();
         require(bytes(symbol).length != 0, InvalidMetadataSymbol());
 
-        bytes32 hook = metadata_.toBytes32(256);
+        hook = metadata_.toBytes32(256);
         require(hook != bytes32(""), InvalidMetadataHook());
 
         metadata[shareClassId_] = ShareClassMetadata(name, symbol, hook);
