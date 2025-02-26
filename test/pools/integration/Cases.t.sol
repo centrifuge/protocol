@@ -132,10 +132,6 @@ contract TestConfiguration is TestCommon {
 
         // From this point, pool is ready for investing from CV side
     }
-
-    function encodeMetadata(string memory name, string memory symbol) internal pure returns (bytes memory metadata) {
-        return abi.encodePacked(bytes(name.stringToBytes128()), symbol.toBytes32());
-    }
 }
 
 contract TestInvestments is TestConfiguration {
