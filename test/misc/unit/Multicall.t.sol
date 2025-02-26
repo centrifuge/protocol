@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 import {Multicall} from "src/misc/Multicall.sol";
+import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 
 contract ExternalContract {
     MulticallImpl public multicall;
@@ -82,19 +83,11 @@ contract MulticallTest is Test {
         assertEq(multicall.value(), 0);
     }
 
-    function testErrAlreadyInitiated() public {
-        bytes[] memory calls = new bytes[](1);
-        calls[0] = abi.encodeWithSelector(multicall.multicall.selector, new bytes[](0));
-
-        vm.expectRevert(IMulticall.AlreadyInitiated.selector);
-        multicall.multicall(calls);
-    }
-
     function testErrUnauthorizedSender() public {
         bytes[] memory calls = new bytes[](1);
         calls[0] = abi.encodeWithSelector(multicall.addWithReentrancy.selector, 2);
 
-        vm.expectRevert(IMulticall.UnauthorizedSender.selector);
+        vm.expectRevert(ReentrancyProtection.UnauthorizedSender.selector);
         multicall.multicall(calls);
     }
 }

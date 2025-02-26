@@ -15,7 +15,7 @@ fs_permissions = [{ access = "read-write", path = ".forge-snapshots/"}, { access
 
 # False-alarm warnings
 ignored_warnings_from = [
-    "src/misc/Multicall.sol" # Issue: https://github.com/ethereum/solidity/issues/14359
+    "src/misc/ReentrancyProtection.sol" # Issue: https://github.com/ethereum/solidity/issues/14359
 ]
 
 [profile.default.fuzz]
@@ -80,7 +80,7 @@ fail_on_revert = false
   ignore = [
     "test/*.sol",
     #Check if https://github.com/foundry-rs/foundry/issues/9088 is fixed to remove the following:
-    "src/misc/Multicall.sol", #Because transient keyword
+    "src/misc/ReentrancyProtection.sol", #Because transient keyword
     "src/pools/Accounting.sol", #Because transient keyword
     "src/pools/PoolManager.sol", #Because transient keyword
     "src/pools/SingleShareClass.sol", #Because transient keyword
