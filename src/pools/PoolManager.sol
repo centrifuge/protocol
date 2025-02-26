@@ -314,16 +314,6 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
         accounting.addCredit(account, amount);
     }
 
-    /// @inheritdoc IPoolManagerAdminMethods
-    function unlockAssets(ShareClassId scId, AssetId assetId, bytes32 receiver, uint128 assetAmount)
-        external
-        poolUnlocked
-    {
-        assetRegistry.burn(escrow(unlockedPoolId(), scId, EscrowId.SHARE_CLASS), assetId.raw(), assetAmount);
-
-        gateway.sendUnlockAssets(assetId, receiver, assetAmount);
-    }
-
     //----------------------------------------------------------------------------------------------
     // Gateway owner methods
     //----------------------------------------------------------------------------------------------
@@ -386,11 +376,6 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
         uint128 cancelledShareAmount = scm.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
 
         gateway.sendFulfilledCancelRedeemRequest(poolId, scId, payoutAssetId, investor, cancelledShareAmount);
-    }
-
-    /// @inheritdoc IPoolManagerHandler
-    function handleLockedTokens(AssetId assetId, address receiver, uint128 amount) external onlyGateway {
-        assetRegistry.mint(receiver, assetId.raw(), amount);
     }
 
     //----------------------------------------------------------------------------------------------

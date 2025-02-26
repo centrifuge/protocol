@@ -73,7 +73,4 @@ interface IGateway {
         bytes32 investor,
         uint128 cancelledShares
     ) external;
-
-    /// @notice Creates and send the message
-    function sendUnlockAssets(AssetId assetId, bytes32 receiver, uint128 assetAmount) external;
 }

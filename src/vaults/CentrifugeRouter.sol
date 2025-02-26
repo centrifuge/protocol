@@ -216,27 +216,6 @@ contract CentrifugeRouter is Auth, ICentrifugeRouter {
 
     // --- Transfer ---
     /// @inheritdoc ICentrifugeRouter
-    function transferAssets(address asset, bytes32 recipient, uint128 amount, uint256 topUpAmount)
-        public
-        payable
-        protected
-    {
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(this), amount);
-        _approveMax(asset, address(poolManager));
-        _pay(topUpAmount);
-        poolManager.transferAssets(asset, recipient, amount);
-    }
-
-    /// @inheritdoc ICentrifugeRouter
-    function transferAssets(address asset, address recipient, uint128 amount, uint256 topUpAmount)
-        external
-        payable
-        protected
-    {
-        transferAssets(asset, recipient.toBytes32(), amount, topUpAmount);
-    }
-
-    /// @inheritdoc ICentrifugeRouter
     function transferTrancheTokens(
         address vault,
         Domain domain,

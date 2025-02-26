@@ -89,10 +89,6 @@ interface IPoolManager is IMessageHandler, IRecoverable {
     ///                'vaultFactory', or 'gasService'
     function file(bytes32 what, address data) external;
 
-    /// @notice transfers assets to a cross-chain recipient address
-    /// @dev    Addresses on centrifuge chain are represented as bytes32
-    function transferAssets(address asset, bytes32 recipient, uint128 amount) external;
-
     /// @notice transfers tranche tokens to a cross-chain recipient address
     /// @dev    To transfer to evm chains, pad a 20 byte evm address with 12 bytes of 0
     /// @param  poolId The centrifuge pool id
@@ -168,10 +164,6 @@ interface IPoolManager is IMessageHandler, IRecoverable {
     /// @notice Executes a message from the gateway
     /// @dev    The function can only be executed by the gateway contract.
     function handle(bytes calldata message) external;
-
-    /// @notice Transfers assets to a recipient from the escrow contract
-    /// @dev    The function can only be executed internally or by the gateway contract.
-    function handleTransfer(uint128 assetId, address recipient, uint128 amount) external;
 
     /// @notice Mints tranche tokens to a recipient
     /// @dev    The function can only be executed internally or by the gateway contract.

@@ -123,12 +123,6 @@ interface IPoolManagerAdminMethods {
 
     /// @notice Add credit an account. Decrease the value of debit-normal accounts, increase for credit-normal ones.
     function addCredit(AccountId account, uint128 amount) external;
-
-    /// @notice Unlock assets from a share class escrow in CV side
-    /// @param scId share class Id associated to the escrow from where unlock the tokens
-    /// @param receiver Address in CV where to deposit the unlocked tokens
-    /// @dev Note: the chainId is retriver from the assetId
-    function unlockAssets(ShareClassId scId, AssetId assetId, bytes32 receiver, uint128 assetAmount) external;
 }
 
 /// @notice Interface with all methods available in the system used by actors
@@ -197,8 +191,4 @@ interface IPoolManagerHandler {
     /// @notice Perform a redeem cancellation that was requested from CV.
     function handleCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
         external;
-
-    /// @notice Tells that an asset was locked in CV.
-    /// @param receiver The escrow where to handle the locked tokens.
-    function handleLockedTokens(AssetId assetId, address receiver, uint128 amount) external;
 }

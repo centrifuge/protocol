@@ -339,60 +339,6 @@ contract CentrifugeRouterTest is BaseTest {
         assertEq(erc20.nonces(owner), 1);
     }
 
-    function testTransferAssetsToAddress() public {
-        address vault_ = deploySimpleVault();
-        vm.label(vault_, "vault");
-
-        uint256 amount = 100 * 10 ** 18;
-        address recipient = address(2);
-        erc20.mint(self, amount);
-
-        uint256 fuel = estimateGas();
-        vm.deal(address(this), 10 ether);
-        erc20.approve(address(router), amount);
-
-        vm.expectRevert("CentrifugeRouter/insufficient-funds");
-        router.transferAssets(address(erc20), recipient, uint128(amount), fuel);
-
-        vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        router.transferAssets{value: fuel}(address(erc20), recipient, uint128(amount), 0);
-
-        vm.expectRevert("Gateway/not-enough-gas-funds");
-        router.transferAssets{value: fuel}(address(erc20), recipient, uint128(amount), fuel - 1);
-
-        snapStart("CentrifugeRouter_transferAssets");
-        router.transferAssets{value: fuel}(address(erc20), recipient, uint128(amount), fuel);
-        snapEnd();
-
-        assertEq(erc20.balanceOf(address(escrow)), amount);
-    }
-
-    function testTransferAssetsToBytes32() public {
-        address vault_ = deploySimpleVault();
-        vm.label(vault_, "vault");
-
-        uint256 amount = 100 * 10 ** 18;
-        bytes32 recipient = address(2).toBytes32();
-        erc20.mint(self, amount);
-
-        uint256 fuel = estimateGas();
-        vm.deal(address(this), 10 ether);
-        erc20.approve(address(router), amount);
-
-        vm.expectRevert("CentrifugeRouter/insufficient-funds");
-        router.transferAssets(address(erc20), recipient, uint128(amount), fuel);
-
-        vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        router.transferAssets{value: fuel}(address(erc20), recipient, uint128(amount), 0);
-
-        vm.expectRevert("Gateway/not-enough-gas-funds");
-        router.transferAssets{value: fuel}(address(erc20), recipient, uint128(amount), fuel - 1);
-
-        router.transferAssets{value: fuel}(address(erc20), recipient, uint128(amount), fuel);
-
-        assertEq(erc20.balanceOf(address(escrow)), amount);
-    }
-
     function testTranferTrancheTokensToAddressDestination() public {
         address vault_ = deploySimpleVault();
         vm.label(vault_, "vault");
