@@ -5,6 +5,8 @@ import {Auth} from "src/misc/Auth.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
@@ -48,6 +50,12 @@ struct EpochPointers {
     uint32 latestRevocation;
 }
 
+struct ShareClassMetadata {
+    string name;
+    string symbol;
+    bytes32 hook;
+}
+
 /// Utility method to determine the ShareClassId for a PoolId
 function previewShareClassId(PoolId poolId) pure returns (ShareClassId) {
     return ShareClassId.wrap(bytes16(uint128(PoolId.unwrap(poolId))));
@@ -57,13 +65,20 @@ contract SingleShareClass is Auth, ISingleShareClass {
     using MathLib for D18;
     using MathLib for uint128;
     using MathLib for uint256;
+    using CastLib for bytes;
+    using BytesLib for bytes;
+
+    uint32 constant META_NAME_LENGTH = 128;
+    uint32 constant META_SYMBOL_LENGTH = 128;
+    uint32 constant META_HOOK_LENGTH = 32;
 
     /// Storage
     uint32 internal transient _epochIncrement;
     IPoolRegistry public poolRegistry;
+    mapping(PoolId poolId => uint32 epochId_) public epochId;
     mapping(PoolId poolId => ShareClassId) public shareClassId;
     mapping(ShareClassId scId => uint128) public totalIssuance;
-    mapping(PoolId poolId => uint32 epochId_) public epochId;
+    mapping(ShareClassId scId => ShareClassMetadata) public metadata;
     mapping(ShareClassId scId => D18 navPerShare) private _shareClassNavPerShare;
     mapping(ShareClassId scId => mapping(AssetId assetId => EpochPointers)) public epochPointers;
     mapping(ShareClassId scId => mapping(AssetId payoutAssetId => uint128 pending)) public pendingRedeem;
@@ -86,17 +101,15 @@ contract SingleShareClass is Auth, ISingleShareClass {
     }
 
     /// @inheritdoc IShareClassManager
-    function addShareClass(PoolId poolId, bytes calldata /* data */ )
-        external
-        auth
-        returns (ShareClassId shareClassId_)
-    {
+    function addShareClass(PoolId poolId, bytes calldata data) external auth returns (ShareClassId shareClassId_) {
         require(shareClassId[poolId].isNull(), MaxShareClassNumberExceeded(1));
 
         shareClassId_ = previewShareClassId(poolId);
 
         shareClassId[poolId] = shareClassId_;
         epochId[poolId] = 1;
+
+        _setMetadata(shareClassId_, data);
     }
 
     /// @inheritdoc IShareClassManager
@@ -502,6 +515,12 @@ contract SingleShareClass is Auth, ISingleShareClass {
         return (_shareClassNavPerShare[shareClassId_], totalIssuance[shareClassId_]);
     }
 
+    function setMetadata(PoolId poolId, ShareClassId shareClassId_, bytes calldata metadata_) external {
+        require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
+
+        _setMetadata(shareClassId_, metadata_);
+    }
+
     /// @notice Revokes shares for a single epoch, updates epoch ratio and emits event.
     ///
     /// @param poolId Identifier of the pool
@@ -629,6 +648,21 @@ contract SingleShareClass is Auth, ISingleShareClass {
             userOrder.pending,
             pendingRedeem[shareClassId_][payoutAssetId]
         );
+    }
+
+    function _setMetadata(ShareClassId shareClassId_, bytes calldata metadata_) private {
+        require(metadata_.length == META_NAME_LENGTH + META_SYMBOL_LENGTH + META_HOOK_LENGTH, InvalidMetadataSize());
+
+        string memory name = metadata_.slice(0, 128).bytes128ToString();
+        require(bytes(name).length != 0, InvalidMetadataName());
+
+        string memory symbol = metadata_.slice(128, 128).bytes128ToString();
+        require(bytes(symbol).length != 0, InvalidMetadataSymbol());
+
+        bytes32 hook = metadata_.toBytes32(256);
+        require(hook != bytes32(""), InvalidMetadataHook());
+
+        metadata[shareClassId_] = ShareClassMetadata(name, symbol, hook);
     }
 
     /// @notice Advances the current epoch of the given pool if it has not been incremented within the multicall. If the

@@ -18,6 +18,10 @@ interface ISingleShareClass is IShareClassManager {
     error AlreadyApproved();
     error UnrecognizedFileParam();
     error ApprovalRatioOutOfBounds();
+    error InvalidMetadataSize();
+    error InvalidMetadataName();
+    error InvalidMetadataSymbol();
+    error InvalidMetadataHook();
 
     /// @notice Emits new shares for the given identifier based on the provided NAV up to the desired epoch.
     ///
@@ -89,4 +93,14 @@ interface ISingleShareClass is IShareClassManager {
         AssetId payoutAssetId,
         uint32 endEpochId
     ) external returns (uint128 payoutAssetAmount, uint128 paymentShareAmount);
+
+    /// @notice returns The metadata of the share class.
+    ///
+    /// @param shareClassId Identifier of the share class
+    /// @return name The registered name of the share class token
+    /// @return symbol The registered symbol of the share class token
+    /// @return hook The hook address
+    function metadata(ShareClassId shareClassId)
+        external
+        returns (string memory name, string memory symbol, bytes32 hook);
 }
