@@ -1329,6 +1329,11 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
         shareClass.shareClassNavPerShare(poolId, wrongShareClassId);
     }
 
+    function testUpdateMetadataWrongShareClassId() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
+        shareClass.updateMetadata(poolId, wrongShareClassId, "", "", bytes(""));
+    }
+
     function testIssueSharesBeforeApproval() public {
         vm.expectRevert(abi.encodeWithSelector(ISingleShareClass.ApprovalRequired.selector));
         shareClass.issueShares(poolId, scId, USDC, d18(1));
