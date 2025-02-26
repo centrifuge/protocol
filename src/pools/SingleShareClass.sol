@@ -104,7 +104,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     }
 
     /// @inheritdoc IShareClassManager
-    function addShareClass(PoolId poolId, bytes calldata data) external auth returns (ShareClassId shareClassId_) {
+    function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes calldata) external auth returns (ShareClassId shareClassId_) {
         require(shareClassId[poolId].isNull(), MaxShareClassNumberExceeded(1));
 
         shareClassId_ = previewShareClassId(poolId);
@@ -112,7 +112,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         shareClassId[poolId] = shareClassId_;
         epochId[poolId] = 1;
 
-        (string memory name, string memory symbol) = _setMetadata(shareClassId_, data);
+        _updateMetadata(shareClassId_, name, symbol);
 
         emit AddedShareClass(poolId, shareClassId_, name, symbol);
     }
@@ -498,10 +498,10 @@ contract SingleShareClass is Auth, ISingleShareClass {
         userOrder.lastUpdate = endEpochId + 1;
     }
 
-    function updateMetadata(PoolId poolId, ShareClassId shareClassId_, bytes calldata metadata_) external auth {
+    function updateMetadata(PoolId poolId, ShareClassId shareClassId_, string calldata name, string calldata symbol, bytes calldata) external auth {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
 
-        (string memory name, string memory symbol) = _setMetadata(shareClassId_, metadata_);
+        _updateMetadata(shareClassId_, name, symbol);
 
         emit UpdatedMetadata(poolId, shareClassId_, name, symbol);
     }
@@ -658,14 +658,12 @@ contract SingleShareClass is Auth, ISingleShareClass {
         );
     }
 
-    function _setMetadata(ShareClassId shareClassId_, bytes calldata metadata_) private returns (string memory name, string memory symbol) {
-        require(metadata_.length == META_NAME_LENGTH + META_SYMBOL_LENGTH, InvalidMetadataSize());
+    function _updateMetadata(ShareClassId shareClassId_, string calldata name, string calldata symbol) private {
+        uint256 nLen = bytes(name).length;
+        require(nLen> 0 && nLen <= 128, InvalidMetadataName());
 
-        name = metadata_.slice(0, 128).bytes128ToString();
-        require(bytes(name).length != 0, InvalidMetadataName());
-
-        symbol = metadata_.toBytes32(128).toString();
-        require(bytes(symbol).length != 0, InvalidMetadataSymbol());
+        uint256 sLen = bytes(symbol).length;
+        require(sLen > 0 && sLen <= 32, InvalidMetadataSymbol());
 
         metadata[shareClassId_] = ShareClassMetadata(name, symbol);
     }

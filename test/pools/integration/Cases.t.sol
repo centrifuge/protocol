@@ -85,7 +85,7 @@ contract TestConfiguration is TestCommon {
 
         (bytes[] memory cs, uint256 c) = (new bytes[](4), 0);
         cs[c++] = abi.encodeWithSelector(poolManager.setPoolMetadata.selector, bytes("Testing pool"));
-        cs[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, encodeMetadata(SC_NAME, SC_SYMBOL));
+        cs[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, SC_NAME, SC_SYMBOL, bytes(""));
         cs[c++] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_CV);
         cs[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
         assertEq(c, cs.length);
@@ -118,7 +118,7 @@ contract TestConfiguration is TestCommon {
         scId = previewShareClassId(poolId);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](5), 0);
-        cs[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, encodeMetadata(SC_NAME, SC_SYMBOL));
+        cs[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, SC_NAME, SC_SYMBOL, bytes(""));
         cs[c++] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_CV);
         cs[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
         cs[c++] = abi.encodeWithSelector(poolManager.createHolding.selector, scId, USDC_C2, identityValuation, 0x01);

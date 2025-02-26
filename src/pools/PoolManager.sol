@@ -170,9 +170,9 @@ contract PoolManager is Auth, Multicall, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function addShareClass(bytes calldata data) external poolUnlocked protected returns (ShareClassId) {
+    function addShareClass(string calldata name, string calldata symbol, bytes calldata data) external poolUnlocked protected returns (ShareClassId) {
         IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
-        return scm.addShareClass(unlockedPoolId, data);
+        return scm.addShareClass(unlockedPoolId, name, symbol, data);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods

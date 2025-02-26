@@ -69,7 +69,9 @@ interface IPoolManagerAdminMethods {
 
     /// @notice Add a new share class to the pool
     /// @return The new share class Id
-    function addShareClass(bytes calldata data) external returns (ShareClassId);
+    function addShareClass(string calldata name, string calldata symbol, bytes calldata data)
+        external
+        returns (ShareClassId);
 
     /// @notice Approves a percentage of all deposit requests for the given triplet of pool id, share class id and
     /// deposit asset id.

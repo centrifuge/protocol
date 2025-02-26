@@ -73,7 +73,7 @@ contract TestMainMethodsChecks is TestCommon {
         poolManager.allowInvestorAsset(ShareClassId.wrap(0), AssetId.wrap(0), false);
 
         vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
-        poolManager.addShareClass(bytes(""));
+        poolManager.addShareClass("", "", bytes(""));
 
         vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
         poolManager.approveDeposits(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
