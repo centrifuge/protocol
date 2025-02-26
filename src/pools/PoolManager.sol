@@ -132,12 +132,13 @@ contract PoolManager is Auth, Multicall, IPoolManager, IPoolManagerHandler {
         unlockedPoolId = PoolId.wrap(0);
     }
 
+    /// @inheritdoc IPoolManagerAdminMethods
     function notifyPool(uint32 chainId) external poolUnlocked protected {
         gateway.sendNotifyPool(chainId, unlockedPoolId);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function notifyShareClass(uint32 chainId, ShareClassId scId, bytes32 hook) external poolUnlocked {
+    function notifyShareClass(uint32 chainId, ShareClassId scId, bytes32 hook) external poolUnlocked protected {
         IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
         require(scm.exists(unlockedPoolId, scId), IShareClassManager.ShareClassNotFound());
 
