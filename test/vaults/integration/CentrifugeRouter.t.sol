@@ -17,6 +17,7 @@ contract CentrifugeRouterTest is BaseTest {
     /// @dev Payload is not taken into account during gas estimation
     bytes constant PAYLOAD_FOR_GAS_ESTIMATION = "irrelevant_value";
 
+    /// forge-config: default.isolate = true
     function testCFGRouterDeposit(uint256 amount) public {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
         amount = uint128(bound(amount, 4, MAX_UINT128));
@@ -151,6 +152,7 @@ contract CentrifugeRouterTest is BaseTest {
         assertApproxEqAbs(erc20.balanceOf(address(escrow)), amount, 1);
     }
 
+    /// forge-config: default.isolate = true
     function testRouterRedeem(uint256 amount) public {
         amount = uint128(bound(amount, 4, MAX_UINT128));
         vm.assume(amount % 2 == 0);
@@ -281,6 +283,7 @@ contract CentrifugeRouterTest is BaseTest {
         assertApproxEqAbs(erc20Y.balanceOf(self), assetPayout2, 1);
     }
 
+    /// forge-config: default.isolate = true
     function testMulticallingApproveVaultAndExecuteLockedDepositRequest(uint256 amount) public {
         amount = uint128(bound(amount, 4, MAX_UINT128));
         vm.assume(amount % 2 == 0);
