@@ -182,10 +182,13 @@ contract CentrifugeRouterTest is BaseTest {
         );
         assertEq(vault.claimableCancelDepositRequest(0, self), amount);
 
-        address sender = makeAddr("maliciousUser");
-        vm.prank(sender);
+        address nonMember = makeAddr("nonMember");
+        vm.prank(nonMember);
         vm.expectRevert("CentrifugeRouter/invalid-sender");
-        router.claimCancelDepositRequest(vault_, sender, self);
+        router.claimCancelDepositRequest(vault_, nonMember, self);
+
+        vm.expectRevert("InvestmentManager/transfer-not-allowed");
+        router.claimCancelDepositRequest(vault_, nonMember, self);
 
         router.claimCancelDepositRequest(vault_, self, self);
         assertEq(erc20.balanceOf(address(escrow)), 0);
