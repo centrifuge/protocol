@@ -15,7 +15,7 @@ import {PoolId} from "src/pools/types/PoolId.sol";
 import {AccountId} from "src/pools/types/AccountId.sol";
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AccountType} from "src/pools/interfaces/IPoolManager.sol";
-import {previewShareClassId} from "src/pools/SingleShareClass.sol";
+import {previewShareClassId, encodeMetadata} from "src/pools/SingleShareClass.sol";
 
 import {Deployer} from "script/pools/Deployer.s.sol";
 
@@ -74,9 +74,9 @@ contract TestConfiguration is TestCommon {
     using CastLib for string;
     using CastLib for bytes32;
 
-    string constant SC_META_NAME = "ExampleName";
-    string constant SC_META_SYMBOL = "ExampleSymbol";
-    bytes32 constant SC_META_HOOK = bytes32("ExampleHookData");
+    string constant SC_NAME = "ExampleName";
+    string constant SC_SYMBOL = "ExampleSymbol";
+    bytes32 constant SC_HOOK = bytes32("ExampleHookData");
 
     function testAssetRegistration() public {
         cv.registerAsset(USDC_C2, "USD Coin", "USDC", 6);
@@ -95,11 +95,9 @@ contract TestConfiguration is TestCommon {
 
         (bytes[] memory cs, uint256 c) = (new bytes[](4), 0);
         cs[c++] = abi.encodeWithSelector(poolManager.setPoolMetadata.selector, bytes("Testing pool"));
-        cs[c++] = abi.encodeWithSelector(
-            poolManager.addShareClass.selector, _encodeScMetadata(SC_META_NAME, SC_META_SYMBOL, SC_META_HOOK)
-        );
+        cs[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, encodeMetadata(SC_NAME, SC_SYMBOL));
         cs[c++] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_CV);
-        cs[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_CV, scId);
+        cs[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
         assertEq(c, cs.length);
 
         vm.prank(FM);
@@ -113,10 +111,10 @@ contract TestConfiguration is TestCommon {
                 MessageType.AddTranche,
                 poolId.raw(),
                 scId,
-                SC_META_NAME.stringToBytes128(),
-                SC_META_SYMBOL.toBytes32(),
+                SC_NAME.stringToBytes128(),
+                SC_SYMBOL.toBytes32(),
                 uint8(18),
-                SC_META_HOOK
+                SC_HOOK
             )
         );
     }
@@ -130,11 +128,9 @@ contract TestConfiguration is TestCommon {
         scId = previewShareClassId(poolId);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](5), 0);
-        cs[c++] = abi.encodeWithSelector(
-            poolManager.addShareClass.selector, _encodeScMetadata(SC_META_NAME, SC_META_SYMBOL, SC_META_HOOK)
-        );
+        cs[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, encodeMetadata(SC_NAME, SC_SYMBOL));
         cs[c++] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_CV);
-        cs[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_CV, scId);
+        cs[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
         cs[c++] = abi.encodeWithSelector(poolManager.createHolding.selector, scId, USDC_C2, identityValuation, 0x01);
         cs[c++] = abi.encodeWithSelector(poolManager.allowInvestorAsset.selector, scId, USDC_C2, true);
         assertEq(c, cs.length);
@@ -147,12 +143,8 @@ contract TestConfiguration is TestCommon {
         // From this point, pool is ready for investing from CV side
     }
 
-    function _encodeScMetadata(string memory name, string memory symbol, bytes32 hook)
-        internal
-        pure
-        returns (bytes memory metadata)
-    {
-        return abi.encodePacked(bytes(name.stringToBytes128()), bytes(symbol.stringToBytes128()), hook);
+    function encodeMetadata(string memory name, string memory symbol) internal pure returns (bytes memory metadata) {
+        return abi.encodePacked(bytes(name.stringToBytes128()), symbol.toBytes32());
     }
 }
 

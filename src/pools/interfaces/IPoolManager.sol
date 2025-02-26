@@ -44,7 +44,8 @@ interface IPoolManagerAdminMethods {
 
     /// @notice Notify to a CV instance that a new share class is available
     /// @param chainId Chain where CV instance lives
-    function notifyShareClass(uint32 chainId, ShareClassId scId) external;
+    /// @param hook The hook address of the share class
+    function notifyShareClass(uint32 chainId, ShareClassId scId, bytes32 hook) external;
 
     /// @dev Note: the chainId is retriver from the assetId
 

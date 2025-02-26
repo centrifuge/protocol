@@ -267,7 +267,7 @@ interface IShareClassManager {
     /// @param poolId Identifier of the pool
     /// @param shareClassId Identifier of the share class
     /// @param metadata Encoded metadata of the new share class
-    function setMetadata(PoolId poolId, ShareClassId shareClassId, bytes calldata metadata) external;
+    function updateMetadata(PoolId poolId, ShareClassId shareClassId, bytes calldata metadata) external;
 
     /// @notice Returns the current NAV of a share class of a pool per share as well as the issuance.
     ///

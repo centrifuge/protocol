@@ -53,7 +53,6 @@ struct EpochPointers {
 struct ShareClassMetadata {
     string name;
     string symbol;
-    bytes32 hook;
 }
 
 /// Utility method to determine the ShareClassId for a PoolId
@@ -61,16 +60,20 @@ function previewShareClassId(PoolId poolId) pure returns (ShareClassId) {
     return ShareClassId.wrap(bytes16(uint128(PoolId.unwrap(poolId))));
 }
 
+function encodeMetadata(string memory name, string memory symbol) pure returns (bytes memory metadata) {
+    return abi.encodePacked(bytes(CastLib.stringToBytes128(name)), CastLib.toBytes32(symbol));
+}
+
 contract SingleShareClass is Auth, ISingleShareClass {
     using MathLib for D18;
     using MathLib for uint128;
     using MathLib for uint256;
     using CastLib for bytes;
+    using CastLib for bytes32;
     using BytesLib for bytes;
 
     uint32 constant META_NAME_LENGTH = 128;
-    uint32 constant META_SYMBOL_LENGTH = 128;
-    uint32 constant META_HOOK_LENGTH = 32;
+    uint32 constant META_SYMBOL_LENGTH = 32;
 
     /// Storage
     uint32 internal transient _epochIncrement;
@@ -109,9 +112,9 @@ contract SingleShareClass is Auth, ISingleShareClass {
         shareClassId[poolId] = shareClassId_;
         epochId[poolId] = 1;
 
-        (string memory name, string memory symbol, bytes32 hook) = _setMetadata(shareClassId_, data);
+        (string memory name, string memory symbol) = _setMetadata(shareClassId_, data);
 
-        emit AddedShareClass(poolId, shareClassId_, name, symbol, hook);
+        emit AddedShareClass(poolId, shareClassId_, name, symbol);
     }
 
     /// @inheritdoc IShareClassManager
@@ -495,12 +498,12 @@ contract SingleShareClass is Auth, ISingleShareClass {
         userOrder.lastUpdate = endEpochId + 1;
     }
 
-    function setMetadata(PoolId poolId, ShareClassId shareClassId_, bytes calldata metadata_) external auth {
+    function updateMetadata(PoolId poolId, ShareClassId shareClassId_, bytes calldata metadata_) external auth {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
 
-        (string memory name, string memory symbol, bytes32 hook) = _setMetadata(shareClassId_, metadata_);
+        (string memory name, string memory symbol) = _setMetadata(shareClassId_, metadata_);
 
-        emit UpdatedMetadata(poolId, shareClassId_, name, symbol, hook);
+        emit UpdatedMetadata(poolId, shareClassId_, name, symbol);
     }
 
 
@@ -655,19 +658,16 @@ contract SingleShareClass is Auth, ISingleShareClass {
         );
     }
 
-    function _setMetadata(ShareClassId shareClassId_, bytes calldata metadata_) private returns (string memory name, string memory symbol, bytes32 hook) {
-        require(metadata_.length == META_NAME_LENGTH + META_SYMBOL_LENGTH + META_HOOK_LENGTH, InvalidMetadataSize());
+    function _setMetadata(ShareClassId shareClassId_, bytes calldata metadata_) private returns (string memory name, string memory symbol) {
+        require(metadata_.length == META_NAME_LENGTH + META_SYMBOL_LENGTH, InvalidMetadataSize());
 
         name = metadata_.slice(0, 128).bytes128ToString();
         require(bytes(name).length != 0, InvalidMetadataName());
 
-        symbol = metadata_.slice(128, 128).bytes128ToString();
+        symbol = metadata_.toBytes32(128).toString();
         require(bytes(symbol).length != 0, InvalidMetadataSymbol());
 
-        hook = metadata_.toBytes32(256);
-        require(hook != bytes32(""), InvalidMetadataHook());
-
-        metadata[shareClassId_] = ShareClassMetadata(name, symbol, hook);
+        metadata[shareClassId_] = ShareClassMetadata(name, symbol);
     }
 
     /// @notice Advances the current epoch of the given pool if it has not been incremented within the multicall. If the

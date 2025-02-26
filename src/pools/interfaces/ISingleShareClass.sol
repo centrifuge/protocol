@@ -12,8 +12,8 @@ import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 interface ISingleShareClass is IShareClassManager {
     /// Events
     event File(bytes32 what, address who);
-    event AddedShareClass(PoolId indexed poolId, ShareClassId indexed scId, string name, string symbol, bytes32 hook);
-    event UpdatedMetadata(PoolId indexed poolId, ShareClassId indexed scId, string name, string symbol, bytes32 hook);
+    event AddedShareClass(PoolId indexed poolId, ShareClassId indexed scId, string name, string symbol);
+    event UpdatedMetadata(PoolId indexed poolId, ShareClassId indexed scId, string name, string symbol);
 
     /// Errors
     error ApprovalRequired();
@@ -23,7 +23,6 @@ interface ISingleShareClass is IShareClassManager {
     error InvalidMetadataSize();
     error InvalidMetadataName();
     error InvalidMetadataSymbol();
-    error InvalidMetadataHook();
 
     /// @notice Emits new shares for the given identifier based on the provided NAV up to the desired epoch.
     ///
@@ -101,8 +100,5 @@ interface ISingleShareClass is IShareClassManager {
     /// @param shareClassId Identifier of the share class
     /// @return name The registered name of the share class token
     /// @return symbol The registered symbol of the share class token
-    /// @return hook The hook address
-    function metadata(ShareClassId shareClassId)
-        external
-        returns (string memory name, string memory symbol, bytes32 hook);
+    function metadata(ShareClassId shareClassId) external returns (string memory name, string memory symbol);
 }

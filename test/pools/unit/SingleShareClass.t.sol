@@ -21,7 +21,8 @@ import {
     EpochAmounts,
     UserOrder,
     EpochPointers,
-    ShareClassMetadata
+    ShareClassMetadata,
+    encodeMetadata
 } from "src/pools/SingleShareClass.sol";
 
 uint64 constant POOL_ID = 42;
@@ -34,9 +35,8 @@ uint128 constant DENO_OTHER_STABLE = 10 ** 12;
 uint128 constant DENO_POOL = 10 ** 18;
 uint128 constant MIN_REQUEST_AMOUNT = 1e6;
 uint128 constant MAX_REQUEST_AMOUNT = 1e18;
-string constant SC_META_NAME = "ExampleName";
-string constant SC_META_SYMBOL = "ExampleSymbol";
-bytes32 constant SC_META_HOOK = bytes32("ExampleHookData");
+string constant SC_NAME = "ExampleName";
+string constant SC_SYMBOL = "ExampleSymbol";
 
 uint32 constant STORAGE_INDEX_EPOCH_ID = 2;
 uint32 constant STORAGE_INDEX_TOTAL_ISSUANCE = 4;
@@ -107,8 +107,8 @@ abstract contract SingleShareClassBaseTest is Test {
         shareClass = new SingleShareClassExt(IPoolRegistry(poolRegistryAddress), address(this));
 
         vm.expectEmit();
-        emit ISingleShareClass.AddedShareClass(poolId, scId, SC_META_NAME, SC_META_SYMBOL, SC_META_HOOK);
-        shareClass.addShareClass(poolId, _encodeMetadata(SC_META_NAME, SC_META_SYMBOL, SC_META_HOOK));
+        emit ISingleShareClass.AddedShareClass(poolId, scId, SC_NAME, SC_SYMBOL);
+        shareClass.addShareClass(poolId, encodeMetadata(SC_NAME, SC_SYMBOL));
 
         // Mock IPoolRegistry.currency call
         vm.mockCall(
@@ -192,14 +192,6 @@ abstract contract SingleShareClassBaseTest is Test {
     function poolToUsdc(uint128 poolAmount) internal view returns (uint128 usdcAmount) {
         return oracleMock.getQuote(uint256(poolAmount), POOL_CURRENCY, USDC.addr()).toUint128();
     }
-
-    function _encodeMetadata(string memory name, string memory symbol, bytes32 hook)
-        internal
-        pure
-        returns (bytes memory metadata)
-    {
-        return abi.encodePacked(bytes(name.stringToBytes128()), bytes(symbol.stringToBytes128()), hook);
-    }
 }
 
 ///@dev Contains all simple tests which are expected to succeed
@@ -240,29 +232,24 @@ contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
     }
 
     function testDefaultMetadata() public view notThisContract(poolRegistryAddress) {
-        (string memory name, string memory symbol, bytes32 hook) = shareClass.metadata(scId);
+        (string memory name, string memory symbol) = shareClass.metadata(scId);
 
-        assertEq(name, SC_META_NAME);
-        assertEq(symbol, SC_META_SYMBOL);
-        assertEq(hook, SC_META_HOOK);
+        assertEq(name, SC_NAME);
+        assertEq(symbol, SC_SYMBOL);
     }
 
-    function testSetMetadata(string memory name, string memory symbol, bytes32 hook)
-        public
-        notThisContract(poolRegistryAddress)
-    {
+    function testUpdateMetadata(string memory name, string memory symbol) public notThisContract(poolRegistryAddress) {
         vm.assume(bytes(name).length > 0);
         vm.assume(bytes(symbol).length > 0);
-        vm.assume(hook != bytes32(0));
+        vm.assume(bytes(symbol).length <= 32);
 
         vm.expectEmit();
-        emit ISingleShareClass.UpdatedMetadata(poolId, scId, name, symbol, hook);
-        shareClass.setMetadata(poolId, scId, _encodeMetadata(name, symbol, hook));
+        emit ISingleShareClass.UpdatedMetadata(poolId, scId, name, symbol);
+        shareClass.updateMetadata(poolId, scId, encodeMetadata(name, symbol));
 
-        (string memory name_, string memory symbol_, bytes32 hook_) = shareClass.metadata(scId);
+        (string memory name_, string memory symbol_) = shareClass.metadata(scId);
         assertEq(name, name_, "Metadata name mismatch");
         assertEq(symbol, symbol_, "Metadata symbol mismatch");
-        assertEq(hook, hook_, "Metadata hook mismatch");
     }
 }
 
@@ -1434,7 +1421,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     }
 
     function testAddShareClassInvalidMetadata(bytes memory metadata) public {
-        vm.assume(metadata.length < 128 + 128 + 32);
+        vm.assume(metadata.length < 128 + 32);
 
         vm.expectRevert(ISingleShareClass.InvalidMetadataSize.selector);
         shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), metadata);
@@ -1442,43 +1429,33 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
 
     function testAddShareClassInvalidName() public {
         vm.expectRevert(ISingleShareClass.InvalidMetadataName.selector);
-        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), _encodeMetadata("", SC_META_SYMBOL, SC_META_HOOK));
+        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), encodeMetadata("", SC_SYMBOL));
     }
 
     function testAddShareClassInvalidSymbol() public {
         vm.expectRevert(ISingleShareClass.InvalidMetadataSymbol.selector);
-        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), _encodeMetadata(SC_META_NAME, "", SC_META_HOOK));
+        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), encodeMetadata(SC_NAME, ""));
     }
 
-    function testAddShareClassInvalidHook() public {
-        vm.expectRevert(ISingleShareClass.InvalidMetadataHook.selector);
-        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), _encodeMetadata(SC_META_NAME, SC_META_SYMBOL, bytes32("")));
-    }
-
-    function testSetMetadataInvalidScId() public {
+    function testUpdateMetadataInvalidScId() public {
         vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
-        shareClass.setMetadata(poolId, wrongShareClassId, bytes(""));
+        shareClass.updateMetadata(poolId, wrongShareClassId, bytes(""));
     }
 
-    function testSetMetadataInvalidMetadata(bytes memory metadata) public {
-        vm.assume(metadata.length < 128 + 128 + 32);
+    function testUpdateMetadataInvalidMetadata(bytes memory metadata) public {
+        vm.assume(metadata.length < 128 + 32);
 
         vm.expectRevert(ISingleShareClass.InvalidMetadataSize.selector);
-        shareClass.setMetadata(poolId, scId, metadata);
+        shareClass.updateMetadata(poolId, scId, metadata);
     }
 
-    function testSetMetadataInvalidName() public {
+    function testUpdateMetadataInvalidName() public {
         vm.expectRevert(ISingleShareClass.InvalidMetadataName.selector);
-        shareClass.setMetadata(poolId, scId, _encodeMetadata("", SC_META_SYMBOL, SC_META_HOOK));
+        shareClass.updateMetadata(poolId, scId, encodeMetadata("", SC_SYMBOL));
     }
 
-    function testSetMetadataInvalidSymbol() public {
+    function testUpdateMetadataInvalidSymbol() public {
         vm.expectRevert(ISingleShareClass.InvalidMetadataSymbol.selector);
-        shareClass.setMetadata(poolId, scId, _encodeMetadata(SC_META_NAME, "", SC_META_HOOK));
-    }
-
-    function testSetMetadataInvalidHook() public {
-        vm.expectRevert(ISingleShareClass.InvalidMetadataHook.selector);
-        shareClass.setMetadata(poolId, scId, _encodeMetadata(SC_META_NAME, SC_META_SYMBOL, bytes32("")));
+        shareClass.updateMetadata(poolId, scId, encodeMetadata(SC_NAME, ""));
     }
 }

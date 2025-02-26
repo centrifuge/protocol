@@ -118,12 +118,12 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function notifyShareClass(uint32 chainId, ShareClassId scId) external poolUnlocked {
+    function notifyShareClass(uint32 chainId, ShareClassId scId, bytes32 hook) external poolUnlocked {
         PoolId poolId = unlockedPoolId();
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
         require(scm.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
-        (string memory name, string memory symbol, bytes32 hook) = ISingleShareClass(address(scm)).metadata(scId);
+        (string memory name, string memory symbol) = ISingleShareClass(address(scm)).metadata(scId);
 
         uint8 decimals = assetRegistry.decimals(poolRegistry.currency(poolId).raw());
 

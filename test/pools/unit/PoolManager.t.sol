@@ -66,7 +66,7 @@ contract TestMainMethodsChecks is TestCommon {
         poolManager.notifyPool(0);
 
         vm.expectRevert(IPoolLocker.PoolLocked.selector);
-        poolManager.notifyShareClass(0, ShareClassId.wrap(0));
+        poolManager.notifyShareClass(0, ShareClassId.wrap(0), bytes32(""));
 
         vm.expectRevert(IPoolLocker.PoolLocked.selector);
         poolManager.setPoolMetadata(bytes(""));
@@ -178,7 +178,7 @@ contract TestNotifyShareClass is TestCommon {
 
         IMulticall.Call[] memory calls = new IMulticall.Call[](1);
         calls[0] = IMulticall.Call(
-            address(poolManager), abi.encodeWithSelector(poolManager.notifyShareClass.selector, 23, SC_A)
+            address(poolManager), abi.encodeWithSelector(poolManager.notifyShareClass.selector, 23, SC_A, bytes32(""))
         );
 
         vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
