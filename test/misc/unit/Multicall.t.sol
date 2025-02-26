@@ -57,6 +57,19 @@ contract MulticallTest is Test {
         assertEq(multicall.value(), 5);
     }
 
+    function testSeveralMulticallsInSingleTransaction() public {
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeWithSelector(multicall.add.selector, 2);
+        calls[1] = abi.encodeWithSelector(multicall.add.selector, 3);
+
+        multicall.multicall(calls);
+        // Initiator should be 0 at this point
+
+        multicall.multicall(calls);
+
+        assertEq(multicall.value(), 10);
+    }
+
     function testRevertAtError() public {
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeWithSelector(multicall.add.selector, 2);

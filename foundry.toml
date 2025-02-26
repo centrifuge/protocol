@@ -13,6 +13,11 @@ verbosity = 3
 ffi = true
 fs_permissions = [{ access = "read-write", path = ".forge-snapshots/"}, { access = "read", path = "./deployments"}]
 
+# False-alarm warnings
+ignored_warnings_from = [
+    "src/misc/Multicall.sol" # Issue: https://github.com/ethereum/solidity/issues/14359
+]
+
 [profile.default.fuzz]
 runs = 100
 max_test_rejects = 1_000_000 # Number of times `vm.assume` can fail

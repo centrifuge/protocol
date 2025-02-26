@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+// NOTE: This file has warning disabled due https://github.com/ethereum/solidity/issues/14359
+// If perform any change on it, please ensure no other warnings appears
+
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 
 abstract contract Multicall is IMulticall {
     address private transient _initiator;
 
+    /// @dev The method is protected for reentrancy issues.
     modifier protected() {
         if (_initiator == address(0)) {
             // Single call re-entrancy lock
