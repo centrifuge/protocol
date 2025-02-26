@@ -35,8 +35,18 @@ enum AccountType {
 /// @notice Interface for methods that requires the pool to be unlocked
 /// They do not require a poolId parameter, all act over the unlocked pool
 interface IPoolManagerAdminMethods {
+    /// @notice Dispatched when the pool is already unlocked.
+    /// It means when calling to `execute()` inside `execute()`.
+    error PoolAlreadyUnlocked();
+
     /// @notice Dispatched when the pool can not be unlocked by the caller
     error NotAuthorizedAdmin();
+
+    /// @notice Dispatched when the pool is not unlocked to interact with.
+    error PoolLocked();
+
+    /// @notice Main method to unlock the pool and call the rest of the admin methods
+    function execute(PoolId poolId, bytes[] calldata data) external payable;
 
     /// @notice Notify to a CV instance that a new pool is available
     /// @param chainId Chain where CV instance lives
@@ -45,8 +55,6 @@ interface IPoolManagerAdminMethods {
     /// @notice Notify to a CV instance that a new share class is available
     /// @param chainId Chain where CV instance lives
     function notifyShareClass(uint32 chainId, ShareClassId scId) external;
-
-    /// @dev Note: the chainId is retriver from the assetId
 
     /// @notice Attach custom data to a pool
     function setPoolMetadata(bytes calldata metadata) external;

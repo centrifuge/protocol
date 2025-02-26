@@ -2,10 +2,12 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
+import {Multicall} from "src/misc/Multicall.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC20, IERC20Permit, IERC20Wrapper} from "src/misc/interfaces/IERC20.sol";
+
 import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
 import {ICentrifugeRouter} from "src/vaults/interfaces/ICentrifugeRouter.sol";
 import {IPoolManager, Domain} from "src/vaults/interfaces/IPoolManager.sol";
@@ -22,13 +24,11 @@ import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 ///         the multicall functionality which batches message calls into a single one.
 /// @dev    It is critical to ensure that at the end of any transaction, no funds remain in the
 ///         CentrifugeRouter. Any funds that do remain are at risk of being taken by other users.
-contract CentrifugeRouter is Auth, ICentrifugeRouter {
+contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
     using CastLib for address;
 
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
     uint256 private constant REQUEST_ID = 0;
-
-    address public transient initiator;
 
     IEscrow public immutable escrow;
     IGateway public immutable gateway;
@@ -41,19 +41,6 @@ contract CentrifugeRouter is Auth, ICentrifugeRouter {
         escrow = IEscrow(escrow_);
         gateway = IGateway(gateway_);
         poolManager = IPoolManager(poolManager_);
-    }
-
-    modifier protected() {
-        if (initiator == address(0)) {
-            // Single call re-entrancy lock
-            initiator = msg.sender;
-            _;
-            initiator = address(0);
-        } else {
-            // Multicall re-entrancy lock
-            require(msg.sender == initiator, "CentrifugeRouter/unauthorized-sender");
-            _;
-        }
     }
 
     // --- Administration ---
@@ -272,27 +259,6 @@ contract CentrifugeRouter is Auth, ICentrifugeRouter {
         require(amount != 0, "CentrifugeRouter/zero-balance");
 
         require(IERC20Wrapper(wrapper).withdrawTo(receiver, amount), "CentrifugeRouter/unwrap-failed");
-    }
-
-    // --- Batching ---
-    /// @inheritdoc ICentrifugeRouter
-    function multicall(bytes[] memory data) external payable {
-        require(initiator == address(0), "CentrifugeRouter/already-initiated");
-
-        initiator = msg.sender;
-        uint256 totalBytes = data.length;
-        for (uint256 i; i < totalBytes; ++i) {
-            (bool success, bytes memory returnData) = address(this).delegatecall(data[i]);
-            if (!success) {
-                uint256 length = returnData.length;
-                require(length != 0, "CentrifugeRouter/call-failed");
-
-                assembly ("memory-safe") {
-                    revert(add(32, returnData), length)
-                }
-            }
-        }
-        initiator = address(0);
     }
 
     // --- View Methods ---

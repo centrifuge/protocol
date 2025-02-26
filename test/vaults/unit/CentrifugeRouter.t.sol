@@ -339,6 +339,7 @@ contract CentrifugeRouterTest is BaseTest {
         assertEq(erc20.nonces(owner), 1);
     }
 
+    /// forge-config: default.isolate = true
     function testTranferTrancheTokensToAddressDestination() public {
         address vault_ = deploySimpleVault();
         vm.label(vault_, "vault");

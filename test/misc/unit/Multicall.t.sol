@@ -5,46 +5,101 @@ import "forge-std/Test.sol";
 
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 import {Multicall} from "src/misc/Multicall.sol";
+import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 
-contract UserContract {
-    uint256 public state;
+contract ExternalContract {
+    MulticallImpl public multicall;
 
-    function updateState() external returns (uint256) {
-        state += 100;
-        return 23;
+    constructor(MulticallImpl multicall_) {
+        multicall = multicall_;
     }
 
-    function userFailMethod() external pure {
-        revert("user error");
+    function add(uint256 value_) public {
+        multicall.add(value_);
+    }
+}
+
+contract MulticallImpl is Multicall {
+    uint256 public value;
+    ExternalContract public ext;
+
+    function setExternalContract(ExternalContract ext_) public {
+        ext = ext_;
+    }
+
+    function add(uint256 value_) external protected {
+        value += value_;
+    }
+
+    function err() external protected {
+        revert("error");
+    }
+
+    function errEmpty() external protected {
+        revert();
+    }
+
+    function addWithReentrancy(uint256 value_) external protected {
+        ext.add(value_);
     }
 }
 
 contract MulticallTest is Test {
-    UserContract userContract = new UserContract();
-    Multicall multicall = new Multicall();
+    MulticallImpl multicall = new MulticallImpl();
+    ExternalContract ext = new ExternalContract(multicall);
+
+    function setUp() public {
+        multicall.setExternalContract(ext);
+    }
 
     function testSuccess() public {
-        // Will revert the whole transaction when the first error appears
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeWithSelector(multicall.add.selector, 2);
+        calls[1] = abi.encodeWithSelector(multicall.add.selector, 3);
 
-        IMulticall.Call[] memory calls = new IMulticall.Call[](2);
-        calls[0] = IMulticall.Call(address(userContract), abi.encodeWithSelector(userContract.updateState.selector));
-        calls[1] = IMulticall.Call(address(userContract), abi.encodeWithSelector(userContract.updateState.selector));
+        multicall.multicall(calls);
 
-        multicall.aggregate(calls);
+        assertEq(multicall.value(), 5);
+    }
 
-        assertEq(userContract.state(), 200);
+    function testSeveralMulticallsInSingleTransaction() public {
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeWithSelector(multicall.add.selector, 2);
+        calls[1] = abi.encodeWithSelector(multicall.add.selector, 3);
+
+        multicall.multicall(calls);
+        // Initiator should be 0 at this point
+
+        multicall.multicall(calls);
+
+        assertEq(multicall.value(), 10);
     }
 
     function testRevertAtError() public {
-        // Will revert the whole transaction when the first error appears
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeWithSelector(multicall.add.selector, 2);
+        calls[1] = abi.encodeWithSelector(multicall.err.selector);
 
-        IMulticall.Call[] memory calls = new IMulticall.Call[](2);
-        calls[0] = IMulticall.Call(address(userContract), abi.encodeWithSelector(userContract.updateState.selector));
-        calls[1] = IMulticall.Call(address(userContract), abi.encodeWithSelector(userContract.userFailMethod.selector));
+        vm.expectRevert("error");
+        multicall.multicall(calls);
 
-        vm.expectRevert("user error");
-        multicall.aggregate(calls);
+        // It reverts the whole transaction when the first error appears
+        assertEq(multicall.value(), 0);
+    }
 
-        assertEq(userContract.state(), 0);
+    function testErrCallFailedWithEmptyRevert() public {
+        bytes[] memory calls = new bytes[](1);
+        calls[0] = abi.encodeWithSelector(multicall.errEmpty.selector);
+
+        vm.expectRevert(IMulticall.CallFailedWithEmptyRevert.selector);
+        multicall.multicall(calls);
+    }
+
+    function testErrUnauthorizedSender() public {
+        bytes[] memory calls = new bytes[](1);
+        calls[0] = abi.encodeWithSelector(multicall.addWithReentrancy.selector, 2);
+
+        vm.expectRevert(ReentrancyProtection.UnauthorizedSender.selector);
+        multicall.multicall(calls);
     }
 }

@@ -9,6 +9,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 contract DepositTest is BaseTest {
     using CastLib for *;
 
+    /// forge-config: default.isolate = true
     function testDepositMint(uint256 amount) public {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
         amount = uint128(bound(amount, 4, MAX_UINT128));
