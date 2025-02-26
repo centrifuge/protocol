@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
-import {IERC7540VaultFactory} from "src/vaults/interfaces/factories/IERC7540VaultFactory.sol";
-import {Auth} from "src/misc/Auth.sol";
+import {ERC7540Vault} from "src/vault/ERC7540Vault.sol";
+import {IERC7540VaultFactory} from "src/interfaces/factories/IERC7540VaultFactory.sol";
+import {Auth} from "src/Auth.sol";
 
 /// @title  ERC7540 Vault Factory
 /// @dev    Utility for deploying new vault contracts
@@ -20,11 +20,11 @@ contract ERC7540VaultFactory is Auth, IERC7540VaultFactory {
         bytes16 trancheId,
         address asset,
         address tranche,
-        address, /* escrow */
+        address escrow,
         address investmentManager,
         address[] calldata wards_
     ) public auth returns (address) {
-        ERC7540Vault vault = new ERC7540Vault(poolId, trancheId, asset, tranche, root, investmentManager);
+        ERC7540Vault vault = new ERC7540Vault(poolId, trancheId, asset, tranche, root, escrow, investmentManager);
 
         vault.rely(root);
         uint256 wardsCount = wards_.length;
