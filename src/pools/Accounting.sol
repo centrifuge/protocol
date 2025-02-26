@@ -6,7 +6,6 @@ import {Auth} from "src/misc/Auth.sol";
 import {AccountId} from "src/pools/types/AccountId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
-import {PoolLocker} from "src/pools/PoolLocker.sol";
 
 contract Accounting is Auth, IAccounting {
     mapping(PoolId => mapping(AccountId => Account)) public accounts;

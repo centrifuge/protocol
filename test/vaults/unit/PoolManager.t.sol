@@ -260,50 +260,6 @@ contract PoolManagerTest is BaseTest {
         assertTrue(tranche.wards(address(this)) == 0);
     }
 
-    function testIncomingTransfer(uint128 amount) public {
-        vm.assume(amount > 0);
-        uint128 assetId = defaultAssetId;
-        address recipient = makeAddr("recipient");
-
-        vm.expectRevert(bytes("PoolManager/unknown-asset"));
-        centrifugeChain.incomingTransfer(assetId, bytes32(bytes20(recipient)), amount);
-        centrifugeChain.addAsset(assetId, address(erc20));
-
-        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
-        centrifugeChain.incomingTransfer(assetId, bytes32(bytes20(recipient)), amount);
-
-        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
-        centrifugeChain.incomingTransfer(assetId, bytes32(bytes20(recipient)), amount);
-
-        erc20.mint(address(poolManager.escrow()), amount); // fund escrow
-
-        // Now we test the incoming message
-        centrifugeChain.incomingTransfer(assetId, bytes32(bytes20(recipient)), amount);
-        assertEq(erc20.balanceOf(address(poolManager.escrow())), 0);
-        assertEq(erc20.balanceOf(recipient), amount);
-    }
-
-    // Verify that funds are moved from the msg.sender into the escrow account
-    function testOutgoingTransfer(uint128 initialBalance, uint128 amount) public {
-        initialBalance = uint128(bound(initialBalance, amount, type(uint128).max)); // initialBalance >= amount
-        vm.assume(amount > 0);
-        uint128 assetId = defaultAssetId;
-        bytes32 recipient = makeAddr("recipient").toBytes32();
-
-        erc20.mint(address(this), initialBalance);
-        assertEq(erc20.balanceOf(address(this)), initialBalance);
-        assertEq(erc20.balanceOf(address(poolManager.escrow())), 0);
-        erc20.approve(address(poolManager), type(uint256).max);
-
-        vm.expectRevert(bytes("PoolManager/unknown-asset"));
-        poolManager.transferAssets(address(erc20), recipient, amount);
-        centrifugeChain.addAsset(assetId, address(erc20));
-
-        poolManager.transferAssets(address(erc20), recipient, amount);
-        assertEq(erc20.balanceOf(address(this)), initialBalance - amount);
-        assertEq(erc20.balanceOf(address(poolManager.escrow())), amount);
-    }
-
     function testTransferTrancheTokensToCentrifuge(uint128 amount) public {
         vm.assume(amount > 0);
         uint64 validUntil = uint64(block.timestamp + 7 days);

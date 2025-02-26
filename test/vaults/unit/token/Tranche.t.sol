@@ -85,6 +85,7 @@ contract TrancheTest is Test, GasSnapshot {
 
     // --- RestrictionManager ---
     // transferFrom
+    /// forge-config: default.isolate = true
     function testTransferFrom(uint256 amount) public {
         amount = bound(amount, 0, type(uint128).max / 2);
 

@@ -1,24 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+// NOTE: This file has warning disabled due https://github.com/ethereum/solidity/issues/14359
+// If perform any change on it, please ensure no other warnings appears
+
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
+import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 
-contract Multicall is IMulticall {
-    /// @dev Performs a generic multicall. It reverts the whole transaction if one call fails.
-    function aggregate(Call[] calldata calls) external returns (bytes[] memory results) {
-        results = new bytes[](calls.length);
-
-        for (uint32 i; i < calls.length; i++) {
-            (bool success, bytes memory result) = calls[i].target.call(calls[i].data);
-            // Forward the error happened in target.call().
+abstract contract Multicall is ReentrancyProtection, IMulticall {
+    function multicall(bytes[] calldata data) public payable protected {
+        uint256 totalBytes = data.length;
+        for (uint256 i; i < totalBytes; ++i) {
+            (bool success, bytes memory returnData) = address(this).delegatecall(data[i]);
             if (!success) {
-                assembly {
-                    // Reverting the error originated in the above call.
-                    // First 32 bytes contains the size of the array, rest the error data
-                    revert(add(result, 32), mload(result))
+                uint256 length = returnData.length;
+                require(length != 0, CallFailedWithEmptyRevert());
+
+                assembly ("memory-safe") {
+                    revert(add(32, returnData), length)
                 }
             }
-            results[i] = result;
         }
     }
 }

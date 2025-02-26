@@ -4,9 +4,9 @@ pragma solidity 0.8.28;
 import {D18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {Auth} from "src/misc/Auth.sol";
+import {Multicall} from "src/misc/Multicall.sol";
 
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
@@ -26,14 +26,16 @@ import {
     EscrowId,
     AccountType
 } from "src/pools/interfaces/IPoolManager.sol";
-import {PoolLocker} from "src/pools/PoolLocker.sol";
 
 // @inheritdoc IPoolManager
-contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
+contract PoolManager is Auth, Multicall, IPoolManager, IPoolManagerHandler {
     using MathLib for uint256;
     using CastLib for bytes;
     using CastLib for bytes32;
     using CastLib for address;
+
+    /// @dev Represents the unlocked pool Id in the multicall
+    PoolId public transient unlockedPoolId;
 
     IPoolRegistry public poolRegistry;
     IAssetRegistry public assetRegistry;
@@ -47,15 +49,20 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
         _;
     }
 
+    /// @dev A requirement for methods that needs to be called through `execute()`
+    modifier poolUnlocked() {
+        require(!unlockedPoolId.isNull(), IPoolManagerAdminMethods.PoolLocked());
+        _;
+    }
+
     constructor(
-        IMulticall multicall,
         IPoolRegistry poolRegistry_,
         IAssetRegistry assetRegistry_,
         IAccounting accounting_,
         IHoldings holdings_,
         IGateway gateway_,
         address deployer
-    ) Auth(deployer) PoolLocker(multicall) {
+    ) Auth(deployer) {
         poolRegistry = poolRegistry_;
         assetRegistry = assetRegistry_;
         accounting = accounting_;
@@ -90,7 +97,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManager
-    function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external {
+    function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external protected {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
 
         (uint128 shares, uint128 tokens) = scm.claimDeposit(poolId, scId, investor, assetId);
@@ -98,7 +105,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManager
-    function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external {
+    function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external protected {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
 
         (uint128 shares, uint128 tokens) = scm.claimRedeem(poolId, scId, investor, assetId);
@@ -111,67 +118,76 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
     //----------------------------------------------------------------------------------------------
     // Pool admin methods
     //----------------------------------------------------------------------------------------------
-
     /// @inheritdoc IPoolManagerAdminMethods
-    function notifyPool(uint32 chainId) external poolUnlocked {
-        gateway.sendNotifyPool(chainId, unlockedPoolId());
+    function execute(PoolId poolId, bytes[] calldata data) external payable {
+        require(unlockedPoolId.isNull(), PoolAlreadyUnlocked());
+        require(poolRegistry.isAdmin(poolId, msg.sender), NotAuthorizedAdmin());
+
+        accounting.unlock(poolId, bytes32("TODO"));
+        unlockedPoolId = poolId;
+
+        multicall(data);
+
+        accounting.lock();
+        unlockedPoolId = PoolId.wrap(0);
+    }
+
+    function notifyPool(uint32 chainId) external poolUnlocked protected {
+        gateway.sendNotifyPool(chainId, unlockedPoolId);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
     function notifyShareClass(uint32 chainId, ShareClassId scId, bytes32 hook) external poolUnlocked {
-        PoolId poolId = unlockedPoolId();
+        IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
+        require(scm.exists(unlockedPoolId, scId), IShareClassManager.ShareClassNotFound());
 
-        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        require(scm.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
         (string memory name, string memory symbol) = ISingleShareClass(address(scm)).metadata(scId);
+        uint8 decimals = assetRegistry.decimals(poolRegistry.currency(unlockedPoolId).raw());
 
-        uint8 decimals = assetRegistry.decimals(poolRegistry.currency(poolId).raw());
-
-        gateway.sendNotifyShareClass(chainId, poolId, scId, name, symbol, decimals, hook);
+        gateway.sendNotifyShareClass(chainId, unlockedPoolId, scId, name, symbol, decimals, hook);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function setPoolMetadata(bytes calldata metadata) external poolUnlocked {
-        poolRegistry.setMetadata(unlockedPoolId(), metadata);
+    function setPoolMetadata(bytes calldata metadata) external poolUnlocked protected {
+        poolRegistry.setMetadata(unlockedPoolId, metadata);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function allowPoolAdmin(address account, bool allow) external poolUnlocked {
-        poolRegistry.updateAdmin(unlockedPoolId(), account, allow);
+    function allowPoolAdmin(address account, bool allow) external poolUnlocked protected {
+        poolRegistry.updateAdmin(unlockedPoolId, account, allow);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function allowInvestorAsset(ShareClassId scId, AssetId assetId, bool allow) external poolUnlocked {
-        PoolId poolId = unlockedPoolId();
-        require(holdings.exists(poolId, scId, assetId), IHoldings.HoldingNotFound());
+    function allowInvestorAsset(ShareClassId scId, AssetId assetId, bool allow) external poolUnlocked protected {
+        require(holdings.exists(unlockedPoolId, scId, assetId), IHoldings.HoldingNotFound());
 
-        poolRegistry.allowInvestorAsset(poolId, assetId, allow);
+        poolRegistry.allowInvestorAsset(unlockedPoolId, assetId, allow);
 
-        gateway.sendNotifyAllowedAsset(poolId, scId, assetId, poolRegistry.isInvestorAssetAllowed(poolId, assetId));
+        gateway.sendNotifyAllowedAsset(
+            unlockedPoolId, scId, assetId, poolRegistry.isInvestorAssetAllowed(unlockedPoolId, assetId)
+        );
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function addShareClass(bytes calldata data) external poolUnlocked returns (ShareClassId) {
-        PoolId poolId = unlockedPoolId();
-
-        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        return scm.addShareClass(poolId, data);
+    function addShareClass(bytes calldata data) external poolUnlocked protected returns (ShareClassId) {
+        IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
+        return scm.addShareClass(unlockedPoolId, data);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
     function approveDeposits(ShareClassId scId, AssetId paymentAssetId, D18 approvalRatio, IERC7726 valuation)
         external
         poolUnlocked
+        protected
     {
-        PoolId poolId = unlockedPoolId();
+        IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
 
-        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-
-        (uint128 approvedAssetAmount,) = scm.approveDeposits(poolId, scId, approvalRatio, paymentAssetId, valuation);
+        (uint128 approvedAssetAmount,) =
+            scm.approveDeposits(unlockedPoolId, scId, approvalRatio, paymentAssetId, valuation);
 
         assetRegistry.authTransferFrom(
-            escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS),
-            escrow(poolId, scId, EscrowId.SHARE_CLASS),
+            escrow(unlockedPoolId, scId, EscrowId.PENDING_SHARE_CLASS),
+            escrow(unlockedPoolId, scId, EscrowId.SHARE_CLASS),
             uint256(uint160(AssetId.unwrap(paymentAssetId))),
             approvedAssetAmount
         );
@@ -180,37 +196,36 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function approveRedeems(ShareClassId scId, AssetId payoutAssetId, D18 approvalRatio) external poolUnlocked {
-        PoolId poolId = unlockedPoolId();
+    function approveRedeems(ShareClassId scId, AssetId payoutAssetId, D18 approvalRatio)
+        external
+        poolUnlocked
+        protected
+    {
+        IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
 
-        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-
-        scm.approveRedeems(poolId, scId, approvalRatio, payoutAssetId);
+        scm.approveRedeems(unlockedPoolId, scId, approvalRatio, payoutAssetId);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function issueShares(ShareClassId scId, AssetId depositAssetId, D18 navPerShare) external poolUnlocked {
-        PoolId poolId = unlockedPoolId();
+    function issueShares(ShareClassId scId, AssetId depositAssetId, D18 navPerShare) external poolUnlocked protected {
+        IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
 
-        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-
-        scm.issueShares(poolId, scId, depositAssetId, navPerShare);
+        scm.issueShares(unlockedPoolId, scId, depositAssetId, navPerShare);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
     function revokeShares(ShareClassId scId, AssetId payoutAssetId, D18 navPerShare, IERC7726 valuation)
         external
         poolUnlocked
+        protected
     {
-        PoolId poolId = unlockedPoolId();
+        IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
 
-        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-
-        (uint128 payoutAssetAmount,) = scm.revokeShares(poolId, scId, payoutAssetId, navPerShare, valuation);
+        (uint128 payoutAssetAmount,) = scm.revokeShares(unlockedPoolId, scId, payoutAssetId, navPerShare, valuation);
 
         assetRegistry.authTransferFrom(
-            escrow(poolId, scId, EscrowId.SHARE_CLASS),
-            escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS),
+            escrow(unlockedPoolId, scId, EscrowId.SHARE_CLASS),
+            escrow(unlockedPoolId, scId, EscrowId.PENDING_SHARE_CLASS),
             uint256(uint160(AssetId.unwrap(payoutAssetId))),
             payoutAssetAmount
         );
@@ -222,6 +237,7 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
     function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint24 prefix)
         external
         poolUnlocked
+        protected
     {
         require(assetRegistry.isRegistered(assetId), IAssetRegistry.AssetNotFound());
 
@@ -236,88 +252,90 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
         createAccount(accounts[2], false);
         createAccount(accounts[3], false);
 
-        holdings.create(unlockedPoolId(), scId, assetId, valuation, accounts);
+        holdings.create(unlockedPoolId, scId, assetId, valuation, accounts);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
     function increaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount)
         public
         poolUnlocked
+        protected
     {
-        PoolId poolId = unlockedPoolId();
+        uint128 valueChange = holdings.increase(unlockedPoolId, scId, assetId, valuation, amount);
 
-        uint128 valueChange = holdings.increase(poolId, scId, assetId, valuation, amount);
-
-        accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.EQUITY)), valueChange);
-        accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.ASSET)), valueChange);
+        accounting.addCredit(holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.EQUITY)), valueChange);
+        accounting.addDebit(holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.ASSET)), valueChange);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
     function decreaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount)
         public
         poolUnlocked
+        protected
     {
-        PoolId poolId = unlockedPoolId();
+        uint128 valueChange = holdings.decrease(unlockedPoolId, scId, assetId, valuation, amount);
 
-        uint128 valueChange = holdings.decrease(poolId, scId, assetId, valuation, amount);
-
-        accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.ASSET)), valueChange);
-        accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.EQUITY)), valueChange);
+        accounting.addCredit(holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.ASSET)), valueChange);
+        accounting.addDebit(holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.EQUITY)), valueChange);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function updateHolding(ShareClassId scId, AssetId assetId) external poolUnlocked {
-        PoolId poolId = unlockedPoolId();
-
-        int128 diff = holdings.update(poolId, scId, assetId);
+    function updateHolding(ShareClassId scId, AssetId assetId) external poolUnlocked protected {
+        int128 diff = holdings.update(unlockedPoolId, scId, assetId);
 
         if (diff > 0) {
-            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.GAIN)), uint128(diff));
-            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.ASSET)), uint128(diff));
+            accounting.addCredit(
+                holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.GAIN)), uint128(diff)
+            );
+            accounting.addDebit(
+                holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.ASSET)), uint128(diff)
+            );
         } else if (diff < 0) {
-            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.ASSET)), uint128(diff));
-            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.LOSS)), uint128(diff));
+            accounting.addCredit(
+                holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.ASSET)), uint128(diff)
+            );
+            accounting.addDebit(
+                holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.LOSS)), uint128(diff)
+            );
         }
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function updateHoldingValuation(ShareClassId scId, AssetId assetId, IERC7726 valuation) external poolUnlocked {
-        holdings.updateValuation(unlockedPoolId(), scId, assetId, valuation);
+    function updateHoldingValuation(ShareClassId scId, AssetId assetId, IERC7726 valuation)
+        external
+        poolUnlocked
+        protected
+    {
+        holdings.updateValuation(unlockedPoolId, scId, assetId, valuation);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function setHoldingAccountId(ShareClassId scId, AssetId assetId, AccountId accountId) external poolUnlocked {
-        holdings.setAccountId(unlockedPoolId(), scId, assetId, accountId);
+    function setHoldingAccountId(ShareClassId scId, AssetId assetId, AccountId accountId)
+        external
+        poolUnlocked
+        protected
+    {
+        holdings.setAccountId(unlockedPoolId, scId, assetId, accountId);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function createAccount(AccountId account, bool isDebitNormal) public poolUnlocked {
-        accounting.createAccount(unlockedPoolId(), account, isDebitNormal);
+    function createAccount(AccountId account, bool isDebitNormal) public poolUnlocked protected {
+        accounting.createAccount(unlockedPoolId, account, isDebitNormal);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function setAccountMetadata(AccountId account, bytes calldata metadata) external poolUnlocked {
-        accounting.setAccountMetadata(unlockedPoolId(), account, metadata);
+    function setAccountMetadata(AccountId account, bytes calldata metadata) external poolUnlocked protected {
+        accounting.setAccountMetadata(unlockedPoolId, account, metadata);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function addDebit(AccountId account, uint128 amount) external poolUnlocked {
+    function addDebit(AccountId account, uint128 amount) external poolUnlocked protected {
         accounting.addDebit(account, amount);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function addCredit(AccountId account, uint128 amount) external poolUnlocked {
+    function addCredit(AccountId account, uint128 amount) external poolUnlocked protected {
         accounting.addCredit(account, amount);
-    }
-
-    /// @inheritdoc IPoolManagerAdminMethods
-    function unlockAssets(ShareClassId scId, AssetId assetId, bytes32 receiver, uint128 assetAmount)
-        external
-        poolUnlocked
-    {
-        assetRegistry.burn(escrow(unlockedPoolId(), scId, EscrowId.SHARE_CLASS), assetId.raw(), assetAmount);
-
-        gateway.sendUnlockAssets(assetId, receiver, assetAmount);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -384,29 +402,11 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
         gateway.sendFulfilledCancelRedeemRequest(poolId, scId, payoutAssetId, investor, cancelledShareAmount);
     }
 
-    /// @inheritdoc IPoolManagerHandler
-    function handleLockedTokens(AssetId assetId, address receiver, uint128 amount) external onlyGateway {
-        assetRegistry.mint(receiver, assetId.raw(), amount);
-    }
-
     //----------------------------------------------------------------------------------------------
     // view / pure methods
     //----------------------------------------------------------------------------------------------
 
     function escrow(PoolId poolId, ShareClassId scId, EscrowId escrow_) public pure returns (address) {
         return address(bytes20(keccak256(abi.encodePacked("escrow", poolId, scId, escrow_))));
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // internal / private methods
-    //----------------------------------------------------------------------------------------------
-
-    function _beforeUnlock(PoolId poolId) internal override {
-        require(poolRegistry.isAdmin(poolId, msg.sender), NotAuthorizedAdmin());
-        accounting.unlock(poolId, bytes32("TODO"));
-    }
-
-    function _beforeLock() internal override {
-        accounting.lock();
     }
 }

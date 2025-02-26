@@ -159,10 +159,6 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         );
     }
 
-    function sendUnlockAssets(AssetId assetId, bytes32 receiver, uint128 assetAmount) external auth {
-        _send(assetId.chainId(), abi.encodePacked(MessageType.TransferAssets, assetId.raw(), receiver, assetAmount));
-    }
-
     function handle(bytes calldata message) external auth {
         MessageType kind = message.messageType();
 
@@ -172,10 +168,6 @@ contract Gateway is Auth, IGateway, IMessageHandler {
                 message.slice(17, 128).bytes128ToString(),
                 message.toBytes32(145).toString(),
                 message.toUint8(177)
-            );
-        } else if (kind == MessageType.TransferAssets) {
-            handler.handleLockedTokens(
-                AssetId.wrap(message.toUint128(1)), address(bytes20(message.toBytes32(16))), message.toUint128(49)
             );
         } else if (kind == MessageType.DepositRequest) {
             handler.handleRequestDeposit(

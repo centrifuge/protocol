@@ -35,8 +35,18 @@ enum AccountType {
 /// @notice Interface for methods that requires the pool to be unlocked
 /// They do not require a poolId parameter, all act over the unlocked pool
 interface IPoolManagerAdminMethods {
+    /// @notice Dispatched when the pool is already unlocked.
+    /// It means when calling to `execute()` inside `execute()`.
+    error PoolAlreadyUnlocked();
+
     /// @notice Dispatched when the pool can not be unlocked by the caller
     error NotAuthorizedAdmin();
+
+    /// @notice Dispatched when the pool is not unlocked to interact with.
+    error PoolLocked();
+
+    /// @notice Main method to unlock the pool and call the rest of the admin methods
+    function execute(PoolId poolId, bytes[] calldata data) external payable;
 
     /// @notice Notify to a CV instance that a new pool is available
     /// @param chainId Chain where CV instance lives
@@ -46,8 +56,6 @@ interface IPoolManagerAdminMethods {
     /// @param chainId Chain where CV instance lives
     /// @param hook The hook address of the share class
     function notifyShareClass(uint32 chainId, ShareClassId scId, bytes32 hook) external;
-
-    /// @dev Note: the chainId is retriver from the assetId
 
     /// @notice Attach custom data to a pool
     function setPoolMetadata(bytes calldata metadata) external;
@@ -124,12 +132,6 @@ interface IPoolManagerAdminMethods {
 
     /// @notice Add credit an account. Decrease the value of debit-normal accounts, increase for credit-normal ones.
     function addCredit(AccountId account, uint128 amount) external;
-
-    /// @notice Unlock assets from a share class escrow in CV side
-    /// @param scId share class Id associated to the escrow from where unlock the tokens
-    /// @param receiver Address in CV where to deposit the unlocked tokens
-    /// @dev Note: the chainId is retriver from the assetId
-    function unlockAssets(ShareClassId scId, AssetId assetId, bytes32 receiver, uint128 assetAmount) external;
 }
 
 /// @notice Interface with all methods available in the system used by actors
@@ -198,8 +200,4 @@ interface IPoolManagerHandler {
     /// @notice Perform a redeem cancellation that was requested from CV.
     function handleCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
         external;
-
-    /// @notice Tells that an asset was locked in CV.
-    /// @param receiver The escrow where to handle the locked tokens.
-    function handleLockedTokens(AssetId assetId, address receiver, uint128 amount) external;
 }
