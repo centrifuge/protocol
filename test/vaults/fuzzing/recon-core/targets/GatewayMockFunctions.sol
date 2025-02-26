@@ -114,7 +114,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
 
     // Step 2
     function poolManager_addAsset(uint128 currencyId, address currencyAddress) public {
-        poolManager.addAsset(currencyId, currencyAddress);
+        poolManager.registerAsset(currencyId, currencyAddress, 0);
 
         // Only if success full
         tokenToCurrencyId[currencyAddress] = currencyId;

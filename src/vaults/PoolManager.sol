@@ -21,7 +21,7 @@ import {
     Domain,
     IPoolManager
 } from "src/vaults/interfaces/IPoolManager.sol";
-import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
 import {IGasService} from "src/vaults/interfaces/gateway/IGasService.sol";
@@ -48,6 +48,8 @@ contract PoolManager is Auth, IPoolManager {
     ITrancheFactory public trancheFactory;
     IGasService public gasService;
 
+    uint32 internal _assetCounter;
+
     struct AssetIdKey {
         address asset;
         uint256 tokenId;
@@ -57,10 +59,8 @@ contract PoolManager is Auth, IPoolManager {
     mapping(address => VaultAsset) internal _vaultToAsset;
     mapping(uint64 poolId => mapping(bytes16 => UndeployedTranche)) internal _undeployedTranches;
 
-    /// @inheritdoc IPoolManager
-    mapping(uint128 assetId => AssetIdKey) public idToAsset;
-    /// @inheritdoc IPoolManager
-    mapping(AssetIdKey assedIdKey => uint128 assetId) public assetToId;
+    mapping(uint128 assetId => AssetIdKey) public _idToAsset;
+    mapping(bytes32 assedIdKey => uint128 assetId) public _assetToId;
 
     constructor(address escrow_, address vaultFactory_, address trancheFactory_) Auth(msg.sender) {
         escrow = IEscrow(escrow_);
@@ -89,7 +89,7 @@ contract PoolManager is Auth, IPoolManager {
     /// @inheritdoc IPoolManager
     // TODO: Remove in separate PR - not needed anymore
     function transferAssets(address asset, bytes32 recipient, uint128 amount) external {
-        uint128 assetId = assetToId[_formatAssetIdKey(asset, 0)];
+        uint128 assetId = _assetToId[_formatAssetIdKey(asset, 0)];
         require(assetId != 0, "PoolManager/unknown-asset");
 
         SafeTransferLib.safeTransferFrom(asset, msg.sender, address(escrow), amount);
@@ -146,15 +146,15 @@ contract PoolManager is Auth, IPoolManager {
                 revert("PoolManager/asset-missing-decimals");
             }
         } else {
-            try IERC6909MetadataExt(asset, tokenId).name() returns (string memory _name) {
+            try IERC6909MetadataExt(asset).name(tokenId) returns (string memory _name) {
                 name = string(bytes(_name).sliceZeroPadded(0, 128));
             } catch {}
 
-            try IERC6909MetadataExt(asset, tokenId).symbol() returns (string memory _symbol) {
+            try IERC6909MetadataExt(asset).symbol(tokenId) returns (string memory _symbol) {
                 symbol = _symbol;
             } catch {}
 
-            try IERC6909MetadataExt(asset, tokenId).decimals() returns (uint8 _decimals) {
+            try IERC6909MetadataExt(asset).decimals(tokenId) returns (uint8 _decimals) {
                 require(_decimals >= MIN_DECIMALS, "PoolManager/too-few-asset-decimals");
                 require(_decimals <= MAX_DECIMALS, "PoolManager/too-many-asset-decimals");
                 decimals = _decimals;
@@ -163,14 +163,14 @@ contract PoolManager is Auth, IPoolManager {
             }
         }
 
-        AssetIdKey key = _formatAssetIdKey(asset, tokenId);
-        assetId = assetToId[key];
+        bytes32 key = _formatAssetIdKey(asset, tokenId);
+        assetId = _assetToId[key];
         if (assetId == 0) {
             _assetCounter++;
             assetId = uint128(bytes16(abi.encodePacked(uint32(block.chainid), _assetCounter)));
 
-            idToAsset[assetId] = key;
-            assetToId[key] = assetId;
+            _idToAsset[assetId] = AssetIdKey(asset, tokenId);
+            _assetToId[key] = assetId;
 
             // Give investment manager infinite approval for asset
             // in the escrow to transfer to the user on redeem or withdraw
@@ -180,8 +180,9 @@ contract PoolManager is Auth, IPoolManager {
 
         gateway.send(
             abi.encodePacked(uint8(MessagesLib.Call.RegisterAsset), assetId, name, symbol.toBytes32(), decimals),
-            address(this),
-            destinationChain
+            address(this)
+            // TODO: Fix once Gateway for multiple chains is in
+            //destinationChain
         );
 
         emit RegisterAsset(assetId, asset, tokenId, name, symbol, decimals);
@@ -248,8 +249,8 @@ contract PoolManager is Auth, IPoolManager {
     /// @inheritdoc IPoolManager
     function allowAsset(uint64 poolId, uint128 assetId) public auth {
         require(isPoolActive(poolId), "PoolManager/invalid-pool");
-        AssetIdKey key = idToAsset[assetId];
-        require(key.asset != address(0), "PoolManager/unknown-asset");
+        address asset = _idToAsset[assetId].asset;
+        require(asset != address(0), "PoolManager/unknown-asset");
 
         // TODO: Fix for ERC6909 once escrow PR is in
 
@@ -260,7 +261,7 @@ contract PoolManager is Auth, IPoolManager {
     /// @inheritdoc IPoolManager
     function disallowAsset(uint64 poolId, uint128 assetId) public auth {
         require(isPoolActive(poolId), "PoolManager/invalid-pool");
-        address asset = idToAsset[assetId];
+        address asset = _idToAsset[assetId].asset;
         require(asset != address(0), "PoolManager/unknown-asset");
 
         delete _pools[poolId].allowedAssets[asset];
@@ -326,7 +327,7 @@ contract PoolManager is Auth, IPoolManager {
             tranche.token != address(0) || canTrancheBeDeployed(poolId, trancheId), "PoolManager/tranche-does-not-exist"
         );
 
-        address asset = idToAsset[assetId];
+        address asset =  _idToAsset[assetId].asset;
         require(computedAt >= tranche.prices[asset].computedAt, "PoolManager/cannot-set-older-price");
 
         tranche.prices[asset] = TranchePrice(price, computedAt);
@@ -353,10 +354,10 @@ contract PoolManager is Auth, IPoolManager {
     /// @inheritdoc IPoolManager
     // TODO: Remove in separate PR - not needed anymore
     function handleTransfer(uint128 assetId, address recipient, uint128 amount) public auth {
-        AssetIdKey key = idToAsset[assetId];
-        require(key.asset != address(0), "PoolManager/unknown-asset");
+        address asset =  _idToAsset[assetId].asset;
+        require(asset != address(0), "PoolManager/unknown-asset");
 
-        SafeTransferLib.safeTransferFrom(key.asset, address(escrow), recipient, amount);
+        SafeTransferLib.safeTransferFrom(asset, address(escrow), recipient, amount);
     }
 
     /// @inheritdoc IPoolManager
@@ -489,7 +490,7 @@ contract PoolManager is Auth, IPoolManager {
 
     /// @inheritdoc IPoolManager
     function getVault(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (address) {
-        address vault = ITranche(_pools[poolId].tranches[trancheId].token).vault(idToAsset[assetId]);
+        address vault = ITranche(_pools[poolId].tranches[trancheId].token).vault( _idToAsset[assetId].asset);
         require(vault != address(0), "PoolManager/unknown-vault");
         return vault;
     }
@@ -517,7 +518,18 @@ contract PoolManager is Auth, IPoolManager {
         return bytes9(BytesLib.slice(abi.encodePacked(uint8(domain), chainId), 0, 9));
     }
 
-    function _formatAssetIdKey(address asset, uint256 tokenId) internal pure returns (AssetIdKey memory) {
-        return AssetIdKey(asset, tokenId);
+    function _formatAssetIdKey(address asset, uint256 tokenId) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(asset, tokenId));
     }
+
+    /// @inheritdoc IPoolManager
+    function assetToId(address asset) external view returns (uint128 assetId) {
+        return _assetToId[_formatAssetIdKey(asset, 0)];
+    }
+
+    /// @inheritdoc IPoolManager
+    function idToAsset(uint128 assetId) external view returns (address asset) {
+        return _idToAsset[assetId].asset;
+    }
+
 }

@@ -23,8 +23,9 @@ contract MockCentrifugeChain is Test {
         }
     }
 
+    // TODO: Refactor once tests between CP and CV are aligned
     function addAsset(uint128 assetId, address asset) public {
-        bytes memory _message = abi.encodePacked(uint8(MessagesLib.Call.AddAsset), assetId, asset);
+        bytes memory _message = abi.encodePacked(uint8(MessagesLib.Call.RegisterAsset), assetId, asset);
         _execute(_message);
     }
 
