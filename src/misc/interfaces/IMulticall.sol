@@ -6,12 +6,6 @@ interface IMulticall {
     /// @notice Dispatched when an internal error has ocurred
     error CallFailed();
 
-    /// @notice Dispatched when there is a re-entrancy issue
-    error UnauthorizedSender();
-
-    /// @notice Dispatched when multicall is called inside of one protected method or recursively
-    error AlreadyInitiated();
-
     /// @notice Allows caller to execute multiple (batched) messages calls in one transaction.
     /// @param data An array of encoded methods of the same contract.
     /// @dev No reentrant execution is allowed.

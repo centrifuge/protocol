@@ -5,29 +5,10 @@ pragma solidity ^0.8.28;
 // If perform any change on it, please ensure no other warnings appears
 
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
+import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 
-abstract contract Multicall is IMulticall {
-    address private transient _initiator;
-
-    /// @dev The method is protected for reentrancy issues.
-    modifier protected() {
-        if (_initiator == address(0)) {
-            // Single call re-entrancy lock
-            _initiator = msg.sender;
-            _;
-            _initiator = address(0);
-        } else {
-            // Multicall re-entrancy lock
-            require(msg.sender == _initiator, UnauthorizedSender());
-            _;
-        }
-    }
-
-    function multicall(bytes[] calldata data) public payable {
-        require(_initiator == address(0), AlreadyInitiated());
-
-        _initiator = msg.sender;
-
+abstract contract Multicall is ReentrancyProtection, IMulticall {
+    function multicall(bytes[] calldata data) public payable protected {
         uint256 totalBytes = data.length;
         for (uint256 i; i < totalBytes; ++i) {
             (bool success, bytes memory returnData) = address(this).delegatecall(data[i]);
@@ -40,7 +21,5 @@ abstract contract Multicall is IMulticall {
                 }
             }
         }
-
-        _initiator = address(0);
     }
 }

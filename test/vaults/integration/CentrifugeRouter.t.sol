@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import "src/misc/interfaces/IERC20.sol";
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
+import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 
 import "test/vaults/BaseTest.sol";
 import "src/vaults/interfaces/IERC7575.sol";
@@ -723,29 +724,7 @@ contract CentrifugeRouterTest is BaseTest {
         // Investor locks deposit request and enables permissionless lcaiming
         vm.startPrank(investor);
         erc20.approve(address(router), amount);
-        vm.expectRevert(IMulticall.UnauthorizedSender.selector);
-        router.enableLockDepositRequest(vault_, amount);
-        vm.stopPrank();
-    }
-
-    function testMulticallReentrancyCheck(uint256 amount) public {
-        amount = uint128(bound(amount, 4, MAX_UINT128));
-        vm.assume(amount % 2 == 0);
-
-        MockReentrantERC20Wrapper2 wrapper = new MockReentrantERC20Wrapper2(address(erc20), address(router));
-        address vault_ = deployVault(
-            5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), defaultAssetId, address(wrapper)
-        );
-        vm.label(vault_, "vault");
-
-        address investor = makeAddr("investor");
-
-        erc20.mint(investor, amount);
-
-        // Investor locks deposit request and enables permissionless lcaiming
-        vm.startPrank(investor);
-        erc20.approve(address(router), amount);
-        vm.expectRevert(IMulticall.AlreadyInitiated.selector);
+        vm.expectRevert(ReentrancyProtection.UnauthorizedSender.selector);
         router.enableLockDepositRequest(vault_, amount);
         vm.stopPrank();
     }
