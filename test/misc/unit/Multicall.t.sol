@@ -35,6 +35,10 @@ contract MulticallImpl is Multicall {
         revert("error");
     }
 
+    function errEmpty() external protected {
+        revert();
+    }
+
     function addWithReentrancy(uint256 value_) external protected {
         ext.add(value_);
     }
@@ -79,8 +83,16 @@ contract MulticallTest is Test {
         vm.expectRevert("error");
         multicall.multicall(calls);
 
-        // Will revert the whole transaction when the first error appears
+        // It reverts the whole transaction when the first error appears
         assertEq(multicall.value(), 0);
+    }
+
+    function testErrCallFailedWithEmptyRevert() public {
+        bytes[] memory calls = new bytes[](1);
+        calls[0] = abi.encodeWithSelector(multicall.errEmpty.selector);
+
+        vm.expectRevert(IMulticall.CallFailedWithEmptyRevert.selector);
+        multicall.multicall(calls);
     }
 
     function testErrUnauthorizedSender() public {

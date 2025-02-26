@@ -3,8 +3,8 @@ pragma solidity 0.8.28;
 
 /// @notice Allows to call several calls of the same contract in a single transaction
 interface IMulticall {
-    /// @notice Dispatched when an internal error has ocurred
-    error CallFailed();
+    /// @notice Dispatched when an empty revert is dispatched in a method in the multicall
+    error CallFailedWithEmptyRevert();
 
     /// @notice Allows caller to execute multiple (batched) messages calls in one transaction.
     /// @param data An array of encoded methods of the same contract.

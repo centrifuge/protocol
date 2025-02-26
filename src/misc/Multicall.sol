@@ -14,7 +14,7 @@ abstract contract Multicall is ReentrancyProtection, IMulticall {
             (bool success, bytes memory returnData) = address(this).delegatecall(data[i]);
             if (!success) {
                 uint256 length = returnData.length;
-                require(length != 0, CallFailed());
+                require(length != 0, CallFailedWithEmptyRevert());
 
                 assembly ("memory-safe") {
                     revert(add(32, returnData), length)
