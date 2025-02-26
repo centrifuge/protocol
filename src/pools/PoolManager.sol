@@ -17,6 +17,7 @@ import {IGateway} from "src/pools/interfaces/IGateway.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
+import {ISingleShareClass} from "src/pools/interfaces/ISingleShareClass.sol";
 import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
 import {
     IPoolManager,
@@ -122,16 +123,11 @@ contract PoolManager is Auth, PoolLocker, IPoolManager, IPoolManagerHandler {
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
         require(scm.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
+        (string memory name, string memory symbol, bytes32 hook) = ISingleShareClass(address(scm)).metadata(scId);
 
-        gateway.sendNotifyShareClass(
-            chainId,
-            poolId,
-            scId,
-            string("TODO"),
-            string("TODO"),
-            assetRegistry.decimals(poolRegistry.currency(poolId).raw()),
-            bytes32("TODO")
-        );
+        uint8 decimals = assetRegistry.decimals(poolRegistry.currency(poolId).raw());
+
+        gateway.sendNotifyShareClass(chainId, poolId, scId, name, symbol, decimals, hook);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
