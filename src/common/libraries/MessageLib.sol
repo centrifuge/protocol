@@ -4,10 +4,9 @@ pragma solidity 0.8.28;
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
-import "forge-std/Test.sol";
-
 // TODO: update with the latest version.
 enum MessageType {
+    /// @dev Placeholder for null message type
     Invalid,
     MessageProof,
     InitiateMessageRecovery,
@@ -16,7 +15,7 @@ enum MessageType {
     ScheduleUpgrade,
     CancelUpgrade,
     RecoverTokens,
-    UpdateCentrifugeGasPrice,
+    UpdateGasPrice,
     RegisterAsset,
     NotifyPool,
     NotifyShareClass,
@@ -186,8 +185,8 @@ library MessageLib {
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
-            price: data.toUint128(33),
-            timestamp: data.toUint64(41)
+            price: data.toUint128(41),
+            timestamp: data.toUint64(57)
         });
     }
 
@@ -250,7 +249,7 @@ library MessageLib {
     struct TransferShares {
         uint64 poolId;
         bytes16 scId;
-        bytes32 investor;
+        bytes32 recipient;
         uint128 amount;
     }
 
@@ -259,13 +258,13 @@ library MessageLib {
         return TransferShares({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
-            investor: data.toBytes32(25),
+            recipient: data.toBytes32(25),
             amount: data.toUint128(57)
         });
     }
 
     function serialize(TransferShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.TransferShares, t.poolId, t.scId, t.investor, t.amount);
+        return abi.encodePacked(MessageType.TransferShares, t.poolId, t.scId, t.recipient, t.amount);
     }
 
     //---------------------------------------

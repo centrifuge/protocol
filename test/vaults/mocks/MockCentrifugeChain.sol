@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
+
+import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
 import {RestrictionUpdate} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 import "forge-std/Test.sol";
 
@@ -13,6 +16,7 @@ interface AdapterLike {
 
 contract MockCentrifugeChain is Test {
     using CastLib for *;
+    using MessageLib for *;
 
     address[] public adapters;
 
@@ -34,7 +38,7 @@ contract MockCentrifugeChain is Test {
 
     function batchAddPoolAllowAsset(uint64 poolId, uint128 assetId) public {
         bytes memory _addPool = abi.encodePacked(uint8(MessagesLib.Call.AddPool), poolId);
-        bytes memory _allowAsset = abi.encodePacked(uint8(MessagesLib.Call.AllowAsset), poolId, assetId);
+        bytes memory _allowAsset = abi.encodePacked(uint8(MessagesLib.Call.AllowAsset), poolId, bytes16(0), assetId);
 
         bytes memory _message = abi.encodePacked(
             uint8(MessagesLib.Call.Batch), uint16(_addPool.length), _addPool, uint16(_allowAsset.length), _allowAsset
@@ -43,12 +47,12 @@ contract MockCentrifugeChain is Test {
     }
 
     function allowAsset(uint64 poolId, uint128 assetId) public {
-        bytes memory _message = abi.encodePacked(uint8(MessagesLib.Call.AllowAsset), poolId, assetId);
+        bytes memory _message = abi.encodePacked(uint8(MessagesLib.Call.AllowAsset), poolId, bytes16(0), assetId);
         _execute(_message);
     }
 
     function disallowAsset(uint64 poolId, uint128 assetId) public {
-        bytes memory _message = abi.encodePacked(uint8(MessagesLib.Call.DisallowAsset), poolId, assetId);
+        bytes memory _message = abi.encodePacked(uint8(MessagesLib.Call.DisallowAsset), poolId, bytes16(0), assetId);
         _execute(_message);
     }
 
@@ -60,6 +64,7 @@ contract MockCentrifugeChain is Test {
         uint8 decimals,
         address hook
     ) public {
+        console.logBytes(_toBytes128(tokenName));
         bytes memory _message = abi.encodePacked(
             uint8(MessagesLib.Call.AddTranche),
             poolId,
@@ -67,8 +72,21 @@ contract MockCentrifugeChain is Test {
             _toBytes128(tokenName),
             tokenSymbol.toBytes32(),
             decimals,
-            hook
+            bytes32(bytes20(hook))
         );
+
+        /* TODO: Replace the above with the following:
+        bytes memory _message2 = MessageLib.NotifyShareClass({
+            poolId: poolId,
+            scId: trancheId,
+            name: string(_toBytes128(tokenName)),
+            symbol: tokenSymbol.toBytes32(),
+            decimals: decimals,
+            hook: bytes32(bytes20(hook))
+        }).serialize();
+        assertEq(_message, _message2);
+        */
+
         _execute(_message);
     }
 
@@ -98,7 +116,8 @@ contract MockCentrifugeChain is Test {
     }
 
     function updateTrancheHook(uint64 poolId, bytes16 trancheId, address hook) public {
-        bytes memory _message = abi.encodePacked(uint8(MessagesLib.Call.UpdateTrancheHook), poolId, trancheId, hook);
+        bytes memory _message =
+            abi.encodePacked(uint8(MessagesLib.Call.UpdateTrancheHook), poolId, trancheId, bytes32(bytes20(hook)));
         _execute(_message);
     }
 

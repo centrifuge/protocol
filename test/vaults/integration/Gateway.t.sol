@@ -41,7 +41,7 @@ contract GatewayTest is BaseTest {
         MockERC20 newAsset = deployMockERC20("newAsset", "NEW", 18);
         bytes memory _addPool = abi.encodePacked(uint8(MessagesLib.Call.AddPool), poolId);
         bytes memory _addAsset = abi.encodePacked(uint8(MessagesLib.Call.AddAsset), assetId, address(newAsset));
-        bytes memory _allowAsset = abi.encodePacked(uint8(MessagesLib.Call.AllowAsset), poolId, assetId);
+        bytes memory _allowAsset = abi.encodePacked(uint8(MessagesLib.Call.AllowAsset), poolId, bytes16(0), assetId);
 
         bytes memory _message = abi.encodePacked(
             uint8(MessagesLib.Call.Batch),
@@ -76,7 +76,7 @@ contract GatewayTest is BaseTest {
         bytes memory _addPool = abi.encodePacked(uint8(MessagesLib.Call.AddPool), poolId);
 
         bytes memory _addAsset = abi.encodePacked(uint8(MessagesLib.Call.AddAsset), assetId, address(newAsset));
-        bytes memory _allowAsset = abi.encodePacked(uint8(MessagesLib.Call.AllowAsset), poolId, assetId);
+        bytes memory _allowAsset = abi.encodePacked(uint8(MessagesLib.Call.AllowAsset), poolId, bytes16(0), assetId);
 
         bytes memory _addAndAllowAssetMessage = abi.encodePacked(
             uint8(MessagesLib.Call.Batch), uint16(_addAsset.length), _addAsset, uint16(_allowAsset.length), _allowAsset
