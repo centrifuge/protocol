@@ -5,6 +5,8 @@ import {Auth} from "src/misc/Auth.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
@@ -48,22 +50,38 @@ struct EpochPointers {
     uint32 latestRevocation;
 }
 
+struct ShareClassMetadata {
+    string name;
+    string symbol;
+}
+
 /// Utility method to determine the ShareClassId for a PoolId
 function previewShareClassId(PoolId poolId) pure returns (ShareClassId) {
     return ShareClassId.wrap(bytes16(uint128(PoolId.unwrap(poolId))));
+}
+
+function encodeMetadata(string memory name, string memory symbol) pure returns (bytes memory metadata) {
+    return abi.encodePacked(bytes(CastLib.stringToBytes128(name)), CastLib.toBytes32(symbol));
 }
 
 contract SingleShareClass is Auth, ISingleShareClass {
     using MathLib for D18;
     using MathLib for uint128;
     using MathLib for uint256;
+    using CastLib for bytes;
+    using CastLib for bytes32;
+    using BytesLib for bytes;
+
+    uint32 constant META_NAME_LENGTH = 128;
+    uint32 constant META_SYMBOL_LENGTH = 32;
 
     /// Storage
     uint32 internal transient _epochIncrement;
     IPoolRegistry public poolRegistry;
+    mapping(PoolId poolId => uint32 epochId_) public epochId;
     mapping(PoolId poolId => ShareClassId) public shareClassId;
     mapping(ShareClassId scId => uint128) public totalIssuance;
-    mapping(PoolId poolId => uint32 epochId_) public epochId;
+    mapping(ShareClassId scId => ShareClassMetadata) public metadata;
     mapping(ShareClassId scId => D18 navPerShare) private _shareClassNavPerShare;
     mapping(ShareClassId scId => mapping(AssetId assetId => EpochPointers)) public epochPointers;
     mapping(ShareClassId scId => mapping(AssetId payoutAssetId => uint128 pending)) public pendingRedeem;
@@ -86,17 +104,17 @@ contract SingleShareClass is Auth, ISingleShareClass {
     }
 
     /// @inheritdoc IShareClassManager
-    function addShareClass(PoolId poolId, bytes calldata /* data */ )
-        external
-        auth
-        returns (ShareClassId shareClassId_)
-    {
+    function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes calldata) external auth returns (ShareClassId shareClassId_) {
         require(shareClassId[poolId].isNull(), MaxShareClassNumberExceeded(1));
 
         shareClassId_ = previewShareClassId(poolId);
 
         shareClassId[poolId] = shareClassId_;
         epochId[poolId] = 1;
+
+        _updateMetadata(shareClassId_, name, symbol);
+
+        emit AddedShareClass(poolId, shareClassId_, name, symbol);
     }
 
     /// @inheritdoc IShareClassManager
@@ -480,6 +498,15 @@ contract SingleShareClass is Auth, ISingleShareClass {
         userOrder.lastUpdate = endEpochId + 1;
     }
 
+    function updateMetadata(PoolId poolId, ShareClassId shareClassId_, string calldata name, string calldata symbol, bytes calldata) external auth {
+        require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
+
+        _updateMetadata(shareClassId_, name, symbol);
+
+        emit UpdatedMetadata(poolId, shareClassId_, name, symbol);
+    }
+
+
     /// @inheritdoc IShareClassManager
     function updateShareClassNav(PoolId poolId, ShareClassId shareClassId_) external view auth returns (D18, uint128) {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
@@ -629,6 +656,16 @@ contract SingleShareClass is Auth, ISingleShareClass {
             userOrder.pending,
             pendingRedeem[shareClassId_][payoutAssetId]
         );
+    }
+
+    function _updateMetadata(ShareClassId shareClassId_, string calldata name, string calldata symbol) private {
+        uint256 nLen = bytes(name).length;
+        require(nLen> 0 && nLen <= 128, InvalidMetadataName());
+
+        uint256 sLen = bytes(symbol).length;
+        require(sLen > 0 && sLen <= 32, InvalidMetadataSymbol());
+
+        metadata[shareClassId_] = ShareClassMetadata(name, symbol);
     }
 
     /// @notice Advances the current epoch of the given pool if it has not been incremented within the multicall. If the

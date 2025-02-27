@@ -87,7 +87,7 @@ interface IShareClassManager {
         uint128 claimedAssetAmount
     );
     event UpdatedNav(PoolId indexed poolId, ShareClassId indexed shareClassId, uint128 newAmount);
-    event AddedShareClass(PoolId indexed poolId, ShareClassId indexed shareClassId, string metadata);
+    event AddedShareClass(PoolId indexed poolId, ShareClassId indexed shareClassId);
 
     /// Errors
     error PoolMissing();
@@ -258,9 +258,28 @@ interface IShareClassManager {
     /// @notice Adds a new share class to the given pool.
     ///
     /// @param poolId Identifier of the pool
-    /// @param data Data of the new share class
+    /// @param name The name of the share class
+    /// @param symbol The symbol of the share class
+    /// @param data Additional data of the new share class
     /// @return shareClassId Identifier of the newly added share class
-    function addShareClass(PoolId poolId, bytes calldata data) external returns (ShareClassId shareClassId);
+    function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes calldata data)
+        external
+        returns (ShareClassId shareClassId);
+
+    /// @notice Updates the metadata of a share class.
+    ///
+    /// @param poolId Identifier of the pool
+    /// @param shareClassId Identifier of the share class
+    /// @param name The name of the share class
+    /// @param symbol The symbol of the share class
+    /// @param metadata Encoded additional metadata of the new share class
+    function updateMetadata(
+        PoolId poolId,
+        ShareClassId shareClassId,
+        string calldata name,
+        string calldata symbol,
+        bytes calldata metadata
+    ) external;
 
     /// @notice Returns the current NAV of a share class of a pool per share as well as the issuance.
     ///

@@ -17,6 +17,7 @@ import {IGateway} from "src/pools/interfaces/IGateway.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
+import {ISingleShareClass} from "src/pools/interfaces/ISingleShareClass.sol";
 import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
 import {
     IPoolManager,
@@ -137,19 +138,14 @@ contract PoolManager is Auth, Multicall, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function notifyShareClass(uint32 chainId, ShareClassId scId) external poolUnlocked protected {
+    function notifyShareClass(uint32 chainId, ShareClassId scId, bytes32 hook) external poolUnlocked protected {
         IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
         require(scm.exists(unlockedPoolId, scId), IShareClassManager.ShareClassNotFound());
 
-        gateway.sendNotifyShareClass(
-            chainId,
-            unlockedPoolId,
-            scId,
-            string("TODO"),
-            string("TODO"),
-            assetRegistry.decimals(poolRegistry.currency(unlockedPoolId).raw()),
-            bytes32("TODO")
-        );
+        (string memory name, string memory symbol) = ISingleShareClass(address(scm)).metadata(scId);
+        uint8 decimals = assetRegistry.decimals(poolRegistry.currency(unlockedPoolId).raw());
+
+        gateway.sendNotifyShareClass(chainId, unlockedPoolId, scId, name, symbol, decimals, hook);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
@@ -174,9 +170,9 @@ contract PoolManager is Auth, Multicall, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function addShareClass(bytes calldata data) external poolUnlocked protected returns (ShareClassId) {
+    function addShareClass(string calldata name, string calldata symbol, bytes calldata data) external poolUnlocked protected returns (ShareClassId) {
         IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
-        return scm.addShareClass(unlockedPoolId, data);
+        return scm.addShareClass(unlockedPoolId, name, symbol, data);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods

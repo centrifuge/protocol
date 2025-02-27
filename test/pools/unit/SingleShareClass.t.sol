@@ -4,6 +4,7 @@ pragma solidity ^0.8.28;
 import "forge-std/Test.sol";
 
 import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
@@ -15,7 +16,14 @@ import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 import {ISingleShareClass} from "src/pools/interfaces/ISingleShareClass.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
-import {SingleShareClass, EpochAmounts, UserOrder, EpochPointers} from "src/pools/SingleShareClass.sol";
+import {
+    SingleShareClass,
+    EpochAmounts,
+    UserOrder,
+    EpochPointers,
+    ShareClassMetadata,
+    encodeMetadata
+} from "src/pools/SingleShareClass.sol";
 
 uint64 constant POOL_ID = 42;
 ShareClassId constant SHARE_CLASS_ID = ShareClassId.wrap(bytes16(uint128(POOL_ID)));
@@ -27,6 +35,12 @@ uint128 constant DENO_OTHER_STABLE = 10 ** 12;
 uint128 constant DENO_POOL = 10 ** 18;
 uint128 constant MIN_REQUEST_AMOUNT = 1e6;
 uint128 constant MAX_REQUEST_AMOUNT = 1e18;
+string constant SC_NAME = "ExampleName";
+string constant SC_SYMBOL = "ExampleSymbol";
+
+uint32 constant STORAGE_INDEX_EPOCH_ID = 2;
+uint32 constant STORAGE_INDEX_TOTAL_ISSUANCE = 4;
+uint32 constant STORAGE_INDEX_EPOCH_POINTERS = 7;
 
 contract PoolRegistryMock {
     function currency(PoolId) external pure returns (AssetId) {
@@ -72,6 +86,7 @@ contract SingleShareClassExt is SingleShareClass {
 abstract contract SingleShareClassBaseTest is Test {
     using MathLib for uint128;
     using MathLib for uint256;
+    using CastLib for string;
 
     SingleShareClassExt public shareClass;
 
@@ -90,7 +105,10 @@ abstract contract SingleShareClassBaseTest is Test {
 
     function setUp() public virtual {
         shareClass = new SingleShareClassExt(IPoolRegistry(poolRegistryAddress), address(this));
-        shareClass.addShareClass(poolId, bytes(""));
+
+        vm.expectEmit();
+        emit ISingleShareClass.AddedShareClass(poolId, scId, SC_NAME, SC_SYMBOL);
+        shareClass.addShareClass(poolId, SC_NAME, SC_SYMBOL, bytes(""));
 
         // Mock IPoolRegistry.currency call
         vm.mockCall(
@@ -179,6 +197,7 @@ abstract contract SingleShareClassBaseTest is Test {
 ///@dev Contains all simple tests which are expected to succeed
 contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
     using MathLib for uint128;
+    using CastLib for string;
 
     function testDeployment(address nonWard) public view notThisContract(poolRegistryAddress) {
         vm.assume(nonWard != address(shareClass.poolRegistry()) && nonWard != address(this));
@@ -210,6 +229,26 @@ contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
     function testExistence() public view notThisContract(poolRegistryAddress) {
         assert(shareClass.exists(poolId, scId));
         assert(!shareClass.exists(poolId, ShareClassId.wrap(bytes16(0))));
+    }
+
+    function testDefaultMetadata() public view notThisContract(poolRegistryAddress) {
+        (string memory name, string memory symbol) = shareClass.metadata(scId);
+
+        assertEq(name, SC_NAME);
+        assertEq(symbol, SC_SYMBOL);
+    }
+
+    function testUpdateMetadata(string memory name, string memory symbol) public notThisContract(poolRegistryAddress) {
+        vm.assume(bytes(name).length > 0 && bytes(name).length <= 128);
+        vm.assume(bytes(symbol).length > 0 && bytes(symbol).length <= 32);
+
+        vm.expectEmit();
+        emit ISingleShareClass.UpdatedMetadata(poolId, scId, name, symbol);
+        shareClass.updateMetadata(poolId, scId, name, symbol, bytes(""));
+
+        (string memory name_, string memory symbol_) = shareClass.metadata(scId);
+        assertEq(name, name_, "Metadata name mismatch");
+        assertEq(symbol, symbol_, "Metadata symbol mismatch");
     }
 }
 
@@ -385,7 +424,7 @@ contract SingleShareClassDepositsNonTransientTest is SingleShareClassBaseTest {
         // Mock latestIssuance to 10
         vm.store(
             address(shareClass),
-            keccak256(abi.encode(USDC, keccak256(abi.encode(scId, uint256(6))))),
+            keccak256(abi.encode(USDC, keccak256(abi.encode(scId, uint256(STORAGE_INDEX_EPOCH_POINTERS))))),
             bytes32(
                 (uint256(0)) // latestDepositApproval
                     | (uint256(0) << 32) // latestRedeemApproval
@@ -394,7 +433,11 @@ contract SingleShareClassDepositsNonTransientTest is SingleShareClassBaseTest {
             )
         );
         // Mock epochId to 11
-        vm.store(address(shareClass), keccak256(abi.encode(poolId, uint256(4))), bytes32(uint256(mockEpochId)));
+        vm.store(
+            address(shareClass),
+            keccak256(abi.encode(poolId, uint256(STORAGE_INDEX_EPOCH_ID))),
+            bytes32(uint256(mockEpochId))
+        );
 
         (uint128 payout, uint128 payment) = shareClass.claimDeposit(poolId, scId, investor, USDC);
         assertEq(payout + payment, 0);
@@ -517,7 +560,11 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
         uint128 assetAmount = poolToUsdc(poolAmount);
 
         // Mock total issuance to equal redeemAmount
-        vm.store(address(shareClass), keccak256(abi.encode(scId, uint256(3))), bytes32(uint256(redeemAmount)));
+        vm.store(
+            address(shareClass),
+            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_TOTAL_ISSUANCE))),
+            bytes32(uint256(redeemAmount))
+        );
         assertEq(shareClass.totalIssuance(scId), redeemAmount);
 
         shareClass.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
@@ -549,7 +596,11 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
         uint128 payout = poolToUsdc(shareToPoolQuote.mulUint128(approvedRedeem));
 
         // Mock total issuance to equal redeemAmount
-        vm.store(address(shareClass), keccak256(abi.encode(scId, uint256(3))), bytes32(uint256(redeemAmount)));
+        vm.store(
+            address(shareClass),
+            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_TOTAL_ISSUANCE))),
+            bytes32(uint256(redeemAmount))
+        );
         assertEq(shareClass.totalIssuance(scId), redeemAmount);
 
         shareClass.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
@@ -586,7 +637,7 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
         // Mock latestRevocation to 10
         vm.store(
             address(shareClass),
-            keccak256(abi.encode(USDC, keccak256(abi.encode(scId, uint256(6))))),
+            keccak256(abi.encode(USDC, keccak256(abi.encode(scId, uint256(STORAGE_INDEX_EPOCH_POINTERS))))),
             bytes32(
                 (uint256(0)) // latestDepositApproval
                     | (uint256(0) << 32) // latestRedeemApproval
@@ -595,7 +646,11 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
             )
         );
         // Mock epochId to 11
-        vm.store(address(shareClass), keccak256(abi.encode(poolId, uint256(4))), bytes32(uint256(mockEpochId)));
+        vm.store(
+            address(shareClass),
+            keccak256(abi.encode(poolId, uint256(STORAGE_INDEX_EPOCH_ID))),
+            bytes32(uint256(mockEpochId))
+        );
 
         (uint128 payout, uint128 payment) = shareClass.claimRedeem(poolId, scId, investor, USDC);
         assertEq(payout + payment, 0);
@@ -734,7 +789,11 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         uint128 pendingRedeems = redeemAmount;
 
         // Mock total issuance to equal total redeemAmount
-        vm.store(address(shareClass), keccak256(abi.encode(scId, uint256(3))), bytes32(uint256(totalIssuance_)));
+        vm.store(
+            address(shareClass),
+            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_TOTAL_ISSUANCE))),
+            bytes32(uint256(totalIssuance_))
+        );
 
         // Bump up latestApproval epochs
         for (uint8 i = 1; i < maxEpochId; i++) {
@@ -799,7 +858,11 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         uint128 approvedRedeem = 0;
 
         // Mock total issuance to equal total redeemAmount
-        vm.store(address(shareClass), keccak256(abi.encode(scId, uint256(3))), bytes32(uint256(redeemAmount)));
+        vm.store(
+            address(shareClass),
+            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_TOTAL_ISSUANCE))),
+            bytes32(uint256(redeemAmount))
+        );
 
         shareClass.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
 
@@ -1011,7 +1074,11 @@ contract SingleShareClassRoundingEdgeCasesRedeem is SingleShareClassBaseTest {
         SingleShareClassBaseTest.setUp();
 
         // Mock total issuance such that we can redeem
-        vm.store(address(shareClass), keccak256(abi.encode(scId, uint256(3))), bytes32(uint256(TOTAL_ISSUANCE)));
+        vm.store(
+            address(shareClass),
+            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_TOTAL_ISSUANCE))),
+            bytes32(uint256(TOTAL_ISSUANCE))
+        );
     }
 
     function _approveAllRedeemsAndRevoke(uint128 approvedShareAmount, uint128 expectedAssetPayout, D18 navPerShare)
@@ -1115,7 +1182,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
 
     function testSetShareClassIdAlreadySet() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.MaxShareClassNumberExceeded.selector, 1));
-        shareClass.addShareClass(poolId, bytes(""));
+        shareClass.addShareClass(poolId, "", "", bytes(""));
     }
 
     function testRequestDepositWrongShareClassId() public {
@@ -1176,7 +1243,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
         // Mock latestDepositApproval to epoch 1
         vm.store(
             address(shareClass),
-            keccak256(abi.encode(USDC, keccak256(abi.encode(wrongShareClassId, uint256(6))))),
+            keccak256(abi.encode(USDC, keccak256(abi.encode(wrongShareClassId, uint256(STORAGE_INDEX_EPOCH_POINTERS))))),
             bytes32(
                 (uint256(1)) // latestDepositApproval
                     | (uint256(0) << 32) // latestRedeemApproval
@@ -1206,7 +1273,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
         // Mock latestRedeemApproval to epoch 1
         vm.store(
             address(shareClass),
-            keccak256(abi.encode(USDC, keccak256(abi.encode(wrongShareClassId, uint256(6))))),
+            keccak256(abi.encode(USDC, keccak256(abi.encode(wrongShareClassId, STORAGE_INDEX_EPOCH_POINTERS)))),
             bytes32(
                 (uint256(0)) // latestDepositApproval
                     | (uint256(1) << 32) // latestRedeemApproval
@@ -1260,6 +1327,11 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     function testGetShareClassNavWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.shareClassNavPerShare(poolId, wrongShareClassId);
+    }
+
+    function testUpdateMetadataWrongShareClassId() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
+        shareClass.updateMetadata(poolId, wrongShareClassId, "", "", bytes(""));
     }
 
     function testIssueSharesBeforeApproval() public {
@@ -1350,5 +1422,45 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     function testApproveRedeemsRatioInsufficient() public {
         vm.expectRevert(ISingleShareClass.ApprovalRatioOutOfBounds.selector);
         shareClass.approveRedeems(poolId, scId, d18(0), USDC);
+    }
+
+    function testAddShareClassInvalidNameEmpty() public {
+        vm.expectRevert(ISingleShareClass.InvalidMetadataName.selector);
+        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), "", SC_SYMBOL, bytes(""));
+    }
+
+    function testAddShareClassInvalidNameExcess() public {
+        vm.expectRevert(ISingleShareClass.InvalidMetadataName.selector);
+        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), string(new bytes(129)), SC_SYMBOL, bytes(""));
+    }
+
+    function testAddShareClassInvalidSymbolEmpty() public {
+        vm.expectRevert(ISingleShareClass.InvalidMetadataSymbol.selector);
+        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), SC_NAME, "", bytes(""));
+    }
+
+    function testAddShareClassInvalidSymbolExcess() public {
+        vm.expectRevert(ISingleShareClass.InvalidMetadataSymbol.selector);
+        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), SC_NAME, string(new bytes(33)), bytes(""));
+    }
+
+    function testUpdateMetadataClassInvalidNameEmpty() public {
+        vm.expectRevert(ISingleShareClass.InvalidMetadataName.selector);
+        shareClass.updateMetadata(poolId, scId, "", SC_SYMBOL, bytes(""));
+    }
+
+    function testUpdateMetadataClassInvalidNameExcess() public {
+        vm.expectRevert(ISingleShareClass.InvalidMetadataName.selector);
+        shareClass.updateMetadata(poolId, scId, string(new bytes(129)), SC_SYMBOL, bytes(""));
+    }
+
+    function testUpdateMetadataClassInvalidSymbolEmpty() public {
+        vm.expectRevert(ISingleShareClass.InvalidMetadataSymbol.selector);
+        shareClass.updateMetadata(poolId, scId, SC_NAME, "", bytes(""));
+    }
+
+    function testUpdateMetadataClassInvalidSymbolExcess() public {
+        vm.expectRevert(ISingleShareClass.InvalidMetadataSymbol.selector);
+        shareClass.updateMetadata(poolId, scId, SC_NAME, string(new bytes(33)), bytes(""));
     }
 }
