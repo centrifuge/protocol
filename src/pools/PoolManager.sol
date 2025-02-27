@@ -352,7 +352,7 @@ contract PoolManager is Auth, Multicall, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerHandler
-    function handleRequestDeposit(
+    function handleDepositRequest(
         PoolId poolId,
         ShareClassId scId,
         bytes32 investor,
@@ -367,7 +367,7 @@ contract PoolManager is Auth, Multicall, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerHandler
-    function handleRequestRedeem(
+    function handleRedeemRequest(
         PoolId poolId,
         ShareClassId scId,
         bytes32 investor,
