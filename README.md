@@ -59,6 +59,7 @@ forge test
 | [Alex the Entreprenerd](https://x.com/gallodasballo)  | Mar - Apr 2024  | Invariant test development | [`Part 1`](https://getrecon.substack.com/p/lessons-learned-from-fuzzing-centrifuge) [`Part 2`](https://getrecon.substack.com/p/lessons-learned-from-fuzzing-centrifuge-059)  |
 | [xmxanuel](https://x.com/xmxanuel)  | May - June 2024  | Security review | Internal                                                                                                                                               |
 | [Spearbit](https://spearbit.com/)  | July 2024  | Security review             | [`Report`](https://github.com/centrifuge/protocol-v3/blob/main/docs/audits/2024-08-Spearbit.pdf) |
+| [Cantina](https://cantina.xyz/)  | Feb 2025  | Security review             | [`Report`](https://github.com/centrifuge/protocol-v3/blob/main/docs/audits/2025-02-Cantina.pdf) |
 
 ## License
 This codebase is licensed under [Business Source License 1.1](https://github.com/centrifuge/protocol-v3/blob/main/LICENSE).
