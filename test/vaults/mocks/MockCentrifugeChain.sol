@@ -118,8 +118,7 @@ contract MockCentrifugeChain is Test {
     }
 
     function updateCentrifugeGasPrice(uint128 price, uint64 computedAt) public {
-        bytes memory _message = abi.encodePacked(uint8(MessagesLib.Call.UpdateCentrifugeGasPrice), price, computedAt);
-        execute(_message);
+        execute(MessageLib.UpdateGasPrice({price: price, timestamp: computedAt}).serialize());
     }
 
     function triggerIncreaseRedeemOrder(

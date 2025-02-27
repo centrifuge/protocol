@@ -12,6 +12,14 @@ contract MessageLibTest is Test {
         I = deserialize º serialize
     */
 
+    function testUpdateGasPrice() public pure {
+        MessageLib.UpdateGasPrice memory a = MessageLib.UpdateGasPrice({price: 42, timestamp: 0x12345678});
+        MessageLib.UpdateGasPrice memory b = MessageLib.deserializeUpdateGasPrice(a.serialize());
+
+        assertEq(a.price, b.price);
+        assertEq(a.timestamp, b.timestamp);
+    }
+
     function testRegisterAsset() public pure {
         MessageLib.RegisterAsset memory a = MessageLib.RegisterAsset({assetId: 1, name: "n", symbol: "s", decimals: 4});
         MessageLib.RegisterAsset memory b = MessageLib.deserializeRegisterAsset(a.serialize());

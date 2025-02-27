@@ -49,6 +49,24 @@ library MessageLib {
     }
 
     //---------------------------------------
+    //    UpdateGasPrice
+    //---------------------------------------
+
+    struct UpdateGasPrice {
+        uint128 price;
+        uint64 timestamp;
+    }
+
+    function deserializeUpdateGasPrice(bytes memory data) internal pure returns (UpdateGasPrice memory) {
+        require(messageType(data) == MessageType.UpdateGasPrice, DeserializationError());
+        return UpdateGasPrice({price: data.toUint128(1), timestamp: data.toUint64(17)});
+    }
+
+    function serialize(UpdateGasPrice memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.UpdateGasPrice, t.price, t.timestamp);
+    }
+
+    //---------------------------------------
     //    RegisterAsset
     //---------------------------------------
 
