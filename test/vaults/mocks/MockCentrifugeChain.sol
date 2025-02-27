@@ -64,7 +64,6 @@ contract MockCentrifugeChain is Test {
         uint8 decimals,
         address hook
     ) public {
-        console.logBytes(_toBytes128(tokenName));
         bytes memory _message = abi.encodePacked(
             uint8(MessagesLib.Call.AddTranche),
             poolId,
