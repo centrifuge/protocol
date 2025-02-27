@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
-import {Domain} from "src/vaults/interfaces/IPoolManager.sol";
 import {RestrictionUpdate} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 import "forge-std/Test.sol";
 
@@ -136,20 +135,11 @@ contract MockCentrifugeChain is Test {
     }
 
     // Trigger an incoming (e.g. Centrifuge Chain -> EVM) transfer of tranche tokens
-    function incomingTransferTrancheTokens(
-        uint64 poolId,
-        bytes16 trancheId,
-        uint64 destinationChainId,
-        address destinationAddress,
-        uint128 amount
-    ) public {
+    function incomingTransferTrancheTokens(uint64 poolId, bytes16 trancheId, address destinationAddress, uint128 amount)
+        public
+    {
         bytes memory _message = abi.encodePacked(
-            uint8(MessagesLib.Call.TransferTrancheTokens),
-            poolId,
-            trancheId,
-            bytes9(BytesLib.slice(abi.encodePacked(uint8(Domain.EVM), destinationChainId), 0, 9)),
-            destinationAddress.toBytes32(),
-            amount
+            uint8(MessagesLib.Call.TransferTrancheTokens), poolId, trancheId, destinationAddress.toBytes32(), amount
         );
         _execute(_message);
     }

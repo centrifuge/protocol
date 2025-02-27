@@ -9,7 +9,6 @@ import {vm} from "@chimera/Hevm.sol";
 // Dependencies
 import {ERC20} from "src/misc/ERC20.sol";
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
-import {Domain} from "src/vaults/interfaces/IPoolManager.sol";
 
 // Only for Tranche
 abstract contract PoolManagerFunctions is BaseTargetFunctions, Properties {
@@ -42,7 +41,7 @@ abstract contract PoolManagerFunctions is BaseTargetFunctions, Properties {
         // Exact approval
         trancheToken.approve(address(poolManager), amount);
 
-        poolManager.transferTrancheTokens(poolId, trancheId, Domain.EVM, destinationChainId, destinationAddress, amount);
+        poolManager.transferTrancheTokens(poolId, trancheId, destinationChainId, destinationAddress, amount);
         // TF-11 burns tranche tokens from user, not tracked in escrow
 
         // Track minting for Global-3
