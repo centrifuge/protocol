@@ -22,9 +22,9 @@ enum MessageType {
     NotifyShareClass,
     AllowAsset,
     DisallowAsset,
-    UpdateTranchePrice,
-    UpdateTrancheMetadata,
-    UpdateTrancheHook,
+    UpdateShareClassPrice,
+    UpdateShareClassMetadata,
+    UpdateShareClassHook,
     TransferShares,
     UpdateRestriction,
     DepositRequest,
@@ -169,6 +169,81 @@ library MessageLib {
     }
 
     //---------------------------------------
+    //    UpdateShareClassPrice
+    //---------------------------------------
+
+    struct UpdateShareClassPrice {
+        uint64 poolId;
+        bytes16 scId;
+        uint128 assetId;
+        uint128 price;
+        uint64 timestamp;
+    }
+
+    function deserializeUpdateShareClassPrice(bytes memory data) internal pure returns (UpdateShareClassPrice memory) {
+        require(messageType(data) == MessageType.UpdateShareClassPrice, DeserializationError());
+        return UpdateShareClassPrice({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            assetId: data.toUint128(25),
+            price: data.toUint128(33),
+            timestamp: data.toUint64(41)
+        });
+    }
+
+    function serialize(UpdateShareClassPrice memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.UpdateShareClassPrice, t.poolId, t.scId, t.assetId, t.price, t.timestamp);
+    }
+
+    //---------------------------------------
+    //    UpdateShareClassMetadata
+    //---------------------------------------
+
+    struct UpdateShareClassMetadata {
+        uint64 poolId;
+        bytes16 scId;
+        string name; // Fixed to 128 bytes
+        bytes32 symbol; // utf8
+    }
+
+    function deserializeUpdateShareClassMetadata(bytes memory data)
+        internal
+        pure
+        returns (UpdateShareClassMetadata memory)
+    {
+        require(messageType(data) == MessageType.UpdateShareClassMetadata, DeserializationError());
+        return UpdateShareClassMetadata({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            name: data.slice(25, 128).bytes128ToString(),
+            symbol: data.toBytes32(153)
+        });
+    }
+
+    function serialize(UpdateShareClassMetadata memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.UpdateShareClassMetadata, t.poolId, t.scId, t.name, t.symbol);
+    }
+
+    //---------------------------------------
+    //    UpdateShareClassHook
+    //---------------------------------------
+
+    struct UpdateShareClassHook {
+        uint64 poolId;
+        bytes16 scId;
+        bytes32 hook;
+    }
+
+    function deserializeUpdateShareClassHook(bytes memory data) internal pure returns (UpdateShareClassHook memory) {
+        require(messageType(data) == MessageType.UpdateShareClassHook, DeserializationError());
+        return UpdateShareClassHook({poolId: data.toUint64(1), scId: data.toBytes16(9), hook: data.toBytes32(25)});
+    }
+
+    function serialize(UpdateShareClassHook memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.UpdateShareClassHook, t.poolId, t.scId, t.hook);
+    }
+
+    //---------------------------------------
     //    TransferShares
     //---------------------------------------
 
@@ -191,6 +266,29 @@ library MessageLib {
 
     function serialize(TransferShares memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(MessageType.TransferShares, t.poolId, t.scId, t.investor, t.amount);
+    }
+
+    //---------------------------------------
+    //    UpdateRestriction
+    //---------------------------------------
+
+    struct UpdateRestriction {
+        uint64 poolId;
+        bytes16 scId;
+        bytes payload;
+    }
+
+    function deserializeUpdateRestriction(bytes memory data) internal pure returns (UpdateRestriction memory) {
+        require(messageType(data) == MessageType.UpdateRestriction, DeserializationError());
+        return UpdateRestriction({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            payload: data.slice(25, data.length - 25)
+        });
+    }
+
+    function serialize(UpdateRestriction memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.UpdateRestriction, t.poolId, t.scId, t.payload);
     }
 
     //---------------------------------------

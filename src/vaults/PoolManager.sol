@@ -1,16 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
+import {IERC20Metadata, IERC20Wrapper} from "src/misc/interfaces/IERC20.sol";
+import {Auth} from "src/misc/Auth.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
+
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
+
+import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
 import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
 import {ITrancheFactory} from "src/vaults/interfaces/factories/ITrancheFactory.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
-import {IERC20Metadata, IERC20Wrapper} from "src/misc/interfaces/IERC20.sol";
-import {Auth} from "src/misc/Auth.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {
     Pool,
     TrancheDetails,
@@ -19,11 +24,9 @@ import {
     VaultAsset,
     IPoolManager
 } from "src/vaults/interfaces/IPoolManager.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
 import {IGasService} from "src/vaults/interfaces/gateway/IGasService.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 
 /// @title  Pool Manager
@@ -141,7 +144,8 @@ contract PoolManager is Auth, IPoolManager {
                 message.toUint64(1), message.toBytes16(9), message.toAddress(25), message.toUint128(57)
             );
         } else if (call == MessagesLib.Call.UpdateRestriction) {
-            updateRestriction(message.toUint64(1), message.toBytes16(9), message.slice(25, message.length - 25));
+            MessageLib.UpdateRestriction memory m = MessageLib.deserializeUpdateRestriction(message);
+            updateRestriction(m.poolId, m.scId, m.payload);
         } else {
             revert("PoolManager/invalid-message");
         }
