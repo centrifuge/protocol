@@ -27,7 +27,6 @@ import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
 import {IGasService} from "src/vaults/interfaces/gateway/IGasService.sol";
 import {IAuth} from "src/vaults/interfaces/IAuth.sol";
 import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
-import {ERC6909} from "../misc/ERC6909.sol";
 
 /// @title  Pool Manager
 /// @notice This contract manages which pools & tranches exist,
@@ -51,7 +50,9 @@ contract PoolManager is Auth, IPoolManager {
     uint32 internal _assetCounter;
 
     struct AssetIdKey {
+        /// @dev The address of the asset
         address asset;
+        /// @dev The ERC6909 token id or 0, if the underlying asset is an ERC20
         uint256 tokenId;
     }
 
@@ -60,7 +61,7 @@ contract PoolManager is Auth, IPoolManager {
     mapping(uint64 poolId => mapping(bytes16 => UndeployedTranche)) internal _undeployedTranches;
 
     mapping(uint128 assetId => AssetIdKey) public _idToAsset;
-    mapping(bytes32 assedIdKey => uint128 assetId) public _assetToId;
+    mapping(bytes32 assetIdKey => uint128 assetId) public _assetToId;
 
     constructor(address escrow_, address vaultFactory_, address trancheFactory_) Auth(msg.sender) {
         escrow = IEscrow(escrow_);
@@ -124,7 +125,10 @@ contract PoolManager is Auth, IPoolManager {
     }
 
     // @inheritdoc IPoolManager
-    function registerAsset(address asset, uint256 tokenId, uint32 destinationChain) external returns (uint128 assetId) {
+    function registerAsset(address asset, uint256 tokenId, uint32 /* destinationChain */ )
+        external
+        returns (uint128 assetId)
+    {
         string memory name;
         string memory symbol;
         uint8 decimals;
@@ -174,15 +178,19 @@ contract PoolManager is Auth, IPoolManager {
 
             // Give investment manager infinite approval for asset
             // in the escrow to transfer to the user on redeem or withdraw
-            // TODO: Fix for ERC6909 once escrow PR is in
             escrow.approveMax(asset, investmentManager);
+
+            // Give pool manager infinite approval for asset
+            // in the escrow to transfer to the user on transfer
+            escrow.approveMax(asset, address(this));
+        } else {
+            // TODO: Fix for ERC6909 after merging https://github.com/centrifuge/protocol-v3/pull/96
         }
 
+        // TODO: Dispatch to destinationChain once Gateway supports dynamic recipient chains
         gateway.send(
             abi.encodePacked(uint8(MessagesLib.Call.RegisterAsset), assetId, name, symbol.toBytes32(), decimals),
             address(this)
-            // TODO: Fix once Gateway for multiple chains is in
-            //destinationChain
         );
 
         emit RegisterAsset(assetId, asset, tokenId, name, symbol, decimals);
@@ -327,7 +335,7 @@ contract PoolManager is Auth, IPoolManager {
             tranche.token != address(0) || canTrancheBeDeployed(poolId, trancheId), "PoolManager/tranche-does-not-exist"
         );
 
-        address asset =  _idToAsset[assetId].asset;
+        address asset = _idToAsset[assetId].asset;
         require(computedAt >= tranche.prices[asset].computedAt, "PoolManager/cannot-set-older-price");
 
         tranche.prices[asset] = TranchePrice(price, computedAt);
@@ -354,7 +362,7 @@ contract PoolManager is Auth, IPoolManager {
     /// @inheritdoc IPoolManager
     // TODO: Remove in separate PR - not needed anymore
     function handleTransfer(uint128 assetId, address recipient, uint128 amount) public auth {
-        address asset =  _idToAsset[assetId].asset;
+        address asset = _idToAsset[assetId].asset;
         require(asset != address(0), "PoolManager/unknown-asset");
 
         SafeTransferLib.safeTransferFrom(asset, address(escrow), recipient, amount);
@@ -490,7 +498,7 @@ contract PoolManager is Auth, IPoolManager {
 
     /// @inheritdoc IPoolManager
     function getVault(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (address) {
-        address vault = ITranche(_pools[poolId].tranches[trancheId].token).vault( _idToAsset[assetId].asset);
+        address vault = ITranche(_pools[poolId].tranches[trancheId].token).vault(_idToAsset[assetId].asset);
         require(vault != address(0), "PoolManager/unknown-vault");
         return vault;
     }
@@ -510,6 +518,16 @@ contract PoolManager is Auth, IPoolManager {
     }
 
     /// @inheritdoc IPoolManager
+    function assetToId(address asset) public view returns (uint128 assetId) {
+        return _assetToId[_formatAssetIdKey(asset, 0)];
+    }
+
+    /// @inheritdoc IPoolManager
+    function idToAsset(uint128 assetId) public view returns (address asset) {
+        return _idToAsset[assetId].asset;
+    }
+
+    /// @inheritdoc IPoolManager
     function isAllowedAsset(uint64 poolId, address asset) public view returns (bool) {
         return _pools[poolId].allowedAssets[asset];
     }
@@ -521,15 +539,4 @@ contract PoolManager is Auth, IPoolManager {
     function _formatAssetIdKey(address asset, uint256 tokenId) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(asset, tokenId));
     }
-
-    /// @inheritdoc IPoolManager
-    function assetToId(address asset) external view returns (uint128 assetId) {
-        return _assetToId[_formatAssetIdKey(asset, 0)];
-    }
-
-    /// @inheritdoc IPoolManager
-    function idToAsset(uint128 assetId) external view returns (address asset) {
-        return _idToAsset[assetId].asset;
-    }
-
 }

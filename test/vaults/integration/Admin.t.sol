@@ -50,17 +50,15 @@ contract AdminTest is BaseTest {
         string memory tokenName,
         string memory tokenSymbol,
         uint8 decimals,
-        uint128 assetId,
         address recipient,
         uint128 amount
     ) public {
         decimals = uint8(bound(decimals, 2, 18));
         vm.assume(amount > 0);
-        vm.assume(assetId != 0);
         vm.assume(recipient != address(0));
 
         ERC20 erc20 = _newErc20(tokenName, tokenSymbol, decimals);
-        centrifugeChain.addAsset(assetId, address(erc20));
+        poolManager.registerAsset(address(erc20), 0, 0);
 
         // First, an outgoing transfer must take place which has funds asset of the asset moved to
         // the escrow account, from which funds are moved from into the recipient on an incoming transfer.
@@ -75,18 +73,16 @@ contract AdminTest is BaseTest {
         string memory tokenName,
         string memory tokenSymbol,
         uint8 decimals,
-        uint128 assetId,
         bytes32, /*sender*/
         address recipient,
         uint128 amount
     ) public {
         decimals = uint8(bound(decimals, 2, 18));
         vm.assume(amount > 0);
-        vm.assume(assetId != 0);
         vm.assume(recipient != address(0));
 
         ERC20 erc20 = _newErc20(tokenName, tokenSymbol, decimals);
-        centrifugeChain.addAsset(assetId, address(erc20));
+        uint128 assetId = poolManager.registerAsset(address(erc20), 0, 0);
 
         // First, an outgoing transfer must take place which has funds asset of the asset moved to
         // the escrow account, from which funds are moved from into the recipient on an incoming transfer.
@@ -104,20 +100,18 @@ contract AdminTest is BaseTest {
         string memory tokenName,
         string memory tokenSymbol,
         uint8 decimals,
-        uint128 assetId,
         bytes32, /*sender*/
         address recipient,
         uint128 amount
     ) public {
         decimals = uint8(bound(decimals, 2, 18));
         vm.assume(amount > 0);
-        vm.assume(assetId != 0);
         vm.assume(recipient != address(investmentManager.escrow()));
         vm.assume(recipient != address(0));
 
         ERC20 erc20 = _newErc20(tokenName, tokenSymbol, decimals);
         vm.assume(recipient != address(erc20));
-        centrifugeChain.addAsset(assetId, address(erc20));
+        uint128 assetId = poolManager.registerAsset(address(erc20), 0, 0);
 
         // First, an outgoing transfer must take place which has funds asset of the asset moved to
         // the escrow account, from which funds are moved from into the recipient on an incoming transfer.
@@ -283,7 +277,7 @@ contract AdminTest is BaseTest {
     function testRecoverTokens() public {
         deploySimpleVault();
         address clumsyUser = vm.addr(0x1234);
-        address vault_ = poolManager.getVault(5, bytes16(bytes("1")), defaultAssetId);
+        address vault_ = poolManager.getVault(5, bytes16(bytes("1")), poolManager.assetToId(address(erc20)));
         ERC7540Vault vault = ERC7540Vault(vault_);
         address asset_ = vault.asset();
         ERC20 asset = ERC20(asset_);

@@ -4,15 +4,14 @@ pragma solidity 0.8.28;
 import "test/vaults/BaseTest.sol";
 
 contract DepositRedeem is BaseTest {
-    function testPartialDepositAndRedeemExecutions(uint64 poolId, bytes16 trancheId, uint128 assetId) public {
-        vm.assume(assetId > 0);
-
+    function testPartialDepositAndRedeemExecutions(uint64 poolId, bytes16 trancheId) public {
         uint8 TRANCHE_TOKEN_DECIMALS = 18; // Like DAI
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         address vault_ =
-            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, assetId, address(asset));
+            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
+        uint128 assetId = poolManager.assetToId(address(asset));
         ERC7540Vault vault = ERC7540Vault(vault_);
 
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));

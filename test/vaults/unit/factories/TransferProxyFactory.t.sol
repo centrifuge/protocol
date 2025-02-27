@@ -59,7 +59,7 @@ contract TransferProxyFactoryTest is BaseTest {
         vm.expectRevert(bytes("PoolManager/unknown-asset"));
         proxy.transfer(address(erc20));
 
-        poolManager.addAsset(1, address(erc20));
+        poolManager.registerAsset(address(erc20), 0, 0);
 
         assertEq(erc20.balanceOf(address(proxy)), 100);
         assertEq(erc20.balanceOf(address(escrow)), 0);
@@ -81,7 +81,7 @@ contract TransferProxyFactoryTest is BaseTest {
         MockUSDC usdc = new MockUSDC(6);
         usdc.mint(address(this), 100);
         usdc.transfer(address(proxy), 100);
-        poolManager.addAsset(1, address(usdc));
+        poolManager.registerAsset(address(erc20), 0, 0);
 
         assertEq(usdc.balanceOf(address(proxy)), 100);
         assertEq(usdc.balanceOf(address(escrow)), 0);

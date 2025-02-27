@@ -137,11 +137,15 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         string memory tokenName,
         string memory tokenSymbol,
         bytes16 trancheId,
-        uint128 assetId,
-        address asset
+        address asset,
+        uint256 assetTokenId,
+        uint32 destinationChain
     ) public returns (address) {
+        uint128 assetId;
         if (poolManager.idToAsset(assetId) == address(0)) {
-            centrifugeChain.addAsset(assetId, asset);
+            assetId = poolManager.registerAsset(asset, assetTokenId, destinationChain);
+        } else {
+            assetId = poolManager.assetToId(asset);
         }
 
         if (poolManager.getTranche(poolId, trancheId) == address(0)) {
@@ -167,16 +171,14 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         uint8 decimals,
         string memory tokenName,
         string memory tokenSymbol,
-        bytes16 trancheId,
-        uint128 asset
+        bytes16 trancheId
     ) public returns (address) {
         return
-            deployVault(poolId, decimals, restrictionManager, tokenName, tokenSymbol, trancheId, asset, address(erc20));
+            deployVault(poolId, decimals, restrictionManager, tokenName, tokenSymbol, trancheId, address(erc20), 0, 0);
     }
 
     function deploySimpleVault() public returns (address) {
-        return
-            deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), defaultAssetId, address(erc20));
+        return deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(erc20), 0, 0);
     }
 
     function deposit(address _vault, address _investor, uint256 amount) public {

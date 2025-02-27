@@ -171,35 +171,6 @@ contract PoolManagerTest is BaseTest {
         assertEq(tokenSymbol, tranche.symbol());
     }
 
-    function testAddAsset(uint128 assetId) public {
-        uint128 badCurrency = 2;
-        vm.assume(assetId > 0);
-        vm.assume(assetId != badCurrency);
-        ERC20 erc20_invalid_too_few = _newErc20("X's Dollar", "USDX", 0);
-        ERC20 erc20_invalid_too_many = _newErc20("X's Dollar", "USDX", 42);
-
-        vm.expectRevert(bytes("PoolManager/too-few-asset-decimals"));
-        centrifugeChain.addAsset(assetId, address(erc20_invalid_too_few));
-
-        vm.expectRevert(bytes("PoolManager/too-many-asset-decimals"));
-        centrifugeChain.addAsset(assetId, address(erc20_invalid_too_many));
-
-        vm.expectRevert(bytes("PoolManager/asset-id-has-to-be-greater-than-0"));
-        centrifugeChain.addAsset(0, address(erc20));
-
-        centrifugeChain.addAsset(assetId, address(erc20));
-
-        // Verify we can't override the same asset id another address
-        vm.expectRevert(bytes("PoolManager/asset-id-in-use"));
-        centrifugeChain.addAsset(assetId, makeAddr("randomCurrency"));
-
-        // Verify we can't add a asset address that already exists associated with a different aset id
-        vm.expectRevert(bytes("PoolManager/asset-address-in-use"));
-        centrifugeChain.addAsset(badCurrency, address(erc20));
-
-        assertEq(poolManager.idToAsset(assetId), address(erc20));
-    }
-
     function testDeployVault(
         uint64 poolId,
         uint8 decimals,
@@ -217,7 +188,6 @@ contract PoolManagerTest is BaseTest {
 
         centrifugeChain.addPool(poolId); // add pool
         centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook); // add tranche
-        centrifugeChain.addAsset(assetId, address(erc20));
 
         vm.expectRevert(bytes("PoolManager/tranche-does-not-exist"));
         poolManager.deployVault(poolId, trancheId, address(erc20));
@@ -262,10 +232,6 @@ contract PoolManagerTest is BaseTest {
         uint128 assetId = defaultAssetId;
         address recipient = makeAddr("recipient");
 
-        vm.expectRevert(bytes("PoolManager/unknown-asset"));
-        centrifugeChain.incomingTransfer(assetId, bytes32(bytes20(recipient)), amount);
-        centrifugeChain.addAsset(assetId, address(erc20));
-
         vm.expectRevert(bytes("SafeTransferLib/safe-transfer-from-failed"));
         centrifugeChain.incomingTransfer(assetId, bytes32(bytes20(recipient)), amount);
 
@@ -291,10 +257,6 @@ contract PoolManagerTest is BaseTest {
         assertEq(erc20.balanceOf(address(this)), initialBalance);
         assertEq(erc20.balanceOf(address(poolManager.escrow())), 0);
         erc20.approve(address(poolManager), type(uint256).max);
-
-        vm.expectRevert(bytes("PoolManager/unknown-asset"));
-        poolManager.transferAssets(address(erc20), recipient, amount);
-        centrifugeChain.addAsset(assetId, address(erc20));
 
         poolManager.transferAssets(address(erc20), recipient, amount);
         assertEq(erc20.balanceOf(address(this)), initialBalance - amount);
@@ -546,10 +508,9 @@ contract PoolManagerTest is BaseTest {
     }
 
     function testAllowAsset() public {
-        uint128 assetId = defaultAssetId;
         uint64 poolId = 1;
+        uint128 assetId = poolManager.registerAsset(address(erc20), 0, 0);
 
-        centrifugeChain.addAsset(assetId, address(erc20));
         centrifugeChain.addPool(poolId);
 
         centrifugeChain.allowAsset(poolId, assetId);
@@ -576,7 +537,6 @@ contract PoolManagerTest is BaseTest {
     function testUpdateTranchePriceWorks(
         uint64 poolId,
         uint8 decimals,
-        uint128 assetId,
         string memory tokenName,
         string memory tokenSymbol,
         bytes16 trancheId,
@@ -585,8 +545,8 @@ contract PoolManagerTest is BaseTest {
         decimals = uint8(bound(decimals, 2, 18));
         vm.assume(poolId > 0);
         vm.assume(trancheId > 0);
-        vm.assume(assetId > 0);
         centrifugeChain.addPool(poolId);
+        uint128 assetId = poolManager.registerAsset(address(erc20), 0, 0);
 
         address hook = address(new MockHook());
 
@@ -594,7 +554,6 @@ contract PoolManagerTest is BaseTest {
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, price, uint64(block.timestamp));
 
         centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook);
-        centrifugeChain.addAsset(assetId, address(erc20));
         centrifugeChain.allowAsset(poolId, assetId);
 
         poolManager.deployTranche(poolId, trancheId);
@@ -653,12 +612,12 @@ contract PoolManagerTest is BaseTest {
         bytes16 trancheId = bytes16(bytes("1"));
 
         address hook = address(new MockHook());
+        uint128 assetId = poolManager.registerAsset(address(erc20), 0, 0);
 
         centrifugeChain.addPool(poolId); // add pool
         centrifugeChain.addTranche(poolId, trancheId, "Test Token", "TT", 6, hook); // add tranche
 
-        centrifugeChain.addAsset(10, address(erc20));
-        centrifugeChain.allowAsset(poolId, 10);
+        centrifugeChain.allowAsset(poolId, assetId);
         poolManager.deployTranche(poolId, trancheId);
 
         vm.expectRevert(bytes("PoolManager/vault-not-deployed"));

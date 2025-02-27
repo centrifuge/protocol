@@ -19,7 +19,7 @@ import {CastLib} from "src/vaults/libraries/CastLib.sol";
 // `Gateway.handle(bytes calldata message)`
 /**
  * - deployNewTokenPoolAndTranche Core function that deploys a Liquidity Pool
- *     - poolManager_addAsset
+ *     - poolManager_registerAsset
  */
 abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     using CastLib for *;
@@ -59,7 +59,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         newToken = addToken(decimals, initialMintPerUsers);
         {
             CURRENCY_ID += 1;
-            poolManager_addAsset(CURRENCY_ID, address(newToken));
+            poolManager_registerAsset(CURRENCY_ID, address(newToken));
         }
 
         {
@@ -113,8 +113,8 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     // Add it to All Pools
 
     // Step 2
-    function poolManager_addAsset(uint128 currencyId, address currencyAddress) public {
-        poolManager.registerAsset(currencyId, currencyAddress, 0);
+    function poolManager_registerAsset(uint128 currencyId, address currencyAddress) public {
+        poolManager.registerAsset(currencyAddress, currencyId, 0);
 
         // Only if success full
         tokenToCurrencyId[currencyAddress] = currencyId;
@@ -216,7 +216,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         newToken.mint(address(this), newTokenAmount);
     }
 
-    // Step 2 = poolManager_addAsset - GatewayMockFunctions
+    // Step 2 = poolManager_registerAsset - GatewayMockFunctions
     // Step 3 = poolManager_addPool - GatewayMockFunctions
     // Step 4 = poolManager_addTranche - GatewayMockFunctions
 

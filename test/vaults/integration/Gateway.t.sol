@@ -35,28 +35,6 @@ contract GatewayTest is BaseTest {
     }
 
     // --- Batched messages ---
-    function testBatchedAddPoolAddAssetAllowAssetMessage() public {
-        uint64 poolId = 999;
-        uint128 assetId = defaultAssetId + 1;
-        MockERC20 newAsset = deployMockERC20("newAsset", "NEW", 18);
-        bytes memory _addPool = abi.encodePacked(uint8(MessagesLib.Call.AddPool), poolId);
-        bytes memory _addAsset = abi.encodePacked(uint8(MessagesLib.Call.AddAsset), assetId, address(newAsset));
-        bytes memory _allowAsset = abi.encodePacked(uint8(MessagesLib.Call.AllowAsset), poolId, assetId);
-
-        bytes memory _message = abi.encodePacked(
-            uint8(MessagesLib.Call.Batch),
-            uint16(_addPool.length),
-            _addPool,
-            uint16(_addAsset.length),
-            _addAsset,
-            uint16(_allowAsset.length),
-            _allowAsset
-        );
-        centrifugeChain.execute(_message);
-        assertEq(poolManager.idToAsset(assetId), address(newAsset));
-        assertEq(poolManager.isAllowedAsset(poolId, address(newAsset)), true);
-    }
-
     function testBatchedMessageWithLengthProvidedButNoMessageBytes() public {
         uint64 poolId = 999;
         deployMockERC20("newAsset", "NEW", 18);
@@ -71,23 +49,20 @@ contract GatewayTest is BaseTest {
 
     function testRecursiveBatchedMessageFails() public {
         uint64 poolId = 999;
-        uint128 assetId = defaultAssetId + 1;
         MockERC20 newAsset = deployMockERC20("newAsset", "NEW", 18);
+        uint128 assetId = poolManager.registerAsset(address(newAsset), 0, 0);
+
         bytes memory _addPool = abi.encodePacked(uint8(MessagesLib.Call.AddPool), poolId);
-
-        bytes memory _addAsset = abi.encodePacked(uint8(MessagesLib.Call.AddAsset), assetId, address(newAsset));
         bytes memory _allowAsset = abi.encodePacked(uint8(MessagesLib.Call.AllowAsset), poolId, assetId);
-
-        bytes memory _addAndAllowAssetMessage = abi.encodePacked(
-            uint8(MessagesLib.Call.Batch), uint16(_addAsset.length), _addAsset, uint16(_allowAsset.length), _allowAsset
-        );
+        bytes memory _batchedAllowAsset =
+            abi.encodePacked(uint8(MessagesLib.Call.Batch), uint16(_allowAsset.length), _allowAsset);
 
         bytes memory _message = abi.encodePacked(
             uint8(MessagesLib.Call.Batch),
             uint16(_addPool.length),
             _addPool,
-            uint16(_addAndAllowAssetMessage.length),
-            _addAndAllowAssetMessage
+            uint16(_batchedAllowAsset.length),
+            _batchedAllowAsset
         );
         vm.expectRevert(bytes("Gateway/no-recursive-batching-allowed"));
         centrifugeChain.execute(_message);

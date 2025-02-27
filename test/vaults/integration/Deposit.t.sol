@@ -145,15 +145,14 @@ contract DepositTest is BaseTest {
         assertEq(address(gateway).balance, GATEWAY_INITIAL_BALACE - gasToBePaid);
     }
 
-    function testPartialDepositExecutions(uint64 poolId, bytes16 trancheId, uint128 assetId) public {
-        vm.assume(assetId > 0);
-
+    function testPartialDepositExecutions(uint64 poolId, bytes16 trancheId) public {
         uint8 TRANCHE_TOKEN_DECIMALS = 18; // Like DAI
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         address vault_ =
-            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, assetId, address(asset));
+            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
+        uint128 assetId = poolManager.assetToId(address(asset));
         ERC7540Vault vault = ERC7540Vault(vault_);
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
 
@@ -411,15 +410,14 @@ contract DepositTest is BaseTest {
         assertApproxEqAbs(erc20.balanceOf(address(escrow)), amount, 1);
     }
 
-    function testDepositAndRedeemPrecision(uint64 poolId, bytes16 trancheId, uint128 assetId) public {
-        vm.assume(assetId > 0);
-
+    function testDepositAndRedeemPrecision(uint64 poolId, bytes16 trancheId) public {
         uint8 TRANCHE_TOKEN_DECIMALS = 18; // Like DAI
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         address vault_ =
-            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, assetId, address(asset));
+            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
+        uint128 assetId = poolManager.assetToId(address(asset));
         ERC7540Vault vault = ERC7540Vault(vault_);
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
 
@@ -477,16 +475,13 @@ contract DepositTest is BaseTest {
         assertEq(redeemPrice, 1492615384615384615);
     }
 
-    function testDepositAndRedeemPrecisionWithInverseDecimals(uint64 poolId, bytes16 trancheId, uint128 assetId)
-        public
-    {
-        vm.assume(assetId > 0);
-
+    function testDepositAndRedeemPrecisionWithInverseDecimals(uint64 poolId, bytes16 trancheId) public {
         // uint8 TRANCHE_TOKEN_DECIMALS = 6; // Like DAI
         // uint8 INVESTMENT_CURRENCY_DECIMALS = 18; // 18, like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", 18);
-        address vault_ = deployVault(poolId, 6, restrictionManager, "", "", trancheId, assetId, address(asset));
+        address vault_ = deployVault(poolId, 6, restrictionManager, "", "", trancheId, address(asset), 0, 0);
+        uint128 assetId = poolManager.assetToId(address(asset));
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         centrifugeChain.updateTranchePrice(
@@ -552,15 +547,14 @@ contract DepositTest is BaseTest {
     }
 
     // Test that assumes the swap from usdc (investment asset) to dai (pool asset) has a cost of 1%
-    function testDepositAndRedeemPrecisionWithSlippage(uint64 poolId, bytes16 trancheId, uint128 assetId) public {
-        vm.assume(assetId > 0);
-
+    function testDepositAndRedeemPrecisionWithSlippage(uint64 poolId, bytes16 trancheId) public {
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
         uint8 TRANCHE_TOKEN_DECIMALS = 18; // Like DAI
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         address vault_ =
-            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, assetId, address(asset));
+            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
+        uint128 assetId = poolManager.assetToId(address(asset));
         ERC7540Vault vault = ERC7540Vault(vault_);
 
         // price = (100*10**18) /  (99 * 10**18) = 101.010101 * 10**18
@@ -594,19 +588,14 @@ contract DepositTest is BaseTest {
     }
 
     // Test that assumes the swap from usdc (investment asset) to dai (pool asset) has a cost of 1%
-    function testDepositAndRedeemPrecisionWithSlippageAndWithInverseDecimal(
-        uint64 poolId,
-        bytes16 trancheId,
-        uint128 assetId
-    ) public {
-        vm.assume(assetId > 0);
-
+    function testDepositAndRedeemPrecisionWithSlippageAndWithInverseDecimal(uint64 poolId, bytes16 trancheId) public {
         uint8 INVESTMENT_CURRENCY_DECIMALS = 18; // 18, like DAI
         uint8 TRANCHE_TOKEN_DECIMALS = 6; // Like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         address vault_ =
-            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, assetId, address(asset));
+            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
+        uint128 assetId = poolManager.assetToId(address(asset));
         ERC7540Vault vault = ERC7540Vault(vault_);
 
         // price = (100*10**18) /  (99 * 10**18) = 101.010101 * 10**18

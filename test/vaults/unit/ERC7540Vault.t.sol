@@ -20,7 +20,7 @@ contract ERC7540VaultTest is BaseTest {
         vm.assume(bytes(tokenName).length <= 128);
         vm.assume(bytes(tokenSymbol).length <= 32);
 
-        address vault_ = deployVault(poolId, erc20.decimals(), tokenName, tokenSymbol, trancheId, assetId);
+        address vault_ = deployVault(poolId, erc20.decimals(), tokenName, tokenSymbol, trancheId);
         ERC7540Vault vault = ERC7540Vault(vault_);
 
         // values set correctly

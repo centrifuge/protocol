@@ -381,9 +381,8 @@ contract CentrifugeRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        address vault_ = deployVault(
-            5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), defaultAssetId, address(wrapper)
-        );
+        address vault_ =
+            deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -418,9 +417,8 @@ contract CentrifugeRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        address vault_ = deployVault(
-            5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), defaultAssetId, address(wrapper)
-        );
+        address vault_ =
+            deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -448,9 +446,8 @@ contract CentrifugeRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        address vault_ = deployVault(
-            5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), defaultAssetId, address(wrapper)
-        );
+        address vault_ =
+            deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -475,9 +472,8 @@ contract CentrifugeRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        address vault_ = deployVault(
-            5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), defaultAssetId, address(wrapper)
-        );
+        address vault_ =
+            deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -532,9 +528,8 @@ contract CentrifugeRouterTest is BaseTest {
         address routerEscrowAddress = address(routerEscrow);
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        address vault_ = deployVault(
-            5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), defaultAssetId, address(wrapper)
-        );
+        address vault_ =
+            deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
         vm.label(vault_, "vault");
 
         erc20.mint(self, underlyingAmount);
@@ -682,9 +677,9 @@ contract CentrifugeRouterTest is BaseTest {
         vm.label(address(erc20X), "erc20X");
         vm.label(address(erc20Y), "erc20Y");
         address vault1_ =
-            deployVault(5, 6, restrictionManager, "name1", "symbol1", bytes16(bytes("1")), 1, address(erc20X));
+            deployVault(5, 6, restrictionManager, "name1", "symbol1", bytes16(bytes("1")), address(erc20X), 0, 0);
         address vault2_ =
-            deployVault(4, 6, restrictionManager, "name2", "symbol2", bytes16(bytes("2")), 2, address(erc20Y));
+            deployVault(4, 6, restrictionManager, "name2", "symbol2", bytes16(bytes("2")), address(erc20Y), 0, 0);
         vault1 = ERC7540Vault(vault1_);
         vault2 = ERC7540Vault(vault2_);
         vm.label(vault1_, "vault1");
@@ -705,9 +700,8 @@ contract CentrifugeRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         MockReentrantERC20Wrapper1 wrapper = new MockReentrantERC20Wrapper1(address(erc20), address(router));
-        address vault_ = deployVault(
-            5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), defaultAssetId, address(wrapper)
-        );
+        address vault_ =
+            deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
         vm.label(vault_, "vault");
 
         address investor = makeAddr("investor");
@@ -727,16 +721,15 @@ contract CentrifugeRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         MockReentrantERC20Wrapper2 wrapper = new MockReentrantERC20Wrapper2(address(erc20), address(router));
-        address vault_ = deployVault(
-            5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), defaultAssetId, address(wrapper)
-        );
+        address vault_ =
+            deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
         vm.label(vault_, "vault");
 
         address investor = makeAddr("investor");
 
         erc20.mint(investor, amount);
 
-        // Investor locks deposit request and enables permissionless lcaiming
+        // Investor locks deposit request and enables permissionless claiming
         vm.startPrank(investor);
         erc20.approve(address(router), amount);
         vm.expectRevert(bytes("CentrifugeRouter/already-initiated"));
