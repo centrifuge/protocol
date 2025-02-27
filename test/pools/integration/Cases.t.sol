@@ -15,7 +15,7 @@ import {PoolId} from "src/pools/types/PoolId.sol";
 import {AccountId} from "src/pools/types/AccountId.sol";
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AccountType} from "src/pools/interfaces/IPoolManager.sol";
-import {previewShareClassId, encodeMetadata} from "src/pools/SingleShareClass.sol";
+import {previewShareClassId} from "src/pools/SingleShareClass.sol";
 
 import {Deployer} from "script/pools/Deployer.s.sol";
 
@@ -102,7 +102,7 @@ contract TestConfiguration is TestCommon {
         assertEq(m1.poolId, poolId.raw());
         assertEq(m1.scId, scId.raw());
         assertEq(m1.name, SC_NAME);
-        assertEq(m1.symbol, SC_SYMBOL);
+        assertEq(m1.symbol, SC_SYMBOL.toBytes32());
         assertEq(m1.decimals, 18);
         assertEq(m1.hook, SC_HOOK);
     }

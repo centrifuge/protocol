@@ -60,10 +60,6 @@ function previewShareClassId(PoolId poolId) pure returns (ShareClassId) {
     return ShareClassId.wrap(bytes16(uint128(PoolId.unwrap(poolId))));
 }
 
-function encodeMetadata(string memory name, string memory symbol) pure returns (bytes memory metadata) {
-    return abi.encodePacked(bytes(CastLib.stringToBytes128(name)), CastLib.toBytes32(symbol));
-}
-
 contract SingleShareClass is Auth, ISingleShareClass {
     using MathLib for D18;
     using MathLib for uint128;

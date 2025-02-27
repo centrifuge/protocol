@@ -25,7 +25,7 @@ enum MessageType {
     UpdateTranchePrice,
     UpdateTrancheMetadata,
     UpdateTrancheHook,
-    TransferTrancheTokens,
+    TransferShares,
     UpdateRestriction,
     DepositRequest,
     RedeemRequest,
@@ -166,6 +166,31 @@ library MessageLib {
 
     function serialize(DisallowAsset memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(MessageType.DisallowAsset, t.poolId, t.scId, t.assetId);
+    }
+
+    //---------------------------------------
+    //    TransferShares
+    //---------------------------------------
+
+    struct TransferShares {
+        uint64 poolId;
+        bytes16 scId;
+        bytes32 investor;
+        uint128 amount;
+    }
+
+    function deserializeTransferShares(bytes memory data) internal pure returns (TransferShares memory) {
+        require(messageType(data) == MessageType.TransferShares, DeserializationError());
+        return TransferShares({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            investor: data.toBytes32(25),
+            amount: data.toUint128(57)
+        });
+    }
+
+    function serialize(TransferShares memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.TransferShares, t.poolId, t.scId, t.investor, t.amount);
     }
 
     //---------------------------------------
