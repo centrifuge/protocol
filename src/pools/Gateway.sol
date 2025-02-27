@@ -157,27 +157,27 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         MessageType kind = message.messageType();
 
         if (kind == MessageType.RegisterAsset) {
-            MessageLib.RegisterAsset memory t = message.deserializeRegisterAsset();
-            handler.handleRegisterAsset(AssetId.wrap(t.assetId), t.name, t.symbol.toString(), t.decimals);
+            MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
+            handler.handleRegisterAsset(AssetId.wrap(m.assetId), m.name, m.symbol.toString(), m.decimals);
         } else if (kind == MessageType.DepositRequest) {
-            MessageLib.DepositRequest memory t = message.deserializeDepositRequest();
+            MessageLib.DepositRequest memory m = message.deserializeDepositRequest();
             handler.handleDepositRequest(
-                PoolId.wrap(t.poolId), ShareClassId.wrap(t.scId), t.investor, AssetId.wrap(t.assetId), t.amount
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId), m.amount
             );
         } else if (kind == MessageType.RedeemRequest) {
-            MessageLib.RedeemRequest memory t = message.deserializeRedeemRequest();
+            MessageLib.RedeemRequest memory m = message.deserializeRedeemRequest();
             handler.handleRedeemRequest(
-                PoolId.wrap(t.poolId), ShareClassId.wrap(t.scId), t.investor, AssetId.wrap(t.assetId), t.amount
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId), m.amount
             );
         } else if (kind == MessageType.CancelDepositRequest) {
-            MessageLib.CancelDepositRequest memory t = message.deserializeCancelDepositRequest();
+            MessageLib.CancelDepositRequest memory m = message.deserializeCancelDepositRequest();
             handler.handleCancelDepositRequest(
-                PoolId.wrap(t.poolId), ShareClassId.wrap(t.scId), t.investor, AssetId.wrap(t.assetId)
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId)
             );
         } else if (kind == MessageType.CancelRedeemRequest) {
-            MessageLib.CancelRedeemRequest memory t = message.deserializeCancelRedeemRequest();
+            MessageLib.CancelRedeemRequest memory m = message.deserializeCancelRedeemRequest();
             handler.handleCancelRedeemRequest(
-                PoolId.wrap(t.poolId), ShareClassId.wrap(t.scId), t.investor, AssetId.wrap(t.assetId)
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId)
             );
         } else {
             revert InvalidMessage(uint8(kind));

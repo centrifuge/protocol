@@ -128,12 +128,6 @@ contract MockCentrifugeChain is Test {
         _execute(_message);
     }
 
-    // Trigger an incoming (e.g. Centrifuge Chain -> EVM) transfer of stable coins
-    function incomingTransfer(uint128 assetId, bytes32 recipient, uint128 amount) public {
-        bytes memory _message = abi.encodePacked(uint8(MessagesLib.Call.TransferAssets), assetId, recipient, amount);
-        _execute(_message);
-    }
-
     // Trigger an incoming (e.g. Centrifuge Chain -> EVM) transfer of tranche tokens
     function incomingTransferTrancheTokens(uint64 poolId, bytes16 trancheId, address destinationAddress, uint128 amount)
         public

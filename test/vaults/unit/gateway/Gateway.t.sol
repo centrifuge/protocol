@@ -156,7 +156,7 @@ contract GatewayTest is Test {
 
     // --- Dynamic managers ---
     function testCustomManager(uint8 existingMessageId) public {
-        existingMessageId = uint8(bound(existingMessageId, 0, 28));
+        existingMessageId = uint8(bound(existingMessageId, 0, 27));
 
         uint8 messageId = 40;
         address[] memory adapters = new address[](1);

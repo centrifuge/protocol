@@ -48,7 +48,7 @@ library MessagesLib {
         /// 16 - Update Tranche Hook
         UpdateTrancheHook,
         /// 17 - A transfer of assets
-        TransferAssets,
+        /// REMOVED: TransferAssets,
         /// 18 - A transfer of tranche tokens
         TransferTrancheTokens,
         /// 19 - Update a user restriction

@@ -45,7 +45,7 @@ library MessageLib {
 
     error DeserializationError();
 
-    function messageType(bytes memory _msg) public pure returns (MessageType) {
+    function messageType(bytes memory _msg) internal pure returns (MessageType) {
         return MessageType(_msg.toUint8(0));
     }
 
