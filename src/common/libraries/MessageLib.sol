@@ -7,22 +7,35 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import "forge-std/Test.sol";
 
 // TODO: update with the latest version.
-// By now, only supported messages are added.
 enum MessageType {
     Invalid,
+    MessageProof,
+    InitiateMessageRecovery,
+    DisputeMessageRecovery,
+    Batch,
+    ScheduleUpgrade,
+    CancelUpgrade,
+    RecoverTokens,
+    UpdateCentrifugeGasPrice,
     RegisterAsset,
     NotifyPool,
     NotifyShareClass,
     AllowAsset,
     DisallowAsset,
+    UpdateTranchePrice,
+    UpdateTrancheMetadata,
+    UpdateTrancheHook,
+    TransferTrancheTokens,
+    UpdateRestriction,
     DepositRequest,
     RedeemRequest,
-    CancelDepositRequest,
-    CancelRedeemRequest,
     FulfilledDepositRequest,
     FulfilledRedeemRequest,
+    CancelDepositRequest,
+    CancelRedeemRequest,
     FulfilledCancelDepositRequest,
-    FulfilledCancelRedeemRequest
+    FulfilledCancelRedeemRequest,
+    TriggerRedeemRequest
 }
 
 library MessageLib {
@@ -36,9 +49,9 @@ library MessageLib {
         return MessageType(_msg.toUint8(0));
     }
 
-    ///-----------------------------
-    ///    RegisterAsset
-    ///-----------------------------
+    //---------------------------------------
+    //    RegisterAsset
+    //---------------------------------------
 
     struct RegisterAsset {
         uint128 assetId;
@@ -63,9 +76,9 @@ library MessageLib {
         );
     }
 
-    ///-----------------------------
-    ///    NotifyPool
-    ///-----------------------------
+    //---------------------------------------
+    //    NotifyPool
+    //---------------------------------------
 
     struct NotifyPool {
         uint64 poolId;
@@ -80,9 +93,9 @@ library MessageLib {
         return abi.encodePacked(MessageType.NotifyPool, t.poolId);
     }
 
-    ///-----------------------------
-    ///    NotifyShareClass
-    ///-----------------------------
+    //---------------------------------------
+    //    NotifyShareClass
+    //---------------------------------------
 
     struct NotifyShareClass {
         uint64 poolId;
@@ -117,9 +130,9 @@ library MessageLib {
         );
     }
 
-    ///-----------------------------
-    ///    AllowAsset
-    ///-----------------------------
+    //---------------------------------------
+    //    AllowAsset
+    //---------------------------------------
 
     struct AllowAsset {
         uint64 poolId;
@@ -136,9 +149,9 @@ library MessageLib {
         return abi.encodePacked(MessageType.AllowAsset, t.poolId, t.scId, t.assetId);
     }
 
-    ///-----------------------------
-    ///    DisallowAsset
-    ///-----------------------------
+    //---------------------------------------
+    //    DisallowAsset
+    //---------------------------------------
 
     struct DisallowAsset {
         uint64 poolId;
@@ -155,9 +168,9 @@ library MessageLib {
         return abi.encodePacked(MessageType.DisallowAsset, t.poolId, t.scId, t.assetId);
     }
 
-    ///-----------------------------
-    ///    DepositRequest
-    ///-----------------------------
+    //---------------------------------------
+    //    DepositRequest
+    //---------------------------------------
 
     struct DepositRequest {
         uint64 poolId;
@@ -182,9 +195,9 @@ library MessageLib {
         return abi.encodePacked(MessageType.DepositRequest, t.poolId, t.scId, t.investor, t.assetId, t.amount);
     }
 
-    ///-----------------------------
-    ///    RedeemRequest
-    ///-----------------------------
+    //---------------------------------------
+    //    RedeemRequest
+    //---------------------------------------
 
     struct RedeemRequest {
         uint64 poolId;
@@ -209,9 +222,9 @@ library MessageLib {
         return abi.encodePacked(MessageType.RedeemRequest, t.poolId, t.scId, t.investor, t.assetId, t.amount);
     }
 
-    ///-----------------------------
-    ///    CancelDepositRequest
-    ///-----------------------------
+    //---------------------------------------
+    //    CancelDepositRequest
+    //---------------------------------------
 
     struct CancelDepositRequest {
         uint64 poolId;
@@ -234,9 +247,9 @@ library MessageLib {
         return abi.encodePacked(MessageType.CancelDepositRequest, t.poolId, t.scId, t.investor, t.assetId);
     }
 
-    ///-----------------------------
-    ///    CancelRedeemRequest
-    ///-----------------------------
+    //---------------------------------------
+    //    CancelRedeemRequest
+    //---------------------------------------
 
     struct CancelRedeemRequest {
         uint64 poolId;
@@ -259,9 +272,9 @@ library MessageLib {
         return abi.encodePacked(MessageType.CancelRedeemRequest, t.poolId, t.scId, t.investor, t.assetId);
     }
 
-    ///-----------------------------
-    ///    FulfilledDepositRequest
-    ///-----------------------------
+    //---------------------------------------
+    //    FulfilledDepositRequest
+    //---------------------------------------
 
     struct FulfilledDepositRequest {
         uint64 poolId;
@@ -294,9 +307,9 @@ library MessageLib {
         );
     }
 
-    ///-----------------------------
-    ///    FulfilledRedeemRequest
-    ///-----------------------------
+    //---------------------------------------
+    //    FulfilledRedeemRequest
+    //---------------------------------------
 
     struct FulfilledRedeemRequest {
         uint64 poolId;
@@ -329,9 +342,9 @@ library MessageLib {
         );
     }
 
-    ///-----------------------------
-    ///    FulfilledCancelDepositRequest
-    ///-----------------------------
+    //---------------------------------------
+    //    FulfilledCancelDepositRequest
+    //---------------------------------------
 
     struct FulfilledCancelDepositRequest {
         uint64 poolId;
@@ -362,9 +375,9 @@ library MessageLib {
         );
     }
 
-    ///-----------------------------
-    ///    FulfilledCancelRedeemRequest
-    ///-----------------------------
+    //---------------------------------------
+    //    FulfilledCancelRedeemRequest
+    //---------------------------------------
 
     struct FulfilledCancelRedeemRequest {
         uint64 poolId;
@@ -393,5 +406,32 @@ library MessageLib {
         return abi.encodePacked(
             MessageType.FulfilledCancelRedeemRequest, t.poolId, t.scId, t.investor, t.assetId, t.cancelledShares
         );
+    }
+
+    //---------------------------------------
+    //    TriggerRedeemRequest
+    //---------------------------------------
+
+    struct TriggerRedeemRequest {
+        uint64 poolId;
+        bytes16 scId;
+        bytes32 investor;
+        uint128 assetId;
+        uint128 shares;
+    }
+
+    function deserializeTriggerRedeemRequest(bytes memory data) internal pure returns (TriggerRedeemRequest memory) {
+        require(messageType(data) == MessageType.TriggerRedeemRequest, DeserializationError());
+        return TriggerRedeemRequest({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            investor: data.toBytes32(25),
+            assetId: data.toUint128(57),
+            shares: data.toUint128(73)
+        });
+    }
+
+    function serialize(TriggerRedeemRequest memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.TriggerRedeemRequest, t.poolId, t.scId, t.investor, t.assetId, t.shares);
     }
 }
