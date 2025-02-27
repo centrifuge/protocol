@@ -8,7 +8,6 @@ import "src/misc/interfaces/IERC20.sol";
 import {CentrifugeRouter} from "src/vaults/CentrifugeRouter.sol";
 import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {Domain} from "src/vaults/interfaces/IPoolManager.sol";
 
 interface Authlike {
     function rely(address) external;
@@ -360,22 +359,18 @@ contract CentrifugeRouterTest is BaseTest {
         uint256 fuel = estimateGas();
 
         vm.expectRevert("CentrifugeRouter/insufficient-funds");
-        router.transferTrancheTokens(vault_, Domain.EVM, destinationChainId, destinationAddress, uint128(amount), fuel);
+        router.transferTrancheTokens(vault_, destinationChainId, destinationAddress, uint128(amount), fuel);
 
         vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        router.transferTrancheTokens{value: fuel}(
-            vault_, Domain.EVM, destinationChainId, destinationAddress, uint128(amount), 0
-        );
+        router.transferTrancheTokens{value: fuel}(vault_, destinationChainId, destinationAddress, uint128(amount), 0);
 
         vm.expectRevert("Gateway/not-enough-gas-funds");
         router.transferTrancheTokens{value: fuel}(
-            vault_, Domain.EVM, destinationChainId, destinationAddress, uint128(amount), fuel - 1
+            vault_, destinationChainId, destinationAddress, uint128(amount), fuel - 1
         );
 
         snapStart("CentrifugeRouter_transferTrancheTokens");
-        router.transferTrancheTokens{value: fuel}(
-            vault_, Domain.EVM, destinationChainId, destinationAddress, uint128(amount), fuel
-        );
+        router.transferTrancheTokens{value: fuel}(vault_, destinationChainId, destinationAddress, uint128(amount), fuel);
         snapEnd();
         assertEq(share.balanceOf(address(router)), 0);
         assertEq(share.balanceOf(address(this)), 0);
@@ -403,22 +398,20 @@ contract CentrifugeRouterTest is BaseTest {
         uint256 fuel = estimateGas();
 
         vm.expectRevert("CentrifugeRouter/insufficient-funds");
-        router.transferTrancheTokens(
-            vault_, Domain.EVM, destinationChainId, destinationAddressAsBytes32, uint128(amount), fuel
-        );
+        router.transferTrancheTokens(vault_, destinationChainId, destinationAddressAsBytes32, uint128(amount), fuel);
 
         vm.expectRevert("Gateway/cannot-topup-with-nothing");
         router.transferTrancheTokens{value: fuel}(
-            vault_, Domain.EVM, destinationChainId, destinationAddressAsBytes32, uint128(amount), 0
+            vault_, destinationChainId, destinationAddressAsBytes32, uint128(amount), 0
         );
 
         vm.expectRevert("Gateway/not-enough-gas-funds");
         router.transferTrancheTokens{value: fuel}(
-            vault_, Domain.EVM, destinationChainId, destinationAddressAsBytes32, uint128(amount), fuel - 1
+            vault_, destinationChainId, destinationAddressAsBytes32, uint128(amount), fuel - 1
         );
 
         router.transferTrancheTokens{value: fuel}(
-            vault_, Domain.EVM, destinationChainId, destinationAddressAsBytes32, uint128(amount), fuel
+            vault_, destinationChainId, destinationAddressAsBytes32, uint128(amount), fuel
         );
         assertEq(share.balanceOf(address(router)), 0);
         assertEq(share.balanceOf(address(this)), 0);
