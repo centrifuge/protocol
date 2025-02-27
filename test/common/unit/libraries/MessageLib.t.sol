@@ -165,8 +165,8 @@ contract MessageLibTest is Test {
             scId: bytes16("sc"),
             investor: bytes32("alice"),
             assetId: 5,
-            shareAmount: 7,
-            assetAmount: 8
+            assetAmount: 8,
+            shareAmount: 7
         });
         MessageLib.FulfilledDepositRequest memory b = MessageLib.deserializeFulfilledDepositRequest(a.serialize());
 
@@ -174,8 +174,8 @@ contract MessageLibTest is Test {
         assertEq(a.scId, b.scId);
         assertEq(a.investor, b.investor);
         assertEq(a.assetId, b.assetId);
-        assertEq(a.shareAmount, b.shareAmount);
         assertEq(a.assetAmount, b.assetAmount);
+        assertEq(a.shareAmount, b.shareAmount);
     }
 
     function testFulfilledRedeemRequest() public pure {
@@ -184,8 +184,8 @@ contract MessageLibTest is Test {
             scId: bytes16("sc"),
             investor: bytes32("alice"),
             assetId: 5,
-            shareAmount: 7,
-            assetAmount: 8
+            assetAmount: 8,
+            shareAmount: 7
         });
         MessageLib.FulfilledRedeemRequest memory b = MessageLib.deserializeFulfilledRedeemRequest(a.serialize());
 
@@ -193,8 +193,8 @@ contract MessageLibTest is Test {
         assertEq(a.scId, b.scId);
         assertEq(a.investor, b.investor);
         assertEq(a.assetId, b.assetId);
-        assertEq(a.shareAmount, b.shareAmount);
         assertEq(a.assetAmount, b.assetAmount);
+        assertEq(a.shareAmount, b.shareAmount);
     }
 
     function testCancelDepositRequest() public pure {

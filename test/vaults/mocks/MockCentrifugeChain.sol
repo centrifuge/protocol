@@ -28,32 +28,30 @@ contract MockCentrifugeChain is Test {
 
     function addAsset(uint128 assetId, address asset) public {
         bytes memory _message = abi.encodePacked(uint8(MessagesLib.Call.AddAsset), assetId, asset);
-        _execute(_message);
+        execute(_message);
     }
 
     function addPool(uint64 poolId) public {
-        bytes memory _message = abi.encodePacked(uint8(MessagesLib.Call.AddPool), poolId);
-        _execute(_message);
+        execute(MessageLib.NotifyPool({poolId: poolId}).serialize());
     }
 
     function batchAddPoolAllowAsset(uint64 poolId, uint128 assetId) public {
-        bytes memory _addPool = abi.encodePacked(uint8(MessagesLib.Call.AddPool), poolId);
-        bytes memory _allowAsset = abi.encodePacked(uint8(MessagesLib.Call.AllowAsset), poolId, bytes16(0), assetId);
+        bytes memory _addPool = MessageLib.NotifyPool({poolId: poolId}).serialize();
+        bytes memory _allowAsset =
+            MessageLib.AllowAsset({poolId: poolId, scId: bytes16(0), assetId: assetId}).serialize();
 
         bytes memory _message = abi.encodePacked(
             uint8(MessagesLib.Call.Batch), uint16(_addPool.length), _addPool, uint16(_allowAsset.length), _allowAsset
         );
-        _execute(_message);
+        execute(_message);
     }
 
     function allowAsset(uint64 poolId, uint128 assetId) public {
-        bytes memory _message = abi.encodePacked(uint8(MessagesLib.Call.AllowAsset), poolId, bytes16(0), assetId);
-        _execute(_message);
+        execute(MessageLib.AllowAsset({poolId: poolId, scId: bytes16(0), assetId: assetId}).serialize());
     }
 
     function disallowAsset(uint64 poolId, uint128 assetId) public {
-        bytes memory _message = abi.encodePacked(uint8(MessagesLib.Call.DisallowAsset), poolId, bytes16(0), assetId);
-        _execute(_message);
+        execute(MessageLib.DisallowAsset({poolId: poolId, scId: bytes16(0), assetId: assetId}).serialize());
     }
 
     function addTranche(
@@ -64,73 +62,64 @@ contract MockCentrifugeChain is Test {
         uint8 decimals,
         address hook
     ) public {
-        bytes memory _message = abi.encodePacked(
-            uint8(MessagesLib.Call.AddTranche),
-            poolId,
-            trancheId,
-            _toBytes128(tokenName),
-            tokenSymbol.toBytes32(),
-            decimals,
-            bytes32(bytes20(hook))
+        execute(
+            MessageLib.NotifyShareClass({
+                poolId: poolId,
+                scId: trancheId,
+                name: tokenName,
+                symbol: tokenSymbol.toBytes32(),
+                decimals: decimals,
+                hook: bytes32(bytes20(hook))
+            }).serialize()
         );
-
-        /* TODO: Replace the above with the following:
-        bytes memory _message2 = MessageLib.NotifyShareClass({
-            poolId: poolId,
-            scId: trancheId,
-            name: string(_toBytes128(tokenName)),
-            symbol: tokenSymbol.toBytes32(),
-            decimals: decimals,
-            hook: bytes32(bytes20(hook))
-        }).serialize();
-        assertEq(_message, _message2);
-        */
-
-        _execute(_message);
     }
 
     function updateMember(uint64 poolId, bytes16 trancheId, address user, uint64 validUntil) public {
-        bytes memory _message = abi.encodePacked(
-            uint8(MessagesLib.Call.UpdateRestriction),
-            poolId,
-            trancheId,
-            uint8(RestrictionUpdate.UpdateMember),
-            user.toBytes32(),
-            validUntil
+        execute(
+            MessageLib.UpdateRestriction({
+                poolId: poolId,
+                scId: trancheId,
+                payload: abi.encodePacked(uint8(RestrictionUpdate.UpdateMember), user.toBytes32(), validUntil)
+            }).serialize()
         );
-        _execute(_message);
     }
 
     function updateTrancheMetadata(uint64 poolId, bytes16 trancheId, string memory tokenName, string memory tokenSymbol)
         public
     {
-        bytes memory _message = abi.encodePacked(
-            uint8(MessagesLib.Call.UpdateTrancheMetadata),
-            poolId,
-            trancheId,
-            _toBytes128(tokenName),
-            tokenSymbol.toBytes32()
+        execute(
+            MessageLib.UpdateShareClassMetadata({
+                poolId: poolId,
+                scId: trancheId,
+                name: tokenName,
+                symbol: tokenSymbol.toBytes32()
+            }).serialize()
         );
-        _execute(_message);
     }
 
     function updateTrancheHook(uint64 poolId, bytes16 trancheId, address hook) public {
-        bytes memory _message =
-            abi.encodePacked(uint8(MessagesLib.Call.UpdateTrancheHook), poolId, trancheId, bytes32(bytes20(hook)));
-        _execute(_message);
+        execute(
+            MessageLib.UpdateShareClassHook({poolId: poolId, scId: trancheId, hook: bytes32(bytes20(hook))}).serialize()
+        );
     }
 
     function updateTranchePrice(uint64 poolId, bytes16 trancheId, uint128 assetId, uint128 price, uint64 computedAt)
         public
     {
-        bytes memory _message =
-            abi.encodePacked(uint8(MessagesLib.Call.UpdateTranchePrice), poolId, trancheId, assetId, price, computedAt);
-        _execute(_message);
+        execute(
+            MessageLib.UpdateShareClassPrice({
+                poolId: poolId,
+                scId: trancheId,
+                assetId: assetId,
+                price: price,
+                timestamp: computedAt
+            }).serialize()
+        );
     }
 
     function updateCentrifugeGasPrice(uint128 price, uint64 computedAt) public {
         bytes memory _message = abi.encodePacked(uint8(MessagesLib.Call.UpdateCentrifugeGasPrice), price, computedAt);
-        _execute(_message);
+        execute(_message);
     }
 
     function triggerIncreaseRedeemOrder(
@@ -140,59 +129,65 @@ contract MockCentrifugeChain is Test {
         uint128 assetId,
         uint128 amount
     ) public {
-        bytes memory _message = abi.encodePacked(
-            uint8(MessagesLib.Call.TriggerRedeemRequest), poolId, trancheId, investor.toBytes32(), assetId, amount
+        execute(
+            MessageLib.TriggerRedeemRequest({
+                poolId: poolId,
+                scId: trancheId,
+                investor: investor.toBytes32(),
+                assetId: assetId,
+                shares: amount
+            }).serialize()
         );
-        _execute(_message);
     }
 
-    // Trigger an incoming (e.g. Centrifuge Chain -> EVM) transfer of tranche tokens
     function incomingTransferTrancheTokens(uint64 poolId, bytes16 trancheId, address destinationAddress, uint128 amount)
         public
     {
-        bytes memory _message = abi.encodePacked(
-            uint8(MessagesLib.Call.TransferTrancheTokens), poolId, trancheId, destinationAddress.toBytes32(), amount
+        execute(
+            MessageLib.TransferShares({
+                poolId: poolId,
+                scId: trancheId,
+                recipient: destinationAddress.toBytes32(),
+                amount: amount
+            }).serialize()
         );
-        _execute(_message);
     }
 
     function incomingScheduleUpgrade(address target) public {
         bytes memory _message = abi.encodePacked(uint8(MessagesLib.Call.ScheduleUpgrade), target);
-        _execute(_message);
+        execute(_message);
     }
 
     function incomingCancelUpgrade(address target) public {
         bytes memory _message = abi.encodePacked(uint8(MessagesLib.Call.CancelUpgrade), target);
-        _execute(_message);
+        execute(_message);
     }
 
     function freeze(uint64 poolId, bytes16 trancheId, address user) public {
-        bytes memory _message = abi.encodePacked(
-            uint8(MessagesLib.Call.UpdateRestriction),
-            poolId,
-            trancheId,
-            uint8(RestrictionUpdate.Freeze),
-            user.toBytes32()
+        execute(
+            MessageLib.UpdateRestriction({
+                poolId: poolId,
+                scId: trancheId,
+                payload: abi.encodePacked(uint8(RestrictionUpdate.Freeze), user.toBytes32())
+            }).serialize()
         );
-        _execute(_message);
     }
 
     function unfreeze(uint64 poolId, bytes16 trancheId, address user) public {
-        bytes memory _message = abi.encodePacked(
-            uint8(MessagesLib.Call.UpdateRestriction),
-            poolId,
-            trancheId,
-            uint8(RestrictionUpdate.Unfreeze),
-            user.toBytes32()
+        execute(
+            MessageLib.UpdateRestriction({
+                poolId: poolId,
+                scId: trancheId,
+                payload: abi.encodePacked(uint8(RestrictionUpdate.Unfreeze), user.toBytes32())
+            }).serialize()
         );
-        _execute(_message);
     }
 
     function recoverTokens(address target, address token, address to, uint256 amount) public {
         bytes memory _message = abi.encodePacked(
             uint8(MessagesLib.Call.RecoverTokens), target.toBytes32(), token.toBytes32(), to.toBytes32(), amount
         );
-        _execute(_message);
+        execute(_message);
     }
 
     function isFulfilledCancelDepositRequest(
@@ -200,19 +195,17 @@ contract MockCentrifugeChain is Test {
         bytes16 trancheId,
         bytes32 investor,
         uint128 assetId,
-        uint128 assets,
-        uint128 fulfillment
+        uint128 assets
     ) public {
-        bytes memory _message = abi.encodePacked(
-            uint8(MessagesLib.Call.FulfilledCancelDepositRequest),
-            poolId,
-            trancheId,
-            investor,
-            assetId,
-            assets,
-            fulfillment
+        execute(
+            MessageLib.FulfilledCancelDepositRequest({
+                poolId: poolId,
+                scId: trancheId,
+                investor: investor,
+                assetId: assetId,
+                cancelledAmount: assets
+            }).serialize()
         );
-        _execute(_message);
     }
 
     function isFulfilledCancelRedeemRequest(
@@ -222,10 +215,15 @@ contract MockCentrifugeChain is Test {
         uint128 assetId,
         uint128 shares
     ) public {
-        bytes memory _message = abi.encodePacked(
-            uint8(MessagesLib.Call.FulfilledCancelRedeemRequest), poolId, trancheId, investor, assetId, shares
+        execute(
+            MessageLib.FulfilledCancelRedeemRequest({
+                poolId: poolId,
+                scId: trancheId,
+                investor: investor,
+                assetId: assetId,
+                cancelledShares: shares
+            }).serialize()
         );
-        _execute(_message);
     }
 
     function isFulfilledDepositRequest(
@@ -236,10 +234,16 @@ contract MockCentrifugeChain is Test {
         uint128 assets,
         uint128 shares
     ) public {
-        bytes memory _message = abi.encodePacked(
-            uint8(MessagesLib.Call.FulfilledDepositRequest), poolId, trancheId, investor, assetId, assets, shares
+        execute(
+            MessageLib.FulfilledDepositRequest({
+                poolId: poolId,
+                scId: trancheId,
+                investor: investor,
+                assetId: assetId,
+                assetAmount: assets,
+                shareAmount: shares
+            }).serialize()
         );
-        _execute(_message);
     }
 
     function isFulfilledRedeemRequest(
@@ -250,29 +254,22 @@ contract MockCentrifugeChain is Test {
         uint128 assets,
         uint128 shares
     ) public {
-        bytes memory _message = abi.encodePacked(
-            uint8(MessagesLib.Call.FulfilledRedeemRequest), poolId, trancheId, investor, assetId, assets, shares
+        execute(
+            MessageLib.FulfilledRedeemRequest({
+                poolId: poolId,
+                scId: trancheId,
+                investor: investor,
+                assetId: assetId,
+                assetAmount: assets,
+                shareAmount: shares
+            }).serialize()
         );
-        _execute(_message);
     }
 
-    function execute(bytes memory message) external {
-        _execute(message);
-    }
-
-    /// @dev Adds zero padding
-    function _toBytes128(string memory source) internal pure returns (bytes memory) {
-        bytes memory sourceBytes = bytes(source);
-        return bytes.concat(sourceBytes, new bytes(128 - sourceBytes.length));
-    }
-
-    function _execute(bytes memory message) internal {
+    function execute(bytes memory message) public {
         bytes memory proof = abi.encodePacked(uint8(MessagesLib.Call.MessageProof), keccak256(message));
         for (uint256 i = 0; i < adapters.length; i++) {
             AdapterLike(adapters[i]).execute(i == 0 ? message : proof);
         }
     }
-
-    // Added to be ignored in coverage report
-    function test() public {}
 }

@@ -664,7 +664,7 @@ contract DepositTest is BaseTest {
         bytes16 trancheId = vault.trancheId();
         vm.expectRevert(bytes("InvestmentManager/no-pending-cancel-deposit-request"));
         centrifugeChain.isFulfilledCancelDepositRequest(
-            poolId, trancheId, self.toBytes32(), defaultAssetId, uint128(amount), uint128(amount)
+            poolId, trancheId, self.toBytes32(), defaultAssetId, uint128(amount)
         );
 
         // check message was send out to centchain
@@ -691,7 +691,7 @@ contract DepositTest is BaseTest {
         erc20.burn(self, amount);
 
         centrifugeChain.isFulfilledCancelDepositRequest(
-            vault.poolId(), vault.trancheId(), self.toBytes32(), defaultAssetId, uint128(amount), uint128(amount)
+            vault.poolId(), vault.trancheId(), self.toBytes32(), defaultAssetId, uint128(amount)
         );
         assertEq(erc20.balanceOf(address(escrow)), amount);
         assertEq(erc20.balanceOf(self), 0);

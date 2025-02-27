@@ -420,14 +420,14 @@ library MessageLib {
             scId: data.toBytes16(9),
             investor: data.toBytes32(25),
             assetId: data.toUint128(57),
-            shareAmount: data.toUint128(73),
-            assetAmount: data.toUint128(89)
+            assetAmount: data.toUint128(73),
+            shareAmount: data.toUint128(89)
         });
     }
 
     function serialize(FulfilledDepositRequest memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.FulfilledDepositRequest, t.poolId, t.scId, t.investor, t.assetId, t.shareAmount, t.assetAmount
+            MessageType.FulfilledDepositRequest, t.poolId, t.scId, t.investor, t.assetId, t.assetAmount, t.shareAmount
         );
     }
 
@@ -455,14 +455,14 @@ library MessageLib {
             scId: data.toBytes16(9),
             investor: data.toBytes32(25),
             assetId: data.toUint128(57),
-            shareAmount: data.toUint128(73),
-            assetAmount: data.toUint128(89)
+            assetAmount: data.toUint128(73),
+            shareAmount: data.toUint128(89)
         });
     }
 
     function serialize(FulfilledRedeemRequest memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.FulfilledRedeemRequest, t.poolId, t.scId, t.investor, t.assetId, t.shareAmount, t.assetAmount
+            MessageType.FulfilledRedeemRequest, t.poolId, t.scId, t.investor, t.assetId, t.assetAmount, t.shareAmount
         );
     }
 

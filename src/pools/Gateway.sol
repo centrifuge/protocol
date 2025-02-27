@@ -38,6 +38,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
     }
 
     function sendNotifyPool(uint32 chainId, PoolId poolId) external auth {
+        // TODO: call directly to CV.poolManager if same chain (apply in all send*() methods)
         _send(chainId, MessageLib.NotifyPool({poolId: poolId.raw()}).serialize());
     }
 

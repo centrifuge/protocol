@@ -195,12 +195,12 @@ contract InvestmentManager is Auth, IInvestmentManager {
         if (kind == MessageType.FulfilledDepositRequest) {
             MessageLib.FulfilledDepositRequest memory m = message.deserializeFulfilledDepositRequest();
             fulfillDepositRequest(
-                m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.shareAmount, m.assetAmount
+                m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.assetAmount, m.shareAmount
             );
         } else if (kind == MessageType.FulfilledRedeemRequest) {
             MessageLib.FulfilledRedeemRequest memory m = message.deserializeFulfilledRedeemRequest();
             fulfillRedeemRequest(
-                m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.shareAmount, m.assetAmount
+                m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.assetAmount, m.shareAmount
             );
         } else if (kind == MessageType.FulfilledCancelDepositRequest) {
             MessageLib.FulfilledCancelDepositRequest memory m = message.deserializeFulfilledCancelDepositRequest();
