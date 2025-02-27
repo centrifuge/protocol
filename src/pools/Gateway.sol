@@ -16,11 +16,9 @@ import {IAdapter} from "src/pools/interfaces/IAdapter.sol";
 import {IPoolManagerHandler} from "src/pools/interfaces/IPoolManager.sol";
 
 contract Gateway is Auth, IGateway, IMessageHandler {
-    using MessageLib for bytes;
+    using MessageLib for *;
     using BytesLib for bytes;
-    using CastLib for string;
-    using CastLib for bytes;
-    using CastLib for bytes32;
+    using CastLib for *;
 
     IAdapter public adapter; // TODO: several adapters
     IPoolManagerHandler public handler;
@@ -40,7 +38,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
     }
 
     function sendNotifyPool(uint32 chainId, PoolId poolId) external auth {
-        _send(chainId, MessageLib.serialize(MessageLib.NotifyPool({poolId: poolId.raw()})));
+        _send(chainId, MessageLib.NotifyPool({poolId: poolId.raw()}).serialize());
     }
 
     function sendNotifyShareClass(
@@ -69,10 +67,8 @@ contract Gateway is Auth, IGateway, IMessageHandler {
 
     function sendNotifyAllowedAsset(PoolId poolId, ShareClassId scId, AssetId assetId, bool isAllowed) external auth {
         bytes memory message = isAllowed
-            ? MessageLib.serialize(MessageLib.AllowAsset({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw()}))
-            : MessageLib.serialize(
-                MessageLib.DisallowAsset({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw()})
-            );
+            ? MessageLib.AllowAsset({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw()}).serialize()
+            : MessageLib.DisallowAsset({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw()}).serialize();
 
         _send(assetId.chainId(), message);
     }
@@ -87,16 +83,14 @@ contract Gateway is Auth, IGateway, IMessageHandler {
     ) external auth {
         _send(
             assetId.chainId(),
-            MessageLib.serialize(
-                MessageLib.FulfilledDepositRequest({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    investor: investor,
-                    assetId: assetId.raw(),
-                    shareAmount: shareAmount,
-                    assetAmount: assetAmount
-                })
-            )
+            MessageLib.FulfilledDepositRequest({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                investor: investor,
+                assetId: assetId.raw(),
+                shareAmount: shareAmount,
+                assetAmount: assetAmount
+            }).serialize()
         );
     }
 
@@ -110,16 +104,14 @@ contract Gateway is Auth, IGateway, IMessageHandler {
     ) external auth {
         _send(
             assetId.chainId(),
-            MessageLib.serialize(
-                MessageLib.FulfilledRedeemRequest({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    investor: investor,
-                    assetId: assetId.raw(),
-                    shareAmount: shareAmount,
-                    assetAmount: assetAmount
-                })
-            )
+            MessageLib.FulfilledRedeemRequest({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                investor: investor,
+                assetId: assetId.raw(),
+                shareAmount: shareAmount,
+                assetAmount: assetAmount
+            }).serialize()
         );
     }
 
@@ -132,15 +124,13 @@ contract Gateway is Auth, IGateway, IMessageHandler {
     ) external auth {
         _send(
             assetId.chainId(),
-            MessageLib.serialize(
-                MessageLib.FulfilledCancelDepositRequest({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    investor: investor,
-                    assetId: assetId.raw(),
-                    cancelledAmount: cancelledAmount
-                })
-            )
+            MessageLib.FulfilledCancelDepositRequest({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                investor: investor,
+                assetId: assetId.raw(),
+                cancelledAmount: cancelledAmount
+            }).serialize()
         );
     }
 
@@ -153,15 +143,13 @@ contract Gateway is Auth, IGateway, IMessageHandler {
     ) external auth {
         _send(
             assetId.chainId(),
-            MessageLib.serialize(
-                MessageLib.FulfilledCancelRedeemRequest({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    investor: investor,
-                    assetId: assetId.raw(),
-                    cancelledShares: cancelledShares
-                })
-            )
+            MessageLib.FulfilledCancelRedeemRequest({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                investor: investor,
+                assetId: assetId.raw(),
+                cancelledShares: cancelledShares
+            }).serialize()
         );
     }
 

@@ -16,6 +16,7 @@ import {IAdapter} from "src/pools/Gateway.sol";
 import "forge-std/Test.sol";
 
 contract MockVaults is Test, IAdapter {
+    using MessageLib for *;
     using CastLib for string;
 
     IMessageHandler public handler;
@@ -29,14 +30,12 @@ contract MockVaults is Test, IAdapter {
 
     function registerAsset(AssetId assetId, string memory name, string memory symbol, uint8 decimals) public {
         handler.handle(
-            MessageLib.serialize(
-                MessageLib.RegisterAsset({
-                    assetId: assetId.raw(),
-                    name: name,
-                    symbol: symbol.toBytes32(),
-                    decimals: decimals
-                })
-            )
+            MessageLib.RegisterAsset({
+                assetId: assetId.raw(),
+                name: name,
+                symbol: symbol.toBytes32(),
+                decimals: decimals
+            }).serialize()
         );
     }
 
@@ -44,15 +43,13 @@ contract MockVaults is Test, IAdapter {
         public
     {
         handler.handle(
-            MessageLib.serialize(
-                MessageLib.DepositRequest({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    investor: investor,
-                    assetId: assetId.raw(),
-                    amount: amount
-                })
-            )
+            MessageLib.DepositRequest({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                investor: investor,
+                assetId: assetId.raw(),
+                amount: amount
+            }).serialize()
         );
     }
 
@@ -60,15 +57,13 @@ contract MockVaults is Test, IAdapter {
         public
     {
         handler.handle(
-            MessageLib.serialize(
-                MessageLib.RedeemRequest({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    investor: investor,
-                    assetId: assetId.raw(),
-                    amount: amount
-                })
-            )
+            MessageLib.RedeemRequest({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                investor: investor,
+                assetId: assetId.raw(),
+                amount: amount
+            }).serialize()
         );
     }
 

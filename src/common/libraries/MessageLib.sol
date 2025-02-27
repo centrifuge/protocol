@@ -28,9 +28,7 @@ enum MessageType {
 library MessageLib {
     using MessageLib for bytes;
     using BytesLib for bytes;
-    using CastLib for string;
-    using CastLib for bytes;
-    using CastLib for bytes32;
+    using CastLib for *;
 
     error DeserializationError();
 
