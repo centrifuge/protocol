@@ -220,7 +220,9 @@ library MessageLib {
     }
 
     function serialize(UpdateShareClassMetadata memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.UpdateShareClassMetadata, t.poolId, t.scId, t.name, t.symbol);
+        return abi.encodePacked(
+            MessageType.UpdateShareClassMetadata, t.poolId, t.scId, bytes(t.name).sliceZeroPadded(0, 128), t.symbol
+        );
     }
 
     //---------------------------------------

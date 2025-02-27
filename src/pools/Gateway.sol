@@ -52,16 +52,14 @@ contract Gateway is Auth, IGateway, IMessageHandler {
     ) external auth {
         _send(
             chainId,
-            MessageLib.serialize(
-                MessageLib.NotifyShareClass({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    name: name,
-                    symbol: symbol.toBytes32(),
-                    decimals: decimals,
-                    hook: hook
-                })
-            )
+            MessageLib.NotifyShareClass({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                name: name,
+                symbol: symbol.toBytes32(),
+                decimals: decimals,
+                hook: hook
+            }).serialize()
         );
     }
 
