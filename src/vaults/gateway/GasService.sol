@@ -83,8 +83,8 @@ contract GasService is IGasService, Auth {
     /// @inheritdoc IGasService
     function estimate(bytes calldata payload) public view returns (uint256) {
         uint256 totalCost;
-        uint8 kind = payload.toUint8(0);
-        if (kind == uint8(MessageType.MessageProof)) {
+        uint8 code = payload.messageCode();
+        if (code == uint8(MessageType.MessageProof)) {
             totalCost = proofCost.mulDiv(gasPrice, PRICE_DENOMINATOR, MathLib.Rounding.Up);
         } else {
             totalCost = messageCost.mulDiv(gasPrice, PRICE_DENOMINATOR, MathLib.Rounding.Up);

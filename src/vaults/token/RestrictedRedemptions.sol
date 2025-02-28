@@ -8,7 +8,6 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IRoot} from "src/vaults/interfaces/IRoot.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IHook, HookData} from "src/vaults/interfaces/token/IHook.sol";
-import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 import {RestrictionUpdate, IRestrictionManager} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 

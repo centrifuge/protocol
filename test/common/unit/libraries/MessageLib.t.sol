@@ -8,9 +8,34 @@ import "forge-std/Test.sol";
 contract MessageLibTest is Test {
     using MessageLib for *;
 
-    /* The following tests check the function composition of deserializing and serializing corresponds to the identity:
+    /* The following tests check the function composition of deserializing and serializing equals to the identity:
         I = deserialize º serialize
     */
+
+    function testMessageProof() public pure {
+        MessageLib.MessageProof memory a = MessageLib.MessageProof({hash: bytes32("hash")});
+        MessageLib.MessageProof memory b = MessageLib.deserializeMessageProof(a.serialize());
+
+        assertEq(a.hash, b.hash);
+    }
+
+    function testInitializeMessageRecovery() public pure {
+        MessageLib.InitiateMessageRecovery memory a =
+            MessageLib.InitiateMessageRecovery({hash: bytes32("hash"), adapter: bytes32("adapter")});
+        MessageLib.InitiateMessageRecovery memory b = MessageLib.deserializeInitiateMessageRecovery(a.serialize());
+
+        assertEq(a.hash, b.hash);
+        assertEq(a.adapter, b.adapter);
+    }
+
+    function testDisputeMessageRecovery() public pure {
+        MessageLib.DisputeMessageRecovery memory a =
+            MessageLib.DisputeMessageRecovery({hash: bytes32("hash"), adapter: bytes32("adapter")});
+        MessageLib.DisputeMessageRecovery memory b = MessageLib.deserializeDisputeMessageRecovery(a.serialize());
+
+        assertEq(a.hash, b.hash);
+        assertEq(a.adapter, b.adapter);
+    }
 
     function testScheduleUpgrade() public pure {
         MessageLib.ScheduleUpgrade memory a = MessageLib.ScheduleUpgrade({target: bytes32("contract")});

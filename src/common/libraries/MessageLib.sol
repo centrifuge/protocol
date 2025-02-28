@@ -12,10 +12,13 @@ enum MessageType {
     InitiateMessageRecovery,
     DisputeMessageRecovery,
     Batch,
+    // -- Root messages 5 - 7
     ScheduleUpgrade,
     CancelUpgrade,
     RecoverTokens,
+    // -- Gas messages 8
     UpdateGasPrice,
+    // -- Pool manager messages 9-18
     RegisterAsset,
     NotifyPool,
     NotifyShareClass,
@@ -26,6 +29,7 @@ enum MessageType {
     UpdateShareClassHook,
     TransferShares,
     UpdateRestriction,
+    // -- Investment manager messages 19-27
     DepositRequest,
     RedeemRequest,
     FulfilledDepositRequest,
@@ -46,6 +50,71 @@ library MessageLib {
 
     function messageType(bytes memory _msg) internal pure returns (MessageType) {
         return MessageType(_msg.toUint8(0));
+    }
+
+    function messageCode(bytes memory _msg) internal pure returns (uint8) {
+        return _msg.toUint8(0);
+    }
+
+    //---------------------------------------
+    //    MessageProof
+    //---------------------------------------
+
+    struct MessageProof {
+        bytes32 hash;
+    }
+
+    function deserializeMessageProof(bytes memory data) internal pure returns (MessageProof memory) {
+        require(messageType(data) == MessageType.MessageProof, DeserializationError());
+        return MessageProof({hash: data.toBytes32(1)});
+    }
+
+    function serialize(MessageProof memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.MessageProof, t.hash);
+    }
+
+    //---------------------------------------
+    //    InitiateMessageRecovery
+    //---------------------------------------
+
+    struct InitiateMessageRecovery {
+        bytes32 hash;
+        bytes32 adapter;
+    }
+
+    function deserializeInitiateMessageRecovery(bytes memory data)
+        internal
+        pure
+        returns (InitiateMessageRecovery memory)
+    {
+        require(messageType(data) == MessageType.InitiateMessageRecovery, DeserializationError());
+        return InitiateMessageRecovery({hash: data.toBytes32(1), adapter: data.toBytes32(33)});
+    }
+
+    function serialize(InitiateMessageRecovery memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.InitiateMessageRecovery, t.hash, t.adapter);
+    }
+
+    //---------------------------------------
+    //    DisputeMessageRecovery
+    //---------------------------------------
+
+    struct DisputeMessageRecovery {
+        bytes32 hash;
+        bytes32 adapter;
+    }
+
+    function deserializeDisputeMessageRecovery(bytes memory data)
+        internal
+        pure
+        returns (DisputeMessageRecovery memory)
+    {
+        require(messageType(data) == MessageType.DisputeMessageRecovery, DeserializationError());
+        return DisputeMessageRecovery({hash: data.toBytes32(1), adapter: data.toBytes32(33)});
+    }
+
+    function serialize(DisputeMessageRecovery memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.DisputeMessageRecovery, t.hash, t.adapter);
     }
 
     //---------------------------------------
