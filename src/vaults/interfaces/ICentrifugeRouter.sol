@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 
-import {Domain} from "src/vaults/interfaces/IPoolManager.sol";
 import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 
 interface ICentrifugeRouter is IMulticall, IRecoverable {
@@ -162,25 +161,18 @@ interface ICentrifugeRouter is IMulticall, IRecoverable {
     ///         The caller must call `CentrifugeRouter.estimate` to get estimates how much the deposit will cost.
     ///
     /// @param  vault The vault for the corresponding tranche token
-    /// @param  domain Check `IPoolManager.transferTrancheTokens.domain`
     /// @param  id Check `IPoolManager.transferTrancheTokens.destinationId`
     /// @param  recipient Check `IPoolManager.transferTrancheTokens.recipient`
     /// @param  amount Check `IPoolManager.transferTrancheTokens.amount`
     /// @param  topUpAmount Amount that covers all costs outside EVM
-    function transferTrancheTokens(
-        address vault,
-        Domain domain,
-        uint64 id,
-        bytes32 recipient,
-        uint128 amount,
-        uint256 topUpAmount
-    ) external payable;
+    function transferTrancheTokens(address vault, uint64 id, bytes32 recipient, uint128 amount, uint256 topUpAmount)
+        external
+        payable;
 
     /// @notice This is a more friendly version where the recipient is and EVM address
     /// @dev    The recipient address is padded to 32 bytes internally
     function transferTrancheTokens(
         address vault,
-        Domain domain,
         uint64 chainId,
         address recipient,
         uint128 amount,

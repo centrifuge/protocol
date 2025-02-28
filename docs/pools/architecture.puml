@@ -43,7 +43,7 @@ class PoolRegistry<wards = PoolManager> {
 }
 
 interface IShareClassManager {
-    + addShareClass(poolId, data) -> newScId
+    + addShareClass(poolId, name, symbol, data) -> newScId
     + requestDeposit(poolId, scId, assetId, investor, amount)
     + cancelDepositRequest(poolId, scId, assetId, investor) -> (cancelled)
     + requestRedeem(poolId, scId, assetId, investor, amount)
@@ -56,6 +56,7 @@ interface IShareClassManager {
     + claimRedeem(poolId, shareClassId, assetId, investor) -> (assetAmount, shareAmount)
     + updateShareClassNav(poolId, shareClassId)
     + update(poolId, data)
+    + updateMetadata(poolId, shareClassId, name, symbol, data)
 }
 
 class SingleShareClass<wards = PoolManager> <<(C, lightskyblue)>>{ }

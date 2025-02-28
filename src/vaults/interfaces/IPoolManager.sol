@@ -45,11 +45,6 @@ struct VaultAsset {
     bool isWrapper;
 }
 
-enum Domain {
-    Centrifuge,
-    EVM
-}
-
 interface IPoolManager is IMessageHandler, IRecoverable {
     event File(bytes32 indexed what, address data);
     event AddAsset(uint128 indexed assetId, address indexed asset);
@@ -68,7 +63,6 @@ interface IPoolManager is IMessageHandler, IRecoverable {
         uint64 indexed poolId,
         bytes16 indexed trancheId,
         address indexed sender,
-        Domain destinationDomain,
         uint64 destinationId,
         bytes32 destinationAddress,
         uint128 amount
@@ -93,14 +87,12 @@ interface IPoolManager is IMessageHandler, IRecoverable {
     /// @dev    To transfer to evm chains, pad a 20 byte evm address with 12 bytes of 0
     /// @param  poolId The centrifuge pool id
     /// @param  trancheId The tranche id
-    /// @param  destinationDomain an enum representing the destination domain (Centrifuge or EVM)
     /// @param  destinationId The destination chain id
     /// @param  recipient A bytes32 representation of the recipient address
     /// @param  amount The amount of tokens to transfer
     function transferTrancheTokens(
         uint64 poolId,
         bytes16 trancheId,
-        Domain destinationDomain,
         uint64 destinationId,
         bytes32 recipient,
         uint128 amount

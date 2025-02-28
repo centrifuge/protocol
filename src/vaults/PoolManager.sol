@@ -17,7 +17,6 @@ import {
     TranchePrice,
     UndeployedTranche,
     VaultAsset,
-    Domain,
     IPoolManager
 } from "src/vaults/interfaces/IPoolManager.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
@@ -83,7 +82,6 @@ contract PoolManager is Auth, IPoolManager {
     function transferTrancheTokens(
         uint64 poolId,
         bytes16 trancheId,
-        Domain destinationDomain,
         uint64 destinationId,
         bytes32 recipient,
         uint128 amount
@@ -91,15 +89,12 @@ contract PoolManager is Auth, IPoolManager {
         ITranche tranche = ITranche(getTranche(poolId, trancheId));
         require(address(tranche) != address(0), "PoolManager/unknown-token");
         tranche.burn(msg.sender, amount);
-        bytes9 domain = _formatDomain(destinationDomain, destinationId);
         gateway.send(
-            abi.encodePacked(
-                uint8(MessagesLib.Call.TransferTrancheTokens), poolId, trancheId, domain, recipient, amount
-            ),
+            abi.encodePacked(uint8(MessagesLib.Call.TransferTrancheTokens), poolId, trancheId, recipient, amount),
             address(this)
         );
 
-        emit TransferTrancheTokens(poolId, trancheId, msg.sender, destinationDomain, destinationId, recipient, amount);
+        emit TransferTrancheTokens(poolId, trancheId, msg.sender, destinationId, recipient, amount);
     }
 
     // --- Incoming message handling ---
@@ -143,7 +138,7 @@ contract PoolManager is Auth, IPoolManager {
             updateTrancheHook(message.toUint64(1), message.toBytes16(9), message.toAddress(25));
         } else if (call == MessagesLib.Call.TransferTrancheTokens) {
             handleTransferTrancheTokens(
-                message.toUint64(1), message.toBytes16(9), message.toAddress(34), message.toUint128(66)
+                message.toUint64(1), message.toBytes16(9), message.toAddress(25), message.toUint128(57)
             );
         } else if (call == MessagesLib.Call.UpdateRestriction) {
             updateRestriction(message.toUint64(1), message.toBytes16(9), message.slice(25, message.length - 25));
@@ -440,9 +435,5 @@ contract PoolManager is Auth, IPoolManager {
     /// @inheritdoc IPoolManager
     function isAllowedAsset(uint64 poolId, address asset) public view returns (bool) {
         return _pools[poolId].allowedAssets[asset];
-    }
-
-    function _formatDomain(Domain domain, uint64 chainId) internal pure returns (bytes9) {
-        return bytes9(BytesLib.slice(abi.encodePacked(uint8(domain), chainId), 0, 9));
     }
 }

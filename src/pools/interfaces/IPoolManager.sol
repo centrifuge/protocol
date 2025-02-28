@@ -54,7 +54,8 @@ interface IPoolManagerAdminMethods {
 
     /// @notice Notify to a CV instance that a new share class is available
     /// @param chainId Chain where CV instance lives
-    function notifyShareClass(uint32 chainId, ShareClassId scId) external;
+    /// @param hook The hook address of the share class
+    function notifyShareClass(uint32 chainId, ShareClassId scId, bytes32 hook) external;
 
     /// @notice Attach custom data to a pool
     function setPoolMetadata(bytes calldata metadata) external;
@@ -68,7 +69,9 @@ interface IPoolManagerAdminMethods {
 
     /// @notice Add a new share class to the pool
     /// @return The new share class Id
-    function addShareClass(bytes calldata data) external returns (ShareClassId);
+    function addShareClass(string calldata name, string calldata symbol, bytes calldata data)
+        external
+        returns (ShareClassId);
 
     /// @notice Approves a percentage of all deposit requests for the given triplet of pool id, share class id and
     /// deposit asset id.

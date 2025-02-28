@@ -10,7 +10,7 @@ import {IERC20, IERC20Permit, IERC20Wrapper} from "src/misc/interfaces/IERC20.so
 
 import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
 import {ICentrifugeRouter} from "src/vaults/interfaces/ICentrifugeRouter.sol";
-import {IPoolManager, Domain} from "src/vaults/interfaces/IPoolManager.sol";
+import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
@@ -205,7 +205,6 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
     /// @inheritdoc ICentrifugeRouter
     function transferTrancheTokens(
         address vault,
-        Domain domain,
         uint64 chainId,
         bytes32 recipient,
         uint128 amount,
@@ -215,20 +214,19 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
         _approveMax(IERC7540Vault(vault).share(), address(poolManager));
         _pay(topUpAmount);
         IPoolManager(poolManager).transferTrancheTokens(
-            IERC7540Vault(vault).poolId(), IERC7540Vault(vault).trancheId(), domain, chainId, recipient, amount
+            IERC7540Vault(vault).poolId(), IERC7540Vault(vault).trancheId(), chainId, recipient, amount
         );
     }
 
     /// @inheritdoc ICentrifugeRouter
     function transferTrancheTokens(
         address vault,
-        Domain domain,
         uint64 chainId,
         address recipient,
         uint128 amount,
         uint256 topUpAmount
     ) external payable protected {
-        transferTrancheTokens(vault, domain, chainId, recipient.toBytes32(), amount, topUpAmount);
+        transferTrancheTokens(vault, chainId, recipient.toBytes32(), amount, topUpAmount);
     }
 
     // --- ERC20 permits ---
