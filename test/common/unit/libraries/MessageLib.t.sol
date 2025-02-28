@@ -365,6 +365,4 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.assetId, b.assetId);
         assertEq(a.shares, b.shares);
     }
-
-    // TODO: rest of the messages
 }
