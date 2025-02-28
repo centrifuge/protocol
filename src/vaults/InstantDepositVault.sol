@@ -3,19 +3,10 @@ pragma solidity 0.8.28;
 
 import {BaseVault} from "src/vaults/BaseVault.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {IInstantManager} from "src/vaults/interfaces/IInstantManager.sol";
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 import "src/misc/interfaces/IERC20.sol";
-
-interface IInstantManager {
-    function escrow() external view returns (address);
-    function maxDeposit(address vault, address owner) external view returns (uint256);
-    function previewDeposit(address vault, address sender, uint256 assets) external view returns (uint256);
-    function deposit(address vault, uint256 assets, address receiver, address owner) external view returns (uint256);
-    function maxMint(address vault, address owner) external view returns (uint256);
-    function previewMint(address vault, address sender, uint256 shares) external view returns (uint256);
-    function mint(address vault, uint256 shares, address receiver, address owner) external view returns (uint256);
-}
 
 /// @title  InstantDepositVault
 /// @notice TODO
