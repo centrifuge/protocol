@@ -12,6 +12,35 @@ contract MessageLibTest is Test {
         I = deserialize º serialize
     */
 
+    function testScheduleUpgrade() public pure {
+        MessageLib.ScheduleUpgrade memory a = MessageLib.ScheduleUpgrade({target: bytes32("contract")});
+        MessageLib.ScheduleUpgrade memory b = MessageLib.deserializeScheduleUpgrade(a.serialize());
+
+        assertEq(a.target, b.target);
+    }
+
+    function testCancelUpgrade() public pure {
+        MessageLib.CancelUpgrade memory a = MessageLib.CancelUpgrade({target: bytes32("contract")});
+        MessageLib.CancelUpgrade memory b = MessageLib.deserializeCancelUpgrade(a.serialize());
+
+        assertEq(a.target, b.target);
+    }
+
+    function testRecoverTokens() public pure {
+        MessageLib.RecoverTokens memory a = MessageLib.RecoverTokens({
+            target: bytes32("contract"),
+            token: bytes32("token"),
+            to: bytes32("to"),
+            amount: 123
+        });
+        MessageLib.RecoverTokens memory b = MessageLib.deserializeRecoverTokens(a.serialize());
+
+        assertEq(a.target, b.target);
+        assertEq(a.token, b.token);
+        assertEq(a.to, b.to);
+        assertEq(a.amount, b.amount);
+    }
+
     function testUpdateGasPrice() public pure {
         MessageLib.UpdateGasPrice memory a = MessageLib.UpdateGasPrice({price: 42, timestamp: 0x12345678});
         MessageLib.UpdateGasPrice memory b = MessageLib.deserializeUpdateGasPrice(a.serialize());

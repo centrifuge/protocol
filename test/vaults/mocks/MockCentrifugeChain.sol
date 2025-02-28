@@ -153,13 +153,11 @@ contract MockCentrifugeChain is Test {
     }
 
     function incomingScheduleUpgrade(address target) public {
-        bytes memory _message = abi.encodePacked(uint8(MessagesLib.Call.ScheduleUpgrade), target);
-        execute(_message);
+        execute(MessageLib.ScheduleUpgrade({target: bytes32(bytes20(target))}).serialize());
     }
 
     function incomingCancelUpgrade(address target) public {
-        bytes memory _message = abi.encodePacked(uint8(MessagesLib.Call.CancelUpgrade), target);
-        execute(_message);
+        execute(MessageLib.CancelUpgrade({target: bytes32(bytes20(target))}).serialize());
     }
 
     function freeze(uint64 poolId, bytes16 trancheId, address user) public {
@@ -183,10 +181,14 @@ contract MockCentrifugeChain is Test {
     }
 
     function recoverTokens(address target, address token, address to, uint256 amount) public {
-        bytes memory _message = abi.encodePacked(
-            uint8(MessagesLib.Call.RecoverTokens), target.toBytes32(), token.toBytes32(), to.toBytes32(), amount
+        execute(
+            MessageLib.RecoverTokens({
+                target: bytes32(bytes20(target)),
+                token: bytes32(bytes20(token)),
+                to: bytes32(bytes20(to)),
+                amount: amount
+            }).serialize()
         );
-        execute(_message);
     }
 
     function isFulfilledCancelDepositRequest(

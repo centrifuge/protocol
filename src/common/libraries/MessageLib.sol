@@ -49,6 +49,65 @@ library MessageLib {
     }
 
     //---------------------------------------
+    //    ScheduleUpgrade
+    //---------------------------------------
+
+    struct ScheduleUpgrade {
+        bytes32 target;
+    }
+
+    function deserializeScheduleUpgrade(bytes memory data) internal pure returns (ScheduleUpgrade memory) {
+        require(messageType(data) == MessageType.ScheduleUpgrade, DeserializationError());
+        return ScheduleUpgrade({target: data.toBytes32(1)});
+    }
+
+    function serialize(ScheduleUpgrade memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.ScheduleUpgrade, t.target);
+    }
+
+    //---------------------------------------
+    //    CancelUpgrade
+    //---------------------------------------
+
+    struct CancelUpgrade {
+        bytes32 target;
+    }
+
+    function deserializeCancelUpgrade(bytes memory data) internal pure returns (CancelUpgrade memory) {
+        require(messageType(data) == MessageType.CancelUpgrade, DeserializationError());
+        return CancelUpgrade({target: data.toBytes32(1)});
+    }
+
+    function serialize(CancelUpgrade memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.CancelUpgrade, t.target);
+    }
+
+    //---------------------------------------
+    //    RecoverTokens
+    //---------------------------------------
+
+    struct RecoverTokens {
+        bytes32 target;
+        bytes32 token;
+        bytes32 to;
+        uint256 amount;
+    }
+
+    function deserializeRecoverTokens(bytes memory data) internal pure returns (RecoverTokens memory) {
+        require(messageType(data) == MessageType.RecoverTokens, DeserializationError());
+        return RecoverTokens({
+            target: data.toBytes32(1),
+            token: data.toBytes32(33),
+            to: data.toBytes32(65),
+            amount: data.toUint256(97)
+        });
+    }
+
+    function serialize(RecoverTokens memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.RecoverTokens, t.target, t.token, t.to, t.amount);
+    }
+
+    //---------------------------------------
     //    UpdateGasPrice
     //---------------------------------------
 
