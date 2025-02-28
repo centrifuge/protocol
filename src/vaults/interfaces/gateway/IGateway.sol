@@ -65,7 +65,7 @@ interface IGateway {
 
     /// @notice Used to update a mapping ( state variables ) on very rare occasions.
     /// @dev    Currently used to update any custom handlers for a specific message type.
-    ///         data1 is the message id from MessagesLib.Call and data2 could be any
+    ///         data1 is the message id from `MessageType` and data2 could be any
     ///         custom instance of a contract that will handle that call.
     /// @param  what The name of the variable to be updated.
     /// @param  data1 The key of the mapping.

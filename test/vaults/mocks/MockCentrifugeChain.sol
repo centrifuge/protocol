@@ -268,7 +268,7 @@ contract MockCentrifugeChain is Test {
     }
 
     function execute(bytes memory message) public {
-        bytes memory proof = abi.encodePacked(uint8(MessagesLib.Call.MessageProof), keccak256(message));
+        bytes memory proof = MessageLib.MessageProof({hash: keccak256(message)}).serialize();
         for (uint256 i = 0; i < adapters.length; i++) {
             AdapterLike(adapters[i]).execute(i == 0 ? message : proof);
         }
