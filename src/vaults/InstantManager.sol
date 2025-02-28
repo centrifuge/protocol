@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
@@ -9,11 +10,14 @@ import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IInstantManager} from "src/vaults/interfaces/IInstantManager.sol";
+import {PriceConversionLib} from "src/vaults/libraries/PriceConversionLib.sol";
 
 /// @title  Instant Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
 contract InstantManager is Auth, IInstantManager {
+    using MathLib for uint256;
+
     address public immutable escrow;
 
     IGateway public gateway;
@@ -41,7 +45,10 @@ contract InstantManager is Auth, IInstantManager {
 
     // --- Deposits ---
     /// @inheritdoc IInstantManager
-    function maxDeposit(address vault, address owner) external view returns (uint256) {
+    function maxDeposit(address vault, address /* owner */ ) public view returns (uint256) {
+        IBaseVault vault_ = IBaseVault(vault);
+        require(poolManager.isAllowedAsset(vault_.poolId(), vault_.asset()), AssetNotAllowed());
+
         // TODO: implement rate limit
         return type(uint256).max;
     }
@@ -53,8 +60,7 @@ contract InstantManager is Auth, IInstantManager {
             poolManager.getTranchePrice(vault_.poolId(), vault_.trancheId(), vault_.asset());
         require(block.timestamp - computedAt <= maxPriceAge[vault], PriceTooOld());
 
-        // TODO: actually convert assets to shares
-        shares = assets;
+        shares = PriceConversionLib.calculateShares(assets.toUint128(), vault, latestPrice, MathLib.Rounding.Down);
     }
 
     /// @inheritdoc IInstantManager
@@ -62,6 +68,7 @@ contract InstantManager is Auth, IInstantManager {
         external
         returns (uint256 shares)
     {
+        require(maxDeposit(vault, owner) >= assets, ExceedsMaxDeposit());
         shares = previewDeposit(vault, owner, assets);
 
         ITranche tranche = ITranche(IBaseVault(vault).share());
@@ -71,20 +78,22 @@ contract InstantManager is Auth, IInstantManager {
     }
 
     /// @inheritdoc IInstantManager
-    function maxMint(address vault, address owner) external view returns (uint256) {
+    function maxMint(address vault, address /* owner */ ) public view returns (uint256) {
+        IBaseVault vault_ = IBaseVault(vault);
+        require(poolManager.isAllowedAsset(vault_.poolId(), vault_.asset()), AssetNotAllowed());
+
         // TODO: implement rate limit
         return type(uint256).max;
     }
 
     /// @inheritdoc IInstantManager
-    function previewMint(address vault, address sender, uint256 shares) public view returns (uint256 assets) {
+    function previewMint(address vault, address, /* sender */ uint256 shares) public view returns (uint256 assets) {
         IBaseVault vault_ = IBaseVault(vault);
         (uint128 latestPrice, uint64 computedAt) =
             poolManager.getTranchePrice(vault_.poolId(), vault_.trancheId(), vault_.asset());
         require(block.timestamp - computedAt <= maxPriceAge[vault], PriceTooOld());
 
-        // TODO: actually convert assets to shares
-        shares = assets;
+        assets = PriceConversionLib.calculateAssets(shares.toUint128(), vault, latestPrice, MathLib.Rounding.Down);
     }
 
     /// @inheritdoc IInstantManager

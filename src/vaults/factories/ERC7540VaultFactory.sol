@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
+import {InstantDepositVault} from "src/vaults/InstantDepositVault.sol";
 import {IERC7540VaultFactory} from "src/vaults/interfaces/factories/IERC7540VaultFactory.sol";
 import {Auth} from "src/misc/Auth.sol";
 
@@ -38,7 +39,37 @@ contract ERC7540VaultFactory is Auth, IERC7540VaultFactory {
     }
 
     /// @inheritdoc IERC7540VaultFactory
+    function newInstantVault(
+        uint64 poolId,
+        bytes16 trancheId,
+        address asset,
+        address tranche,
+        address, /* escrow */
+        address investmentManager,
+        address instantManager,
+        address[] calldata wards_
+    ) public auth returns (address) {
+        InstantDepositVault vault =
+            new InstantDepositVault(poolId, trancheId, asset, tranche, root, investmentManager, instantManager);
+
+        vault.rely(root);
+        uint256 wardsCount = wards_.length;
+        for (uint256 i; i < wardsCount; i++) {
+            vault.rely(wards_[i]);
+        }
+
+        Auth(instantManager).rely(address(vault));
+        vault.deny(address(this));
+        return address(vault);
+    }
+
+    /// @inheritdoc IERC7540VaultFactory
     function denyVault(address vault, address investmentManager) public auth {
         Auth(investmentManager).deny(address(vault));
+    }
+
+    /// @inheritdoc IERC7540VaultFactory
+    function denyInstantVault(address vault, address instantManager) public auth {
+        Auth(instantManager).deny(address(vault));
     }
 }

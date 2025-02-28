@@ -5,6 +5,7 @@ import {Root} from "src/vaults/Root.sol";
 import {Gateway} from "src/vaults/gateway/Gateway.sol";
 import {GasService} from "src/vaults/gateway/GasService.sol";
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
+import {InstantManager} from "src/vaults/InstantManager.sol";
 import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
 import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
@@ -23,6 +24,7 @@ contract Deployer is Script {
 
     Root public root;
     InvestmentManager public investmentManager;
+    InstantManager public instantManager;
     PoolManager public poolManager;
     Escrow public escrow;
     Escrow public routerEscrow;
@@ -55,6 +57,7 @@ contract Deployer is Script {
         restrictedRedemptions = address(new RestrictedRedemptions{salt: salt}(address(root), address(escrow), deployer));
         trancheFactory = address(new TrancheFactory{salt: salt}(address(root), deployer));
         investmentManager = new InvestmentManager(address(root), address(escrow));
+        instantManager = new InstantManager(address(escrow));
         poolManager = new PoolManager(address(escrow), vaultFactory, trancheFactory);
         gasService = new GasService(messageCost, proofCost, gasPrice, tokenPrice);
         gateway = new Gateway(address(root), address(poolManager), address(investmentManager), address(gasService));
@@ -83,6 +86,7 @@ contract Deployer is Script {
         router.rely(address(root));
         poolManager.rely(address(root));
         investmentManager.rely(address(root));
+        instantManager.rely(address(root));
         gateway.rely(address(root));
         gasService.rely(address(root));
         escrow.rely(address(root));
@@ -99,12 +103,14 @@ contract Deployer is Script {
         // Rely on gateway
         root.rely(address(gateway));
         investmentManager.rely(address(gateway));
+        instantManager.rely(address(gateway));
         poolManager.rely(address(gateway));
         gasService.rely(address(gateway));
 
         // Rely on others
         routerEscrow.rely(address(router));
         investmentManager.rely(address(vaultFactory));
+        instantManager.rely(address(vaultFactory));
     }
 
     function _file() public {
@@ -114,6 +120,9 @@ contract Deployer is Script {
 
         investmentManager.file("poolManager", address(poolManager));
         investmentManager.file("gateway", address(gateway));
+
+        instantManager.file("poolManager", address(poolManager));
+        instantManager.file("gateway", address(gateway));
 
         gateway.file("payers", address(router), true);
     }
@@ -132,6 +141,7 @@ contract Deployer is Script {
         IAuth(restrictedRedemptions).deny(deployer);
         root.deny(deployer);
         investmentManager.deny(deployer);
+        instantManager.deny(deployer);
         poolManager.deny(deployer);
         escrow.deny(deployer);
         routerEscrow.deny(deployer);

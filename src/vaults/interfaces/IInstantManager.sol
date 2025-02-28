@@ -9,6 +9,8 @@ interface IInstantManager is IMessageHandler, IRecoverable {
     event File(bytes32 indexed what, address data);
 
     error PriceTooOld();
+    error ExceedsMaxDeposit();
+    error AssetNotAllowed();
 
     /// @notice Updates contract parameters of type address.
     /// @param what The bytes32 representation of 'gateway' or 'poolManager'.
