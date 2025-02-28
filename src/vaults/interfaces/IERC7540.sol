@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity >=0.5.0;
 
 import {IERC7575} from "src/vaults/interfaces/IERC7575.sol";
 import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
@@ -143,7 +143,7 @@ interface IERC7540Redeem is IERC7540Operator {
 interface IERC7540CancelDeposit {
     event CancelDepositRequest(address indexed controller, uint256 indexed requestId, address sender);
     event CancelDepositClaim(
-        address indexed controller, address indexed receiver, uint256 indexed requestId, address sender, uint256 assets
+        address indexed receiver, address indexed controller, uint256 indexed requestId, address sender, uint256 assets
     );
 
     /**
@@ -194,7 +194,7 @@ interface IERC7540CancelDeposit {
 interface IERC7540CancelRedeem {
     event CancelRedeemRequest(address indexed controller, uint256 indexed requestId, address sender);
     event CancelRedeemClaim(
-        address indexed controller, address indexed receiver, uint256 indexed requestId, address sender, uint256 shares
+        address indexed receiver, address indexed controller, uint256 indexed requestId, address sender, uint256 shares
     );
 
     /**
@@ -279,23 +279,12 @@ interface IERC7714 {
 }
 
 /**
- * @title  IERC7540Vault
+ * @title  IBaseVault
  * @dev    This is the specific set of interfaces used by the Centrifuge impelmentation of ERC7540,
  *         as a fully asynchronous Vault, with cancelation support, and authorize operator signature support.
  */
-interface IERC7540Vault is
-    IERC7540Deposit,
-    IERC7540Redeem,
-    IERC7540CancelDeposit,
-    IERC7540CancelRedeem,
-    IERC7575,
-    IERC7741,
-    IERC7714,
-    IRecoverable
-{
-    event DepositClaimable(address indexed controller, uint256 indexed requestId, uint256 assets, uint256 shares);
+interface IBaseVault is IERC7540Redeem, IERC7540CancelRedeem, IERC7575, IERC7741, IERC7714, IRecoverable {
     event RedeemClaimable(address indexed controller, uint256 indexed requestId, uint256 assets, uint256 shares);
-    event CancelDepositClaimable(address indexed controller, uint256 indexed requestId, uint256 assets);
     event CancelRedeemClaimable(address indexed controller, uint256 indexed requestId, uint256 shares);
 
     /// @notice Identifier of the Centrifuge pool
@@ -311,21 +300,20 @@ interface IERC7540Vault is
     /// @notice Callback when a redeem Request is triggered externally;
     function onRedeemRequest(address controller, address owner, uint256 shares) external;
 
-    /// @notice Callback when a deposit Request becomes claimable
-    function onDepositClaimable(address owner, uint256 assets, uint256 shares) external;
-
     /// @notice Callback when a redeem Request becomes claimable
     function onRedeemClaimable(address owner, uint256 assets, uint256 shares) external;
 
-    /// @notice Callback when a claim deposit Request becomes claimable
-    function onCancelDepositClaimable(address owner, uint256 assets) external;
-
     /// @notice Callback when a claim redeem Request becomes claimable
     function onCancelRedeemClaimable(address owner, uint256 shares) external;
+}
 
-    /// @notice Price of 1 unit of share, quoted in the decimals of the asset.
-    function pricePerShare() external view returns (uint256);
+interface IERC7540Vault is IERC7540Deposit, IERC7540CancelDeposit, IBaseVault {
+    event DepositClaimable(address indexed controller, uint256 indexed requestId, uint256 assets, uint256 shares);
+    event CancelDepositClaimable(address indexed controller, uint256 indexed requestId, uint256 assets);
 
-    /// @notice Returns timestamp of the last share price update.
-    function priceLastUpdated() external view returns (uint64);
+    /// @notice Callback when a deposit Request becomes claimable
+    function onDepositClaimable(address owner, uint256 assets, uint256 shares) external;
+
+    /// @notice Callback when a claim deposit Request becomes claimable
+    function onCancelDepositClaimable(address owner, uint256 assets) external;
 }
