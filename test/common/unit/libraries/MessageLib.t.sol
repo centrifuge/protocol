@@ -1,16 +1,48 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageType, MessageCategory, MessageLib} from "src/common/libraries/MessageLib.sol";
 
 import "forge-std/Test.sol";
 
-contract MessageLibTest is Test {
+contract TestMessageLibCategories is Test {
     using MessageLib for *;
 
-    /* The following tests check the function composition of deserializing and serializing equals to the identity:
-        I = deserialize º serialize
-    */
+    function testCategories() public pure {
+        assert(MessageCategory.Invalid == uint8(MessageType.Invalid).category());
+        assert(MessageCategory.Gateway == uint8(MessageType.MessageProof).category());
+        assert(MessageCategory.Gateway == uint8(MessageType.InitiateMessageRecovery).category());
+        assert(MessageCategory.Gateway == uint8(MessageType.DisputeMessageRecovery).category());
+        assert(MessageCategory.Gateway == uint8(MessageType.Batch).category());
+        assert(MessageCategory.Root == uint8(MessageType.ScheduleUpgrade).category());
+        assert(MessageCategory.Root == uint8(MessageType.CancelUpgrade).category());
+        assert(MessageCategory.Root == uint8(MessageType.RecoverTokens).category());
+        assert(MessageCategory.Gas == uint8(MessageType.UpdateGasPrice).category());
+        assert(MessageCategory.Pool == uint8(MessageType.RegisterAsset).category());
+        assert(MessageCategory.Pool == uint8(MessageType.NotifyPool).category());
+        assert(MessageCategory.Pool == uint8(MessageType.NotifyShareClass).category());
+        assert(MessageCategory.Pool == uint8(MessageType.AllowAsset).category());
+        assert(MessageCategory.Pool == uint8(MessageType.DisallowAsset).category());
+        assert(MessageCategory.Pool == uint8(MessageType.UpdateShareClassPrice).category());
+        assert(MessageCategory.Pool == uint8(MessageType.UpdateShareClassMetadata).category());
+        assert(MessageCategory.Pool == uint8(MessageType.UpdateShareClassHook).category());
+        assert(MessageCategory.Pool == uint8(MessageType.TransferShares).category());
+        assert(MessageCategory.Pool == uint8(MessageType.UpdateRestriction).category());
+        assert(MessageCategory.Investment == uint8(MessageType.DepositRequest).category());
+        assert(MessageCategory.Investment == uint8(MessageType.RedeemRequest).category());
+        assert(MessageCategory.Investment == uint8(MessageType.FulfilledDepositRequest).category());
+        assert(MessageCategory.Investment == uint8(MessageType.FulfilledRedeemRequest).category());
+        assert(MessageCategory.Investment == uint8(MessageType.CancelDepositRequest).category());
+        assert(MessageCategory.Investment == uint8(MessageType.CancelRedeemRequest).category());
+        assert(MessageCategory.Investment == uint8(MessageType.FulfilledCancelDepositRequest).category());
+        assert(MessageCategory.Investment == uint8(MessageType.FulfilledCancelRedeemRequest).category());
+    }
+}
+
+// The following tests check that the function composition of deserializing and serializing equals to the identity:
+//       I = deserialize º serialize
+contract TestMessageLibIdentities is Test {
+    using MessageLib for *;
 
     function testMessageProof() public pure {
         MessageLib.MessageProof memory a = MessageLib.MessageProof({hash: bytes32("hash")});

@@ -4,10 +4,10 @@ pragma solidity 0.8.28;
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
-// TODO: update with the latest version.
 enum MessageType {
     /// @dev Placeholder for null message type
     Invalid,
+    // -- Gateway messages 1 - 4
     MessageProof,
     InitiateMessageRecovery,
     DisputeMessageRecovery,
@@ -18,7 +18,7 @@ enum MessageType {
     RecoverTokens,
     // -- Gas messages 8
     UpdateGasPrice,
-    // -- Pool manager messages 9-18
+    // -- Pool manager messages 9 - 18
     RegisterAsset,
     NotifyPool,
     NotifyShareClass,
@@ -29,7 +29,7 @@ enum MessageType {
     UpdateShareClassHook,
     TransferShares,
     UpdateRestriction,
-    // -- Investment manager messages 19-27
+    // -- Investment manager messages 19 - 27
     DepositRequest,
     RedeemRequest,
     FulfilledDepositRequest,
@@ -41,6 +41,16 @@ enum MessageType {
     TriggerRedeemRequest
 }
 
+enum MessageCategory {
+    Invalid,
+    Gateway,
+    Root,
+    Gas,
+    Pool,
+    Investment,
+    Other
+}
+
 library MessageLib {
     using MessageLib for bytes;
     using BytesLib for bytes;
@@ -48,12 +58,30 @@ library MessageLib {
 
     error DeserializationError();
 
-    function messageType(bytes memory _msg) internal pure returns (MessageType) {
-        return MessageType(_msg.toUint8(0));
+    function messageType(bytes memory message) internal pure returns (MessageType) {
+        return MessageType(message.toUint8(0));
     }
 
-    function messageCode(bytes memory _msg) internal pure returns (uint8) {
-        return _msg.toUint8(0);
+    function messageCode(bytes memory message) internal pure returns (uint8) {
+        return message.toUint8(0);
+    }
+
+    function category(uint8 code) internal pure returns (MessageCategory) {
+        if (code == 0) {
+            return MessageCategory.Invalid;
+        } else if (code >= 1 && code <= 4) {
+            return MessageCategory.Gateway;
+        } else if (code >= 5 && code <= 7) {
+            return MessageCategory.Root;
+        } else if (code == 8) {
+            return MessageCategory.Gas;
+        } else if (code >= 9 && code <= 18) {
+            return MessageCategory.Pool;
+        } else if (code >= 19 && code <= 27) {
+            return MessageCategory.Investment;
+        } else {
+            return MessageCategory.Other;
+        }
     }
 
     //---------------------------------------
