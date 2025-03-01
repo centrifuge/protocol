@@ -39,37 +39,7 @@ contract ERC7540VaultFactory is Auth, IERC7540VaultFactory {
     }
 
     /// @inheritdoc IERC7540VaultFactory
-    function newInstantVault(
-        uint64 poolId,
-        bytes16 trancheId,
-        address asset,
-        address tranche,
-        address, /* escrow */
-        address investmentManager,
-        address instantManager,
-        address[] calldata wards_
-    ) public auth returns (address) {
-        InstantDepositVault vault =
-            new InstantDepositVault(poolId, trancheId, asset, tranche, root, investmentManager, instantManager);
-
-        vault.rely(root);
-        uint256 wardsCount = wards_.length;
-        for (uint256 i; i < wardsCount; i++) {
-            vault.rely(wards_[i]);
-        }
-
-        Auth(instantManager).rely(address(vault));
-        vault.deny(address(this));
-        return address(vault);
-    }
-
-    /// @inheritdoc IERC7540VaultFactory
     function denyVault(address vault, address investmentManager) public auth {
         Auth(investmentManager).deny(address(vault));
-    }
-
-    /// @inheritdoc IERC7540VaultFactory
-    function denyInstantVault(address vault, address instantManager) public auth {
-        Auth(instantManager).deny(address(vault));
     }
 }
