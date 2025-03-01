@@ -19,7 +19,6 @@ import {Tranche} from "src/vaults/token/Tranche.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {Gateway} from "src/vaults/gateway/Gateway.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
-import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
 import {Deployer} from "script/vaults/Deployer.sol";
 import {MockSafe} from "test/vaults/mocks/MockSafe.sol";
 

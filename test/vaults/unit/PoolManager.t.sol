@@ -3,14 +3,17 @@ pragma solidity 0.8.28;
 
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
+
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
 import "test/vaults/BaseTest.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IRestrictionManager} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 import {MockHook} from "test/vaults/mocks/MockHook.sol";
 import {RestrictionUpdate} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 
 contract PoolManagerTest is BaseTest {
+    using MessageLib for *;
     using CastLib for *;
 
     // Deployment
@@ -58,7 +61,7 @@ contract PoolManagerTest is BaseTest {
 
     function testHandleInvalidMessage() public {
         vm.expectRevert(bytes("PoolManager/invalid-message"));
-        poolManager.handle(abi.encodePacked(uint8(MessagesLib.Call.Invalid)));
+        poolManager.handle(abi.encodePacked(uint8(0)));
     }
 
     function testAddPool(uint64 poolId) public {
@@ -285,8 +288,7 @@ contract PoolManagerTest is BaseTest {
         assertEq(tranche.balanceOf(address(this)), 0);
 
         // Finally, verify the connector called `adapter.send`
-        bytes memory message =
-            abi.encodePacked(uint8(MessagesLib.Call.TransferTrancheTokens), poolId, trancheId, centChainAddress, amount);
+        bytes memory message = MessageLib.TransferShares(poolId, trancheId, centChainAddress, amount).serialize();
         assertEq(adapter1.sent(message), 1);
     }
 

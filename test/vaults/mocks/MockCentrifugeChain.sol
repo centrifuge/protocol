@@ -4,9 +4,8 @@ pragma solidity 0.8.28;
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 
-import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
 import {RestrictionUpdate} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 import "forge-std/Test.sol";
 
@@ -27,7 +26,8 @@ contract MockCentrifugeChain is Test {
     }
 
     function addAsset(uint128 assetId, address asset) public {
-        bytes memory _message = abi.encodePacked(uint8(MessagesLib.Call.AddAsset), assetId, asset);
+        // TODO: remove me when registerAsset feature is added
+        bytes memory _message = abi.encodePacked(uint8(MessageType.RegisterAsset), assetId, asset);
         execute(_message);
     }
 
@@ -41,7 +41,7 @@ contract MockCentrifugeChain is Test {
             MessageLib.AllowAsset({poolId: poolId, scId: bytes16(0), assetId: assetId}).serialize();
 
         bytes memory _message = abi.encodePacked(
-            uint8(MessagesLib.Call.Batch), uint16(_addPool.length), _addPool, uint16(_allowAsset.length), _allowAsset
+            uint8(MessageType.Batch), uint16(_addPool.length), _addPool, uint16(_allowAsset.length), _allowAsset
         );
         execute(_message);
     }

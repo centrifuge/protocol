@@ -2,10 +2,14 @@
 pragma solidity 0.8.28;
 
 import {MockERC20} from "forge-std/mocks/MockERC20.sol";
+
+import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import "test/vaults/BaseTest.sol";
 
 contract GatewayTest is BaseTest {
+    using MessageLib for *;
     // --- Deployment ----
+
     function testDeployment(address nonWard) public {
         vm.assume(
             nonWard != address(root) && nonWard != address(guardian) && nonWard != address(this)
@@ -39,12 +43,13 @@ contract GatewayTest is BaseTest {
         uint64 poolId = 999;
         uint128 assetId = defaultAssetId + 1;
         MockERC20 newAsset = deployMockERC20("newAsset", "NEW", 18);
-        bytes memory _addPool = abi.encodePacked(uint8(MessagesLib.Call.AddPool), poolId);
-        bytes memory _addAsset = abi.encodePacked(uint8(MessagesLib.Call.AddAsset), assetId, address(newAsset));
-        bytes memory _allowAsset = abi.encodePacked(uint8(MessagesLib.Call.AllowAsset), poolId, bytes16(0), assetId);
+        bytes memory _addPool = MessageLib.NotifyPool(poolId).serialize();
+        // TODO: remove next line when registerAsset feature is supported
+        bytes memory _addAsset = abi.encodePacked(uint8(MessageType.RegisterAsset), assetId, address(newAsset));
+        bytes memory _allowAsset = MessageLib.AllowAsset(poolId, bytes16(0), assetId).serialize();
 
         bytes memory _message = abi.encodePacked(
-            uint8(MessagesLib.Call.Batch),
+            uint8(MessageType.Batch),
             uint16(_addPool.length),
             _addPool,
             uint16(_addAsset.length),
@@ -60,10 +65,9 @@ contract GatewayTest is BaseTest {
     function testBatchedMessageWithLengthProvidedButNoMessageBytes() public {
         uint64 poolId = 999;
         deployMockERC20("newAsset", "NEW", 18);
-        bytes memory _addPool = abi.encodePacked(uint8(MessagesLib.Call.AddPool), poolId);
+        bytes memory _addPool = MessageLib.NotifyPool(poolId).serialize();
 
-        bytes memory _message =
-            abi.encodePacked(uint8(MessagesLib.Call.Batch), uint16(_addPool.length), _addPool, uint16(8));
+        bytes memory _message = abi.encodePacked(uint8(MessageType.Batch), uint16(_addPool.length), _addPool, uint16(8));
 
         vm.expectRevert(bytes("Gateway/corrupted-message"));
         centrifugeChain.execute(_message);
@@ -73,17 +77,17 @@ contract GatewayTest is BaseTest {
         uint64 poolId = 999;
         uint128 assetId = defaultAssetId + 1;
         MockERC20 newAsset = deployMockERC20("newAsset", "NEW", 18);
-        bytes memory _addPool = abi.encodePacked(uint8(MessagesLib.Call.AddPool), poolId);
-
-        bytes memory _addAsset = abi.encodePacked(uint8(MessagesLib.Call.AddAsset), assetId, address(newAsset));
-        bytes memory _allowAsset = abi.encodePacked(uint8(MessagesLib.Call.AllowAsset), poolId, bytes16(0), assetId);
+        bytes memory _addPool = MessageLib.NotifyPool(poolId).serialize();
+        // TODO: remove next line when registerAsset feature is supported
+        bytes memory _addAsset = abi.encodePacked(uint8(MessageType.RegisterAsset), assetId, address(newAsset));
+        bytes memory _allowAsset = MessageLib.AllowAsset(poolId, bytes16(0), assetId).serialize();
 
         bytes memory _addAndAllowAssetMessage = abi.encodePacked(
-            uint8(MessagesLib.Call.Batch), uint16(_addAsset.length), _addAsset, uint16(_allowAsset.length), _allowAsset
+            uint8(MessageType.Batch), uint16(_addAsset.length), _addAsset, uint16(_allowAsset.length), _allowAsset
         );
 
         bytes memory _message = abi.encodePacked(
-            uint8(MessagesLib.Call.Batch),
+            uint8(MessageType.Batch),
             uint16(_addPool.length),
             _addPool,
             uint16(_addAndAllowAssetMessage.length),
