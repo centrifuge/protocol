@@ -56,7 +56,7 @@ library MessageLib {
     using BytesLib for bytes;
     using CastLib for *;
 
-    error DeserializationError();
+    error UnknownMessageType();
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -93,7 +93,7 @@ library MessageLib {
     }
 
     function deserializeMessageProof(bytes memory data) internal pure returns (MessageProof memory) {
-        require(messageType(data) == MessageType.MessageProof, DeserializationError());
+        require(messageType(data) == MessageType.MessageProof, UnknownMessageType());
         return MessageProof({hash: data.toBytes32(1)});
     }
 
@@ -115,7 +115,7 @@ library MessageLib {
         pure
         returns (InitiateMessageRecovery memory)
     {
-        require(messageType(data) == MessageType.InitiateMessageRecovery, DeserializationError());
+        require(messageType(data) == MessageType.InitiateMessageRecovery, UnknownMessageType());
         return InitiateMessageRecovery({hash: data.toBytes32(1), adapter: data.toBytes32(33)});
     }
 
@@ -137,7 +137,7 @@ library MessageLib {
         pure
         returns (DisputeMessageRecovery memory)
     {
-        require(messageType(data) == MessageType.DisputeMessageRecovery, DeserializationError());
+        require(messageType(data) == MessageType.DisputeMessageRecovery, UnknownMessageType());
         return DisputeMessageRecovery({hash: data.toBytes32(1), adapter: data.toBytes32(33)});
     }
 
@@ -154,7 +154,7 @@ library MessageLib {
     }
 
     function deserializeScheduleUpgrade(bytes memory data) internal pure returns (ScheduleUpgrade memory) {
-        require(messageType(data) == MessageType.ScheduleUpgrade, DeserializationError());
+        require(messageType(data) == MessageType.ScheduleUpgrade, UnknownMessageType());
         return ScheduleUpgrade({target: data.toBytes32(1)});
     }
 
@@ -171,7 +171,7 @@ library MessageLib {
     }
 
     function deserializeCancelUpgrade(bytes memory data) internal pure returns (CancelUpgrade memory) {
-        require(messageType(data) == MessageType.CancelUpgrade, DeserializationError());
+        require(messageType(data) == MessageType.CancelUpgrade, UnknownMessageType());
         return CancelUpgrade({target: data.toBytes32(1)});
     }
 
@@ -191,7 +191,7 @@ library MessageLib {
     }
 
     function deserializeRecoverTokens(bytes memory data) internal pure returns (RecoverTokens memory) {
-        require(messageType(data) == MessageType.RecoverTokens, DeserializationError());
+        require(messageType(data) == MessageType.RecoverTokens, UnknownMessageType());
         return RecoverTokens({
             target: data.toBytes32(1),
             token: data.toBytes32(33),
@@ -214,7 +214,7 @@ library MessageLib {
     }
 
     function deserializeUpdateGasPrice(bytes memory data) internal pure returns (UpdateGasPrice memory) {
-        require(messageType(data) == MessageType.UpdateGasPrice, DeserializationError());
+        require(messageType(data) == MessageType.UpdateGasPrice, UnknownMessageType());
         return UpdateGasPrice({price: data.toUint128(1), timestamp: data.toUint64(17)});
     }
 
@@ -234,7 +234,7 @@ library MessageLib {
     }
 
     function deserializeRegisterAsset(bytes memory data) internal pure returns (RegisterAsset memory) {
-        require(messageType(data) == MessageType.RegisterAsset, DeserializationError());
+        require(messageType(data) == MessageType.RegisterAsset, UnknownMessageType());
         return RegisterAsset({
             assetId: data.toUint128(1),
             name: data.slice(17, 128).bytes128ToString(),
@@ -258,7 +258,7 @@ library MessageLib {
     }
 
     function deserializeNotifyPool(bytes memory data) internal pure returns (NotifyPool memory) {
-        require(messageType(data) == MessageType.NotifyPool, DeserializationError());
+        require(messageType(data) == MessageType.NotifyPool, UnknownMessageType());
         return NotifyPool({poolId: data.toUint64(1)});
     }
 
@@ -280,7 +280,7 @@ library MessageLib {
     }
 
     function deserializeNotifyShareClass(bytes memory data) internal pure returns (NotifyShareClass memory) {
-        require(messageType(data) == MessageType.NotifyShareClass, DeserializationError());
+        require(messageType(data) == MessageType.NotifyShareClass, UnknownMessageType());
         return NotifyShareClass({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
@@ -314,7 +314,7 @@ library MessageLib {
     }
 
     function deserializeAllowAsset(bytes memory data) internal pure returns (AllowAsset memory) {
-        require(messageType(data) == MessageType.AllowAsset, DeserializationError());
+        require(messageType(data) == MessageType.AllowAsset, UnknownMessageType());
         return AllowAsset({poolId: data.toUint64(1), scId: data.toBytes16(9), assetId: data.toUint128(25)});
     }
 
@@ -333,7 +333,7 @@ library MessageLib {
     }
 
     function deserializeDisallowAsset(bytes memory data) internal pure returns (DisallowAsset memory) {
-        require(messageType(data) == MessageType.DisallowAsset, DeserializationError());
+        require(messageType(data) == MessageType.DisallowAsset, UnknownMessageType());
         return DisallowAsset({poolId: data.toUint64(1), scId: data.toBytes16(9), assetId: data.toUint128(25)});
     }
 
@@ -354,7 +354,7 @@ library MessageLib {
     }
 
     function deserializeUpdateShareClassPrice(bytes memory data) internal pure returns (UpdateShareClassPrice memory) {
-        require(messageType(data) == MessageType.UpdateShareClassPrice, DeserializationError());
+        require(messageType(data) == MessageType.UpdateShareClassPrice, UnknownMessageType());
         return UpdateShareClassPrice({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
@@ -384,7 +384,7 @@ library MessageLib {
         pure
         returns (UpdateShareClassMetadata memory)
     {
-        require(messageType(data) == MessageType.UpdateShareClassMetadata, DeserializationError());
+        require(messageType(data) == MessageType.UpdateShareClassMetadata, UnknownMessageType());
         return UpdateShareClassMetadata({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
@@ -410,7 +410,7 @@ library MessageLib {
     }
 
     function deserializeUpdateShareClassHook(bytes memory data) internal pure returns (UpdateShareClassHook memory) {
-        require(messageType(data) == MessageType.UpdateShareClassHook, DeserializationError());
+        require(messageType(data) == MessageType.UpdateShareClassHook, UnknownMessageType());
         return UpdateShareClassHook({poolId: data.toUint64(1), scId: data.toBytes16(9), hook: data.toBytes32(25)});
     }
 
@@ -430,7 +430,7 @@ library MessageLib {
     }
 
     function deserializeTransferShares(bytes memory data) internal pure returns (TransferShares memory) {
-        require(messageType(data) == MessageType.TransferShares, DeserializationError());
+        require(messageType(data) == MessageType.TransferShares, UnknownMessageType());
         return TransferShares({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
@@ -454,7 +454,7 @@ library MessageLib {
     }
 
     function deserializeUpdateRestriction(bytes memory data) internal pure returns (UpdateRestriction memory) {
-        require(messageType(data) == MessageType.UpdateRestriction, DeserializationError());
+        require(messageType(data) == MessageType.UpdateRestriction, UnknownMessageType());
         return UpdateRestriction({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
@@ -479,7 +479,7 @@ library MessageLib {
     }
 
     function deserializeDepositRequest(bytes memory data) internal pure returns (DepositRequest memory) {
-        require(messageType(data) == MessageType.DepositRequest, DeserializationError());
+        require(messageType(data) == MessageType.DepositRequest, UnknownMessageType());
         return DepositRequest({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
@@ -506,7 +506,7 @@ library MessageLib {
     }
 
     function deserializeRedeemRequest(bytes memory data) internal pure returns (RedeemRequest memory) {
-        require(messageType(data) == MessageType.RedeemRequest, DeserializationError());
+        require(messageType(data) == MessageType.RedeemRequest, UnknownMessageType());
         return RedeemRequest({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
@@ -532,7 +532,7 @@ library MessageLib {
     }
 
     function deserializeCancelDepositRequest(bytes memory data) internal pure returns (CancelDepositRequest memory) {
-        require(messageType(data) == MessageType.CancelDepositRequest, DeserializationError());
+        require(messageType(data) == MessageType.CancelDepositRequest, UnknownMessageType());
         return CancelDepositRequest({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
@@ -557,7 +557,7 @@ library MessageLib {
     }
 
     function deserializeCancelRedeemRequest(bytes memory data) internal pure returns (CancelRedeemRequest memory) {
-        require(messageType(data) == MessageType.CancelRedeemRequest, DeserializationError());
+        require(messageType(data) == MessageType.CancelRedeemRequest, UnknownMessageType());
         return CancelRedeemRequest({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
@@ -588,7 +588,7 @@ library MessageLib {
         pure
         returns (FulfilledDepositRequest memory)
     {
-        require(messageType(data) == MessageType.FulfilledDepositRequest, DeserializationError());
+        require(messageType(data) == MessageType.FulfilledDepositRequest, UnknownMessageType());
         return FulfilledDepositRequest({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
@@ -623,7 +623,7 @@ library MessageLib {
         pure
         returns (FulfilledRedeemRequest memory)
     {
-        require(messageType(data) == MessageType.FulfilledRedeemRequest, DeserializationError());
+        require(messageType(data) == MessageType.FulfilledRedeemRequest, UnknownMessageType());
         return FulfilledRedeemRequest({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
@@ -657,7 +657,7 @@ library MessageLib {
         pure
         returns (FulfilledCancelDepositRequest memory)
     {
-        require(messageType(data) == MessageType.FulfilledCancelDepositRequest, DeserializationError());
+        require(messageType(data) == MessageType.FulfilledCancelDepositRequest, UnknownMessageType());
         return FulfilledCancelDepositRequest({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
@@ -690,7 +690,7 @@ library MessageLib {
         pure
         returns (FulfilledCancelRedeemRequest memory)
     {
-        require(messageType(data) == MessageType.FulfilledCancelRedeemRequest, DeserializationError());
+        require(messageType(data) == MessageType.FulfilledCancelRedeemRequest, UnknownMessageType());
         return FulfilledCancelRedeemRequest({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
@@ -719,7 +719,7 @@ library MessageLib {
     }
 
     function deserializeTriggerRedeemRequest(bytes memory data) internal pure returns (TriggerRedeemRequest memory) {
-        require(messageType(data) == MessageType.TriggerRedeemRequest, DeserializationError());
+        require(messageType(data) == MessageType.TriggerRedeemRequest, UnknownMessageType());
         return TriggerRedeemRequest({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
