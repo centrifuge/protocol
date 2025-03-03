@@ -365,6 +365,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     /// @inheritdoc IShareClassManager
     function claimDeposit(PoolId poolId, ShareClassId shareClassId_, bytes32 investor, AssetId depositAssetId)
         external
+        auth
         returns (uint128 payoutShareAmount, uint128 paymentAssetAmount)
     {
         return claimDepositUntilEpoch(
@@ -379,7 +380,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         bytes32 investor,
         AssetId depositAssetId,
         uint32 endEpochId
-    ) public returns (uint128 payoutShareAmount, uint128 paymentAssetAmount) {
+    ) public auth returns (uint128 payoutShareAmount, uint128 paymentAssetAmount) {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
         require(endEpochId < epochId[poolId], EpochNotFound());
 
@@ -431,6 +432,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     /// @inheritdoc IShareClassManager
     function claimRedeem(PoolId poolId, ShareClassId shareClassId_, bytes32 investor, AssetId payoutAssetId)
         external
+        auth
         returns (uint128 payoutAssetAmount, uint128 paymentShareAmount)
     {
         return claimRedeemUntilEpoch(
@@ -445,7 +447,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         bytes32 investor,
         AssetId payoutAssetId,
         uint32 endEpochId
-    ) public returns (uint128 payoutAssetAmount, uint128 paymentShareAmount) {
+    ) public auth returns (uint128 payoutAssetAmount, uint128 paymentShareAmount) {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
         require(endEpochId < epochId[poolId], EpochNotFound());
 
