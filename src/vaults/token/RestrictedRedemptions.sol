@@ -5,11 +5,13 @@ import {Auth} from "src/misc/Auth.sol";
 import {BitmapLib} from "src/misc/libraries/BitmapLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
+import {UpdateRestrictionType, MessageLib} from "src/common/libraries/MessageLib.sol";
+
 import {IRoot} from "src/vaults/interfaces/IRoot.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IHook, HookData} from "src/vaults/interfaces/token/IHook.sol";
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
-import {RestrictionUpdate, IRestrictionManager} from "src/vaults/interfaces/token/IRestrictionManager.sol";
+import {IRestrictionManager} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 
 /// @title  Restricted Redemptions
 /// @notice Hook implementation that:
@@ -23,6 +25,7 @@ import {RestrictionUpdate, IRestrictionManager} from "src/vaults/interfaces/toke
 contract RestrictedRedemptions is Auth, IRestrictionManager, IHook {
     using BitmapLib for *;
     using BytesLib for bytes;
+    using MessageLib for *;
 
     /// @dev Least significant bit
     uint8 public constant FREEZE_BIT = 0;
@@ -91,13 +94,21 @@ contract RestrictedRedemptions is Auth, IRestrictionManager, IHook {
 
     // --- Incoming message handling ---
     /// @inheritdoc IHook
-    function updateRestriction(address token, bytes memory update) external auth {
-        RestrictionUpdate updateId = RestrictionUpdate(update.toUint8(0));
+    function updateRestriction(address token, bytes memory payload) external auth {
+        UpdateRestrictionType updateId = payload.updateRestrictionType();
 
-        if (updateId == RestrictionUpdate.UpdateMember) updateMember(token, update.toAddress(1), update.toUint64(33));
-        else if (updateId == RestrictionUpdate.Freeze) freeze(token, update.toAddress(1));
-        else if (updateId == RestrictionUpdate.Unfreeze) unfreeze(token, update.toAddress(1));
-        else revert("RestrictedRedemptions/invalid-update");
+        if (updateId == UpdateRestrictionType.Member) {
+            MessageLib.UpdateRestrictionMember memory m = payload.deserializeUpdateRestrictionMember();
+            updateMember(token, address(bytes20(m.user)), m.validUntil);
+        } else if (updateId == UpdateRestrictionType.Freeze) {
+            MessageLib.UpdateRestrictionFreeze memory m = payload.deserializeUpdateRestrictionFreeze();
+            freeze(token, address(bytes20(m.user)));
+        } else if (updateId == UpdateRestrictionType.Unfreeze) {
+            MessageLib.UpdateRestrictionUnfreeze memory m = payload.deserializeUpdateRestrictionUnfreeze();
+            unfreeze(token, address(bytes20(m.user)));
+        } else {
+            revert("RestrictedRedemptions/invalid-update");
+        }
     }
 
     /// @inheritdoc IRestrictionManager

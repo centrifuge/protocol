@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
-import {RestrictionUpdate} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 import {Gateway} from "src/vaults/gateway/Gateway.sol";
 import {MockCentrifugeChain} from "test/vaults/mocks/MockCentrifugeChain.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
@@ -36,6 +36,7 @@ interface HookLike {
 
 contract DeployTest is Test, Deployer {
     using MathLib for uint256;
+    using MessageLib for *;
 
     uint8 constant PRICE_DECIMALS = 18;
 
@@ -166,9 +167,7 @@ contract DeployTest is Test, Deployer {
         vm.prank(address(gateway));
 
         poolManager.updateRestriction(
-            poolId,
-            trancheId,
-            abi.encodePacked(uint8(RestrictionUpdate.UpdateMember), bytes32(bytes20(self)), validUntil)
+            poolId, trancheId, MessageLib.UpdateRestrictionMember(bytes32(bytes20(self)), validUntil).serialize()
         );
 
         depositMint(poolId, trancheId, price, amount, vault);

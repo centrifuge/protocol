@@ -10,7 +10,6 @@ import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import "test/vaults/BaseTest.sol";
 import {IRestrictionManager} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 import {MockHook} from "test/vaults/mocks/MockHook.sol";
-import {RestrictionUpdate} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 
 contract PoolManagerTest is BaseTest {
     using MessageLib for *;
@@ -468,7 +467,7 @@ contract PoolManagerTest is BaseTest {
         bytes16 trancheId = vault.trancheId();
         ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
 
-        bytes memory update = abi.encodePacked(uint8(RestrictionUpdate.Freeze), makeAddr("User").toBytes32());
+        bytes memory update = MessageLib.UpdateRestrictionFreeze(makeAddr("User").toBytes32()).serialize();
 
         vm.expectRevert(bytes("PoolManager/unknown-token"));
         poolManager.updateRestriction(100, bytes16(bytes("100")), update);
