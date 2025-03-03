@@ -58,12 +58,32 @@ library MessageLib {
 
     error UnknownMessageType();
 
+    // Hardcoded message lenghts                 0---1---2---3---4---5---6---7---8---9---10--11--12--13--14--15--
+    bytes32 constant MESSAGE_LENGTHS_00_15 = hex"000000200040004000000020002000800018aaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+    // Hardcoded message lengths                 16--17--18--19--20--21--22--23--24--25--26--27--
+    bytes32 constant MESSAGE_LENGTHS_16_31 = hex"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
     }
 
     function messageCode(bytes memory message) internal pure returns (uint8) {
         return message.toUint8(0);
+    }
+
+    function length(MessageType kind) internal pure returns (uint16) {
+        /*
+        if (code <= 15) {
+            uint8 index = code * 2;
+            return uint16(uint8(MESSAGE_LENGTHS_00_15[index])) << 8 + uint8(MESSAGE_LENGTHS_00_15[index + 1]);
+        } else if (code <= uint8(type(MessageType).max)) {
+            uint8 index = code * 2 - 16;
+            return uint16(uint8(MESSAGE_LENGTHS_00_15[index])) << 8 + uint8(MESSAGE_LENGTHS_00_15[index + 1]);
+        } else {
+            revert UnknownMessageType();
+        }
+        */
     }
 
     function category(uint8 code) internal pure returns (MessageCategory) {
