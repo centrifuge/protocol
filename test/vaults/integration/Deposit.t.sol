@@ -10,10 +10,19 @@ contract DepositTest is BaseTest {
     using CastLib for *;
 
     /// forge-config: default.isolate = true
-    function testDepositMint(uint256 amount) public {
+    function testDepositMint() public {
+        _testDepositMint(4, true);
+    }
+
+    /// forge-config: default.isolate = true
+    function testDepositMintFuzz(uint256 amount) public {
+        vm.assume(amount % 2 == 0);
+        _testDepositMint(amount, false);
+    }
+
+    function _testDepositMint(uint256 amount, bool snap) internal {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
         amount = uint128(bound(amount, 4, MAX_UINT128));
-        vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
 
@@ -68,9 +77,13 @@ contract DepositTest is BaseTest {
         // success
         centrifugeChain.allowAsset(vault.poolId(), defaultAssetId);
         erc20.approve(vault_, amount);
-        snapStart("ERC7540Vault_requestDeposit");
+        if (snap) {
+            snapStart("ERC7540Vault_requestDeposit");
+        }
         vault.requestDeposit(amount, self, self);
-        snapEnd();
+        if (snap) {
+            snapEnd();
+        }
 
         // fail: no asset left
         vm.expectRevert(bytes("ERC7540Vault/insufficient-balance"));
@@ -84,11 +97,15 @@ contract DepositTest is BaseTest {
 
         // trigger executed collectInvest
         assertApproxEqAbs(shares, amount / 2, 2);
-        snapStart("InvestmentManager_fulfillDepositRequest");
+        if (snap) {
+            snapStart("InvestmentManager_fulfillDepositRequest");
+        }
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), _assetId, uint128(amount), shares
         );
-        snapEnd();
+        if (snap) {
+            snapEnd();
+        }
 
         // assert deposit & mint values adjusted
         assertEq(vault.maxMint(self), shares);
@@ -143,7 +160,7 @@ contract DepositTest is BaseTest {
 
         assertEq(address(gateway).balance, GATEWAY_INITIAL_BALACE);
 
-        testDepositMint(amount);
+        _testDepositMint(amount, false);
 
         assertEq(address(gateway).balance, GATEWAY_INITIAL_BALACE - gasToBePaid);
     }

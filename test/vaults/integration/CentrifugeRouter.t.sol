@@ -19,10 +19,19 @@ contract CentrifugeRouterTest is BaseTest {
     bytes constant PAYLOAD_FOR_GAS_ESTIMATION = "irrelevant_value";
 
     /// forge-config: default.isolate = true
-    function testCFGRouterDeposit(uint256 amount) public {
+    function testCFGRouterDeposit() public {
+        _testCFGRouterDeposit(4, true);
+    }
+
+    /// forge-config: default.isolate = true
+    function testCFGRouterDepositFuzz(uint256 amount) public {
+        vm.assume(amount % 2 == 0);
+        _testCFGRouterDeposit(amount, false);
+    }
+
+    function _testCFGRouterDeposit(uint256 amount, bool snap) internal {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
         amount = uint128(bound(amount, 4, MAX_UINT128));
-        vm.assume(amount % 2 == 0);
 
         address vault_ = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
@@ -53,9 +62,13 @@ contract CentrifugeRouterTest is BaseTest {
         vm.expectRevert(bytes("CentrifugeRouter/invalid-owner"));
         router.requestDeposit{value: gas}(vault_, amount, self, self, gas);
 
-        snapStart("CentrifugeRouter_requestDeposit");
+        if (snap) {
+            snapStart("CentrifugeRouter_requestDeposit");
+        }
         router.requestDeposit{value: gas}(vault_, amount, self, self, gas);
-        snapEnd();
+        if (snap) {
+            snapEnd();
+        }
 
         assertEq(address(gateway).balance, GATEWAY_INITIAL_BALACE + GAS_BUFFER);
         for (uint8 i; i < testAdapters.length; i++) {
@@ -77,9 +90,13 @@ contract CentrifugeRouterTest is BaseTest {
         ITranche tranche = ITranche(address(vault.share()));
         assertEq(tranche.balanceOf(address(escrow)), tranchePayout);
 
-        snapStart("CentrifugeRouter_claimDeposit");
+        if (snap) {
+            snapStart("CentrifugeRouter_claimDeposit");
+        }
         router.claimDeposit(vault_, self, self);
-        snapEnd();
+        if (snap) {
+            snapEnd();
+        }
         assertApproxEqAbs(tranche.balanceOf(self), tranchePayout, 1);
         assertApproxEqAbs(tranche.balanceOf(self), tranchePayout, 1);
         assertApproxEqAbs(tranche.balanceOf(address(escrow)), 0, 1);
@@ -154,9 +171,18 @@ contract CentrifugeRouterTest is BaseTest {
     }
 
     /// forge-config: default.isolate = true
-    function testRouterRedeem(uint256 amount) public {
-        amount = uint128(bound(amount, 4, MAX_UINT128));
+    function testRouterRedeem() public {
+        _testRouterRedeem(4, true);
+    }
+
+    /// forge-config: default.isolate = true
+    function testRouterRedeemFuzz(uint256 amount) public {
         vm.assume(amount % 2 == 0);
+        _testRouterRedeem(amount, false);
+    }
+
+    function _testRouterRedeem(uint256 amount, bool snap) internal {
+        amount = uint128(bound(amount, 4, MAX_UINT128));
 
         // deposit
         address vault_ = deploySimpleVault();
@@ -165,9 +191,13 @@ contract CentrifugeRouterTest is BaseTest {
         erc20.mint(self, amount);
         erc20.approve(vault_, amount);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
-        snapStart("CentrifugeRouter_enable");
+        if (snap) {
+            snapStart("CentrifugeRouter_enable");
+        }
         router.enable(vault_);
-        snapEnd();
+        if (snap) {
+            snapEnd();
+        }
 
         uint256 fuel = estimateGas();
         router.requestDeposit{value: fuel}(vault_, amount, self, self, fuel);
@@ -185,9 +215,13 @@ contract CentrifugeRouterTest is BaseTest {
         router.requestRedeem{value: fuel}(vault_, tranchePayout, self, self, fuel);
 
         // redeem
-        snapStart("CentrifugeRouter_requestRedeem");
+        if (snap) {
+            snapStart("CentrifugeRouter_requestRedeem");
+        }
         router.requestRedeem{value: fuel}(vault_, tranchePayout, self, self, fuel);
-        snapEnd();
+        if (snap) {
+            snapEnd();
+        }
         (uint128 assetPayout) = fulfillRedeemRequest(vault, assetId, tranchePayout, self);
         assertApproxEqAbs(tranche.balanceOf(self), 0, 1);
         assertApproxEqAbs(tranche.balanceOf(address(escrow)), 0, 1);
@@ -285,9 +319,18 @@ contract CentrifugeRouterTest is BaseTest {
     }
 
     /// forge-config: default.isolate = true
-    function testMulticallingApproveVaultAndExecuteLockedDepositRequest(uint256 amount) public {
-        amount = uint128(bound(amount, 4, MAX_UINT128));
+    function testMulticallingApproveVaultAndExecuteLockedDepositRequest() public {
+        _testMulticallingApproveVaultAndExecuteLockedDepositRequest(4, true);
+    }
+
+    /// forge-config: default.isolate = true
+    function testMulticallingApproveVaultAndExecuteLockedDepositRequestFuzz(uint256 amount) public {
         vm.assume(amount % 2 == 0);
+        _testMulticallingApproveVaultAndExecuteLockedDepositRequest(amount, false);
+    }
+
+    function _testMulticallingApproveVaultAndExecuteLockedDepositRequest(uint256 amount, bool snap) internal {
+        amount = uint128(bound(amount, 4, MAX_UINT128));
 
         address vault_ = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
@@ -297,9 +340,13 @@ contract CentrifugeRouterTest is BaseTest {
         erc20.approve(address(router), amount);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
         router.enable(address(vault_));
-        snapStart("CentrifugeRouter_lockDepositRequest");
+        if (snap) {
+            snapStart("CentrifugeRouter_lockDepositRequest");
+        }
         router.lockDepositRequest(vault_, amount, self, self);
-        snapEnd();
+        if (snap) {
+            snapEnd();
+        }
 
         // multicall
         uint256 fuel = estimateGas();
