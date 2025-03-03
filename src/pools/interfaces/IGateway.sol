@@ -42,8 +42,8 @@ interface IGateway {
         ShareClassId scId,
         AssetId assetId,
         bytes32 investor,
-        uint128 shares,
-        uint128 investedAmount
+        uint128 shareAmount,
+        uint128 assetAmount
     ) external;
 
     /// @notice Creates and send the message
@@ -52,8 +52,8 @@ interface IGateway {
         ShareClassId scId,
         AssetId assetId,
         bytes32 investor,
-        uint128 shares,
-        uint128 investedAmount
+        uint128 shareAmount,
+        uint128 assetAmount
     ) external;
 
     /// @notice Creates and send the message

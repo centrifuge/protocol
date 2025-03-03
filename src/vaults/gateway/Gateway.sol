@@ -7,7 +7,8 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
-import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
+import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+
 import {IGateway, IMessageHandler} from "src/vaults/interfaces/gateway/IGateway.sol";
 import {IRoot} from "src/vaults/interfaces/IRoot.sol";
 import {IGasService} from "src/vaults/interfaces/gateway/IGasService.sol";
@@ -23,6 +24,7 @@ import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 contract Gateway is Auth, IGateway, IRecoverable {
     using ArrayLib for uint16[8];
     using BytesLib for bytes;
+    using MessageLib for *;
     using MathLib for uint256;
 
     uint8 public constant MAX_ADAPTER_COUNT = 8;
@@ -113,7 +115,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
     /// @inheritdoc IGateway
     function file(bytes32 what, uint8 data1, address data2) public auth {
         if (what == "message") {
-            require(data1 > uint8(type(MessagesLib.Call).max), "Gateway/hardcoded-message-id");
+            require(data1 > uint8(type(MessageType).max), "Gateway/hardcoded-message-id");
             messageHandlers[data1] = data2;
         } else {
             revert("Gateway/file-unrecognized-param");
@@ -147,17 +149,17 @@ contract Gateway is Auth, IGateway, IRecoverable {
     function _handle(bytes calldata payload, address adapter_, bool isRecovery) internal {
         Adapter memory adapter = _activeAdapters[adapter_];
         require(adapter.id != 0, "Gateway/invalid-adapter");
-        uint8 call = payload.toUint8(0);
+        uint8 code = payload.messageCode();
         if (
-            call == uint8(MessagesLib.Call.InitiateMessageRecovery)
-                || call == uint8(MessagesLib.Call.DisputeMessageRecovery)
+            code == uint8(MessageType.InitiateMessageRecovery)
+                || code == uint8(MessageType.DisputeMessageRecovery)
         ) {
             require(!isRecovery, "Gateway/no-recursion");
             require(adapters.length > 1, "Gateway/no-recovery-with-one-adapter-allowed");
             return _handleRecovery(payload);
         }
 
-        bool isMessageProof = call == uint8(MessagesLib.Call.MessageProof);
+        bool isMessageProof = code == uint8(MessageType.MessageProof);
         if (adapter.quorum == 1 && !isMessageProof) {
             // Special case for gas efficiency
             _dispatch(payload, false);
@@ -169,7 +171,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
         bytes32 messageHash;
         if (isMessageProof) {
             require(isRecovery || adapter.id != PRIMARY_ADAPTER_ID, "Gateway/non-proof-adapter");
-            messageHash = payload.toBytes32(1);
+            messageHash = payload.deserializeMessageProof().hash;
             emit ProcessProof(messageHash, adapter_);
         } else {
             require(isRecovery || adapter.id == PRIMARY_ADAPTER_ID, "Gateway/non-message-adapter");
@@ -239,9 +241,9 @@ contract Gateway is Auth, IGateway, IRecoverable {
             manager = address(root);
         } else if (id == 8) {
             manager = address(gasService);
-        } else if (id >= 9 && id <= 19) {
+        } else if (id >= 9 && id <= 18) {
             manager = poolManager;
-        } else if (id >= 20 && id <= 28) {
+        } else if (id >= 19 && id <= 27) {
             manager = investmentManager;
         } else {
             // Dynamic path for other managers, to be able to easily
@@ -253,16 +255,19 @@ contract Gateway is Auth, IGateway, IRecoverable {
         IMessageHandler(manager).handle(message);
     }
 
-    function _handleRecovery(bytes memory payload) internal {
-        bytes32 messageHash = payload.toBytes32(1);
-        address adapter = payload.toAddress(33);
+    function _handleRecovery(bytes memory message) internal {
+        MessageType kind = message.messageType();
 
-        if (MessagesLib.messageType(payload) == MessagesLib.Call.InitiateMessageRecovery) {
+        if (kind == MessageType.InitiateMessageRecovery) {
+            MessageLib.InitiateMessageRecovery memory m = message.deserializeInitiateMessageRecovery();
+            address adapter = address(bytes20(m.adapter));
             require(_activeAdapters[adapter].id != 0, "Gateway/invalid-adapter");
-            recoveries[adapter][messageHash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
-            emit InitiateMessageRecovery(messageHash, adapter);
-        } else if (MessagesLib.messageType(payload) == MessagesLib.Call.DisputeMessageRecovery) {
-            return _disputeMessageRecovery(adapter, messageHash);
+            recoveries[adapter][m.hash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
+            emit InitiateMessageRecovery(m.hash, adapter);
+        }
+        else if (kind == MessageType.DisputeMessageRecovery) {
+            MessageLib.DisputeMessageRecovery memory m = message.deserializeDisputeMessageRecovery();
+            return _disputeMessageRecovery(address(bytes20(m.adapter)), m.hash);
         }
     }
 
@@ -291,11 +296,11 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     // --- Outgoing ---
     /// @inheritdoc IGateway
-    function send(bytes calldata message, address source) public payable pauseable {
+    function send(uint32 /*chainId*/, bytes calldata message, address source) public payable pauseable {
         bool isManager = msg.sender == investmentManager || msg.sender == poolManager;
         require(isManager || msg.sender == messageHandlers[message.toUint8(0)], "Gateway/invalid-manager");
 
-        bytes memory proof = abi.encodePacked(uint8(MessagesLib.Call.MessageProof), keccak256(message));
+        bytes memory proof = MessageLib.MessageProof({hash: keccak256(message)}).serialize();
 
         uint256 numAdapters = adapters.length;
         require(numAdapters != 0, "Gateway/not-initialized");
@@ -351,7 +356,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
     // --- Helpers ---
     /// @inheritdoc IGateway
     function estimate(bytes calldata payload) external view returns (uint256[] memory perAdapter, uint256 total) {
-        bytes memory proof = abi.encodePacked(uint8(MessagesLib.Call.MessageProof), keccak256(payload));
+        bytes memory proof = MessageLib.MessageProof({hash: keccak256(payload)}).serialize();
         uint256 messageCost = gasService.estimate(payload);
         uint256 proofCost = gasService.estimate(proof);
         perAdapter = new uint256[](adapters.length);

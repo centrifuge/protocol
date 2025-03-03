@@ -127,10 +127,10 @@ contract TestMainMethodsChecks is TestCommon {
         poolManager.handleRegisterAsset(AssetId.wrap(0), "", "", 0);
 
         vm.expectRevert(IPoolManagerHandler.NotGateway.selector);
-        poolManager.handleRequestDeposit(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0), 0);
+        poolManager.handleDepositRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0), 0);
 
         vm.expectRevert(IPoolManagerHandler.NotGateway.selector);
-        poolManager.handleRequestRedeem(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0), 0);
+        poolManager.handleRedeemRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0), 0);
 
         vm.expectRevert(IPoolManagerHandler.NotGateway.selector);
         poolManager.handleCancelDepositRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));

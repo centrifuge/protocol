@@ -2,10 +2,12 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
-import {IGasService} from "src/vaults/interfaces/gateway/IGasService.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
-import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
+
+import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+
+import {IGasService} from "src/vaults/interfaces/gateway/IGasService.sol";
 
 /// @title  GasService
 /// @notice This is a utility contract used in calculations of the
@@ -15,6 +17,7 @@ contract GasService is IGasService, Auth {
     using MathLib for uint64;
     using MathLib for uint256;
     using BytesLib for bytes;
+    using MessageLib for *;
 
     /// @dev Prices are fixed-point integers with 18 decimals
     uint256 internal constant PRICE_DENOMINATOR = 10 ** 18;
@@ -49,10 +52,11 @@ contract GasService is IGasService, Auth {
     /// --- Incoming message handling ---
     /// @inheritdoc IGasService
     function handle(bytes calldata message) public auth {
-        MessagesLib.Call call = MessagesLib.messageType(message);
+        MessageType kind = MessageLib.messageType(message);
 
-        if (call == MessagesLib.Call.UpdateCentrifugeGasPrice) {
-            updateGasPrice(message.toUint128(1), message.toUint64(17));
+        if (kind == MessageType.UpdateGasPrice) {
+            MessageLib.UpdateGasPrice memory m = message.deserializeUpdateGasPrice();
+            updateGasPrice(m.price, m.timestamp);
         } else {
             revert("GasService/invalid-message");
         }
@@ -79,8 +83,8 @@ contract GasService is IGasService, Auth {
     /// @inheritdoc IGasService
     function estimate(bytes calldata payload) public view returns (uint256) {
         uint256 totalCost;
-        uint8 call = payload.toUint8(0);
-        if (call == uint8(MessagesLib.Call.MessageProof)) {
+        uint8 code = payload.messageCode();
+        if (code == uint8(MessageType.MessageProof)) {
             totalCost = proofCost.mulDiv(gasPrice, PRICE_DENOMINATOR, MathLib.Rounding.Up);
         } else {
             totalCost = messageCost.mulDiv(gasPrice, PRICE_DENOMINATOR, MathLib.Rounding.Up);

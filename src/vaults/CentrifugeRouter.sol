@@ -205,7 +205,7 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
     /// @inheritdoc ICentrifugeRouter
     function transferTrancheTokens(
         address vault,
-        uint64 chainId,
+        uint32 chainId,
         bytes32 recipient,
         uint128 amount,
         uint256 topUpAmount
@@ -221,7 +221,7 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
     /// @inheritdoc ICentrifugeRouter
     function transferTrancheTokens(
         address vault,
-        uint64 chainId,
+        uint32 chainId,
         address recipient,
         uint128 amount,
         uint256 topUpAmount

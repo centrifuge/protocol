@@ -2,7 +2,13 @@
 pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
+
 import {ERC20} from "src/misc/ERC20.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
+
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
+
 import {Gateway} from "src/vaults/gateway/Gateway.sol";
 import {MockGateway} from "test/vaults/mocks/MockGateway.sol";
 import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
@@ -10,13 +16,12 @@ import {MockRoot} from "test/vaults/mocks/MockRoot.sol";
 import {MockManager} from "test/vaults/mocks/MockManager.sol";
 import {MockAxelarGasService} from "test/vaults/mocks/MockAxelarGasService.sol";
 import {MockGasService} from "test/vaults/mocks/MockGasService.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 contract GatewayTest is Test {
     using CastLib for *;
+    using MessageLib for *;
 
+    uint32 constant CHAIN_ID = 23;
     uint256 constant INITIAL_BALANCE = 1 ether;
 
     uint256 constant FIRST_ADAPTER_ESTIMATE = 1.5 gwei;
@@ -141,22 +146,22 @@ contract GatewayTest is Test {
         gateway.file("adapters", threeMockAdapters);
 
         vm.expectRevert(bytes("Gateway/invalid-manager"));
-        gateway.send(abi.encodePacked(uint8(MessagesLib.Call.AddPool), poolId), self);
+        gateway.send(CHAIN_ID, MessageLib.NotifyPool(poolId).serialize(), self);
 
         gateway.file("poolManager", self);
-        gateway.send(abi.encodePacked(uint8(MessagesLib.Call.AddPool), poolId), self);
+        gateway.send(CHAIN_ID, MessageLib.NotifyPool(poolId).serialize(), self);
 
         gateway.file("poolManager", address(poolManager));
         vm.expectRevert(bytes("Gateway/invalid-manager"));
-        gateway.send(abi.encodePacked(uint8(MessagesLib.Call.AddPool), poolId), self);
+        gateway.send(CHAIN_ID, MessageLib.NotifyPool(poolId).serialize(), self);
 
         gateway.file("investmentManager", self);
-        gateway.send(abi.encodePacked(uint8(MessagesLib.Call.AddPool), poolId), self);
+        gateway.send(CHAIN_ID, MessageLib.NotifyPool(poolId).serialize(), self);
     }
 
     // --- Dynamic managers ---
     function testCustomManager(uint8 existingMessageId) public {
-        existingMessageId = uint8(bound(existingMessageId, 0, 28));
+        existingMessageId = uint8(bound(existingMessageId, 0, 27));
 
         uint8 messageId = 40;
         address[] memory adapters = new address[](1);
@@ -224,24 +229,24 @@ contract GatewayTest is Test {
     }
 
     function testUseBeforeInitialization() public {
-        bytes memory message = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1));
+        bytes memory message = MessageLib.NotifyPool(1).serialize();
 
         vm.expectRevert(bytes("Gateway/invalid-adapter"));
         gateway.handle(message);
 
         vm.expectRevert(bytes("Gateway/invalid-manager"));
-        gateway.send(message, address(this));
+        gateway.send(CHAIN_ID, message, address(this));
 
         vm.expectRevert(bytes("Gateway/not-initialized"));
         vm.prank(address(investmentManager));
-        gateway.send(message, address(this));
+        gateway.send(CHAIN_ID, message, address(this));
     }
 
     function testIncomingAggregatedMessages() public {
         gateway.file("adapters", threeMockAdapters);
 
-        bytes memory firstMessage = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1));
-        bytes memory firstProof = _formatMessageProof(abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1)));
+        bytes memory firstMessage = MessageLib.NotifyPool(1).serialize();
+        bytes memory firstProof = _formatMessageProof(firstMessage);
 
         vm.expectRevert(bytes("Gateway/invalid-adapter"));
         gateway.handle(firstMessage);
@@ -273,8 +278,8 @@ contract GatewayTest is Test {
         assertVotes(firstMessage, 0, 0, 0);
 
         // Sending another message works
-        bytes memory secondMessage = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(2));
-        bytes memory secondProof = _formatMessageProof(abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(2)));
+        bytes memory secondMessage = MessageLib.NotifyPool(2).serialize();
+        bytes memory secondProof = _formatMessageProof(secondMessage);
 
         _send(adapter1, secondMessage);
         assertEq(poolManager.received(secondMessage), 0);
@@ -289,8 +294,8 @@ contract GatewayTest is Test {
         assertVotes(secondMessage, 0, 0, 0);
 
         // Swapping order of message vs proofs works
-        bytes memory thirdMessage = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(3));
-        bytes memory thirdProof = _formatMessageProof(abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(3)));
+        bytes memory thirdMessage = MessageLib.NotifyPool(3).serialize();
+        bytes memory thirdProof = _formatMessageProof(thirdMessage);
 
         _send(adapter2, thirdProof);
         assertEq(poolManager.received(thirdMessage), 0);
@@ -308,7 +313,7 @@ contract GatewayTest is Test {
     function testQuorumOfOne() public {
         gateway.file("adapters", oneMockAdapter);
 
-        bytes memory message = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1));
+        bytes memory message = MessageLib.NotifyPool(1).serialize();
 
         // Executes immediately
         _send(adapter1, message);
@@ -318,8 +323,8 @@ contract GatewayTest is Test {
     function testOneFasterPayloadAdapter() public {
         gateway.file("adapters", threeMockAdapters);
 
-        bytes memory message = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1));
-        bytes memory proof = _formatMessageProof(abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1)));
+        bytes memory message = MessageLib.NotifyPool(1).serialize();
+        bytes memory proof = _formatMessageProof(message);
 
         vm.expectRevert(bytes("Gateway/invalid-adapter"));
         gateway.handle(message);
@@ -354,8 +359,8 @@ contract GatewayTest is Test {
     function testVotesExpireAfterSession() public {
         gateway.file("adapters", fourMockAdapters);
 
-        bytes memory message = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1));
-        bytes memory proof = _formatMessageProof(abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1)));
+        bytes memory message = MessageLib.NotifyPool(1).serialize();
+        bytes memory proof = _formatMessageProof(message);
 
         _send(adapter1, message);
         _send(adapter2, proof);
@@ -372,8 +377,8 @@ contract GatewayTest is Test {
     function testOutgoingAggregatedMessages() public {
         gateway.file("adapters", threeMockAdapters);
 
-        bytes memory message = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1));
-        bytes memory proof = _formatMessageProof(abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1)));
+        bytes memory message = MessageLib.NotifyPool(1).serialize();
+        bytes memory proof = _formatMessageProof(message);
 
         assertEq(adapter1.sent(message), 0);
         assertEq(adapter2.sent(message), 0);
@@ -382,10 +387,10 @@ contract GatewayTest is Test {
         assertEq(adapter2.sent(proof), 0);
         assertEq(adapter3.sent(proof), 0);
         vm.expectRevert(bytes("Gateway/invalid-manager"));
-        gateway.send(message, address(this));
+        gateway.send(CHAIN_ID, message, address(this));
 
         vm.prank(address(investmentManager));
-        gateway.send(message, address(this));
+        gateway.send(CHAIN_ID, message, address(this));
 
         assertEq(adapter1.sent(message), 1);
         assertEq(adapter2.sent(message), 0);
@@ -415,7 +420,7 @@ contract GatewayTest is Test {
     function testOutgoingMessagingWithNotEnoughPrepayment() public {
         gateway.file("adapters", threeMockAdapters);
 
-        bytes memory message = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1));
+        bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
 
         uint256 balanceBeforeTx = address(gateway).balance;
@@ -424,7 +429,7 @@ contract GatewayTest is Test {
         gateway.topUp{value: topUpAmount}();
         vm.expectRevert(bytes("Gateway/not-enough-gas-funds"));
         vm.prank(address(investmentManager));
-        gateway.send(message, self);
+        gateway.send(CHAIN_ID, message, self);
 
         assertEq(gasService.calls("shouldRefuel"), 0);
 
@@ -442,7 +447,7 @@ contract GatewayTest is Test {
     function testOutgoingMessagingWithPrepayment() public {
         gateway.file("adapters", threeMockAdapters);
 
-        bytes memory message = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1));
+        bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
 
         uint256 balanceBeforeTx = address(gateway).balance;
@@ -451,7 +456,7 @@ contract GatewayTest is Test {
         gateway.topUp{value: total}();
 
         vm.prank(address(investmentManager));
-        gateway.send(message, self);
+        gateway.send(CHAIN_ID, message, self);
 
         assertEq(gasService.calls("shouldRefuel"), 0);
 
@@ -472,7 +477,7 @@ contract GatewayTest is Test {
     function testOutgoingMessagingWithExtraPrepayment() public {
         gateway.file("adapters", threeMockAdapters);
 
-        bytes memory message = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1));
+        bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
 
         uint256 balanceBeforeTx = address(gateway).balance;
@@ -483,7 +488,7 @@ contract GatewayTest is Test {
         gateway.topUp{value: topUpAmount}();
 
         vm.prank(address(investmentManager));
-        gateway.send(message, self);
+        gateway.send(CHAIN_ID, message, self);
 
         assertEq(gasService.calls("shouldRefuel"), 0);
 
@@ -503,7 +508,7 @@ contract GatewayTest is Test {
     function testingOutgoingMessagingWithCoveredPayment() public {
         gateway.file("adapters", threeMockAdapters);
 
-        bytes memory message = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1));
+        bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
 
         uint256 balanceBeforeTx = address(gateway).balance;
@@ -513,7 +518,7 @@ contract GatewayTest is Test {
         assertEq(_quota(), 0);
 
         vm.prank(address(investmentManager));
-        gateway.send(message, self);
+        gateway.send(CHAIN_ID, message, self);
 
         assertEq(gasService.calls("shouldRefuel"), 1);
 
@@ -532,7 +537,7 @@ contract GatewayTest is Test {
     function testingOutgoingMessagingWithPartiallyCoveredPayment() public {
         gateway.file("adapters", threeMockAdapters);
 
-        bytes memory message = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1));
+        bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
 
         (uint256[] memory tranches,) = gateway.estimate(message);
@@ -545,7 +550,7 @@ contract GatewayTest is Test {
         assertEq(_quota(), 0);
 
         vm.prank(address(investmentManager));
-        gateway.send(message, self);
+        gateway.send(CHAIN_ID, message, self);
 
         assertEq(gasService.calls("shouldRefuel"), 1);
 
@@ -570,7 +575,7 @@ contract GatewayTest is Test {
     function testingOutgoingMessagingWithoutBeingCovered() public {
         gateway.file("adapters", threeMockAdapters);
 
-        bytes memory message = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1));
+        bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
 
         vm.deal(address(gateway), 0);
@@ -578,7 +583,7 @@ contract GatewayTest is Test {
         assertEq(_quota(), 0);
 
         vm.prank(address(investmentManager));
-        gateway.send(message, self);
+        gateway.send(CHAIN_ID, message, self);
 
         assertEq(gasService.calls("shouldRefuel"), 1);
 
@@ -600,7 +605,7 @@ contract GatewayTest is Test {
     function testingOutgoingMessagingWherePaymentCoverIsNotAllowed() public {
         gateway.file("adapters", threeMockAdapters);
 
-        bytes memory message = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1));
+        bytes memory message = MessageLib.NotifyPool(1).serialize();
 
         uint256 balanceBeforeTx = address(gateway).balance;
         assertEq(balanceBeforeTx, INITIAL_BALANCE);
@@ -610,7 +615,7 @@ contract GatewayTest is Test {
 
         vm.expectRevert(bytes("Gateway/not-enough-gas-funds"));
         vm.prank(address(investmentManager));
-        gateway.send(message, self);
+        gateway.send(CHAIN_ID, message, self);
 
         assertEq(balanceBeforeTx, INITIAL_BALANCE);
         assertEq(_quota(), 0);
@@ -619,8 +624,8 @@ contract GatewayTest is Test {
     function testRecoverFailedMessage() public {
         gateway.file("adapters", threeMockAdapters);
 
-        bytes memory message = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1));
-        bytes memory proof = _formatMessageProof(abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1)));
+        bytes memory message = MessageLib.NotifyPool(1).serialize();
+        bytes memory proof = _formatMessageProof(message);
 
         // Only send through 2 out of 3 adapters
         adapter2.execute(proof);
@@ -632,10 +637,7 @@ contract GatewayTest is Test {
 
         // Initiate recovery
         _send(
-            adapter2,
-            abi.encodePacked(
-                uint8(MessagesLib.Call.InitiateMessageRecovery), keccak256(message), address(adapter1).toBytes32()
-            )
+            adapter2, MessageLib.InitiateMessageRecovery(keccak256(message), address(adapter1).toBytes32()).serialize()
         );
 
         vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
@@ -650,22 +652,19 @@ contract GatewayTest is Test {
     function testCannotRecoverWithOneAdapter() public {
         gateway.file("adapters", oneMockAdapter);
 
-        bytes memory message = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1));
+        bytes memory message = MessageLib.NotifyPool(1).serialize();
 
         vm.expectRevert(bytes("Gateway/no-recovery-with-one-adapter-allowed"));
         _send(
-            adapter1,
-            abi.encodePacked(
-                uint8(MessagesLib.Call.InitiateMessageRecovery), keccak256(message), address(adapter1).toBytes32()
-            )
+            adapter1, MessageLib.InitiateMessageRecovery(keccak256(message), address(adapter1).toBytes32()).serialize()
         );
     }
 
     function testRecoverFailedProof() public {
         gateway.file("adapters", threeMockAdapters);
 
-        bytes memory message = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1));
-        bytes memory proof = _formatMessageProof(abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1)));
+        bytes memory message = MessageLib.NotifyPool(1).serialize();
+        bytes memory proof = _formatMessageProof(message);
 
         // Only send through 2 out of 3 adapters
         adapter1.execute(message);
@@ -678,12 +677,7 @@ contract GatewayTest is Test {
         gateway.executeMessageRecovery(address(adapter3), proof);
 
         // Initiate recovery
-        _send(
-            adapter1,
-            abi.encodePacked(
-                uint8(MessagesLib.Call.InitiateMessageRecovery), keccak256(proof), address(adapter3).toBytes32()
-            )
-        );
+        _send(adapter1, MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
 
         vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
         gateway.executeMessageRecovery(address(adapter3), proof);
@@ -697,8 +691,8 @@ contract GatewayTest is Test {
     function testCannotRecoverInvalidAdapter() public {
         gateway.file("adapters", threeMockAdapters);
 
-        bytes memory message = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1));
-        bytes memory proof = _formatMessageProof(abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1)));
+        bytes memory message = MessageLib.NotifyPool(1).serialize();
+        bytes memory proof = _formatMessageProof(message);
 
         // Only send through 2 out of 3 adapters
         _send(adapter1, message);
@@ -706,12 +700,7 @@ contract GatewayTest is Test {
         assertEq(poolManager.received(message), 0);
 
         // Initiate recovery
-        _send(
-            adapter1,
-            abi.encodePacked(
-                uint8(MessagesLib.Call.InitiateMessageRecovery), keccak256(proof), address(adapter3).toBytes32()
-            )
-        );
+        _send(adapter1, MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
 
         vm.warp(block.timestamp + gateway.RECOVERY_CHALLENGE_PERIOD());
 
@@ -724,8 +713,8 @@ contract GatewayTest is Test {
     function testDisputeRecovery() public {
         gateway.file("adapters", threeMockAdapters);
 
-        bytes memory message = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1));
-        bytes memory proof = _formatMessageProof(abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1)));
+        bytes memory message = MessageLib.NotifyPool(1).serialize();
+        bytes memory proof = _formatMessageProof(message);
 
         // Only send through 2 out of 3 adapters
         _send(adapter1, message);
@@ -733,23 +722,13 @@ contract GatewayTest is Test {
         assertEq(poolManager.received(message), 0);
 
         // Initiate recovery
-        _send(
-            adapter1,
-            abi.encodePacked(
-                uint8(MessagesLib.Call.InitiateMessageRecovery), keccak256(proof), address(adapter3).toBytes32()
-            )
-        );
+        _send(adapter1, MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
 
         vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
         gateway.executeMessageRecovery(address(adapter3), proof);
 
         // Dispute recovery
-        _send(
-            adapter2,
-            abi.encodePacked(
-                uint8(MessagesLib.Call.DisputeMessageRecovery), keccak256(proof), address(adapter3).toBytes32()
-            )
-        );
+        _send(adapter2, MessageLib.DisputeMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
 
         // Check that recovery is not possible anymore
         vm.expectRevert(bytes("Gateway/message-recovery-not-initiated"));
@@ -760,19 +739,15 @@ contract GatewayTest is Test {
     function testRecursiveRecoveryMessageFails() public {
         gateway.file("adapters", threeMockAdapters);
 
-        bytes memory message = abi.encodePacked(uint8(MessagesLib.Call.DisputeMessageRecovery), keccak256(""));
-        bytes memory proof =
-            _formatMessageProof(abi.encodePacked(uint8(MessagesLib.Call.DisputeMessageRecovery), keccak256("")));
+        bytes memory message = MessageLib.DisputeMessageRecovery(keccak256(""), bytes32(0)).serialize();
+        bytes memory proof = _formatMessageProof(message);
 
         _send(adapter2, proof);
         _send(adapter3, proof);
         assertEq(poolManager.received(message), 0);
 
         _send(
-            adapter2,
-            abi.encodePacked(
-                uint8(MessagesLib.Call.InitiateMessageRecovery), keccak256(message), address(adapter1).toBytes32()
-            )
+            adapter2, MessageLib.InitiateMessageRecovery(keccak256(message), address(adapter1).toBytes32()).serialize()
         );
 
         vm.warp(block.timestamp + gateway.RECOVERY_CHALLENGE_PERIOD());
@@ -788,8 +763,8 @@ contract GatewayTest is Test {
         numAdapters = uint8(bound(numAdapters, 1, gateway.MAX_ADAPTER_COUNT()));
         uint16 numParallelDuplicateMessages = uint16(bound(numParallelDuplicateMessages_, 1, 255));
 
-        bytes memory message = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1));
-        bytes memory proof = _formatMessageProof(abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1)));
+        bytes memory message = MessageLib.NotifyPool(1).serialize();
+        bytes memory proof = _formatMessageProof(message);
 
         // Setup random set of adapters
         address[] memory testAdapters = new address[](numAdapters);
@@ -858,7 +833,7 @@ contract GatewayTest is Test {
     function testEstimate() public {
         gateway.file("adapters", threeMockAdapters);
 
-        bytes memory message = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1));
+        bytes memory message = MessageLib.NotifyPool(1).serialize();
 
         uint256 firstRouterEstimate = FIRST_ADAPTER_ESTIMATE + BASE_MESSAGE_ESTIMATE;
         uint256 secondRouterEstimate = SECOND_ADAPTER_ESTIMATE + BASE_PROOF_ESTIMATE;
@@ -893,11 +868,11 @@ contract GatewayTest is Test {
     }
 
     function _formatMessageProof(bytes memory message) internal pure returns (bytes memory) {
-        return abi.encodePacked(uint8(MessagesLib.Call.MessageProof), keccak256(message));
+        return MessageLib.MessageProof(keccak256(message)).serialize();
     }
 
     function _formatMessageProof(bytes32 messageHash) internal pure returns (bytes memory) {
-        return abi.encodePacked(uint8(MessagesLib.Call.MessageProof), messageHash);
+        return MessageLib.MessageProof(messageHash).serialize();
     }
 
     /// @dev Use to simulate incoming message to the gateway sent by a adapter.

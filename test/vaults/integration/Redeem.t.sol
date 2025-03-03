@@ -6,6 +6,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
 contract RedeemTest is BaseTest {
+    using MessageLib for *;
     using CastLib for *;
 
     function testRedeem(uint256 amount) public {
@@ -182,14 +183,12 @@ contract RedeemTest is BaseTest {
 
         // check message was send out to centchain
         vault.cancelRedeemRequest(0, self);
-        bytes memory cancelOrderMessage = abi.encodePacked(
-            uint8(MessagesLib.Call.CancelRedeemRequest),
-            vault.poolId(),
-            vault.trancheId(),
-            bytes32(bytes20(self)),
-            defaultAssetId
-        );
-        assertEq(cancelOrderMessage, adapter1.values_bytes("send"));
+
+        MessageLib.CancelRedeemRequest memory m = adapter1.values_bytes("send").deserializeCancelRedeemRequest();
+        assertEq(m.poolId, vault.poolId());
+        assertEq(m.scId, vault.trancheId());
+        assertEq(m.investor, bytes32(bytes20(self)));
+        assertEq(m.assetId, defaultAssetId);
 
         assertEq(vault.pendingCancelRedeemRequest(0, self), true);
 

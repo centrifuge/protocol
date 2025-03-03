@@ -161,19 +161,23 @@ interface ICentrifugeRouter is IMulticall, IRecoverable {
     ///         The caller must call `CentrifugeRouter.estimate` to get estimates how much the deposit will cost.
     ///
     /// @param  vault The vault for the corresponding tranche token
-    /// @param  id Check `IPoolManager.transferTrancheTokens.destinationId`
+    /// @param  chainId Check `IPoolManager.transferTrancheTokens.destinationId`
     /// @param  recipient Check `IPoolManager.transferTrancheTokens.recipient`
     /// @param  amount Check `IPoolManager.transferTrancheTokens.amount`
     /// @param  topUpAmount Amount that covers all costs outside EVM
-    function transferTrancheTokens(address vault, uint64 id, bytes32 recipient, uint128 amount, uint256 topUpAmount)
-        external
-        payable;
+    function transferTrancheTokens(
+        address vault,
+        uint32 chainId,
+        bytes32 recipient,
+        uint128 amount,
+        uint256 topUpAmount
+    ) external payable;
 
     /// @notice This is a more friendly version where the recipient is and EVM address
     /// @dev    The recipient address is padded to 32 bytes internally
     function transferTrancheTokens(
         address vault,
-        uint64 chainId,
+        uint32 chainId,
         address recipient,
         uint128 amount,
         uint256 topUpAmount

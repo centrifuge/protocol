@@ -21,8 +21,7 @@ import {
     EpochAmounts,
     UserOrder,
     EpochPointers,
-    ShareClassMetadata,
-    encodeMetadata
+    ShareClassMetadata
 } from "src/pools/SingleShareClass.sol";
 
 uint64 constant POOL_ID = 42;

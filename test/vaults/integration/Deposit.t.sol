@@ -7,6 +7,7 @@ import "test/vaults/BaseTest.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 contract DepositTest is BaseTest {
+    using MessageLib for *;
     using CastLib for *;
 
     /// forge-config: default.isolate = true
@@ -681,19 +682,17 @@ contract DepositTest is BaseTest {
         bytes16 trancheId = vault.trancheId();
         vm.expectRevert(bytes("InvestmentManager/no-pending-cancel-deposit-request"));
         centrifugeChain.isFulfilledCancelDepositRequest(
-            poolId, trancheId, self.toBytes32(), defaultAssetId, uint128(amount), uint128(amount)
+            poolId, trancheId, self.toBytes32(), defaultAssetId, uint128(amount)
         );
 
         // check message was send out to centchain
         vault.cancelDepositRequest(0, self);
-        bytes memory cancelOrderMessage = abi.encodePacked(
-            uint8(MessagesLib.Call.CancelDepositRequest),
-            vault.poolId(),
-            vault.trancheId(),
-            bytes32(bytes20(self)),
-            defaultAssetId
-        );
-        assertEq(cancelOrderMessage, adapter1.values_bytes("send"));
+
+        MessageLib.CancelDepositRequest memory m = adapter1.values_bytes("send").deserializeCancelDepositRequest();
+        assertEq(m.poolId, vault.poolId());
+        assertEq(m.scId, vault.trancheId());
+        assertEq(m.investor, bytes32(bytes20(self)));
+        assertEq(m.assetId, defaultAssetId);
 
         assertEq(vault.pendingCancelDepositRequest(0, self), true);
 
@@ -708,7 +707,7 @@ contract DepositTest is BaseTest {
         erc20.burn(self, amount);
 
         centrifugeChain.isFulfilledCancelDepositRequest(
-            vault.poolId(), vault.trancheId(), self.toBytes32(), defaultAssetId, uint128(amount), uint128(amount)
+            vault.poolId(), vault.trancheId(), self.toBytes32(), defaultAssetId, uint128(amount)
         );
         assertEq(erc20.balanceOf(address(escrow)), amount);
         assertEq(erc20.balanceOf(self), 0);

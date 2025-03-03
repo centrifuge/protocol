@@ -6,7 +6,6 @@ import {MockRoot} from "test/vaults/mocks/MockRoot.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
 import {RestrictionUpdate} from "src/vaults/interfaces/token/IRestrictionManager.sol";
-import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 import "forge-std/Test.sol";
 
