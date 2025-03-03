@@ -579,8 +579,8 @@ library MessageLib {
         bytes16 scId;
         bytes32 investor;
         uint128 assetId;
-        uint128 shareAmount;
         uint128 assetAmount;
+        uint128 shareAmount;
     }
 
     function deserializeFulfilledDepositRequest(bytes memory data)
@@ -614,8 +614,8 @@ library MessageLib {
         bytes16 scId;
         bytes32 investor;
         uint128 assetId;
-        uint128 shareAmount;
         uint128 assetAmount;
+        uint128 shareAmount;
     }
 
     function deserializeFulfilledRedeemRequest(bytes memory data)
