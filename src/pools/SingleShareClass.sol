@@ -124,7 +124,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
 
         // NOTE: CV ensures amount > 0
-        _updateDepositRequest(poolId, shareClassId_, amount.toInt128(), investor, depositAssetId);
+        _updateDepositRequest(poolId, shareClassId_, amount, true, investor, depositAssetId);
     }
 
     function cancelDepositRequest(PoolId poolId, ShareClassId shareClassId_, bytes32 investor, AssetId depositAssetId)
@@ -136,7 +136,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
         cancelledAssetAmount = depositRequest[shareClassId_][depositAssetId][investor].pending;
 
-        _updateDepositRequest(poolId, shareClassId_, -(cancelledAssetAmount.toInt128()), investor, depositAssetId);
+        _updateDepositRequest(poolId, shareClassId_, cancelledAssetAmount, false, investor, depositAssetId);
     }
 
     /// @inheritdoc IShareClassManager
@@ -150,7 +150,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
 
         // NOTE: CV ensures amount > 0
-        _updateRedeemRequest(poolId, shareClassId_, amount.toInt128(), investor, payoutAssetId);
+        _updateRedeemRequest(poolId, shareClassId_, amount, true, investor, payoutAssetId);
     }
 
     /// @inheritdoc IShareClassManager
@@ -163,7 +163,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
         cancelledShareAmount = redeemRequest[shareClassId_][payoutAssetId][investor].pending;
 
-        _updateRedeemRequest(poolId, shareClassId_, -(cancelledShareAmount.toInt128()), investor, payoutAssetId);
+        _updateRedeemRequest(poolId, shareClassId_, cancelledShareAmount, false, investor, payoutAssetId);
     }
 
     /// @inheritdoc IShareClassManager
@@ -576,12 +576,14 @@ contract SingleShareClass is Auth, ISingleShareClass {
     /// @param poolId Identifier of the pool
     /// @param shareClassId_ Identifier of the share class
     /// @param amount Asset token amount which is updated
+    /// @param isIncrement Whether the amount is positive or negative
     /// @param investor Address of the entity which is depositing
     /// @param depositAssetId Identifier of the asset which the investor used for their deposit request
     function _updateDepositRequest(
         PoolId poolId,
         ShareClassId shareClassId_,
-        int128 amount,
+        uint128 amount,
+        bool isIncrement,
         bytes32 investor,
         AssetId depositAssetId
     ) private {
@@ -595,12 +597,12 @@ contract SingleShareClass is Auth, ISingleShareClass {
             ClaimDepositRequired()
         );
 
-        userOrder.pending = amount >= 0 ? userOrder.pending + uint128(amount) : userOrder.pending - uint128(-amount);
+        userOrder.pending = isIncrement ? userOrder.pending + amount : userOrder.pending - amount;
         userOrder.lastUpdate = epochId[poolId];
 
-        pendingDeposit[shareClassId_][depositAssetId] = amount >= 0
-            ? pendingDeposit[shareClassId_][depositAssetId] + uint128(amount)
-            : pendingDeposit[shareClassId_][depositAssetId] - uint128(-amount);
+        pendingDeposit[shareClassId_][depositAssetId] = isIncrement
+            ? pendingDeposit[shareClassId_][depositAssetId] + amount
+            : pendingDeposit[shareClassId_][depositAssetId] - amount;
 
         emit UpdatedDepositRequest(
             poolId,
@@ -618,12 +620,14 @@ contract SingleShareClass is Auth, ISingleShareClass {
     /// @param poolId Identifier of the pool
     /// @param shareClassId_ Identifier of the share class
     /// @param amount Share class token amount which is updated
+    /// @param isIncrement Whether the amount is positive or negative
     /// @param investor Address of the entity which is depositing
     /// @param payoutAssetId Identifier of the asset which the investor wants to offramp to
     function _updateRedeemRequest(
         PoolId poolId,
         ShareClassId shareClassId_,
-        int128 amount,
+        uint128 amount,
+        bool isIncrement,
         bytes32 investor,
         AssetId payoutAssetId
     ) private {
@@ -637,11 +641,11 @@ contract SingleShareClass is Auth, ISingleShareClass {
         );
 
         userOrder.lastUpdate = epochId[poolId];
-        userOrder.pending = amount >= 0 ? userOrder.pending + uint128(amount) : userOrder.pending - uint128(-amount);
+        userOrder.pending = isIncrement ? userOrder.pending + amount : userOrder.pending - amount;
 
-        pendingRedeem[shareClassId_][payoutAssetId] = amount >= 0
-            ? pendingRedeem[shareClassId_][payoutAssetId] + uint128(amount)
-            : pendingRedeem[shareClassId_][payoutAssetId] - uint128(-amount);
+        pendingRedeem[shareClassId_][payoutAssetId] = isIncrement
+            ? pendingRedeem[shareClassId_][payoutAssetId] + amount
+            : pendingRedeem[shareClassId_][payoutAssetId] - amount;
 
         emit UpdatedRedeemRequest(
             poolId,

@@ -86,7 +86,18 @@ contract TrancheTest is Test, GasSnapshot {
     // --- RestrictionManager ---
     // transferFrom
     /// forge-config: default.isolate = true
-    function testTransferFrom(uint256 amount) public {
+    function testTransferFrom() public {
+        _testTransferFrom(1, true);
+    }
+
+    // --- RestrictionManager ---
+    // transferFrom
+    /// forge-config: default.isolate = true
+    function testTransferFromFuzz(uint256 amount) public {
+        _testTransferFrom(amount, false);
+    }
+
+    function _testTransferFrom(uint256 amount, bool snap) internal {
         amount = bound(amount, 0, type(uint128).max / 2);
 
         restrictionManager.updateMember(address(token), self, uint64(validUntil));
@@ -113,9 +124,13 @@ contract TrancheTest is Test, GasSnapshot {
         assertEq(token.balanceOf(targetUser), 0);
 
         restrictionManager.unfreeze(address(token), targetUser);
-        snapStart("Tranche_transferFrom");
+        if (snap) {
+            snapStart("Tranche_transferFrom");
+        }
         token.transferFrom(self, targetUser, amount);
-        snapEnd();
+        if (snap) {
+            snapEnd();
+        }
         assertEq(token.balanceOf(targetUser), amount);
         afterTransferAssumptions(self, targetUser, amount);
 
