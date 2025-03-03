@@ -93,7 +93,6 @@ contract PoolManager is Auth, IPoolManager {
         require(address(tranche) != address(0), "PoolManager/unknown-token");
         tranche.burn(msg.sender, amount);
 
-        // TODO: use destinationId to determine the destination chainId where to send the tranches
         gateway.send(
             destinationId,
             MessageLib.TransferShares({poolId: poolId, scId: trancheId, recipient: recipient, amount: amount}).serialize(
