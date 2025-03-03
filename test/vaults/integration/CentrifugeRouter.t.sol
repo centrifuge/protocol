@@ -174,8 +174,8 @@ contract CentrifugeRouterTest is BaseTest {
     function testRouterRedeem() public {
         _testRouterRedeem(4, true);
     }
-    /// forge-config: default.isolate = true
 
+    /// forge-config: default.isolate = true
     function testRouterRedeemFuzz(uint256 amount) public {
         vm.assume(amount % 2 == 0);
         _testRouterRedeem(amount, false);
