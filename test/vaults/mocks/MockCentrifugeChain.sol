@@ -39,9 +39,7 @@ contract MockCentrifugeChain is Test {
         bytes memory _allowAsset =
             MessageLib.AllowAsset({poolId: poolId, scId: bytes16(0), assetId: assetId}).serialize();
 
-        bytes memory _message = abi.encodePacked(
-            uint8(MessageType.Batch), uint16(_addPool.length), _addPool, uint16(_allowAsset.length), _allowAsset
-        );
+        bytes memory _message = abi.encodePacked(_addPool, _allowAsset);
         execute(_message);
     }
 

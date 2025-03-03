@@ -162,7 +162,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
         bool isMessageProof = code == uint8(MessageType.MessageProof);
         if (adapter.quorum == 1 && !isMessageProof) {
             // Special case for gas efficiency
-            _dispatch(payload, false);
+            _dispatch(payload);
             emit ExecuteMessage(payload, adapter_);
             return;
         }
@@ -196,10 +196,10 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
             // Handle message
             if (isMessageProof) {
-                _dispatch(state.pendingMessage, false);
+                _dispatch(state.pendingMessage);
                 emit ExecuteMessage(state.pendingMessage, adapter_);
             } else {
-                _dispatch(payload, false);
+                _dispatch(payload);
                 emit ExecuteMessage(payload, adapter_);
             }
 
@@ -212,7 +212,40 @@ contract Gateway is Auth, IGateway, IRecoverable {
         }
     }
 
-    function _dispatch(bytes memory message, bool isBatched) internal {
+    function _dispatch(bytes memory message) internal {
+        while (true) {
+            address manager;
+            uint8 id = message.toUint8(0);
+            if (id >= 4 && id <= 6) {
+                manager = address(root);
+            } else if (id == 7) {
+                manager = address(gasService);
+            } else if (id >= 8 && id <= 17) {
+                manager = poolManager;
+            } else if (id >= 18 && id <= 26) {
+                manager = investmentManager;
+            } else {
+                // Dynamic path for other managers, to be able to easily
+                // extend functionality of Liquidity Pools
+                manager = messageHandlers[id];
+                require(manager != address(0), "Gateway/unregistered-message-id");
+            }
+
+            IMessageHandler(manager).handle(message);
+
+            uint256 offset = message.messageLength();
+            uint256 remaining = message.length - offset;
+            if (remaining == 0) {
+                // All messages processed
+                return;
+            }
+
+            // TODO: optimize with assambly just shifting the array cursor
+            message = message.slice(offset, remaining);
+        }
+    }
+
+    function _dispatch2(bytes memory message, bool isBatched) internal {
         uint8 id = message.toUint8(0);
         address manager;
 
@@ -232,7 +265,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
                 for (uint256 i; i < subMessageLength; i++) {
                     subMessage[i] = message[offset + i];
                 }
-                _dispatch(subMessage, true);
+                _dispatch2(subMessage, true);
 
                 offset += subMessageLength;
             }

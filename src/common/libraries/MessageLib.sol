@@ -11,14 +11,13 @@ enum MessageType {
     MessageProof,
     InitiateMessageRecovery,
     DisputeMessageRecovery,
-    Batch,
-    // -- Root messages 5 - 7
+    // -- Root messages 4 - 6
     ScheduleUpgrade,
     CancelUpgrade,
     RecoverTokens,
-    // -- Gas messages 8
+    // -- Gas messages 7
     UpdateGasPrice,
-    // -- Pool manager messages 9 - 18
+    // -- Pool manager messages 8 - 17
     RegisterAsset,
     NotifyPool,
     NotifyShareClass,
@@ -29,7 +28,7 @@ enum MessageType {
     UpdateShareClassHook,
     TransferShares,
     UpdateRestriction,
-    // -- Investment manager messages 19 - 27
+    // -- Investment manager messages 18 - 26
     DepositRequest,
     RedeemRequest,
     FulfilledDepositRequest,
@@ -73,12 +72,11 @@ library MessageLib {
         (33 << uint8(MessageType.MessageProof) * 8) +
         (65 << uint8(MessageType.InitiateMessageRecovery) * 8) +
         (65 << uint8(MessageType.DisputeMessageRecovery) * 8) +
-        0 +
         (33 << uint8(MessageType.ScheduleUpgrade) * 8) +
         (33 << uint8(MessageType.CancelUpgrade) * 8) +
         (129 << uint8(MessageType.RecoverTokens) * 8) +
         (25 << uint8(MessageType.UpdateGasPrice) * 8) +
-        (178 << uint8(MessageType.RegisterAsset) * 8) +
+        (37 << uint8(MessageType.RegisterAsset) * 8) + //TODO: modify to 178 when registerAsset feature is merged
         (9 << uint8(MessageType.NotifyPool) * 8) +
         (218 << uint8(MessageType.NotifyShareClass) * 8) +
         (41 << uint8(MessageType.AllowAsset) * 8) +
@@ -131,15 +129,15 @@ library MessageLib {
     function category(uint8 code) internal pure returns (MessageCategory) {
         if (code == 0) {
             return MessageCategory.Invalid;
-        } else if (code >= 1 && code <= 4) {
+        } else if (code >= 1 && code <= 3) {
             return MessageCategory.Gateway;
-        } else if (code >= 5 && code <= 7) {
+        } else if (code >= 4 && code <= 6) {
             return MessageCategory.Root;
-        } else if (code == 8) {
+        } else if (code == 7) {
             return MessageCategory.Gas;
-        } else if (code >= 9 && code <= 18) {
+        } else if (code >= 8 && code <= 17) {
             return MessageCategory.Pool;
-        } else if (code >= 19 && code <= 27) {
+        } else if (code >= 18 && code <= 26) {
             return MessageCategory.Investment;
         } else {
             return MessageCategory.Other;

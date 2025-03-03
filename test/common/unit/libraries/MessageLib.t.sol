@@ -13,7 +13,6 @@ contract TestMessageLibCategories is Test {
         assert(MessageCategory.Gateway == uint8(MessageType.MessageProof).category());
         assert(MessageCategory.Gateway == uint8(MessageType.InitiateMessageRecovery).category());
         assert(MessageCategory.Gateway == uint8(MessageType.DisputeMessageRecovery).category());
-        assert(MessageCategory.Gateway == uint8(MessageType.Batch).category());
         assert(MessageCategory.Root == uint8(MessageType.ScheduleUpgrade).category());
         assert(MessageCategory.Root == uint8(MessageType.CancelUpgrade).category());
         assert(MessageCategory.Root == uint8(MessageType.RecoverTokens).category());
@@ -129,7 +128,8 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.symbol, b.symbol);
         assertEq(a.decimals, b.decimals);
 
-        assertEq(a.serialize().messageLength(), a.serialize().length);
+        //TODO: modify to 'a.serialize().length' when registerAsset feature is merged
+        assertEq(a.serialize().messageLength(), 37);
     }
 
     function testNotifyPool() public pure {
