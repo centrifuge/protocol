@@ -7,7 +7,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
-import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageType, MessageCategory, MessageLib} from "src/common/libraries/MessageLib.sol";
 
 import {IGateway, IMessageHandler} from "src/vaults/interfaces/gateway/IGateway.sol";
 import {IRoot} from "src/vaults/interfaces/IRoot.sol";
@@ -202,15 +202,17 @@ contract Gateway is Auth, IGateway, IRecoverable {
     function _dispatch(bytes memory message) internal {
         while (true) {
             address manager;
-            uint8 id = message.toUint8(0);
-            if (id >= 4 && id <= 6) {
+            MessageCategory cat = message.messageCode().category();
+            if (cat == MessageCategory.Root) {
                 manager = address(root);
-            } else if (id == 7) {
+            } else if (cat == MessageCategory.Gas) {
                 manager = address(gasService);
-            } else if (id >= 8 && id <= 17) {
+            } else if (cat == MessageCategory.Pool) {
                 manager = poolManager;
-            } else if (id >= 18 && id <= 26) {
+            } else if (cat == MessageCategory.Investment) {
                 manager = investmentManager;
+            } else {
+                revert("Gateway/unexpected-category");
             }
 
             IMessageHandler(manager).handle(message);

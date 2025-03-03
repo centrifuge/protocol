@@ -7,7 +7,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 enum MessageType {
     /// @dev Placeholder for null message type
     Invalid,
-    // -- Gateway messages 1 - 4
+    // -- Gateway messages 1 - 3
     MessageProof,
     InitiateMessageRecovery,
     DisputeMessageRecovery,
