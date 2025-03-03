@@ -93,7 +93,7 @@ interface IPoolManager is IMessageHandler, IRecoverable {
     function transferTrancheTokens(
         uint64 poolId,
         bytes16 trancheId,
-        uint64 destinationId,
+        uint32 destinationId,
         bytes32 recipient,
         uint128 amount
     ) external;

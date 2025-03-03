@@ -85,7 +85,7 @@ contract PoolManager is Auth, IPoolManager {
     function transferTrancheTokens(
         uint64 poolId,
         bytes16 trancheId,
-        uint64 destinationId,
+        uint32 destinationId,
         bytes32 recipient,
         uint128 amount
     ) external {
@@ -95,6 +95,7 @@ contract PoolManager is Auth, IPoolManager {
 
         // TODO: use destinationId to determine the destination chainId where to send the tranches
         gateway.send(
+            destinationId,
             MessageLib.TransferShares({poolId: poolId, scId: trancheId, recipient: recipient, amount: amount}).serialize(
             ),
             address(this)

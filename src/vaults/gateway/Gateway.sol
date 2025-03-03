@@ -296,7 +296,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     // --- Outgoing ---
     /// @inheritdoc IGateway
-    function send(bytes calldata message, address source) public payable pauseable {
+    function send(uint32 /*chainId*/, bytes calldata message, address source) public payable pauseable {
         bool isManager = msg.sender == investmentManager || msg.sender == poolManager;
         require(isManager || msg.sender == messageHandlers[message.toUint8(0)], "Gateway/invalid-manager");
 

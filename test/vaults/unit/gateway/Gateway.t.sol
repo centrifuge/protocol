@@ -21,6 +21,7 @@ contract GatewayTest is Test {
     using CastLib for *;
     using MessageLib for *;
 
+    uint32 constant CHAIN_ID = 23;
     uint256 constant INITIAL_BALANCE = 1 ether;
 
     uint256 constant FIRST_ADAPTER_ESTIMATE = 1.5 gwei;
@@ -145,17 +146,17 @@ contract GatewayTest is Test {
         gateway.file("adapters", threeMockAdapters);
 
         vm.expectRevert(bytes("Gateway/invalid-manager"));
-        gateway.send(MessageLib.NotifyPool(poolId).serialize(), self);
+        gateway.send(CHAIN_ID, MessageLib.NotifyPool(poolId).serialize(), self);
 
         gateway.file("poolManager", self);
-        gateway.send(MessageLib.NotifyPool(poolId).serialize(), self);
+        gateway.send(CHAIN_ID, MessageLib.NotifyPool(poolId).serialize(), self);
 
         gateway.file("poolManager", address(poolManager));
         vm.expectRevert(bytes("Gateway/invalid-manager"));
-        gateway.send(MessageLib.NotifyPool(poolId).serialize(), self);
+        gateway.send(CHAIN_ID, MessageLib.NotifyPool(poolId).serialize(), self);
 
         gateway.file("investmentManager", self);
-        gateway.send(MessageLib.NotifyPool(poolId).serialize(), self);
+        gateway.send(CHAIN_ID, MessageLib.NotifyPool(poolId).serialize(), self);
     }
 
     // --- Dynamic managers ---
@@ -234,11 +235,11 @@ contract GatewayTest is Test {
         gateway.handle(message);
 
         vm.expectRevert(bytes("Gateway/invalid-manager"));
-        gateway.send(message, address(this));
+        gateway.send(CHAIN_ID, message, address(this));
 
         vm.expectRevert(bytes("Gateway/not-initialized"));
         vm.prank(address(investmentManager));
-        gateway.send(message, address(this));
+        gateway.send(CHAIN_ID, message, address(this));
     }
 
     function testIncomingAggregatedMessages() public {
@@ -386,10 +387,10 @@ contract GatewayTest is Test {
         assertEq(adapter2.sent(proof), 0);
         assertEq(adapter3.sent(proof), 0);
         vm.expectRevert(bytes("Gateway/invalid-manager"));
-        gateway.send(message, address(this));
+        gateway.send(CHAIN_ID, message, address(this));
 
         vm.prank(address(investmentManager));
-        gateway.send(message, address(this));
+        gateway.send(CHAIN_ID, message, address(this));
 
         assertEq(adapter1.sent(message), 1);
         assertEq(adapter2.sent(message), 0);
@@ -428,7 +429,7 @@ contract GatewayTest is Test {
         gateway.topUp{value: topUpAmount}();
         vm.expectRevert(bytes("Gateway/not-enough-gas-funds"));
         vm.prank(address(investmentManager));
-        gateway.send(message, self);
+        gateway.send(CHAIN_ID, message, self);
 
         assertEq(gasService.calls("shouldRefuel"), 0);
 
@@ -455,7 +456,7 @@ contract GatewayTest is Test {
         gateway.topUp{value: total}();
 
         vm.prank(address(investmentManager));
-        gateway.send(message, self);
+        gateway.send(CHAIN_ID, message, self);
 
         assertEq(gasService.calls("shouldRefuel"), 0);
 
@@ -487,7 +488,7 @@ contract GatewayTest is Test {
         gateway.topUp{value: topUpAmount}();
 
         vm.prank(address(investmentManager));
-        gateway.send(message, self);
+        gateway.send(CHAIN_ID, message, self);
 
         assertEq(gasService.calls("shouldRefuel"), 0);
 
@@ -517,7 +518,7 @@ contract GatewayTest is Test {
         assertEq(_quota(), 0);
 
         vm.prank(address(investmentManager));
-        gateway.send(message, self);
+        gateway.send(CHAIN_ID, message, self);
 
         assertEq(gasService.calls("shouldRefuel"), 1);
 
@@ -549,7 +550,7 @@ contract GatewayTest is Test {
         assertEq(_quota(), 0);
 
         vm.prank(address(investmentManager));
-        gateway.send(message, self);
+        gateway.send(CHAIN_ID, message, self);
 
         assertEq(gasService.calls("shouldRefuel"), 1);
 
@@ -582,7 +583,7 @@ contract GatewayTest is Test {
         assertEq(_quota(), 0);
 
         vm.prank(address(investmentManager));
-        gateway.send(message, self);
+        gateway.send(CHAIN_ID, message, self);
 
         assertEq(gasService.calls("shouldRefuel"), 1);
 
@@ -614,7 +615,7 @@ contract GatewayTest is Test {
 
         vm.expectRevert(bytes("Gateway/not-enough-gas-funds"));
         vm.prank(address(investmentManager));
-        gateway.send(message, self);
+        gateway.send(CHAIN_ID, message, self);
 
         assertEq(balanceBeforeTx, INITIAL_BALANCE);
         assertEq(_quota(), 0);

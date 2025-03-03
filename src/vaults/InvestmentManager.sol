@@ -82,6 +82,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
 
         state.pendingDepositRequest = state.pendingDepositRequest + _assets;
         gateway.send(
+            uint32(poolId >> 32),
             MessageLib.DepositRequest({
                 poolId: poolId,
                 scId: vault_.trancheId(),
@@ -129,6 +130,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
         state.pendingRedeemRequest = state.pendingRedeemRequest + shares;
 
         gateway.send(
+            uint32(vault_.poolId() >> 32),
             MessageLib.RedeemRequest({
                 poolId: vault_.poolId(),
                 scId: vault_.trancheId(),
@@ -152,6 +154,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
         state.pendingCancelDepositRequest = true;
 
         gateway.send(
+            uint32(_vault.poolId() >> 32),
             MessageLib.CancelDepositRequest({
                 poolId: _vault.poolId(),
                 scId: _vault.trancheId(),
@@ -177,6 +180,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
         state.pendingCancelRedeemRequest = true;
 
         gateway.send(
+            uint32(_vault.poolId() >> 32),
             MessageLib.CancelRedeemRequest({
                 poolId: _vault.poolId(),
                 scId: _vault.trancheId(),

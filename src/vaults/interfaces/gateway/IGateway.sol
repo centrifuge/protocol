@@ -113,7 +113,7 @@ interface IGateway {
     /// @param  message Message to be send. Either the message itself or a hash value of it ( proof ).
     /// @param  source Entry point of the transaction.
     ///         Used to determine whether it is eligible for TX cost payment.
-    function send(bytes calldata message, address source) external payable;
+    function send(uint32 chainId, bytes calldata message, address source) external payable;
 
     /// @notice Prepays for the TX cost for sending through the adapters
     ///         and Centrifuge Chain

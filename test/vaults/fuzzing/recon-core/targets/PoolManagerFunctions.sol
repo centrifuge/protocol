@@ -27,7 +27,7 @@ abstract contract PoolManagerFunctions is BaseTargetFunctions, Properties {
     }
 
     function poolManager_transferTrancheTokensToEVM(
-        uint64 destinationChainId,
+        uint32 destinationChainId,
         bytes32 destinationAddress,
         uint128 amount
     ) public {
