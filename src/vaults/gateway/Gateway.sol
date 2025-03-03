@@ -47,8 +47,6 @@ contract Gateway is Auth, IGateway, IRecoverable {
     /// @inheritdoc IGateway
     mapping(address payer => bool) public payers;
     /// @inheritdoc IGateway
-    mapping(uint8 messageId => address) public messageHandlers;
-    /// @inheritdoc IGateway
     mapping(address adapter => mapping(bytes32 messageHash => uint256 timestamp)) public recoveries;
 
     constructor(address root_, address poolManager_, address investmentManager_, address gasService_)
@@ -110,17 +108,6 @@ contract Gateway is Auth, IGateway, IRecoverable {
         else revert("Gateway/file-unrecognized-param");
 
         emit File(what, instance);
-    }
-
-    /// @inheritdoc IGateway
-    function file(bytes32 what, uint8 data1, address data2) public auth {
-        if (what == "message") {
-            require(data1 > uint8(type(MessageType).max), "Gateway/hardcoded-message-id");
-            messageHandlers[data1] = data2;
-        } else {
-            revert("Gateway/file-unrecognized-param");
-        }
-        emit File(what, data1, data2);
     }
 
     /// @inheritdoc IGateway
@@ -224,11 +211,6 @@ contract Gateway is Auth, IGateway, IRecoverable {
                 manager = poolManager;
             } else if (id >= 18 && id <= 26) {
                 manager = investmentManager;
-            } else {
-                // Dynamic path for other managers, to be able to easily
-                // extend functionality of Liquidity Pools
-                manager = messageHandlers[id];
-                require(manager != address(0), "Gateway/unregistered-message-id");
             }
 
             IMessageHandler(manager).handle(message);
@@ -240,52 +222,9 @@ contract Gateway is Auth, IGateway, IRecoverable {
                 return;
             }
 
-            // TODO: optimize with assambly just shifting the array cursor
+            // TODO: optimize with assambly to just shift the pointer to the begining of the array
             message = message.slice(offset, remaining);
         }
-    }
-
-    function _dispatch2(bytes memory message, bool isBatched) internal {
-        uint8 id = message.toUint8(0);
-        address manager;
-
-        if (id == 4) {
-            // Handle batch messages
-            require(!isBatched, "Gateway/no-recursive-batching-allowed");
-            uint256 offset = 1; // Offsets the message type which is 1 byte
-            uint256 messageLength = message.length;
-
-            // Check if the message actually contains 2 bytes dedicated for the subMessage length
-            while (offset + 2 <= messageLength) {
-                uint16 subMessageLength = message.toUint16(offset);
-                bytes memory subMessage = new bytes(subMessageLength);
-                offset = offset + 2; // Skip subMessage length
-
-                require(offset + subMessageLength <= messageLength, "Gateway/corrupted-message");
-                for (uint256 i; i < subMessageLength; i++) {
-                    subMessage[i] = message[offset + i];
-                }
-                _dispatch2(subMessage, true);
-
-                offset += subMessageLength;
-            }
-            return;
-        } else if (id >= 5 && id <= 7) {
-            manager = address(root);
-        } else if (id == 8) {
-            manager = address(gasService);
-        } else if (id >= 9 && id <= 18) {
-            manager = poolManager;
-        } else if (id >= 19 && id <= 27) {
-            manager = investmentManager;
-        } else {
-            // Dynamic path for other managers, to be able to easily
-            // extend functionality of Liquidity Pools
-            manager = messageHandlers[id];
-            require(manager != address(0), "Gateway/unregistered-message-id");
-        }
-
-        IMessageHandler(manager).handle(message);
     }
 
     function _handleRecovery(bytes memory message) internal {
@@ -331,7 +270,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
     /// @inheritdoc IGateway
     function send(uint32 /*chainId*/, bytes calldata message, address source) public payable pauseable {
         bool isManager = msg.sender == investmentManager || msg.sender == poolManager;
-        require(isManager || msg.sender == messageHandlers[message.toUint8(0)], "Gateway/invalid-manager");
+        require(isManager, "Gateway/invalid-manager");
 
         bytes memory proof = MessageLib.MessageProof({hash: keccak256(message)}).serialize();
 
