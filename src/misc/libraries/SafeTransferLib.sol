@@ -6,6 +6,7 @@ import {IERC20} from "src/misc/interfaces/IERC20.sol";
 /// @title  Safe Transfer Lib
 /// @author Modified from Uniswap v3 Periphery (libraries/TransferHelper.sol)
 library SafeTransferLib {
+    error NoCode();
     error SafeTransferFromFailed();
     error SafeTransferFailed();
     error SafeApproveFailed();
@@ -18,6 +19,8 @@ library SafeTransferLib {
     /// @param to The destination address of the transfer
     /// @param value The amount to be transferred
     function safeTransferFrom(address token, address from, address to, uint256 value) internal {
+        require(address(token).code.length > 0, NoCode());
+
         (bool success, bytes memory data) = token.call(abi.encodeCall(IERC20.transferFrom, (from, to, value)));
         require(success && (data.length == 0 || abi.decode(data, (bool))), SafeTransferFromFailed());
     }
@@ -28,6 +31,8 @@ library SafeTransferLib {
     /// @param to The recipient of the transfer
     /// @param value The value of the transfer
     function safeTransfer(address token, address to, uint256 value) internal {
+        require(address(token).code.length > 0, NoCode());
+
         (bool success, bytes memory data) = token.call(abi.encodeCall(IERC20.transfer, (to, value)));
         require(success && (data.length == 0 || abi.decode(data, (bool))), SafeTransferFailed());
     }
@@ -38,6 +43,8 @@ library SafeTransferLib {
     /// @param to The target of the approval
     /// @param value The amount of the given token the target will be allowed to spend
     function safeApprove(address token, address to, uint256 value) internal {
+        require(address(token).code.length > 0, NoCode());
+
         (bool success, bytes memory data) = token.call(abi.encodeCall(IERC20.approve, (to, value)));
         require(success && (data.length == 0 || abi.decode(data, (bool))), SafeApproveFailed());
     }
