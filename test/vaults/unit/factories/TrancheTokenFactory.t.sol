@@ -76,8 +76,6 @@ contract FactoryTest is Test {
     }
 
     function testTrancheShouldBeDeterministic(
-        uint64 poolId,
-        bytes16 trancheId,
         address investmentManager,
         address poolManager,
         string memory name,
@@ -116,8 +114,6 @@ contract FactoryTest is Test {
 
     function testDeployingDeterministicAddressTwiceReverts(
         bytes32 salt,
-        uint64 poolId,
-        bytes16 trancheId,
         address investmentManager,
         address poolManager,
         string memory name,
