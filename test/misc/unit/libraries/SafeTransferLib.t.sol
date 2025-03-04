@@ -104,6 +104,21 @@ contract SafeTransferLibTest is Test {
         this.safeApprove(address(tokenWithBooleanAlwaysFalse), spender, amount);
     }
 
+    function testSafeTransferWithNoCode(address to, uint256 amount) public {
+        vm.expectRevert(SafeTransferLib.NoCode.selector);
+        this.safeTransfer(makeAddr("non-existent"), to, amount);
+    }
+
+    function testSafeTransferFromWithNoCode(address from, address to, uint256 amount) public {
+        vm.expectRevert(SafeTransferLib.NoCode.selector);
+        this.safeTransferFrom(makeAddr("non-existent"), from, to, amount);
+    }
+
+    function testSafeApproveWithNoCode(address spender, uint256 amount) public {
+        vm.expectRevert(SafeTransferLib.NoCode.selector);
+        this.safeApprove(makeAddr("non-existent"), spender, amount);
+    }
+
     function safeTransfer(address token, address to, uint256 amount) external {
         SafeTransferLib.safeTransfer(token, to, amount);
     }
