@@ -70,7 +70,7 @@ contract TestMainMethodsChecks is TestCommon {
         poolManager.allowPoolAdmin(address(0), false);
 
         vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
-        poolManager.allowInvestorAsset(ShareClassId.wrap(0), AssetId.wrap(0), false);
+        poolManager.allowAsset(ShareClassId.wrap(0), AssetId.wrap(0), false);
 
         vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
         poolManager.addShareClass("", "", bytes32(0), bytes(""));
@@ -173,7 +173,7 @@ contract TestNotifyShareClass is TestCommon {
     }
 }
 
-contract TestAllowInvestorAsset is TestCommon {
+contract TestAllowAsset is TestCommon {
     function testErrHoldingNotFound() public {
         vm.mockCall(
             address(holdings),
@@ -182,7 +182,7 @@ contract TestAllowInvestorAsset is TestCommon {
         );
 
         bytes[] memory calls = new bytes[](1);
-        calls[0] = abi.encodeWithSelector(poolManager.allowInvestorAsset.selector, SC_A, ASSET_A, false);
+        calls[0] = abi.encodeWithSelector(poolManager.allowAsset.selector, SC_A, ASSET_A, false);
 
         vm.expectRevert(IHoldings.HoldingNotFound.selector);
         poolManager.execute(POOL_A, calls);

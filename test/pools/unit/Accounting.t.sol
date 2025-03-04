@@ -137,13 +137,19 @@ contract AccountingTest is Test {
         accounting.setAccountMetadata(POOL_A, CASH_ACCOUNT, "cash");
     }
 
-    function testUpdatingNonExistentAccount() public {
+    function testErrWhenNonExistentAccount() public {
         accounting.unlock(POOL_A, bytes32("1"));
         vm.expectRevert(IAccounting.AccountDoesNotExist.selector);
         accounting.addDebit(NON_INITIALIZED_ACCOUNT, 500);
 
         vm.expectRevert(IAccounting.AccountDoesNotExist.selector);
         accounting.addCredit(NON_INITIALIZED_ACCOUNT, 500);
+
+        vm.expectRevert(IAccounting.AccountDoesNotExist.selector);
+        accounting.setAccountMetadata(POOL_A, NON_INITIALIZED_ACCOUNT, "");
+
+        vm.expectRevert(IAccounting.AccountDoesNotExist.selector);
+        accounting.accountValue(POOL_A, NON_INITIALIZED_ACCOUNT);
     }
 
     function testUpdateMetadata() public {

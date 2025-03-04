@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
+import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
 interface IPoolRegistry {
@@ -10,14 +11,12 @@ interface IPoolRegistry {
         PoolId poolId, address indexed admin, IShareClassManager indexed shareClassManager, AssetId indexed currency
     );
     event UpdatedAdmin(PoolId indexed poolId, address indexed admin, bool canManage);
-    event AllowedInvestorAsset(PoolId indexed poolId, AssetId indexed assetId, bool isAllowed);
     event SetMetadata(PoolId indexed poolId, bytes metadata);
     event UpdatedShareClassManager(PoolId indexed poolId, IShareClassManager indexed shareClassManager);
     event UpdatedCurrency(PoolId indexed poolId, AssetId currency);
 
     error NonExistingPool(PoolId id);
     error EmptyAdmin();
-    error EmptyAsset();
     error EmptyCurrency();
     error EmptyShareClassManager();
 
@@ -29,9 +28,6 @@ interface IPoolRegistry {
 
     /// @notice allow/disallow an address as an admin for the pool
     function updateAdmin(PoolId poolId, address newAdmin, bool canManage) external;
-
-    /// @notice allow/disallow an investor asset to be used in this pool
-    function allowInvestorAsset(PoolId poolId, AssetId assetId, bool isAllowed) external;
 
     /// @notice sets metadata for this pool
     function setMetadata(PoolId poolId, bytes calldata metadata) external;
@@ -53,9 +49,6 @@ interface IPoolRegistry {
 
     /// @notice returns the existance of an admin
     function isAdmin(PoolId poolId, address admin) external view returns (bool);
-
-    /// @notice returns the allowance of an investor asset
-    function isInvestorAssetAllowed(PoolId poolId, AssetId assetId) external view returns (bool);
 
     /// @notice checks the existence of a pool
     function exists(PoolId poolId) external view returns (bool);
