@@ -76,19 +76,19 @@ contract FactoryTest is Test {
     }
 
     function testTrancheShouldBeDeterministic(
-        bytes32 salt,
         uint64 poolId,
         bytes16 trancheId,
         address investmentManager,
         address poolManager,
         string memory name,
         string memory symbol,
+        bytes32 factorySalt,
+        bytes32 tokenSalt,
         uint8 decimals
     ) public {
         decimals = uint8(bound(decimals, 0, 18));
-        TrancheFactory trancheFactory = new TrancheFactory{salt: salt}(root, address(this));
+        TrancheFactory trancheFactory = new TrancheFactory{salt: factorySalt}(root, address(this));
 
-        bytes32 hashedSalt = keccak256(abi.encodePacked(poolId, trancheId));
         address predictedAddress = address(
             uint160(
                 uint256(
@@ -96,7 +96,7 @@ contract FactoryTest is Test {
                         abi.encodePacked(
                             bytes1(0xff),
                             address(trancheFactory),
-                            hashedSalt,
+                            tokenSalt,
                             keccak256(abi.encodePacked(type(Tranche).creationCode, abi.encode(decimals)))
                         )
                     )
@@ -108,10 +108,10 @@ contract FactoryTest is Test {
         trancheWards[0] = address(investmentManager);
         trancheWards[1] = address(poolManager);
 
-        address token = trancheFactory.newTranche(poolId, trancheId, name, symbol, decimals, hashedSalt, trancheWards);
+        address token = trancheFactory.newTranche(poolId, trancheId, name, symbol, decimals, tokenSalt, trancheWards);
 
         assertEq(address(token), predictedAddress);
-        assertEq(trancheFactory.getAddress(poolId, trancheId, decimals), address(token));
+        assertEq(trancheFactory.getAddress(decimals, tokenSalt), address(token));
     }
 
     function testDeployingDeterministicAddressTwiceReverts(

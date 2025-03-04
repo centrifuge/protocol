@@ -23,5 +23,5 @@ interface ITrancheFactory {
     ) external returns (address);
 
     /// @notice Returns the predicted address (using CREATE2)
-    function getAddress(uint64 poolId, bytes16 trancheId, uint8 decimals) external view returns (address);
+    function getAddress(uint8 decimals, bytes32 salt) external view returns (address);
 }

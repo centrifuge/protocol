@@ -42,12 +42,12 @@ contract TrancheFactory is Auth, ITrancheFactory {
     }
 
     /// @inheritdoc ITrancheFactory
-    function getAddress(uint64 poolId, bytes16 trancheId, uint8 decimals) external view returns (address) {
+    function getAddress(uint8 decimals, bytes32 salt) external view returns (address) {
         bytes32 hash = keccak256(
             abi.encodePacked(
                 bytes1(0xff),
                 address(this),
-                keccak256(abi.encodePacked(poolId, trancheId)),
+                salt,
                 keccak256(abi.encodePacked(type(Tranche).creationCode, abi.encode(decimals)))
             )
         );
