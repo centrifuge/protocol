@@ -66,12 +66,14 @@ contract Accounting is Auth, IAccounting {
 
     /// @inheritdoc IAccounting
     function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external auth {
+        require(accounts[poolId][account].lastUpdated != 0, AccountDoesNotExist());
         accounts[poolId][account].metadata = metadata;
     }
 
     /// @inheritdoc IAccounting
     function accountValue(PoolId poolId, AccountId account) public view returns (int128) {
         Account storage acc = accounts[poolId][account];
+        require(acc.lastUpdated != 0, AccountDoesNotExist());
 
         if (acc.isDebitNormal) {
             // For debit-normal accounts: Value = Total Debit - Total Credit

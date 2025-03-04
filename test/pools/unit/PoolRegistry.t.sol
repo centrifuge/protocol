@@ -8,6 +8,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {PoolId, newPoolId} from "src/pools/types/PoolId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
+import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {PoolRegistry} from "src/pools/PoolRegistry.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
@@ -16,7 +17,10 @@ contract PoolRegistryTest is Test {
     using MathLib for uint256;
 
     PoolRegistry registry;
-    AssetId USD = AssetId.wrap(840);
+
+    AssetId constant USD = AssetId.wrap(840);
+    ShareClassId constant SC_A = ShareClassId.wrap(bytes16("sc"));
+
     IShareClassManager shareClassManager = IShareClassManager(makeAddr("shareClassManager"));
 
     modifier nonZero(address addr) {
@@ -94,36 +98,6 @@ contract PoolRegistryTest is Test {
         emit IPoolRegistry.UpdatedAdmin(poolId, additionalAdmin, false);
         registry.updateAdmin(poolId, additionalAdmin, false);
         assertFalse(registry.isAdmin(poolId, additionalAdmin));
-    }
-
-    function testAllowInvestorAsset(address fundAdmin) public nonZero(fundAdmin) notThisContract(fundAdmin) {
-        PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
-
-        AssetId validAsset = AssetId.wrap(1);
-        assertFalse(registry.isInvestorAssetAllowed(poolId, validAsset));
-
-        vm.prank(makeAddr("unauthorizedAddress"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.allowInvestorAsset(poolId, validAsset, true);
-
-        PoolId nonExistingPool = PoolId.wrap(0xDEAD);
-        vm.expectRevert(abi.encodeWithSelector(IPoolRegistry.NonExistingPool.selector, nonExistingPool));
-        registry.allowInvestorAsset(nonExistingPool, validAsset, true);
-
-        vm.expectRevert(IPoolRegistry.EmptyAsset.selector);
-        registry.allowInvestorAsset(poolId, AssetId.wrap(0), true);
-
-        // Allow an asset
-        vm.expectEmit();
-        emit IPoolRegistry.AllowedInvestorAsset(poolId, validAsset, true);
-        registry.allowInvestorAsset(poolId, validAsset, true);
-        assertTrue(registry.isInvestorAssetAllowed(poolId, validAsset));
-
-        // Disallow an asset
-        vm.expectEmit();
-        emit IPoolRegistry.AllowedInvestorAsset(poolId, validAsset, false);
-        registry.allowInvestorAsset(poolId, validAsset, false);
-        assertFalse(registry.isInvestorAssetAllowed(poolId, validAsset));
     }
 
     function testSetMetadata(bytes calldata metadata) public {

@@ -77,8 +77,8 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         ShareClassId scId,
         AssetId assetId,
         bytes32 investor,
-        uint128 shareAmount,
-        uint128 assetAmount
+        uint128 assetAmount,
+        uint128 shareAmount
     ) external auth {
         _send(
             assetId.chainId(),
@@ -87,8 +87,8 @@ contract Gateway is Auth, IGateway, IMessageHandler {
                 scId: scId.raw(),
                 investor: investor,
                 assetId: assetId.raw(),
-                shareAmount: shareAmount,
-                assetAmount: assetAmount
+                assetAmount: assetAmount,
+                shareAmount: shareAmount
             }).serialize()
         );
     }
@@ -98,8 +98,8 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         ShareClassId scId,
         AssetId assetId,
         bytes32 investor,
-        uint128 shareAmount,
-        uint128 assetAmount
+        uint128 assetAmount,
+        uint128 shareAmount
     ) external auth {
         _send(
             assetId.chainId(),
@@ -108,8 +108,8 @@ contract Gateway is Auth, IGateway, IMessageHandler {
                 scId: scId.raw(),
                 investor: investor,
                 assetId: assetId.raw(),
-                shareAmount: shareAmount,
-                assetAmount: assetAmount
+                assetAmount: assetAmount,
+                shareAmount: shareAmount
             }).serialize()
         );
     }
