@@ -18,7 +18,7 @@ enum MessageType {
     RecoverTokens,
     // -- Gas messages 8
     UpdateGasPrice,
-    // -- Pool manager messages 9 - 18
+    // -- Pool manager messages 9 - 19
     RegisterAsset,
     NotifyPool,
     NotifyShareClass,
@@ -29,7 +29,8 @@ enum MessageType {
     UpdateShareClassHook,
     TransferShares,
     UpdateRestriction,
-    // -- Investment manager messages 19 - 27
+    UpdateContract,
+    // -- Investment manager messages 20 - 28
     DepositRequest,
     RedeemRequest,
     FulfilledDepositRequest,
@@ -75,9 +76,9 @@ library MessageLib {
             return MessageCategory.Root;
         } else if (code == 8) {
             return MessageCategory.Gas;
-        } else if (code >= 9 && code <= 18) {
+        } else if (code >= 9 && code <= 19) {
             return MessageCategory.Pool;
-        } else if (code >= 19 && code <= 27) {
+        } else if (code >= 20 && code <= 28) {
             return MessageCategory.Investment;
         } else {
             return MessageCategory.Other;
@@ -464,6 +465,31 @@ library MessageLib {
 
     function serialize(UpdateRestriction memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(MessageType.UpdateRestriction, t.poolId, t.scId, t.payload);
+    }
+
+    //---------------------------------------
+    //    UpdateContract
+    //---------------------------------------
+
+    struct UpdateContract {
+        uint64 poolId;
+        bytes16 scId;
+        bytes32 target;
+        bytes payload;
+    }
+
+    function deserializeUpdateContract(bytes memory data) internal pure returns (UpdateContract memory) {
+        require(messageType(data) == MessageType.UpdateContract, UnknownMessageType());
+        return UpdateContract({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            target: data.toBytes32(25),
+            payload: data.slice(57, data.length - 57)
+        });
+    }
+
+    function serialize(UpdateContract memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.UpdateContract, t.poolId, t.scId, t.target, t.payload);
     }
 
     //---------------------------------------

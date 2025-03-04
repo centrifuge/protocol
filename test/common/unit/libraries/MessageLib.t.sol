@@ -28,6 +28,7 @@ contract TestMessageLibCategories is Test {
         assert(MessageCategory.Pool == uint8(MessageType.UpdateShareClassHook).category());
         assert(MessageCategory.Pool == uint8(MessageType.TransferShares).category());
         assert(MessageCategory.Pool == uint8(MessageType.UpdateRestriction).category());
+        assert(MessageCategory.Pool == uint8(MessageType.UpdateContract).category());
         assert(MessageCategory.Investment == uint8(MessageType.DepositRequest).category());
         assert(MessageCategory.Investment == uint8(MessageType.RedeemRequest).category());
         assert(MessageCategory.Investment == uint8(MessageType.FulfilledDepositRequest).category());
@@ -216,6 +217,17 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
+        assertEq(a.payload, b.payload);
+    }
+
+    function testUpdateContract() public pure {
+        MessageLib.UpdateContract memory a =
+                            MessageLib.UpdateContract({poolId: 1, scId: bytes16("sc"), target: bytes32("updateContract"), payload: bytes("ABCD")});
+        MessageLib.UpdateContract memory b = MessageLib.deserializeUpdateContract(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.target, b.target);
         assertEq(a.payload, b.payload);
     }
 
