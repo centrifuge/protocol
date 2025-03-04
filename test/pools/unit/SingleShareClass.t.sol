@@ -38,9 +38,9 @@ string constant SC_NAME = "ExampleName";
 string constant SC_SYMBOL = "ExampleSymbol";
 bytes32 constant SC_SALT = bytes32("ExampleSalt");
 
-uint32 constant STORAGE_INDEX_EPOCH_ID = 2;
-uint32 constant STORAGE_INDEX_TOTAL_ISSUANCE = 4;
-uint32 constant STORAGE_INDEX_EPOCH_POINTERS = 7;
+uint32 constant STORAGE_INDEX_EPOCH_ID = 3;
+uint32 constant STORAGE_INDEX_TOTAL_ISSUANCE = 5;
+uint32 constant STORAGE_INDEX_EPOCH_POINTERS = 8;
 
 contract PoolRegistryMock {
     function currency(PoolId) external pure returns (AssetId) {
