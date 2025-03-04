@@ -221,8 +221,12 @@ contract TestMessageLibIdentities is Test {
     }
 
     function testUpdateContract() public pure {
-        MessageLib.UpdateContract memory a =
-                            MessageLib.UpdateContract({poolId: 1, scId: bytes16("sc"), target: bytes32("updateContract"), payload: bytes("ABCD")});
+        MessageLib.UpdateContract memory a = MessageLib.UpdateContract({
+            poolId: 1,
+            scId: bytes16("sc"),
+            target: bytes32("updateContract"),
+            payload: bytes("ABCD")
+        });
         MessageLib.UpdateContract memory b = MessageLib.deserializeUpdateContract(a.serialize());
 
         assertEq(a.poolId, b.poolId);

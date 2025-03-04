@@ -15,6 +15,7 @@ import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol"
 import {ITrancheFactory} from "src/vaults/interfaces/factories/ITrancheFactory.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
+import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 import {
     Pool,
     TrancheDetails,
@@ -137,6 +138,9 @@ contract PoolManager is Auth, IPoolManager {
         } else if (kind == MessageType.UpdateRestriction) {
             MessageLib.UpdateRestriction memory m = MessageLib.deserializeUpdateRestriction(message);
             updateRestriction(m.poolId, m.scId, m.payload);
+        } else if (kind == MessageType.UpdateRestriction) {
+            MessageLib.UpdateContract memory m = MessageLib.deserializeUpdateContract(message);
+            updateContract(m.poolId, m.scId, address(bytes20(m.target)), m.payload);
         } else {
             revert("PoolManager/invalid-message");
         }
@@ -243,6 +247,12 @@ contract PoolManager is Auth, IPoolManager {
         address hook = tranche.hook();
         require(hook != address(0), "PoolManager/invalid-hook");
         IHook(hook).updateRestriction(address(tranche), update);
+    }
+
+    /// @inheritdoc IPoolManager
+    function updateContract(uint64 poolId, bytes16 trancheId, address target, bytes memory update) public auth {
+        IUpdateContract(target).update(poolId, trancheId, update);
+        emit UpdateContract(poolId, trancheId, target, update);
     }
 
     /// @inheritdoc IPoolManager

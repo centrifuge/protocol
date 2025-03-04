@@ -67,6 +67,7 @@ interface IPoolManager is IMessageHandler, IRecoverable {
         bytes32 destinationAddress,
         uint128 amount
     );
+    event UpdateContract(uint64 indexed poolId, bytes16 indexed trancheId, address target, bytes payload);
 
     /// @notice returns the investmentManager address
     /// @dev    can be set using file
@@ -140,6 +141,13 @@ interface IPoolManager is IMessageHandler, IRecoverable {
     /// @param  update The restriction update in the form of a bytes array indicating
     ///                the restriction to be updated, the user to be updated, and a validUntil timestamp.
     function updateRestriction(uint64 poolId, bytes16 trancheId, bytes memory update) external;
+
+    /// @notice Updates the target address. Generic update function from CP to CV
+    /// @param  poolId The centrifuge pool id
+    /// @param  trancheId The tranche id
+    /// @param  target The target address to be called
+    /// @param  update The payload to be processed by the target address
+    function updateContract(uint64 poolId, bytes16 trancheId, address target, bytes memory update) external;
 
     /// @notice Updates the hook of a tranche token
     /// @param  poolId The centrifuge pool id
