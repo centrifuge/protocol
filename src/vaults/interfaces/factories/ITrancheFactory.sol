@@ -2,6 +2,8 @@
 pragma solidity 0.8.28;
 
 interface ITrancheFactory {
+    event NewTrancheToken(uint64 indexedpoolId, bytes16 indexed trancheId, address token);
+
     /// @notice Used to deploy new tranche tokens.
     /// @dev    In order to have the same address on different EVMs `salt` should be used
     ///         during creationg process.

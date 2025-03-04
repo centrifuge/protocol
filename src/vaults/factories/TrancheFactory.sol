@@ -38,6 +38,8 @@ contract TrancheFactory is Auth, ITrancheFactory {
         }
         token.deny(address(this));
 
+        emit NewTrancheToken(poolId, trancheId, address(token));
+
         return address(token);
     }
 
