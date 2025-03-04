@@ -119,6 +119,7 @@ contract TestInvestments is TestConfiguration {
     uint128 constant INVESTOR_AMOUNT = 100 * 1e6; // USDC_C2
     uint128 constant SHARE_AMOUNT = 10 * 1e18; // Share from USD
     D18 immutable PERCENT_20 = d18(1, 5);
+    D18 immutable PERCENT_80 = d18(4, 5);
     D18 immutable NAV_PER_SHARE = d18(2, 1);
 
     function testDeposit() public returns (PoolId poolId, ShareClassId scId) {
@@ -173,7 +174,7 @@ contract TestInvestments is TestConfiguration {
         assertEq(m0.scId, scId.raw());
         assertEq(m0.investor, INVESTOR);
         assertEq(m0.assetId, USDC_C2.raw());
-        assertEq(m0.assetAmount, PERCENT_20.mulUint128(PERCENT_20.mulUint128(INVESTOR_AMOUNT)));
-        assertEq(m0.shareAmount, SHARE_AMOUNT);
+        assertEq(m0.assetAmount, PERCENT_80.mulUint128(INVESTOR_AMOUNT));
+        assertEq(m0.shareAmount, PERCENT_20.mulUint128(SHARE_AMOUNT));
     }
 }
