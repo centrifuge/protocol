@@ -6,7 +6,6 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 
-import {RestrictionUpdate} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 import "forge-std/Test.sol";
 
 interface AdapterLike {
@@ -40,9 +39,7 @@ contract MockCentrifugeChain is Test {
         bytes memory _allowAsset =
             MessageLib.AllowAsset({poolId: poolId, scId: bytes16(0), assetId: assetId}).serialize();
 
-        bytes memory _message = abi.encodePacked(
-            uint8(MessageType.Batch), uint16(_addPool.length), _addPool, uint16(_allowAsset.length), _allowAsset
-        );
+        bytes memory _message = abi.encodePacked(_addPool, _allowAsset);
         execute(_message);
     }
 
@@ -79,7 +76,7 @@ contract MockCentrifugeChain is Test {
             MessageLib.UpdateRestriction({
                 poolId: poolId,
                 scId: trancheId,
-                payload: abi.encodePacked(uint8(RestrictionUpdate.UpdateMember), user.toBytes32(), validUntil)
+                payload: MessageLib.UpdateRestrictionMember(user.toBytes32(), validUntil).serialize()
             }).serialize()
         );
     }
@@ -165,7 +162,7 @@ contract MockCentrifugeChain is Test {
             MessageLib.UpdateRestriction({
                 poolId: poolId,
                 scId: trancheId,
-                payload: abi.encodePacked(uint8(RestrictionUpdate.Freeze), user.toBytes32())
+                payload: MessageLib.UpdateRestrictionFreeze(user.toBytes32()).serialize()
             }).serialize()
         );
     }
@@ -175,7 +172,7 @@ contract MockCentrifugeChain is Test {
             MessageLib.UpdateRestriction({
                 poolId: poolId,
                 scId: trancheId,
-                payload: abi.encodePacked(uint8(RestrictionUpdate.Unfreeze), user.toBytes32())
+                payload: MessageLib.UpdateRestrictionUnfreeze(user.toBytes32()).serialize()
             }).serialize()
         );
     }

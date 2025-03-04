@@ -5,7 +5,6 @@ import {Tranche} from "src/vaults/token/Tranche.sol";
 import {MockRoot} from "test/vaults/mocks/MockRoot.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
-import {RestrictionUpdate} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 import "forge-std/Test.sol";
 
@@ -23,7 +22,7 @@ contract RestrictionManagerTest is Test {
 
     function testHandleInvalidMessage() public {
         vm.expectRevert(bytes("RestrictionManager/invalid-update"));
-        restrictionManager.updateRestriction(address(token), abi.encodePacked(uint8(RestrictionUpdate.Invalid)));
+        restrictionManager.updateRestriction(address(token), abi.encodePacked(uint8(0)));
     }
 
     function testAddMember(uint64 validUntil) public {
