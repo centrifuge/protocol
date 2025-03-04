@@ -68,17 +68,14 @@ contract TestConfiguration is TestCommon {
     string constant SC_SYMBOL = "ExampleSymbol";
     bytes32 constant SC_HOOK = bytes32("ExampleHookData");
 
-    function testAssetRegistration() public {
+    /// forge-config: default.isolate = true
+    function testPoolCreation() public returns (PoolId poolId, ShareClassId scId) {
         cv.registerAsset(USDC_C2, "USD Coin", "USDC", 6);
 
         (string memory name, string memory symbol, uint8 decimals) = assetRegistry.asset(USDC_C2);
         assertEq(name, "USD Coin");
         assertEq(symbol, "USDC");
         assertEq(decimals, 6);
-    }
-
-    function testPoolCreation() public returns (PoolId poolId, ShareClassId scId) {
-        cv.registerAsset(USDC_C2, "USD Coin", "USDC", 6);
 
         vm.prank(FM);
         poolId = poolManager.createPool(USD, singleShareClass);
@@ -119,9 +116,9 @@ contract TestInvestments is TestConfiguration {
     uint128 constant INVESTOR_AMOUNT = 100 * 1e6; // USDC_C2
     uint128 constant SHARE_AMOUNT = 10 * 1e18; // Share from USD
     D18 immutable PERCENT_20 = d18(1, 5);
-    D18 immutable PERCENT_80 = d18(4, 5);
     D18 immutable NAV_PER_SHARE = d18(2, 1);
 
+    /// forge-config: default.isolate = true
     function testDeposit() public returns (PoolId poolId, ShareClassId scId) {
         (poolId, scId) = testPoolCreation();
 
@@ -151,6 +148,7 @@ contract TestInvestments is TestConfiguration {
         cv.resetMessages();
     }
 
+    /// forge-config: default.isolate = true
     function testRedeem() public returns (PoolId poolId, ShareClassId scId) {
         (poolId, scId) = testDeposit();
 
@@ -174,7 +172,7 @@ contract TestInvestments is TestConfiguration {
         assertEq(m0.scId, scId.raw());
         assertEq(m0.investor, INVESTOR);
         assertEq(m0.assetId, USDC_C2.raw());
-        assertEq(m0.assetAmount, PERCENT_80.mulUint128(INVESTOR_AMOUNT));
+        assertEq(m0.assetAmount, PERCENT_20.mulUint128(PERCENT_20.mulUint128(INVESTOR_AMOUNT)));
         assertEq(m0.shareAmount, PERCENT_20.mulUint128(SHARE_AMOUNT));
     }
 }
