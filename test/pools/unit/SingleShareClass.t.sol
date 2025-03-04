@@ -37,6 +37,7 @@ uint128 constant MAX_REQUEST_AMOUNT = 1e18;
 string constant SC_NAME = "ExampleName";
 string constant SC_SYMBOL = "ExampleSymbol";
 bytes32 constant SC_SALT = bytes32("ExampleSalt");
+bytes32 constant SC_SECOND_SALT = bytes32("AnotherExampleSalt");
 
 uint32 constant STORAGE_INDEX_EPOCH_ID = 3;
 uint32 constant STORAGE_INDEX_TOTAL_ISSUANCE = 5;
@@ -1449,6 +1450,12 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
         shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), SC_NAME, string(new bytes(33)), bytes32(0), bytes(""));
     }
 
+    function testAddShareClassSaltAlreadyUsed() public {
+        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), SC_NAME, SC_SYMBOL, SC_SECOND_SALT, bytes(""));
+        vm.expectRevert(ISingleShareClass.AlreadyUsedSalt.selector);
+        shareClass.addShareClass(PoolId.wrap(POOL_ID + 2), SC_NAME, SC_SYMBOL, SC_SECOND_SALT, bytes(""));
+    }
+
     function testUpdateMetadataClassInvalidNameEmpty() public {
         vm.expectRevert(ISingleShareClass.InvalidMetadataName.selector);
         shareClass.updateMetadata(poolId, scId, "", SC_SYMBOL, SC_SALT, bytes(""));
@@ -1467,5 +1474,11 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     function testUpdateMetadataClassInvalidSymbolExcess() public {
         vm.expectRevert(ISingleShareClass.InvalidMetadataSymbol.selector);
         shareClass.updateMetadata(poolId, scId, SC_NAME, string(new bytes(33)), bytes32(0), bytes(""));
+    }
+
+    function testUpdateMetadataSaltAlreadyUsed() public {
+        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), SC_NAME, SC_SYMBOL, SC_SECOND_SALT, bytes(""));
+        vm.expectRevert(ISingleShareClass.AlreadyUsedSalt.selector);
+        shareClass.updateMetadata(poolId, scId, SC_NAME, SC_SYMBOL, SC_SECOND_SALT, bytes(""));
     }
 }
