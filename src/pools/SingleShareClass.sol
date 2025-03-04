@@ -669,6 +669,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         uint256 sLen = bytes(symbol).length;
         require(sLen > 0 && sLen <= 32, InvalidMetadataSymbol());
 
+        require(salt != bytes32(0), InvalidSalt());
         // Either the salt has not changed, or the salt was never used before by any share class token
         require(salt == metadata[shareClassId_].salt || !salts[salt], AlreadyUsedSalt());
         salts[salt] = true;

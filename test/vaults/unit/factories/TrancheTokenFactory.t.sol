@@ -108,7 +108,7 @@ contract FactoryTest is Test {
         trancheWards[0] = address(investmentManager);
         trancheWards[1] = address(poolManager);
 
-        address token = trancheFactory.newTranche(poolId, trancheId, name, symbol, decimals, tokenSalt, trancheWards);
+        address token = trancheFactory.newTranche(name, symbol, decimals, tokenSalt, trancheWards);
 
         assertEq(address(token), predictedAddress);
         assertEq(trancheFactory.getAddress(decimals, tokenSalt), address(token));
@@ -151,9 +151,9 @@ contract FactoryTest is Test {
         TrancheFactory trancheFactory = new TrancheFactory{salt: salt}(root, address(this));
         assertEq(address(trancheFactory), predictedAddress);
 
-        trancheFactory.newTranche(poolId, trancheId, name, symbol, decimals, bytes32(0), trancheWards);
+        trancheFactory.newTranche(name, symbol, decimals, bytes32(0), trancheWards);
         vm.expectRevert();
-        trancheFactory.newTranche(poolId, trancheId, name, symbol, decimals, bytes32(0), trancheWards);
+        trancheFactory.newTranche(name, symbol, decimals, bytes32(0), trancheWards);
     }
 
     function _stringToBytes32(string memory source) internal pure returns (bytes32 result) {

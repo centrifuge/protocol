@@ -303,8 +303,6 @@ contract PoolManager is Auth, IPoolManager {
 
         UndeployedTranche storage undeployedTranche = _undeployedTranches[poolId][trancheId];
         address token = trancheFactory.newTranche(
-            poolId,
-            trancheId,
             undeployedTranche.tokenName,
             undeployedTranche.tokenSymbol,
             undeployedTranche.decimals,

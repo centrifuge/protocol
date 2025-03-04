@@ -1337,7 +1337,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
 
     function testUpdateMetadataWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
-        shareClass.updateMetadata(poolId, wrongShareClassId, "", "", bytes32(0), bytes(""));
+        shareClass.updateMetadata(poolId, wrongShareClassId, "", "", SC_SALT, bytes(""));
     }
 
     function testIssueSharesBeforeApproval() public {
@@ -1442,12 +1442,17 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
 
     function testAddShareClassInvalidSymbolEmpty() public {
         vm.expectRevert(ISingleShareClass.InvalidMetadataSymbol.selector);
-        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), SC_NAME, "", bytes32(0), bytes(""));
+        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), SC_NAME, "", SC_SALT, bytes(""));
     }
 
     function testAddShareClassInvalidSymbolExcess() public {
         vm.expectRevert(ISingleShareClass.InvalidMetadataSymbol.selector);
-        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), SC_NAME, string(new bytes(33)), bytes32(0), bytes(""));
+        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), SC_NAME, string(new bytes(33)), SC_SALT, bytes(""));
+    }
+
+    function testAddShareClassEmptySalt() public {
+        vm.expectRevert(ISingleShareClass.InvalidSalt.selector);
+        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), SC_NAME, SC_SYMBOL, bytes32(0), bytes(""));
     }
 
     function testAddShareClassSaltAlreadyUsed() public {
@@ -1474,6 +1479,11 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     function testUpdateMetadataClassInvalidSymbolExcess() public {
         vm.expectRevert(ISingleShareClass.InvalidMetadataSymbol.selector);
         shareClass.updateMetadata(poolId, scId, SC_NAME, string(new bytes(33)), bytes32(0), bytes(""));
+    }
+
+    function testUpdateMetadataInvalidSalt() public {
+        vm.expectRevert(ISingleShareClass.InvalidSalt.selector);
+        shareClass.updateMetadata(poolId, scId, SC_NAME, SC_SYMBOL, bytes32(0), bytes(""));
     }
 
     function testUpdateMetadataSaltAlreadyUsed() public {

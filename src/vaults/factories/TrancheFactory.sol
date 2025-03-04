@@ -18,8 +18,6 @@ contract TrancheFactory is Auth, ITrancheFactory {
 
     /// @inheritdoc ITrancheFactory
     function newTranche(
-        uint64 poolId,
-        bytes16 trancheId,
         string memory name,
         string memory symbol,
         uint8 decimals,
@@ -37,8 +35,6 @@ contract TrancheFactory is Auth, ITrancheFactory {
             token.rely(trancheWards[i]);
         }
         token.deny(address(this));
-
-        emit NewTrancheToken(poolId, trancheId, address(token));
 
         return address(token);
     }
