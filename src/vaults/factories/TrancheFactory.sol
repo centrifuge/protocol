@@ -23,12 +23,9 @@ contract TrancheFactory is Auth, ITrancheFactory {
         string memory name,
         string memory symbol,
         uint8 decimals,
+        bytes32 salt,
         address[] calldata trancheWards
     ) public auth returns (address) {
-        // Salt is hash(poolId + trancheId)
-        // same tranche token address on every evm chain
-        bytes32 salt = keccak256(abi.encodePacked(poolId, trancheId));
-
         Tranche token = new Tranche{salt: salt}(decimals);
 
         token.file("name", name);

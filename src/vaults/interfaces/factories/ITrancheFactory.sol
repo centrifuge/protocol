@@ -10,6 +10,7 @@ interface ITrancheFactory {
     /// @param name Name of the new token.
     /// @param symbol Symbol of the new token.
     /// @param decimals Decimals of the new token.
+    /// @param salt Salt used for deterministic deployments.
     /// @param trancheWards Address which can call methods behind authorized only.
     function newTranche(
         uint64 poolId,
@@ -17,6 +18,7 @@ interface ITrancheFactory {
         string memory name,
         string memory symbol,
         uint8 decimals,
+        bytes32 salt,
         address[] calldata trancheWards
     ) external returns (address);
 

@@ -49,6 +49,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         string memory name,
         string memory symbol,
         uint8 decimals,
+        bytes32 salt,
         bytes32 hook
     ) external auth {
         _send(
@@ -59,6 +60,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
                 name: name,
                 symbol: symbol.toBytes32(),
                 decimals: decimals,
+                salt: salt,
                 hook: hook
             }).serialize()
         );
