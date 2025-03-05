@@ -82,7 +82,7 @@ fail_on_revert = false
     #Check if https://github.com/foundry-rs/foundry/issues/9088 is fixed to remove the following:
     "src/misc/ReentrancyProtection.sol", #Because transient keyword
     "src/pools/Accounting.sol", #Because transient keyword
-    "src/pools/PoolRouter.sol", #Because transient keyword
+    "src/pools/PoolManager.sol", #Because transient keyword
     "src/pools/SingleShareClass.sol", #Because transient keyword
     "src/vaults/gateway/Gateway.sol", #Because transient keyword
   ]

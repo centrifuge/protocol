@@ -50,7 +50,7 @@ contract Deployer is Script {
         poolManager =
             new PoolManager(poolRegistry, assetRegistry, accounting, holdings, IGateway(ADDRESS_TO_FILE), address(this));
         gateway = new Gateway(IAdapter(address(0 /* TODO */ )), poolManager, address(this));
-        poolRouter = new PoolRouter(poolManager, poolRegistry);
+        poolRouter = new PoolRouter(poolManager);
 
         transientValuation = new TransientValuation(assetRegistry, address(this));
         identityValuation = new IdentityValuation(assetRegistry, address(this));

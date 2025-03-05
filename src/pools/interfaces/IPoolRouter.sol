@@ -12,15 +12,8 @@ import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
 /// @notice Entry point to the system
 interface IPoolRouter {
-    /// @notice Dispatched when the pool is already unlocked.
-    /// It means when calling to `execute()` inside `execute()`.
-    error PoolAlreadyUnlocked();
-
-    /// @notice Dispatched when the pool can not be unlocked by the caller
-    error NotAuthorizedAdmin();
-
-    /// @notice Dispatched when the pool is not unlocked to interact with.
-    error PoolLocked();
+    /// @notice Main method to unlock the pool and call the rest of the admin methods
+    function execute(PoolId poolId, bytes[] calldata data) external payable;
 
     /// @notice See counterpart in PoolManager contract
     function createPool(AssetId currency, IShareClassManager shareClassManager) external returns (PoolId poolId);
@@ -30,9 +23,6 @@ interface IPoolRouter {
 
     /// @notice See counterpart in PoolManager contract
     function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external;
-
-    /// @notice Main method to unlock the pool and call the rest of the admin methods
-    function execute(PoolId poolId, bytes[] calldata data) external payable;
 
     /// @notice See counterpart in PoolManager contract
     function notifyPool(uint32 chainId) external;
