@@ -19,12 +19,7 @@ import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 import {ISingleShareClass} from "src/pools/interfaces/ISingleShareClass.sol";
 import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
-import {
-    IPoolManager,
-    IPoolManagerHandler,
-    EscrowId,
-    AccountType
-} from "src/pools/interfaces/IPoolManager.sol";
+import {IPoolManager, IPoolManagerHandler, EscrowId, AccountType} from "src/pools/interfaces/IPoolManager.sol";
 import {IPoolRouter} from "src/pools/interfaces/IPoolRouter.sol";
 
 contract PoolRouter is Multicall, IPoolRouter {
@@ -100,7 +95,11 @@ contract PoolRouter is Multicall, IPoolRouter {
     }
 
     /// @inheritdoc IPoolRouter
-    function addShareClass(string calldata name, string calldata symbol, bytes calldata data) external poolUnlocked protected {
+    function addShareClass(string calldata name, string calldata symbol, bytes calldata data)
+        external
+        poolUnlocked
+        protected
+    {
         poolManager.addShareClass(unlockedPoolId, name, symbol, data);
     }
 
