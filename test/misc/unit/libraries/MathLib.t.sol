@@ -108,15 +108,27 @@ contract MathLibTest is Test {
         MathLib.toUint32(x);
     }
 
-    function testMin(uint256 x, uint256 y) public pure {
+    function testMinUint256(uint256 x, uint256 y) public pure {
         vm.assume(x > 0);
         y = uint256(bound(y, 0, x - 1));
-        assertEq(MathLib.min(x, y), y);
+        assertEq(MathLib.minUint256(x, y), y);
     }
 
-    function testMax(uint256 x, uint256 y) public pure {
+    function testMinUint128(uint128 x, uint128 y) public pure {
+        vm.assume(x > 0);
+        y = uint128(bound(y, 0, x - 1));
+        assertEq(MathLib.minUint128(x, y), y);
+    }
+
+    function testMaxUint256(uint256 x, uint256 y) public pure {
         vm.assume(x > 0);
         y = uint256(bound(y, 0, x - 1));
-        assertEq(MathLib.max(x, y), x);
+        assertEq(MathLib.maxUint256(x, y), x);
+    }
+
+    function testMaxUint128(uint128 x, uint128 y) public pure {
+        vm.assume(x > 0);
+        y = uint128(bound(y, 0, x - 1));
+        assertEq(MathLib.maxUint128(x, y), x);
     }
 }

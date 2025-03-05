@@ -176,15 +176,14 @@ contract PoolManager is Auth, Multicall, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function approveDeposits(ShareClassId scId, AssetId paymentAssetId, D18 approvalRatio, IERC7726 valuation)
+    function approveDeposits(ShareClassId scId, AssetId paymentAssetId, uint128 maxApproval, IERC7726 valuation)
         external
         poolUnlocked
         protected
     {
         IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
 
-        (uint128 approvedAssetAmount,) =
-            scm.approveDeposits(unlockedPoolId, scId, approvalRatio, paymentAssetId, valuation);
+        (uint128 approvedAssetAmount, ) = scm.approveDeposits(unlockedPoolId, scId, maxApproval, paymentAssetId, valuation);
 
         assetRegistry.authTransferFrom(
             escrow(unlockedPoolId, scId, EscrowId.PENDING_SHARE_CLASS),
@@ -197,14 +196,14 @@ contract PoolManager is Auth, Multicall, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function approveRedeems(ShareClassId scId, AssetId payoutAssetId, D18 approvalRatio)
+    function approveRedeems(ShareClassId scId, AssetId payoutAssetId, uint128 maxApproval)
         external
         poolUnlocked
         protected
     {
         IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
 
-        scm.approveRedeems(unlockedPoolId, scId, approvalRatio, payoutAssetId);
+        scm.approveRedeems(unlockedPoolId, scId, maxApproval, payoutAssetId);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
