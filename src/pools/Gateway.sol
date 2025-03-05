@@ -157,25 +157,25 @@ contract Gateway is Auth, IGateway, IMessageHandler {
 
         if (kind == MessageType.RegisterAsset) {
             MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
-            handler.handleRegisterAsset(AssetId.wrap(m.assetId), m.name, m.symbol.toString(), m.decimals);
+            handler.registerAsset(AssetId.wrap(m.assetId), m.name, m.symbol.toString(), m.decimals);
         } else if (kind == MessageType.DepositRequest) {
             MessageLib.DepositRequest memory m = message.deserializeDepositRequest();
-            handler.handleDepositRequest(
+            handler.depositRequest(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId), m.amount
             );
         } else if (kind == MessageType.RedeemRequest) {
             MessageLib.RedeemRequest memory m = message.deserializeRedeemRequest();
-            handler.handleRedeemRequest(
+            handler.redeemRequest(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId), m.amount
             );
         } else if (kind == MessageType.CancelDepositRequest) {
             MessageLib.CancelDepositRequest memory m = message.deserializeCancelDepositRequest();
-            handler.handleCancelDepositRequest(
+            handler.cancelDepositRequest(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId)
             );
         } else if (kind == MessageType.CancelRedeemRequest) {
             MessageLib.CancelRedeemRequest memory m = message.deserializeCancelRedeemRequest();
-            handler.handleCancelRedeemRequest(
+            handler.cancelRedeemRequest(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId)
             );
         } else {

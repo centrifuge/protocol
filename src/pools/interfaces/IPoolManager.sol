@@ -170,32 +170,20 @@ interface IPoolManager is IPoolManagerAdminMethods {
 interface IPoolManagerHandler {
     /// @notice Tells that an asset was already registered in CV, in order to perform the corresponding register.
     /// @dev The same asset can be re-registered using this. Decimals can not change.
-    function handleRegisterAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals)
-        external;
+    function registerAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals) external;
 
     /// @notice Perform a deposit that was requested from CV.
-    function handleDepositRequest(
-        PoolId poolId,
-        ShareClassId scId,
-        bytes32 investor,
-        AssetId depositAssetId,
-        uint128 amount
-    ) external;
+    function depositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId, uint128 amount)
+        external;
 
     /// @notice Perform a redeem that was requested from CV.
-    function handleRedeemRequest(
-        PoolId poolId,
-        ShareClassId scId,
-        bytes32 investor,
-        AssetId payoutAssetId,
-        uint128 amount
-    ) external;
+    function redeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId, uint128 amount)
+        external;
 
     /// @notice Perform a deposit cancellation that was requested from CV.
-    function handleCancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
+    function cancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
         external;
 
     /// @notice Perform a redeem cancellation that was requested from CV.
-    function handleCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
-        external;
+    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId) external;
 }

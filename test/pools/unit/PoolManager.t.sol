@@ -104,19 +104,19 @@ contract TestMainMethodsChecks is TestCommon {
         poolManager.addCredit(AccountId.wrap(0), 0);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolManager.handleRegisterAsset(AssetId.wrap(0), "", "", 0);
+        poolManager.registerAsset(AssetId.wrap(0), "", "", 0);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolManager.handleDepositRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0), 0);
+        poolManager.depositRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0), 0);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolManager.handleRedeemRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0), 0);
+        poolManager.redeemRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0), 0);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolManager.handleCancelDepositRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
+        poolManager.cancelDepositRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolManager.handleCancelRedeemRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
+        poolManager.cancelRedeemRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
 
         vm.stopPrank();
     }

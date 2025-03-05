@@ -307,14 +307,14 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IPoolManagerHandler
-    function handleRegisterAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals)
+    function registerAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals)
         external auth
     {
         assetRegistry.registerAsset(assetId, name, symbol, decimals);
     }
 
     /// @inheritdoc IPoolManagerHandler
-    function handleDepositRequest(
+    function depositRequest(
         PoolId poolId,
         ShareClassId scId,
         bytes32 investor,
@@ -329,7 +329,7 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerHandler
-    function handleRedeemRequest(
+    function redeemRequest(
         PoolId poolId,
         ShareClassId scId,
         bytes32 investor,
@@ -341,7 +341,7 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerHandler
-    function handleCancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
+    function cancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
         external auth
     {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
@@ -354,7 +354,7 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerHandler
-    function handleCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
+    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
         external auth
     {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
