@@ -69,7 +69,7 @@ interface IPoolManagerAdminMethods {
 
     /// @notice Add a new share class to the pool
     /// @return The new share class Id
-    function addShareClass(string calldata name, string calldata symbol, bytes calldata data)
+    function addShareClass(string calldata name, string calldata symbol, bytes32 salt, bytes calldata data)
         external
         returns (ShareClassId);
 

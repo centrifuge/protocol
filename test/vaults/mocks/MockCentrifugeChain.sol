@@ -57,6 +57,7 @@ contract MockCentrifugeChain is Test {
         string memory tokenName,
         string memory tokenSymbol,
         uint8 decimals,
+        bytes32 salt,
         address hook
     ) public {
         execute(
@@ -66,6 +67,28 @@ contract MockCentrifugeChain is Test {
                 name: tokenName,
                 symbol: tokenSymbol.toBytes32(),
                 decimals: decimals,
+                salt: salt,
+                hook: bytes32(bytes20(hook))
+            }).serialize()
+        );
+    }
+
+    function addTranche(
+        uint64 poolId,
+        bytes16 trancheId,
+        string memory tokenName,
+        string memory tokenSymbol,
+        uint8 decimals,
+        address hook
+    ) public {
+        execute(
+            MessageLib.NotifyShareClass({
+                poolId: poolId,
+                scId: trancheId,
+                name: tokenName,
+                symbol: tokenSymbol.toBytes32(),
+                decimals: decimals,
+                salt: keccak256(abi.encodePacked(poolId, trancheId)),
                 hook: bytes32(bytes20(hook))
             }).serialize()
         );

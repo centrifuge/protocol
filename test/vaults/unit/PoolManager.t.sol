@@ -79,6 +79,7 @@ contract PoolManagerTest is BaseTest {
         bytes16 trancheId,
         string memory tokenName,
         string memory tokenSymbol,
+        bytes32 salt,
         uint8 decimals
     ) public {
         decimals = uint8(bound(decimals, 2, 18));
@@ -88,12 +89,12 @@ contract PoolManagerTest is BaseTest {
         address hook = address(new MockHook());
 
         vm.expectRevert(bytes("PoolManager/invalid-pool"));
-        centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook);
+        centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, salt, hook);
         centrifugeChain.addPool(poolId);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
-        poolManager.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook);
+        poolManager.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, salt, hook);
 
         vm.expectRevert(bytes("PoolManager/too-few-tranche-token-decimals"));
         centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, 0, hook);
@@ -101,11 +102,11 @@ contract PoolManagerTest is BaseTest {
         vm.expectRevert(bytes("PoolManager/too-many-tranche-token-decimals"));
         centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, 19, hook);
 
-        centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook);
+        centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, salt, hook);
         assertTrue(poolManager.canTrancheBeDeployed(poolId, trancheId));
 
         vm.expectRevert(bytes("PoolManager/tranche-already-exists"));
-        centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook);
+        centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, salt, hook);
 
         poolManager.deployTranche(poolId, trancheId);
         assertFalse(poolManager.canTrancheBeDeployed(poolId, trancheId));
@@ -118,7 +119,7 @@ contract PoolManagerTest is BaseTest {
         assertEq(hook, tranche.hook());
 
         vm.expectRevert(bytes("PoolManager/tranche-already-deployed"));
-        centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook);
+        centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, salt, hook);
     }
 
     function testAddMultipleTranchesWorks(

@@ -148,6 +148,7 @@ contract TestMessageLibIdentities is Test {
             name: "n",
             symbol: "s",
             decimals: 18,
+            salt: bytes32("salt"),
             hook: bytes32("hook")
         });
         MessageLib.NotifyShareClass memory b = MessageLib.deserializeNotifyShareClass(a.serialize());
@@ -157,6 +158,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.name, b.name);
         assertEq(a.symbol, b.symbol);
         assertEq(a.decimals, b.decimals);
+        assertEq(a.salt, b.salt);
         assertEq(a.hook, b.hook);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
