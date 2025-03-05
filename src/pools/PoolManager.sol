@@ -21,7 +21,6 @@ import {ISingleShareClass} from "src/pools/interfaces/ISingleShareClass.sol";
 import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
 import {
     IPoolManager,
-    IPoolManagerAdminMethods,
     IPoolManagerHandler,
     EscrowId,
     AccountType
@@ -56,7 +55,7 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Deployer methods
+    // System methods
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IPoolManager
@@ -69,6 +68,16 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
         else revert FileUnrecognizedWhat();
 
         emit File(what, data);
+    }
+
+    /// @inheritdoc IPoolManager
+    function unlockAccounting(PoolId poolId) external auth {
+        accounting.unlock(poolId, "TODO");
+    }
+
+    /// @inheritdoc IPoolManager
+    function lockAccounting() external auth {
+        accounting.lock();
     }
 
     //----------------------------------------------------------------------------------------------
@@ -101,26 +110,15 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Spetial permision methods
-    //----------------------------------------------------------------------------------------------
-
-    function unlockAccounting(PoolId poolId) external auth {
-        accounting.unlock(poolId, "TODO");
-    }
-
-    function lockAccounting() external auth {
-        accounting.lock();
-    }
-
-    //----------------------------------------------------------------------------------------------
     // Pool admin methods
     //----------------------------------------------------------------------------------------------
-    /// @inheritdoc IPoolManagerAdminMethods
+
+    /// @inheritdoc IPoolManager
     function notifyPool(uint32 chainId, PoolId poolId) external auth {
         gateway.sendNotifyPool(chainId, poolId);
     }
 
-    /// @inheritdoc IPoolManagerAdminMethods
+    /// @inheritdoc IPoolManager
     function notifyShareClass(uint32 chainId, PoolId poolId, ShareClassId scId, bytes32 hook) external auth {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
         require(scm.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
@@ -131,30 +129,30 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
         gateway.sendNotifyShareClass(chainId, poolId, scId, name, symbol, decimals, hook);
     }
 
-    /// @inheritdoc IPoolManagerAdminMethods
+    /// @inheritdoc IPoolManager
     function setPoolMetadata(PoolId poolId, bytes calldata metadata) external auth {
         poolRegistry.setMetadata(poolId, metadata);
     }
 
-    /// @inheritdoc IPoolManagerAdminMethods
+    /// @inheritdoc IPoolManager
     function allowPoolAdmin(PoolId poolId, address account, bool allow) external auth {
         poolRegistry.updateAdmin(poolId, account, allow);
     }
 
-    /// @inheritdoc IPoolManagerAdminMethods
+    /// @inheritdoc IPoolManager
     function allowAsset(PoolId poolId, ShareClassId scId, AssetId assetId, bool /*allow*/) external auth view {
         require(holdings.exists(poolId, scId, assetId), IHoldings.HoldingNotFound());
 
         // TODO: cal update contract feature
     }
 
-    /// @inheritdoc IPoolManagerAdminMethods
+    /// @inheritdoc IPoolManager
     function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes calldata data) external auth {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
         scm.addShareClass(poolId, name, symbol, data);
     }
 
-    /// @inheritdoc IPoolManagerAdminMethods
+    /// @inheritdoc IPoolManager
     function approveDeposits(PoolId poolId, ShareClassId scId, AssetId paymentAssetId, D18 approvalRatio, IERC7726 valuation)
         external auth
     {
@@ -173,7 +171,7 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
         increaseHolding(poolId, scId, paymentAssetId, valuation, approvedAssetAmount);
     }
 
-    /// @inheritdoc IPoolManagerAdminMethods
+    /// @inheritdoc IPoolManager
     function approveRedeems(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, D18 approvalRatio)
         external auth
     {
@@ -182,14 +180,14 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
         scm.approveRedeems(poolId, scId, approvalRatio, payoutAssetId);
     }
 
-    /// @inheritdoc IPoolManagerAdminMethods
+    /// @inheritdoc IPoolManager
     function issueShares(PoolId poolId, ShareClassId scId, AssetId depositAssetId, D18 navPerShare) external auth {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
 
         scm.issueShares(poolId, scId, depositAssetId, navPerShare);
     }
 
-    /// @inheritdoc IPoolManagerAdminMethods
+    /// @inheritdoc IPoolManager
     function revokeShares(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, D18 navPerShare, IERC7726 valuation)
         external auth
     {
@@ -207,7 +205,7 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
         decreaseHolding(poolId, scId, payoutAssetId, valuation, payoutAssetAmount);
     }
 
-    /// @inheritdoc IPoolManagerAdminMethods
+    /// @inheritdoc IPoolManager
     function createHolding(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation, uint24 prefix)
         external auth
     {
@@ -227,7 +225,7 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
         holdings.create(poolId, scId, assetId, valuation, accounts);
     }
 
-    /// @inheritdoc IPoolManagerAdminMethods
+    /// @inheritdoc IPoolManager
     function increaseHolding(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount)
         public auth
     {
@@ -237,7 +235,7 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
         accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.ASSET)), valueChange);
     }
 
-    /// @inheritdoc IPoolManagerAdminMethods
+    /// @inheritdoc IPoolManager
     function decreaseHolding(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount)
         public auth
     {
@@ -247,7 +245,7 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
         accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.EQUITY)), valueChange);
     }
 
-    /// @inheritdoc IPoolManagerAdminMethods
+    /// @inheritdoc IPoolManager
     function updateHolding(PoolId poolId, ShareClassId scId, AssetId assetId) external auth {
         int128 diff = holdings.update(poolId, scId, assetId);
 
@@ -268,36 +266,36 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
         }
     }
 
-    /// @inheritdoc IPoolManagerAdminMethods
+    /// @inheritdoc IPoolManager
     function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation)
         external auth
     {
         holdings.updateValuation(poolId, scId, assetId, valuation);
     }
 
-    /// @inheritdoc IPoolManagerAdminMethods
+    /// @inheritdoc IPoolManager
     function setHoldingAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, AccountId accountId)
         external auth
     {
         holdings.setAccountId(poolId, scId, assetId, accountId);
     }
 
-    /// @inheritdoc IPoolManagerAdminMethods
+    /// @inheritdoc IPoolManager
     function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) public auth {
         accounting.createAccount(poolId, account, isDebitNormal);
     }
 
-    /// @inheritdoc IPoolManagerAdminMethods
+    /// @inheritdoc IPoolManager
     function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external auth {
         accounting.setAccountMetadata(poolId, account, metadata);
     }
 
-    /// @inheritdoc IPoolManagerAdminMethods
+    /// @inheritdoc IPoolManager
     function addDebit(AccountId account, uint128 amount) external auth {
         accounting.addDebit(account, amount);
     }
 
-    /// @inheritdoc IPoolManagerAdminMethods
+    /// @inheritdoc IPoolManager
     function addCredit(AccountId account, uint128 amount) external auth {
         accounting.addCredit(account, amount);
     }

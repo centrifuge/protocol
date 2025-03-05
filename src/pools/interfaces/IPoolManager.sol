@@ -32,9 +32,40 @@ enum AccountType {
     GAIN
 }
 
-/// @notice Interface for methods that requires the pool to be unlocked
-/// They do not require a poolId parameter, all act over the unlocked pool
-interface IPoolManagerAdminMethods {
+/// @notice Interface with all methods available in the system used by actors
+interface IPoolManager {
+    /// @notice Emitted when a call to `file()` was performed.
+    event File(bytes32 what, address addr);
+
+    /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
+    error FileUnrecognizedWhat();
+
+    /// @notice Updates a contract parameter.
+    /// @param what Name of the parameter to update.
+    /// Accepts a `bytes32` representation of 'poolRegistry', 'assetRegistry', 'accounting', 'holdings', 'gateway' as
+    /// string value.
+    function file(bytes32 what, address data) external;
+
+    /// @notice unlock the accounting to modify the balance accounts
+    function unlockAccounting(PoolId poolId) external;
+
+    /// @notice lock the accounting
+    function lockAccounting() external;
+
+    /// @notice Creates a new pool. `msg.sender` will be the admin of the created pool.
+    /// @param currency The pool currency. Usually an AssetId identifying by a ISO4217 code.
+    /// @param shareClassManager The share class manager used for this pool.
+    /// @return The id of the new pool.
+    function createPool(address admin, AssetId currency, IShareClassManager shareClassManager)
+        external
+        returns (PoolId);
+
+    /// @notice Claim a deposit for an investor address located in the chain where the asset belongs
+    function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external;
+
+    /// @notice Claim a redemption for an investor address located in the chain where the asset belongs
+    function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external;
+
     /// @notice Notify to a CV instance that a new pool is available
     /// @param chainId Chain where CV instance lives
     function notifyPool(uint32 chainId, PoolId poolId) external;
@@ -127,39 +158,6 @@ interface IPoolManagerAdminMethods {
 
     /// @notice Add credit an account. Decrease the value of debit-normal accounts, increase for credit-normal ones.
     function addCredit(AccountId account, uint128 amount) external;
-}
-
-/// @notice Interface with all methods available in the system used by actors
-interface IPoolManager is IPoolManagerAdminMethods {
-    /// @notice Emitted when a call to `file()` was performed.
-    event File(bytes32 what, address addr);
-
-    /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
-    error FileUnrecognizedWhat();
-
-    /// @notice Updates a contract parameter.
-    /// @param what Name of the parameter to update.
-    /// Accepts a `bytes32` representation of 'poolRegistry', 'assetRegistry', 'accounting', 'holdings', 'gateway' as
-    /// string value.
-    function file(bytes32 what, address data) external;
-
-    /// @notice Creates a new pool. `msg.sender` will be the admin of the created pool.
-    /// @param currency The pool currency. Usually an AssetId identifying by a ISO4217 code.
-    /// @param shareClassManager The share class manager used for this pool.
-    /// @return The id of the new pool.
-    function createPool(address admin, AssetId currency, IShareClassManager shareClassManager)
-        external
-        returns (PoolId);
-
-    /// @notice Claim a deposit for an investor address located in the chain where the asset belongs
-    function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external;
-
-    /// @notice Claim a redemption for an investor address located in the chain where the asset belongs
-    function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external;
-
-    function unlockAccounting(PoolId poolId) external;
-
-    function lockAccounting() external;
 
     /// @notice Compute the escrow address used for a share class
     /// @return The escrow address

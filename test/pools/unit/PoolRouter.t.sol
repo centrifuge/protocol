@@ -10,9 +10,9 @@ import {PoolId} from "src/pools/types/PoolId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
 import {AccountId} from "src/pools/types/AccountId.sol";
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
-import {IPoolManager, IPoolManagerAdminMethods} from "src/pools/interfaces/IPoolManager.sol";
+import {IPoolManager} from "src/pools/interfaces/IPoolManager.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
-import {PoolRouter} from "src/pools/PoolRouter.sol";
+import {PoolRouter, IPoolRouter} from "src/pools/PoolRouter.sol";
 
 contract TestCommon is Test {
     IPoolManager immutable poolManager = IPoolManager(makeAddr("PoolManager"));
@@ -24,64 +24,64 @@ contract TestMainMethodsChecks is TestCommon {
     function testErrPoolLocked() public {
         vm.startPrank(makeAddr("noPoolAdmin"));
 
-        vm.expectRevert(PoolRouter.PoolLocked.selector);
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.notifyPool(0);
 
-        vm.expectRevert(PoolRouter.PoolLocked.selector);
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.notifyShareClass(0, ShareClassId.wrap(0), bytes32(""));
 
-        vm.expectRevert(PoolRouter.PoolLocked.selector);
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.setPoolMetadata(bytes(""));
 
-        vm.expectRevert(PoolRouter.PoolLocked.selector);
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.allowPoolAdmin(address(0), false);
 
-        vm.expectRevert(PoolRouter.PoolLocked.selector);
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.allowAsset(ShareClassId.wrap(0), AssetId.wrap(0), false);
 
-        vm.expectRevert(PoolRouter.PoolLocked.selector);
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.addShareClass("", "", bytes(""));
 
-        vm.expectRevert(PoolRouter.PoolLocked.selector);
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.approveDeposits(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
 
-        vm.expectRevert(PoolRouter.PoolLocked.selector);
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.approveRedeems(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
 
-        vm.expectRevert(PoolRouter.PoolLocked.selector);
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.issueShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
 
-        vm.expectRevert(PoolRouter.PoolLocked.selector);
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.revokeShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
 
-        vm.expectRevert(PoolRouter.PoolLocked.selector);
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.createHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
 
-        vm.expectRevert(PoolRouter.PoolLocked.selector);
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.increaseHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
 
-        vm.expectRevert(PoolRouter.PoolLocked.selector);
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.decreaseHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
 
-        vm.expectRevert(PoolRouter.PoolLocked.selector);
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.updateHolding(ShareClassId.wrap(0), AssetId.wrap(0));
 
-        vm.expectRevert(PoolRouter.PoolLocked.selector);
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.updateHoldingValuation(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)));
 
-        vm.expectRevert(PoolRouter.PoolLocked.selector);
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.setHoldingAccountId(ShareClassId.wrap(0), AssetId.wrap(0), AccountId.wrap(0));
 
-        vm.expectRevert(PoolRouter.PoolLocked.selector);
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.createAccount(AccountId.wrap(0), false);
 
-        vm.expectRevert(PoolRouter.PoolLocked.selector);
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.setAccountMetadata(AccountId.wrap(0), bytes(""));
 
-        vm.expectRevert(PoolRouter.PoolLocked.selector);
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.addDebit(AccountId.wrap(0), 0);
 
-        vm.expectRevert(PoolRouter.PoolLocked.selector);
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.addCredit(AccountId.wrap(0), 0);
 
         vm.stopPrank();
@@ -96,7 +96,7 @@ contract TestExecute is TestCommon {
             abi.encode(false)
         );
 
-        vm.expectRevert(PoolRouter.NotAuthorizedAdmin.selector);
+        vm.expectRevert(IPoolRouter.NotAuthorizedAdmin.selector);
         poolRouter.execute(PoolId.wrap(1), new bytes[](0));
     }
 }
@@ -118,7 +118,7 @@ contract TestNestedExecute is TestCommon {
         bytes[] memory calls = new bytes[](1);
         calls[0] = abi.encodeWithSelector(poolRouter.execute.selector, PoolId.wrap(1), new bytes[](0));
 
-        vm.expectRevert(PoolRouter.PoolAlreadyUnlocked.selector);
+        vm.expectRevert(IPoolRouter.PoolAlreadyUnlocked.selector);
         poolRouter.execute(PoolId.wrap(1), calls);
     }
 }

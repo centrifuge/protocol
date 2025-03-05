@@ -17,7 +17,7 @@ import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
 import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 import {IGateway} from "src/pools/interfaces/IGateway.sol";
-import {IPoolManager, IPoolManagerHandler, IPoolManagerAdminMethods} from "src/pools/interfaces/IPoolManager.sol";
+import {IPoolManager} from "src/pools/interfaces/IPoolManager.sol";
 import {PoolManager} from "src/pools/PoolManager.sol";
 
 contract TestCommon is Test {
