@@ -65,7 +65,7 @@ interface IPoolManagerAdminMethods {
 
     /// @notice Allow/disallow an asset for investment.
     /// Notify to the CV instance of that asset that the asset is available for investing for such share class id
-    function allowAsset(ShareClassId scId, AssetId assetId, bool allow) external;
+    function allowInvestorAsset(ShareClassId scId, AssetId assetId, bool allow) external;
 
     /// @notice Add a new share class to the pool
     /// @return The new share class Id

@@ -23,7 +23,6 @@ interface ISingleShareClass is IShareClassManager {
     error InvalidMetadataSize();
     error InvalidMetadataName();
     error InvalidMetadataSymbol();
-    error RevokeMoreThanIssued();
 
     /// @notice Emits new shares for the given identifier based on the provided NAV up to the desired epoch.
     ///

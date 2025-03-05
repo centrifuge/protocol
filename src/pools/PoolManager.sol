@@ -101,18 +101,18 @@ contract PoolManager is Auth, Multicall, IPoolManager, IPoolManagerHandler {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
 
         (uint128 shares, uint128 tokens) = scm.claimDeposit(poolId, scId, investor, assetId);
-        gateway.sendFulfilledDepositRequest(poolId, scId, assetId, investor, tokens, shares);
+        gateway.sendFulfilledDepositRequest(poolId, scId, assetId, investor, shares, tokens);
     }
 
     /// @inheritdoc IPoolManager
     function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external protected {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
 
-        (uint128 tokens, uint128 shares) = scm.claimRedeem(poolId, scId, investor, assetId);
+        (uint128 shares, uint128 tokens) = scm.claimRedeem(poolId, scId, investor, assetId);
 
         assetRegistry.burn(escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS), assetId.raw(), tokens);
 
-        gateway.sendFulfilledRedeemRequest(poolId, scId, assetId, investor, tokens, shares);
+        gateway.sendFulfilledRedeemRequest(poolId, scId, assetId, investor, shares, tokens);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -159,10 +159,14 @@ contract PoolManager is Auth, Multicall, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function allowAsset(ShareClassId scId, AssetId assetId, bool /*allow*/) external poolUnlocked protected {
+    function allowInvestorAsset(ShareClassId scId, AssetId assetId, bool allow) external poolUnlocked protected {
         require(holdings.exists(unlockedPoolId, scId, assetId), IHoldings.HoldingNotFound());
 
-        // TODO: cal update contract feature
+        poolRegistry.allowInvestorAsset(unlockedPoolId, assetId, allow);
+
+        gateway.sendNotifyAllowedAsset(
+            unlockedPoolId, scId, assetId, poolRegistry.isInvestorAssetAllowed(unlockedPoolId, assetId)
+        );
     }
 
     /// @inheritdoc IPoolManagerAdminMethods

@@ -342,8 +342,6 @@ contract SingleShareClass is Auth, ISingleShareClass {
                 continue;
             }
 
-            require(epochAmounts_.redeemSharesRevoked <= totalIssuance_, RevokeMoreThanIssued());
-
             payoutPoolAmount += _revokeEpochShares(
                 poolId,
                 shareClassId_,
