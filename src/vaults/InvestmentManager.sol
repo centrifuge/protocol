@@ -57,6 +57,28 @@ contract InvestmentManager is Auth, IInvestmentManager {
         SafeTransferLib.safeTransfer(token, to, amount);
     }
 
+    // --- IVaultManager ---
+    function addVault(uint64 poolId, bytes16 trancheId, address vault) public auth override {
+        IERC7540Vault vault_ = IERC7540Vault(vault);
+        address token = vault_.share();
+        address asset = vault_.asset();
+
+        IAuth(token).rely(vault);
+        ITranche(token).updateVault(asset, vault);
+        Auth(address(this)).rely(vault);
+
+    }
+
+    function rmVault(uint64 poolId, bytes16 trancheId, address vault) public auth override {
+        IERC7540Vault vault_ = IERC7540Vault(vault);
+        address token = vault_.share();
+        address asset = vault_.asset();
+
+        IAuth(token).deny(vault);
+        ITranche(token).updateVault(asset, address(0));
+        Auth(address(this)).deny(vault);
+    }
+
     // --- Outgoing message handling ---
     /// @inheritdoc IInvestmentManager
     function requestDeposit(address vault, uint256 assets, address controller, address, /* owner */ address source)
@@ -69,8 +91,9 @@ contract InvestmentManager is Auth, IInvestmentManager {
         require(_assets != 0, "InvestmentManager/zero-amount-not-allowed");
 
         uint64 poolId = vault_.poolId();
+        bytes16 trancheId = vault_.trancheId();
         address asset = vault_.asset();
-        require(poolManager.isAllowedAsset(poolId, asset), "InvestmentManager/asset-not-allowed");
+        require(poolManager.isLinked(poolId, trancheId, asset, vault), "InvestmentManager/asset-not-allowed");
 
         require(
             _canTransfer(vault, address(0), controller, convertToShares(vault, assets)),
@@ -85,7 +108,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
             uint32(poolId >> 32),
             MessageLib.DepositRequest({
                 poolId: poolId,
-                scId: vault_.trancheId(),
+                scId: trancheId,
                 investor: controller.toBytes32(),
                 assetId: poolManager.assetToId(asset),
                 amount: _assets
@@ -107,7 +130,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
         IERC7540Vault vault_ = IERC7540Vault(vault);
 
         // You cannot redeem using a disallowed asset, instead another vault will have to be used
-        require(poolManager.isAllowedAsset(vault_.poolId(), vault_.asset()), "InvestmentManager/asset-not-allowed");
+        require(poolManager.isLinked(vault_.poolId(), vault_.asset()), "InvestmentManager/asset-not-allowed");
 
         require(
             _canTransfer(vault, owner, address(escrow), shares)

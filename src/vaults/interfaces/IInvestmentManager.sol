@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {IMessageHandler} from "src/vaults/interfaces/gateway/IGateway.sol";
 import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
+import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 
 /// @dev Vault requests and deposit/redeem bookkeeping per user
 struct InvestmentState {
@@ -28,7 +29,7 @@ struct InvestmentState {
     bool pendingCancelRedeemRequest;
 }
 
-interface IInvestmentManager is IMessageHandler, IRecoverable {
+interface IInvestmentManager is IMessageHandler, IRecoverable, IVaultManager {
     // --- Events ---
     event File(bytes32 indexed what, address data);
     event TriggerRedeemRequest(

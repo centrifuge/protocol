@@ -20,10 +20,4 @@ interface IERC7540VaultFactory {
         address investmentManager,
         address[] calldata wards_
     ) external returns (address);
-
-    /// @notice Removes `vault` from `who`'s authroized callers
-    ///
-    /// @param vault Address of the vault to be remove from the authorized callers list.
-    /// @param investmentManager Address of the manager to remove the vault from.
-    function denyVault(address vault, address investmentManager) external;
 }
