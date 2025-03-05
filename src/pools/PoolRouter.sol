@@ -26,8 +26,8 @@ contract PoolRouter is Multicall, IPoolRouter {
     /// @dev Represents the unlocked pool Id in the multicall
     PoolId public transient unlockedPoolId;
 
-    IPoolManager public poolManager;
-    IPoolRegistry public poolRegistry;
+    IPoolManager public immutable poolManager;
+    IPoolRegistry public immutable poolRegistry;
 
     constructor(IPoolManager poolManager_, IPoolRegistry poolRegistry_) {
         poolManager = poolManager_;
