@@ -32,7 +32,7 @@ import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 /// @title  Pool Manager
 /// @notice This contract manages which pools & tranches exist,
 ///         as well as managing allowed pool currencies, and incoming and outgoing transfers.
-contract PoolManager is Auth, IPoolManager {
+contract PoolManager is Auth, IPoolManager, IUpdateContract {
     using MessageLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;
@@ -44,7 +44,6 @@ contract PoolManager is Auth, IPoolManager {
     IEscrow public immutable escrow;
 
     IGateway public gateway;
-    address public investmentManager;
     ERC7540VaultFactory public vaultFactory;
     ITrancheFactory public trancheFactory;
     IGasService public gasService;
@@ -52,6 +51,7 @@ contract PoolManager is Auth, IPoolManager {
     mapping(uint64 poolId => Pool) internal _pools;
     mapping(address => VaultAsset) internal _vaultToAsset;
     mapping(uint64 poolId => mapping(bytes16 => UndeployedTranche)) internal _undeployedTranches;
+    mapping(address factory => bool) public vaultsFactory;
 
     /// @inheritdoc IPoolManager
     mapping(uint128 assetId => address) public idToAsset;
@@ -68,7 +68,6 @@ contract PoolManager is Auth, IPoolManager {
     /// @inheritdoc IPoolManager
     function file(bytes32 what, address data) external auth {
         if (what == "gateway") gateway = IGateway(data);
-        else if (what == "investmentManager") investmentManager = data;
         else if (what == "trancheFactory") trancheFactory = ITrancheFactory(data);
         else if (what == "vaultFactory") vaultFactory = ERC7540VaultFactory(data);
         else if (what == "gasService") gasService = IGasService(data);
@@ -277,10 +276,6 @@ contract PoolManager is Auth, IPoolManager {
         idToAsset[assetId] = asset;
         assetToId[asset] = assetId;
 
-        // Give investment manager infinite approval for asset
-        // in the escrow to transfer to the user on redeem or withdraw
-        escrow.approveMax(asset, investmentManager);
-
         // Give pool manager infinite approval for asset
         // in the escrow to transfer to the user on transfer
         escrow.approveMax(asset, address(this));
@@ -299,14 +294,31 @@ contract PoolManager is Auth, IPoolManager {
         tranche.mint(destinationAddress, amount);
     }
 
+    // --- IUpdateContract implementation ---
+    /// @inheritdoc IUpdateContract
+    /// @notice The pool manager either deploys the vault if a factory address is provided or it simply links/unlinks the vault
+    function update(uint64 poolId, bytes16 trancheId, bytes memory payload) public auth {
+        (factory, assetId, isLinked) = abi.decode(payload, (address, uint128, bool));
+
+        if (factory != address(0)) {
+            require(vaultsFactory[factory], "PoolManager/invalid-factory");
+            deployVault(poolId, trancheId, idToAsset[assetId], factory);
+        }
+
+        if (isLinked) {
+            linkVault(poolId, trancheId, idToAsset[assetId]);
+        } else {
+            unlinkVault(poolId, trancheId, idToAsset[assetId]);
+        }
+    }
+
     // --- Public functions ---
     // slither-disable-start reentrancy-eth
     /// @inheritdoc IPoolManager
     function deployTranche(uint64 poolId, bytes16 trancheId) external returns (address) {
         require(canTrancheBeDeployed(poolId, trancheId), "PoolManager/tranche-not-added");
 
-        address[] memory trancheWards = new address[](2);
-        trancheWards[0] = investmentManager;
+        address[] memory trancheWards = new address[](1);
         trancheWards[1] = address(this);
 
         UndeployedTranche storage undeployedTranche = _undeployedTranches[poolId][trancheId];
@@ -327,31 +339,23 @@ contract PoolManager is Auth, IPoolManager {
 
         delete _undeployedTranches[poolId][trancheId];
 
-        // Give investment manager infinite approval for tranche tokens
-        // in the escrow to transfer to the user on deposit or mint
-        escrow.approveMax(token, investmentManager);
-
         emit DeployTranche(poolId, trancheId, token);
         return token;
     }
     // slither-disable-end reentrancy-eth
 
     /// @inheritdoc IPoolManager
-    function deployVault(uint64 poolId, bytes16 trancheId, address asset) external returns (address) {
+    function deployVault(uint64 poolId, bytes16 trancheId, address asset, address factory) public auth returns (address) {
         TrancheDetails storage tranche = _pools[poolId].tranches[trancheId];
         require(tranche.token != address(0), "PoolManager/tranche-does-not-exist");
-        require(isAllowedAsset(poolId, asset), "PoolManager/asset-not-supported");
-
-        address vault = ITranche(tranche.token).vault(asset);
-        require(vault == address(0), "PoolManager/vault-already-deployed");
+        require(vaultsFactory[factory], "PoolManager/invalid-factory");
 
         // Rely investment manager on vault so it can mint tokens
-        address[] memory vaultWards = new address[](1);
-        vaultWards[0] = investmentManager;
+        address[] memory vaultWards = new address[](0);
 
         // Deploy vault
-        vault = vaultFactory.newVault(
-            poolId, trancheId, asset, tranche.token, address(escrow), investmentManager, vaultWards
+        vault = IVaultFactory(factory).newVault(
+            poolId, trancheId, asset, tranche.token, address(escrow), vaultWards
         );
 
         // Check whether the ERC20 token is a wrapper
@@ -361,30 +365,53 @@ contract PoolManager is Auth, IPoolManager {
             _vaultToAsset[vault] = VaultAsset(asset, false);
         }
 
-        // Link vault to tranche token
-        IAuth(tranche.token).rely(vault);
-        ITranche(tranche.token).updateVault(asset, vault);
-
-        emit DeployVault(poolId, trancheId, asset, vault);
+        emit DeployVault(poolId, trancheId, asset, factory, vault);
         return vault;
     }
 
-    /// @inheritdoc IPoolManager
-    function removeVault(uint64 poolId, bytes16 trancheId, address asset) external auth {
+    function linkVault(uint64 poolId, bytes16 trancheId, address asset) public auth {
         TrancheDetails storage tranche = _pools[poolId].tranches[trancheId];
         require(tranche.token != address(0), "PoolManager/tranche-does-not-exist");
 
-        address vault = ITranche(tranche.token).vault(asset);
-        require(vault != address(0), "PoolManager/vault-not-deployed");
+        address manager = IVault(vault).manager();
+        IVaultManager(manager).addVault(vault);
 
-        vaultFactory.denyVault(vault, investmentManager);
+        // call an initVault method on manager rather then pure rely
+        // for ERC7540 do
+        //         // Link vault to tranche token
+        //        IAuth(tranche.token).rely(vault);
+        //        ITranche(tranche.token).updateVault(asset, vault);
+        //        Auth(investmentManager).rely(address(vault));
+        //        escrow.approveMax(token, investmentManager);
+        //        escrow.approveMax(asset, investmentManager);
+        emit LinkVault(poolId, trancheId, asset, vault);
+    }
+
+    /// @inheritdoc IPoolManager
+    function unlinkVault(uint64 poolId, bytes16 trancheId, address asset) public auth {
+        TrancheDetails storage tranche = _pools[poolId].tranches[trancheId];
+        require(tranche.token != address(0), "PoolManager/tranche-does-not-exist");
+
+        address manager = IVault(vault).manager();
+        IVaultManager(manager).addVault(vault);
+
+        // FOR ERC7540 investmentManage
+        /*
+        Auth(investmentManager).deny(address(vault));
 
         delete _vaultToAsset[vault];
 
         IAuth(tranche.token).deny(vault);
         ITranche(tranche.token).updateVault(asset, address(0));
+        escrow.removeApproval(tranche.token, investmentManager);
+        escrow.removeApproval(asset, investmentManager);
+        */
+        emit UnlinkVault(poolId, trancheId, asset, vault);
+    }
 
-        emit RemoveVault(poolId, trancheId, asset, vault);
+    ///
+    function updateVaultFactory(address factory, bool status) public auth {
+        vaultsFactory[factory] = status;
     }
 
     // --- Helpers ---
