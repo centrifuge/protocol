@@ -32,126 +32,93 @@ contract TestCommon is Test {
     IGateway immutable gateway = IGateway(makeAddr("Gateway"));
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
 
-    PoolManager poolManager = new PoolManager(poolRegistry, assetRegistry, accounting, holdings, gateway, address(0));
-
-    function _mockSuccessfulMulticall() private {
-        vm.mockCall(
-            address(poolRegistry),
-            abi.encodeWithSelector(IPoolRegistry.isAdmin.selector, PoolId.wrap(1), address(this)),
-            abi.encode(true)
-        );
-
-        vm.mockCall(
-            address(accounting),
-            abi.encodeWithSelector(IAccounting.unlock.selector, PoolId.wrap(1), bytes32("TODO")),
-            abi.encode(true)
-        );
-    }
-
-    function setUp() public {
-        _mockSuccessfulMulticall();
-    }
+    PoolManager poolManager = new PoolManager(poolRegistry, assetRegistry, accounting, holdings, gateway, address(this));
 }
 
 contract TestMainMethodsChecks is TestCommon {
     function testErrPoolLocked() public {
-        vm.startPrank(makeAddr("notPoolAdmin"));
+        vm.startPrank(makeAddr("unauthorizedAddress"));
 
-        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
-        poolManager.notifyPool(0);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.notifyPool(0, PoolId.wrap(0));
 
-        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
-        poolManager.notifyShareClass(0, ShareClassId.wrap(0), bytes32(""));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.notifyShareClass(0, PoolId.wrap(0), ShareClassId.wrap(0), bytes32(""));
 
-        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
-        poolManager.setPoolMetadata(bytes(""));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.setPoolMetadata(PoolId.wrap(0), bytes(""));
 
-        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
-        poolManager.allowPoolAdmin(address(0), false);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.allowPoolAdmin(PoolId.wrap(0), address(0), false);
 
-        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
-        poolManager.allowAsset(ShareClassId.wrap(0), AssetId.wrap(0), false);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.allowAsset(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), false);
 
-        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
-        poolManager.addShareClass("", "", bytes(""));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.addShareClass(PoolId.wrap(0), "", "", bytes(""));
 
-        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
-        poolManager.approveDeposits(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.approveDeposits(
+            PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0))
+        );
 
-        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
-        poolManager.approveRedeems(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.approveRedeems(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
 
-        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
-        poolManager.issueShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.issueShares(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
 
-        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
-        poolManager.revokeShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.revokeShares(
+            PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0))
+        );
 
-        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
-        poolManager.createHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.createHolding(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
 
-        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
-        poolManager.increaseHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.increaseHolding(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
 
-        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
-        poolManager.decreaseHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.decreaseHolding(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
 
-        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
-        poolManager.updateHolding(ShareClassId.wrap(0), AssetId.wrap(0));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.updateHolding(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0));
 
-        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
-        poolManager.updateHoldingValuation(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.updateHoldingValuation(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)));
 
-        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
-        poolManager.setHoldingAccountId(ShareClassId.wrap(0), AssetId.wrap(0), AccountId.wrap(0));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.setHoldingAccountId(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), AccountId.wrap(0));
 
-        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
-        poolManager.createAccount(AccountId.wrap(0), false);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.createAccount(PoolId.wrap(0), AccountId.wrap(0), false);
 
-        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
-        poolManager.setAccountMetadata(AccountId.wrap(0), bytes(""));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.setAccountMetadata(PoolId.wrap(0), AccountId.wrap(0), bytes(""));
 
-        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         poolManager.addDebit(AccountId.wrap(0), 0);
 
-        vm.expectRevert(IPoolManagerAdminMethods.PoolLocked.selector);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         poolManager.addCredit(AccountId.wrap(0), 0);
 
-        vm.stopPrank();
-    }
-
-    function testErrNotGateway() public {
-        vm.startPrank(makeAddr("notGateway"));
-
-        vm.expectRevert(IPoolManagerHandler.NotGateway.selector);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         poolManager.handleRegisterAsset(AssetId.wrap(0), "", "", 0);
 
-        vm.expectRevert(IPoolManagerHandler.NotGateway.selector);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         poolManager.handleDepositRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0), 0);
 
-        vm.expectRevert(IPoolManagerHandler.NotGateway.selector);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         poolManager.handleRedeemRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0), 0);
 
-        vm.expectRevert(IPoolManagerHandler.NotGateway.selector);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         poolManager.handleCancelDepositRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
 
-        vm.expectRevert(IPoolManagerHandler.NotGateway.selector);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         poolManager.handleCancelRedeemRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
 
         vm.stopPrank();
-    }
-}
-
-contract TestExecute is TestCommon {
-    function testErrNotAuthoredAdmin() public {
-        vm.mockCall(
-            address(poolRegistry),
-            abi.encodeWithSelector(poolRegistry.isAdmin.selector, PoolId.wrap(1), address(this)),
-            abi.encode(false)
-        );
-
-        vm.expectRevert(IPoolManagerAdminMethods.NotAuthorizedAdmin.selector);
-        poolManager.execute(PoolId.wrap(1), new bytes[](0));
     }
 }
 
@@ -165,11 +132,8 @@ contract TestNotifyShareClass is TestCommon {
 
         vm.mockCall(address(scm), abi.encodeWithSelector(scm.exists.selector, POOL_A, SC_A), abi.encode(false));
 
-        bytes[] memory calls = new bytes[](1);
-        calls[0] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, 23, SC_A, bytes32(""));
-
         vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
-        poolManager.execute(POOL_A, calls);
+        poolManager.notifyShareClass(23, POOL_A, SC_A, bytes32(""));
     }
 }
 
@@ -181,11 +145,8 @@ contract TestAllowAsset is TestCommon {
             abi.encode(false)
         );
 
-        bytes[] memory calls = new bytes[](1);
-        calls[0] = abi.encodeWithSelector(poolManager.allowAsset.selector, SC_A, ASSET_A, false);
-
         vm.expectRevert(IHoldings.HoldingNotFound.selector);
-        poolManager.execute(POOL_A, calls);
+        poolManager.allowAsset(POOL_A, SC_A, ASSET_A, false);
     }
 }
 
@@ -197,10 +158,7 @@ contract TestCreateHolding is TestCommon {
             abi.encode(false)
         );
 
-        bytes[] memory calls = new bytes[](1);
-        calls[0] = abi.encodeWithSelector(poolManager.createHolding.selector, SC_A, ASSET_A, address(1), 0);
-
         vm.expectRevert(IAssetRegistry.AssetNotFound.selector);
-        poolManager.execute(POOL_A, calls);
+        poolManager.createHolding(POOL_A, SC_A, ASSET_A, IERC7726(address(1)), 0);
     }
 }
