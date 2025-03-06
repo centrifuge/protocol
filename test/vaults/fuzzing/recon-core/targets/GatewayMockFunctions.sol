@@ -141,13 +141,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         address hook
     ) public returns (address) {
         address newTranche = poolManager.addTranche(
-            poolId,
-            trancheId,
-            tokenName,
-            tokenSymbol,
-            decimals,
-            keccak256(abi.encodePacked(poolId, trancheId)),
-            hook
+            poolId, trancheId, tokenName, tokenSymbol, decimals, keccak256(abi.encodePacked(poolId, trancheId)), hook
         );
 
         trancheTokens.push(newTranche);

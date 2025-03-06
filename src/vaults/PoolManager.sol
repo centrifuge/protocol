@@ -57,9 +57,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     /// @inheritdoc IPoolManager
     mapping(address => uint128 assetId) public assetToId;
 
-    constructor(address escrow_, address trancheFactory_, address[] memory vaultFactories)
-        Auth(msg.sender)
-    {
+    constructor(address escrow_, address trancheFactory_, address[] memory vaultFactories) Auth(msg.sender) {
         escrow = IEscrow(escrow_);
         trancheFactory = ITrancheFactory(trancheFactory_);
 
@@ -354,7 +352,8 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         address[] memory vaultWards = new address[](0);
 
         // Deploy vault
-        address vault = IVaultFactory(factory).newVault(poolId, trancheId, asset, tranche.token, address(escrow), vaultWards);
+        address vault =
+            IVaultFactory(factory).newVault(poolId, trancheId, asset, tranche.token, address(escrow), vaultWards);
 
         // Check whether the ERC20 token is a wrapper
         try IERC20Wrapper(asset).underlying() returns (address) {

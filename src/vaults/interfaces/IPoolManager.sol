@@ -56,7 +56,9 @@ interface IPoolManager is IMessageHandler, IRecoverable {
     event AllowAsset(uint64 indexed poolId, address indexed asset);
     event DisallowAsset(uint64 indexed poolId, address indexed asset);
     event AddTranche(uint64 indexed poolId, bytes16 indexed trancheId, address token);
-    event DeployVault(uint64 indexed poolId, bytes16 indexed trancheId, address indexed asset, address factory, address vault);
+    event DeployVault(
+        uint64 indexed poolId, bytes16 indexed trancheId, address indexed asset, address factory, address vault
+    );
     event PriceUpdate(
         uint64 indexed poolId, bytes16 indexed trancheId, address indexed asset, uint256 price, uint64 computedAt
     );
@@ -70,8 +72,12 @@ interface IPoolManager is IMessageHandler, IRecoverable {
         uint128 amount
     );
     event UpdateContract(uint64 indexed poolId, bytes16 indexed trancheId, address target, bytes payload);
-    event LinkVault(uint64 indexed poolId, bytes16 indexed trancheId, uint128 indexed assetId, address asset, address vault);
-    event UnlinkVault(uint64 indexed poolId, bytes16 indexed trancheId, uint128 indexed assetId, address asset, address vault);
+    event LinkVault(
+        uint64 indexed poolId, bytes16 indexed trancheId, uint128 indexed assetId, address asset, address vault
+    );
+    event UnlinkVault(
+        uint64 indexed poolId, bytes16 indexed trancheId, uint128 indexed assetId, address asset, address vault
+    );
 
     /// @notice returns the asset address associated with a given asset id
     function idToAsset(uint128 assetId) external view returns (address asset);
@@ -166,12 +172,7 @@ interface IPoolManager is IMessageHandler, IRecoverable {
     /// @dev    This function can only be executed by the gateway contract.
     function addAsset(uint128 assetId, address asset) external;
 
-    function deployVault(
-        uint64 poolId,
-        bytes16 trancheId,
-        address asset,
-        address factory
-    ) external returns (address);
+    function deployVault(uint64 poolId, bytes16 trancheId, address asset, address factory) external returns (address);
 
     function linkVault(uint64 poolId, bytes16 trancheId, address asset, address vault) external;
 
