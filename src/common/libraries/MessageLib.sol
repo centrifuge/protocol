@@ -605,16 +605,17 @@ library MessageLib {
 
     function deserializeUpdateContract(bytes memory data) internal pure returns (UpdateContract memory) {
         require(messageType(data) == MessageType.UpdateContract, UnknownMessageType());
+        uint16 payloadLength = data.toUint16(57);
         return UpdateContract({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             target: data.toBytes32(25),
-            payload: data.slice(57, data.length - 57)
+            payload: data.slice(73, payloadLength)
         });
     }
 
     function serialize(UpdateContract memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.UpdateContract, t.poolId, t.scId, t.target, t.payload);
+        return abi.encodePacked(MessageType.UpdateContract, t.poolId, t.scId, t.target, uint16(t.payload.length), t.payload);
     }
 
     //---------------------------------------

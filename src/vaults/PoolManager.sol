@@ -318,12 +318,20 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     /// @inheritdoc IUpdateContract
     /// @notice The pool manager either deploys the vault if a factory address is provided or it simply links/unlinks the vault
     function update(uint64 poolId, bytes16 trancheId, bytes memory payload) public auth {
+        if (payload.length != 128) {
+            revert "PoolManager/invalid-update-payload-length";
+        }
+
         (factory, assetId, isLinked, vault) = abi.decode(payload, (address, uint128, bool, address));
 
         if (factory != address(0) && vault == address(0)) {
-            require(vaultFactory[factory], "PoolManager/invalid-factory");
+            require(vaultFactory[factory], "PoolManager/invalid-vault-factory");
             vault = deployVault(poolId, trancheId, idToAsset[assetId], factory);
         }
+
+        // Needed as safeguard against non-validated vaults
+        // I.e. we only accept vaults that have been deployed by the pool manager
+        require(_vaultToAsset[vault].asset != address(0), "PoolManager/unknown-vault");
 
         if (isLinked) {
             linkVault(poolId, trancheId, idToAsset[assetId], vault);
@@ -355,7 +363,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         }
 
         address manager = IBaseVault(vault).manager();
-        // TODO: Removing the three below is not easy. We should do that if we phase-out a manager
+        // NOTE - Reverting the three actions below is not easy. We SHOULD do that if we phase-out a manager
         IAuth(tranche.token).rely(manager);
         escrow.approveMax(tranche.token, manager);
         escrow.approveMax(asset, manager);
