@@ -76,10 +76,8 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
             string memory symbol = "T1";
 
             // TODO: Ask if we should customize decimals and permissions here
-            poolManager_addTranche(POOL_ID, TRANCHE_ID, name, symbol, 18, address(restrictionManager));
+            newTranche = poolManager_addTranche(POOL_ID, TRANCHE_ID, name, symbol, 18, address(restrictionManager));
         }
-
-        newTranche = poolManager_deployTranche(POOL_ID, TRANCHE_ID);
 
         newVault = poolManager_deployVault(POOL_ID, TRANCHE_ID, address(newToken));
 
@@ -140,27 +138,26 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         string memory tokenName,
         string memory tokenSymbol,
         uint8 decimals,
-        address /*hook*/
-    ) public {
-        poolManager.addTranche(
+        address hook
+    ) public returns (address) {
+        address newTranche = poolManager.addTranche(
             poolId,
             trancheId,
             tokenName,
             tokenSymbol,
             decimals,
             keccak256(abi.encodePacked(poolId, trancheId)),
-            address(restrictionManager)
+            hook
         );
-    }
 
-    // Step 9
-    function poolManager_deployTranche(uint64 poolId, bytes16 trancheId) public returns (address) {
-        return poolManager.deployTranche(poolId, trancheId);
+        trancheTokens.push(newTranche);
+
+        return newTranche;
     }
 
     // Step 10
     function poolManager_deployVault(uint64 poolId, bytes16 trancheId, address currency) public returns (address) {
-        return poolManager.deployVault(poolId, trancheId, currency);
+        return poolManager.deployVault(poolId, trancheId, currency, address(vaultFactory));
     }
 
     /**
@@ -232,30 +229,24 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
 
     // Step 5 = poolManager_allowAsset - GatewayMockFunctions
 
-    ////
+    // Step 7 is copied from step 5, ignore
+
     // A pool can belong to a tranche
     // A Vault can belong to a tranche and a currency
-
-    // Step 6
-    function deployTranche(uint64 poolId, bytes16 trancheId) public {
-        address newTranche = poolManager.deployTranche(poolId, trancheId);
-
-        trancheTokens.push(newTranche);
-    }
 
     // Step 7 is copied from step 5, ignore
 
     // Step 8, deploy the pool
     function deployVault(uint64 poolId, bytes16 trancheId, address currency) public {
-        address newVault = poolManager.deployVault(poolId, trancheId, currency);
+        address newVault = poolManager.deployVault(poolId, trancheId, currency, address(vaultFactory));
+        poolManager.linkVault(poolId, trancheId, currency, newVault);
 
         vaults.push(newVault);
     }
 
     // Extra 9 - Remove liquidity Pool
     function removeVault(uint64 poolId, bytes16 trancheId, address currency) public {
-        // TODO: Pick one from above
-        poolManager.removeVault(poolId, trancheId, currency);
+        poolManager.unlinkVault(poolId, trancheId, currency, vaults[0]);
     }
 }
 

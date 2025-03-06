@@ -51,6 +51,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     mapping(address => VaultAsset) internal _vaultToAsset;
     mapping(address factory => bool) public vaultFactory;
 
+    mapping(uint64 poolId => mapping(address asset => bool)) allowedAssets;
     /// @inheritdoc IPoolManager
     mapping(uint128 assetId => address) public idToAsset;
     /// @inheritdoc IPoolManager
@@ -171,8 +172,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         address asset = idToAsset[assetId];
         require(asset != address(0), "PoolManager/unknown-asset");
 
-        // TODO: Already removed for now
-        // _pools[poolId].allowedAssets[asset] = true;
+        allowedAssets[poolId][asset] = true;
         emit AllowAsset(poolId, asset);
     }
 
@@ -182,8 +182,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         address asset = idToAsset[assetId];
         require(asset != address(0), "PoolManager/unknown-asset");
 
-        // TODO: Already removed for now
-        // delete _pools[poolId].allowedAssets[asset];
+        delete allowedAssets[poolId][asset];
         emit DisallowAsset(poolId, asset);
     }
 
@@ -200,7 +199,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         require(decimals >= MIN_DECIMALS, "PoolManager/too-few-tranche-token-decimals");
         require(decimals <= MAX_DECIMALS, "PoolManager/too-many-tranche-token-decimals");
         require(isPoolActive(poolId), "PoolManager/invalid-pool");
-        require(getTranche(poolId, trancheId) == address(0), "PoolManager/tranche-already-deployed");
+        require(getTranche(poolId, trancheId) == address(0), "PoolManager/tranche-already-exists");
 
         // Hook can be address zero if the tranche token is fully permissionless and has no custom logic
         require(
@@ -374,6 +373,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         return vault;
     }
 
+    /// @inheritdoc IPoolManager
     function linkVault(uint64 poolId, bytes16 trancheId, address asset, address vault) public auth {
         TrancheDetails storage tranche = _pools[poolId].tranches[trancheId];
         require(tranche.token != address(0), "PoolManager/tranche-does-not-exist");
@@ -438,5 +438,9 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     {
         // TODO: Check whether to check against asset of vault in storage??
         return _vaultToAsset[vault].isLinked;
+    }
+
+    function isAllowedAsset(uint64 poolId, address asset) public view override returns (bool) {
+        return allowedAssets[poolId][asset];
     }
 }

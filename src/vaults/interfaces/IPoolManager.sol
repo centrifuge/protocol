@@ -166,6 +166,17 @@ interface IPoolManager is IMessageHandler, IRecoverable {
     /// @dev    This function can only be executed by the gateway contract.
     function addAsset(uint128 assetId, address asset) external;
 
+    function deployVault(
+        uint64 poolId,
+        bytes16 trancheId,
+        address asset,
+        address factory
+    ) external returns (address);
+
+    function linkVault(uint64 poolId, bytes16 trancheId, address asset, address vault) external;
+
+    function unlinkVault(uint64 poolId, bytes16 trancheId, address asset, address vault) external;
+
     /// @notice Executes a message from the gateway
     /// @dev    The function can only be executed by the gateway contract.
     function handle(bytes calldata message) external;
@@ -196,4 +207,7 @@ interface IPoolManager is IMessageHandler, IRecoverable {
 
     /// @notice Checks whether a given asset-vault pair is eligible for investing into a tranche of a pool
     function isLinked(uint64 poolId, bytes16 trancheId, address asset, address vault) external view returns (bool);
+
+    // TODO: TEMP for
+    function isAllowedAsset(uint64 poolId, address asset) external view returns (bool);
 }
