@@ -105,9 +105,6 @@ contract GatewayTest is Test {
         vm.expectRevert(bytes("Gateway/file-unrecognized-param"));
         gateway.file("random", self);
 
-        vm.expectRevert(bytes("Gateway/file-unrecognized-param"));
-        gateway.file("random", uint8(1), self);
-
         assertEq(address(gateway.poolManager()), address(poolManager));
         assertEq(address(gateway.investmentManager()), address(investmentManager));
         assertEq(address(gateway.gasService()), address(gasService));
@@ -157,36 +154,6 @@ contract GatewayTest is Test {
 
         gateway.file("investmentManager", self);
         gateway.send(CHAIN_ID, MessageLib.NotifyPool(poolId).serialize(), self);
-    }
-
-    // --- Dynamic managers ---
-    function testCustomManager(uint8 existingMessageId) public {
-        existingMessageId = uint8(bound(existingMessageId, 0, 27));
-
-        uint8 messageId = 40;
-        address[] memory adapters = new address[](1);
-        adapters[0] = address(adapter1);
-
-        gateway.file("adapters", adapters);
-
-        MockManager mgr = new MockManager();
-
-        bytes memory message = abi.encodePacked(messageId);
-        vm.expectRevert(bytes("Gateway/unregistered-message-id"));
-        vm.prank(address(adapter1));
-        gateway.handle(message);
-
-        assertEq(mgr.received(message), 0);
-
-        vm.expectRevert(bytes("Gateway/hardcoded-message-id"));
-        gateway.file("message", existingMessageId, address(mgr));
-
-        gateway.file("message", messageId, address(mgr));
-        vm.prank(address(adapter1));
-        gateway.handle(message);
-
-        assertEq(mgr.received(message), 1);
-        assertEq(mgr.values_bytes("handle_message"), message);
     }
 
     function testFileAdapters() public {

@@ -36,10 +36,12 @@ uint128 constant MIN_REQUEST_AMOUNT = 1e6;
 uint128 constant MAX_REQUEST_AMOUNT = 1e18;
 string constant SC_NAME = "ExampleName";
 string constant SC_SYMBOL = "ExampleSymbol";
+bytes32 constant SC_SALT = bytes32("ExampleSalt");
+bytes32 constant SC_SECOND_SALT = bytes32("AnotherExampleSalt");
 
-uint32 constant STORAGE_INDEX_EPOCH_ID = 2;
-uint32 constant STORAGE_INDEX_TOTAL_ISSUANCE = 4;
-uint32 constant STORAGE_INDEX_EPOCH_POINTERS = 7;
+uint32 constant STORAGE_INDEX_EPOCH_ID = 3;
+uint32 constant STORAGE_INDEX_TOTAL_ISSUANCE = 5;
+uint32 constant STORAGE_INDEX_EPOCH_POINTERS = 8;
 
 contract PoolRegistryMock {
     function currency(PoolId) external pure returns (AssetId) {
@@ -106,8 +108,8 @@ abstract contract SingleShareClassBaseTest is Test {
         shareClass = new SingleShareClassExt(IPoolRegistry(poolRegistryAddress), address(this));
 
         vm.expectEmit();
-        emit ISingleShareClass.AddedShareClass(poolId, scId, SC_NAME, SC_SYMBOL);
-        shareClass.addShareClass(poolId, SC_NAME, SC_SYMBOL, bytes(""));
+        emit ISingleShareClass.AddedShareClass(poolId, scId, SC_NAME, SC_SYMBOL, SC_SALT);
+        shareClass.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
 
         // Mock IPoolRegistry.currency call
         vm.mockCall(
@@ -231,23 +233,28 @@ contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
     }
 
     function testDefaultMetadata() public view notThisContract(poolRegistryAddress) {
-        (string memory name, string memory symbol) = shareClass.metadata(scId);
+        (string memory name, string memory symbol, bytes32 salt) = shareClass.metadata(scId);
 
         assertEq(name, SC_NAME);
         assertEq(symbol, SC_SYMBOL);
+        assertEq(salt, SC_SALT);
     }
 
-    function testUpdateMetadata(string memory name, string memory symbol) public notThisContract(poolRegistryAddress) {
+    function testUpdateMetadata(string memory name, string memory symbol, bytes32 salt)
+        public
+        notThisContract(poolRegistryAddress)
+    {
         vm.assume(bytes(name).length > 0 && bytes(name).length <= 128);
         vm.assume(bytes(symbol).length > 0 && bytes(symbol).length <= 32);
 
         vm.expectEmit();
-        emit ISingleShareClass.UpdatedMetadata(poolId, scId, name, symbol);
-        shareClass.updateMetadata(poolId, scId, name, symbol, bytes(""));
+        emit ISingleShareClass.UpdatedMetadata(poolId, scId, name, symbol, salt);
+        shareClass.updateMetadata(poolId, scId, name, symbol, salt, bytes(""));
 
-        (string memory name_, string memory symbol_) = shareClass.metadata(scId);
+        (string memory name_, string memory symbol_, bytes32 salt_) = shareClass.metadata(scId);
         assertEq(name, name_, "Metadata name mismatch");
         assertEq(symbol, symbol_, "Metadata symbol mismatch");
+        assertEq(salt, salt_, "Salt mismatch");
     }
 }
 
@@ -1181,7 +1188,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
 
     function testSetShareClassIdAlreadySet() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.MaxShareClassNumberExceeded.selector, 1));
-        shareClass.addShareClass(poolId, "", "", bytes(""));
+        shareClass.addShareClass(poolId, "", "", bytes32(0), bytes(""));
     }
 
     function testRequestDepositWrongShareClassId() public {
@@ -1330,7 +1337,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
 
     function testUpdateMetadataWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
-        shareClass.updateMetadata(poolId, wrongShareClassId, "", "", bytes(""));
+        shareClass.updateMetadata(poolId, wrongShareClassId, "", "", SC_SALT, bytes(""));
     }
 
     function testIssueSharesBeforeApproval() public {
@@ -1425,41 +1432,63 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
 
     function testAddShareClassInvalidNameEmpty() public {
         vm.expectRevert(ISingleShareClass.InvalidMetadataName.selector);
-        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), "", SC_SYMBOL, bytes(""));
+        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), "", SC_SYMBOL, SC_SALT, bytes(""));
     }
 
     function testAddShareClassInvalidNameExcess() public {
         vm.expectRevert(ISingleShareClass.InvalidMetadataName.selector);
-        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), string(new bytes(129)), SC_SYMBOL, bytes(""));
+        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), string(new bytes(129)), SC_SYMBOL, SC_SALT, bytes(""));
     }
 
     function testAddShareClassInvalidSymbolEmpty() public {
         vm.expectRevert(ISingleShareClass.InvalidMetadataSymbol.selector);
-        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), SC_NAME, "", bytes(""));
+        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), SC_NAME, "", SC_SALT, bytes(""));
     }
 
     function testAddShareClassInvalidSymbolExcess() public {
         vm.expectRevert(ISingleShareClass.InvalidMetadataSymbol.selector);
-        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), SC_NAME, string(new bytes(33)), bytes(""));
+        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), SC_NAME, string(new bytes(33)), SC_SALT, bytes(""));
+    }
+
+    function testAddShareClassEmptySalt() public {
+        vm.expectRevert(ISingleShareClass.InvalidSalt.selector);
+        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), SC_NAME, SC_SYMBOL, bytes32(0), bytes(""));
+    }
+
+    function testAddShareClassSaltAlreadyUsed() public {
+        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), SC_NAME, SC_SYMBOL, SC_SECOND_SALT, bytes(""));
+        vm.expectRevert(ISingleShareClass.AlreadyUsedSalt.selector);
+        shareClass.addShareClass(PoolId.wrap(POOL_ID + 2), SC_NAME, SC_SYMBOL, SC_SECOND_SALT, bytes(""));
     }
 
     function testUpdateMetadataClassInvalidNameEmpty() public {
         vm.expectRevert(ISingleShareClass.InvalidMetadataName.selector);
-        shareClass.updateMetadata(poolId, scId, "", SC_SYMBOL, bytes(""));
+        shareClass.updateMetadata(poolId, scId, "", SC_SYMBOL, SC_SALT, bytes(""));
     }
 
     function testUpdateMetadataClassInvalidNameExcess() public {
         vm.expectRevert(ISingleShareClass.InvalidMetadataName.selector);
-        shareClass.updateMetadata(poolId, scId, string(new bytes(129)), SC_SYMBOL, bytes(""));
+        shareClass.updateMetadata(poolId, scId, string(new bytes(129)), SC_SYMBOL, SC_SALT, bytes(""));
     }
 
     function testUpdateMetadataClassInvalidSymbolEmpty() public {
         vm.expectRevert(ISingleShareClass.InvalidMetadataSymbol.selector);
-        shareClass.updateMetadata(poolId, scId, SC_NAME, "", bytes(""));
+        shareClass.updateMetadata(poolId, scId, SC_NAME, "", bytes32(0), bytes(""));
     }
 
     function testUpdateMetadataClassInvalidSymbolExcess() public {
         vm.expectRevert(ISingleShareClass.InvalidMetadataSymbol.selector);
-        shareClass.updateMetadata(poolId, scId, SC_NAME, string(new bytes(33)), bytes(""));
+        shareClass.updateMetadata(poolId, scId, SC_NAME, string(new bytes(33)), bytes32(0), bytes(""));
+    }
+
+    function testUpdateMetadataInvalidSalt() public {
+        vm.expectRevert(ISingleShareClass.InvalidSalt.selector);
+        shareClass.updateMetadata(poolId, scId, SC_NAME, SC_SYMBOL, bytes32(0), bytes(""));
+    }
+
+    function testUpdateMetadataSaltAlreadyUsed() public {
+        shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), SC_NAME, SC_SYMBOL, SC_SECOND_SALT, bytes(""));
+        vm.expectRevert(ISingleShareClass.AlreadyUsedSalt.selector);
+        shareClass.updateMetadata(poolId, scId, SC_NAME, SC_SYMBOL, SC_SECOND_SALT, bytes(""));
     }
 }

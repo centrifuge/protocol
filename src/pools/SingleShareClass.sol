@@ -53,6 +53,7 @@ struct EpochPointers {
 struct ShareClassMetadata {
     string name;
     string symbol;
+    bytes32 salt;
 }
 
 /// Utility method to determine the ShareClassId for a PoolId
@@ -74,6 +75,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     /// Storage
     uint32 internal transient _epochIncrement;
     IPoolRegistry public poolRegistry;
+    mapping(bytes32 salt => bool) public salts;
     mapping(PoolId poolId => uint32 epochId_) public epochId;
     mapping(PoolId poolId => ShareClassId) public shareClassId;
     mapping(ShareClassId scId => uint128) public totalIssuance;
@@ -100,7 +102,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     }
 
     /// @inheritdoc IShareClassManager
-    function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes calldata) external auth returns (ShareClassId shareClassId_) {
+    function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt, bytes calldata) external auth returns (ShareClassId shareClassId_) {
         require(shareClassId[poolId].isNull(), MaxShareClassNumberExceeded(1));
 
         shareClassId_ = previewShareClassId(poolId);
@@ -108,9 +110,9 @@ contract SingleShareClass is Auth, ISingleShareClass {
         shareClassId[poolId] = shareClassId_;
         epochId[poolId] = 1;
 
-        _updateMetadata(shareClassId_, name, symbol);
+        _updateMetadata(shareClassId_, name, symbol, salt);
 
-        emit AddedShareClass(poolId, shareClassId_, name, symbol);
+        emit AddedShareClass(poolId, shareClassId_, name, symbol, salt);
     }
 
     /// @inheritdoc IShareClassManager
@@ -496,12 +498,12 @@ contract SingleShareClass is Auth, ISingleShareClass {
         userOrder.lastUpdate = endEpochId + 1;
     }
 
-    function updateMetadata(PoolId poolId, ShareClassId shareClassId_, string calldata name, string calldata symbol, bytes calldata) external auth {
+    function updateMetadata(PoolId poolId, ShareClassId shareClassId_, string calldata name, string calldata symbol, bytes32 salt, bytes calldata) external auth {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
 
-        _updateMetadata(shareClassId_, name, symbol);
+        _updateMetadata(shareClassId_, name, symbol, salt);
 
-        emit UpdatedMetadata(poolId, shareClassId_, name, symbol);
+        emit UpdatedMetadata(poolId, shareClassId_, name, symbol, salt);
     }
 
 
@@ -660,14 +662,20 @@ contract SingleShareClass is Auth, ISingleShareClass {
         );
     }
 
-    function _updateMetadata(ShareClassId shareClassId_, string calldata name, string calldata symbol) private {
+    function _updateMetadata(ShareClassId shareClassId_, string calldata name, string calldata symbol, bytes32 salt) private {
         uint256 nLen = bytes(name).length;
         require(nLen> 0 && nLen <= 128, InvalidMetadataName());
 
         uint256 sLen = bytes(symbol).length;
         require(sLen > 0 && sLen <= 32, InvalidMetadataSymbol());
 
-        metadata[shareClassId_] = ShareClassMetadata(name, symbol);
+        require(salt != bytes32(0), InvalidSalt());
+        // Either the salt has not changed, or the salt was never used before by any share class token
+        require(salt == metadata[shareClassId_].salt || !salts[salt], AlreadyUsedSalt());
+        salts[salt] = true;
+
+        metadata[shareClassId_] = ShareClassMetadata(name, symbol, salt);
+
     }
 
     /// @notice Advances the current epoch of the given pool if it has not been incremented within the multicall. If the

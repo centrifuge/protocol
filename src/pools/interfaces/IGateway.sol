@@ -30,6 +30,7 @@ interface IGateway {
         string memory name,
         string memory symbol,
         uint8 decimals,
+        bytes32 salt,
         bytes32 hook
     ) external;
 

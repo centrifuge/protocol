@@ -123,7 +123,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
             addPool(MessageLib.deserializeNotifyPool(message).poolId);
         } else if (kind == MessageType.NotifyShareClass) {
             MessageLib.NotifyShareClass memory m = MessageLib.deserializeNotifyShareClass(message);
-            addTranche(m.poolId, m.scId, m.name, m.symbol.toString(), m.decimals, address(bytes20(m.hook)));
+            addTranche(m.poolId, m.scId, m.name, m.symbol.toString(), m.decimals, m.salt, address(bytes20(m.hook)));
         } else if (kind == MessageType.AllowAsset) {
             MessageLib.AllowAsset memory m = MessageLib.deserializeAllowAsset(message);
             allowAsset(m.poolId, /* m.scId, */ m.assetId); // TODO: use scId
@@ -188,6 +188,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         string memory name,
         string memory symbol,
         uint8 decimals,
+        bytes32 salt,
         address hook
     ) public auth {
         require(decimals >= MIN_DECIMALS, "PoolManager/too-few-tranche-token-decimals");
@@ -197,7 +198,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
 
         // Hook can be address zero if the tranche token is fully permissionless and has no custom logic
         require(
-            // TODO: Check if address(0) check is actually correct?
             hook == address(0) || IHook(hook).supportsInterface(type(IHook).interfaceId) == true,
             "PoolManager/invalid-hook"
         );
@@ -211,6 +211,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
             name,
             symbol,
             decimals,
+            salt,
             trancheWards
         );
 
