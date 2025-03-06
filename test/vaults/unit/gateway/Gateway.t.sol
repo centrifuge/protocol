@@ -418,7 +418,7 @@ contract GatewayTest is Test {
 
         uint256 balanceBeforeTx = address(gateway).balance;
 
-        (uint256[] memory tranches, uint256 total) = gateway.estimate(message);
+        (uint256[] memory tranches, uint256 total) = gateway.estimate(CHAIN_ID, message);
         gateway.topUp{value: total}();
 
         vm.prank(address(investmentManager));
@@ -448,7 +448,7 @@ contract GatewayTest is Test {
 
         uint256 balanceBeforeTx = address(gateway).balance;
 
-        (uint256[] memory tranches, uint256 total) = gateway.estimate(message);
+        (uint256[] memory tranches, uint256 total) = gateway.estimate(CHAIN_ID, message);
         uint256 extra = 10 wei;
         uint256 topUpAmount = total + extra;
         gateway.topUp{value: topUpAmount}();
@@ -479,7 +479,7 @@ contract GatewayTest is Test {
 
         uint256 balanceBeforeTx = address(gateway).balance;
 
-        (uint256[] memory tranches, uint256 total) = gateway.estimate(message);
+        (uint256[] memory tranches, uint256 total) = gateway.estimate(CHAIN_ID, message);
 
         assertEq(_quota(), 0);
 
@@ -506,7 +506,7 @@ contract GatewayTest is Test {
         bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
 
-        (uint256[] memory tranches,) = gateway.estimate(message);
+        (uint256[] memory tranches,) = gateway.estimate(CHAIN_ID, message);
 
         uint256 fundsToCoverTwoAdaptersOnly = tranches[0] + tranches[1];
         vm.deal(address(gateway), fundsToCoverTwoAdaptersOnly);
@@ -806,7 +806,7 @@ contract GatewayTest is Test {
         uint256 thirdRouterEstimate = THIRD_ADAPTER_ESTIMATE + BASE_PROOF_ESTIMATE;
         uint256 totalEstimate = firstRouterEstimate + secondRouterEstimate + thirdRouterEstimate;
 
-        (uint256[] memory tranches, uint256 total) = gateway.estimate(message);
+        (uint256[] memory tranches, uint256 total) = gateway.estimate(CHAIN_ID, message);
 
         assertEq(tranches.length, 3);
         assertEq(tranches[0], firstRouterEstimate);

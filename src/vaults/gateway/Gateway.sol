@@ -10,9 +10,9 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {MessageType, MessageCategory, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IRoot, IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 import {IGateway, IMessageHandler} from "src/vaults/interfaces/gateway/IGateway.sol";
-import {IAdapter} from "src/vaults/interfaces/gateway/IAdapter.sol";
 
 /// @title  Gateway
 /// @notice Routing contract that forwards outgoing messages to multiple adapters (1 full message, n-1 proofs)
@@ -285,48 +285,46 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     // --- Outgoing ---
     /// @inheritdoc IGateway
-    function send(uint32 /*chainId*/, bytes calldata message, address source) public payable pauseable {
-        bool isManager = msg.sender == investmentManager || msg.sender == poolManager;
-        require(isManager, "Gateway/invalid-manager");
+    function send(uint32 chainId, bytes calldata message, address source) public payable pauseable {
+        require(msg.sender == investmentManager || msg.sender == poolManager, "Gateway/invalid-manager");
 
         bytes memory proof = MessageLib.MessageProof({hash: keccak256(message)}).serialize();
 
-        uint256 numAdapters = adapters.length;
-        require(numAdapters != 0, "Gateway/not-initialized");
+        require(adapters.length != 0, "Gateway/not-initialized");
 
-        uint256 messageCost = gasService.estimate(message);
-        uint256 proofCost = gasService.estimate(proof);
+        uint256 messageCost = gasService.estimate(chainId, message);
+        uint256 proofCost = gasService.estimate(chainId, proof);
 
         if (fuel != 0) {
             uint256 tank = fuel;
-            for (uint256 i; i < numAdapters; i++) {
+            for (uint256 i; i < adapters.length; i++) {
                 IAdapter currentAdapter = IAdapter(adapters[i]);
                 bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
                 bytes memory payload = isPrimaryAdapter ? message : proof;
 
-                uint256 consumed = currentAdapter.estimate(payload, isPrimaryAdapter ? messageCost : proofCost);
+                uint256 consumed = currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageCost : proofCost);
 
                 require(consumed <= tank, "Gateway/not-enough-gas-funds");
                 tank -= consumed;
 
-                currentAdapter.pay{value: consumed}(payload, address(this));
+                currentAdapter.pay{value: consumed}(chainId, payload, address(this));
 
-                currentAdapter.send(payload);
+                currentAdapter.send(chainId, payload);
             }
             fuel = 0;
         } else if (gasService.shouldRefuel(source, message)) {
-            for (uint256 i; i < numAdapters; i++) {
+            for (uint256 i; i < adapters.length; i++) {
                 IAdapter currentAdapter = IAdapter(adapters[i]);
                 bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
                 bytes memory payload = isPrimaryAdapter ? message : proof;
 
-                uint256 consumed = currentAdapter.estimate(payload, isPrimaryAdapter ? messageCost : proofCost);
+                uint256 consumed = currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageCost : proofCost);
 
                 if (consumed <= address(this).balance) {
-                    currentAdapter.pay{value: consumed}(payload, address(this));
+                    currentAdapter.pay{value: consumed}(chainId, payload, address(this));
                 }
 
-                currentAdapter.send(payload);
+                currentAdapter.send(chainId, payload);
             }
         } else {
             revert("Gateway/not-enough-gas-funds");
@@ -344,17 +342,17 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     // --- Helpers ---
     /// @inheritdoc IGateway
-    function estimate(bytes calldata payload) external view returns (uint256[] memory perAdapter, uint256 total) {
+    function estimate(uint32 chainId, bytes calldata payload) external view returns (uint256[] memory perAdapter, uint256 total) {
         bytes memory proof = MessageLib.MessageProof({hash: keccak256(payload)}).serialize();
-        uint256 messageCost = gasService.estimate(payload);
-        uint256 proofCost = gasService.estimate(proof);
+        uint256 messageCost = gasService.estimate(chainId, payload);
+        uint256 proofCost = gasService.estimate(chainId, proof);
         perAdapter = new uint256[](adapters.length);
 
         uint256 adaptersCount = adapters.length;
         for (uint256 i; i < adaptersCount; i++) {
             uint256 centrifugeCost = i == PRIMARY_ADAPTER_ID - 1 ? messageCost : proofCost;
             bytes memory message = i == PRIMARY_ADAPTER_ID - 1 ? payload : proof;
-            uint256 estimated = IAdapter(adapters[i]).estimate(message, centrifugeCost);
+            uint256 estimated = IAdapter(adapters[i]).estimate(chainId, message, centrifugeCost);
             perAdapter[i] = estimated;
             total += estimated;
         }

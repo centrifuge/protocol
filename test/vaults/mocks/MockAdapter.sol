@@ -5,10 +5,11 @@ import "forge-std/Test.sol";
 import {Auth} from "src/misc/Auth.sol";
 
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 import "test/vaults/mocks/Mock.sol";
 
-contract MockAdapter is Auth, Mock {
+contract MockAdapter is Auth, Mock, IAdapter {
     IMessageHandler public immutable gateway;
 
     mapping(bytes => uint256) public sent;
@@ -21,16 +22,16 @@ contract MockAdapter is Auth, Mock {
         gateway.handle(1, _message);
     }
 
-    function send(bytes calldata message) public {
+    function send(uint32, bytes calldata message) public {
         values_bytes["send"] = message;
         sent[message]++;
     }
 
-    function estimate(bytes calldata, uint256 baseCost) public view returns (uint256 estimation) {
+    function estimate(uint32, bytes calldata, uint256 baseCost) public view returns (uint256 estimation) {
         estimation = values_uint256_return["estimate"] + baseCost;
     }
 
-    function pay(bytes calldata, address) external payable {
+    function pay(uint32, bytes calldata, address) external payable {
         callWithValue("pay", msg.value);
     }
     // Added to be ignored in coverage report

@@ -71,7 +71,7 @@ contract GasService is IGasService, Auth {
 
     /// --- Estimations ---
     /// @inheritdoc IGasService
-    function estimate(bytes calldata payload) public view returns (uint256) {
+    function estimate(uint32, /*chainId*/ bytes calldata payload) public view returns (uint256) {
         uint256 totalCost;
         uint8 code = payload.messageCode();
         if (code == uint8(MessageType.MessageProof)) {

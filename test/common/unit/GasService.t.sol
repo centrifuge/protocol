@@ -15,6 +15,7 @@ contract GasServiceTest is Test {
     uint64 constant PROOF_COST = 20000000000000000;
     uint128 constant GAS_PRICE = 2500000000000000000;
     uint256 constant TOKEN_PRICE = 178947400000000;
+    uint32 constant CHAIN_ID = 1;
 
     GasService service;
 
@@ -93,8 +94,8 @@ contract GasServiceTest is Test {
         vm.assume(message.toUint8(0) != uint8(MessageType.MessageProof) && message.toUint8(0) <= 28);
         bytes memory proof = MessageLib.MessageProof(keccak256(message)).serialize();
 
-        uint256 messageCost = service.estimate(message);
-        uint256 proofCost = service.estimate(proof);
+        uint256 messageCost = service.estimate(CHAIN_ID, message);
+        uint256 proofCost = service.estimate(CHAIN_ID, proof);
 
         assertEq(messageCost, 17894740000000);
         assertEq(proofCost, 8947370000000);

@@ -55,7 +55,7 @@ interface IGasService {
     /// @dev    Currently payload is disregarded and not included in the calculation.
     /// @param  payload Estimates the execution cost based on the payload
     /// @return Estimated cost in WEI units
-    function estimate(bytes calldata payload) external view returns (uint256);
+    function estimate(uint32 chainId, bytes calldata payload) external view returns (uint256);
 
     /// @notice Used to verify if given user for a given message can take advantage of
     ///         transaction cost prepayment.

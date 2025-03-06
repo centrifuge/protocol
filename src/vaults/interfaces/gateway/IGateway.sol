@@ -137,7 +137,10 @@ interface IGateway is IMessageHandler {
     /// @return perAdapter An array of cost values per adapter. Each value is how much it's going to cost
     ///         for a message / proof to be passed through one router and executed on Centrifuge Chain
     /// @return total Total cost for sending one message and corresponding proofs on through all adapters
-    function estimate(bytes calldata payload) external view returns (uint256[] memory perAdapter, uint256 total);
+    function estimate(uint32 chainId, bytes calldata payload)
+        external
+        view
+        returns (uint256[] memory perAdapter, uint256 total);
 
     /// @notice Used to check current state of the `caller` and whether they are allowed to call
     ///         `this.topUp` or not.

@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-import {IAdapter} from "src/vaults/interfaces/gateway/IAdapter.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 interface PrecompileLike {
     function execute(
@@ -71,7 +71,7 @@ contract PassthroughAdapter is Auth, IAdapter {
     /// @inheritdoc IAdapter
     /// @notice From other domain to Centrifuge. Just emits an event.
     ///         Just used on EVM domains.
-    function send(bytes calldata message) public {
+    function send(uint32, bytes calldata message) public {
         emit Route(sourceChain, sourceAddress, message);
     }
 
@@ -95,12 +95,12 @@ contract PassthroughAdapter is Auth, IAdapter {
     }
 
     /// @inheritdoc IAdapter
-    function estimate(bytes calldata, uint256) external pure returns (uint256) {
+    function estimate(uint32, bytes calldata, uint256) external pure returns (uint256) {
         return 0;
     }
 
     /// @inheritdoc IAdapter
-    function pay(bytes calldata, address) public payable {
+    function pay(uint32, bytes calldata, address) public payable {
         return;
     }
 

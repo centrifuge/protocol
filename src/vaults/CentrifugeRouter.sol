@@ -266,8 +266,8 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
     }
 
     /// @inheritdoc ICentrifugeRouter
-    function estimate(bytes calldata payload) external view returns (uint256 amount) {
-        (, amount) = IGateway(gateway).estimate(payload);
+    function estimate(uint32 chainId, bytes calldata payload) external view returns (uint256 amount) {
+        (, amount) = IGateway(gateway).estimate(chainId, payload);
     }
 
     /// @inheritdoc ICentrifugeRouter

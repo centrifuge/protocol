@@ -210,7 +210,8 @@ interface ICentrifugeRouter is IMulticall, IRecoverable {
     function getVault(uint64 poolId, bytes16 trancheId, address asset) external view returns (address);
 
     /// @notice Check IGateway.estimate
-    function estimate(bytes calldata payload) external view returns (uint256 amount);
+    /// @param chainId destination chain
+    function estimate(uint32 chainId, bytes calldata payload) external view returns (uint256 amount);
 
     /// @notice Called to check if `user` has permissions on `vault` to execute requests
     ///
