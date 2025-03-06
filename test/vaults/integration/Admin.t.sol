@@ -6,6 +6,8 @@ import {MockManager} from "test/vaults/mocks/MockManager.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
+import {IRoot} from "src/common/interfaces/IRoot.sol";
+
 contract AdminTest is BaseTest {
     using MessageLib for *;
     using CastLib for *;
@@ -18,11 +20,6 @@ contract AdminTest is BaseTest {
         // permissions set correctly
         assertEq(root.wards(address(guardian)), 1);
         assertEq(gateway.wards(address(guardian)), 1);
-    }
-
-    function testHandleInvalidMessage() public {
-        vm.expectRevert(bytes("Root/invalid-message"));
-        root.handle(abi.encodePacked(uint8(MessageType.Invalid)));
     }
 
     //------ pause tests ------//
@@ -117,14 +114,14 @@ contract AdminTest is BaseTest {
         vm.prank(address(adminSafe));
         guardian.scheduleRely(spell);
         vm.warp(block.timestamp + delay - 1 hours);
-        vm.expectRevert("Root/target-not-ready");
+        vm.expectRevert(IRoot.TargetNotReady.selector);
         root.executeScheduledRely(spell);
     }
 
     //------ Root tests ------///
     function testCancellingScheduleBeforeRelyFails() public {
         address spell = vm.addr(1);
-        vm.expectRevert("Root/target-not-scheduled");
+        vm.expectRevert(IRoot.TargetNotScheduled.selector);
         root.cancelRely(spell);
     }
 
@@ -137,7 +134,7 @@ contract AdminTest is BaseTest {
         guardian.cancelRely(spell);
         assertEq(root.schedule(spell), 0);
         vm.warp(block.timestamp + delay + 1 hours);
-        vm.expectRevert("Root/target-not-scheduled");
+        vm.expectRevert(IRoot.TargetNotScheduled.selector);
         root.executeScheduledRely(spell);
     }
 
@@ -182,7 +179,7 @@ contract AdminTest is BaseTest {
         centrifugeChain.incomingCancelUpgrade(spell);
         assertEq(root.schedule(spell), 0);
         vm.warp(block.timestamp + delay + 1 hours);
-        vm.expectRevert("Root/target-not-scheduled");
+        vm.expectRevert(IRoot.TargetNotScheduled.selector);
         root.executeScheduledRely(spell);
     }
 
@@ -195,7 +192,7 @@ contract AdminTest is BaseTest {
     }
 
     function testUpdatingDelayWithLargeValueFails() public {
-        vm.expectRevert("Root/delay-too-long");
+        vm.expectRevert(IRoot.DelayTooLong.selector);
         root.file("delay", 5 weeks);
     }
 
@@ -204,12 +201,12 @@ contract AdminTest is BaseTest {
         vm.prank(address(adminSafe));
         guardian.scheduleRely(address(this));
         vm.warp(block.timestamp + 1 hours);
-        vm.expectRevert("Root/target-not-ready");
+        vm.expectRevert(IRoot.TargetNotReady.selector);
         root.executeScheduledRely(address(this));
     }
 
     function testInvalidFile() public {
-        vm.expectRevert("Root/file-unrecognized-param");
+        vm.expectRevert(IRoot.FileUnrecognizedParam.selector);
         root.file("not-delay", 1);
     }
 

@@ -6,7 +6,7 @@ import {Escrow} from "src/vaults/Escrow.sol";
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
-import {Root} from "src/vaults/Root.sol";
+import {Root} from "src/common/Root.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 
 import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
@@ -16,7 +16,7 @@ import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 
 // Mocks
-import {IRoot} from "src/vaults/interfaces/IRoot.sol";
+import {IRoot} from "src/common/interfaces/IRoot.sol";
 
 // Storage
 import {SharedStorage} from "./SharedStorage.sol";

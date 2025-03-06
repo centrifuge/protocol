@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IMessageHandler} from "src/vaults/interfaces/gateway/IGateway.sol";
-import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
+import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 
 /// @dev Vault requests and deposit/redeem bookkeeping per user
 struct InvestmentState {

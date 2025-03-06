@@ -15,7 +15,7 @@ import {IInvestmentManager, InvestmentState} from "src/vaults/interfaces/IInvest
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
-import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
+import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 
 /// @title  Investment Manager
 /// @notice This is the main contract vaults interact with for

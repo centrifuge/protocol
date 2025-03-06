@@ -14,7 +14,7 @@ import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
-import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
+import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 
 /// @title  CentrifugeRouter
 /// @notice This is a helper contract, designed to be the entrypoint for EOAs.

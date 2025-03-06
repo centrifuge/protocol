@@ -26,7 +26,7 @@ import {
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
 import {IGasService} from "src/vaults/interfaces/gateway/IGasService.sol";
-import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
+import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 
 /// @title  Pool Manager
 /// @notice This contract manages which pools & tranches exist,

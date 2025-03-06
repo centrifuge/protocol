@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Root} from "src/vaults/Root.sol";
+import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/vaults/gateway/Gateway.sol";
 import {GasService} from "src/vaults/gateway/GasService.sol";
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";

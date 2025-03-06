@@ -8,12 +8,11 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
 import {MessageType, MessageCategory, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {IRoot, IRecoverable} from "src/common/interfaces/IRoot.sol";
 
 import {IGateway, IMessageHandler} from "src/vaults/interfaces/gateway/IGateway.sol";
-import {IRoot} from "src/vaults/interfaces/IRoot.sol";
 import {IGasService} from "src/vaults/interfaces/gateway/IGasService.sol";
 import {IAdapter} from "src/vaults/interfaces/gateway/IAdapter.sol";
-import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 
 /// @title  Gateway
 /// @notice Routing contract that forwards outgoing messages to multiple adapters (1 full message, n-1 proofs)
@@ -201,21 +200,33 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     function _dispatch(bytes memory message) internal {
         while (true) {
-            address manager;
+            // TODO: The message dispatching will be moved to a vaults/IMessageProcessor
             MessageCategory cat = message.messageCode().category();
+
             if (cat == MessageCategory.Root) {
-                manager = address(root);
+                MessageType kind = MessageLib.messageType(message);
+
+                if (kind == MessageType.ScheduleUpgrade) {
+                    MessageLib.ScheduleUpgrade memory m = message.deserializeScheduleUpgrade();
+                    root.scheduleRely(address(bytes20(m.target)));
+                } else if (kind == MessageType.CancelUpgrade) {
+                    MessageLib.CancelUpgrade memory m = message.deserializeCancelUpgrade();
+                    root.cancelRely(address(bytes20(m.target)));
+                } else if (kind == MessageType.RecoverTokens) {
+                    MessageLib.RecoverTokens memory m = message.deserializeRecoverTokens();
+                    root.recoverTokens(address(bytes20(m.target)), address(bytes20(m.token)), address(bytes20(m.to)), m.amount);
+                } else {
+                    revert("Root/invalid-message");
+                }
             } else if (cat == MessageCategory.Gas) {
-                manager = address(gasService);
+                gasService.handle(message);
             } else if (cat == MessageCategory.Pool) {
-                manager = poolManager;
+                IMessageHandler(poolManager).handle(message);
             } else if (cat == MessageCategory.Investment) {
-                manager = investmentManager;
+                IMessageHandler(investmentManager).handle(message);
             } else {
                 revert("Gateway/unexpected-category");
             }
-
-            IMessageHandler(manager).handle(message);
 
             uint256 offset = message.messageLength();
             uint256 remaining = message.length - offset;

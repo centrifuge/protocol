@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 
-import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
+import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 
 interface ICentrifugeRouter is IMulticall, IRecoverable {
     // --- Events ---
