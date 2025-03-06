@@ -10,7 +10,6 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
 import {Gateway} from "src/vaults/gateway/Gateway.sol";
-import {MockGateway} from "test/vaults/mocks/MockGateway.sol";
 import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
 import {MockRoot} from "test/vaults/mocks/MockRoot.sol";
 import {MockManager} from "test/vaults/mocks/MockManager.sol";

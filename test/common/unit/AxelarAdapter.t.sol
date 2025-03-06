@@ -7,31 +7,29 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {AxelarAdapter, IAxelarAdapter} from "src/common/AxelarAdapter.sol";
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 
 import {MockAxelarGateway} from "test/vaults/mocks/MockAxelarGateway.sol";
-import {MockGateway} from "test/vaults/mocks/MockGateway.sol";
 import {MockAxelarGasService} from "test/vaults/mocks/MockAxelarGasService.sol";
 
 contract AxelarAdapterTest is Test {
     MockAxelarGateway axelarGateway;
-    MockGateway gateway;
     MockAxelarGasService axelarGasService;
     AxelarAdapter adapter;
 
     uint32 constant CHAIN_ID = 1;
     string private constant axelarCentrifugeChainId = "centrifuge";
     string private constant axelarCentrifugeChainAddress = "0x7369626CEF070000000000000000000000000000";
+    IMessageHandler constant GATEWAY = IMessageHandler(address(1));
 
     function setUp() public {
         axelarGateway = new MockAxelarGateway();
-        gateway = new MockGateway();
         axelarGasService = new MockAxelarGasService();
-        adapter = new AxelarAdapter(address(gateway), address(axelarGateway), address(axelarGasService));
+        adapter = new AxelarAdapter(GATEWAY, address(axelarGateway), address(axelarGasService));
     }
 
-    function testDeploy() public {
-        adapter = new AxelarAdapter(address(gateway), address(axelarGateway), address(axelarGasService));
-        assertEq(address(adapter.gateway()), address(gateway));
+    function testDeploy() public view {
+        assertEq(address(adapter.gateway()), address(GATEWAY));
         assertEq(address(adapter.axelarGateway()), address(axelarGateway));
         assertEq(address(adapter.axelarGasService()), address(axelarGasService));
 
@@ -93,6 +91,8 @@ contract AxelarAdapterTest is Test {
         );
         vm.assume(relayer.code.length == 0);
 
+        vm.mockCall(address(GATEWAY), abi.encodeWithSelector(GATEWAY.handle.selector, CHAIN_ID, payload), abi.encode());
+
         vm.prank(address(relayer));
         vm.expectRevert(IAxelarAdapter.InvalidChain.selector);
         adapter.execute(commandId, sourceChain, axelarCentrifugeChainAddress, payload);
@@ -112,12 +112,12 @@ contract AxelarAdapterTest is Test {
     }
 
     function testOutgoingCalls(bytes calldata message, address invalidOrigin) public {
-        vm.assume(invalidOrigin != address(gateway));
+        vm.assume(invalidOrigin != address(GATEWAY));
 
         vm.expectRevert(IAxelarAdapter.NotGateway.selector);
         adapter.send(CHAIN_ID, message);
 
-        vm.prank(address(gateway));
+        vm.prank(address(GATEWAY));
         adapter.send(CHAIN_ID, message);
 
         assertEq(axelarGateway.values_string("destinationChain"), axelarCentrifugeChainId);

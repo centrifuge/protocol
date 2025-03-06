@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {IAxelarAdapter, IAdapter} from "src/common/interfaces/IAxelarAdapter.sol";
 import {Auth} from "src/misc/Auth.sol";
-import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 
 // From https://github.com/axelarnetwork/axelar-cgp-solidity/blob/main/contracts/interfaces/IAxelarGateway.sol
 interface IAxelarGateway {
@@ -35,7 +35,7 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     string public constant CENTRIFUGE_ID = "centrifuge";
     string public constant CENTRIFUGE_AXELAR_EXECUTABLE = "0xc1757c6A0563E37048869A342dF0651b9F267e41";
 
-    IGateway public immutable gateway;
+    IMessageHandler public immutable gateway;
     bytes32 public immutable centrifugeIdHash;
     bytes32 public immutable centrifugeAddressHash;
     IAxelarGateway public immutable axelarGateway;
@@ -44,8 +44,8 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     /// @inheritdoc IAxelarAdapter
     uint256 public axelarCost = 58_039_058_122_843;
 
-    constructor(address gateway_, address axelarGateway_, address axelarGasService_) Auth(msg.sender) {
-        gateway = IGateway(gateway_);
+    constructor(IMessageHandler gateway_, address axelarGateway_, address axelarGasService_) Auth(msg.sender) {
+        gateway = gateway_;
         axelarGateway = IAxelarGateway(axelarGateway_);
         axelarGasService = IAxelarGasService(axelarGasService_);
 
