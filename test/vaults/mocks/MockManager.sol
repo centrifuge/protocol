@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
-import "test/vaults/mocks/Mock.sol";
+import "test/common/mocks/Mock.sol";
 
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 

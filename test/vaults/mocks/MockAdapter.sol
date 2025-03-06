@@ -7,7 +7,7 @@ import {Auth} from "src/misc/Auth.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
-import "test/vaults/mocks/Mock.sol";
+import "test/common/mocks/Mock.sol";
 
 contract MockAdapter is Auth, Mock, IAdapter {
     IMessageHandler public immutable gateway;

@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
-import "test/vaults/mocks/Mock.sol";
+import "test/common/mocks/Mock.sol";
 
 contract MockHook is Mock {
     function supportsInterface(bytes4 interfaceId) external pure returns (bool) {

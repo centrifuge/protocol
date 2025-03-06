@@ -5,12 +5,41 @@ import "forge-std/Test.sol";
 
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {Mock} from "test/common/mocks/Mock.sol";
 
 import {AxelarAdapter, IAxelarAdapter} from "src/common/AxelarAdapter.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 
-import {MockAxelarGateway} from "test/vaults/mocks/MockAxelarGateway.sol";
-import {MockAxelarGasService} from "test/vaults/mocks/MockAxelarGasService.sol";
+contract MockAxelarGateway is Mock {
+    function validateContractCall(bytes32, string calldata, string calldata, bytes32) public view returns (bool) {
+        return values_bool_return["validateContractCall"];
+    }
+
+    function callContract(string calldata destinationChain, string calldata contractAddress, bytes calldata payload)
+        public
+    {
+        values_string["destinationChain"] = destinationChain;
+        values_string["contractAddress"] = contractAddress;
+        values_bytes["payload"] = payload;
+    }
+}
+
+contract MockAxelarGasService is Mock {
+    function payNativeGasForContractCall(
+        address sender,
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        bytes calldata payload,
+        address refundAddress
+    ) external payable {
+        callWithValue("payNativeGasForContractCall", msg.value);
+        values_address["sender"] = sender;
+        values_string["destinationChain"] = destinationChain;
+        values_string["destinationAddress"] = destinationAddress;
+        values_bytes["payload"] = payload;
+        values_address["refundAddress"] = refundAddress;
+    }
+}
 
 contract AxelarAdapterTest is Test {
     MockAxelarGateway axelarGateway;
