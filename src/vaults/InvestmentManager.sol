@@ -100,10 +100,8 @@ contract InvestmentManager is Auth, IInvestmentManager {
         uint128 _assets = assets.toUint128();
         require(_assets != 0, "InvestmentManager/zero-amount-not-allowed");
 
-        uint64 poolId = vault_.poolId();
-        bytes16 trancheId = vault_.trancheId();
         address asset = vault_.asset();
-        require(poolManager.isLinked(poolId, trancheId, asset, vault), "InvestmentManager/asset-not-allowed");
+        require(poolManager.isLinked(vault_.poolId(), vault_.trancheId(), asset, vault), "InvestmentManager/asset-not-allowed");
 
         require(
             _canTransfer(vault, address(0), controller, convertToShares(vault, assets)),
@@ -115,10 +113,10 @@ contract InvestmentManager is Auth, IInvestmentManager {
 
         state.pendingDepositRequest = state.pendingDepositRequest + _assets;
         gateway.send(
-            uint32(poolId >> 32),
+            uint32(vault_.poolId() >> 32),
             MessageLib.DepositRequest({
-                poolId: poolId,
-                scId: trancheId,
+                poolId: vault_.poolId(),
+                scId: vault_.trancheId(),
                 investor: controller.toBytes32(),
                 assetId: poolManager.assetToId(asset),
                 amount: _assets
