@@ -177,7 +177,6 @@ contract SingleShareClass is Auth, ISingleShareClass {
         IERC7726 valuation
     ) external auth returns (uint128 approvedAssetAmount, uint128 approvedPoolAmount) {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
-        require(maxApproval > 0, ZeroApprovalAmount());
 
         // Advance epochId if it has not been advanced within this transaction (e.g. in case of multiCall context)
         uint32 approvalEpochId = _advanceEpoch(poolId);
@@ -190,6 +189,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         // Limit in case approved > pending due to race condition of FM approval and async incoming requests
         uint128 _pendingDeposit = pendingDeposit[shareClassId_][paymentAssetId];
         approvedAssetAmount = maxApproval.minUint128(_pendingDeposit);
+        require(approvedAssetAmount > 0, ZeroApprovalAmount());
 
         // Increase approved
         address poolCurrency = poolRegistry.currency(poolId).addr();
@@ -225,7 +225,6 @@ contract SingleShareClass is Auth, ISingleShareClass {
         returns (uint128 approvedShareAmount, uint128 pendingShareAmount)
     {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
-        require(maxApproval > 0, ZeroApprovalAmount());
 
         // Advance epochId if it has not been advanced within this transaction (e.g. in case of multiCall context)
         uint32 approvalEpochId = _advanceEpoch(poolId);
@@ -236,6 +235,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         // Limit in case approved > pending due to race condition of FM approval and async incoming requests
         pendingShareAmount = pendingRedeem[shareClassId_][payoutAssetId];
         approvedShareAmount = maxApproval.minUint128(pendingShareAmount);
+        require(approvedShareAmount > 0, ZeroApprovalAmount());
 
         // Update epoch data
         EpochAmounts storage epochAmounts_ = epochAmounts[shareClassId_][payoutAssetId][approvalEpochId];

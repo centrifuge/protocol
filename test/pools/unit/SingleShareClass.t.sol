@@ -248,6 +248,7 @@ contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
     {
         vm.assume(bytes(name).length > 0 && bytes(name).length <= 128);
         vm.assume(bytes(symbol).length > 0 && bytes(symbol).length <= 32);
+        vm.assume(salt != bytes32(0));
 
         vm.expectEmit();
         emit ISingleShareClass.UpdatedMetadata(poolId, scId, name, symbol, salt);
@@ -441,6 +442,43 @@ contract SingleShareClassDepositsNonTransientTest is SingleShareClassBaseTest {
         (uint128 payout, uint128 payment) = shareClass.claimDeposit(poolId, scId, investor, USDC);
         assertEq(payout + payment, 0);
         _assertDepositRequestEq(scId, USDC, investor, UserOrder(pending, mockEpochId));
+    }
+
+    function testClaimDepositZeroApproved() public {
+        shareClass.requestDeposit(poolId, scId, 1, investor, USDC);
+        shareClass.requestDeposit(poolId, scId, 10, bytes32("investorOther"), USDC);
+        shareClass.approveDeposits(poolId, scId, 1, USDC, oracleMock);
+        shareClass.issueShares(poolId, scId, USDC, d18(1));
+
+        vm.expectEmit();
+        emit IShareClassManager.ClaimedDeposit(poolId, scId, 1, investor, USDC, 0, 1, 0);
+        shareClass.claimDeposit(poolId, scId, investor, USDC);
+    }
+
+    function testClaimRedeemZeroApproved() public {
+        vm.store(
+            address(shareClass),
+            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_TOTAL_ISSUANCE))),
+            bytes32(uint256(11))
+        );
+
+        shareClass.requestRedeem(poolId, scId, 1, investor, USDC);
+        shareClass.requestRedeem(poolId, scId, 10, bytes32("investorOther"), USDC);
+        shareClass.approveRedeems(poolId, scId, 1, USDC);
+        shareClass.revokeShares(poolId, scId, USDC, d18(1), oracleMock);
+
+        vm.expectEmit();
+        emit IShareClassManager.ClaimedRedeem(poolId, scId, 1, investor, USDC, 0, 1, 0);
+        shareClass.claimRedeem(poolId, scId, investor, USDC);
+    }
+
+    function testRevokeShareExceedIssuance() public {
+        shareClass.requestRedeem(poolId, scId, 1, investor, USDC);
+        shareClass.requestRedeem(poolId, scId, 10, bytes32("investorOther"), USDC);
+        shareClass.approveRedeems(poolId, scId, 1, USDC);
+
+        vm.expectRevert(abi.encodeWithSelector(ISingleShareClass.RevokeMoreThanIssued.selector));
+        shareClass.revokeShares(poolId, scId, USDC, d18(1), oracleMock);
     }
 }
 
@@ -1392,6 +1430,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     }
 
     function testApproveDepositsAlreadyApproved() public {
+        shareClass.requestDeposit(poolId, scId, 1, investor, USDC);
         shareClass.approveDeposits(poolId, scId, 1, USDC, oracleMock);
 
         vm.expectRevert(ISingleShareClass.AlreadyApproved.selector);
@@ -1399,20 +1438,31 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     }
 
     function testApproveRedeemsAlreadyApproved() public {
+        shareClass.requestRedeem(poolId, scId, 1, investor, USDC);
         shareClass.approveRedeems(poolId, scId, 1, USDC);
 
         vm.expectRevert(ISingleShareClass.AlreadyApproved.selector);
         shareClass.approveRedeems(poolId, scId, 1, USDC);
     }
 
-    function testApproveDepositsRatioInsufficient() public {
+    function testApproveDepositsZeroApproval() public {
         vm.expectRevert(ISingleShareClass.ZeroApprovalAmount.selector);
         shareClass.approveDeposits(poolId, scId, 0, USDC, oracleMock);
     }
 
-    function testApproveRedeemsRatioInsufficient() public {
+    function testApproveDepositsZeroPending() public {
+        vm.expectRevert(ISingleShareClass.ZeroApprovalAmount.selector);
+        shareClass.approveDeposits(poolId, scId, 1, USDC, oracleMock);
+    }
+
+    function testApproveRedeemsZeroApproval() public {
         vm.expectRevert(ISingleShareClass.ZeroApprovalAmount.selector);
         shareClass.approveRedeems(poolId, scId, 0, USDC);
+    }
+
+    function testApproveRedeemsZeroPending() public {
+        vm.expectRevert(ISingleShareClass.ZeroApprovalAmount.selector);
+        shareClass.approveRedeems(poolId, scId, 1, USDC);
     }
 
     function testAddShareClassInvalidNameEmpty() public {
