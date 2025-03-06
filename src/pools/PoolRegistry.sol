@@ -6,7 +6,6 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 
 import {PoolId, newPoolId} from "src/pools/types/PoolId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 

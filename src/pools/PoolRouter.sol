@@ -118,12 +118,18 @@ contract PoolRouter is Multicall, IPoolRouter {
     }
 
     /// @inheritdoc IPoolRouter
-    function increaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount) public protected {
+    function increaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount)
+        external
+        protected
+    {
         poolManager.increaseHolding(scId, assetId, valuation, amount);
     }
 
     /// @inheritdoc IPoolRouter
-    function decreaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount) public protected {
+    function decreaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount)
+        external
+        protected
+    {
         poolManager.decreaseHolding(scId, assetId, valuation, amount);
     }
 
@@ -143,7 +149,7 @@ contract PoolRouter is Multicall, IPoolRouter {
     }
 
     /// @inheritdoc IPoolRouter
-    function createAccount(AccountId account, bool isDebitNormal) public protected {
+    function createAccount(AccountId account, bool isDebitNormal) external protected {
         poolManager.createAccount(account, isDebitNormal);
     }
 

@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
 interface IPoolRegistry {
