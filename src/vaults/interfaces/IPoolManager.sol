@@ -56,8 +56,7 @@ interface IPoolManager is IMessageHandler, IRecoverable {
     event AllowAsset(uint64 indexed poolId, address indexed asset);
     event DisallowAsset(uint64 indexed poolId, address indexed asset);
     event AddTranche(uint64 indexed poolId, bytes16 indexed trancheId, address token);
-    event DeployVault(uint64 indexed poolId, bytes16 indexed trancheId, address indexed asset, address vault);
-    event RemoveVault(uint64 indexed poolId, bytes16 indexed trancheId, address indexed asset, address vault);
+    event DeployVault(uint64 indexed poolId, bytes16 indexed trancheId, address indexed asset, address factory, address vault);
     event PriceUpdate(
         uint64 indexed poolId, bytes16 indexed trancheId, address indexed asset, uint256 price, uint64 computedAt
     );
@@ -71,10 +70,8 @@ interface IPoolManager is IMessageHandler, IRecoverable {
         uint128 amount
     );
     event UpdateContract(uint64 indexed poolId, bytes16 indexed trancheId, address target, bytes payload);
-
-    /// @notice returns the investmentManager address
-    /// @dev    can be set using file
-    function investmentManager() external view returns (address);
+    event LinkVault(uint64 indexed poolId, bytes16 indexed trancheId, uint128 indexed assetId, address asset, address vault);
+    event UnlinkVault(uint64 indexed poolId, bytes16 indexed trancheId, uint128 indexed assetId, address asset, address vault);
 
     /// @notice returns the asset address associated with a given asset id
     function idToAsset(uint128 assetId) external view returns (address asset);
@@ -131,7 +128,7 @@ interface IPoolManager is IMessageHandler, IRecoverable {
         uint8 decimals,
         bytes32 salt,
         address hook
-    ) external;
+    ) external returns (address);
 
     /// @notice   Updates the tokenName and tokenSymbol of a tranche token
     /// @dev      The function can only be executed by the gateway contract.
@@ -178,28 +175,11 @@ interface IPoolManager is IMessageHandler, IRecoverable {
     function handleTransferTrancheTokens(uint64 poolId, bytes16 trancheId, address destinationAddress, uint128 amount)
         external;
 
-    /// @notice Deploys a vault for a given asset and tranche token
-    /// @dev    The function can only be executed by the gateway contract.
-    function deployVault(uint64 poolId, bytes16 trancheId, address asset) external returns (address);
-
-    /// @notice Removes a vault for a given asset and tranche token
-    /// @dev    The function can only be executed by the gateway contract.
-    function removeVault(uint64 poolId, bytes16 trancheId, address asset) external;
-
     /// @notice Returns whether the given pool id is active
     function isPoolActive(uint64 poolId) external view returns (bool);
 
     /// @notice Returns the tranche token for a given pool and tranche id
     function getTranche(uint64 poolId, bytes16 trancheId) external view returns (address);
-
-    /// @notice Returns whether the tranche token for a given pool and tranche id can be deployed
-    function canTrancheBeDeployed(uint64 poolId, bytes16 trancheId) external view returns (bool);
-
-    /// @notice Returns the vaults for a given pool, tranche id, and asset id
-    function getVaults(uint64 poolId, bytes16 trancheId, uint128 assetId) external view returns (address[]);
-
-    /// @notice Returns the vaults for a given pool, tranche id, and asset address
-    function getVaults(uint64 poolId, bytes16 trancheId, address asset) external view returns (address[]);
 
     /// @notice Retuns the latest tranche token price for a given pool, tranche id, and asset id
     function getTranchePrice(uint64 poolId, bytes16 trancheId, address asset)

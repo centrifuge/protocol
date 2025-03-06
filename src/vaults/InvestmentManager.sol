@@ -6,9 +6,8 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
-
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
-
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IInvestmentManager, InvestmentState} from "src/vaults/interfaces/IInvestmentManager.sol";
@@ -35,6 +34,8 @@ contract InvestmentManager is Auth, IInvestmentManager {
     IGateway public gateway;
     IPoolManager public poolManager;
 
+    mapping (uint64 poolId => mapping (bytes16 trancheId => mapping (uint128 assetId => address vault))) public _vault;
+
     /// @inheritdoc IInvestmentManager
     mapping(address vault => mapping(address investor => InvestmentState)) public investments;
 
@@ -58,23 +59,34 @@ contract InvestmentManager is Auth, IInvestmentManager {
     }
 
     // --- IVaultManager ---
-    function addVault(uint64 poolId, bytes16 trancheId, address vault) public override auth {
-        IERC7540Vault vault_ = IERC7540Vault(vault);
-        address token = vault_.share();
-
-        IAuth(token).rely(vault);
-        ITranche(token).updateVault(vault_.asset(), vault);
-        Auth(address(this)).rely(vault);
-    }
-
-    function removeVault(uint64 poolId, bytes16 trancheId, address vault) public override auth {
-        IERC7540Vault vault_ = IERC7540Vault(vault);
+    function addVault(uint64 poolId, bytes16 trancheId, address vault__, address asset_, uint128 assetId) public override auth {
+        IERC7540Vault vault_ = IERC7540Vault(vault__);
         address token = vault_.share();
         address asset = vault_.asset();
 
-        IAuth(token).deny(vault);
+        require(asset == asset_, "InvestmentManager/asset-mismatch");
+        require(_vault[poolId][trancheId][assetId] == address(0), "InvestmentManager/vault-already-exists");
+
+        _vault[poolId][trancheId][assetId] = vault__;
+
+        IAuth(token).rely(vault__);
+        ITranche(token).updateVault(vault_.asset(), vault__);
+        Auth(address(this)).rely(vault__);
+    }
+
+    function removeVault(uint64 poolId, bytes16 trancheId, address vault__, address asset_, uint128 assetId) public override auth {
+        IERC7540Vault vault_ = IERC7540Vault(vault__);
+        address token = vault_.share();
+        address asset = vault_.asset();
+
+        require(asset == asset_, "InvestmentManager/asset-mismatch");
+        require(_vault[poolId][trancheId][assetId] != address(0), "InvestmentManager/vault-does-not-exist");
+
+        delete _vault[poolId][trancheId][assetId];
+
+        IAuth(token).deny(vault__);
         ITranche(token).updateVault(asset, address(0));
-        Auth(address(this)).deny(vault);
+        Auth(address(this)).deny(vault__);
     }
 
     // --- Outgoing message handling ---
@@ -128,7 +140,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
         IERC7540Vault vault_ = IERC7540Vault(vault);
 
         // You cannot redeem using a disallowed asset, instead another vault will have to be used
-        require(poolManager.isLinked(vault_.poolId(), vault_.asset()), "InvestmentManager/asset-not-allowed");
+        require(poolManager.isLinked(vault_.poolId(), vault_.trancheId(), vault_.asset(), vault), "InvestmentManager/asset-not-allowed");
 
         require(
             _canTransfer(vault, owner, address(escrow), shares)
@@ -167,7 +179,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
 
     /// @inheritdoc IInvestmentManager
     function cancelDepositRequest(address vault, address controller, address source) public auth {
-        IERC7540Vault _vault = IERC7540Vault(vault);
+        IERC7540Vault vault_ = IERC7540Vault(vault);
 
         InvestmentState storage state = investments[vault][controller];
         require(state.pendingDepositRequest > 0, "InvestmentManager/no-pending-deposit-request");
@@ -175,12 +187,12 @@ contract InvestmentManager is Auth, IInvestmentManager {
         state.pendingCancelDepositRequest = true;
 
         gateway.send(
-            uint32(_vault.poolId() >> 32),
+            uint32(vault_.poolId() >> 32),
             MessageLib.CancelDepositRequest({
-                poolId: _vault.poolId(),
-                scId: _vault.trancheId(),
+                poolId: vault_.poolId(),
+                scId: vault_.trancheId(),
                 investor: controller.toBytes32(),
-                assetId: poolManager.assetToId(_vault.asset())
+                assetId: poolManager.assetToId(vault_.asset())
             }).serialize(),
             source
         );
@@ -188,7 +200,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
 
     /// @inheritdoc IInvestmentManager
     function cancelRedeemRequest(address vault, address controller, address source) public auth {
-        IERC7540Vault _vault = IERC7540Vault(vault);
+        IERC7540Vault vault_ = IERC7540Vault(vault);
         uint256 approximateTranchesPayout = pendingRedeemRequest(vault, controller);
         require(approximateTranchesPayout > 0, "InvestmentManager/no-pending-redeem-request");
         require(
@@ -201,12 +213,12 @@ contract InvestmentManager is Auth, IInvestmentManager {
         state.pendingCancelRedeemRequest = true;
 
         gateway.send(
-            uint32(_vault.poolId() >> 32),
+            uint32(vault_.poolId() >> 32),
             MessageLib.CancelRedeemRequest({
-                poolId: _vault.poolId(),
-                scId: _vault.trancheId(),
+                poolId: vault_.poolId(),
+                scId: vault_.trancheId(),
                 investor: controller.toBytes32(),
-                assetId: poolManager.assetToId(_vault.asset())
+                assetId: poolManager.assetToId(vault_.asset())
             }).serialize(),
             source
         );
@@ -252,7 +264,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
         uint128 assets,
         uint128 shares
     ) public auth {
-        address vault = poolManager.getVault(poolId, trancheId, assetId);
+        address vault = _vault[poolId][trancheId][assetId];
 
         InvestmentState storage state = investments[vault][user];
         require(state.pendingDepositRequest != 0, "InvestmentManager/no-pending-deposit-request");
@@ -278,7 +290,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
         uint128 assets,
         uint128 shares
     ) public auth {
-        address vault = poolManager.getVault(poolId, trancheId, assetId);
+        address vault = _vault[poolId][trancheId][assetId];
 
         InvestmentState storage state = investments[vault][user];
         require(state.pendingRedeemRequest != 0, "InvestmentManager/no-pending-redeem-request");
@@ -307,7 +319,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
         uint128 assets,
         uint128 fulfillment
     ) public auth {
-        address vault = poolManager.getVault(poolId, trancheId, assetId);
+        address vault = _vault[poolId][trancheId][assetId];
 
         InvestmentState storage state = investments[vault][user];
         require(state.pendingCancelDepositRequest == true, "InvestmentManager/no-pending-cancel-deposit-request");
@@ -326,7 +338,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
         public
         auth
     {
-        address vault = poolManager.getVault(poolId, trancheId, assetId);
+        address vault = _vault[poolId][trancheId][assetId];
         InvestmentState storage state = investments[vault][user];
         require(state.pendingCancelRedeemRequest == true, "InvestmentManager/no-pending-cancel-redeem-request");
 
@@ -344,7 +356,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
         auth
     {
         require(shares != 0, "InvestmentManager/tranche-token-amount-is-zero");
-        address vault = poolManager.getVault(poolId, trancheId, assetId);
+        address vault = _vault[poolId][trancheId][assetId];
 
         // If there's any unclaimed deposits, claim those first
         InvestmentState storage state = investments[vault][user];

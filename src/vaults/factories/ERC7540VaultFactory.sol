@@ -2,12 +2,12 @@
 pragma solidity 0.8.28;
 
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
-import {IERC7540VaultFactory} from "src/vaults/interfaces/factories/IERC7540VaultFactory.sol";
 import {Auth} from "src/misc/Auth.sol";
+import {IVaultFactory} from "../interfaces/factories/IVaultFactory.sol";
 
 /// @title  ERC7540 Vault Factory
 /// @dev    Utility for deploying new vault contracts
-contract ERC7540VaultFactory is Auth, IERC7540VaultFactory {
+contract ERC7540VaultFactory is Auth, IVaultFactory {
     address public immutable root;
     address public immutable investmentManager;
 
@@ -16,7 +16,7 @@ contract ERC7540VaultFactory is Auth, IERC7540VaultFactory {
         investmentManager = _investmentManager;
     }
 
-    /// @inheritdoc IERC7540VaultFactory
+    /// @inheritdoc IVaultFactory
     function newVault(
         uint64 poolId,
         bytes16 trancheId,

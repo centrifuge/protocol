@@ -111,7 +111,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         vm.label(address(routerEscrow), "RouterEscrow");
         vm.label(address(guardian), "Guardian");
         vm.label(address(poolManager.trancheFactory()), "TrancheFactory");
-        vm.label(address(poolManager.vaultFactory()), "ERC7540VaultFactory");
+        vm.label(address(vaultFactory), "ERC7540VaultFactory");
 
         // Exclude predeployed contracts from invariant tests by default
         excludeContract(address(root));
@@ -128,7 +128,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         excludeContract(address(routerEscrow));
         excludeContract(address(guardian));
         excludeContract(address(poolManager.trancheFactory()));
-        excludeContract(address(poolManager.vaultFactory()));
+        excludeContract(address(vaultFactory));
     }
 
     // helpers
