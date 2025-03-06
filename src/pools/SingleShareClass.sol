@@ -175,7 +175,6 @@ contract SingleShareClass is Auth, ISingleShareClass {
         IERC7726 valuation
     ) external auth returns (uint128 approvedAssetAmount, uint128 approvedPoolAmount) {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
-        uint128 _pendingDeposit = pendingDeposit[shareClassId_][paymentAssetId];
         require(maxApproval > 0, ZeroApprovalAmount());
 
         // Advance epochId if it has not been advanced within this transaction (e.g. in case of multiCall context)
@@ -186,7 +185,8 @@ contract SingleShareClass is Auth, ISingleShareClass {
             epochPointers[shareClassId_][paymentAssetId].latestDepositApproval != approvalEpochId, AlreadyApproved()
         );
 
-        // Limit approvedAssetAmount in case approved > pending due to race condition of FM approval and async incoming requests
+        // Limit in case approved > pending due to race condition of FM approval and async incoming requests
+        uint128 _pendingDeposit = pendingDeposit[shareClassId_][paymentAssetId];
         approvedAssetAmount = maxApproval.minUint128(_pendingDeposit);
 
         // Increase approved
@@ -223,7 +223,6 @@ contract SingleShareClass is Auth, ISingleShareClass {
         returns (uint128 approvedShareAmount, uint128 pendingShareAmount)
     {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
-        pendingShareAmount = pendingRedeem[shareClassId_][payoutAssetId];
         require(maxApproval > 0, ZeroApprovalAmount());
 
         // Advance epochId if it has not been advanced within this transaction (e.g. in case of multiCall context)
@@ -232,11 +231,14 @@ contract SingleShareClass is Auth, ISingleShareClass {
         // Block approvals for the same asset in the same epoch
         require(epochPointers[shareClassId_][payoutAssetId].latestRedeemApproval != approvalEpochId, AlreadyApproved());
 
-        // Update epoch data
+        // Limit in case approved > pending due to race condition of FM approval and async incoming requests
+        pendingShareAmount = pendingRedeem[shareClassId_][payoutAssetId];
         approvedShareAmount = maxApproval.minUint128(pendingShareAmount);
+
+        // Update epoch data
         EpochAmounts storage epochAmounts_ = epochAmounts[shareClassId_][payoutAssetId][approvalEpochId];
-        epochAmounts_.redeemPending = pendingShareAmount;
         epochAmounts_.redeemApproved = approvedShareAmount;
+        epochAmounts_.redeemPending = pendingShareAmount;
 
         // Reduce pending
         pendingRedeem[shareClassId_][payoutAssetId] -= approvedShareAmount;
@@ -283,7 +285,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
         for (uint32 epochId_ = startEpochId; epochId_ <= endEpochId; epochId_++) {
             // Skip redeem epochs
-            if (epochAmounts[shareClassId_][depositAssetId][epochId_].depositPool == 0) {
+            if (epochAmounts[shareClassId_][depositAssetId][epochId_].depositApproved == 0) {
                 continue;
             }
 
