@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
+
 import {Root} from "src/common/Root.sol";
+import {GasService} from "src/common/GasService.sol";
+
 import {Gateway} from "src/vaults/gateway/Gateway.sol";
-import {GasService} from "src/vaults/gateway/GasService.sol";
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
 import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
 import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
@@ -13,7 +16,6 @@ import {PoolManager} from "src/vaults/PoolManager.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
 import {CentrifugeRouter} from "src/vaults/CentrifugeRouter.sol";
 import {Guardian} from "src/vaults/admin/Guardian.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import "forge-std/Script.sol";
 
 contract Deployer is Script {
@@ -109,7 +111,6 @@ contract Deployer is Script {
 
     function _file() public {
         poolManager.file("investmentManager", address(investmentManager));
-        poolManager.file("gasService", address(gasService));
         poolManager.file("gateway", address(gateway));
 
         investmentManager.file("poolManager", address(poolManager));

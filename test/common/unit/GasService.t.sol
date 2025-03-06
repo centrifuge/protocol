@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
-import {GasService} from "src/vaults/gateway/GasService.sol";
+import {GasService, IGasService} from "src/common/GasService.sol";
 
 contract GasServiceTest is Test {
     using MessageLib for *;
@@ -41,7 +41,7 @@ contract GasServiceTest is Test {
         assertEq(service.messageCost(), messageCost);
         assertEq(service.proofCost(), proofCost);
 
-        vm.expectRevert(bytes("GasService/file-unrecognized-param"));
+        vm.expectRevert(IGasService.FileUnrecognizedParam.selector);
         service.file(what, messageCost);
 
         vm.prank(makeAddr("unauthorized"));
@@ -58,15 +58,15 @@ contract GasServiceTest is Test {
 
         uint64 lastUpdateAt = uint64(service.lastUpdatedAt());
 
-        vm.expectRevert(bytes("GasService/price-cannot-be-zero"));
+        vm.expectRevert(IGasService.PriceCannotBeZero.selector);
         service.updateGasPrice(0, futureDate);
         assertEq(lastUpdateAt, service.lastUpdatedAt());
 
-        vm.expectRevert(bytes("GasService/already-set-price"));
+        vm.expectRevert(IGasService.AlreadySetPrice.selector);
         service.updateGasPrice(GAS_PRICE, futureDate);
         assertEq(lastUpdateAt, service.lastUpdatedAt());
 
-        vm.expectRevert(bytes("GasService/outdated-price"));
+        vm.expectRevert(IGasService.OutdatedPrice.selector);
         service.updateGasPrice(value, pastDate);
         assertEq(service.gasPrice(), GAS_PRICE);
 

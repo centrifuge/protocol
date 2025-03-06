@@ -133,7 +133,6 @@ contract DeployTest is Test, Deployer {
     function testFilings() public view {
         assertEq(poolManager.investmentManager(), address(investmentManager));
         assertEq(address(poolManager.gateway()), address(gateway));
-        assertEq(address(poolManager.gasService()), address(gasService));
 
         assertEq(address(investmentManager.poolManager()), address(poolManager));
         assertEq(address(investmentManager.gateway()), address(gateway));

@@ -9,9 +9,9 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
 import {MessageType, MessageCategory, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IRoot, IRecoverable} from "src/common/interfaces/IRoot.sol";
+import {IGasService} from "src/common/interfaces/IGasService.sol";
 
 import {IGateway, IMessageHandler} from "src/vaults/interfaces/gateway/IGateway.sol";
-import {IGasService} from "src/vaults/interfaces/gateway/IGasService.sol";
 import {IAdapter} from "src/vaults/interfaces/gateway/IAdapter.sol";
 
 /// @title  Gateway
@@ -202,10 +202,9 @@ contract Gateway is Auth, IGateway, IRecoverable {
         while (true) {
             // TODO: The message dispatching will be moved to a vaults/IMessageProcessor
             MessageCategory cat = message.messageCode().category();
+            MessageType kind = MessageLib.messageType(message);
 
             if (cat == MessageCategory.Root) {
-                MessageType kind = MessageLib.messageType(message);
-
                 if (kind == MessageType.ScheduleUpgrade) {
                     MessageLib.ScheduleUpgrade memory m = message.deserializeScheduleUpgrade();
                     root.scheduleRely(address(bytes20(m.target)));
@@ -219,7 +218,12 @@ contract Gateway is Auth, IGateway, IRecoverable {
                     revert("Root/invalid-message");
                 }
             } else if (cat == MessageCategory.Gas) {
-                gasService.handle(message);
+                if (kind == MessageType.UpdateGasPrice) {
+                    MessageLib.UpdateGasPrice memory m = message.deserializeUpdateGasPrice();
+                    gasService.updateGasPrice(m.price, m.timestamp);
+                } else {
+                    revert("GasService/invalid-message");
+                }
             } else if (cat == MessageCategory.Pool) {
                 IMessageHandler(poolManager).handle(message);
             } else if (cat == MessageCategory.Investment) {

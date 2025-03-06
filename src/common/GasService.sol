@@ -6,8 +6,7 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
-
-import {IGasService} from "src/vaults/interfaces/gateway/IGasService.sol";
+import {IGasService} from "src/common/interfaces/IGasService.sol";
 
 /// @title  GasService
 /// @notice This is a utility contract used in calculations of the
@@ -24,12 +23,16 @@ contract GasService is IGasService, Auth {
 
     /// @inheritdoc IGasService
     uint64 public proofCost;
+
     /// @inheritdoc IGasService
     uint64 public messageCost;
+
     /// @inheritdoc IGasService
     uint128 public gasPrice;
+
     /// @inheritdoc IGasService
     uint64 public lastUpdatedAt;
+
     /// @inheritdoc IGasService
     uint256 public tokenPrice;
 
@@ -45,29 +48,16 @@ contract GasService is IGasService, Auth {
     function file(bytes32 what, uint64 value) external auth {
         if (what == "messageCost") messageCost = value;
         else if (what == "proofCost") proofCost = value;
-        else revert("GasService/file-unrecognized-param");
+        else revert FileUnrecognizedParam();
         emit File(what, value);
-    }
-
-    /// --- Incoming message handling ---
-    /// @inheritdoc IGasService
-    function handle(bytes calldata message) public auth {
-        MessageType kind = MessageLib.messageType(message);
-
-        if (kind == MessageType.UpdateGasPrice) {
-            MessageLib.UpdateGasPrice memory m = message.deserializeUpdateGasPrice();
-            updateGasPrice(m.price, m.timestamp);
-        } else {
-            revert("GasService/invalid-message");
-        }
     }
 
     /// --- Update methods ---
     /// @inheritdoc IGasService
     function updateGasPrice(uint128 value, uint64 computedAt) public auth {
-        require(value != 0, "GasService/price-cannot-be-zero");
-        require(gasPrice != value, "GasService/already-set-price");
-        require(lastUpdatedAt < computedAt, "GasService/outdated-price");
+        require(value != 0, PriceCannotBeZero());
+        require(gasPrice != value, AlreadySetPrice());
+        require(lastUpdatedAt < computedAt, OutdatedPrice());
         gasPrice = value;
         lastUpdatedAt = computedAt;
         emit UpdateGasPrice(value, computedAt);
