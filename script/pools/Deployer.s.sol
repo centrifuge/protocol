@@ -16,6 +16,7 @@ import {AssetRegistry} from "src/pools/AssetRegistry.sol";
 import {Accounting} from "src/pools/Accounting.sol";
 import {Gateway} from "src/pools/Gateway.sol";
 import {PoolManager, IPoolManager} from "src/pools/PoolManager.sol";
+import {PoolRouter} from "src/pools/PoolRouter.sol";
 
 contract Deployer is Script {
     /// @dev Identifies an address that requires to be overwritten by a `file()` method before ending the deployment.
@@ -30,6 +31,7 @@ contract Deployer is Script {
     SingleShareClass public singleShareClass;
     PoolManager public poolManager;
     Gateway public gateway;
+    PoolRouter public poolRouter;
 
     // Utilities
     TransientValuation public transientValuation;
@@ -48,6 +50,7 @@ contract Deployer is Script {
         poolManager =
             new PoolManager(poolRegistry, assetRegistry, accounting, holdings, IGateway(ADDRESS_TO_FILE), address(this));
         gateway = new Gateway(IAdapter(address(0 /* TODO */ )), poolManager, address(this));
+        poolRouter = new PoolRouter(poolManager);
 
         transientValuation = new TransientValuation(assetRegistry, address(this));
         identityValuation = new IdentityValuation(assetRegistry, address(this));
@@ -68,6 +71,7 @@ contract Deployer is Script {
         accounting.rely(address(poolManager));
         singleShareClass.rely(address(poolManager));
         poolManager.rely(address(gateway));
+        poolManager.rely(address(poolRouter));
         gateway.rely(address(poolManager));
     }
 

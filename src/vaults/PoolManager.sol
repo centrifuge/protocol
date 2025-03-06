@@ -115,7 +115,7 @@ contract PoolManager is Auth, IPoolManager {
             addPool(MessageLib.deserializeNotifyPool(message).poolId);
         } else if (kind == MessageType.NotifyShareClass) {
             MessageLib.NotifyShareClass memory m = MessageLib.deserializeNotifyShareClass(message);
-            addTranche(m.poolId, m.scId, m.name, m.symbol.toString(), m.decimals, address(bytes20(m.hook)));
+            addTranche(m.poolId, m.scId, m.name, m.symbol.toString(), m.decimals, m.salt, address(bytes20(m.hook)));
         } else if (kind == MessageType.AllowAsset) {
             MessageLib.AllowAsset memory m = MessageLib.deserializeAllowAsset(message);
             allowAsset(m.poolId, /* m.scId, */ m.assetId); // TODO: use scId
@@ -177,6 +177,7 @@ contract PoolManager is Auth, IPoolManager {
         string memory name,
         string memory symbol,
         uint8 decimals,
+        bytes32 salt,
         address hook
     ) public auth {
         require(decimals >= MIN_DECIMALS, "PoolManager/too-few-tranche-token-decimals");
@@ -196,6 +197,7 @@ contract PoolManager is Auth, IPoolManager {
         undeployedTranche.decimals = decimals;
         undeployedTranche.tokenName = name;
         undeployedTranche.tokenSymbol = symbol;
+        undeployedTranche.salt = salt;
         undeployedTranche.hook = hook;
 
         emit AddTranche(poolId, trancheId);
@@ -301,11 +303,10 @@ contract PoolManager is Auth, IPoolManager {
 
         UndeployedTranche storage undeployedTranche = _undeployedTranches[poolId][trancheId];
         address token = trancheFactory.newTranche(
-            poolId,
-            trancheId,
             undeployedTranche.tokenName,
             undeployedTranche.tokenSymbol,
             undeployedTranche.decimals,
+            undeployedTranche.salt,
             trancheWards
         );
 

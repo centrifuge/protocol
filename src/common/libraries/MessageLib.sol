@@ -78,7 +78,7 @@ library MessageLib {
         (25 << uint8(MessageType.UpdateGasPrice) * 8) +
         (37 << uint8(MessageType.RegisterAsset) * 8) + //TODO: modify to 178 when registerAsset feature is merged
         (9 << uint8(MessageType.NotifyPool) * 8) +
-        (218 << uint8(MessageType.NotifyShareClass) * 8) +
+        (250 << uint8(MessageType.NotifyShareClass) * 8) +
         (41 << uint8(MessageType.AllowAsset) * 8) +
         (41 << uint8(MessageType.DisallowAsset) * 8) +
         (65 << uint8(MessageType.UpdateShareClassPrice) * 8) +
@@ -329,6 +329,7 @@ library MessageLib {
         string name; // Fixed to 128 bytes
         bytes32 symbol; // utf8
         uint8 decimals;
+        bytes32 salt;
         bytes32 hook;
     }
 
@@ -340,7 +341,8 @@ library MessageLib {
             name: data.slice(25, 128).bytes128ToString(),
             symbol: data.toBytes32(153),
             decimals: data.toUint8(185),
-            hook: data.toBytes32(186)
+            salt: data.toBytes32(186),
+            hook: data.toBytes32(218)
         });
     }
 
@@ -352,6 +354,7 @@ library MessageLib {
             bytes(t.name).sliceZeroPadded(0, 128),
             t.symbol,
             t.decimals,
+            t.salt,
             t.hook
         );
     }

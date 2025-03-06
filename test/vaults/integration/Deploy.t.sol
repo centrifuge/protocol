@@ -269,7 +269,9 @@ contract DeployTest is Test, Deployer {
     ) public returns (address) {
         vm.startPrank(address(gateway));
         poolManager.addPool(poolId);
-        poolManager.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook);
+        poolManager.addTranche(
+            poolId, trancheId, tokenName, tokenSymbol, decimals, keccak256(abi.encodePacked(poolId, trancheId)), hook
+        );
         poolManager.addAsset(1, address(erc20));
         poolManager.allowAsset(poolId, 1);
         poolManager.updateTranchePrice(poolId, trancheId, 1, uint128(10 ** 18), uint64(block.timestamp));

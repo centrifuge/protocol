@@ -246,11 +246,16 @@ interface IShareClassManager {
     /// @param poolId Identifier of the pool
     /// @param name The name of the share class
     /// @param symbol The symbol of the share class
+    /// @param salt The salt used for deploying the share class tokens
     /// @param data Additional data of the new share class
     /// @return scId Identifier of the newly added share class
-    function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes calldata data)
-        external
-        returns (ShareClassId scId);
+    function addShareClass(
+        PoolId poolId,
+        string calldata name,
+        string calldata symbol,
+        bytes32 salt,
+        bytes calldata data
+    ) external returns (ShareClassId scId);
 
     /// @notice Updates the metadata of a share class.
     ///
@@ -258,12 +263,14 @@ interface IShareClassManager {
     /// @param scId Identifier of the share class
     /// @param name The name of the share class
     /// @param symbol The symbol of the share class
+    /// @param salt The salt used for deploying the share class tokens
     /// @param metadata Encoded additional metadata of the new share class
     function updateMetadata(
         PoolId poolId,
         ShareClassId scId,
         string calldata name,
         string calldata symbol,
+        bytes32 salt,
         bytes calldata metadata
     ) external;
 

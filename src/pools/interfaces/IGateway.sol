@@ -30,6 +30,7 @@ interface IGateway {
         string memory name,
         string memory symbol,
         uint8 decimals,
+        bytes32 salt,
         bytes32 hook
     ) external;
 
@@ -42,8 +43,8 @@ interface IGateway {
         ShareClassId scId,
         AssetId assetId,
         bytes32 investor,
-        uint128 shareAmount,
-        uint128 assetAmount
+        uint128 assetAmount,
+        uint128 shareAmount
     ) external;
 
     /// @notice Creates and send the message
@@ -52,8 +53,8 @@ interface IGateway {
         ShareClassId scId,
         AssetId assetId,
         bytes32 investor,
-        uint128 shareAmount,
-        uint128 assetAmount
+        uint128 assetAmount,
+        uint128 shareAmount
     ) external;
 
     /// @notice Creates and send the message
