@@ -615,7 +615,9 @@ library MessageLib {
     }
 
     function serialize(UpdateContract memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.UpdateContract, t.poolId, t.scId, t.target, uint16(t.payload.length), t.payload);
+        return abi.encodePacked(
+            MessageType.UpdateContract, t.poolId, t.scId, t.target, uint16(t.payload.length), t.payload
+        );
     }
 
     //---------------------------------------

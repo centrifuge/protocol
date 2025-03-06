@@ -55,7 +55,9 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     /// @inheritdoc IPoolManager
     mapping(address => uint128 assetId) public assetToId;
 
-    constructor(address escrow_, address vaultFactory_, address trancheFactory_, address[] vaultFactories) Auth(msg.sender) {
+    constructor(address escrow_, address vaultFactory_, address trancheFactory_, address[] vaultFactories)
+        Auth(msg.sender)
+    {
         escrow = IEscrow(escrow_);
         trancheFactory = ITrancheFactory(trancheFactory_);
 
@@ -78,8 +80,9 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     function file(bytes32 what, address factory, bool status) external auth {
         if (what == "vaultFactory") {
             vaultFactory[factory] = status;
+        } else {
+            revert("PoolManager/file-unrecognized-param");
         }
-        else revert("PoolManager/file-unrecognized-param");
         emit File(what, factory, status);
     }
 
@@ -205,15 +208,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         address[] memory trancheWards = new address[](1);
         trancheWards[1] = address(this);
 
-        address token = trancheFactory.newTranche(
-            poolId,
-            trancheId,
-            name,
-            symbol,
-            decimals,
-            salt,
-            trancheWards
-        );
+        address token = trancheFactory.newTranche(poolId, trancheId, name, symbol, decimals, salt, trancheWards);
 
         if (hook != address(0)) {
             ITranche(token).file("hook", hook);
@@ -248,9 +243,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         auth
     {
         TrancheDetails storage tranche = _pools[poolId].tranches[trancheId];
-        require(
-            tranche.token != address(0), "PoolManager/tranche-does-not-exist"
-        );
+        require(tranche.token != address(0), "PoolManager/tranche-does-not-exist");
 
         address asset = idToAsset[assetId];
         require(computedAt >= tranche.prices[asset].computedAt, "PoolManager/cannot-set-older-price");
@@ -316,10 +309,11 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
 
     // --- IUpdateContract implementation ---
     /// @inheritdoc IUpdateContract
-    /// @notice The pool manager either deploys the vault if a factory address is provided or it simply links/unlinks the vault
+    /// @notice The pool manager either deploys the vault if a factory address is provided or it simply links/unlinks
+    /// the vault
     function update(uint64 poolId, bytes16 trancheId, bytes memory payload) public auth {
         if (payload.length != 128) {
-            revert "PoolManager/invalid-update-payload-length";
+            revert("PoolManager/invalid-update-payload-length");
         }
 
         (factory, assetId, isLinked, vault) = abi.decode(payload, (address, uint128, bool, address));
@@ -342,7 +336,11 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
 
     // --- Public functions ---
     /// @inheritdoc IPoolManager
-    function deployVault(uint64 poolId, bytes16 trancheId, address asset, address factory) public auth returns (address) {
+    function deployVault(uint64 poolId, bytes16 trancheId, address asset, address factory)
+        public
+        auth
+        returns (address)
+    {
         TrancheDetails storage tranche = _pools[poolId].tranches[trancheId];
         require(tranche.token != address(0), "PoolManager/tranche-does-not-exist");
         require(vaultFactory[factory], "PoolManager/invalid-factory");
@@ -351,9 +349,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         address[] memory vaultWards = new address[](0);
 
         // Deploy vault
-        vault = IVaultFactory(factory).newVault(
-            poolId, trancheId, asset, tranche.token, address(escrow), vaultWards
-        );
+        vault = IVaultFactory(factory).newVault(poolId, trancheId, asset, tranche.token, address(escrow), vaultWards);
 
         // Check whether the ERC20 token is a wrapper
         try IERC20Wrapper(asset).underlying() returns (address) {
@@ -432,7 +428,11 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     }
 
     /// @inheritdoc IPoolManager
-    function isLinked(uint64  /* poolId */, bytes16 /* trancheId */, address /* asset */, address vault) public view returns (bool) {
+    function isLinked(uint64, /* poolId */ bytes16, /* trancheId */ address, /* asset */ address vault)
+        public
+        view
+        returns (bool)
+    {
         // TODO: Check whether to check against asset of vault in storage??
         return _vaultToAsset[vault].isLinked;
     }

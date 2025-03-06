@@ -8,7 +8,6 @@ interface IBaseVault {
 }
 
 interface IVaultManager {
-
     /// @notice Deploys new vault for `poolId`, `trancheId` and `asset`.
     function addVault(uint64 poolId, bytes16 trancheId, address vault) external;
 
