@@ -175,7 +175,12 @@ contract TestInvestments is TestConfiguration {
         assertEq(m0.scId, scId.raw());
         assertEq(m0.investor, INVESTOR);
         assertEq(m0.assetId, USDC_C2.raw());
-        assertEq(m0.assetAmount, PERCENT_20.mulUint128(PERCENT_20.mulUint128(INVESTOR_AMOUNT)));
+        assertEq(
+            m0.assetAmount,
+            NAV_PER_SHARE.mulUint128(
+                uint128(valuation.getQuote(PERCENT_20.mulUint128(SHARE_AMOUNT), USD.addr(), USDC_C2.addr()))
+            )
+        );
         assertEq(m0.shareAmount, PERCENT_20.mulUint128(SHARE_AMOUNT));
     }
 }
