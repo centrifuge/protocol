@@ -108,11 +108,9 @@ contract Deployer is Script {
 
         // Rely on others
         routerEscrow.rely(address(router));
-        investmentManager.rely(address(vaultFactory));
     }
 
     function _file() public {
-        poolManager.file("investmentManager", address(investmentManager));
         poolManager.file("gasService", address(gasService));
         poolManager.file("gateway", address(gateway));
 

@@ -87,6 +87,7 @@ library MessageLib {
         (57 << uint8(MessageType.UpdateShareClassHook) * 8) +
         (73 << uint8(MessageType.TransferShares) * 8) +
         (27 << uint8(MessageType.UpdateRestriction) * 8) +
+        (59 << uint8(MessageType.UpdateContract) * 8) +
         (89 << uint8(MessageType.DepositRequest) * 8) +
         (89 << uint8(MessageType.RedeemRequest) * 8) +
         (105 << uint8(MessageType.FulfilledDepositRequest) * 8) +
@@ -112,6 +113,9 @@ library MessageLib {
         length = uint16(uint8(bytes32(MESSAGE_LENGTHS)[31 - kind]));
 
         if (kind == uint8(MessageType.UpdateRestriction)) {
+            length += message.toUint16(length - 2); //payloadLength
+        } else if (kind == uint8(MessageType.UpdateContract)) {
+            require(length == 57, "Invalid message length");
             length += message.toUint16(length - 2); //payloadLength
         }
     }
@@ -610,7 +614,7 @@ library MessageLib {
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             target: data.toBytes32(25),
-            payload: data.slice(73, payloadLength)
+            payload: data.slice(59, payloadLength)
         });
     }
 

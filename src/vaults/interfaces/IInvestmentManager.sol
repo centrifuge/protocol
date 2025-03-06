@@ -330,4 +330,10 @@ interface IInvestmentManager is IMessageHandler, IRecoverable, IVaultManager {
     function claimCancelRedeemRequest(address vault, address receiver, address owner)
         external
         returns (uint256 shares);
+
+    /// @notice Returns the address of the vault for a given pool, tranche and asset
+    function getVault(uint64 poolId, bytes16 trancheId, address asset) external view returns (address vault);
+
+    /// @notice Returns the address of the vault for a given pool, tranche and asset
+    function getVault(uint64 poolId, bytes16 trancheId, uint128 assetId) external view returns (address vault);
 }

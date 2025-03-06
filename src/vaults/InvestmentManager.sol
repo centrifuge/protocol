@@ -62,9 +62,8 @@ contract InvestmentManager is Auth, IInvestmentManager {
     function addVault(uint64 poolId, bytes16 trancheId, address vault__, address asset_, uint128 assetId) public override auth {
         IERC7540Vault vault_ = IERC7540Vault(vault__);
         address token = vault_.share();
-        address asset = vault_.asset();
 
-        require(asset == asset_, "InvestmentManager/asset-mismatch");
+        require(vault_.asset() == asset_, "InvestmentManager/asset-mismatch");
         require(_vault[poolId][trancheId][assetId] == address(0), "InvestmentManager/vault-already-exists");
 
         _vault[poolId][trancheId][assetId] = vault__;
@@ -77,15 +76,14 @@ contract InvestmentManager is Auth, IInvestmentManager {
     function removeVault(uint64 poolId, bytes16 trancheId, address vault__, address asset_, uint128 assetId) public override auth {
         IERC7540Vault vault_ = IERC7540Vault(vault__);
         address token = vault_.share();
-        address asset = vault_.asset();
 
-        require(asset == asset_, "InvestmentManager/asset-mismatch");
+        require(vault_.asset() == asset_, "InvestmentManager/asset-mismatch");
         require(_vault[poolId][trancheId][assetId] != address(0), "InvestmentManager/vault-does-not-exist");
 
         delete _vault[poolId][trancheId][assetId];
 
         IAuth(token).deny(vault__);
-        ITranche(token).updateVault(asset, address(0));
+        ITranche(token).updateVault(vault_.asset(), address(0));
         Auth(address(this)).deny(vault__);
     }
 
@@ -681,5 +679,15 @@ contract InvestmentManager is Auth, IInvestmentManager {
     function _canTransfer(address vault, address from, address to, uint256 value) internal view returns (bool) {
         ITranche share = ITranche(IERC7540Vault(vault).share());
         return share.checkTransferRestriction(from, to, value);
+    }
+
+    /// @inheritdoc IInvestmentManager
+    function getVault(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (address) {
+        return _vault[poolId][trancheId][assetId];
+    }
+
+    /// @inheritdoc IInvestmentManager
+    function getVault(uint64 poolId, bytes16 trancheId, address asset) public view returns (address) {
+        return _vault[poolId][trancheId][poolManager.assetToId(asset)];
     }
 }
