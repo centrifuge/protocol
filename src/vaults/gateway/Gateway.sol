@@ -127,8 +127,8 @@ contract Gateway is Auth, IGateway, IRecoverable {
     }
 
     // --- Incoming ---
-    /// @inheritdoc IGateway
-    function handle(bytes calldata message) external pauseable {
+    /// @inheritdoc IMessageHandler
+    function handle(uint32 /*chainId*/, bytes calldata message) external pauseable {
         _handle(message, msg.sender, false);
     }
 
@@ -225,9 +225,9 @@ contract Gateway is Auth, IGateway, IRecoverable {
                     revert("GasService/invalid-message");
                 }
             } else if (cat == MessageCategory.Pool) {
-                IMessageHandler(poolManager).handle(message);
+                IMessageHandler(poolManager).handle(0 /*chainId*/, message);
             } else if (cat == MessageCategory.Investment) {
-                IMessageHandler(investmentManager).handle(message);
+                IMessageHandler(investmentManager).handle(0 /*chainId*/, message);
             } else {
                 revert("Gateway/unexpected-category");
             }

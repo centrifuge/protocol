@@ -1,15 +1,33 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {
-    IAxelarAdapter,
-    IAdapter,
-    IAxelarGateway,
-    IAxelarGasService
-} from "src/vaults/interfaces/gateway/adapters/IAxelarAdapter.sol";
-import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
+import {IAxelarAdapter, IAdapter} from "src/common/interfaces/IAxelarAdapter.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
+
+// From https://github.com/axelarnetwork/axelar-cgp-solidity/blob/main/contracts/interfaces/IAxelarGateway.sol
+interface IAxelarGateway {
+    function callContract(string calldata destinationChain, string calldata contractAddress, bytes calldata payload)
+        external;
+
+    function validateContractCall(
+        bytes32 commandId,
+        string calldata sourceChain,
+        string calldata sourceAddress,
+        bytes32 payloadHash
+    ) external returns (bool);
+}
+
+// From https://github.com/axelarnetwork/axelar-cgp-solidity/blob/main/contracts/interfaces/IAxelarGasService.sol
+interface IAxelarGasService {
+    function payNativeGasForContractCall(
+        address sender,
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        bytes calldata payload,
+        address refundAddress
+    ) external payable;
+}
 
 /// @title  Axelar Adapter
 /// @notice Routing contract that integrates with an Axelar Gateway
@@ -39,7 +57,7 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     /// @inheritdoc IAxelarAdapter
     function file(bytes32 what, uint256 value) external auth {
         if (what == "axelarCost") axelarCost = value;
-        else revert("AxelarAdapterfile-unrecognized-param");
+        else revert FileUnrecognizedParam();
         emit File(what, value);
     }
 
@@ -51,31 +69,34 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
         string calldata sourceAddress,
         bytes calldata payload
     ) public {
-        require(keccak256(bytes(sourceChain)) == centrifugeIdHash, "AxelarAdapter/invalid-chain");
-        require(keccak256(bytes(sourceAddress)) == centrifugeAddressHash, "AxelarAdapter/invalid-address");
+        require(keccak256(bytes(sourceChain)) == centrifugeIdHash, InvalidChain());
+        require(keccak256(bytes(sourceAddress)) == centrifugeAddressHash, InvalidAddress());
         require(
             axelarGateway.validateContractCall(commandId, sourceChain, sourceAddress, keccak256(payload)),
-            "AxelarAdapter/not-approved-by-axelar-gateway"
+            NotApprovedByAxelarGateway()
         );
 
-        gateway.handle(payload);
+        //TODO extract the Id from the storage of this contract
+        gateway.handle(0, payload);
     }
 
     // --- Outgoing ---
-    function send(bytes calldata payload) public {
-        require(msg.sender == address(gateway), "AxelarAdapter/not-gateway");
+    function send(uint32, /*chainId*/ bytes calldata payload) public {
+        //TODO (chainName, chainExecutable) = chainConfig[chainId];
+        require(msg.sender == address(gateway), NotGateway());
         axelarGateway.callContract(CENTRIFUGE_ID, CENTRIFUGE_AXELAR_EXECUTABLE, payload);
     }
 
     /// @inheritdoc IAdapter
     /// @dev Currently the payload (message) is not taken into consideration during cost estimation
     ///      A predefined `axelarCost` value is used.
-    function estimate(bytes calldata, uint256 baseCost) public view returns (uint256) {
+    function estimate(uint32, /*chainId*/ bytes calldata, uint256 baseCost) public view returns (uint256) {
         return baseCost + axelarCost;
     }
 
     /// @inheritdoc IAdapter
-    function pay(bytes calldata payload, address refund) public payable {
+    function pay(uint32, /*chainId*/ bytes calldata payload, address refund) public payable {
+        //TODO (chainName, chainExecutable) = chainConfig[chainId];
         axelarGasService.payNativeGasForContractCall{value: msg.value}(
             address(this), CENTRIFUGE_ID, CENTRIFUGE_AXELAR_EXECUTABLE, payload, refund
         );

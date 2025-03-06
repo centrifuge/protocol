@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IAdapter} from "src/vaults/interfaces/gateway/IAdapter.sol";
 
 interface PrecompileLike {
@@ -13,10 +14,6 @@ interface PrecompileLike {
     ) external;
 }
 
-interface GatewayLike {
-    function handle(bytes memory message) external;
-}
-
 /// @title  PassthroughAdapter
 /// @notice Routing contract that accepts any incomming messages and forwards them
 ///         to the gateway and solely emits an event for outgoing messages.
@@ -24,7 +21,7 @@ contract PassthroughAdapter is Auth, IAdapter {
     address internal constant PRECOMPILE = 0x0000000000000000000000000000000000000800;
     bytes32 internal constant FAKE_COMMAND_ID = keccak256("FAKE_COMMAND_ID");
 
-    GatewayLike public gateway;
+    IMessageHandler public gateway;
     string public sourceChain;
     string public sourceAddress;
 
@@ -39,7 +36,7 @@ contract PassthroughAdapter is Auth, IAdapter {
     // --- Administrative ---
     function file(bytes32 what, address addr) external auth {
         if (what == "gateway") {
-            gateway = GatewayLike(addr);
+            gateway = IMessageHandler(addr);
         } else {
             revert("PassthroughAdapter/file-unrecognized-param");
         }
@@ -92,7 +89,8 @@ contract PassthroughAdapter is Auth, IAdapter {
     function executeOnDomain(string calldata _sourceChain, string calldata _sourceAddress, bytes calldata payload)
         external
     {
-        gateway.handle(payload);
+        // TODO: get chainId
+        gateway.handle(1, payload);
         emit ExecuteOnDomain(_sourceChain, _sourceAddress, payload);
     }
 

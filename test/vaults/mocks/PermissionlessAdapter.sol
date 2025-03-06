@@ -2,23 +2,20 @@
 pragma solidity 0.8.28;
 
 import "src/misc/Auth.sol";
-
-interface GatewayLike {
-    function handle(bytes memory message) external;
-}
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 
 contract PermissionlessAdapter is Auth {
-    GatewayLike public immutable gateway;
+    IMessageHandler public immutable gateway;
 
     event Send(bytes message);
 
     constructor(address gateway_) Auth(msg.sender) {
-        gateway = GatewayLike(gateway_);
+        gateway = IMessageHandler(gateway_);
     }
 
     // --- Incoming ---
     function execute(bytes32, string calldata, string calldata, bytes calldata payload) external {
-        gateway.handle(payload);
+        gateway.handle(1, payload);
     }
 
     // --- Outgoing ---

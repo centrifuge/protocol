@@ -3,23 +3,22 @@ pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 import {Auth} from "src/misc/Auth.sol";
+
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+
 import "test/vaults/mocks/Mock.sol";
 
-interface GatewayLike {
-    function handle(bytes memory message) external;
-}
-
 contract MockAdapter is Auth, Mock {
-    GatewayLike public immutable gateway;
+    IMessageHandler public immutable gateway;
 
     mapping(bytes => uint256) public sent;
 
     constructor(address gateway_) Auth(msg.sender) {
-        gateway = GatewayLike(gateway_);
+        gateway = IMessageHandler(gateway_);
     }
 
     function execute(bytes memory _message) external {
-        GatewayLike(gateway).handle(_message);
+        gateway.handle(1, _message);
     }
 
     function send(bytes calldata message) public {

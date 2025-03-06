@@ -21,7 +21,8 @@ import {
     TranchePrice,
     UndeployedTranche,
     VaultAsset,
-    IPoolManager
+    IPoolManager,
+    IMessageHandler
 } from "src/vaults/interfaces/IPoolManager.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
@@ -101,8 +102,8 @@ contract PoolManager is Auth, IPoolManager {
     }
 
     // --- Incoming message handling ---
-    /// @inheritdoc IPoolManager
-    function handle(bytes calldata message) external auth {
+    /// @inheritdoc IMessageHandler
+    function handle(uint32, /*chainId*/ bytes calldata message) external auth {
         MessageType kind = MessageLib.messageType(message);
 
         if (kind == MessageType.RegisterAsset) {

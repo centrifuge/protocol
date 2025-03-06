@@ -14,7 +14,6 @@ import {MockGateway} from "test/vaults/mocks/MockGateway.sol";
 import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
 import {MockRoot} from "test/vaults/mocks/MockRoot.sol";
 import {MockManager} from "test/vaults/mocks/MockManager.sol";
-import {MockAxelarGasService} from "test/vaults/mocks/MockAxelarGasService.sol";
 import {MockGasService} from "test/vaults/mocks/MockGasService.sol";
 
 contract GatewayTest is Test {
@@ -132,11 +131,11 @@ contract GatewayTest is Test {
 
         vm.expectRevert(bytes("Gateway/invalid-adapter"));
         vm.prank(makeAddr("randomUser"));
-        gateway.handle(message);
+        gateway.handle(CHAIN_ID, message);
 
         //success
         vm.prank(address(adapter1));
-        gateway.handle(message);
+        gateway.handle(CHAIN_ID, message);
     }
 
     function testOnlyManagersCanCall(uint64 poolId) public {
@@ -199,7 +198,7 @@ contract GatewayTest is Test {
         bytes memory message = MessageLib.NotifyPool(1).serialize();
 
         vm.expectRevert(bytes("Gateway/invalid-adapter"));
-        gateway.handle(message);
+        gateway.handle(CHAIN_ID, message);
 
         vm.expectRevert(bytes("Gateway/invalid-manager"));
         gateway.send(CHAIN_ID, message, address(this));
@@ -216,7 +215,7 @@ contract GatewayTest is Test {
         bytes memory firstProof = _formatMessageProof(firstMessage);
 
         vm.expectRevert(bytes("Gateway/invalid-adapter"));
-        gateway.handle(firstMessage);
+        gateway.handle(CHAIN_ID, firstMessage);
 
         // Executes after quorum is reached
         _send(adapter1, firstMessage);
@@ -294,7 +293,7 @@ contract GatewayTest is Test {
         bytes memory proof = _formatMessageProof(message);
 
         vm.expectRevert(bytes("Gateway/invalid-adapter"));
-        gateway.handle(message);
+        gateway.handle(CHAIN_ID, message);
 
         // Confirm two messages by payload first
         _send(adapter1, message);
@@ -845,7 +844,7 @@ contract GatewayTest is Test {
     /// @dev Use to simulate incoming message to the gateway sent by a adapter.
     function _send(MockAdapter adapter, bytes memory message) internal {
         vm.prank(address(adapter));
-        gateway.handle(message);
+        gateway.handle(CHAIN_ID, message);
     }
 
     function _quota() internal view returns (uint256 quota) {

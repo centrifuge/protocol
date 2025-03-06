@@ -2,12 +2,15 @@
 pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
-import {AxelarAdapter} from "src/vaults/gateway/adapters/axelar/Adapter.sol";
+
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
+
+import {AxelarAdapter, IAxelarAdapter} from "src/common/AxelarAdapter.sol";
+
 import {MockAxelarGateway} from "test/vaults/mocks/MockAxelarGateway.sol";
 import {MockGateway} from "test/vaults/mocks/MockGateway.sol";
 import {MockAxelarGasService} from "test/vaults/mocks/MockAxelarGasService.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 contract AxelarAdapterTest is Test {
     MockAxelarGateway axelarGateway;
@@ -15,6 +18,7 @@ contract AxelarAdapterTest is Test {
     MockAxelarGasService axelarGasService;
     AxelarAdapter adapter;
 
+    uint32 constant CHAIN_ID = 1;
     string private constant axelarCentrifugeChainId = "centrifuge";
     string private constant axelarCentrifugeChainAddress = "0x7369626CEF070000000000000000000000000000";
 
@@ -42,7 +46,7 @@ contract AxelarAdapterTest is Test {
 
         bytes memory payload = "irrelevant";
 
-        uint256 estimation = adapter.estimate(payload, gasLimit);
+        uint256 estimation = adapter.estimate(CHAIN_ID, payload, gasLimit);
         assertEq(estimation, gasLimit + axelarCost);
     }
 
@@ -52,7 +56,7 @@ contract AxelarAdapterTest is Test {
         adapter.file("axelarCost", value);
         assertEq(adapter.axelarCost(), value);
 
-        vm.expectRevert(bytes("AxelarAdapterfile-unrecognized-param"));
+        vm.expectRevert(IAxelarAdapter.FileUnrecognizedParam.selector);
         adapter.file("random", value);
 
         vm.prank(makeAddr("unauthorized"));
@@ -62,7 +66,7 @@ contract AxelarAdapterTest is Test {
 
     function testPayment(bytes calldata payload, uint256 value) public {
         vm.deal(address(this), value);
-        adapter.pay{value: value}(payload, address(this));
+        adapter.pay{value: value}(CHAIN_ID, payload, address(this));
 
         uint256[] memory call = axelarGasService.callsWithValue("payNativeGasForContractCall");
         assertEq(call.length, 1);
@@ -90,16 +94,16 @@ contract AxelarAdapterTest is Test {
         vm.assume(relayer.code.length == 0);
 
         vm.prank(address(relayer));
-        vm.expectRevert(bytes("AxelarAdapter/invalid-chain"));
+        vm.expectRevert(IAxelarAdapter.InvalidChain.selector);
         adapter.execute(commandId, sourceChain, axelarCentrifugeChainAddress, payload);
 
         vm.prank(address(relayer));
-        vm.expectRevert(bytes("AxelarAdapter/invalid-address"));
+        vm.expectRevert(IAxelarAdapter.InvalidAddress.selector);
         adapter.execute(commandId, axelarCentrifugeChainId, sourceAddress, payload);
 
         axelarGateway.setReturn("validateContractCall", false);
         vm.prank(address(relayer));
-        vm.expectRevert(bytes("AxelarAdapter/not-approved-by-axelar-gateway"));
+        vm.expectRevert(IAxelarAdapter.NotApprovedByAxelarGateway.selector);
         adapter.execute(commandId, axelarCentrifugeChainId, axelarCentrifugeChainAddress, payload);
 
         axelarGateway.setReturn("validateContractCall", true);
@@ -110,11 +114,11 @@ contract AxelarAdapterTest is Test {
     function testOutgoingCalls(bytes calldata message, address invalidOrigin) public {
         vm.assume(invalidOrigin != address(gateway));
 
-        vm.expectRevert(bytes("AxelarAdapter/not-gateway"));
-        adapter.send(message);
+        vm.expectRevert(IAxelarAdapter.NotGateway.selector);
+        adapter.send(CHAIN_ID, message);
 
         vm.prank(address(gateway));
-        adapter.send(message);
+        adapter.send(CHAIN_ID, message);
 
         assertEq(axelarGateway.values_string("destinationChain"), axelarCentrifugeChainId);
         assertEq(axelarGateway.values_string("contractAddress"), adapter.CENTRIFUGE_AXELAR_EXECUTABLE());

@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+
 import "test/vaults/mocks/Mock.sol";
 
-contract MockGateway is Mock {
+contract MockGateway is Mock, IMessageHandler {
     mapping(bytes => uint256) public handled;
 
     constructor() {}
 
     // --- Incoming ---
-    function handle(bytes calldata message) public {
+    function handle(uint32, /*chainId*/ bytes calldata message) public {
         handled[message] += 1;
     }
 

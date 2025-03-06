@@ -11,7 +11,7 @@ import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
-import {IInvestmentManager, InvestmentState} from "src/vaults/interfaces/IInvestmentManager.sol";
+import {IInvestmentManager, InvestmentState, IMessageHandler} from "src/vaults/interfaces/IInvestmentManager.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
@@ -192,8 +192,8 @@ contract InvestmentManager is Auth, IInvestmentManager {
     }
 
     // --- Incoming message handling ---
-    /// @inheritdoc IInvestmentManager
-    function handle(bytes calldata message) public auth {
+    /// @inheritdoc IMessageHandler
+    function handle(uint32, /*chainId*/ bytes calldata message) public auth {
         MessageType kind = message.messageType();
 
         if (kind == MessageType.FulfilledDepositRequest) {

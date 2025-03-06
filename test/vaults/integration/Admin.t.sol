@@ -312,7 +312,7 @@ contract AdminTest is BaseTest {
 
     function _send(MockAdapter adapter, bytes memory message) internal {
         vm.prank(address(adapter));
-        gateway.handle(message);
+        gateway.handle(1, message);
     }
 
     function _formatMessageProof(bytes memory message) internal pure returns (bytes memory) {

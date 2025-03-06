@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IAdapter} from "src/vaults/interfaces/gateway/IAdapter.sol";
 
 interface PrecompileLike {
@@ -13,10 +14,6 @@ interface PrecompileLike {
     ) external;
 }
 
-interface GatewayLike {
-    function handle(bytes memory message) external;
-}
-
 /// @title  Local Adapter
 /// @notice Routing contract that routes from Substrate to EVM and back.
 ///         I.e. for testing LP in a local Centrifuge Chain deployment.
@@ -24,7 +21,7 @@ contract LocalAdapter is Auth, IAdapter {
     address internal constant PRECOMPILE = 0x0000000000000000000000000000000000000800;
     bytes32 internal constant FAKE_COMMAND_ID = keccak256("FAKE_COMMAND_ID");
 
-    GatewayLike public gateway;
+    IMessageHandler public gateway;
     string public sourceChain;
     string public sourceAddress;
 
@@ -47,7 +44,7 @@ contract LocalAdapter is Auth, IAdapter {
     // --- Administrative ---
     function file(bytes32 what, address data) external {
         if (what == "gateway") {
-            gateway = GatewayLike(data);
+            gateway = IMessageHandler(data);
         } else {
             revert("LocalAdapter/file-unrecognized-param");
         }
@@ -74,7 +71,8 @@ contract LocalAdapter is Auth, IAdapter {
         string calldata destinationContractAddress,
         bytes calldata payload
     ) public {
-        gateway.handle(payload);
+        // TODO: get chainId
+        gateway.handle(1, payload);
         emit RouteToDomain(destinationChain, destinationContractAddress, payload);
     }
 
