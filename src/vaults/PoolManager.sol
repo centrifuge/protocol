@@ -389,7 +389,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         require(tranche.token != address(0), "PoolManager/tranche-does-not-exist");
 
         address manager = IBaseVault(vault).manager();
-        IVaultManager(manager).rmVault(poolId, trancheId, vault);
+        IVaultManager(manager).removeVault(poolId, trancheId, vault);
         _vaultToAsset[vault].isLinked = false;
 
         emit UnlinkVault(poolId, trancheId, asset, vault);
@@ -422,39 +422,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         require(value.computedAt > 0, "PoolManager/unknown-price");
         price = value.price;
         computedAt = value.computedAt;
-    }
-
-    /// @inheritdoc IPoolManager
-    /// @dev This function MUST NOT be called onchain
-    function getVaults(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (address[]) {
-        return this.getVaults(poolId, trancheId, idToAsset[assetId]);
-    }
-
-    /// @inheritdoc IPoolManager
-    /// @dev This function MUST NOT be called onchain
-    function getVaults(uint64 poolId, bytes16 trancheId, address asset) public view returns (address[]) {
-        uint256 length = _pools[poolId].tranches[trancheId].vaults[asset].length;
-        require(length > 0, "PoolManager/no-vaults-found");
-
-        address[] memory tempVaults = new address[](length);
-        uint256 validCount = 0;
-        for (uint256 i = 0; i < length; i++) {
-            address vault = _pools[poolId].tranches[trancheId].vaults[asset][i];
-            if (_vaultToAsset[vault].isLinked) {
-                tempVaults[validCount] = vault;
-                validCount++;
-            }
-        }
-
-        require(validCount > 0, "PoolManager/no-vaults-found");
-
-        // Step 3: Copy to a new array of exact size = validCount
-        address[] memory linkedVaults = new address[](validCount);
-        for (uint256 j = 0; j < validCount; j++) {
-            linkedVaults[j] = tempVaults[j];
-        }
-
-        return linkedVaults;
     }
 
     /// @inheritdoc IPoolManager

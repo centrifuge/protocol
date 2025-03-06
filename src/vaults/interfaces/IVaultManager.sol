@@ -13,5 +13,5 @@ interface IVaultManager {
     function addVault(uint64 poolId, bytes16 trancheId, address vault) external;
 
     /// @notice Removes `vault` from `who`'s authroized callers
-    function rmVault(uint64 poolId, bytes16 trancheId, address vault) external;
+    function removeVault(uint64 poolId, bytes16 trancheId, address vault) external;
 }

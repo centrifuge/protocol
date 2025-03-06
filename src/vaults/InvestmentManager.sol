@@ -61,15 +61,13 @@ contract InvestmentManager is Auth, IInvestmentManager {
     function addVault(uint64 poolId, bytes16 trancheId, address vault) public auth override {
         IERC7540Vault vault_ = IERC7540Vault(vault);
         address token = vault_.share();
-        address asset = vault_.asset();
 
         IAuth(token).rely(vault);
-        ITranche(token).updateVault(asset, vault);
+        ITranche(token).updateVault(vault_.asset(), vault);
         Auth(address(this)).rely(vault);
-
     }
 
-    function rmVault(uint64 poolId, bytes16 trancheId, address vault) public auth override {
+    function removeVault(uint64 poolId, bytes16 trancheId, address vault) public auth override {
         IERC7540Vault vault_ = IERC7540Vault(vault);
         address token = vault_.share();
         address asset = vault_.asset();
