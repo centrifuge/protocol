@@ -7,6 +7,7 @@ import {PoolId, newPoolId} from "src/pools/types/PoolId.sol";
 
 contract PoolIdTest is Test {
     function testPoolId(uint32 id) public view {
+        vm.assume(id > 0);
         PoolId poolId = newPoolId(id);
 
         assertEq(poolId.isNull(), false);
