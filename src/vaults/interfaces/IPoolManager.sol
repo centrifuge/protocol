@@ -34,6 +34,7 @@ struct UndeployedTranche {
     /// @dev Metadata of the to be deployed erc20 token
     string tokenName;
     string tokenSymbol;
+    bytes32 salt;
     /// @dev Address of the hook
     address hook;
 }
@@ -93,7 +94,7 @@ interface IPoolManager is IMessageHandler, IRecoverable {
     function transferTrancheTokens(
         uint64 poolId,
         bytes16 trancheId,
-        uint64 destinationId,
+        uint32 destinationId,
         bytes32 recipient,
         uint128 amount
     ) external;
@@ -121,6 +122,7 @@ interface IPoolManager is IMessageHandler, IRecoverable {
         string memory tokenName,
         string memory tokenSymbol,
         uint8 decimals,
+        bytes32 salt,
         address hook
     ) external;
 

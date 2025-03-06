@@ -69,7 +69,7 @@ interface IPoolManagerAdminMethods {
 
     /// @notice Add a new share class to the pool
     /// @return The new share class Id
-    function addShareClass(string calldata name, string calldata symbol, bytes calldata data)
+    function addShareClass(string calldata name, string calldata symbol, bytes32 salt, bytes calldata data)
         external
         returns (ShareClassId);
 
@@ -178,7 +178,7 @@ interface IPoolManagerHandler {
         external;
 
     /// @notice Perform a deposit that was requested from CV.
-    function handleRequestDeposit(
+    function handleDepositRequest(
         PoolId poolId,
         ShareClassId scId,
         bytes32 investor,
@@ -187,7 +187,7 @@ interface IPoolManagerHandler {
     ) external;
 
     /// @notice Perform a redeem that was requested from CV.
-    function handleRequestRedeem(
+    function handleRedeemRequest(
         PoolId poolId,
         ShareClassId scId,
         bytes32 investor,

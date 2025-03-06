@@ -142,10 +142,10 @@ contract PoolManager is Auth, Multicall, IPoolManager, IPoolManagerHandler {
         IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
         require(scm.exists(unlockedPoolId, scId), IShareClassManager.ShareClassNotFound());
 
-        (string memory name, string memory symbol) = ISingleShareClass(address(scm)).metadata(scId);
+        (string memory name, string memory symbol, bytes32 salt) = ISingleShareClass(address(scm)).metadata(scId);
         uint8 decimals = assetRegistry.decimals(poolRegistry.currency(unlockedPoolId).raw());
 
-        gateway.sendNotifyShareClass(chainId, unlockedPoolId, scId, name, symbol, decimals, hook);
+        gateway.sendNotifyShareClass(chainId, unlockedPoolId, scId, name, symbol, decimals, salt, hook);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
@@ -170,9 +170,9 @@ contract PoolManager is Auth, Multicall, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
-    function addShareClass(string calldata name, string calldata symbol, bytes calldata data) external poolUnlocked protected returns (ShareClassId) {
+    function addShareClass(string calldata name, string calldata symbol, bytes32 salt, bytes calldata data) external poolUnlocked protected returns (ShareClassId) {
         IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
-        return scm.addShareClass(unlockedPoolId, name, symbol, data);
+        return scm.addShareClass(unlockedPoolId, name, symbol, salt, data);
     }
 
     /// @inheritdoc IPoolManagerAdminMethods
@@ -352,7 +352,7 @@ contract PoolManager is Auth, Multicall, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerHandler
-    function handleRequestDeposit(
+    function handleDepositRequest(
         PoolId poolId,
         ShareClassId scId,
         bytes32 investor,
@@ -367,7 +367,7 @@ contract PoolManager is Auth, Multicall, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManagerHandler
-    function handleRequestRedeem(
+    function handleRedeemRequest(
         PoolId poolId,
         ShareClassId scId,
         bytes32 investor,

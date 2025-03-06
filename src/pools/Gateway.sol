@@ -16,11 +16,9 @@ import {IAdapter} from "src/pools/interfaces/IAdapter.sol";
 import {IPoolManagerHandler} from "src/pools/interfaces/IPoolManager.sol";
 
 contract Gateway is Auth, IGateway, IMessageHandler {
-    using MessageLib for bytes;
+    using MessageLib for *;
     using BytesLib for bytes;
-    using CastLib for string;
-    using CastLib for bytes;
-    using CastLib for bytes32;
+    using CastLib for *;
 
     IAdapter public adapter; // TODO: several adapters
     IPoolManagerHandler public handler;
@@ -40,7 +38,8 @@ contract Gateway is Auth, IGateway, IMessageHandler {
     }
 
     function sendNotifyPool(uint32 chainId, PoolId poolId) external auth {
-        _send(chainId, abi.encodePacked(MessageType.AddPool, poolId.raw()));
+        // TODO: call directly to CV.poolManager if same chain (apply in all send*() methods)
+        _send(chainId, MessageLib.NotifyPool({poolId: poolId.raw()}).serialize());
     }
 
     function sendNotifyShareClass(
@@ -50,26 +49,27 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         string memory name,
         string memory symbol,
         uint8 decimals,
+        bytes32 salt,
         bytes32 hook
     ) external auth {
         _send(
             chainId,
-            abi.encodePacked(
-                MessageType.AddTranche,
-                poolId.raw(),
-                scId.raw(),
-                name.stringToBytes128(),
-                symbol.toBytes32(),
-                decimals,
-                hook
-            )
+            MessageLib.NotifyShareClass({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                name: name,
+                symbol: symbol.toBytes32(),
+                decimals: decimals,
+                salt: salt,
+                hook: hook
+            }).serialize()
         );
     }
 
     function sendNotifyAllowedAsset(PoolId poolId, ShareClassId scId, AssetId assetId, bool isAllowed) external auth {
         bytes memory message = isAllowed
-            ? abi.encodePacked(MessageType.AllowAsset, poolId.raw(), scId.raw(), assetId.raw())
-            : abi.encodePacked(MessageType.DisallowAsset, poolId.raw(), scId.raw(), assetId.raw());
+            ? MessageLib.AllowAsset({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw()}).serialize()
+            : MessageLib.DisallowAsset({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw()}).serialize();
 
         _send(assetId.chainId(), message);
     }
@@ -79,20 +79,19 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         ShareClassId scId,
         AssetId assetId,
         bytes32 investor,
-        uint128 shares,
-        uint128 investedAmount
+        uint128 shareAmount,
+        uint128 assetAmount
     ) external auth {
         _send(
             assetId.chainId(),
-            abi.encodePacked(
-                MessageType.FulfilledDepositRequest,
-                poolId.raw(),
-                scId.raw(),
-                investor,
-                assetId.raw(),
-                shares,
-                investedAmount
-            )
+            MessageLib.FulfilledDepositRequest({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                investor: investor,
+                assetId: assetId.raw(),
+                shareAmount: shareAmount,
+                assetAmount: assetAmount
+            }).serialize()
         );
     }
 
@@ -101,20 +100,19 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         ShareClassId scId,
         AssetId assetId,
         bytes32 investor,
-        uint128 shares,
-        uint128 investedAmount
+        uint128 shareAmount,
+        uint128 assetAmount
     ) external auth {
         _send(
             assetId.chainId(),
-            abi.encodePacked(
-                MessageType.FulfilledRedeemRequest,
-                poolId.raw(),
-                scId.raw(),
-                investor,
-                assetId.raw(),
-                shares,
-                investedAmount
-            )
+            MessageLib.FulfilledRedeemRequest({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                investor: investor,
+                assetId: assetId.raw(),
+                shareAmount: shareAmount,
+                assetAmount: assetAmount
+            }).serialize()
         );
     }
 
@@ -127,15 +125,13 @@ contract Gateway is Auth, IGateway, IMessageHandler {
     ) external auth {
         _send(
             assetId.chainId(),
-            abi.encodePacked(
-                MessageType.FulfilledCancelDepositRequest,
-                poolId.raw(),
-                scId.raw(),
-                investor,
-                assetId.raw(),
-                cancelledAmount,
-                cancelledAmount
-            )
+            MessageLib.FulfilledCancelDepositRequest({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                investor: investor,
+                assetId: assetId.raw(),
+                cancelledAmount: cancelledAmount
+            }).serialize()
         );
     }
 
@@ -148,14 +144,13 @@ contract Gateway is Auth, IGateway, IMessageHandler {
     ) external auth {
         _send(
             assetId.chainId(),
-            abi.encodePacked(
-                MessageType.FulfilledCancelRedeemRequest,
-                poolId.raw(),
-                scId.raw(),
-                investor,
-                assetId.raw(),
-                cancelledShares
-            )
+            MessageLib.FulfilledCancelRedeemRequest({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                investor: investor,
+                assetId: assetId.raw(),
+                cancelledShares: cancelledShares
+            }).serialize()
         );
     }
 
@@ -163,41 +158,27 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         MessageType kind = message.messageType();
 
         if (kind == MessageType.RegisterAsset) {
-            handler.handleRegisterAsset(
-                AssetId.wrap(message.toUint128(1)),
-                message.slice(17, 128).bytes128ToString(),
-                message.toBytes32(145).toString(),
-                message.toUint8(177)
-            );
+            MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
+            handler.handleRegisterAsset(AssetId.wrap(m.assetId), m.name, m.symbol.toString(), m.decimals);
         } else if (kind == MessageType.DepositRequest) {
-            handler.handleRequestDeposit(
-                PoolId.wrap(message.toUint64(1)),
-                ShareClassId.wrap(message.toBytes16(9)),
-                message.toBytes32(25),
-                AssetId.wrap(message.toUint128(57)),
-                message.toUint128(73)
+            MessageLib.DepositRequest memory m = message.deserializeDepositRequest();
+            handler.handleDepositRequest(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId), m.amount
             );
         } else if (kind == MessageType.RedeemRequest) {
-            handler.handleRequestRedeem(
-                PoolId.wrap(message.toUint64(1)),
-                ShareClassId.wrap(message.toBytes16(9)),
-                message.toBytes32(25),
-                AssetId.wrap(message.toUint128(57)),
-                message.toUint128(73)
+            MessageLib.RedeemRequest memory m = message.deserializeRedeemRequest();
+            handler.handleRedeemRequest(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId), m.amount
             );
         } else if (kind == MessageType.CancelDepositRequest) {
+            MessageLib.CancelDepositRequest memory m = message.deserializeCancelDepositRequest();
             handler.handleCancelDepositRequest(
-                PoolId.wrap(message.toUint64(1)),
-                ShareClassId.wrap(message.toBytes16(9)),
-                message.toBytes32(25),
-                AssetId.wrap(message.toUint128(57))
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId)
             );
         } else if (kind == MessageType.CancelRedeemRequest) {
+            MessageLib.CancelRedeemRequest memory m = message.deserializeCancelRedeemRequest();
             handler.handleCancelRedeemRequest(
-                PoolId.wrap(message.toUint64(1)),
-                ShareClassId.wrap(message.toBytes16(9)),
-                message.toBytes32(25),
-                AssetId.wrap(message.toUint128(57))
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId)
             );
         } else {
             revert InvalidMessage(uint8(kind));

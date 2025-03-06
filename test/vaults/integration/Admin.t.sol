@@ -7,6 +7,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 contract AdminTest is BaseTest {
+    using MessageLib for *;
     using CastLib for *;
 
     function testDeployment() public view {
@@ -21,7 +22,7 @@ contract AdminTest is BaseTest {
 
     function testHandleInvalidMessage() public {
         vm.expectRevert(bytes("Root/invalid-message"));
-        root.handle(abi.encodePacked(uint8(MessagesLib.Call.Invalid)));
+        root.handle(abi.encodePacked(uint8(MessageType.Invalid)));
     }
 
     //------ pause tests ------//
@@ -284,7 +285,7 @@ contract AdminTest is BaseTest {
         MockManager poolManager = new MockManager();
         gateway.file("adapters", testAdapters);
 
-        bytes memory message = abi.encodePacked(uint8(MessagesLib.Call.AddPool), uint64(1));
+        bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
 
         // Only send through 2 out of 3 adapters
@@ -293,12 +294,7 @@ contract AdminTest is BaseTest {
         assertEq(poolManager.received(message), 0);
 
         // Initiate recovery
-        _send(
-            adapter1,
-            abi.encodePacked(
-                uint8(MessagesLib.Call.InitiateMessageRecovery), keccak256(proof), address(adapter3).toBytes32()
-            )
-        );
+        _send(adapter1, MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
 
         vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
         gateway.executeMessageRecovery(address(adapter3), proof);
@@ -323,6 +319,6 @@ contract AdminTest is BaseTest {
     }
 
     function _formatMessageProof(bytes memory message) internal pure returns (bytes memory) {
-        return abi.encodePacked(uint8(MessagesLib.Call.MessageProof), keccak256(message));
+        return MessageLib.MessageProof(keccak256(message)).serialize();
     }
 }

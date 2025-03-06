@@ -6,7 +6,7 @@ import "test/vaults/BaseTest.sol";
 contract GasServiceTest is BaseTest {
     function testHandleInvalidMessage() public {
         vm.expectRevert(bytes("GasService/invalid-message"));
-        gasService.handle(abi.encodePacked(uint8(MessagesLib.Call.Invalid)));
+        gasService.handle(abi.encodePacked(uint8(MessageType.Invalid)));
     }
 
     function testUpdateGasPrice(uint128 price) public {

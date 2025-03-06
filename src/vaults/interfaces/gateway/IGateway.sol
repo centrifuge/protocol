@@ -37,15 +37,11 @@ interface IGateway {
     event ExecuteMessageRecovery(bytes message, address adapter);
     event File(bytes32 indexed what, address[] adapters);
     event File(bytes32 indexed what, address instance);
-    event File(bytes32 indexed what, uint8 messageId, address manager);
     event File(bytes32 indexed what, address caller, bool isAllowed);
     event ReceiveNativeTokens(address indexed sender, uint256 amount);
 
     /// @notice Returns the address of the adapter at the given id.
     function adapters(uint256 id) external view returns (address);
-
-    /// @notice Returns the address of the contract that handles the given message id.
-    function messageHandlers(uint8 messageId) external view returns (address);
 
     /// @notice Returns the timestamp when the given recovery can be executed.
     function recoveries(address adapter, bytes32 messageHash) external view returns (uint256 timestamp);
@@ -62,15 +58,6 @@ interface IGateway {
     /// @param  what The name of the variable to be updated.
     /// @param  data New address.
     function file(bytes32 what, address data) external;
-
-    /// @notice Used to update a mapping ( state variables ) on very rare occasions.
-    /// @dev    Currently used to update any custom handlers for a specific message type.
-    ///         data1 is the message id from MessagesLib.Call and data2 could be any
-    ///         custom instance of a contract that will handle that call.
-    /// @param  what The name of the variable to be updated.
-    /// @param  data1 The key of the mapping.
-    /// @param  data2 The value of the mapping
-    function file(bytes32 what, uint8 data1, address data2) external;
 
     /// @notice Used to update a mapping ( state variables ) on very rare occasions.
     /// @dev    Manages who is allowed to call `this.topUp`
@@ -113,7 +100,7 @@ interface IGateway {
     /// @param  message Message to be send. Either the message itself or a hash value of it ( proof ).
     /// @param  source Entry point of the transaction.
     ///         Used to determine whether it is eligible for TX cost payment.
-    function send(bytes calldata message, address source) external payable;
+    function send(uint32 chainId, bytes calldata message, address source) external payable;
 
     /// @notice Prepays for the TX cost for sending through the adapters
     ///         and Centrifuge Chain

@@ -53,15 +53,12 @@ struct EpochPointers {
 struct ShareClassMetadata {
     string name;
     string symbol;
+    bytes32 salt;
 }
 
 /// Utility method to determine the ShareClassId for a PoolId
 function previewShareClassId(PoolId poolId) pure returns (ShareClassId) {
     return ShareClassId.wrap(bytes16(uint128(PoolId.unwrap(poolId))));
-}
-
-function encodeMetadata(string memory name, string memory symbol) pure returns (bytes memory metadata) {
-    return abi.encodePacked(bytes(CastLib.stringToBytes128(name)), CastLib.toBytes32(symbol));
 }
 
 contract SingleShareClass is Auth, ISingleShareClass {
@@ -78,6 +75,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     /// Storage
     uint32 internal transient _epochIncrement;
     IPoolRegistry public poolRegistry;
+    mapping(bytes32 salt => bool) public salts;
     mapping(PoolId poolId => uint32 epochId_) public epochId;
     mapping(PoolId poolId => ShareClassId) public shareClassId;
     mapping(ShareClassId scId => uint128) public totalIssuance;
@@ -104,7 +102,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     }
 
     /// @inheritdoc IShareClassManager
-    function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes calldata) external auth returns (ShareClassId shareClassId_) {
+    function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt, bytes calldata) external auth returns (ShareClassId shareClassId_) {
         require(shareClassId[poolId].isNull(), MaxShareClassNumberExceeded(1));
 
         shareClassId_ = previewShareClassId(poolId);
@@ -112,9 +110,9 @@ contract SingleShareClass is Auth, ISingleShareClass {
         shareClassId[poolId] = shareClassId_;
         epochId[poolId] = 1;
 
-        _updateMetadata(shareClassId_, name, symbol);
+        _updateMetadata(shareClassId_, name, symbol, salt);
 
-        emit AddedShareClass(poolId, shareClassId_, name, symbol);
+        emit AddedShareClass(poolId, shareClassId_, name, symbol, salt);
     }
 
     /// @inheritdoc IShareClassManager
@@ -128,7 +126,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
 
         // NOTE: CV ensures amount > 0
-        _updateDepositRequest(poolId, shareClassId_, amount.toInt128(), investor, depositAssetId);
+        _updateDepositRequest(poolId, shareClassId_, amount, true, investor, depositAssetId);
     }
 
     function cancelDepositRequest(PoolId poolId, ShareClassId shareClassId_, bytes32 investor, AssetId depositAssetId)
@@ -140,7 +138,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
         cancelledAssetAmount = depositRequest[shareClassId_][depositAssetId][investor].pending;
 
-        _updateDepositRequest(poolId, shareClassId_, -(cancelledAssetAmount.toInt128()), investor, depositAssetId);
+        _updateDepositRequest(poolId, shareClassId_, cancelledAssetAmount, false, investor, depositAssetId);
     }
 
     /// @inheritdoc IShareClassManager
@@ -154,7 +152,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
 
         // NOTE: CV ensures amount > 0
-        _updateRedeemRequest(poolId, shareClassId_, amount.toInt128(), investor, payoutAssetId);
+        _updateRedeemRequest(poolId, shareClassId_, amount, true, investor, payoutAssetId);
     }
 
     /// @inheritdoc IShareClassManager
@@ -167,7 +165,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
         cancelledShareAmount = redeemRequest[shareClassId_][payoutAssetId][investor].pending;
 
-        _updateRedeemRequest(poolId, shareClassId_, -(cancelledShareAmount.toInt128()), investor, payoutAssetId);
+        _updateRedeemRequest(poolId, shareClassId_, cancelledShareAmount, false, investor, payoutAssetId);
     }
 
     /// @inheritdoc IShareClassManager
@@ -369,6 +367,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     /// @inheritdoc IShareClassManager
     function claimDeposit(PoolId poolId, ShareClassId shareClassId_, bytes32 investor, AssetId depositAssetId)
         external
+        auth
         returns (uint128 payoutShareAmount, uint128 paymentAssetAmount)
     {
         return claimDepositUntilEpoch(
@@ -383,7 +382,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         bytes32 investor,
         AssetId depositAssetId,
         uint32 endEpochId
-    ) public returns (uint128 payoutShareAmount, uint128 paymentAssetAmount) {
+    ) public auth returns (uint128 payoutShareAmount, uint128 paymentAssetAmount) {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
         require(endEpochId < epochId[poolId], EpochNotFound());
 
@@ -435,6 +434,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     /// @inheritdoc IShareClassManager
     function claimRedeem(PoolId poolId, ShareClassId shareClassId_, bytes32 investor, AssetId payoutAssetId)
         external
+        auth
         returns (uint128 payoutAssetAmount, uint128 paymentShareAmount)
     {
         return claimRedeemUntilEpoch(
@@ -449,7 +449,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         bytes32 investor,
         AssetId payoutAssetId,
         uint32 endEpochId
-    ) public returns (uint128 payoutAssetAmount, uint128 paymentShareAmount) {
+    ) public auth returns (uint128 payoutAssetAmount, uint128 paymentShareAmount) {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
         require(endEpochId < epochId[poolId], EpochNotFound());
 
@@ -498,12 +498,12 @@ contract SingleShareClass is Auth, ISingleShareClass {
         userOrder.lastUpdate = endEpochId + 1;
     }
 
-    function updateMetadata(PoolId poolId, ShareClassId shareClassId_, string calldata name, string calldata symbol, bytes calldata) external auth {
+    function updateMetadata(PoolId poolId, ShareClassId shareClassId_, string calldata name, string calldata symbol, bytes32 salt, bytes calldata) external auth {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
 
-        _updateMetadata(shareClassId_, name, symbol);
+        _updateMetadata(shareClassId_, name, symbol, salt);
 
-        emit UpdatedMetadata(poolId, shareClassId_, name, symbol);
+        emit UpdatedMetadata(poolId, shareClassId_, name, symbol, salt);
     }
 
 
@@ -580,12 +580,14 @@ contract SingleShareClass is Auth, ISingleShareClass {
     /// @param poolId Identifier of the pool
     /// @param shareClassId_ Identifier of the share class
     /// @param amount Asset token amount which is updated
+    /// @param isIncrement Whether the amount is positive or negative
     /// @param investor Address of the entity which is depositing
     /// @param depositAssetId Identifier of the asset which the investor used for their deposit request
     function _updateDepositRequest(
         PoolId poolId,
         ShareClassId shareClassId_,
-        int128 amount,
+        uint128 amount,
+        bool isIncrement,
         bytes32 investor,
         AssetId depositAssetId
     ) private {
@@ -599,12 +601,12 @@ contract SingleShareClass is Auth, ISingleShareClass {
             ClaimDepositRequired()
         );
 
-        userOrder.pending = amount >= 0 ? userOrder.pending + uint128(amount) : userOrder.pending - uint128(-amount);
+        userOrder.pending = isIncrement ? userOrder.pending + amount : userOrder.pending - amount;
         userOrder.lastUpdate = epochId[poolId];
 
-        pendingDeposit[shareClassId_][depositAssetId] = amount >= 0
-            ? pendingDeposit[shareClassId_][depositAssetId] + uint128(amount)
-            : pendingDeposit[shareClassId_][depositAssetId] - uint128(-amount);
+        pendingDeposit[shareClassId_][depositAssetId] = isIncrement
+            ? pendingDeposit[shareClassId_][depositAssetId] + amount
+            : pendingDeposit[shareClassId_][depositAssetId] - amount;
 
         emit UpdatedDepositRequest(
             poolId,
@@ -622,12 +624,14 @@ contract SingleShareClass is Auth, ISingleShareClass {
     /// @param poolId Identifier of the pool
     /// @param shareClassId_ Identifier of the share class
     /// @param amount Share class token amount which is updated
+    /// @param isIncrement Whether the amount is positive or negative
     /// @param investor Address of the entity which is depositing
     /// @param payoutAssetId Identifier of the asset which the investor wants to offramp to
     function _updateRedeemRequest(
         PoolId poolId,
         ShareClassId shareClassId_,
-        int128 amount,
+        uint128 amount,
+        bool isIncrement,
         bytes32 investor,
         AssetId payoutAssetId
     ) private {
@@ -641,11 +645,11 @@ contract SingleShareClass is Auth, ISingleShareClass {
         );
 
         userOrder.lastUpdate = epochId[poolId];
-        userOrder.pending = amount >= 0 ? userOrder.pending + uint128(amount) : userOrder.pending - uint128(-amount);
+        userOrder.pending = isIncrement ? userOrder.pending + amount : userOrder.pending - amount;
 
-        pendingRedeem[shareClassId_][payoutAssetId] = amount >= 0
-            ? pendingRedeem[shareClassId_][payoutAssetId] + uint128(amount)
-            : pendingRedeem[shareClassId_][payoutAssetId] - uint128(-amount);
+        pendingRedeem[shareClassId_][payoutAssetId] = isIncrement
+            ? pendingRedeem[shareClassId_][payoutAssetId] + amount
+            : pendingRedeem[shareClassId_][payoutAssetId] - amount;
 
         emit UpdatedRedeemRequest(
             poolId,
@@ -658,14 +662,20 @@ contract SingleShareClass is Auth, ISingleShareClass {
         );
     }
 
-    function _updateMetadata(ShareClassId shareClassId_, string calldata name, string calldata symbol) private {
+    function _updateMetadata(ShareClassId shareClassId_, string calldata name, string calldata symbol, bytes32 salt) private {
         uint256 nLen = bytes(name).length;
         require(nLen> 0 && nLen <= 128, InvalidMetadataName());
 
         uint256 sLen = bytes(symbol).length;
         require(sLen > 0 && sLen <= 32, InvalidMetadataSymbol());
 
-        metadata[shareClassId_] = ShareClassMetadata(name, symbol);
+        require(salt != bytes32(0), InvalidSalt());
+        // Either the salt has not changed, or the salt was never used before by any share class token
+        require(salt == metadata[shareClassId_].salt || !salts[salt], AlreadyUsedSalt());
+        salts[salt] = true;
+
+        metadata[shareClassId_] = ShareClassMetadata(name, symbol, salt);
+
     }
 
     /// @notice Advances the current epoch of the given pool if it has not been incremented within the multicall. If the

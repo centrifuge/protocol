@@ -4,7 +4,7 @@ pragma solidity ^0.8.28;
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
-import {MessageType} from "src/common/libraries/MessageLib.sol";
+import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 
 import {AssetId} from "src/pools/types/AssetId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
@@ -16,6 +16,7 @@ import {IAdapter} from "src/pools/Gateway.sol";
 import "forge-std/Test.sol";
 
 contract MockVaults is Test, IAdapter {
+    using MessageLib for *;
     using CastLib for string;
 
     IMessageHandler public handler;
@@ -27,11 +28,14 @@ contract MockVaults is Test, IAdapter {
         handler = handler_;
     }
 
-    function registerAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals) public {
+    function registerAsset(AssetId assetId, string memory name, string memory symbol, uint8 decimals) public {
         handler.handle(
-            abi.encodePacked(
-                MessageType.RegisterAsset, assetId.raw(), name.stringToBytes128(), symbol.toBytes32(), decimals
-            )
+            MessageLib.RegisterAsset({
+                assetId: assetId.raw(),
+                name: name,
+                symbol: symbol.toBytes32(),
+                decimals: decimals
+            }).serialize()
         );
     }
 
@@ -39,7 +43,13 @@ contract MockVaults is Test, IAdapter {
         public
     {
         handler.handle(
-            abi.encodePacked(MessageType.DepositRequest, poolId.raw(), scId.raw(), investor, assetId.raw(), amount)
+            MessageLib.DepositRequest({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                investor: investor,
+                assetId: assetId.raw(),
+                amount: amount
+            }).serialize()
         );
     }
 
@@ -47,7 +57,13 @@ contract MockVaults is Test, IAdapter {
         public
     {
         handler.handle(
-            abi.encodePacked(MessageType.RedeemRequest, poolId.raw(), scId.raw(), investor, assetId.raw(), amount)
+            MessageLib.RedeemRequest({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                investor: investor,
+                assetId: assetId.raw(),
+                amount: amount
+            }).serialize()
         );
     }
 

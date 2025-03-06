@@ -64,7 +64,7 @@ contract InvestmentManagerTest is BaseTest {
 
     function testHandleInvalidMessage() public {
         vm.expectRevert(bytes("InvestmentManager/invalid-message"));
-        investmentManager.handle(abi.encodePacked(uint8(MessagesLib.Call.Invalid)));
+        investmentManager.handle(abi.encodePacked(uint8(0)));
     }
 
     // // --- Price calculations ---

@@ -5,9 +5,11 @@ import {Auth} from "src/misc/Auth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
-import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
+
+import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IInvestmentManager, InvestmentState} from "src/vaults/interfaces/IInvestmentManager.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
@@ -20,6 +22,7 @@ import {PriceConversionLib} from "src/vaults/libraries/PriceConversionLib.sol";
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
 contract InvestmentManager is Auth, IInvestmentManager {
+    using MessageLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;
     using CastLib for *;
@@ -77,14 +80,14 @@ contract InvestmentManager is Auth, IInvestmentManager {
 
         state.pendingDepositRequest = state.pendingDepositRequest + _assets;
         gateway.send(
-            abi.encodePacked(
-                uint8(MessagesLib.Call.DepositRequest),
-                poolId,
-                vault_.trancheId(),
-                controller.toBytes32(),
-                poolManager.assetToId(asset),
-                _assets
-            ),
+            uint32(poolId >> 32),
+            MessageLib.DepositRequest({
+                poolId: poolId,
+                scId: vault_.trancheId(),
+                investor: controller.toBytes32(),
+                assetId: poolManager.assetToId(asset),
+                amount: _assets
+            }).serialize(),
             source
         );
 
@@ -125,14 +128,14 @@ contract InvestmentManager is Auth, IInvestmentManager {
         state.pendingRedeemRequest = state.pendingRedeemRequest + shares;
 
         gateway.send(
-            abi.encodePacked(
-                uint8(MessagesLib.Call.RedeemRequest),
-                vault_.poolId(),
-                vault_.trancheId(),
-                controller.toBytes32(),
-                poolManager.assetToId(vault_.asset()),
-                shares
-            ),
+            uint32(vault_.poolId() >> 32),
+            MessageLib.RedeemRequest({
+                poolId: vault_.poolId(),
+                scId: vault_.trancheId(),
+                investor: controller.toBytes32(),
+                assetId: poolManager.assetToId(vault_.asset()),
+                amount: shares
+            }).serialize(),
             source
         );
 
@@ -149,13 +152,13 @@ contract InvestmentManager is Auth, IInvestmentManager {
         state.pendingCancelDepositRequest = true;
 
         gateway.send(
-            abi.encodePacked(
-                uint8(MessagesLib.Call.CancelDepositRequest),
-                _vault.poolId(),
-                _vault.trancheId(),
-                controller.toBytes32(),
-                poolManager.assetToId(_vault.asset())
-            ),
+            uint32(_vault.poolId() >> 32),
+            MessageLib.CancelDepositRequest({
+                poolId: _vault.poolId(),
+                scId: _vault.trancheId(),
+                investor: controller.toBytes32(),
+                assetId: poolManager.assetToId(_vault.asset())
+            }).serialize(),
             source
         );
     }
@@ -175,13 +178,13 @@ contract InvestmentManager is Auth, IInvestmentManager {
         state.pendingCancelRedeemRequest = true;
 
         gateway.send(
-            abi.encodePacked(
-                uint8(MessagesLib.Call.CancelRedeemRequest),
-                _vault.poolId(),
-                _vault.trancheId(),
-                controller.toBytes32(),
-                poolManager.assetToId(_vault.asset())
-            ),
+            uint32(_vault.poolId() >> 32),
+            MessageLib.CancelRedeemRequest({
+                poolId: _vault.poolId(),
+                scId: _vault.trancheId(),
+                investor: controller.toBytes32(),
+                assetId: poolManager.assetToId(_vault.asset())
+            }).serialize(),
             source
         );
     }
@@ -189,51 +192,29 @@ contract InvestmentManager is Auth, IInvestmentManager {
     // --- Incoming message handling ---
     /// @inheritdoc IInvestmentManager
     function handle(bytes calldata message) public auth {
-        MessagesLib.Call call = MessagesLib.messageType(message);
+        MessageType kind = message.messageType();
 
-        if (call == MessagesLib.Call.FulfilledDepositRequest) {
+        if (kind == MessageType.FulfilledDepositRequest) {
+            MessageLib.FulfilledDepositRequest memory m = message.deserializeFulfilledDepositRequest();
             fulfillDepositRequest(
-                message.toUint64(1),
-                message.toBytes16(9),
-                message.toAddress(25),
-                message.toUint128(57),
-                message.toUint128(73),
-                message.toUint128(89)
+                m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.assetAmount, m.shareAmount
             );
-        } else if (call == MessagesLib.Call.FulfilledRedeemRequest) {
+        } else if (kind == MessageType.FulfilledRedeemRequest) {
+            MessageLib.FulfilledRedeemRequest memory m = message.deserializeFulfilledRedeemRequest();
             fulfillRedeemRequest(
-                message.toUint64(1),
-                message.toBytes16(9),
-                message.toAddress(25),
-                message.toUint128(57),
-                message.toUint128(73),
-                message.toUint128(89)
+                m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.assetAmount, m.shareAmount
             );
-        } else if (call == MessagesLib.Call.FulfilledCancelDepositRequest) {
+        } else if (kind == MessageType.FulfilledCancelDepositRequest) {
+            MessageLib.FulfilledCancelDepositRequest memory m = message.deserializeFulfilledCancelDepositRequest();
             fulfillCancelDepositRequest(
-                message.toUint64(1),
-                message.toBytes16(9),
-                message.toAddress(25),
-                message.toUint128(57),
-                message.toUint128(73),
-                message.toUint128(89)
+                m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.cancelledAmount, m.cancelledAmount
             );
-        } else if (call == MessagesLib.Call.FulfilledCancelRedeemRequest) {
-            fulfillCancelRedeemRequest(
-                message.toUint64(1),
-                message.toBytes16(9),
-                message.toAddress(25),
-                message.toUint128(57),
-                message.toUint128(73)
-            );
-        } else if (call == MessagesLib.Call.TriggerRedeemRequest) {
-            triggerRedeemRequest(
-                message.toUint64(1),
-                message.toBytes16(9),
-                message.toAddress(25),
-                message.toUint128(57),
-                message.toUint128(73)
-            );
+        } else if (kind == MessageType.FulfilledCancelRedeemRequest) {
+            MessageLib.FulfilledCancelRedeemRequest memory m = message.deserializeFulfilledCancelRedeemRequest();
+            fulfillCancelRedeemRequest(m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.cancelledShares);
+        } else if (kind == MessageType.TriggerRedeemRequest) {
+            MessageLib.TriggerRedeemRequest memory m = message.deserializeTriggerRedeemRequest();
+            triggerRedeemRequest(m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.shares);
         } else {
             revert("InvestmentManager/invalid-message");
         }

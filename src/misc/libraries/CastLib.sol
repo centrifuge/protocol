@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 /// @title  CastLib
 library CastLib {
@@ -30,18 +31,6 @@ library CastLib {
         }
 
         return string(bytesArray);
-    }
-
-    function stringToBytes128(string memory str) internal pure returns (bytes memory) {
-        bytes memory bytes128 = new bytes(128);
-
-        uint32 length = uint32(MathLib.min(128, bytes(str).length));
-
-        for (uint256 i; i < length && bytes(str)[i] != 0; i++) {
-            bytes128[i] = bytes(str)[i];
-        }
-
-        return bytes128;
     }
 
     function toString(bytes32 _bytes32) internal pure returns (string memory) {

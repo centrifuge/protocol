@@ -8,22 +8,22 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
-import {MessageType} from "src/common/libraries/MessageLib.sol";
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
 import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {AccountId} from "src/pools/types/AccountId.sol";
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AccountType} from "src/pools/interfaces/IPoolManager.sol";
-import {previewShareClassId, encodeMetadata} from "src/pools/SingleShareClass.sol";
+import {previewShareClassId} from "src/pools/SingleShareClass.sol";
 
 import {Deployer} from "script/pools/Deployer.s.sol";
 
 import {MockVaults} from "test/pools/mocks/MockVaults.sol";
 
 contract TestCommon is Deployer, Test {
-    uint32 constant CHAIN_CP = 1;
-    uint32 constant CHAIN_CV = 2;
+    uint32 constant CHAIN_CP = 5;
+    uint32 constant CHAIN_CV = 6;
 
     address immutable FM = makeAddr("FM");
     address immutable ANY = makeAddr("Anyone");
@@ -66,6 +66,7 @@ contract TestConfiguration is TestCommon {
 
     string constant SC_NAME = "ExampleName";
     string constant SC_SYMBOL = "ExampleSymbol";
+    bytes32 constant SC_SALT = bytes32("ExampleSalt");
     bytes32 constant SC_HOOK = bytes32("ExampleHookData");
 
     function testAssetRegistration() public {
@@ -85,7 +86,7 @@ contract TestConfiguration is TestCommon {
 
         (bytes[] memory cs, uint256 c) = (new bytes[](4), 0);
         cs[c++] = abi.encodeWithSelector(poolManager.setPoolMetadata.selector, bytes("Testing pool"));
-        cs[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, SC_NAME, SC_SYMBOL, bytes(""));
+        cs[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
         cs[c++] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_CV);
         cs[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
         assertEq(c, cs.length);
@@ -94,22 +95,21 @@ contract TestConfiguration is TestCommon {
         poolManager.execute(poolId, cs);
 
         assertEq(poolRegistry.metadata(poolId), "Testing pool");
-        assertEq(cv.lastMessages(0), abi.encodePacked(MessageType.AddPool, poolId.raw()));
-        assertEq(
-            cv.lastMessages(1),
-            abi.encodePacked(
-                MessageType.AddTranche,
-                poolId.raw(),
-                scId,
-                SC_NAME.stringToBytes128(),
-                SC_SYMBOL.toBytes32(),
-                uint8(18),
-                SC_HOOK
-            )
-        );
+
+        MessageLib.NotifyPool memory m0 = MessageLib.deserializeNotifyPool(cv.lastMessages(0));
+        assertEq(m0.poolId, poolId.raw());
+
+        MessageLib.NotifyShareClass memory m1 = MessageLib.deserializeNotifyShareClass(cv.lastMessages(1));
+        assertEq(m1.poolId, poolId.raw());
+        assertEq(m1.scId, scId.raw());
+        assertEq(m1.name, SC_NAME);
+        assertEq(m1.symbol, SC_SYMBOL.toBytes32());
+        assertEq(m1.decimals, 18);
+        assertEq(m1.salt, SC_SALT);
+        assertEq(m1.hook, SC_HOOK);
     }
 
-    function testGeneralConfigurationPool() public returns (PoolId poolId, ShareClassId scId) {
+    function testPoolBasicConfiguration() public returns (PoolId poolId, ShareClassId scId) {
         cv.registerAsset(USDC_C2, "USD Coin", "USDC", 6);
 
         vm.prank(FM);
@@ -118,7 +118,7 @@ contract TestConfiguration is TestCommon {
         scId = previewShareClassId(poolId);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](5), 0);
-        cs[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, SC_NAME, SC_SYMBOL, bytes(""));
+        cs[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
         cs[c++] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_CV);
         cs[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
         cs[c++] = abi.encodeWithSelector(poolManager.createHolding.selector, scId, USDC_C2, identityValuation, 0x01);
@@ -141,7 +141,7 @@ contract TestInvestments is TestConfiguration {
     D18 immutable NAV_PER_SHARE = d18(2, 1);
 
     function testDeposit() public returns (PoolId poolId, ShareClassId scId) {
-        (poolId, scId) = testGeneralConfigurationPool();
+        (poolId, scId) = testPoolBasicConfiguration();
 
         cv.requestDeposit(poolId, scId, USDC_C2, INVESTOR, INVESTOR_AMOUNT);
 

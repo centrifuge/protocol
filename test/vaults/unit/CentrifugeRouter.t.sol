@@ -177,7 +177,7 @@ contract CentrifugeRouterTest is BaseTest {
         assertEq(vault.pendingCancelDepositRequest(0, self), true);
         assertEq(erc20.balanceOf(address(escrow)), amount);
         centrifugeChain.isFulfilledCancelDepositRequest(
-            vault.poolId(), vault.trancheId(), self.toBytes32(), defaultAssetId, uint128(amount), uint128(amount)
+            vault.poolId(), vault.trancheId(), self.toBytes32(), defaultAssetId, uint128(amount)
         );
         assertEq(vault.claimableCancelDepositRequest(0, self), amount);
 
@@ -346,7 +346,7 @@ contract CentrifugeRouterTest is BaseTest {
         ERC20 share = ERC20(IERC7540Vault(vault_).share());
 
         uint256 amount = 100 * 10 ** 18;
-        uint64 destinationChainId = 2;
+        uint32 destinationChainId = 2;
         address destinationAddress = makeAddr("destinationAddress");
 
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), address(this), type(uint64).max);
@@ -383,7 +383,7 @@ contract CentrifugeRouterTest is BaseTest {
         ERC20 share = ERC20(IERC7540Vault(vault_).share());
 
         uint256 amount = 100 * 10 ** 18;
-        uint64 destinationChainId = 2;
+        uint32 destinationChainId = 2;
         address destinationAddress = makeAddr("destinationAddress");
         bytes32 destinationAddressAsBytes32 = destinationAddress.toBytes32();
 
