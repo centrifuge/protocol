@@ -65,7 +65,8 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
             address factory = vaultFactories[i];
             vaultFactory[factory] = true;
         }
-        // Need to be ward in itself in order to call into `IUpdateContract(target).update(..) where target is `address(this)`
+        // Need to be ward in itself in order to call into `IUpdateContract(target).update(..) where target is
+        // `address(this)`
         rely(address(this));
     }
 

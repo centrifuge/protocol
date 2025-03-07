@@ -55,11 +55,25 @@ contract MockCentrifugeChain is Test {
     }
 
     function unlinkVault(uint64 poolId, bytes16 trancheId, address vault) public {
-        execute(MessageLib.UpdateContract({poolId: poolId, scId: trancheId, target:bytes32(bytes20(address(poolManager))), payload: abi.encode(address(0), poolManager.getVaultAssetId(vault), false, vault)}).serialize());
+        execute(
+            MessageLib.UpdateContract({
+                poolId: poolId,
+                scId: trancheId,
+                target: bytes32(bytes20(address(poolManager))),
+                payload: abi.encode(address(0), poolManager.getVaultAssetId(vault), false, vault)
+            }).serialize()
+        );
     }
 
     function linkVault(uint64 poolId, bytes16 trancheId, address vault) public {
-        execute(MessageLib.UpdateContract({poolId: poolId, scId: trancheId, target: bytes32(bytes20(address(poolManager))), payload: abi.encode(address(0), poolManager.getVaultAssetId(vault), true, vault)}).serialize());
+        execute(
+            MessageLib.UpdateContract({
+                poolId: poolId,
+                scId: trancheId,
+                target: bytes32(bytes20(address(poolManager))),
+                payload: abi.encode(address(0), poolManager.getVaultAssetId(vault), true, vault)
+            }).serialize()
+        );
     }
 
     function addTranche(

@@ -53,8 +53,7 @@ contract PoolManagerTest is BaseTest {
         assertEq(poolManager.vaultFactory(newVaultFactory), true);
         assertEq(poolManager.vaultFactory(vaultFactory), true);
 
-
-    address newEscrow = makeAddr("newEscrow");
+        address newEscrow = makeAddr("newEscrow");
         vm.expectRevert("PoolManager/file-unrecognized-param");
         poolManager.file("escrow", newEscrow);
     }
