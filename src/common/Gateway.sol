@@ -37,7 +37,7 @@ contract Gateway is Auth, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function setPayableSource(address source_) external {
+    function setPayableSource(address source_) external auth {
         payableSource = source_;
     }
 
