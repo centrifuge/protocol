@@ -65,6 +65,8 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
             address factory = vaultFactories[i];
             vaultFactory[factory] = true;
         }
+        // Need to be ward in itself in order to call into `IUpdateContract(target).update(..) where target is `address(this)`
+        rely(address(this));
     }
 
     // --- Administration ---
@@ -148,7 +150,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         } else if (kind == MessageType.UpdateRestriction) {
             MessageLib.UpdateRestriction memory m = MessageLib.deserializeUpdateRestriction(message);
             updateRestriction(m.poolId, m.scId, m.payload);
-        } else if (kind == MessageType.UpdateRestriction) {
+        } else if (kind == MessageType.UpdateContract) {
             MessageLib.UpdateContract memory m = MessageLib.deserializeUpdateContract(message);
             updateContract(m.poolId, m.scId, address(bytes20(m.target)), m.payload);
         } else {
@@ -427,6 +429,12 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         VaultAsset memory _asset = _vaultToAsset[vault];
         require(_asset.asset != address(0), "PoolManager/unknown-vault");
         return (_asset.asset, _asset.isWrapper);
+    }
+
+    function getVaultAssetId(address vault) public view override returns (uint128) {
+        VaultAsset memory _asset = _vaultToAsset[vault];
+        require(_asset.asset != address(0), "PoolManager/unknown-vault");
+        return assetToId[_asset.asset];
     }
 
     /// @inheritdoc IPoolManager

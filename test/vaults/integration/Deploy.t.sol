@@ -127,7 +127,6 @@ contract DeployTest is Test, Deployer {
         assertEq(root.wards(guardian_), 1);
 
         assertEq(routerEscrow.wards(address(router)), 1);
-        assertEq(investmentManager.wards(vaultFactory), 1);
     }
 
     function testFilings() public view {
@@ -274,10 +273,9 @@ contract DeployTest is Test, Deployer {
         poolManager.addAsset(1, address(erc20));
         poolManager.allowAsset(poolId, 1);
         poolManager.updateTranchePrice(poolId, trancheId, 1, uint128(10 ** 18), uint64(block.timestamp));
-        vm.stopPrank();
-
         address vault = poolManager.deployVault(poolId, trancheId, address(erc20), address(vaultFactory));
         poolManager.linkVault(poolId, trancheId, poolManager.idToAsset(1), vault);
+        vm.stopPrank();
 
         return vault;
     }

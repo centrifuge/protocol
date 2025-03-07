@@ -82,7 +82,6 @@ abstract contract Setup is BaseSetup, SharedStorage {
         investmentManager.rely(address(poolManager));
         investmentManager.rely(address(vaultFactory));
 
-        poolManager.file("investmentManager", address(investmentManager));
         restrictionManager.rely(address(poolManager));
 
         // Setup Escrow Permissions

@@ -74,7 +74,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
 
         IAuth(token).rely(vault__);
         ITranche(token).updateVault(vault_.asset(), vault__);
-        Auth(address(this)).rely(vault__);
+        rely(vault__);
     }
 
     function removeVault(uint64 poolId, bytes16 trancheId, address vault__, address asset_, uint128 assetId)
@@ -92,7 +92,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
 
         IAuth(token).deny(vault__);
         ITranche(token).updateVault(vault_.asset(), address(0));
-        Auth(address(this)).deny(vault__);
+        deny(vault__);
     }
 
     // --- Outgoing message handling ---

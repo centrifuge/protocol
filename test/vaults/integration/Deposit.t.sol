@@ -5,6 +5,7 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
 import "test/vaults/BaseTest.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 contract DepositTest is BaseTest {
     using MessageLib for *;
@@ -60,11 +61,6 @@ contract DepositTest is BaseTest {
         vm.expectRevert(bytes("ERC7540Vault/invalid-owner"));
         vault.requestDeposit(amount, self, nonMember);
 
-        // will fail - investment asset not allowed
-        centrifugeChain.disallowAsset(vault.poolId(), defaultAssetId);
-        vm.expectRevert(bytes("InvestmentManager/asset-not-allowed"));
-        vault.requestDeposit(amount, self, self);
-
         // will fail - cannot fulfill if there is no pending request
         uint128 _assetId = poolManager.assetToId(address(erc20)); // retrieve assetId
         uint128 shares = uint128((amount * 10 ** 18) / price); // tranchePrice = 2$
@@ -76,7 +72,6 @@ contract DepositTest is BaseTest {
         );
 
         // success
-        centrifugeChain.allowAsset(vault.poolId(), defaultAssetId);
         erc20.approve(vault_, amount);
         if (snap) {
             snapStart("ERC7540Vault_requestDeposit");

@@ -206,6 +206,10 @@ interface IPoolManager is IMessageHandler, IRecoverable {
     ///         on the behalf the caller.
     function getVaultAsset(address vault) external view returns (address asset, bool isWrapper);
 
+    /// @notice Function to get the vault's underlying assetId
+    /// @dev    Function getVaultAssetId handles non-existing vault errors and provides the underlying assetId of a vault
+    function getVaultAssetId(address vault) external view returns (uint128);
+
     /// @notice Checks whether a given asset-vault pair is eligible for investing into a tranche of a pool
     function isLinked(uint64 poolId, bytes16 trancheId, address asset, address vault) external view returns (bool);
 

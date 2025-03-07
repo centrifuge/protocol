@@ -80,6 +80,7 @@ contract Deployer is Script {
         escrow.rely(address(poolManager));
         IAuth(vaultFactory).rely(address(poolManager));
         IAuth(trancheFactory).rely(address(poolManager));
+        IAuth(investmentManager).rely(address(poolManager));
         IAuth(restrictionManager).rely(address(poolManager));
         IAuth(restrictedRedemptions).rely(address(poolManager));
 
