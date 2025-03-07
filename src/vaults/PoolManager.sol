@@ -206,7 +206,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         );
 
         address[] memory trancheWards = new address[](1);
-        trancheWards[1] = address(this);
+        trancheWards[0] = address(this);
 
         address token = trancheFactory.newTranche(name, symbol, decimals, salt, trancheWards);
 
