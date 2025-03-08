@@ -7,7 +7,7 @@ import {Deployer} from "script/vaults/Deployer.sol";
 
 // Script to deploy Liquidity Pools with a permissionless adapter for testing.
 contract PermissionlessScript is Deployer {
-    function setUp() public {}
+    function setUp() public withCreateX {}
 
     function run() public {
         vm.startBroadcast();

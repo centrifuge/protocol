@@ -15,8 +15,9 @@ import {CentrifugeRouter} from "src/vaults/CentrifugeRouter.sol";
 import {Guardian} from "src/vaults/admin/Guardian.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import "forge-std/Script.sol";
+import {CreateXScript} from "createx-forge/script/CreateXScript.sol";
 
-contract Deployer is Script {
+contract Deployer is Script, CreateXScript {
     uint256 internal constant delay = 48 hours;
     address adminSafe;
     address[] adapters;
@@ -47,13 +48,16 @@ contract Deployer is Script {
         uint128 gasPrice = uint128(vm.envOr("GAS_PRICE", uint256(2500000000000000000))); // Centrifuge Chain
         uint256 tokenPrice = vm.envOr("TOKEN_PRICE", uint256(178947400000000)); // CFG/ETH
 
-        escrow = new Escrow{salt: salt}(deployer);
+        // Deterministic deployments
+        escrow = Escrow(create3(_computeSalt(0), abi.encodePacked(type(Escrow).creationCode, abi.encode(deployer))));
         routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(salt, "escrow2"))}(deployer);
         root = new Root{salt: salt}(address(escrow), delay, deployer);
-        vaultFactory = address(new ERC7540VaultFactory(address(root)));
         restrictionManager = address(new RestrictionManager{salt: salt}(address(root), deployer));
         restrictedRedemptions = address(new RestrictedRedemptions{salt: salt}(address(root), address(escrow), deployer));
         trancheFactory = address(new TrancheFactory{salt: salt}(address(root), deployer));
+
+        // Non-deterministic deployments
+        vaultFactory = address(new ERC7540VaultFactory(address(root)));
         investmentManager = new InvestmentManager(address(root), address(escrow));
         poolManager = new PoolManager(address(escrow), vaultFactory, trancheFactory);
         gasService = new GasService(messageCost, proofCost, gasPrice, tokenPrice);
@@ -64,6 +68,10 @@ contract Deployer is Script {
         _endorse();
         _rely();
         _file();
+    }
+
+    function _computeSalt(uint88 index) internal returns (bytes32) {
+        return bytes32(abi.encodePacked(msg.sender, hex"00", bytes11(index)));
     }
 
     function _endorse() internal {

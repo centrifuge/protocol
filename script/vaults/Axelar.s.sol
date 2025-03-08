@@ -6,7 +6,7 @@ import {Deployer} from "script/vaults/Deployer.sol";
 
 // Script to deploy Liquidity Pools with an Axelar Adapter.
 contract AxelarScript is Deployer {
-    function setUp() public {}
+    function setUp() public withCreateX {}
 
     function run() public {
         vm.startBroadcast();
