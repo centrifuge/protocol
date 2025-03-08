@@ -118,7 +118,8 @@ contract TestConfiguration is TestCommon {
 contract TestInvestments is TestConfiguration {
     uint128 constant INVESTOR_AMOUNT = 100 * 1e6; // USDC_C2
     uint128 constant SHARE_AMOUNT = 10 * 1e18; // Share from USD
-    D18 immutable PERCENT_20 = d18(1, 5);
+    uint128 constant APPROVED_INVESTOR_AMOUNT = INVESTOR_AMOUNT / 5;
+    uint128 constant APPROVED_SHARE_AMOUNT = SHARE_AMOUNT / 5;
     D18 immutable NAV_PER_SHARE = d18(2, 1);
 
     /// forge-config: default.isolate = true
@@ -131,7 +132,7 @@ contract TestInvestments is TestConfiguration {
 
         (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
         cs[c++] = abi.encodeWithSelector(
-            poolRouter.approveDeposits.selector, scId, USDC_C2, PERCENT_20.mulUint128(INVESTOR_AMOUNT), valuation
+            poolRouter.approveDeposits.selector, scId, USDC_C2, APPROVED_INVESTOR_AMOUNT, valuation
         );
         cs[c++] = abi.encodeWithSelector(poolRouter.issueShares.selector, scId, USDC_C2, NAV_PER_SHARE);
         assertEq(c, cs.length);
@@ -147,7 +148,7 @@ contract TestInvestments is TestConfiguration {
         assertEq(m0.scId, scId.raw());
         assertEq(m0.investor, INVESTOR);
         assertEq(m0.assetId, USDC_C2.raw());
-        assertEq(m0.assetAmount, PERCENT_20.mulUint128(INVESTOR_AMOUNT));
+        assertEq(m0.assetAmount, APPROVED_INVESTOR_AMOUNT);
         assertEq(m0.shareAmount, SHARE_AMOUNT);
 
         cv.resetMessages();
@@ -162,9 +163,7 @@ contract TestInvestments is TestConfiguration {
         IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
-        cs[c++] = abi.encodeWithSelector(
-            poolRouter.approveRedeems.selector, scId, USDC_C2, PERCENT_20.mulUint128(SHARE_AMOUNT)
-        );
+        cs[c++] = abi.encodeWithSelector(poolRouter.approveRedeems.selector, scId, USDC_C2, APPROVED_SHARE_AMOUNT);
         cs[c++] = abi.encodeWithSelector(poolRouter.revokeShares.selector, scId, USDC_C2, NAV_PER_SHARE, valuation);
         assertEq(c, cs.length);
 
@@ -181,10 +180,8 @@ contract TestInvestments is TestConfiguration {
         assertEq(m0.assetId, USDC_C2.raw());
         assertEq(
             m0.assetAmount,
-            NAV_PER_SHARE.mulUint128(
-                uint128(valuation.getQuote(PERCENT_20.mulUint128(SHARE_AMOUNT), USD.addr(), USDC_C2.addr()))
-            )
+            NAV_PER_SHARE.mulUint128(uint128(valuation.getQuote(APPROVED_SHARE_AMOUNT, USD.addr(), USDC_C2.addr())))
         );
-        assertEq(m0.shareAmount, PERCENT_20.mulUint128(SHARE_AMOUNT));
+        assertEq(m0.shareAmount, APPROVED_SHARE_AMOUNT);
     }
 }
