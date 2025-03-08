@@ -188,7 +188,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
         // Limit in case approved > pending due to race condition of FM approval and async incoming requests
         uint128 _pendingDeposit = pendingDeposit[shareClassId_][paymentAssetId];
-        approvedAssetAmount = maxApproval.minUint128(_pendingDeposit);
+        approvedAssetAmount = maxApproval.min(_pendingDeposit).toUint128();
         require(approvedAssetAmount > 0, ZeroApprovalAmount());
 
         // Increase approved
@@ -234,7 +234,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
         // Limit in case approved > pending due to race condition of FM approval and async incoming requests
         pendingShareAmount = pendingRedeem[shareClassId_][payoutAssetId];
-        approvedShareAmount = maxApproval.minUint128(pendingShareAmount);
+        approvedShareAmount = maxApproval.min(pendingShareAmount).toUint128();
         require(approvedShareAmount > 0, ZeroApprovalAmount());
 
         // Update epoch data
@@ -704,7 +704,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
             return epochId_;
         } else {
-            return uint32(uint128(epochId_ - 1).maxUint128(1));
+            return uint32(uint128(epochId_ - 1).max(1));
         }
     }
 }

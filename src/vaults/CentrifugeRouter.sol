@@ -244,7 +244,7 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
         require(owner == msg.sender || owner == address(this), "CentrifugeRouter/invalid-owner");
         address underlying = IERC20Wrapper(wrapper).underlying();
 
-        amount = MathLib.minUint256(amount, IERC20(underlying).balanceOf(owner));
+        amount = MathLib.min(amount, IERC20(underlying).balanceOf(owner));
         require(amount != 0, "CentrifugeRouter/zero-balance");
         SafeTransferLib.safeTransferFrom(underlying, owner, address(this), amount);
 
@@ -253,7 +253,7 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
     }
 
     function unwrap(address wrapper, uint256 amount, address receiver) public payable protected {
-        amount = MathLib.minUint256(amount, IERC20(wrapper).balanceOf(address(this)));
+        amount = MathLib.min(amount, IERC20(wrapper).balanceOf(address(this)));
         require(amount != 0, "CentrifugeRouter/zero-balance");
 
         require(IERC20Wrapper(wrapper).withdrawTo(receiver, amount), "CentrifugeRouter/unwrap-failed");

@@ -177,32 +177,12 @@ library MathLib {
     }
 
     /// @notice Returns the smallest of two numbers.
-    function minUint256(uint256 a, uint256 b) internal pure returns (uint256) {
+    function min(uint256 a, uint256 b) internal pure returns (uint256) {
         return a > b ? b : a;
-    }
-
-    /// @notice Returns the smallest of two numbers.
-    function minUint128(uint128 a, uint128 b) internal pure returns (uint128) {
-        return a > b ? b : a;
-    }
-
-    /// @notice Returns the largest of two numbers.
-    function maxUint256(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a > b ? a : b;
-    }
-
-    /// @notice Returns the largest of two numbers.
-    function maxUint128(uint128 a, uint128 b) internal pure returns (uint128) {
-        return a > b ? a : b;
     }
 
     /// @notice Returns the largest of two numbers.
     function max(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a > b ? a : b;
-    }
-
-    /// @notice Returns the largest of two numbers.
-    function max(uint128 a, uint128 b) internal pure returns (uint128) {
         return a > b ? a : b;
     }
 }
