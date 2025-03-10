@@ -52,8 +52,8 @@ interface IPoolManager {
 
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
-    /// Accepts a `bytes32` representation of 'poolRegistry', 'assetRegistry', 'accounting', 'holdings', 'gateway' as
-    /// string value.
+    /// Accepts a `bytes32` representation of 'poolRegistry', 'assetRegistry', 'accounting', 'holdings', 'gateway' and '
+    /// sender' as string value.
     function file(bytes32 what, address data) external;
 
     /// @notice unlock a pool
