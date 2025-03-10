@@ -15,16 +15,16 @@ import {PoolId} from "src/pools/types/PoolId.sol";
 import {IMessageProcessor} from "src/pools/interfaces/IMessageProcessor.sol";
 import {IPoolManagerHandler} from "src/pools/interfaces/IPoolManager.sol";
 
-contract MessageProcessor is Auth, IMessageProcessor {
+contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
     using MessageLib for *;
     using BytesLib for bytes;
     using CastLib for *;
 
     IPoolManagerHandler public immutable manager;
-    IMessageSender public immutable sender;
+    IMessageSender public immutable gateway;
 
     constructor(IMessageSender sender_, IPoolManagerHandler manager_, address deployer) Auth(deployer) {
-        sender = sender_;
+        gateway = sender_;
         manager = manager_;
     }
 
@@ -35,7 +35,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         //    cv.poolManager.notifyPool(poolId);
         //}
         //else {
-        sender.send(chainId, MessageLib.NotifyPool({poolId: poolId.raw()}).serialize());
+        gateway.send(chainId, MessageLib.NotifyPool({poolId: poolId.raw()}).serialize());
         //}
     }
 
@@ -50,7 +50,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         bytes32 salt,
         bytes32 hook
     ) external auth {
-        sender.send(
+        gateway.send(
             chainId,
             MessageLib.NotifyShareClass({
                 poolId: poolId.raw(),
@@ -70,7 +70,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             ? MessageLib.AllowAsset({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw()}).serialize()
             : MessageLib.DisallowAsset({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw()}).serialize();
 
-        sender.send(assetId.chainId(), message);
+        gateway.send(assetId.chainId(), message);
     }
 
     /// @inheritdoc IMessageProcessor
@@ -82,7 +82,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         uint128 assetAmount,
         uint128 shareAmount
     ) external auth {
-        sender.send(
+        gateway.send(
             assetId.chainId(),
             MessageLib.FulfilledDepositRequest({
                 poolId: poolId.raw(),
@@ -104,7 +104,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         uint128 assetAmount,
         uint128 shareAmount
     ) external auth {
-        sender.send(
+        gateway.send(
             assetId.chainId(),
             MessageLib.FulfilledRedeemRequest({
                 poolId: poolId.raw(),
@@ -125,7 +125,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         bytes32 investor,
         uint128 cancelledAmount
     ) external auth {
-        sender.send(
+        gateway.send(
             assetId.chainId(),
             MessageLib.FulfilledCancelDepositRequest({
                 poolId: poolId.raw(),
@@ -145,7 +145,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         bytes32 investor,
         uint128 cancelledShares
     ) external auth {
-        sender.send(
+        gateway.send(
             assetId.chainId(),
             MessageLib.FulfilledCancelRedeemRequest({
                 poolId: poolId.raw(),

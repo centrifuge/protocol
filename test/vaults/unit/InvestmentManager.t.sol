@@ -32,7 +32,7 @@ contract InvestmentManagerTest is BaseTest {
         assertEq(address(investmentManager.escrow()), address(escrow));
         assertEq(address(investmentManager.gateway()), address(gateway));
         assertEq(address(investmentManager.poolManager()), address(poolManager));
-        assertEq(address(gateway.investmentManager()), address(investmentManager));
+        assertEq(address(gateway.handler()), address(investmentManager.sender()));
         assertEq(address(poolManager.investmentManager()), address(investmentManager));
 
         // permissions set correctly
@@ -60,11 +60,6 @@ contract InvestmentManagerTest is BaseTest {
         // auth fail
         vm.expectRevert(IAuth.NotAuthorized.selector);
         investmentManager.file("poolManager", randomUser);
-    }
-
-    function testHandleInvalidMessage() public {
-        vm.expectRevert(bytes("InvestmentManager/invalid-message"));
-        investmentManager.handle(1, abi.encodePacked(uint8(0)));
     }
 
     // --- Price calculations ---

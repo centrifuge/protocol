@@ -11,8 +11,9 @@ import {MessageType, MessageCategory, MessageLib} from "src/common/libraries/Mes
 import {IRoot, IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 
-import {IGateway, IMessageHandler} from "src/vaults/interfaces/gateway/IGateway.sol";
+import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
 
 /// @title  Gateway
 /// @notice Routing contract that forwards outgoing messages to multiple adapters (1 full message, n-1 proofs)
@@ -33,28 +34,37 @@ contract Gateway is Auth, IGateway, IRecoverable {
     uint256 public transient fuel;
 
     IRoot public immutable root;
-
-    address public poolManager;
-    address public investmentManager;
     IGasService public gasService;
+
+    IMessageHandler public handler;
 
     mapping(bytes32 messageHash => Message) internal _messages;
     mapping(address adapter => Adapter) internal _activeAdapters;
 
     /// @inheritdoc IGateway
     address[] public adapters;
+
     /// @inheritdoc IGateway
     mapping(address payer => bool) public payers;
+
     /// @inheritdoc IGateway
     mapping(address adapter => mapping(bytes32 messageHash => uint256 timestamp)) public recoveries;
 
-    constructor(address root_, address poolManager_, address investmentManager_, address gasService_)
-        Auth(msg.sender)
-    {
-        root = IRoot(root_);
-        poolManager = poolManager_;
-        investmentManager = investmentManager_;
-        gasService = IGasService(gasService_);
+    /// @notice Current batch messages pending to be sent
+    mapping(uint32 chainId => bytes) public /*transient*/ batch;
+
+    /// @notice Chains ID with pendign batch messages
+    uint32[] public /*transient*/ chainIds;
+
+    /// @notice Tells is the gateway is actually configured to create batches
+    bool public /*transient*/ isBatching;
+
+    /// @notice The payer of the transaction.
+    address public /*transient*/ payableSource;
+
+    constructor(IRoot root_, IGasService gasService_) Auth(msg.sender) {
+        root = root_;
+        gasService = gasService_;
     }
 
     modifier pauseable() {
@@ -102,8 +112,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
     /// @inheritdoc IGateway
     function file(bytes32 what, address instance) external auth {
         if (what == "gasService") gasService = IGasService(instance);
-        else if (what == "investmentManager") investmentManager = instance;
-        else if (what == "poolManager") poolManager = instance;
+        else if (what == "handler") handler = IMessageHandler(instance);
         else revert("Gateway/file-unrecognized-param");
 
         emit File(what, instance);
@@ -127,19 +136,15 @@ contract Gateway is Auth, IGateway, IRecoverable {
     }
 
     // --- Incoming ---
-    /// @inheritdoc IMessageHandler
-    function handle(uint32 /*chainId*/, bytes calldata message) external pauseable {
-        _handle(message, msg.sender, false);
+    function handle(uint32 chainId, bytes calldata message) external pauseable {
+        _handle(chainId, message, msg.sender, false);
     }
 
-    function _handle(bytes calldata payload, address adapter_, bool isRecovery) internal {
+    function _handle(uint32 chainId, bytes calldata payload, address adapter_, bool isRecovery) internal {
         Adapter memory adapter = _activeAdapters[adapter_];
         require(adapter.id != 0, "Gateway/invalid-adapter");
         uint8 code = payload.messageCode();
-        if (
-            code == uint8(MessageType.InitiateMessageRecovery)
-                || code == uint8(MessageType.DisputeMessageRecovery)
-        ) {
+        if (code == uint8(MessageType.InitiateMessageRecovery) || code == uint8(MessageType.DisputeMessageRecovery)) {
             require(!isRecovery, "Gateway/no-recursion");
             require(adapters.length > 1, "Gateway/no-recovery-with-one-adapter-allowed");
             return _handleRecovery(payload);
@@ -148,7 +153,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
         bool isMessageProof = code == uint8(MessageType.MessageProof);
         if (adapter.quorum == 1 && !isMessageProof) {
             // Special case for gas efficiency
-            _dispatch(payload);
+            _dispatch(chainId, payload);
             emit ExecuteMessage(payload, adapter_);
             return;
         }
@@ -182,10 +187,10 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
             // Handle message
             if (isMessageProof) {
-                _dispatch(state.pendingMessage);
+                _dispatch(chainId, state.pendingMessage);
                 emit ExecuteMessage(state.pendingMessage, adapter_);
             } else {
-                _dispatch(payload);
+                _dispatch(chainId, payload);
                 emit ExecuteMessage(payload, adapter_);
             }
 
@@ -198,39 +203,9 @@ contract Gateway is Auth, IGateway, IRecoverable {
         }
     }
 
-    function _dispatch(bytes memory message) internal {
+    function _dispatch(uint32 chainId, bytes memory message) internal {
         while (true) {
-            // TODO: The message dispatching will be moved to a vaults/IMessageProcessor
-            MessageCategory cat = message.messageCode().category();
-            MessageType kind = MessageLib.messageType(message);
-
-            if (cat == MessageCategory.Root) {
-                if (kind == MessageType.ScheduleUpgrade) {
-                    MessageLib.ScheduleUpgrade memory m = message.deserializeScheduleUpgrade();
-                    root.scheduleRely(address(bytes20(m.target)));
-                } else if (kind == MessageType.CancelUpgrade) {
-                    MessageLib.CancelUpgrade memory m = message.deserializeCancelUpgrade();
-                    root.cancelRely(address(bytes20(m.target)));
-                } else if (kind == MessageType.RecoverTokens) {
-                    MessageLib.RecoverTokens memory m = message.deserializeRecoverTokens();
-                    root.recoverTokens(address(bytes20(m.target)), address(bytes20(m.token)), address(bytes20(m.to)), m.amount);
-                } else {
-                    revert("Root/invalid-message");
-                }
-            } else if (cat == MessageCategory.Gas) {
-                if (kind == MessageType.UpdateGasPrice) {
-                    MessageLib.UpdateGasPrice memory m = message.deserializeUpdateGasPrice();
-                    gasService.updateGasPrice(m.price, m.timestamp);
-                } else {
-                    revert("GasService/invalid-message");
-                }
-            } else if (cat == MessageCategory.Pool) {
-                IMessageHandler(poolManager).handle(0 /*chainId*/, message);
-            } else if (cat == MessageCategory.Investment) {
-                IMessageHandler(investmentManager).handle(0 /*chainId*/, message);
-            } else {
-                revert("Gateway/unexpected-category");
-            }
+            handler.handle(chainId, message);
 
             uint256 offset = message.messageLength();
             uint256 remaining = message.length - offset;
@@ -253,8 +228,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
             require(_activeAdapters[adapter].id != 0, "Gateway/invalid-adapter");
             recoveries[adapter][m.hash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
             emit InitiateMessageRecovery(m.hash, adapter);
-        }
-        else if (kind == MessageType.DisputeMessageRecovery) {
+        } else if (kind == MessageType.DisputeMessageRecovery) {
             MessageLib.DisputeMessageRecovery memory m = message.deserializeDisputeMessageRecovery();
             return _disputeMessageRecovery(address(bytes20(m.adapter)), m.hash);
         }
@@ -279,15 +253,12 @@ contract Gateway is Auth, IGateway, IRecoverable {
         require(recovery <= block.timestamp, "Gateway/challenge-period-has-not-ended");
 
         delete recoveries[adapter][messageHash];
-        _handle(message, adapter, true);
+        _handle(0, /* TODO*/ message, adapter, true);
         emit ExecuteMessageRecovery(message, adapter);
     }
 
     // --- Outgoing ---
-    /// @inheritdoc IGateway
-    function send(uint32 chainId, bytes calldata message, address source) public payable pauseable {
-        require(msg.sender == investmentManager || msg.sender == poolManager, "Gateway/invalid-manager");
-
+    function send(uint32 chainId, bytes calldata message) public pauseable {
         bytes memory proof = MessageLib.MessageProof({hash: keccak256(message)}).serialize();
 
         require(adapters.length != 0, "Gateway/not-initialized");
@@ -308,11 +279,10 @@ contract Gateway is Auth, IGateway, IRecoverable {
                 tank -= consumed;
 
                 currentAdapter.pay{value: consumed}(chainId, payload, address(this));
-
                 currentAdapter.send(chainId, payload);
             }
             fuel = 0;
-        } else if (gasService.shouldRefuel(source, message)) {
+        } else if (gasService.shouldRefuel(payableSource, message)) {
             for (uint256 i; i < adapters.length; i++) {
                 IAdapter currentAdapter = IAdapter(adapters[i]);
                 bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
@@ -340,9 +310,21 @@ contract Gateway is Auth, IGateway, IRecoverable {
         fuel = msg.value;
     }
 
+    function setPayableSource(address source) external {
+        payableSource = source;
+    }
+
+    function startBatch() external {}
+
+    function endBatch() external {}
+
     // --- Helpers ---
     /// @inheritdoc IGateway
-    function estimate(uint32 chainId, bytes calldata payload) external view returns (uint256[] memory perAdapter, uint256 total) {
+    function estimate(uint32 chainId, bytes calldata payload)
+        external
+        view
+        returns (uint256[] memory perAdapter, uint256 total)
+    {
         bytes memory proof = MessageLib.MessageProof({hash: keccak256(payload)}).serialize();
         uint256 messageCost = gasService.estimate(chainId, payload);
         uint256 proofCost = gasService.estimate(chainId, proof);

@@ -3,10 +3,9 @@ pragma solidity 0.8.28;
 
 uint8 constant MAX_ADAPTER_COUNT = 8;
 
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IGateway as ICommonGateway} from "src/common/interfaces/IGateway.sol";
 
-interface IGateway is IMessageHandler {
+interface IGateway is ICommonGateway {
     /// @dev Each adapter struct is packed with the quorum to reduce SLOADs on handle
     struct Adapter {
         /// @notice Starts at 1 and maps to id - 1 as the index on the adapters array
@@ -39,7 +38,6 @@ interface IGateway is IMessageHandler {
     event DisputeMessageRecovery(bytes32 messageHash, address adapter);
     event ExecuteMessageRecovery(bytes message, address adapter);
     event File(bytes32 indexed what, address[] adapters);
-    event File(bytes32 indexed what, address instance);
     event File(bytes32 indexed what, address caller, bool isAllowed);
     event ReceiveNativeTokens(address indexed sender, uint256 amount);
 
@@ -86,18 +84,6 @@ interface IGateway is IMessageHandler {
     /// @param  adapter Adapter's address that the recovery is targeting
     /// @param  message Hash of the message to be recovered
     function executeMessageRecovery(address adapter, bytes calldata message) external;
-
-    // --- Outgoing ---
-    /// @notice Sends outgoing messages to the Centrifuge Chain.
-    /// @dev    Sends 1 message to the first adapter with the full message,
-    ///         and n-1 messages to the other adapters with proofs (hash of message).
-    ///         This ensures message uniqueness (can only be executed on the destination once).
-    ///         Source could be either Centrifuge router or EoA or any contract
-    ///         that calls the ERC7540Vault contract directly.
-    /// @param  message Message to be send. Either the message itself or a hash value of it ( proof ).
-    /// @param  source Entry point of the transaction.
-    ///         Used to determine whether it is eligible for TX cost payment.
-    function send(uint32 chainId, bytes calldata message, address source) external payable;
 
     /// @notice Prepays for the TX cost for sending through the adapters
     ///         and Centrifuge Chain

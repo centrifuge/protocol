@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 
 /// @dev Vault requests and deposit/redeem bookkeeping per user
@@ -28,7 +27,7 @@ struct InvestmentState {
     bool pendingCancelRedeemRequest;
 }
 
-interface IInvestmentManager is IMessageHandler, IRecoverable {
+interface IInvestmentManager is IRecoverable {
     // --- Events ---
     event File(bytes32 indexed what, address data);
     event TriggerRedeemRequest(

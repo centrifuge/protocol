@@ -10,19 +10,10 @@ contract GatewayTest is BaseTest {
     using MessageLib for *;
     // --- Deployment ----
 
-    function testDeployment(address nonWard) public {
-        vm.assume(
-            nonWard != address(root) && nonWard != address(guardian) && nonWard != address(this)
-                && nonWard != address(gateway)
-        );
-
-        // redeploying within test to increase coverage
-        new Gateway(address(root), address(poolManager), address(investmentManager), address(gasService));
-
+    function testDeployment() public view {
         // values set correctly
-        assertEq(address(gateway.investmentManager()), address(investmentManager));
-        assertEq(address(gateway.poolManager()), address(poolManager));
         assertEq(address(gateway.root()), address(root));
+        assertEq(address(gateway.handler()), address(messageProcessor));
         assertEq(address(investmentManager.gateway()), address(gateway));
         assertEq(address(poolManager.gateway()), address(gateway));
 
@@ -35,7 +26,6 @@ contract GatewayTest is BaseTest {
         // permissions set correctly
         assertEq(gateway.wards(address(root)), 1);
         assertEq(gateway.wards(address(guardian)), 1);
-        assertEq(gateway.wards(nonWard), 0);
     }
 
     // --- Batched messages ---
@@ -44,7 +34,7 @@ contract GatewayTest is BaseTest {
         uint128 assetId = defaultAssetId + 1;
         MockERC20 newAsset = deployMockERC20("newAsset", "NEW", 18);
         bytes memory _addPool = MessageLib.NotifyPool(poolId).serialize();
-        // TODO: remove next line when registerAsset feature is supported
+        // TODO: Just remove next line when registerAsset feature is supported
         bytes memory _addAsset = abi.encodePacked(uint8(MessageType.RegisterAsset), assetId, address(newAsset));
         bytes memory _allowAsset = MessageLib.AllowAsset(poolId, bytes16(0), assetId).serialize();
 

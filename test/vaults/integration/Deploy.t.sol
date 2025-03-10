@@ -103,6 +103,7 @@ contract DeployTest is Test, Deployer {
         address root_ = address(root);
         address gateway_ = address(gateway);
         address guardian_ = address(guardian);
+        address messageProcessor_ = address(messageProcessor);
 
         assertEq(gasService.wards(gateway_), 1);
         assertEq(escrow.wards(poolManager_), 1);
@@ -122,9 +123,9 @@ contract DeployTest is Test, Deployer {
         assertEq(WardLike(restrictionManager).wards(root_), 1);
         assertEq(WardLike(trancheFactory).wards(root_), 1);
 
-        assertEq(root.wards(gateway_), 1);
-        assertEq(poolManager.wards(gateway_), 1);
-        assertEq(investmentManager.wards(gateway_), 1);
+        assertEq(root.wards(messageProcessor_), 1);
+        assertEq(poolManager.wards(messageProcessor_), 1);
+        assertEq(investmentManager.wards(messageProcessor_), 1);
 
         assertEq(gateway.wards(guardian_), 1);
         assertEq(root.wards(guardian_), 1);

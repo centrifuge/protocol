@@ -35,7 +35,7 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BiasedTarg
     //     routerAggregator.rely(user);
     // }
 
-    function routerAggregator_send(uint32 chainId, bytes memory message, address source) public {
-        routerAggregator.send(chainId, message, source);
+    function routerAggregator_send(uint32 chainId, bytes memory message) public {
+        routerAggregator.send(chainId, message);
     }
 }
