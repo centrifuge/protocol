@@ -7,7 +7,6 @@ broadcast/
 .env.*
 lcov.info
 .vscode
-lib/
 
 ## Recon
 /medusa
