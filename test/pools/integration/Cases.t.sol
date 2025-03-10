@@ -15,8 +15,6 @@ import {PoolId} from "src/pools/types/PoolId.sol";
 import {AccountId} from "src/pools/types/AccountId.sol";
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AccountType} from "src/pools/interfaces/IPoolManager.sol";
-import {previewShareClassId} from "src/pools/SingleShareClass.sol";
-
 import {Deployer} from "script/pools/Deployer.s.sol";
 
 import {MockVaults} from "test/pools/mocks/MockVaults.sol";
@@ -82,7 +80,7 @@ contract TestConfiguration is TestCommon {
         vm.prank(FM);
         poolId = poolRouter.createPool(USD, singleShareClass);
 
-        scId = previewShareClassId(poolId);
+        scId = singleShareClass.previewNextShareClassId(poolId);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](5), 0);
         cs[c++] = abi.encodeWithSelector(poolRouter.setPoolMetadata.selector, bytes("Testing pool"));

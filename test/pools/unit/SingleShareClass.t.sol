@@ -25,7 +25,8 @@ import {
 } from "src/pools/SingleShareClass.sol";
 
 uint64 constant POOL_ID = 42;
-ShareClassId constant SHARE_CLASS_ID = ShareClassId.wrap(bytes16(uint128(POOL_ID)));
+uint32 constant SC_ID_INDEX = 1;
+ShareClassId constant SC_ID = ShareClassId.wrap(bytes16(uint128(POOL_ID + SC_ID_INDEX)));
 address constant POOL_CURRENCY = address(840);
 AssetId constant USDC = AssetId.wrap(69);
 AssetId constant OTHER_STABLE = AssetId.wrap(1337);
@@ -43,7 +44,7 @@ bytes32 constant SC_SECOND_SALT = bytes32("AnotherExampleSalt");
 
 uint32 constant STORAGE_INDEX_EPOCH_ID = 3;
 uint32 constant STORAGE_INDEX_TOTAL_ISSUANCE = 5;
-uint32 constant STORAGE_INDEX_EPOCH_POINTERS = 8;
+uint32 constant STORAGE_INDEX_EPOCH_POINTERS = 10;
 
 contract PoolRegistryMock {
     function currency(PoolId) external pure returns (AssetId) {
@@ -68,7 +69,7 @@ contract OracleMock is IERC7726 {
             return baseAmount.mulDiv(DENO_USDC, DENO_POOL);
         } else if (base == POOL_CURRENCY && quote == OTHER_STABLE.addr()) {
             return baseAmount.mulDiv(DENO_OTHER_STABLE, DENO_POOL);
-        } else if (base == POOL_CURRENCY && quote == address(bytes20(ShareClassId.unwrap(SHARE_CLASS_ID)))) {
+        } else if (base == POOL_CURRENCY && quote == address(bytes20(ShareClassId.unwrap(SC_ID)))) {
             return baseAmount;
         } else {
             revert("Unsupported factor pair");
@@ -97,7 +98,7 @@ abstract contract SingleShareClassBaseTest is Test {
     PoolRegistryMock poolRegistryMock = new PoolRegistryMock();
 
     PoolId poolId = PoolId.wrap(POOL_ID);
-    ShareClassId scId = SHARE_CLASS_ID;
+    ShareClassId scId = SC_ID;
     address poolRegistryAddress = makeAddr("poolRegistry");
     bytes32 investor = bytes32("investor");
 
@@ -110,7 +111,7 @@ abstract contract SingleShareClassBaseTest is Test {
         shareClass = new SingleShareClassExt(IPoolRegistry(poolRegistryAddress), address(this));
 
         vm.expectEmit();
-        emit ISingleShareClass.AddedShareClass(poolId, scId, SC_NAME, SC_SYMBOL, SC_SALT);
+        emit ISingleShareClass.AddedShareClass(poolId, scId, SC_ID_INDEX, SC_NAME, SC_SYMBOL, SC_SALT);
         shareClass.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
 
         // Mock IPoolRegistry.currency call
@@ -206,7 +207,10 @@ contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
         vm.assume(nonWard != address(shareClass.poolRegistry()) && nonWard != address(this));
 
         assertEq(address(shareClass.poolRegistry()), poolRegistryAddress);
-        assertEq(ShareClassId.unwrap(shareClass.shareClassId(poolId)), ShareClassId.unwrap(scId));
+        assertEq(shareClass.epochId(poolId), 1);
+        assertEq(shareClass.shareClassCount(poolId), 1);
+        assertEq(shareClass.scIdToIndex(poolId, scId), SC_ID_INDEX);
+        assertEq(ShareClassId.unwrap(shareClass.indexToScId(poolId, SC_ID_INDEX)), ShareClassId.unwrap(scId));
 
         assertEq(shareClass.wards(address(this)), 1);
         assertEq(shareClass.wards(address(shareClass.poolRegistry())), 0);
@@ -258,6 +262,42 @@ contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
         assertEq(name, name_, "Metadata name mismatch");
         assertEq(symbol, symbol_, "Metadata symbol mismatch");
         assertEq(salt, salt_, "Salt mismatch");
+    }
+
+    function testPreviewNextShareClassId() public view notThisContract(poolRegistryAddress) {
+        ShareClassId preview = shareClass.previewNextShareClassId(poolId);
+        ShareClassId calc = ShareClassId.wrap(bytes16(uint128(POOL_ID + SC_ID_INDEX + 1)));
+
+        assertEq(ShareClassId.unwrap(preview), ShareClassId.unwrap(calc));
+    }
+
+    function testAddShareClass(string memory name, string memory symbol, bytes32 salt)
+        public
+        notThisContract(poolRegistryAddress)
+    {
+        vm.assume(bytes(name).length > 0 && bytes(name).length <= 128);
+        vm.assume(bytes(symbol).length > 0 && bytes(symbol).length <= 32);
+        vm.assume(salt != bytes32(0));
+
+        // Mock epochId to 5
+        uint32 mockEpochId = 42;
+        vm.store(
+            address(shareClass),
+            keccak256(abi.encode(poolId, uint256(STORAGE_INDEX_EPOCH_ID))),
+            bytes32(uint256(mockEpochId))
+        );
+
+        ShareClassId nextScId = shareClass.previewNextShareClassId(poolId);
+
+        emit ISingleShareClass.AddedShareClass(poolId, nextScId, 2, name, symbol, salt);
+        shareClass.addShareClass(poolId, name, symbol, salt, bytes(""));
+
+        assertEq(shareClass.shareClassCount(poolId), 2);
+        assertEq(ShareClassId.unwrap(shareClass.indexToScId(poolId, 2)), ShareClassId.unwrap(nextScId));
+        assertEq(shareClass.scIdToIndex(poolId, nextScId), 2);
+        assertEq(shareClass.epochId(poolId), mockEpochId, "epochId must not be re-initialized");
+
+        assert(ShareClassId.unwrap(shareClass.previewNextShareClassId(poolId)) != ShareClassId.unwrap(nextScId));
     }
 }
 
@@ -1211,18 +1251,13 @@ contract SingleShareClassRoundingEdgeCasesRedeem is SingleShareClassBaseTest {
 contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     using MathLib for uint128;
 
-    ShareClassId wrongShareClassId = ShareClassId.wrap(bytes16(uint128(POOL_ID + 1)));
+    ShareClassId wrongShareClassId = ShareClassId.wrap(bytes16(uint128(POOL_ID + 42)));
     address unauthorized = makeAddr("unauthorizedAddress");
 
     function testFile(bytes32 what) public {
         vm.assume(what != "poolRegistry");
         vm.expectRevert(abi.encodeWithSelector(ISingleShareClass.UnrecognizedFileParam.selector));
         shareClass.file(what, address(0));
-    }
-
-    function testSetShareClassIdAlreadySet() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.MaxShareClassNumberExceeded.selector, 1));
-        shareClass.addShareClass(poolId, "", "", bytes32(0), bytes(""));
     }
 
     function testRequestDepositWrongShareClassId() public {
