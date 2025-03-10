@@ -50,6 +50,13 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         poolManager = new PoolManager(IPoolRegistry(address(poolRegistry)), IAssetRegistry(address(assetRegistry)), IAccounting(address(accounting)), IHoldings(address(holdings)), IGateway(address(gateway)), address(this));
         poolRouter = new PoolRouter(IPoolManager(address(poolManager)));
         singleShareClass = new SingleShareClass(IPoolRegistry(address(poolRegistry)), address(this));
+
+        poolRegistry.rely(address(poolManager));
+        assetRegistry.rely(address(poolManager));
+        accounting.rely(address(poolManager));
+        holdings.rely(address(poolManager));
+        gateway.rely(address(poolManager));
+
     }
 
     /// === MODIFIERS === ///
