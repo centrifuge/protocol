@@ -5,6 +5,8 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {Root} from "src/common/Root.sol";
 import {GasService} from "src/common/GasService.sol";
+import {Guardian, ISafe} from "src/common/Guardian.sol";
+import {IGateway} from "src/common/Gateway.sol";
 
 import {Gateway} from "src/vaults/gateway/Gateway.sol";
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
@@ -15,12 +17,11 @@ import {RestrictedRedemptions} from "src/vaults/token/RestrictedRedemptions.sol"
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
 import {CentrifugeRouter} from "src/vaults/CentrifugeRouter.sol";
-import {Guardian} from "src/vaults/admin/Guardian.sol";
 import "forge-std/Script.sol";
 
 contract Deployer is Script {
     uint256 internal constant delay = 48 hours;
-    address adminSafe;
+    ISafe adminSafe;
     address[] adapters;
 
     Root public root;
@@ -61,7 +62,7 @@ contract Deployer is Script {
         gasService = new GasService(messageCost, proofCost, gasPrice, tokenPrice);
         gateway = new Gateway(address(root), address(poolManager), address(investmentManager), address(gasService));
         router = new CentrifugeRouter(address(routerEscrow), address(gateway), address(poolManager));
-        guardian = new Guardian(adminSafe, address(root), address(gateway));
+        guardian = new Guardian(adminSafe, root, IGateway(address(gateway)));
 
         _endorse();
         _rely();

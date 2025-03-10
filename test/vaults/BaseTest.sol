@@ -6,9 +6,10 @@ import "src/misc/interfaces/IERC20.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {ISafe} from "src/common/interfaces/IGuardian.sol";
+import {Root} from "src/common/Root.sol";
 
 // core contracts
-import {Root} from "src/common/Root.sol";
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
@@ -59,7 +60,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         // make yourself owner of the adminSafe
         address[] memory pausers = new address[](1);
         pausers[0] = self;
-        adminSafe = address(new MockSafe(pausers, 1));
+        adminSafe = new MockSafe(pausers, 1);
 
         // deploy core contracts
         deploy(address(this));

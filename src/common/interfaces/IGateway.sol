@@ -29,4 +29,9 @@ interface IGateway is IMessageHandler, IMessageSender {
 
     /// @notice Finalize batching messages and send the resulting batch message
     function endBatch() external;
+
+    /// @notice Cancel the recovery of a message.
+    /// @param  adapter Adapter that the recovery was targeting
+    /// @param  messageHash Hash of the message being disputed
+    function disputeMessageRecovery(address adapter, bytes32 messageHash) external;
 }

@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 uint8 constant MAX_ADAPTER_COUNT = 8;
 
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IGateway as ICommonGateway} from "src/common/interfaces/IGateway.sol";
 
 interface IGateway is IMessageHandler {
     /// @dev Each adapter struct is packed with the quorum to reduce SLOADs on handle

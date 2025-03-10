@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+interface ISafe {
+    function isOwner(address signer) external view returns (bool);
+}
+
 interface IGuardian {
+    error NotTheAuthorizedSafe();
+    error NotTheAuthorizedSafeOrItsOwner();
+
     /// @notice Pause the protocol
     /// @dev callable by both safe and owners
     function pause() external;

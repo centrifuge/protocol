@@ -60,6 +60,10 @@ contract Gateway is Auth, IGateway {
         isBatching = false;
     }
 
+    function disputeMessageRecovery(address, bytes32) external {
+        // TODO
+    }
+
     /// @inheritdoc IMessageHandler
     function handle(uint32 chainId, bytes memory message) external auth {
         // TODO: add some gateway stuff

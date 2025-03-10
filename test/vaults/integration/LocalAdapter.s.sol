@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {ISafe} from "src/common/interfaces/IGuardian.sol";
+
 import {Deployer} from "script/vaults/Deployer.sol";
 import {LocalAdapter} from "./LocalAdapter.sol";
 
@@ -13,7 +15,7 @@ contract LocalAdapterScript is Deployer {
 
         // NOTE: 0x361c43cd5Fd700923Aae9dED678851a201839fc6 is the H160 of Keyring::Admin in the Centrifuge Chain
         // repository
-        adminSafe = address(0x361c43cd5Fd700923Aae9dED678851a201839fc6);
+        adminSafe = ISafe(address(0x361c43cd5Fd700923Aae9dED678851a201839fc6));
 
         deploy(msg.sender);
         LocalAdapter adapter = new LocalAdapter();

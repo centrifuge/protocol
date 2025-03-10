@@ -1,34 +1,28 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Root} from "src/common/Root.sol";
-import {IGuardian} from "src/vaults/interfaces/IGuardian.sol";
-import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
-
-interface ISafe {
-    function isOwner(address signer) external view returns (bool);
-}
+import {IRoot} from "src/common/interfaces/IRoot.sol";
+import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
 
 contract Guardian is IGuardian {
-    Root public immutable root;
+    IRoot public immutable root;
     ISafe public immutable safe;
     IGateway public immutable gateway;
 
-    constructor(address safe_, address root_, address gateway_) {
-        root = Root(root_);
-        safe = ISafe(safe_);
-        gateway = IGateway(gateway_);
+    constructor(ISafe safe_, IRoot root_, IGateway gateway_) {
+        root = root_;
+        safe = safe_;
+        gateway = gateway_;
     }
 
     modifier onlySafe() {
-        require(msg.sender == address(safe), "Guardian/not-the-authorized-safe");
+        require(msg.sender == address(safe), NotTheAuthorizedSafe());
         _;
     }
 
     modifier onlySafeOrOwner() {
-        require(
-            msg.sender == address(safe) || _isSafeOwner(msg.sender), "Guardian/not-the-authorized-safe-or-its-owner"
-        );
+        require(msg.sender == address(safe) || _isSafeOwner(msg.sender), NotTheAuthorizedSafeOrItsOwner());
         _;
     }
 

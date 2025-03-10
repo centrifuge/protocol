@@ -1,25 +1,28 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {ERC20} from "src/misc/ERC20.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
+
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {Guardian} from "src/common/Guardian.sol";
+import {Root} from "src/common/Root.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
+
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
 import {Gateway} from "src/vaults/gateway/Gateway.sol";
 import {MockCentrifugeChain} from "test/vaults/mocks/MockCentrifugeChain.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
-import {Guardian} from "src/vaults/admin/Guardian.sol";
 import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
 import {MockSafe} from "test/vaults/mocks/MockSafe.sol";
 import {PoolManager, Pool} from "src/vaults/PoolManager.sol";
-import {ERC20} from "src/misc/ERC20.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 import {ERC7540VaultTest} from "test/vaults/unit/ERC7540Vault.t.sol";
 import {PermissionlessAdapter} from "test/vaults/mocks/PermissionlessAdapter.sol";
-import {Root} from "src/common/Root.sol";
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
 import {AxelarScript} from "script/vaults/Axelar.s.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import "script/vaults/Deployer.sol";
-import "src/misc/libraries/MathLib.sol";
 import "forge-std/Test.sol";
 
 interface ApproveLike {
@@ -57,8 +60,8 @@ contract DeployTest is Test, Deployer {
         accounts[0] = makeAddr("account1");
         accounts[1] = makeAddr("account2");
         accounts[2] = makeAddr("account3");
-        adminSafe = address(new MockSafe(accounts, 1));
-        fakeGuardian = new Guardian(adminSafe, address(root), address(gateway));
+        adminSafe = new MockSafe(accounts, 1);
+        fakeGuardian = new Guardian(adminSafe, root, IGateway(address(gateway)));
 
         removeDeployerAccess(address(adapter), address(this));
 
@@ -85,14 +88,14 @@ contract DeployTest is Test, Deployer {
     }
 
     function testAdminSetup(address nonAdmin, address nonPauser) public view {
-        vm.assume(nonAdmin != adminSafe);
+        vm.assume(nonAdmin != address(adminSafe));
         vm.assume(nonPauser != accounts[0] && nonPauser != accounts[1] && nonPauser != accounts[2]);
 
-        assertEq(address(fakeGuardian.safe()), adminSafe);
+        assertEq(address(fakeGuardian.safe()), address(adminSafe));
         for (uint256 i = 0; i < accounts.length; i++) {
-            assertEq(MockSafe(adminSafe).isOwner(accounts[i]), true);
+            assertEq(adminSafe.isOwner(accounts[i]), true);
         }
-        assertEq(MockSafe(adminSafe).isOwner(nonPauser), false);
+        assertEq(adminSafe.isOwner(nonPauser), false);
     }
 
     function testAccessRightsAssignment() public {
