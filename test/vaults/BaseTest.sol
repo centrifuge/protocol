@@ -49,12 +49,13 @@ contract BaseTest is Deployer, GasSnapshot, Test {
     uint256 constant GATEWAY_INITIAL_BALACE = 10 ether;
 
     // default values
-    uint128 public defaultAssetId = 1;
+    uint32 public defaultChainId = 1;
+    uint128 public defaultAssetId = uint128(bytes16(abi.encodePacked(uint32(defaultChainId), uint32(1))));
     uint128 public defaultPrice = 1 * 10 ** 18;
     uint8 public defaultDecimals = 8;
 
     function setUp() public virtual {
-        vm.chainId(1);
+        vm.chainId(defaultChainId);
 
         // make yourself owner of the adminSafe
         address[] memory pausers = new address[](1);
@@ -142,7 +143,8 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         address asset,
         uint256 assetTokenId,
         uint32 destinationChain
-    ) public returns (address) {
+    ) public returns (address vaultAddress) {
+        // TODO: Return assetId too
         uint128 assetId;
         if (poolManager.idToAsset(assetId) == address(0)) {
             assetId = poolManager.registerAsset(asset, assetTokenId, destinationChain);
@@ -163,9 +165,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
 
         poolManager.updateTranchePrice(poolId, trancheId, assetId, uint128(10 ** 18), uint64(block.timestamp));
 
-        address vaultAddress = poolManager.deployVault(poolId, trancheId, asset);
-
-        return vaultAddress;
+        vaultAddress = poolManager.deployVault(poolId, trancheId, asset);
     }
 
     function deployVault(

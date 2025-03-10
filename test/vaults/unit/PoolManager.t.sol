@@ -181,11 +181,9 @@ contract PoolManagerTest is BaseTest {
         uint8 decimals,
         string memory tokenName,
         string memory tokenSymbol,
-        bytes16 trancheId,
-        uint128 assetId
+        bytes16 trancheId
     ) public {
         decimals = uint8(bound(decimals, 2, 18));
-        vm.assume(assetId > 0);
         vm.assume(bytes(tokenName).length <= 128);
         vm.assume(bytes(tokenSymbol).length <= 32);
 
@@ -200,8 +198,9 @@ contract PoolManagerTest is BaseTest {
 
         vm.expectRevert(bytes("PoolManager/asset-not-supported"));
         poolManager.deployVault(poolId, trancheId, address(erc20));
-        centrifugeChain.allowAsset(poolId, assetId);
 
+        poolManager.registerAsset(address(erc20), 0, 0); // register asset
+        poolManager.allowAsset(poolId, defaultAssetId);
         address vaultAddress = poolManager.deployVault(poolId, trancheId, address(erc20));
         address vault_ = poolManager.getVault(poolId, trancheId, address(erc20));
 

@@ -655,20 +655,20 @@ contract DepositTest is BaseTest {
         uint128 price = 2 * 10 ** 18;
         address vault_ = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
+        uint64 poolId = vault.poolId();
+        bytes16 trancheId = vault.trancheId();
         centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), defaultAssetId, price, uint64(block.timestamp)
+            poolId, trancheId, defaultAssetId, price, uint64(block.timestamp)
         );
         erc20.mint(self, amount);
         erc20.approve(vault_, amount);
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
+        centrifugeChain.updateMember(poolId, trancheId, self, type(uint64).max);
 
         vault.requestDeposit(amount, self, self);
 
         assertEq(erc20.balanceOf(address(escrow)), amount);
         assertEq(erc20.balanceOf(address(self)), 0);
 
-        uint64 poolId = vault.poolId();
-        bytes16 trancheId = vault.trancheId();
         vm.expectRevert(bytes("InvestmentManager/no-pending-cancel-deposit-request"));
         centrifugeChain.isFulfilledCancelDepositRequest(
             poolId, trancheId, self.toBytes32(), defaultAssetId, uint128(amount)
