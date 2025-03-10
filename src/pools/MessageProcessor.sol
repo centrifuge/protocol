@@ -158,7 +158,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     }
 
     /// @inheritdoc IMessageHandler
-    function handle(bytes memory message) external auth {
+    function handle(uint32, /* chainId */ bytes memory message) external auth {
         MessageType kind = message.messageType();
 
         if (kind == MessageType.RegisterAsset) {

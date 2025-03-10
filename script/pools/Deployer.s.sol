@@ -9,7 +9,6 @@ import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 import {Gateway} from "src/common/Gateway.sol";
 
 import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
-import {IAdapter} from "src/pools/interfaces/IAdapter.sol";
 import {PoolRegistry} from "src/pools/PoolRegistry.sol";
 import {SingleShareClass} from "src/pools/SingleShareClass.sol";
 import {Holdings} from "src/pools/Holdings.sol";

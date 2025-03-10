@@ -61,10 +61,10 @@ contract Gateway is Auth, IGateway {
     }
 
     /// @inheritdoc IMessageHandler
-    function handle(bytes memory message) external auth {
+    function handle(uint32 chainId, bytes memory message) external auth {
         // TODO: add some gateway stuff
         while (message.length > 0) {
-            handler.handle(message);
+            handler.handle(chainId, message);
 
             uint16 messageLength = message.messageLength();
 
@@ -74,6 +74,7 @@ contract Gateway is Auth, IGateway {
             }
 
             // TODO: optimize with assembly to just shift the pointer in the array
+            // Could we use calldata message in the signature?
             message = message.slice(messageLength, message.length - messageLength);
         }
     }

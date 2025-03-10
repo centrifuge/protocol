@@ -3,7 +3,9 @@ pragma solidity 0.8.28;
 
 uint8 constant MAX_ADAPTER_COUNT = 8;
 
-interface IGateway {
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+
+interface IGateway is IMessageHandler {
     /// @dev Each adapter struct is packed with the quorum to reduce SLOADs on handle
     struct Adapter {
         /// @notice Starts at 1 and maps to id - 1 as the index on the adapters array
@@ -66,12 +68,6 @@ interface IGateway {
     /// @param caller Address of the payer allowed to top-up
     /// @param isAllower Whether the `caller` is allowed to top-up or not
     function file(bytes32 what, address caller, bool isAllower) external;
-
-    // --- Incoming ---
-    /// @notice Handles incoming messages, proofs, and recoveries.
-    /// @dev    Assumes adapters ensure messages cannot be confirmed more than once.
-    /// @param  payload Incoming message from the Centrifuge Chain passed through adapters.
-    function handle(bytes calldata payload) external;
 
     /// @notice Governance on Centrifuge Chain can initiate message recovery. After the challenge period,
     ///         the recovery can be executed. If a malign adapter initiates message recovery, governance on
@@ -141,17 +137,14 @@ interface IGateway {
     /// @return perAdapter An array of cost values per adapter. Each value is how much it's going to cost
     ///         for a message / proof to be passed through one router and executed on Centrifuge Chain
     /// @return total Total cost for sending one message and corresponding proofs on through all adapters
-    function estimate(bytes calldata payload) external view returns (uint256[] memory perAdapter, uint256 total);
+    function estimate(uint32 chainId, bytes calldata payload)
+        external
+        view
+        returns (uint256[] memory perAdapter, uint256 total);
 
     /// @notice Used to check current state of the `caller` and whether they are allowed to call
     ///         `this.topUp` or not.
     /// @param  caller Address to check
     /// @return isAllowed Whether the `caller` `isAllowed to call `this.topUp()`
     function payers(address caller) external view returns (bool isAllowed);
-}
-
-interface IMessageHandler {
-    /// @notice Handling incoming messages from Centrifuge Chain.
-    /// @param  message Incoming message
-    function handle(bytes memory message) external;
 }

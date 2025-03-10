@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {ERC20} from "src/misc/ERC20.sol";
 import {IERC20Wrapper, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
-import {Mock} from "test/vaults/mocks/Mock.sol";
+import {Mock} from "test/common/mocks/Mock.sol";
 import "forge-std/Test.sol";
 
 contract MockERC20Wrapper is ERC20, Mock, IERC20Wrapper {

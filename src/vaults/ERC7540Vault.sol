@@ -5,8 +5,8 @@ import {Auth} from "src/misc/Auth.sol";
 import {EIP712Lib} from "src/misc/libraries/EIP712Lib.sol";
 import {SignatureLib} from "src/misc/libraries/SignatureLib.sol";
 
-import {IRoot} from "src/vaults/interfaces/IRoot.sol";
-import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
+import {IRoot} from "src/common/interfaces/IRoot.sol";
+import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IInvestmentManager} from "src/vaults/interfaces/IInvestmentManager.sol";
