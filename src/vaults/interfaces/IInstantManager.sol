@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IMessageHandler} from "src/vaults/interfaces/gateway/IGateway.sol";
-import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
+import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 
 interface IInstantManager is IMessageHandler, IRecoverable {
     // --- Events ---
@@ -24,8 +24,4 @@ interface IInstantManager is IMessageHandler, IRecoverable {
     function maxMint(address vault, address owner) external view returns (uint256);
     function previewMint(address vault, address sender, uint256 shares) external view returns (uint256);
     function mint(address vault, uint256 shares, address receiver, address owner) external returns (uint256);
-
-    /// @notice Handle incoming messages from Centrifuge. Parse the function params and forward to the corresponding
-    ///         handler function.
-    function handle(bytes calldata message) external;
 }

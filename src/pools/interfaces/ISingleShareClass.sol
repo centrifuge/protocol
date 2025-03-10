@@ -19,12 +19,13 @@ interface ISingleShareClass is IShareClassManager {
     error ApprovalRequired();
     error AlreadyApproved();
     error UnrecognizedFileParam();
-    error ApprovalRatioOutOfBounds();
+    error ZeroApprovalAmount();
     error InvalidMetadataSize();
     error InvalidMetadataName();
     error InvalidMetadataSymbol();
     error InvalidSalt();
     error AlreadyUsedSalt();
+    error RevokeMoreThanIssued();
 
     /// @notice Emits new shares for the given identifier based on the provided NAV up to the desired epoch.
     ///

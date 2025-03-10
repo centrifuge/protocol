@@ -2,9 +2,9 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
-import {IRoot} from "src/vaults/interfaces/IRoot.sol";
+import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {EIP712Lib} from "src/misc/libraries/EIP712Lib.sol";
-import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
+import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {SignatureLib} from "src/misc/libraries/SignatureLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";

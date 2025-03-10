@@ -2,7 +2,7 @@
 pragma solidity >=0.5.0;
 
 import {IERC7575} from "src/vaults/interfaces/IERC7575.sol";
-import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
+import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 
 interface IERC7540Operator {
     /**

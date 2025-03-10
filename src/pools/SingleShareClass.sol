@@ -16,20 +16,20 @@ import {AssetId} from "src/pools/types/AssetId.sol";
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 
 struct EpochAmounts {
-    /// @dev Percentage of approved deposits
-    D18 depositApprovalRate;
-    /// @dev Percentage of approved redemptions
-    D18 redeemApprovalRate;
+    /// @dev Total pending asset amount of deposit asset
+    uint128 depositPending;
     /// @dev Total approved asset amount of deposit asset
-    uint128 depositAssetAmount;
+    uint128 depositApproved;
     /// @dev Total approved pool amount of deposit asset
-    uint128 depositPoolAmount;
+    uint128 depositPool;
     /// @dev Total number of share class tokens issued
-    uint128 depositSharesIssued;
-    /// @dev Total asset amount of revoked share class tokens
-    uint128 redeemAssetAmount;
+    uint128 depositShares;
+    /// @dev Amount of shares pending to be redeemed
+    uint128 redeemPending;
     /// @dev Total approved amount of redeemed share class tokens
-    uint128 redeemSharesRevoked;
+    uint128 redeemApproved;
+    /// @dev Total asset amount of revoked share class tokens
+    uint128 redeemAssets;
 }
 
 struct UserOrder {
@@ -172,12 +172,11 @@ contract SingleShareClass is Auth, ISingleShareClass {
     function approveDeposits(
         PoolId poolId,
         ShareClassId shareClassId_,
-        D18 approvalRatio,
+        uint128 maxApproval,
         AssetId paymentAssetId,
         IERC7726 valuation
     ) external auth returns (uint128 approvedAssetAmount, uint128 approvedPoolAmount) {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
-        require(approvalRatio.inner() > 0 && approvalRatio.inner() <= 1e18, ApprovalRatioOutOfBounds());
 
         // Advance epochId if it has not been advanced within this transaction (e.g. in case of multiCall context)
         uint32 approvalEpochId = _advanceEpoch(poolId);
@@ -187,10 +186,10 @@ contract SingleShareClass is Auth, ISingleShareClass {
             epochPointers[shareClassId_][paymentAssetId].latestDepositApproval != approvalEpochId, AlreadyApproved()
         );
 
-        // Reduce pending
-        approvedAssetAmount = approvalRatio.mulUint128(pendingDeposit[shareClassId_][paymentAssetId]);
-        pendingDeposit[shareClassId_][paymentAssetId] -= approvedAssetAmount;
-        uint128 pendingDepositPostUpdate = pendingDeposit[shareClassId_][paymentAssetId];
+        // Limit in case approved > pending due to race condition of FM approval and async incoming requests
+        uint128 _pendingDeposit = pendingDeposit[shareClassId_][paymentAssetId];
+        approvedAssetAmount = maxApproval.min(_pendingDeposit).toUint128();
+        require(approvedAssetAmount > 0, ZeroApprovalAmount());
 
         // Increase approved
         address poolCurrency = poolRegistry.currency(poolId).addr();
@@ -199,31 +198,33 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
         // Update epoch data
         EpochAmounts storage epochAmounts_ = epochAmounts[shareClassId_][paymentAssetId][approvalEpochId];
-        epochAmounts_.depositApprovalRate = approvalRatio;
-        epochAmounts_.depositAssetAmount = approvedAssetAmount;
-        epochAmounts_.depositPoolAmount = approvedPoolAmount;
+        epochAmounts_.depositApproved = approvedAssetAmount;
+        epochAmounts_.depositPool = approvedPoolAmount;
+        epochAmounts_.depositPending = _pendingDeposit;
         epochPointers[shareClassId_][paymentAssetId].latestDepositApproval = approvalEpochId;
+
+        // Reduce pending
+        pendingDeposit[shareClassId_][paymentAssetId] -= approvedAssetAmount;
+        _pendingDeposit -= approvedAssetAmount;
 
         emit ApprovedDeposits(
             poolId,
             shareClassId_,
             approvalEpochId,
             paymentAssetId,
-            approvalRatio,
             approvedPoolAmount,
             approvedAssetAmount,
-            pendingDepositPostUpdate
+            _pendingDeposit
         );
     }
 
     /// @inheritdoc IShareClassManager
-    function approveRedeems(PoolId poolId, ShareClassId shareClassId_, D18 approvalRatio, AssetId payoutAssetId)
+    function approveRedeems(PoolId poolId, ShareClassId shareClassId_, uint128 maxApproval, AssetId payoutAssetId)
         external
         auth
         returns (uint128 approvedShareAmount, uint128 pendingShareAmount)
     {
         require(shareClassId_ == shareClassId[poolId], ShareClassNotFound());
-        require(approvalRatio.inner() > 0 && approvalRatio.inner() <= 1e18, ApprovalRatioOutOfBounds());
 
         // Advance epochId if it has not been advanced within this transaction (e.g. in case of multiCall context)
         uint32 approvalEpochId = _advanceEpoch(poolId);
@@ -231,15 +232,19 @@ contract SingleShareClass is Auth, ISingleShareClass {
         // Block approvals for the same asset in the same epoch
         require(epochPointers[shareClassId_][payoutAssetId].latestRedeemApproval != approvalEpochId, AlreadyApproved());
 
-        // Reduce pending
-        approvedShareAmount = approvalRatio.mulUint128(pendingRedeem[shareClassId_][payoutAssetId]);
-        pendingRedeem[shareClassId_][payoutAssetId] -= approvedShareAmount;
+        // Limit in case approved > pending due to race condition of FM approval and async incoming requests
         pendingShareAmount = pendingRedeem[shareClassId_][payoutAssetId];
+        approvedShareAmount = maxApproval.min(pendingShareAmount).toUint128();
+        require(approvedShareAmount > 0, ZeroApprovalAmount());
 
         // Update epoch data
         EpochAmounts storage epochAmounts_ = epochAmounts[shareClassId_][payoutAssetId][approvalEpochId];
-        epochAmounts_.redeemApprovalRate = approvalRatio;
-        epochAmounts_.redeemSharesRevoked = approvedShareAmount;
+        epochAmounts_.redeemApproved = approvedShareAmount;
+        epochAmounts_.redeemPending = pendingShareAmount;
+
+        // Reduce pending
+        pendingRedeem[shareClassId_][payoutAssetId] -= approvedShareAmount;
+        pendingShareAmount -= approvedShareAmount;
 
         epochPointers[shareClassId_][payoutAssetId].latestRedeemApproval = approvalEpochId;
 
@@ -248,7 +253,6 @@ contract SingleShareClass is Auth, ISingleShareClass {
             shareClassId_,
             approvalEpochId,
             payoutAssetId,
-            approvalRatio,
             approvedShareAmount,
             pendingShareAmount
         );
@@ -283,18 +287,18 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
         for (uint32 epochId_ = startEpochId; epochId_ <= endEpochId; epochId_++) {
             // Skip redeem epochs
-            if (epochAmounts[shareClassId_][depositAssetId][epochId_].depositApprovalRate.inner() == 0) {
+            if (epochAmounts[shareClassId_][depositAssetId][epochId_].depositApproved == 0) {
                 continue;
             }
 
-            uint128 newShareAmount = navPerShare.reciprocalMulUint128(
-                epochAmounts[shareClassId_][depositAssetId][epochId_].depositPoolAmount
+            uint128 issuedShareAmount = navPerShare.reciprocalMulUint128(
+                epochAmounts[shareClassId_][depositAssetId][epochId_].depositPool
             );
-            epochAmounts[shareClassId_][depositAssetId][epochId_].depositSharesIssued = newShareAmount;
-            totalIssuance_ += newShareAmount;
+            epochAmounts[shareClassId_][depositAssetId][epochId_].depositShares = issuedShareAmount;
+            totalIssuance_ += issuedShareAmount;
             uint128 nav = navPerShare.mulUint128(totalIssuance_);
 
-            emit IssuedShares(poolId, shareClassId_, epochId_, navPerShare, nav, newShareAmount);
+            emit IssuedShares(poolId, shareClassId_, epochId_, navPerShare, nav, issuedShareAmount);
         }
 
         totalIssuance[shareClassId_] = totalIssuance_;
@@ -340,9 +344,11 @@ contract SingleShareClass is Auth, ISingleShareClass {
             EpochAmounts storage epochAmounts_ = epochAmounts[shareClassId_][payoutAssetId][epochId_];
 
             // Skip deposit epochs
-            if (epochAmounts_.redeemApprovalRate.inner() == 0) {
+            if (epochAmounts_.redeemApproved == 0) {
                 continue;
             }
+
+            require(epochAmounts_.redeemApproved <= totalIssuance_, RevokeMoreThanIssued());
 
             payoutPoolAmount += _revokeEpochShares(
                 poolId,
@@ -355,8 +361,8 @@ contract SingleShareClass is Auth, ISingleShareClass {
                 totalIssuance_,
                 epochId_
             );
-            payoutAssetAmount += epochAmounts_.redeemAssetAmount;
-            totalIssuance_ -= epochAmounts_.redeemSharesRevoked;
+            payoutAssetAmount += epochAmounts_.redeemAssets;
+            totalIssuance_ -= epochAmounts_.redeemApproved;
         }
 
         totalIssuance[shareClassId_] = totalIssuance_;
@@ -392,19 +398,19 @@ contract SingleShareClass is Auth, ISingleShareClass {
             EpochAmounts storage epochAmounts_ = epochAmounts[shareClassId_][depositAssetId][epochId_];
 
             // Skip redeem epochs
-            if (epochAmounts_.depositApprovalRate.inner() == 0) {
+            if (epochAmounts_.depositApproved == 0) {
                 continue;
             }
 
             // Skip epoch if user cannot claim
-            uint128 approvedAssetAmount = epochAmounts_.depositApprovalRate.mulUint128(userOrder.pending);
+            uint128 approvedAssetAmount = userOrder.pending.mulDiv(epochAmounts_.depositApproved, epochAmounts_.depositPending).toUint128();
             if (approvedAssetAmount == 0) {
                 emit ClaimedDeposit(poolId, shareClassId_, epochId_, investor, depositAssetId, 0, userOrder.pending, 0);
                 continue;
             }
 
             uint128 claimableShareAmount = uint256(approvedAssetAmount).mulDiv(
-                epochAmounts_.depositSharesIssued, epochAmounts_.depositAssetAmount
+                epochAmounts_.depositShares, epochAmounts_.depositApproved
             ).toUint128();
 
             if (claimableShareAmount > 0) {
@@ -459,19 +465,19 @@ contract SingleShareClass is Auth, ISingleShareClass {
             EpochAmounts storage epochAmounts_ = epochAmounts[shareClassId_][payoutAssetId][epochId_];
 
             // Skip deposit epochs
-            if (epochAmounts_.redeemApprovalRate.inner() == 0) {
+            if (epochAmounts_.redeemApproved == 0) {
                 continue;
             }
 
             // Skip epoch if user cannot claim
-            uint128 approvedShareAmount = epochAmounts_.redeemApprovalRate.mulUint128(userOrder.pending);
+            uint128 approvedShareAmount = userOrder.pending.mulDiv(epochAmounts_.redeemApproved, epochAmounts_.redeemPending).toUint128();
             if (approvedShareAmount == 0) {
                 emit ClaimedRedeem(poolId, shareClassId_, epochId_, investor, payoutAssetId, 0, userOrder.pending, 0);
                 continue;
             }
 
             uint128 claimableAssetAmount = uint256(approvedShareAmount).mulDiv(
-                epochAmounts_.redeemAssetAmount, epochAmounts_.redeemSharesRevoked
+                epochAmounts_.redeemAssets, epochAmounts_.redeemApproved
             ).toUint128();
 
             if (claimableAssetAmount > 0) {
@@ -554,19 +560,19 @@ contract SingleShareClass is Auth, ISingleShareClass {
         uint128 totalIssuance_,
         uint32 epochId_
     ) private returns (uint128 payoutPoolAmount) {
-        payoutPoolAmount = navPerShare.mulUint128(epochAmounts_.redeemSharesRevoked);
-        epochAmounts_.redeemAssetAmount =
+        payoutPoolAmount = navPerShare.mulUint128(epochAmounts_.redeemApproved);
+        epochAmounts_.redeemAssets =
             IERC7726(valuation).getQuote(payoutPoolAmount, poolCurrency, payoutAssetId.addr()).toUint128();
 
-        uint128 nav = navPerShare.mulUint128(totalIssuance_ - epochAmounts_.redeemSharesRevoked);
+        uint128 nav = navPerShare.mulUint128(totalIssuance_ - epochAmounts_.redeemApproved);
         emit RevokedShares(
             poolId,
             shareClassId_,
             epochId_,
             navPerShare,
             nav,
-            epochAmounts_.redeemSharesRevoked,
-            epochAmounts_.redeemAssetAmount
+            epochAmounts_.redeemApproved,
+            epochAmounts_.redeemAssets
         );
     }
 

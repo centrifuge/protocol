@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
+import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
@@ -11,6 +11,7 @@ import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IInstantManager} from "src/vaults/interfaces/IInstantManager.sol";
 import {PriceConversionLib} from "src/vaults/libraries/PriceConversionLib.sol";
+import {IMessageHandler} from "src/vaults/interfaces/IInvestmentManager.sol";
 
 /// @title  Instant Manager
 /// @notice This is the main contract vaults interact with for
@@ -107,8 +108,8 @@ contract InstantManager is Auth, IInstantManager {
     }
 
     // --- Admin actions ---
-    /// @inheritdoc IInstantManager
-    function handle(bytes calldata message) public auth {
+    /// @inheritdoc IMessageHandler
+    function handle(uint32 chainId, bytes calldata message) public auth {
         // TODO: updateMaxPriceAge handler
     }
 }
