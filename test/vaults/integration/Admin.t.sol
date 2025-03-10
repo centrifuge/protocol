@@ -12,6 +12,8 @@ contract AdminTest is BaseTest {
     using MessageLib for *;
     using CastLib for *;
 
+    uint32 constant CHAIN_ID = 1;
+
     function testDeployment() public view {
         // values set correctly
         assertEq(address(root.escrow()), address(escrow));
@@ -312,7 +314,7 @@ contract AdminTest is BaseTest {
 
     function _send(MockAdapter adapter, bytes memory message) internal {
         vm.prank(address(adapter));
-        gateway.handle(1, message);
+        gateway.handle(CHAIN_ID, message);
     }
 
     function _formatMessageProof(bytes memory message) internal pure returns (bytes memory) {
