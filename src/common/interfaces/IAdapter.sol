@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 interface IAdapter {
-    /// @notice Send a payload to Centrifuge Chain
+    /// @notice Send a payload to the destination chain
     function send(uint32 chainId, bytes calldata payload) external;
 
     /// @notice Estimate the total cost in native gas tokens

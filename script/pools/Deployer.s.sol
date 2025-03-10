@@ -57,7 +57,7 @@ contract Deployer is Script {
         _initialConfig();
     }
 
-    function _file() public {
+    function _file() private {
         poolManager.file("sender", address(messageProcessor));
         gateway.file("handle", address(messageProcessor));
     }
