@@ -198,17 +198,17 @@
     "functions": [
       {
         "signature": "addCredit(uint32,uint128)",
-        "actor": "actor",
+        "actor": "admin",
         "mode": "normal"
       },
       {
         "signature": "addDebit(uint32,uint128)",
-        "actor": "actor",
+        "actor": "admin",
         "mode": "normal"
       },
       {
         "signature": "addShareClass(string,string,bytes32,bytes)",
-        "actor": "actor",
+        "actor": "admin",
         "mode": "normal"
       },
       {
@@ -218,17 +218,17 @@
       },
       {
         "signature": "approveDeposits(bytes16,uint128,uint128,address)",
-        "actor": "actor",
+        "actor": "admin",
         "mode": "normal"
       },
       {
         "signature": "approveRedeems(bytes16,uint128,uint128)",
-        "actor": "actor",
+        "actor": "admin",
         "mode": "normal"
       },
       {
         "signature": "cancelDepositRequest(uint64,bytes16,bytes32,uint128)",
-        "actor": "actor",
+        "actor": "admin",
         "mode": "normal"
       },
       {
@@ -248,22 +248,22 @@
       },
       {
         "signature": "createAccount(uint32,bool)",
-        "actor": "actor",
+        "actor": "admin",
         "mode": "normal"
       },
       {
         "signature": "createHolding(bytes16,uint128,address,uint24)",
-        "actor": "actor",
+        "actor": "admin",
         "mode": "normal"
       },
       {
         "signature": "createPool(address,uint128,address)",
-        "actor": "actor",
+        "actor": "admin",
         "mode": "normal"
       },
       {
         "signature": "decreaseHolding(bytes16,uint128,address,uint128)",
-        "actor": "actor",
+        "actor": "admin",
         "mode": "normal"
       },
       {
@@ -273,37 +273,37 @@
       },
       {
         "signature": "depositRequest(uint64,bytes16,bytes32,uint128,uint128)",
-        "actor": "actor",
+        "actor": "admin",
         "mode": "normal"
       },
       {
         "signature": "file(bytes32,address)",
         "actor": "actor",
-        "mode": "normal"
+        "mode": "fail"
       },
       {
         "signature": "increaseHolding(bytes16,uint128,address,uint128)",
-        "actor": "actor",
+        "actor": "admin",
         "mode": "normal"
       },
       {
         "signature": "issueShares(bytes16,uint128,uint128)",
-        "actor": "actor",
+        "actor": "admin",
         "mode": "normal"
       },
       {
         "signature": "lock()",
-        "actor": "actor",
+        "actor": "admin",
         "mode": "normal"
       },
       {
         "signature": "notifyPool(uint32)",
-        "actor": "actor",
+        "actor": "admin",
         "mode": "normal"
       },
       {
         "signature": "notifyShareClass(uint32,bytes16,bytes32)",
-        "actor": "actor",
+        "actor": "admin",
         "mode": "normal"
       },
       {
@@ -323,7 +323,7 @@
       },
       {
         "signature": "revokeShares(bytes16,uint128,uint128,address)",
-        "actor": "actor",
+        "actor": "admin",
         "mode": "normal"
       },
       {
@@ -338,12 +338,12 @@
       },
       {
         "signature": "setPoolMetadata(bytes)",
-        "actor": "actor",
+        "actor": "admin",
         "mode": "normal"
       },
       {
         "signature": "unlock(uint64,address)",
-        "actor": "actor",
+        "actor": "admin",
         "mode": "normal"
       },
       {
@@ -618,7 +618,7 @@
       },
       {
         "signature": "revokeSharesUntilEpoch(uint64,bytes16,uint128,uint128,address,uint32)",
-        "actor": "actor",
+        "actor": "admin",
         "mode": "normal"
       },
       {
