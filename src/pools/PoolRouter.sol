@@ -87,16 +87,16 @@ contract PoolRouter is Multicall, IPoolRouter {
     }
 
     /// @inheritdoc IPoolRouter
-    function approveDeposits(ShareClassId scId, AssetId paymentAssetId, D18 approvalRatio, IERC7726 valuation)
+    function approveDeposits(ShareClassId scId, AssetId paymentAssetId, uint128 maxApproval, IERC7726 valuation)
         external
         protected
     {
-        poolManager.approveDeposits(scId, paymentAssetId, approvalRatio, valuation);
+        poolManager.approveDeposits(scId, paymentAssetId, maxApproval, valuation);
     }
 
     /// @inheritdoc IPoolRouter
-    function approveRedeems(ShareClassId scId, AssetId payoutAssetId, D18 approvalRatio) external protected {
-        poolManager.approveRedeems(scId, payoutAssetId, approvalRatio);
+    function approveRedeems(ShareClassId scId, AssetId payoutAssetId, uint128 maxApproval) external protected {
+        poolManager.approveRedeems(scId, payoutAssetId, maxApproval);
     }
 
     /// @inheritdoc IPoolRouter

@@ -19,7 +19,7 @@ interface ISingleShareClass is IShareClassManager {
     error ApprovalRequired();
     error AlreadyApproved();
     error UnrecognizedFileParam();
-    error ApprovalRatioOutOfBounds();
+    error ZeroApprovalAmount();
     error InvalidMetadataSize();
     error InvalidMetadataName();
     error InvalidMetadataSymbol();

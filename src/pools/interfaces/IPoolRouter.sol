@@ -43,11 +43,11 @@ interface IPoolRouter {
     function addShareClass(string calldata name, string calldata symbol, bytes32 salt, bytes calldata data) external;
 
     /// @notice See counterpart in PoolManager contract
-    function approveDeposits(ShareClassId scId, AssetId paymentAssetId, D18 approvalRatio, IERC7726 valuation)
+    function approveDeposits(ShareClassId scId, AssetId paymentAssetId, uint128 maxApproval, IERC7726 valuation)
         external;
 
     /// @notice See counterpart in PoolManager contract
-    function approveRedeems(ShareClassId scId, AssetId payoutAssetId, D18 approvalRatio) external;
+    function approveRedeems(ShareClassId scId, AssetId payoutAssetId, uint128 maxApproval) external;
 
     /// @notice See counterpart in PoolManager contract
     function issueShares(ShareClassId scId, AssetId depositAssetId, D18 navPerShare) external;

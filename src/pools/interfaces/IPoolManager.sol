@@ -98,17 +98,21 @@ interface IPoolManager {
     /// @notice Add a new share class to the pool
     function addShareClass(string calldata name, string calldata symbol, bytes32 salt, bytes calldata data) external;
 
-    /// @notice Approves a percentage of all deposit requests for the given triplet of pool id, share class id and
+    /// @notice Approves an asset amount of all deposit requests for the given triplet of pool id, share class id and
     /// deposit asset id.
+    /// @param scId Identifier of the share class
     /// @param paymentAssetId Identifier of the asset locked for the deposit request
+    /// @param maxApproval Sum of deposit request amounts in asset amount which is desired to be approved
     /// @param valuation Used to transform between payment assets and pool currency
-    function approveDeposits(ShareClassId scId, AssetId paymentAssetId, D18 approvalRatio, IERC7726 valuation)
+    function approveDeposits(ShareClassId scId, AssetId paymentAssetId, uint128 maxApproval, IERC7726 valuation)
         external;
 
     /// @notice Approves a percentage of all redemption requests for the given triplet of pool id, share class id and
     /// deposit asset id.
+    /// @param scId Identifier of the share class
     /// @param payoutAssetId Identifier of the asset for which all requests want to exchange their share class tokens
-    function approveRedeems(ShareClassId scId, AssetId payoutAssetId, D18 approvalRatio) external;
+    /// @param maxApproval Sum of redeem request amounts in share class token amount which is desired to be approved
+    function approveRedeems(ShareClassId scId, AssetId payoutAssetId, uint128 maxApproval) external;
 
     /// @notice Emits new shares for the given identifier based on the provided NAV per share.
     /// @param depositAssetId Identifier of the deposit asset for which shares should be issued

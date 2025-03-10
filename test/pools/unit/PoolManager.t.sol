@@ -71,10 +71,10 @@ contract TestMainMethodsChecks is TestCommon {
         poolManager.addShareClass("", "", bytes32(0), bytes(""));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolManager.approveDeposits(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
+        poolManager.approveDeposits(ShareClassId.wrap(0), AssetId.wrap(0), 0, IERC7726(address(0)));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolManager.approveRedeems(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
+        poolManager.approveRedeems(ShareClassId.wrap(0), AssetId.wrap(0), 0);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         poolManager.issueShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
@@ -150,10 +150,10 @@ contract TestMainMethodsChecks is TestCommon {
         poolManager.addShareClass("", "", bytes32(0), bytes(""));
 
         vm.expectRevert(IPoolManager.PoolLocked.selector);
-        poolManager.approveDeposits(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
+        poolManager.approveDeposits(ShareClassId.wrap(0), AssetId.wrap(0), 0, IERC7726(address(0)));
 
         vm.expectRevert(IPoolManager.PoolLocked.selector);
-        poolManager.approveRedeems(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
+        poolManager.approveRedeems(ShareClassId.wrap(0), AssetId.wrap(0), 0);
 
         vm.expectRevert(IPoolManager.PoolLocked.selector);
         poolManager.issueShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
