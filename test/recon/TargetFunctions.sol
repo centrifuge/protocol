@@ -12,10 +12,13 @@ import {Panic} from "@recon/Panic.sol";
 import { PoolManagerTargets } from "./targets/PoolManagerTargets.sol";
 import { PoolRouterTargets } from "./targets/PoolRouterTargets.sol";
 import { AdminTargets } from "./targets/AdminTargets.sol";
+import { ManagerTargets } from "./targets/ManagerTargets.sol";
+
 abstract contract TargetFunctions is
     PoolManagerTargets,
     PoolRouterTargets, 
-    AdminTargets
+    AdminTargets,
+    ManagerTargets
 {
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
 

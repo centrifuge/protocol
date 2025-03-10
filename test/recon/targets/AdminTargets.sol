@@ -9,7 +9,7 @@ import {vm} from "@chimera/Hevm.sol";
 
 // Helpers
 import {Panic} from "@recon/Panic.sol";
-
+import {MockERC20} from "@recon/MockERC20.sol";
 import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
 import "src/pools/PoolManager.sol";
 
@@ -30,8 +30,12 @@ abstract contract AdminTargets is
         poolManager.unlock(poolId, admin);
     }
 
-    function poolManager_createPool(address admin, AssetId currency, IShareClassManager shareClassManager) public asAdmin {
-        poolManager.createPool(admin, currency, shareClassManager);
+    function poolManager_createPool(address admin, uint32 isoCode, IShareClassManager shareClassManager) public asAdmin returns (PoolId poolId) {
+        AssetId assetId_ = newAssetId(isoCode); 
+        
+        poolId = poolManager.createPool(admin, assetId_, shareClassManager);
+
+        return poolId;
     }
 
     function poolManager_setAccountMetadata(AccountId account, bytes memory metadata) public asActor {
@@ -110,13 +114,19 @@ abstract contract AdminTargets is
         poolManager.addDebit(account, amount);
     }
 
-    function poolManager_registerAsset(uint32 isoCode, string memory name, string memory symbol, uint8 decimals) public asAdmin {
+    function poolManager_registerAsset(uint32 isoCode) public asAdmin {
         AssetId assetId_ = newAssetId(isoCode); 
+
+        string memory name = MockERC20(_getAsset()).name();
+        string memory symbol = MockERC20(_getAsset()).symbol();
+        uint8 decimals = MockERC20(_getAsset()).decimals();
 
         poolManager.registerAsset(assetId_, name, symbol, decimals);
     }  
 
-    function poolManager_depositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId, uint128 amount) public asAdmin {
+    function poolManager_depositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, uint32 isoCode, uint128 amount) public asAdmin {
+        AssetId depositAssetId = newAssetId(isoCode);
+
         poolManager.depositRequest(poolId, scId, investor, depositAssetId, amount);
     }  
 

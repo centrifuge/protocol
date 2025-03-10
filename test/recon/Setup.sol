@@ -56,6 +56,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         accounting.rely(address(poolManager));
         holdings.rely(address(poolManager));
         gateway.rely(address(poolManager));
+        singleShareClass.rely(address(poolManager));
 
     }
 
