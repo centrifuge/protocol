@@ -1,0 +1,632 @@
+{
+  "out/Accounting.sol/Accounting.json": {
+    "functions": [
+      {
+        "signature": "addCredit(uint32,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "addDebit(uint32,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "createAccount(uint64,uint32,bool)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "deny(address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "lock()",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "rely(address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "setAccountMetadata(uint64,uint32,bytes)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "unlock(uint64,bytes32)",
+        "actor": "actor",
+        "mode": "normal"
+      }
+    ],
+    "separated": true
+  },
+  "out/AssetRegistry.sol/AssetRegistry.json": {
+    "functions": [
+      {
+        "signature": "approve(address,uint256,uint256)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "authTransferFrom(address,address,uint256,uint256)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "burn(address,uint256,uint256)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "deny(address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "mint(address,uint256,uint256)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "registerAsset(uint128,string,string,uint8)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "rely(address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "setOperator(address,bool)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "transfer(address,uint256,uint256)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "transferFrom(address,address,uint256,uint256)",
+        "actor": "actor",
+        "mode": "normal"
+      }
+    ],
+    "separated": true
+  },
+  "out/Gateway.sol/Gateway.json": {
+    "functions": [
+      {
+        "signature": "deny(address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "endBatch()",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "file(bytes32,address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "handle(uint32,bytes)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "rely(address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "send(uint32,bytes)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "setPayableSource(address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "startBatch()",
+        "actor": "actor",
+        "mode": "normal"
+      }
+    ],
+    "separated": true
+  },
+  "out/Holdings.sol/Holdings.json": {
+    "functions": [
+      {
+        "signature": "create(uint64,bytes16,uint128,address,uint32[])",
+        "actor": "admin",
+        "mode": "normal"
+      },
+      {
+        "signature": "decrease(uint64,bytes16,uint128,address,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "deny(address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "file(bytes32,address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "increase(uint64,bytes16,uint128,address,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "rely(address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "setAccountId(uint64,bytes16,uint128,uint32)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "update(uint64,bytes16,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "updateValuation(uint64,bytes16,uint128,address)",
+        "actor": "actor",
+        "mode": "normal"
+      }
+    ],
+    "separated": true
+  },
+  "out/PoolManager.sol/PoolManager.json": {
+    "functions": [
+      {
+        "signature": "addCredit(uint32,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "addDebit(uint32,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "addShareClass(string,string,bytes32,bytes)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "allowPoolAdmin(address,bool)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "approveDeposits(bytes16,uint128,uint128,address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "approveRedeems(bytes16,uint128,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "cancelDepositRequest(uint64,bytes16,bytes32,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "cancelRedeemRequest(uint64,bytes16,bytes32,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "claimDeposit(uint64,bytes16,uint128,bytes32)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "claimRedeem(uint64,bytes16,uint128,bytes32)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "createAccount(uint32,bool)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "createHolding(bytes16,uint128,address,uint24)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "createPool(address,uint128,address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "decreaseHolding(bytes16,uint128,address,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "deny(address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "depositRequest(uint64,bytes16,bytes32,uint128,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "file(bytes32,address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "increaseHolding(bytes16,uint128,address,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "issueShares(bytes16,uint128,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "lock()",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "notifyPool(uint32)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "notifyShareClass(uint32,bytes16,bytes32)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "redeemRequest(uint64,bytes16,bytes32,uint128,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "registerAsset(uint128,string,string,uint8)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "rely(address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "revokeShares(bytes16,uint128,uint128,address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "setAccountMetadata(uint32,bytes)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "setHoldingAccountId(bytes16,uint128,uint32)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "setPoolMetadata(bytes)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "unlock(uint64,address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "updateHolding(bytes16,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "updateHoldingValuation(bytes16,uint128,address)",
+        "actor": "actor",
+        "mode": "normal"
+      }
+    ],
+    "separated": true
+  },
+  "out/PoolRegistry.sol/PoolRegistry.json": {
+    "functions": [
+      {
+        "signature": "deny(address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "registerPool(address,uint128,address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "rely(address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "setMetadata(uint64,bytes)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "updateAdmin(uint64,address,bool)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "updateCurrency(uint64,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "updateShareClassManager(uint64,address)",
+        "actor": "actor",
+        "mode": "normal"
+      }
+    ],
+    "separated": true
+  },
+  "out/PoolRouter.sol/PoolRouter.json": {
+    "functions": [
+      {
+        "signature": "addCredit(uint32,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "addDebit(uint32,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "addShareClass(string,string,bytes32,bytes)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "allowAsset(bytes16,uint128,bool)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "allowPoolAdmin(address,bool)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "approveDeposits(bytes16,uint128,uint128,address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "approveRedeems(bytes16,uint128,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "claimDeposit(uint64,bytes16,uint128,bytes32)",
+        "actor": "admin",
+        "mode": "normal"
+      },
+      {
+        "signature": "claimRedeem(uint64,bytes16,uint128,bytes32)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "createAccount(uint32,bool)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "createHolding(bytes16,uint128,address,uint24)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "createPool(uint128,address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "decreaseHolding(bytes16,uint128,address,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "execute(uint64,bytes[])",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "increaseHolding(bytes16,uint128,address,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "issueShares(bytes16,uint128,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "multicall(bytes[])",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "notifyPool(uint32)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "notifyShareClass(uint32,bytes16,bytes32)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "revokeShares(bytes16,uint128,uint128,address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "setAccountMetadata(uint32,bytes)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "setHoldingAccountId(bytes16,uint128,uint32)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "setPoolMetadata(bytes)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "updateHolding(bytes16,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "updateHoldingValuation(bytes16,uint128,address)",
+        "actor": "actor",
+        "mode": "normal"
+      }
+    ],
+    "separated": true
+  },
+  "out/SingleShareClass.sol/SingleShareClass.json": {
+    "functions": [
+      {
+        "signature": "addShareClass(uint64,string,string,bytes32,bytes)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "approveDeposits(uint64,bytes16,uint128,uint128,address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "approveRedeems(uint64,bytes16,uint128,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "cancelDepositRequest(uint64,bytes16,bytes32,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "cancelRedeemRequest(uint64,bytes16,bytes32,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "claimDeposit(uint64,bytes16,bytes32,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "claimDepositUntilEpoch(uint64,bytes16,bytes32,uint128,uint32)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "claimRedeem(uint64,bytes16,bytes32,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "claimRedeemUntilEpoch(uint64,bytes16,bytes32,uint128,uint32)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "deny(address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "file(bytes32,address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "issueShares(uint64,bytes16,uint128,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "issueSharesUntilEpoch(uint64,bytes16,uint128,uint128,uint32)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "rely(address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "requestDeposit(uint64,bytes16,uint128,bytes32,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "requestRedeem(uint64,bytes16,uint128,bytes32,uint128)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "revokeShares(uint64,bytes16,uint128,uint128,address)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "revokeSharesUntilEpoch(uint64,bytes16,uint128,uint128,address,uint32)",
+        "actor": "actor",
+        "mode": "normal"
+      },
+      {
+        "signature": "updateMetadata(uint64,bytes16,string,string,bytes32,bytes)",
+        "actor": "actor",
+        "mode": "normal"
+      }
+    ],
+    "separated": true
+  }
+}
