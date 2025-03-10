@@ -10,6 +10,7 @@ import {vm} from "@chimera/Hevm.sol";
 // Helpers
 import {Panic} from "@recon/Panic.sol";
 
+import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
 import "src/pools/PoolManager.sol";
 
 abstract contract AdminTargets is
@@ -109,8 +110,10 @@ abstract contract AdminTargets is
         poolManager.addDebit(account, amount);
     }
 
-    function poolManager_registerAsset(AssetId assetId, string memory name, string memory symbol, uint8 decimals) public asAdmin {
-        poolManager.registerAsset(assetId, name, symbol, decimals);
+    function poolManager_registerAsset(uint32 isoCode, string memory name, string memory symbol, uint8 decimals) public asAdmin {
+        AssetId assetId_ = newAssetId(isoCode); 
+
+        poolManager.registerAsset(assetId_, name, symbol, decimals);
     }  
 
     function poolManager_depositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId, uint128 amount) public asAdmin {

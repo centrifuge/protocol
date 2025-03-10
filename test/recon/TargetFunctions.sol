@@ -11,10 +11,11 @@ import {Panic} from "@recon/Panic.sol";
 // NOTE: Always import and apply them in alphabetical order, so much easier to debug!
 import { PoolManagerTargets } from "./targets/PoolManagerTargets.sol";
 import { PoolRouterTargets } from "./targets/PoolRouterTargets.sol";
-
+import { AdminTargets } from "./targets/AdminTargets.sol";
 abstract contract TargetFunctions is
     PoolManagerTargets,
-    PoolRouterTargets
+    PoolRouterTargets, 
+    AdminTargets
 {
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
 
