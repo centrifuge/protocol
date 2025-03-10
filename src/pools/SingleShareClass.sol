@@ -413,13 +413,15 @@ contract SingleShareClass is Auth, ISingleShareClass {
                 epochAmounts_.depositShares, epochAmounts_.depositApproved
             ).toUint128();
 
+            // NOTE: If claimableShareAmount == 0, then we still reduced pendingDeposits by userOrder.pending despite not reducing the latter due to zero claimable. 
+            // This extreme edge case has two implications:
+            //  1. The sum of pending user orders <= pendingDeposits (instead of equality)
+            //  2. The sum of claimable user amounts <= amount of minted share class tokens corresponding to the approved deposit asset amount (instead of equality). 
+            //     I.e., it is possible for an epoch to have an excess of a share class token atom which cannot be claimed by anyone.
             if (claimableShareAmount > 0) {
                 userOrder.pending -= approvedAssetAmount;
                 payoutShareAmount += claimableShareAmount;
                 paymentAssetAmount += approvedAssetAmount;
-            } else {
-                // Increase pending by approved amount as it did not lead to claimable amount
-                pendingDeposit[shareClassId_][depositAssetId] += approvedAssetAmount;
             }
 
             emit ClaimedDeposit(
@@ -480,13 +482,15 @@ contract SingleShareClass is Auth, ISingleShareClass {
                 epochAmounts_.redeemAssets, epochAmounts_.redeemApproved
             ).toUint128();
 
+            // NOTE: If claimableAssetAmount == 0, then we still reduced pendingRedeems by userOrder.pending despite not reducing the latter due to zero claimable. 
+            // This extreme edge case has two implications:
+            //  1. The sum of pending user orders <= pendingRedeems (instead of equality)
+            //  2. The sum of claimable user amounts <= amount of payout asset corresponding to the approved share class token amount (instead of equality). 
+            //     I.e., it is possible for an epoch to have an excess of a single payout asset atom which cannot be claimed by anyone.
             if (claimableAssetAmount > 0) {
                 paymentShareAmount += approvedShareAmount;
                 payoutAssetAmount += claimableAssetAmount;
                 userOrder.pending -= approvedShareAmount;
-            } else {
-                // Increase pending by approved amount as it did not lead to claimable amount
-                pendingRedeem[shareClassId_][payoutAssetId] += approvedShareAmount;
             }
 
             emit ClaimedRedeem(

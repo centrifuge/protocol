@@ -1052,6 +1052,7 @@ contract SingleShareClassRoundingEdgeCasesDeposit is SingleShareClassBaseTest {
         assertEq(claimedA, claimedB, "Claimed shares should be equal");
         assertEq(claimedA + claimedB + 1, issuedShares, "System should have 1 share class token atom surplus");
         assertEq(paymentA + paymentB, 0, "Payment should be zero since neither investor could claim single share atom");
+        assertEq(shareClass.pendingDeposit(scId, USDC), 0, "Pending deposit should be zero");
 
         _assertDepositRequestEq(scId, USDC, INVESTOR_A, UserOrder(1, 2));
         _assertDepositRequestEq(scId, USDC, INVESTOR_B, UserOrder(approvedAssetAmount - 1, 2));
@@ -1130,7 +1131,7 @@ contract SingleShareClassRoundingEdgeCasesRedeem is SingleShareClassBaseTest {
         assertEq(assetPayout, expectedAssetPayout, "Mismatch in expected asset payout");
     }
 
-    /// @dev Investors cannot claim anything despite
+    /// @dev Investors cannot claim anything despite non-zero pending amounts
     function testClaimRedeemSingleAssetAtom() public notThisContract(poolRegistryAddress) {
         uint128 approvedShareAmount = DENO_POOL / DENO_USDC;
         uint128 assetPayout = 1;
@@ -1147,7 +1148,7 @@ contract SingleShareClassRoundingEdgeCasesRedeem is SingleShareClassBaseTest {
         assertEq(claimedA, claimedB, "Both investors should have claimed same amount");
         assertEq(claimedA + claimedB, 0, "Claimed amount should be zero for both investors");
         assertEq(paymentA + paymentB, 0, "Payment should be zero since neither investor could claim anything");
-        assertEq(shareClass.pendingRedeem(scId, USDC), approvedShareAmount, "Pending redeem should have reset");
+        assertEq(shareClass.pendingRedeem(scId, USDC), 0, "Pending redeem should be zero");
 
         _assertRedeemRequestEq(scId, USDC, INVESTOR_A, UserOrder(1, 2));
         _assertRedeemRequestEq(scId, USDC, INVESTOR_B, UserOrder(approvedShareAmount - 1, 2));
