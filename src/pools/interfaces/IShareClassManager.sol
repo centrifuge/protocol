@@ -274,17 +274,6 @@ interface IShareClassManager {
         bytes calldata metadata
     ) external;
 
-    /// @notice Returns the current NAV of a share class of a pool per share as well as the issuance.
-    ///
-    /// @param poolId Identifier of the pool
-    /// @param scId Identifier of the share class
-    /// @return navPerShare Total value of assets of the pool and share class per share
-    /// @return issuance Total issuance of the share class
-    function shareClassNavPerShare(PoolId poolId, ShareClassId scId)
-        external
-        view
-        returns (D18 navPerShare, uint128 issuance);
-
     /// @notice Checks the existence of a share class.
     ///
     /// @param poolId Identifier of the pool

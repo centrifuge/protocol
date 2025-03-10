@@ -21,7 +21,8 @@ import {
     EpochAmounts,
     UserOrder,
     EpochPointers,
-    ShareClassMetadata
+    ShareClassMetadata,
+    ShareClassMetrics
 } from "src/pools/SingleShareClass.sol";
 
 uint64 constant POOL_ID = 42;
@@ -43,8 +44,8 @@ bytes32 constant SC_SALT = bytes32("ExampleSalt");
 bytes32 constant SC_SECOND_SALT = bytes32("AnotherExampleSalt");
 
 uint32 constant STORAGE_INDEX_EPOCH_ID = 3;
-uint32 constant STORAGE_INDEX_TOTAL_ISSUANCE = 5;
-uint32 constant STORAGE_INDEX_EPOCH_POINTERS = 10;
+uint32 constant STORAGE_INDEX_METRICS = 5;
+uint32 constant STORAGE_INDEX_EPOCH_POINTERS = 9;
 
 contract PoolRegistryMock {
     function currency(PoolId) external pure returns (AssetId) {
@@ -196,6 +197,10 @@ abstract contract SingleShareClassBaseTest is Test {
     function poolToUsdc(uint128 poolAmount) internal view returns (uint128 usdcAmount) {
         return oracleMock.getQuote(uint256(poolAmount), POOL_CURRENCY, USDC.addr()).toUint128();
     }
+
+    function totalIssuance(ShareClassId scId_) internal view returns (uint128 totalIssuance_) {
+        (totalIssuance_,) = shareClass.metrics(scId_);
+    }
 }
 
 ///@dev Contains all simple tests which are expected to succeed
@@ -209,7 +214,7 @@ contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
         assertEq(address(shareClass.poolRegistry()), poolRegistryAddress);
         assertEq(shareClass.epochId(poolId), 1);
         assertEq(shareClass.shareClassCount(poolId), 1);
-        assertEq(shareClass.scIdToIndex(poolId, scId), SC_ID_INDEX);
+        assert(shareClass.shareClassIds(poolId, scId));
         assertEq(ShareClassId.unwrap(shareClass.indexToScId(poolId, SC_ID_INDEX)), ShareClassId.unwrap(scId));
 
         assertEq(shareClass.wards(address(this)), 1);
@@ -228,8 +233,8 @@ contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
     }
 
     function testDefaultGetShareClassNavPerShare() public view notThisContract(poolRegistryAddress) {
-        (D18 navPerShare, uint128 nav) = shareClass.shareClassNavPerShare(poolId, scId);
-        assertEq(nav, 0);
+        (uint128 totalIssuance, D18 navPerShare) = shareClass.metrics(scId);
+        assertEq(totalIssuance, 0);
         assertEq(navPerShare.inner(), 0);
     }
 
@@ -294,7 +299,7 @@ contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
 
         assertEq(shareClass.shareClassCount(poolId), 2);
         assertEq(ShareClassId.unwrap(shareClass.indexToScId(poolId, 2)), ShareClassId.unwrap(nextScId));
-        assertEq(shareClass.scIdToIndex(poolId, nextScId), 2);
+        assert(shareClass.shareClassIds(poolId, nextScId));
         assertEq(shareClass.epochId(poolId), mockEpochId, "epochId must not be re-initialized");
 
         assert(ShareClassId.unwrap(shareClass.previewNextShareClassId(poolId)) != ShareClassId.unwrap(nextScId));
@@ -415,11 +420,11 @@ contract SingleShareClassDepositsNonTransientTest is SingleShareClassBaseTest {
         shareClass.requestDeposit(poolId, scId, depositAmount, investor, USDC);
         shareClass.approveDeposits(poolId, scId, approvedUSDC, USDC, oracleMock);
 
-        assertEq(shareClass.totalIssuance(scId), 0);
+        assertEq(totalIssuance(scId), 0);
         _assertEpochPointersEq(scId, USDC, EpochPointers(1, 0, 0, 0));
 
         shareClass.issueShares(poolId, scId, USDC, shareToPoolQuote);
-        assertEq(shareClass.totalIssuance(scId), shares);
+        assertEq(totalIssuance(scId), shares);
         _assertEpochPointersEq(scId, USDC, EpochPointers(1, 0, 1, 0));
         _assertEpochAmountsEq(scId, USDC, 1, EpochAmounts(depositAmount, approvedUSDC, approvedPool, shares, 0, 0, 0));
     }
@@ -438,7 +443,7 @@ contract SingleShareClassDepositsNonTransientTest is SingleShareClassBaseTest {
         shareClass.requestDeposit(poolId, scId, depositAmount, investor, USDC);
         shareClass.approveDeposits(poolId, scId, approvedUSDC, USDC, oracleMock);
         shareClass.issueShares(poolId, scId, USDC, shareToPoolQuote);
-        assertEq(shareClass.totalIssuance(scId), shares);
+        assertEq(totalIssuance(scId), shares);
         _assertDepositRequestEq(scId, USDC, investor, UserOrder(depositAmount, 1));
 
         vm.expectEmit(true, true, true, true);
@@ -448,7 +453,7 @@ contract SingleShareClassDepositsNonTransientTest is SingleShareClassBaseTest {
         assertEq(shares, userShares, "shares mismatch");
         assertEq(approvedUSDC, payment, "payment mismatch");
         _assertDepositRequestEq(scId, USDC, investor, UserOrder(pending, 2));
-        assertEq(shareClass.totalIssuance(scId), shares);
+        assertEq(totalIssuance(scId), shares);
 
         // Ensure another claim has no impact
         (userShares, payment) = shareClass.claimDeposit(poolId, scId, investor, USDC);
@@ -496,11 +501,7 @@ contract SingleShareClassDepositsNonTransientTest is SingleShareClassBaseTest {
     }
 
     function testClaimRedeemZeroApproved() public {
-        vm.store(
-            address(shareClass),
-            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_TOTAL_ISSUANCE))),
-            bytes32(uint256(11))
-        );
+        vm.store(address(shareClass), keccak256(abi.encode(scId, uint256(STORAGE_INDEX_METRICS))), bytes32(uint256(11)));
 
         shareClass.requestRedeem(poolId, scId, 1, investor, USDC);
         shareClass.requestRedeem(poolId, scId, 10, bytes32("investorOther"), USDC);
@@ -636,15 +637,15 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
         // Mock total issuance to equal redeemAmount
         vm.store(
             address(shareClass),
-            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_TOTAL_ISSUANCE))),
+            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_METRICS))),
             bytes32(uint256(redeemAmount))
         );
-        assertEq(shareClass.totalIssuance(scId), redeemAmount);
+        assertEq(totalIssuance(scId), redeemAmount);
 
         shareClass.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
         shareClass.approveRedeems(poolId, scId, approvedRedeem, USDC);
 
-        assertEq(shareClass.totalIssuance(scId), redeemAmount);
+        assertEq(totalIssuance(scId), redeemAmount);
         _assertEpochPointersEq(scId, USDC, EpochPointers(0, 1, 0, 0));
 
         (uint128 payoutAssetAmount, uint128 payoutPoolAmount) =
@@ -652,7 +653,7 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
         assertEq(assetAmount, payoutAssetAmount, "payout asset amount mismatch");
         assertEq(poolAmount, payoutPoolAmount, "payout pool amount mismatch");
 
-        assertEq(shareClass.totalIssuance(scId), redeemAmount - approvedRedeem);
+        assertEq(totalIssuance(scId), redeemAmount - approvedRedeem);
         _assertEpochPointersEq(scId, USDC, EpochPointers(0, 1, 0, 1));
 
         _assertEpochAmountsEq(scId, USDC, 1, EpochAmounts(0, 0, 0, 0, redeemAmount, approvedRedeem, assetAmount));
@@ -671,15 +672,15 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
         // Mock total issuance to equal redeemAmount
         vm.store(
             address(shareClass),
-            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_TOTAL_ISSUANCE))),
+            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_METRICS))),
             bytes32(uint256(redeemAmount))
         );
-        assertEq(shareClass.totalIssuance(scId), redeemAmount);
+        assertEq(totalIssuance(scId), redeemAmount);
 
         shareClass.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
         shareClass.approveRedeems(poolId, scId, approvedRedeem, USDC);
         shareClass.revokeShares(poolId, scId, USDC, shareToPoolQuote, oracleMock);
-        assertEq(shareClass.totalIssuance(scId), pendingRedeem);
+        assertEq(totalIssuance(scId), pendingRedeem);
         _assertRedeemRequestEq(scId, USDC, investor, UserOrder(redeemAmount, 1));
 
         if (payout > 0) {
@@ -758,7 +759,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
 
             pendingUSDC += depositAmount - approvedUSDC;
         }
-        assertEq(shareClass.totalIssuance(scId), 0);
+        assertEq(totalIssuance(scId), 0);
 
         // Assert issued events
         uint128 totalIssuance_;
@@ -788,8 +789,8 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
             );
             pendingUSDC += depositAmount - approvedUSDC;
         }
-        assertEq(shareClass.totalIssuance(scId), shares, "totalIssuance mismatch");
-        (D18 navPerShare, uint128 issuance) = shareClass.shareClassNavPerShare(poolId, scId);
+        assertEq(totalIssuance(scId), shares, "totalIssuance mismatch");
+        (uint128 issuance, D18 navPerShare) = shareClass.metrics(scId);
         assertEq(navPerShare.inner(), shareToPoolQuote.inner());
         assertEq(issuance, shares, "totalIssuance mismatch");
 
@@ -826,7 +827,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
             _resetTransientEpochIncrement();
         }
         shareClass.issueShares(poolId, scId, USDC, shareToPoolQuote);
-        assertEq(shareClass.totalIssuance(scId), shares, "totalIssuance mismatch");
+        assertEq(totalIssuance(scId), shares, "totalIssuance mismatch");
 
         // Ensure each epoch is claimed separately
         pending = depositAmount;
@@ -868,7 +869,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         // Mock total issuance to equal total redeemAmount
         vm.store(
             address(shareClass),
-            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_TOTAL_ISSUANCE))),
+            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_METRICS))),
             bytes32(uint256(totalIssuance_))
         );
 
@@ -879,7 +880,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
             shareClass.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
             shareClass.approveRedeems(poolId, scId, approvedRedeem, USDC);
         }
-        assertEq(shareClass.totalIssuance(scId), totalIssuance_);
+        assertEq(totalIssuance(scId), totalIssuance_);
 
         // Assert revoked events
         for (uint8 i = 1; i < maxEpochId; i++) {
@@ -908,8 +909,8 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
             );
             pendingRedeems += redeemAmount - approvedRedeem;
         }
-        assertEq(shareClass.totalIssuance(scId), totalIssuance_);
-        (D18 navPerShare, uint128 issuance) = shareClass.shareClassNavPerShare(poolId, scId);
+        assertEq(totalIssuance(scId), totalIssuance_);
+        (uint128 issuance, D18 navPerShare) = shareClass.metrics(scId);
         assertEq(navPerShare.inner(), shareToPoolQuote.inner());
         assertEq(issuance, totalIssuance_);
 
@@ -935,7 +936,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         // Mock total issuance to equal total redeemAmount
         vm.store(
             address(shareClass),
-            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_TOTAL_ISSUANCE))),
+            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_METRICS))),
             bytes32(uint256(redeemAmount))
         );
 
@@ -949,7 +950,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
             _resetTransientEpochIncrement();
         }
         shareClass.revokeShares(poolId, scId, USDC, shareToPoolQuote, oracleMock);
-        assertEq(shareClass.totalIssuance(scId), pendingRedeem, "totalIssuance mismatch");
+        assertEq(totalIssuance(scId), pendingRedeem, "totalIssuance mismatch");
 
         // Ensure each epoch is claimed separately
         pendingRedeem = redeemAmount;
@@ -998,7 +999,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         shareClass.issueShares(poolId, scId, USDC, navPerShareDeposit);
         shareClass.claimDeposit(poolId, scId, investor, USDC);
 
-        assertEq(shareClass.totalIssuance(scId), shares);
+        assertEq(totalIssuance(scId), shares);
         assertEq(shareClass.epochId(poolId), 2);
         _assertDepositRequestEq(scId, USDC, investor, UserOrder(0, 2));
         _assertEpochAmountsEq(
@@ -1036,13 +1037,13 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         shareClass.issueShares(poolId, scId, USDC, navPerShareDeposit);
         epochAmounts.depositShares = navPerShareDeposit.reciprocalMulUint128(usdcToPool(depositRequest));
         shares += epochAmounts.depositShares;
-        assertEq(shareClass.totalIssuance(scId), shares);
+        assertEq(totalIssuance(scId), shares);
         _assertEpochAmountsEq(scId, USDC, epochId, epochAmounts);
 
         // Step 2e: Revoke shares
         shareClass.revokeShares(poolId, scId, USDC, navPerShareRedeem, oracleMock);
         shares -= epochAmounts.redeemApproved;
-        (D18 navPerShare, uint128 issuance) = shareClass.shareClassNavPerShare(poolId, scId);
+        (uint128 issuance, D18 navPerShare) = shareClass.metrics(scId);
         assertEq(issuance, shares);
         assertEq(navPerShare.inner(), navPerShareRedeem.inner());
         epochAmounts.redeemAssets = poolToUsdc(navPerShareRedeem.mulUint128(redeemApproval));
@@ -1073,7 +1074,7 @@ contract SingleShareClassRoundingEdgeCasesDeposit is SingleShareClassBaseTest {
     function _approveAllDepositsAndIssue(uint128 expectedShareIssuance, D18 navPerShare) private {
         shareClass.approveDeposits(poolId, scId, MAX_REQUEST_AMOUNT_USDC, USDC, oracleMock);
         shareClass.issueShares(poolId, scId, USDC, navPerShare);
-        assertEq(shareClass.totalIssuance(scId), expectedShareIssuance, "Mismatch in expected shares");
+        assertEq(totalIssuance(scId), expectedShareIssuance, "Mismatch in expected shares");
     }
 
     /// @dev Investors cannot claim the single issued share atom (one of smallest denomination of share)
@@ -1156,7 +1157,7 @@ contract SingleShareClassRoundingEdgeCasesRedeem is SingleShareClassBaseTest {
         // Mock total issuance such that we can redeem
         vm.store(
             address(shareClass),
-            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_TOTAL_ISSUANCE))),
+            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_METRICS))),
             bytes32(uint256(TOTAL_ISSUANCE))
         );
     }
@@ -1166,7 +1167,7 @@ contract SingleShareClassRoundingEdgeCasesRedeem is SingleShareClassBaseTest {
     {
         shareClass.approveRedeems(poolId, scId, approvedShareAmount, USDC);
         (uint128 assetPayout,) = shareClass.revokeShares(poolId, scId, USDC, navPerShare, oracleMock);
-        assertEq(shareClass.totalIssuance(scId), TOTAL_ISSUANCE - approvedShareAmount, "Mismatch in expected shares");
+        assertEq(totalIssuance(scId), TOTAL_ISSUANCE - approvedShareAmount, "Mismatch in expected shares");
         assertEq(shareClass.pendingRedeem(scId, USDC), 0, "Pending redeem should have decreased");
         assertEq(assetPayout, expectedAssetPayout, "Mismatch in expected asset payout");
     }
@@ -1397,11 +1398,6 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     function testUpdateShareClassNavWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.updateShareClassNav(poolId, wrongShareClassId);
-    }
-
-    function testGetShareClassNavWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
-        shareClass.shareClassNavPerShare(poolId, wrongShareClassId);
     }
 
     function testUpdateMetadataWrongShareClassId() public {

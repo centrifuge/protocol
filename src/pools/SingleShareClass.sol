@@ -56,6 +56,13 @@ struct ShareClassMetadata {
     bytes32 salt;
 }
 
+struct ShareClassMetrics {
+    /// @dev Total number of shares
+    uint128 totalIssuance;
+    /// @dev The latest net asset value per share class token
+    D18 navPerShare;
+}
+
 contract SingleShareClass is Auth, ISingleShareClass {
     using MathLib for D18;
     using MathLib for uint128;
@@ -73,10 +80,9 @@ contract SingleShareClass is Auth, ISingleShareClass {
     mapping(bytes32 salt => bool) public salts;
     mapping(PoolId poolId => uint32) public epochId;
     mapping(PoolId poolId => uint32) public shareClassCount;
-    mapping(ShareClassId scId => uint128) public totalIssuance;
+    mapping(ShareClassId scId => ShareClassMetrics) public metrics;
     mapping(ShareClassId scId => ShareClassMetadata) public metadata;
-    mapping(ShareClassId scId => D18 navPerShare) private _shareClassNavPerShare;
-    mapping(PoolId poolId => mapping(ShareClassId => uint32)) public scIdToIndex;
+    mapping(PoolId poolId => mapping(ShareClassId => bool)) public shareClassIds;
     mapping(PoolId poolId => mapping(uint32 scIdIndex => ShareClassId)) public indexToScId;
     mapping(ShareClassId scId => mapping(AssetId assetId => EpochPointers)) public epochPointers;
     mapping(ShareClassId scId => mapping(AssetId payoutAssetId => uint128 pending)) public pendingRedeem;
@@ -104,7 +110,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         
         uint32 index = ++shareClassCount[poolId];
         indexToScId[poolId][index] = shareClassId_;
-        scIdToIndex[poolId][shareClassId_] = index;
+        shareClassIds[poolId][shareClassId_] = true;
 
         // Initialize epoch with 1 iff first class was added
         if (index == 1) {
@@ -281,7 +287,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         require(exists(poolId, shareClassId_), ShareClassNotFound());
         require(endEpochId < epochId[poolId], EpochNotFound());
 
-        uint128 totalIssuance_ = totalIssuance[shareClassId_];
+        uint128 totalIssuance = metrics[shareClassId_].totalIssuance;
 
         // First issuance starts at epoch 0, subsequent ones at latest pointer plus one
         uint32 startEpochId = epochPointers[shareClassId_][depositAssetId].latestIssuance + 1;
@@ -296,15 +302,14 @@ contract SingleShareClass is Auth, ISingleShareClass {
                 epochAmounts[shareClassId_][depositAssetId][epochId_].depositPool
             );
             epochAmounts[shareClassId_][depositAssetId][epochId_].depositShares = issuedShareAmount;
-            totalIssuance_ += issuedShareAmount;
-            uint128 nav = navPerShare.mulUint128(totalIssuance_);
+            totalIssuance += issuedShareAmount;
+            uint128 nav = navPerShare.mulUint128(totalIssuance);
 
             emit IssuedShares(poolId, shareClassId_, epochId_, navPerShare, nav, issuedShareAmount);
         }
 
-        totalIssuance[shareClassId_] = totalIssuance_;
         epochPointers[shareClassId_][depositAssetId].latestIssuance = endEpochId;
-        _shareClassNavPerShare[shareClassId_] = navPerShare;
+        metrics[shareClassId_] = ShareClassMetrics(totalIssuance, navPerShare);
     }
 
     /// @inheritdoc IShareClassManager
@@ -335,7 +340,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         require(exists(poolId, shareClassId_), ShareClassNotFound());
         require(endEpochId < epochId[poolId], EpochNotFound());
 
-        uint128 totalIssuance_ = totalIssuance[shareClassId_];
+        uint128 totalIssuance = metrics[shareClassId_].totalIssuance;
         address poolCurrency = poolRegistry.currency(poolId).addr();
 
         // First issuance starts at epoch 0, subsequent ones at latest pointer plus one
@@ -349,7 +354,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
                 continue;
             }
 
-            require(epochAmounts_.redeemApproved <= totalIssuance_, RevokeMoreThanIssued());
+            require(epochAmounts_.redeemApproved <= totalIssuance, RevokeMoreThanIssued());
 
             payoutPoolAmount += _revokeEpochShares(
                 poolId,
@@ -359,16 +364,15 @@ contract SingleShareClass is Auth, ISingleShareClass {
                 valuation,
                 poolCurrency,
                 epochAmounts_,
-                totalIssuance_,
+                totalIssuance,
                 epochId_
             );
             payoutAssetAmount += epochAmounts_.redeemAssets;
-            totalIssuance_ -= epochAmounts_.redeemApproved;
+            totalIssuance -= epochAmounts_.redeemApproved;
         }
 
-        totalIssuance[shareClassId_] = totalIssuance_;
         epochPointers[shareClassId_][payoutAssetId].latestRevocation = endEpochId;
-        _shareClassNavPerShare[shareClassId_] = navPerShare;
+        metrics[shareClassId_] = ShareClassMetrics(totalIssuance, navPerShare);
     }
 
     /// @inheritdoc IShareClassManager
@@ -534,17 +538,6 @@ contract SingleShareClass is Auth, ISingleShareClass {
         revert("unsupported");
     }
 
-    /// @inheritdoc IShareClassManager
-    function shareClassNavPerShare(PoolId poolId, ShareClassId shareClassId_)
-        external
-        view
-        returns (D18 navPerShare, uint128 issuance)
-    {
-        require(exists(poolId, shareClassId_), ShareClassNotFound());
-
-        return (_shareClassNavPerShare[shareClassId_], totalIssuance[shareClassId_]);
-    }
-
     /// @notice Revokes shares for a single epoch, updates epoch ratio and emits event.
     ///
     /// @param poolId Identifier of the pool
@@ -556,7 +549,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
     /// @param epochAmounts_ Epoch ratio storage for the amount of revoked share class tokens and the corresponding
     /// amount
     /// in payout asset
-    /// @param totalIssuance_ Total issuance of share class tokens before revoking
+    /// @param totalIssuance Total issuance of share class tokens before revoking
     /// @param epochId_ Identifier of the epoch for which we revoke
     /// @return payoutPoolAmount Converted amount of pool currency based on number of revoked shares
     function _revokeEpochShares(
@@ -567,14 +560,14 @@ contract SingleShareClass is Auth, ISingleShareClass {
         IERC7726 valuation,
         address poolCurrency,
         EpochAmounts storage epochAmounts_,
-        uint128 totalIssuance_,
+        uint128 totalIssuance,
         uint32 epochId_
     ) private returns (uint128 payoutPoolAmount) {
         payoutPoolAmount = navPerShare.mulUint128(epochAmounts_.redeemApproved);
         epochAmounts_.redeemAssets =
             IERC7726(valuation).getQuote(payoutPoolAmount, poolCurrency, payoutAssetId.addr()).toUint128();
 
-        uint128 nav = navPerShare.mulUint128(totalIssuance_ - epochAmounts_.redeemApproved);
+        uint128 nav = navPerShare.mulUint128(totalIssuance - epochAmounts_.redeemApproved);
         emit RevokedShares(
             poolId,
             shareClassId_,
@@ -588,7 +581,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
     /// @inheritdoc IShareClassManager
     function exists(PoolId poolId, ShareClassId shareClassId_) public view returns (bool) {
-        return scIdToIndex[poolId][shareClassId_] != 0;
+        return shareClassIds[poolId][shareClassId_];
     }
 
     /// @notice Updates the amount of a request to deposit (exchange) an asset amount for share class tokens.
