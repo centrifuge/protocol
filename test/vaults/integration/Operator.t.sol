@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import "test/vaults/BaseTest.sol";
+import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
 contract OperatorTest is BaseTest {
     function testDepositAsOperator(uint256 amount) public {
@@ -162,7 +163,7 @@ contract OperatorTest is BaseTest {
         );
 
         vm.prank(operator);
-        vm.expectRevert(bytes("ERC20/insufficient-allowance"));
+        vm.expectRevert(IERC20.InsufficientAllowance.selector);
         vault.requestRedeem(amount, investor, investor);
 
         assertEq(vault.isOperator(investor, operator), false);
@@ -194,7 +195,7 @@ contract OperatorTest is BaseTest {
 
         deposit(vault_, investor, amount);
         vm.prank(operator);
-        vm.expectRevert(bytes("ERC20/insufficient-allowance"));
+        vm.expectRevert(IERC20.InsufficientAllowance.selector);
         vault.requestRedeem(amount, investor, investor);
     }
 

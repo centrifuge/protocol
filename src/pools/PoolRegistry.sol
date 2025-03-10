@@ -18,7 +18,6 @@ contract PoolRegistry is Auth, IPoolRegistry {
     mapping(PoolId => AssetId) public currency;
     mapping(PoolId => IShareClassManager) public shareClassManager;
     mapping(PoolId => mapping(address => bool)) public isAdmin;
-    mapping(PoolId => mapping(AssetId => bool)) public isInvestorAssetAllowed;
 
     constructor(address deployer) Auth(deployer) {}
 
@@ -49,16 +48,6 @@ contract PoolRegistry is Auth, IPoolRegistry {
         isAdmin[poolId][admin_] = canManage;
 
         emit UpdatedAdmin(poolId, admin_, canManage);
-    }
-
-    /// @inheritdoc IPoolRegistry
-    function allowInvestorAsset(PoolId poolId, AssetId assetId, bool isAllowed) external auth {
-        require(exists(poolId), NonExistingPool(poolId));
-        require(!assetId.isNull(), EmptyAsset());
-
-        isInvestorAssetAllowed[poolId][assetId] = isAllowed;
-
-        emit AllowedInvestorAsset(poolId, assetId, isAllowed);
     }
 
     /// @inheritdoc IPoolRegistry

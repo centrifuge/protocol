@@ -4,19 +4,21 @@ pragma solidity ^0.8.28;
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
-import {MessageType} from "src/common/libraries/MessageLib.sol";
+import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 
 import {AssetId} from "src/pools/types/AssetId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 
-import {IMessageHandler} from "src/pools/interfaces/IMessageHandler.sol";
-import {IAdapter} from "src/pools/Gateway.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 import "forge-std/Test.sol";
 
 contract MockVaults is Test, IAdapter {
+    using MessageLib for *;
     using CastLib for string;
+    using BytesLib for bytes;
 
     IMessageHandler public handler;
 
@@ -27,11 +29,14 @@ contract MockVaults is Test, IAdapter {
         handler = handler_;
     }
 
-    function registerAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals) public {
+    function registerAsset(AssetId assetId, string memory name, string memory symbol, uint8 decimals) public {
         handler.handle(
-            abi.encodePacked(
-                MessageType.RegisterAsset, assetId.raw(), name.stringToBytes128(), symbol.toBytes32(), decimals
-            )
+            MessageLib.RegisterAsset({
+                assetId: assetId.raw(),
+                name: name,
+                symbol: symbol.toBytes32(),
+                decimals: decimals
+            }).serialize()
         );
     }
 
@@ -39,7 +44,13 @@ contract MockVaults is Test, IAdapter {
         public
     {
         handler.handle(
-            abi.encodePacked(MessageType.DepositRequest, poolId.raw(), scId.raw(), investor, assetId.raw(), amount)
+            MessageLib.DepositRequest({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                investor: investor,
+                assetId: assetId.raw(),
+                amount: amount
+            }).serialize()
         );
     }
 
@@ -47,14 +58,32 @@ contract MockVaults is Test, IAdapter {
         public
     {
         handler.handle(
-            abi.encodePacked(MessageType.RedeemRequest, poolId.raw(), scId.raw(), investor, assetId.raw(), amount)
+            MessageLib.RedeemRequest({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                investor: investor,
+                assetId: assetId.raw(),
+                amount: amount
+            }).serialize()
         );
     }
 
-    function send(uint32 chainId, bytes calldata message) external {
+    function send(uint32 chainId, bytes memory data) external {
         lastChainDestinations.push(chainId);
-        lastMessages.push(message);
+
+        while (data.length > 0) {
+            uint16 messageLength = data.messageLength();
+            bytes memory message = data.slice(0, messageLength);
+
+            lastMessages.push(message);
+
+            data = data.slice(messageLength, data.length - messageLength);
+        }
     }
+
+    function estimate(uint32 chainId, bytes calldata payload, uint256 baseCost) external view returns (uint256) {}
+
+    function pay(uint32 chainId, bytes calldata payload, address refund) external payable {}
 
     function resetMessages() external {
         delete lastChainDestinations;

@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ERC20} from "src/vaults/token/ERC20.sol";
-import {IERC1271} from "src/vaults/libraries/SignatureLib.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {IERC20, IERC20Permit} from "src/misc/interfaces/IERC20.sol";
+import {IERC1271} from "src/misc/libraries/SignatureLib.sol";
+
+import {ERC20} from "src/misc/ERC20.sol";
+
 import "forge-std/Test.sol";
 
 contract MockMultisig is IERC1271 {
@@ -66,10 +70,10 @@ contract ERC20Test is Test {
         vm.assume(invalidOrigin != address(this));
 
         vm.prank(invalidOrigin);
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         token.file("name", newName);
 
-        vm.expectRevert(bytes("ERC20/file-unrecognized-param"));
+        vm.expectRevert(ERC20.FileUnrecognizedWhat.selector);
         token.file("notName", newName);
 
         token.file("name", newName);
@@ -89,9 +93,9 @@ contract ERC20Test is Test {
     }
 
     function testMintBadAddress() public {
-        vm.expectRevert("ERC20/invalid-address");
+        vm.expectRevert(IERC20.InvalidAddress.selector);
         token.mint(address(0), 1e18);
-        vm.expectRevert("ERC20/invalid-address");
+        vm.expectRevert(IERC20.InvalidAddress.selector);
         token.mint(address(token), 1e18);
     }
 
@@ -115,7 +119,7 @@ contract ERC20Test is Test {
         token.rely(address(from));
 
         vm.prank(address(from));
-        vm.expectRevert(bytes("ERC20/insufficient-allowance"));
+        vm.expectRevert(IERC20.InsufficientAllowance.selector);
         token.burn(address(0xBEEF), 0.9e18);
 
         vm.prank(address(0xBEEF));
@@ -150,9 +154,9 @@ contract ERC20Test is Test {
     function testTransferBadAddress() public {
         token.mint(address(this), 1e18);
 
-        vm.expectRevert("ERC20/invalid-address");
+        vm.expectRevert(IERC20.InvalidAddress.selector);
         token.transfer(address(0), 1e18);
-        vm.expectRevert("ERC20/invalid-address");
+        vm.expectRevert(IERC20.InvalidAddress.selector);
         token.transfer(address(token), 1e18);
     }
 
@@ -178,9 +182,9 @@ contract ERC20Test is Test {
     function testTransferFromBadAddress() public {
         token.mint(address(this), 1e18);
 
-        vm.expectRevert("ERC20/invalid-address");
+        vm.expectRevert(IERC20.InvalidAddress.selector);
         token.transferFrom(address(this), address(0), 1e18);
-        vm.expectRevert("ERC20/invalid-address");
+        vm.expectRevert(IERC20.InvalidAddress.selector);
         token.transferFrom(address(this), address(token), 1e18);
     }
 
@@ -298,13 +302,13 @@ contract ERC20Test is Test {
         );
 
         bytes memory signature = abi.encode(r, s, bytes32(uint256(v) << 248), r2, s2, bytes32(uint256(v2) << 248));
-        vm.expectRevert("ERC20/invalid-permit");
+        vm.expectRevert(IERC20Permit.InvalidPermit.selector);
         token.permit(mockMultisig, address(0xCAFE), 1e18, block.timestamp, signature);
     }
 
     function testTransferInsufficientBalance() public {
         token.mint(address(this), 0.9e18);
-        vm.expectRevert("ERC20/insufficient-balance");
+        vm.expectRevert(IERC20.InsufficientBalance.selector);
         token.transfer(address(0xBEEF), 1e18);
     }
 
@@ -316,7 +320,7 @@ contract ERC20Test is Test {
         vm.prank(from);
         token.approve(address(this), 0.9e18);
 
-        vm.expectRevert("ERC20/insufficient-allowance");
+        vm.expectRevert(IERC20.InsufficientAllowance.selector);
         token.transferFrom(from, address(0xBEEF), 1e18);
     }
 
@@ -328,7 +332,7 @@ contract ERC20Test is Test {
         vm.prank(from);
         token.approve(address(this), 1e18);
 
-        vm.expectRevert("ERC20/insufficient-balance");
+        vm.expectRevert(IERC20.InsufficientBalance.selector);
         token.transferFrom(from, address(0xBEEF), 1e18);
     }
 
@@ -347,7 +351,7 @@ contract ERC20Test is Test {
             )
         );
 
-        vm.expectRevert("ERC20/invalid-permit");
+        vm.expectRevert(IERC20Permit.InvalidPermit.selector);
         token.permit(owner, address(0xCAFE), 1e18, block.timestamp, v, r, s);
     }
 
@@ -366,7 +370,7 @@ contract ERC20Test is Test {
             )
         );
 
-        vm.expectRevert("ERC20/invalid-permit");
+        vm.expectRevert(IERC20Permit.InvalidPermit.selector);
         token.permit(owner, address(0xCAFE), 1e18, block.timestamp + 1, v, r, s);
     }
 
@@ -389,7 +393,7 @@ contract ERC20Test is Test {
 
         vm.warp(deadline + 1);
 
-        vm.expectRevert("ERC20/permit-expired");
+        vm.expectRevert(IERC20Permit.PermitExpired.selector);
         token.permit(owner, address(0xCAFE), 1e18, deadline, v, r, s);
     }
 
@@ -409,7 +413,7 @@ contract ERC20Test is Test {
         );
 
         token.permit(owner, address(0xCAFE), 1e18, block.timestamp, v, r, s);
-        vm.expectRevert("ERC20/invalid-permit");
+        vm.expectRevert(IERC20Permit.InvalidPermit.selector);
         token.permit(owner, address(0xCAFE), 1e18, block.timestamp, v, r, s);
     }
 
@@ -418,7 +422,7 @@ contract ERC20Test is Test {
             vm.expectEmit(true, true, true, true);
             emit Transfer(address(0), to, amount);
         } else {
-            vm.expectRevert("ERC20/invalid-address");
+            vm.expectRevert(IERC20.InvalidAddress.selector);
         }
         token.mint(to, amount);
 
@@ -532,7 +536,7 @@ contract ERC20Test is Test {
         burnAmount = bound(burnAmount, mintAmount + 1, type(uint256).max);
 
         token.mint(to, mintAmount);
-        vm.expectRevert("ERC20/insufficient-balance");
+        vm.expectRevert(IERC20.InsufficientBalance.selector);
         token.burn(to, burnAmount);
     }
 
@@ -543,7 +547,7 @@ contract ERC20Test is Test {
         sendAmount = bound(sendAmount, mintAmount + 1, type(uint256).max);
 
         token.mint(address(this), mintAmount);
-        vm.expectRevert("ERC20/insufficient-balance");
+        vm.expectRevert(IERC20.InsufficientBalance.selector);
         token.transfer(to, sendAmount);
     }
 
@@ -560,7 +564,7 @@ contract ERC20Test is Test {
         vm.prank(from);
         token.approve(address(this), approval);
 
-        vm.expectRevert("ERC20/insufficient-allowance");
+        vm.expectRevert(IERC20.InsufficientAllowance.selector);
         token.transferFrom(from, to, amount);
     }
 
@@ -577,7 +581,7 @@ contract ERC20Test is Test {
         vm.prank(from);
         token.approve(address(this), sendAmount);
 
-        vm.expectRevert("ERC20/insufficient-balance");
+        vm.expectRevert(IERC20.InsufficientBalance.selector);
         token.transferFrom(from, to, sendAmount);
     }
 
@@ -601,7 +605,7 @@ contract ERC20Test is Test {
             )
         );
 
-        vm.expectRevert("ERC20/invalid-permit");
+        vm.expectRevert(IERC20Permit.InvalidPermit.selector);
         token.permit(owner, to, amount, deadline, v, r, s);
     }
 
@@ -623,7 +627,7 @@ contract ERC20Test is Test {
             )
         );
 
-        vm.expectRevert("ERC20/invalid-permit");
+        vm.expectRevert(IERC20Permit.InvalidPermit.selector);
         token.permit(owner, to, amount, deadline + 1, v, r, s);
     }
 
@@ -648,7 +652,7 @@ contract ERC20Test is Test {
 
         vm.warp(deadline + 1);
 
-        vm.expectRevert("ERC20/permit-expired");
+        vm.expectRevert(IERC20Permit.PermitExpired.selector);
         token.permit(owner, to, amount, deadline, v, r, s);
     }
 
@@ -670,7 +674,7 @@ contract ERC20Test is Test {
         );
 
         token.permit(owner, to, amount, deadline, v, r, s);
-        vm.expectRevert("ERC20/invalid-permit");
+        vm.expectRevert(IERC20Permit.InvalidPermit.selector);
         token.permit(owner, to, amount, deadline, v, r, s);
     }
 }

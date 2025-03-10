@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {Tranche} from "src/vaults/token/Tranche.sol";
 import {ITrancheFactory} from "src/vaults/interfaces/factories/ITrancheFactory.sol";
-import {Auth} from "src/vaults/Auth.sol";
+import {Auth} from "src/misc/Auth.sol";
 
 /// @title  Tranche Token Factory
 /// @dev    Utility for deploying new tranche token contracts
@@ -18,17 +18,12 @@ contract TrancheFactory is Auth, ITrancheFactory {
 
     /// @inheritdoc ITrancheFactory
     function newTranche(
-        uint64 poolId,
-        bytes16 trancheId,
         string memory name,
         string memory symbol,
         uint8 decimals,
+        bytes32 salt,
         address[] calldata trancheWards
     ) public auth returns (address) {
-        // Salt is hash(poolId + trancheId)
-        // same tranche token address on every evm chain
-        bytes32 salt = keccak256(abi.encodePacked(poolId, trancheId));
-
         Tranche token = new Tranche{salt: salt}(decimals);
 
         token.file("name", name);
@@ -45,12 +40,12 @@ contract TrancheFactory is Auth, ITrancheFactory {
     }
 
     /// @inheritdoc ITrancheFactory
-    function getAddress(uint64 poolId, bytes16 trancheId, uint8 decimals) external view returns (address) {
+    function getAddress(uint8 decimals, bytes32 salt) external view returns (address) {
         bytes32 hash = keccak256(
             abi.encodePacked(
                 bytes1(0xff),
                 address(this),
-                keccak256(abi.encodePacked(poolId, trancheId)),
+                salt,
                 keccak256(abi.encodePacked(type(Tranche).creationCode, abi.encode(decimals)))
             )
         );

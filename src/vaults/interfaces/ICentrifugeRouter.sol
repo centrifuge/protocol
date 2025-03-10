@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Domain} from "src/vaults/interfaces/IPoolManager.sol";
+import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
+
 import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 
-interface ICentrifugeRouter is IRecoverable {
+interface ICentrifugeRouter is IMulticall, IRecoverable {
     // --- Events ---
     event LockDepositRequest(
         address indexed vault, address indexed controller, address indexed owner, address sender, uint256 amount
@@ -21,10 +22,10 @@ interface ICentrifugeRouter is IRecoverable {
     /// @dev    After this is called, anyone can claim tokens to msg.sender.
     ///         Even any requests submitted directly to the vault (not through the CentrifugeRouter) will be
     ///         permissionlessly claimable through the CentrifugeRouter, until `disable()` is called.
-    function enable(address vault) external;
+    function enable(address vault) external payable;
 
     /// @notice Disable permissionless claiming
-    function disable(address vault) external;
+    function disable(address vault) external payable;
 
     // --- Deposit ---
     /// @notice Check `IERC7540Deposit.requestDeposit`.
@@ -155,37 +156,18 @@ interface ICentrifugeRouter is IRecoverable {
     function claimCancelRedeemRequest(address vault, address receiver, address controller) external payable;
 
     // --- Transfer ---
-    /// @notice Check `IPoolManager.transferAssets`.
-    /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
-    ///         The caller must call `CentrifugeRouter.estimate` to get estimates how much the deposit will cost.
-    ///
-    /// @param  asset Check `IPoolManager.transferAssets.asset`
-    /// @param  recipient Check `IPoolManager.transferAssets.recipient`
-    /// @param  amount Check `IPoolManager.transferAssets.amount`
-    /// @param  topUpAmount Amount that covers all costs outside EVM
-    function transferAssets(address asset, bytes32 recipient, uint128 amount, uint256 topUpAmount) external payable;
-
-    /// @notice This is a more friendly version where the recipient is and EVM address
-    /// @dev the recipient address is padded to 32 bytes internally
-    function transferAssets(address asset, address recipient, uint128 amount, uint256 topUpAmount) external payable;
-
-    /// @notice Trigger a transfer of assets from a TransferProxy contract.
-    function transferAssetsFromProxy(address transferProxy, address asset, uint256 topUpAmount) external payable;
-
     /// @notice Check `IPoolManager.transferTrancheTokens`.
     /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
     ///         The caller must call `CentrifugeRouter.estimate` to get estimates how much the deposit will cost.
     ///
     /// @param  vault The vault for the corresponding tranche token
-    /// @param  domain Check `IPoolManager.transferTrancheTokens.domain`
-    /// @param  id Check `IPoolManager.transferTrancheTokens.destinationId`
+    /// @param  chainId Check `IPoolManager.transferTrancheTokens.destinationId`
     /// @param  recipient Check `IPoolManager.transferTrancheTokens.recipient`
     /// @param  amount Check `IPoolManager.transferTrancheTokens.amount`
     /// @param  topUpAmount Amount that covers all costs outside EVM
     function transferTrancheTokens(
         address vault,
-        Domain domain,
-        uint64 id,
+        uint32 chainId,
         bytes32 recipient,
         uint128 amount,
         uint256 topUpAmount
@@ -195,8 +177,7 @@ interface ICentrifugeRouter is IRecoverable {
     /// @dev    The recipient address is padded to 32 bytes internally
     function transferTrancheTokens(
         address vault,
-        Domain domain,
-        uint64 chainId,
+        uint32 chainId,
         address recipient,
         uint128 amount,
         uint256 topUpAmount
@@ -223,38 +204,6 @@ interface ICentrifugeRouter is IRecoverable {
     /// @param  amount  Amount to be wrapped
     /// @param  receiver Receiver of the unwrapped tokens
     function unwrap(address wrapper, uint256 amount, address receiver) external payable;
-
-    // --- Batching ---
-    /// @notice Allows caller to execute multiple ( batched ) messages calls in one transaction.
-    /// @dev    Messages calls that can be executed are only part of the CentrifugeRouter itself.
-    ///         No reentrant execution is allowed.
-    ///         In order to provide the correct value for functions that require top up,
-    ///         the caller must estimate separate, in advance, how much each of the message call will cost.
-    ///         The `msg.value` when calling this method must be the sum of all estimates.
-    ///
-    ///         Example: An investor would like to make 2 consecutive deposit requests in a single batch.
-    ///         address investor            = // Investor's address
-    ///         address vault               = // Vault's address
-    ///         uint256 amount1             = 100 * 10 ** 18
-    ///         uint256 amount2             = 50 * 10 ** 18
-    ///         uint256 requestDepositCost  = 10 gwei
-    ///
-    ///         address router              = // CentrifugeRouter's address
-    ///
-    ///         bytes[] memory calls = new bytes[](2);
-    ///         calls[0] = abi.encodeCall(
-    ///             router.requestDeposit, (vault, amount1, investor, investor, requestDepositCost)
-    ///         );
-    ///         calls[1] = abi.encodeCall(
-    ///             router.requestDeposit, (vault, amount2, investor, investor, requestDepositCost)
-    ///         );
-    ///         uint256 msgValue = 2 * requestDepositCost;
-
-    ///         router.multicall{value: msgValue}(calls);
-    ///
-    ///         The `msg.value` MUST be at least 20 gwei. `multicall{value: 20 gwei}()`
-    /// @param  data An array of all encoded messages calls and their arguments
-    function multicall(bytes[] memory data) external payable;
 
     // --- View Methods ---
     /// @notice Check IPoolManager.getVault

@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {Asserts} from "@chimera/Asserts.sol";
 import {Setup} from "./Setup.sol";
 import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
-import {IERC20Metadata} from "src/vaults/interfaces/IERC20.sol";
+import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import "forge-std/console2.sol";
 
 /// @dev ERC-7540 Properties

@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import "src/misc/interfaces/IERC20.sol";
+import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
+import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
+
 import "test/vaults/BaseTest.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 import "src/vaults/interfaces/IERC7540.sol";
-import "src/vaults/interfaces/IERC20.sol";
 import {CentrifugeRouter} from "src/vaults/CentrifugeRouter.sol";
 import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
 import {MockReentrantERC20Wrapper1, MockReentrantERC20Wrapper2} from "test/vaults/mocks/MockReentrantERC20Wrapper.sol";
@@ -14,10 +18,20 @@ contract CentrifugeRouterTest is BaseTest {
     /// @dev Payload is not taken into account during gas estimation
     bytes constant PAYLOAD_FOR_GAS_ESTIMATION = "irrelevant_value";
 
-    function testCFGRouterDeposit(uint256 amount) public {
+    /// forge-config: default.isolate = true
+    function testCFGRouterDeposit() public {
+        _testCFGRouterDeposit(4, true);
+    }
+
+    /// forge-config: default.isolate = true
+    function testCFGRouterDepositFuzz(uint256 amount) public {
+        vm.assume(amount % 2 == 0);
+        _testCFGRouterDeposit(amount, false);
+    }
+
+    function _testCFGRouterDeposit(uint256 amount, bool snap) internal {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
         amount = uint128(bound(amount, 4, MAX_UINT128));
-        vm.assume(amount % 2 == 0);
 
         address vault_ = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
@@ -38,7 +52,7 @@ contract CentrifugeRouterTest is BaseTest {
 
         uint256 gas = estimateGas() + GAS_BUFFER;
 
-        vm.expectRevert(bytes("SafeTransferLib/safe-transfer-from-failed"));
+        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
         router.requestDeposit{value: gas}(vault_, amount, self, self, gas);
         erc20.approve(vault_, amount);
 
@@ -48,9 +62,13 @@ contract CentrifugeRouterTest is BaseTest {
         vm.expectRevert(bytes("CentrifugeRouter/invalid-owner"));
         router.requestDeposit{value: gas}(vault_, amount, self, self, gas);
 
-        snapStart("CentrifugeRouter_requestDeposit");
+        if (snap) {
+            snapStart("CentrifugeRouter_requestDeposit");
+        }
         router.requestDeposit{value: gas}(vault_, amount, self, self, gas);
-        snapEnd();
+        if (snap) {
+            snapEnd();
+        }
 
         assertEq(address(gateway).balance, GATEWAY_INITIAL_BALACE + GAS_BUFFER);
         for (uint8 i; i < testAdapters.length; i++) {
@@ -72,9 +90,13 @@ contract CentrifugeRouterTest is BaseTest {
         ITranche tranche = ITranche(address(vault.share()));
         assertEq(tranche.balanceOf(address(escrow)), tranchePayout);
 
-        snapStart("CentrifugeRouter_claimDeposit");
+        if (snap) {
+            snapStart("CentrifugeRouter_claimDeposit");
+        }
         router.claimDeposit(vault_, self, self);
-        snapEnd();
+        if (snap) {
+            snapEnd();
+        }
         assertApproxEqAbs(tranche.balanceOf(self), tranchePayout, 1);
         assertApproxEqAbs(tranche.balanceOf(self), tranchePayout, 1);
         assertApproxEqAbs(tranche.balanceOf(address(escrow)), 0, 1);
@@ -148,9 +170,19 @@ contract CentrifugeRouterTest is BaseTest {
         assertApproxEqAbs(erc20.balanceOf(address(escrow)), amount, 1);
     }
 
-    function testRouterRedeem(uint256 amount) public {
-        amount = uint128(bound(amount, 4, MAX_UINT128));
+    /// forge-config: default.isolate = true
+    function testRouterRedeem() public {
+        _testRouterRedeem(4, true);
+    }
+
+    /// forge-config: default.isolate = true
+    function testRouterRedeemFuzz(uint256 amount) public {
         vm.assume(amount % 2 == 0);
+        _testRouterRedeem(amount, false);
+    }
+
+    function _testRouterRedeem(uint256 amount, bool snap) internal {
+        amount = uint128(bound(amount, 4, MAX_UINT128));
 
         // deposit
         address vault_ = deploySimpleVault();
@@ -159,9 +191,13 @@ contract CentrifugeRouterTest is BaseTest {
         erc20.mint(self, amount);
         erc20.approve(vault_, amount);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
-        snapStart("CentrifugeRouter_enable");
+        if (snap) {
+            snapStart("CentrifugeRouter_enable");
+        }
         router.enable(vault_);
-        snapEnd();
+        if (snap) {
+            snapEnd();
+        }
 
         uint256 fuel = estimateGas();
         router.requestDeposit{value: fuel}(vault_, amount, self, self, fuel);
@@ -179,9 +215,13 @@ contract CentrifugeRouterTest is BaseTest {
         router.requestRedeem{value: fuel}(vault_, tranchePayout, self, self, fuel);
 
         // redeem
-        snapStart("CentrifugeRouter_requestRedeem");
+        if (snap) {
+            snapStart("CentrifugeRouter_requestRedeem");
+        }
         router.requestRedeem{value: fuel}(vault_, tranchePayout, self, self, fuel);
-        snapEnd();
+        if (snap) {
+            snapEnd();
+        }
         (uint128 assetPayout) = fulfillRedeemRequest(vault, assetId, tranchePayout, self);
         assertApproxEqAbs(tranche.balanceOf(self), 0, 1);
         assertApproxEqAbs(tranche.balanceOf(address(escrow)), 0, 1);
@@ -278,9 +318,19 @@ contract CentrifugeRouterTest is BaseTest {
         assertApproxEqAbs(erc20Y.balanceOf(self), assetPayout2, 1);
     }
 
-    function testMulticallingApproveVaultAndExecuteLockedDepositRequest(uint256 amount) public {
-        amount = uint128(bound(amount, 4, MAX_UINT128));
+    /// forge-config: default.isolate = true
+    function testMulticallingApproveVaultAndExecuteLockedDepositRequest() public {
+        _testMulticallingApproveVaultAndExecuteLockedDepositRequest(4, true);
+    }
+
+    /// forge-config: default.isolate = true
+    function testMulticallingApproveVaultAndExecuteLockedDepositRequestFuzz(uint256 amount) public {
         vm.assume(amount % 2 == 0);
+        _testMulticallingApproveVaultAndExecuteLockedDepositRequest(amount, false);
+    }
+
+    function _testMulticallingApproveVaultAndExecuteLockedDepositRequest(uint256 amount, bool snap) internal {
+        amount = uint128(bound(amount, 4, MAX_UINT128));
 
         address vault_ = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
@@ -290,9 +340,13 @@ contract CentrifugeRouterTest is BaseTest {
         erc20.approve(address(router), amount);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
         router.enable(address(vault_));
-        snapStart("CentrifugeRouter_lockDepositRequest");
+        if (snap) {
+            snapStart("CentrifugeRouter_lockDepositRequest");
+        }
         router.lockDepositRequest(vault_, amount, self, self);
-        snapEnd();
+        if (snap) {
+            snapEnd();
+        }
 
         // multicall
         uint256 fuel = estimateGas();
@@ -577,7 +631,7 @@ contract CentrifugeRouterTest is BaseTest {
         uint256 underlyingBalance = erc20.balanceOf(self);
         deposit = underlyingBalance + 1;
         remainingUnderlying = underlyingBalance;
-        vm.expectRevert(bytes("SafeTransferLib/safe-transfer-from-failed"));
+        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
         router.enableLockDepositRequest(vault_, deposit);
         assertEq(wrapper.balanceOf(routerEscrowAddress), escrowBalance);
         assertEq(wrapper.balanceOf(self), 0);
@@ -711,28 +765,7 @@ contract CentrifugeRouterTest is BaseTest {
         // Investor locks deposit request and enables permissionless lcaiming
         vm.startPrank(investor);
         erc20.approve(address(router), amount);
-        vm.expectRevert(bytes("CentrifugeRouter/unauthorized-sender"));
-        router.enableLockDepositRequest(vault_, amount);
-        vm.stopPrank();
-    }
-
-    function testMulticallReentrancyCheck(uint256 amount) public {
-        amount = uint128(bound(amount, 4, MAX_UINT128));
-        vm.assume(amount % 2 == 0);
-
-        MockReentrantERC20Wrapper2 wrapper = new MockReentrantERC20Wrapper2(address(erc20), address(router));
-        address vault_ =
-            deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
-        vm.label(vault_, "vault");
-
-        address investor = makeAddr("investor");
-
-        erc20.mint(investor, amount);
-
-        // Investor locks deposit request and enables permissionless claiming
-        vm.startPrank(investor);
-        erc20.approve(address(router), amount);
-        vm.expectRevert(bytes("CentrifugeRouter/already-initiated"));
+        vm.expectRevert(ReentrancyProtection.UnauthorizedSender.selector);
         router.enableLockDepositRequest(vault_, amount);
         vm.stopPrank();
     }

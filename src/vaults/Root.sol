@@ -1,17 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
-import {Auth} from "src/vaults/Auth.sol";
-import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
-import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
+import {Auth} from "src/misc/Auth.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
+
+import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+
 import {IRoot, IRecoverable} from "src/vaults/interfaces/IRoot.sol";
-import {IAuth} from "src/vaults/interfaces/IAuth.sol";
 
 /// @title  Root
 /// @notice Core contract that is a ward on all other deployed contracts.
 /// @dev    Pausing can happen instantaneously, but relying on other contracts
 ///         is restricted to the timelock set by the delay.
 contract Root is Auth, IRoot {
+    using MessageLib for *;
     using BytesLib for bytes;
 
     /// @dev To prevent filing a delay that would block any updates indefinitely
@@ -106,16 +109,17 @@ contract Root is Auth, IRoot {
     /// --- Incoming message handling ---
     /// @inheritdoc IRoot
     function handle(bytes calldata message) public auth {
-        MessagesLib.Call call = MessagesLib.messageType(message);
+        MessageType kind = MessageLib.messageType(message);
 
-        if (call == MessagesLib.Call.ScheduleUpgrade) {
-            scheduleRely(message.toAddress(1));
-        } else if (call == MessagesLib.Call.CancelUpgrade) {
-            cancelRely(message.toAddress(1));
-        } else if (call == MessagesLib.Call.RecoverTokens) {
-            (address target, address token, address to, uint256 amount) =
-                (message.toAddress(1), message.toAddress(33), message.toAddress(65), message.toUint256(97));
-            recoverTokens(target, token, to, amount);
+        if (kind == MessageType.ScheduleUpgrade) {
+            MessageLib.ScheduleUpgrade memory m = message.deserializeScheduleUpgrade();
+            scheduleRely(address(bytes20(m.target)));
+        } else if (kind == MessageType.CancelUpgrade) {
+            MessageLib.CancelUpgrade memory m = message.deserializeCancelUpgrade();
+            cancelRely(address(bytes20(m.target)));
+        } else if (kind == MessageType.RecoverTokens) {
+            MessageLib.RecoverTokens memory m = message.deserializeRecoverTokens();
+            recoverTokens(address(bytes20(m.target)), address(bytes20(m.token)), address(bytes20(m.to)), m.amount);
         } else {
             revert("Root/invalid-message");
         }

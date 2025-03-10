@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
-import {RestrictionUpdate} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 import {Gateway} from "src/vaults/gateway/Gateway.sol";
 import {MockCentrifugeChain} from "test/vaults/mocks/MockCentrifugeChain.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
@@ -10,15 +10,16 @@ import {Guardian} from "src/vaults/admin/Guardian.sol";
 import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
 import {MockSafe} from "test/vaults/mocks/MockSafe.sol";
 import {PoolManager, Pool} from "src/vaults/PoolManager.sol";
-import {ERC20} from "src/vaults/token/ERC20.sol";
+import {ERC20} from "src/misc/ERC20.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 import {ERC7540VaultTest} from "test/vaults/unit/ERC7540Vault.t.sol";
 import {PermissionlessAdapter} from "test/vaults/mocks/PermissionlessAdapter.sol";
 import {Root} from "src/vaults/Root.sol";
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
 import {AxelarScript} from "script/vaults/Axelar.s.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import "script/vaults/Deployer.sol";
-import "src/vaults/libraries/MathLib.sol";
+import "src/misc/libraries/MathLib.sol";
 import "forge-std/Test.sol";
 
 interface ApproveLike {
@@ -35,6 +36,7 @@ interface HookLike {
 
 contract DeployTest is Test, Deployer {
     using MathLib for uint256;
+    using MessageLib for *;
 
     uint8 constant PRICE_DECIMALS = 18;
 
@@ -64,7 +66,7 @@ contract DeployTest is Test, Deployer {
     }
 
     function testDeployerHasNoAccess() public {
-        vm.expectRevert("Auth/not-authorized");
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         root.relyContract(address(investmentManager), address(1));
 
         // checking in the same order as they are deployed
@@ -165,9 +167,7 @@ contract DeployTest is Test, Deployer {
         vm.prank(address(gateway));
 
         poolManager.updateRestriction(
-            poolId,
-            trancheId,
-            abi.encodePacked(uint8(RestrictionUpdate.UpdateMember), bytes32(bytes20(self)), validUntil)
+            poolId, trancheId, MessageLib.UpdateRestrictionMember(bytes32(bytes20(self)), validUntil).serialize()
         );
 
         depositMint(poolId, trancheId, price, amount, vault);
@@ -269,7 +269,7 @@ contract DeployTest is Test, Deployer {
     ) public returns (address) {
         vm.startPrank(address(gateway));
         poolManager.addPool(poolId);
-        poolManager.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook);
+        poolManager.addTranche(poolId, trancheId, tokenName, tokenSymbol,decimals, keccak256(abi.encodePacked(poolId, trancheId)), hook);
         uint128 assetId = poolManager.registerAsset(address(erc20), 0, 0);
         poolManager.allowAsset(poolId, assetId);
         poolManager.updateTranchePrice(poolId, trancheId, assetId, uint128(10 ** 18), uint64(block.timestamp));

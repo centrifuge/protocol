@@ -6,13 +6,14 @@ import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {Properties} from "../Properties.sol";
 import {vm} from "@chimera/Hevm.sol";
 
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
+
 // Src Deps | For cycling of values
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
-import {ERC20} from "src/vaults/token/ERC20.sol";
+import {ERC20} from "src/misc/ERC20.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
-import {RestrictionUpdate} from "src/vaults/interfaces/token/IRestrictionManager.sol";
-import {CastLib} from "src/vaults/libraries/CastLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 // @dev A way to separately code and maintain a mocked implementation of `Gateway`
 // Based on
@@ -23,6 +24,7 @@ import {CastLib} from "src/vaults/libraries/CastLib.sol";
  */
 abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     using CastLib for *;
+    using MessageLib for *;
 
     // Deploy new Asset
     // Add Asset to Pool -> Also deploy Tranche
@@ -140,7 +142,15 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         uint8 decimals,
         address /*hook*/
     ) public {
-        poolManager.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, address(restrictionManager));
+        poolManager.addTranche(
+            poolId,
+            trancheId,
+            tokenName,
+            tokenSymbol,
+            decimals,
+            keccak256(abi.encodePacked(poolId, trancheId)),
+            address(restrictionManager)
+        );
     }
 
     // Step 9
@@ -158,7 +168,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
      */
     function poolManager_updateMember(uint64 validUntil) public {
         poolManager.updateRestriction(
-            poolId, trancheId, abi.encodePacked(uint8(RestrictionUpdate.UpdateMember), actor.toBytes32(), validUntil)
+            poolId, trancheId, MessageLib.UpdateRestrictionMember(actor.toBytes32(), validUntil).serialize()
         );
     }
 
@@ -173,13 +183,13 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
 
     function poolManager_freeze() public {
         poolManager.updateRestriction(
-            poolId, trancheId, abi.encodePacked(uint8(RestrictionUpdate.Freeze), actor.toBytes32())
+            poolId, trancheId, MessageLib.UpdateRestrictionFreeze(actor.toBytes32()).serialize()
         );
     }
 
     function poolManager_unfreeze() public {
         poolManager.updateRestriction(
-            poolId, trancheId, abi.encodePacked(uint8(RestrictionUpdate.Unfreeze), actor.toBytes32())
+            poolId, trancheId, MessageLib.UpdateRestrictionUnfreeze(actor.toBytes32()).serialize()
         );
     }
 

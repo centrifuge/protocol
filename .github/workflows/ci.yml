@@ -17,6 +17,8 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
 
       - name: Run tests
         run: forge test --no-match-path "test/vaults/fuzzing/**/*.sol" --deny-warnings
@@ -31,6 +33,8 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
 
       - name: Build contracts
         run: |
@@ -52,6 +56,8 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
 
       - name: Run coverage
         run: forge coverage --report summary --report lcov --no-match-path "test/vaults/**/*.sol"

@@ -6,9 +6,11 @@ import {Properties} from "../Properties.sol";
 import {vm} from "@chimera/Hevm.sol";
 import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
 
-import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
 abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
+    using MessageLib for *;
+
     mapping(uint256 => uint256) primaryIndex;
 
     /// @dev Add to messsages we're trying to broadcast
@@ -42,7 +44,7 @@ abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
     }
 
     function _formatMessageProof(bytes memory message) internal pure returns (bytes memory) {
-        return abi.encodePacked(uint8(MessagesLib.Call.MessageProof), keccak256(message));
+        return MessageLib.MessageProof(keccak256(message)).serialize();
     }
 
     // TODO: Initiate Message Recover
@@ -50,7 +52,7 @@ abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
     /**
      * router2.execute(
      *         abi.encodePacked(
-     *             uint8(MessagesLib.Call.InitiateMessageRecovery), keccak256(message), address(router1).toBytes32()
+     *             uint8(MessageLib.Call.InitiateMessageRecovery), keccak256(message), address(router1).toBytes32()
      *         )
      *     );
      */
@@ -74,11 +76,10 @@ abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
         // NOTE: Can we recover for self?
         // TODO: CHECK THIS!
         MockAdapter(adapters[calledRouterId]).execute(
-            abi.encodePacked(
-                uint8(MessagesLib.Call.InitiateMessageRecovery),
-                keccak256(message),
-                bytes32(bytes20(address(adapters[recoverRouterId])))
-            )
+            MessageLib.InitiateMessageRecovery({
+                hash: keccak256(message),
+                adapter: bytes32(bytes20(address(adapters[recoverRouterId])))
+            }).serialize()
         );
     }
 

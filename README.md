@@ -12,11 +12,16 @@ TODO: A main definition of what Centrifuge Protocol V3 is.
 
 TODO: How Centrifuge Pools works
 
+### How it works
+
+TODO: Explain how Centrifuge Pools works
+
 ## Centrifuge Vaults
 
 Centrifuge Vaults enable seamless deployment of Centrifuge pools on any EVM-compatible blockchain. The multi-chain protocol was designed specifically to tokenize RWAs as ERC20 tokens featuring customizable and gas-efficient permissioning. Investors deposit and redeem onchain using the ERC7540 asynchronous tokenized vault standard. Issuers can plug-and-play custom investment features through ERC20 wrapper support and accept multiple stablecoins using ERC7575. The smart contracts are immutable, rigorously audited, and controlled by onchain governance.
 
-## How it works
+### How it works
+
 ![Architecture](https://cloudflare-ipfs.com/ipfs/QmW7N8beQ6TF5efwqkMndouxGub2J1jqsEhv5gXDbyqA2K)
 
 Investors can invest in multiple tranches for each RWA pool. Each of these tranches is a separate deployment of an [ERC-7540](https://eips.ethereum.org/EIPS/eip-7540) Vault and a Tranche Token.
@@ -55,6 +60,7 @@ forge test
 | [Alex the Entreprenerd](https://x.com/gallodasballo)  | Mar - Apr 2024  | Invariant test development | [`Part 1`](https://getrecon.substack.com/p/lessons-learned-from-fuzzing-centrifuge) [`Part 2`](https://getrecon.substack.com/p/lessons-learned-from-fuzzing-centrifuge-059)  |
 | [xmxanuel](https://x.com/xmxanuel)  | May - June 2024  | Security review | Internal                                                                                                                                               |
 | [Spearbit](https://spearbit.com/)  | July 2024  | Security review             | [`Report`](https://github.com/centrifuge/protocol-v3/blob/main/docs/audits/2024-08-Spearbit.pdf) |
+| [Cantina](https://cantina.xyz/)  | Feb 2025  | Security review             | [`Report`](https://github.com/centrifuge/protocol-v3/blob/main/docs/audits/2025-02-Cantina.pdf) |
 
 ## License
 This codebase is licensed under [Business Source License 1.1](https://github.com/centrifuge/protocol-v3/blob/main/LICENSE).

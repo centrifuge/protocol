@@ -2,11 +2,13 @@
 pragma solidity 0.8.28;
 
 import {Test} from "forge-std/Test.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {GasService} from "src/vaults/gateway/GasService.sol";
-import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
-import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
 
 contract GasServiceTest is Test {
+    using MessageLib for *;
     using BytesLib for bytes;
 
     uint64 constant MESSAGE_COST = 40000000000000000;
@@ -43,7 +45,7 @@ contract GasServiceTest is Test {
         service.file(what, messageCost);
 
         vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert("Auth/not-authorized");
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         service.file("messageCost", messageCost);
     }
 
@@ -73,7 +75,7 @@ contract GasServiceTest is Test {
         assertEq(service.lastUpdatedAt(), futureDate);
 
         vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert("Auth/not-authorized");
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         service.updateGasPrice(value, futureDate);
     }
 
@@ -82,14 +84,14 @@ contract GasServiceTest is Test {
         assertEq(service.tokenPrice(), value);
 
         vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert("Auth/not-authorized");
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         service.updateTokenPrice(value);
     }
 
     function testEstimateFunction(bytes calldata message) public view {
         vm.assume(message.length > 1);
-        vm.assume(message.toUint8(0) != uint8(MessagesLib.Call.MessageProof) && message.toUint8(0) <= 28);
-        bytes memory proof = abi.encodePacked(uint8(MessagesLib.Call.MessageProof), keccak256(message));
+        vm.assume(message.toUint8(0) != uint8(MessageType.MessageProof) && message.toUint8(0) <= 28);
+        bytes memory proof = MessageLib.MessageProof(keccak256(message)).serialize();
 
         uint256 messageCost = service.estimate(message);
         uint256 proofCost = service.estimate(proof);

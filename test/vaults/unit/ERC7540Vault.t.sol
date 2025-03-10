@@ -4,6 +4,8 @@ pragma solidity 0.8.28;
 import "test/vaults/BaseTest.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 import "src/vaults/interfaces/IERC7540.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
 
 contract ERC7540VaultTest is BaseTest {
     // Deployment
@@ -44,7 +46,7 @@ contract ERC7540VaultTest is BaseTest {
         address vault_ = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
 
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         vault.file("manager", self);
 
         root.relyContract(vault_, self);
@@ -62,26 +64,26 @@ contract ERC7540VaultTest is BaseTest {
         address vault_ = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
 
-        vm.expectRevert(bytes("MathLib/uint128-overflow"));
+        vm.expectRevert(MathLib.Uint128_Overflow.selector);
         vault.convertToShares(amount);
 
-        vm.expectRevert(bytes("MathLib/uint128-overflow"));
+        vm.expectRevert(MathLib.Uint128_Overflow.selector);
         vault.convertToAssets(amount);
 
         vm.expectRevert(bytes("InvestmentManager/exceeds-max-deposit"));
         vault.deposit(amount, randomUser, self);
 
-        vm.expectRevert(bytes("MathLib/uint128-overflow"));
+        vm.expectRevert(MathLib.Uint128_Overflow.selector);
         vault.mint(amount, randomUser);
 
-        vm.expectRevert(bytes("MathLib/uint128-overflow"));
+        vm.expectRevert(MathLib.Uint128_Overflow.selector);
         vault.withdraw(amount, randomUser, self);
 
         vm.expectRevert(bytes("InvestmentManager/exceeds-max-redeem"));
         vault.redeem(amount, randomUser, self);
 
         erc20.mint(address(this), amount);
-        vm.expectRevert(bytes("MathLib/uint128-overflow"));
+        vm.expectRevert(MathLib.Uint128_Overflow.selector);
         vault.requestDeposit(amount, self, self);
     }
 

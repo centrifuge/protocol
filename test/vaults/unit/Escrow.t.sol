@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Escrow} from "src/vaults/Escrow.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import "test/vaults/BaseTest.sol";
 
 contract EscrowTest is BaseTest {
@@ -11,7 +12,7 @@ contract EscrowTest is BaseTest {
         assertEq(erc20.allowance(address(escrow), spender), 0);
 
         vm.prank(randomUser);
-        vm.expectRevert("Auth/not-authorized");
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         escrow.approveMax(address(erc20), spender);
 
         escrow.approveMax(address(erc20), spender);
@@ -25,7 +26,7 @@ contract EscrowTest is BaseTest {
         assertEq(erc20.allowance(address(escrow), spender), type(uint256).max);
 
         vm.prank(randomUser);
-        vm.expectRevert("Auth/not-authorized");
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         escrow.unapprove(address(erc20), spender);
 
         escrow.unapprove(address(erc20), spender);

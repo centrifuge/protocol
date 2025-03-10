@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/vaults/Auth.sol";
-import {MathLib} from "src/vaults/libraries/MathLib.sol";
-import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
-import {CastLib} from "src/vaults/libraries/CastLib.sol";
-import {IERC20, IERC20Permit, IERC20Wrapper} from "src/vaults/interfaces/IERC20.sol";
+import {Auth} from "src/misc/Auth.sol";
+import {Multicall} from "src/misc/Multicall.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {IERC20, IERC20Permit, IERC20Wrapper} from "src/misc/interfaces/IERC20.sol";
+
 import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
 import {ICentrifugeRouter} from "src/vaults/interfaces/ICentrifugeRouter.sol";
-import {IPoolManager, Domain} from "src/vaults/interfaces/IPoolManager.sol";
+import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
-import {TransientStorage} from "src/vaults/libraries/TransientStorage.sol";
 import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
-import {ITransferProxy} from "src/vaults/interfaces/factories/ITransferProxy.sol";
 
 /// @title  CentrifugeRouter
 /// @notice This is a helper contract, designed to be the entrypoint for EOAs.
@@ -24,14 +24,11 @@ import {ITransferProxy} from "src/vaults/interfaces/factories/ITransferProxy.sol
 ///         the multicall functionality which batches message calls into a single one.
 /// @dev    It is critical to ensure that at the end of any transaction, no funds remain in the
 ///         CentrifugeRouter. Any funds that do remain are at risk of being taken by other users.
-contract CentrifugeRouter is Auth, ICentrifugeRouter {
+contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
     using CastLib for address;
-    using TransientStorage for bytes32;
 
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
     uint256 private constant REQUEST_ID = 0;
-
-    bytes32 public constant INITIATOR_SLOT = bytes32(uint256(keccak256("Centrifuge/initiator")) - 1);
 
     IEscrow public immutable escrow;
     IGateway public immutable gateway;
@@ -46,20 +43,6 @@ contract CentrifugeRouter is Auth, ICentrifugeRouter {
         poolManager = IPoolManager(poolManager_);
     }
 
-    modifier protected() {
-        address currentInitiator = INITIATOR_SLOT.tloadAddress();
-        if (currentInitiator == address(0)) {
-            // Single call re-entrancy lock
-            INITIATOR_SLOT.tstore(msg.sender);
-            _;
-            INITIATOR_SLOT.tstore(0);
-        } else {
-            // Multicall re-entrancy lock
-            require(msg.sender == currentInitiator, "CentrifugeRouter/unauthorized-sender");
-            _;
-        }
-    }
-
     // --- Administration ---
     /// @inheritdoc IRecoverable
     function recoverTokens(address token, address to, uint256 amount) external auth {
@@ -67,11 +50,11 @@ contract CentrifugeRouter is Auth, ICentrifugeRouter {
     }
 
     // --- Enable interactions with the vault ---
-    function enable(address vault) public protected {
+    function enable(address vault) public payable protected {
         IERC7540Vault(vault).setEndorsedOperator(msg.sender, true);
     }
 
-    function disable(address vault) external protected {
+    function disable(address vault) external payable protected {
         IERC7540Vault(vault).setEndorsedOperator(msg.sender, false);
     }
 
@@ -220,41 +203,9 @@ contract CentrifugeRouter is Auth, ICentrifugeRouter {
 
     // --- Transfer ---
     /// @inheritdoc ICentrifugeRouter
-    function transferAssets(address asset, bytes32 recipient, uint128 amount, uint256 topUpAmount)
-        public
-        payable
-        protected
-    {
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(this), amount);
-        _approveMax(asset, address(poolManager));
-        _pay(topUpAmount);
-        poolManager.transferAssets(asset, recipient, amount);
-    }
-
-    /// @inheritdoc ICentrifugeRouter
-    function transferAssets(address asset, address recipient, uint128 amount, uint256 topUpAmount)
-        external
-        payable
-        protected
-    {
-        transferAssets(asset, recipient.toBytes32(), amount, topUpAmount);
-    }
-
-    /// @inheritdoc ICentrifugeRouter
-    function transferAssetsFromProxy(address transferProxy, address asset, uint256 topUpAmount)
-        external
-        payable
-        protected
-    {
-        _pay(topUpAmount);
-        ITransferProxy(transferProxy).transfer(asset);
-    }
-
-    /// @inheritdoc ICentrifugeRouter
     function transferTrancheTokens(
         address vault,
-        Domain domain,
-        uint64 chainId,
+        uint32 chainId,
         bytes32 recipient,
         uint128 amount,
         uint256 topUpAmount
@@ -263,20 +214,19 @@ contract CentrifugeRouter is Auth, ICentrifugeRouter {
         _approveMax(IERC7540Vault(vault).share(), address(poolManager));
         _pay(topUpAmount);
         IPoolManager(poolManager).transferTrancheTokens(
-            IERC7540Vault(vault).poolId(), IERC7540Vault(vault).trancheId(), domain, chainId, recipient, amount
+            IERC7540Vault(vault).poolId(), IERC7540Vault(vault).trancheId(), chainId, recipient, amount
         );
     }
 
     /// @inheritdoc ICentrifugeRouter
     function transferTrancheTokens(
         address vault,
-        Domain domain,
-        uint64 chainId,
+        uint32 chainId,
         address recipient,
         uint128 amount,
         uint256 topUpAmount
     ) external payable protected {
-        transferTrancheTokens(vault, domain, chainId, recipient.toBytes32(), amount, topUpAmount);
+        transferTrancheTokens(vault, chainId, recipient.toBytes32(), amount, topUpAmount);
     }
 
     // --- ERC20 permits ---
@@ -307,27 +257,6 @@ contract CentrifugeRouter is Auth, ICentrifugeRouter {
         require(amount != 0, "CentrifugeRouter/zero-balance");
 
         require(IERC20Wrapper(wrapper).withdrawTo(receiver, amount), "CentrifugeRouter/unwrap-failed");
-    }
-
-    // --- Batching ---
-    /// @inheritdoc ICentrifugeRouter
-    function multicall(bytes[] memory data) external payable {
-        require(INITIATOR_SLOT.tloadAddress() == address(0), "CentrifugeRouter/already-initiated");
-
-        INITIATOR_SLOT.tstore(msg.sender);
-        uint256 totalBytes = data.length;
-        for (uint256 i; i < totalBytes; ++i) {
-            (bool success, bytes memory returnData) = address(this).delegatecall(data[i]);
-            if (!success) {
-                uint256 length = returnData.length;
-                require(length != 0, "CentrifugeRouter/call-failed");
-
-                assembly ("memory-safe") {
-                    revert(add(32, returnData), length)
-                }
-            }
-        }
-        INITIATOR_SLOT.tstore(0);
     }
 
     // --- View Methods ---

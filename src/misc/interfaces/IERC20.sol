@@ -5,6 +5,10 @@ pragma solidity 0.8.28;
 /// @dev    Interface of the ERC20 standard as defined in the EIP.
 /// @author Modified from OpenZeppelin Contracts (last updated v4.9.0) (token/ERC20/IERC20.sol)
 interface IERC20 {
+    error InvalidAddress();
+    error InsufficientBalance();
+    error InsufficientAllowance();
+
     /**
      * @dev Emitted when `value` tokens are moved from one account (`from`) to
      * another (`to`).
@@ -133,6 +137,9 @@ interface IERC20Metadata is IERC20 {
  * contracts should have entry points that don't rely on permit.
  */
 interface IERC20Permit {
+    error PermitExpired();
+    error InvalidPermit();
+
     /**
      * @dev Sets `value` as the allowance of `spender` over ``owner``'s tokens,
      * given ``owner``'s signed approval.

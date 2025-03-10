@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/vaults/Auth.sol";
-import {CastLib} from "src/vaults/libraries/CastLib.sol";
-import {MathLib} from "src/vaults/libraries/MathLib.sol";
-import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
-import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
-import {BytesLib} from "src/vaults/libraries/BytesLib.sol";
-import {IERC20, IERC20Metadata} from "src/vaults/interfaces/IERC20.sol";
+import {Auth} from "src/misc/Auth.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
+
+import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IInvestmentManager, InvestmentState} from "src/vaults/interfaces/IInvestmentManager.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
@@ -19,6 +21,7 @@ import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
 contract InvestmentManager is Auth, IInvestmentManager {
+    using MessageLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;
     using CastLib for *;
@@ -79,14 +82,14 @@ contract InvestmentManager is Auth, IInvestmentManager {
 
         state.pendingDepositRequest = state.pendingDepositRequest + _assets;
         gateway.send(
-            abi.encodePacked(
-                uint8(MessagesLib.Call.DepositRequest),
-                poolId,
-                vault_.trancheId(),
-                controller.toBytes32(),
-                poolManager.assetToId(asset),
-                _assets
-            ),
+            uint32(poolId >> 32),
+            MessageLib.DepositRequest({
+                poolId: poolId,
+                scId: vault_.trancheId(),
+                investor: controller.toBytes32(),
+                assetId: poolManager.assetToId(asset),
+                amount: _assets
+            }).serialize(),
             source
         );
 
@@ -94,7 +97,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
     }
 
     /// @inheritdoc IInvestmentManager
-    function requestRedeem(address vault, uint256 shares, address controller, /* owner */ address, address source)
+    function requestRedeem(address vault, uint256 shares, address controller, address owner, address source)
         public
         auth
         returns (bool)
@@ -106,7 +109,11 @@ contract InvestmentManager is Auth, IInvestmentManager {
         // You cannot redeem using a disallowed asset, instead another vault will have to be used
         require(poolManager.isAllowedAsset(vault_.poolId(), vault_.asset()), "InvestmentManager/asset-not-allowed");
 
-        require(_canTransfer(vault, controller, address(escrow), shares), "InvestmentManager/transfer-not-allowed");
+        require(
+            _canTransfer(vault, owner, address(escrow), shares)
+                && _canTransfer(vault, controller, address(escrow), shares),
+            "InvestmentManager/transfer-not-allowed"
+        );
 
         return _processRedeemRequest(vault, _shares, controller, source, false);
     }
@@ -123,14 +130,14 @@ contract InvestmentManager is Auth, IInvestmentManager {
         state.pendingRedeemRequest = state.pendingRedeemRequest + shares;
 
         gateway.send(
-            abi.encodePacked(
-                uint8(MessagesLib.Call.RedeemRequest),
-                vault_.poolId(),
-                vault_.trancheId(),
-                controller.toBytes32(),
-                poolManager.assetToId(vault_.asset()),
-                shares
-            ),
+            uint32(vault_.poolId() >> 32),
+            MessageLib.RedeemRequest({
+                poolId: vault_.poolId(),
+                scId: vault_.trancheId(),
+                investor: controller.toBytes32(),
+                assetId: poolManager.assetToId(vault_.asset()),
+                amount: shares
+            }).serialize(),
             source
         );
 
@@ -147,13 +154,13 @@ contract InvestmentManager is Auth, IInvestmentManager {
         state.pendingCancelDepositRequest = true;
 
         gateway.send(
-            abi.encodePacked(
-                uint8(MessagesLib.Call.CancelDepositRequest),
-                _vault.poolId(),
-                _vault.trancheId(),
-                controller.toBytes32(),
-                poolManager.assetToId(_vault.asset())
-            ),
+            uint32(_vault.poolId() >> 32),
+            MessageLib.CancelDepositRequest({
+                poolId: _vault.poolId(),
+                scId: _vault.trancheId(),
+                investor: controller.toBytes32(),
+                assetId: poolManager.assetToId(_vault.asset())
+            }).serialize(),
             source
         );
     }
@@ -173,13 +180,13 @@ contract InvestmentManager is Auth, IInvestmentManager {
         state.pendingCancelRedeemRequest = true;
 
         gateway.send(
-            abi.encodePacked(
-                uint8(MessagesLib.Call.CancelRedeemRequest),
-                _vault.poolId(),
-                _vault.trancheId(),
-                controller.toBytes32(),
-                poolManager.assetToId(_vault.asset())
-            ),
+            uint32(_vault.poolId() >> 32),
+            MessageLib.CancelRedeemRequest({
+                poolId: _vault.poolId(),
+                scId: _vault.trancheId(),
+                investor: controller.toBytes32(),
+                assetId: poolManager.assetToId(_vault.asset())
+            }).serialize(),
             source
         );
     }
@@ -187,51 +194,29 @@ contract InvestmentManager is Auth, IInvestmentManager {
     // --- Incoming message handling ---
     /// @inheritdoc IInvestmentManager
     function handle(bytes calldata message) public auth {
-        MessagesLib.Call call = MessagesLib.messageType(message);
+        MessageType kind = message.messageType();
 
-        if (call == MessagesLib.Call.FulfilledDepositRequest) {
+        if (kind == MessageType.FulfilledDepositRequest) {
+            MessageLib.FulfilledDepositRequest memory m = message.deserializeFulfilledDepositRequest();
             fulfillDepositRequest(
-                message.toUint64(1),
-                message.toBytes16(9),
-                message.toAddress(25),
-                message.toUint128(57),
-                message.toUint128(73),
-                message.toUint128(89)
+                m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.assetAmount, m.shareAmount
             );
-        } else if (call == MessagesLib.Call.FulfilledRedeemRequest) {
+        } else if (kind == MessageType.FulfilledRedeemRequest) {
+            MessageLib.FulfilledRedeemRequest memory m = message.deserializeFulfilledRedeemRequest();
             fulfillRedeemRequest(
-                message.toUint64(1),
-                message.toBytes16(9),
-                message.toAddress(25),
-                message.toUint128(57),
-                message.toUint128(73),
-                message.toUint128(89)
+                m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.assetAmount, m.shareAmount
             );
-        } else if (call == MessagesLib.Call.FulfilledCancelDepositRequest) {
+        } else if (kind == MessageType.FulfilledCancelDepositRequest) {
+            MessageLib.FulfilledCancelDepositRequest memory m = message.deserializeFulfilledCancelDepositRequest();
             fulfillCancelDepositRequest(
-                message.toUint64(1),
-                message.toBytes16(9),
-                message.toAddress(25),
-                message.toUint128(57),
-                message.toUint128(73),
-                message.toUint128(89)
+                m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.cancelledAmount, m.cancelledAmount
             );
-        } else if (call == MessagesLib.Call.FulfilledCancelRedeemRequest) {
-            fulfillCancelRedeemRequest(
-                message.toUint64(1),
-                message.toBytes16(9),
-                message.toAddress(25),
-                message.toUint128(57),
-                message.toUint128(73)
-            );
-        } else if (call == MessagesLib.Call.TriggerRedeemRequest) {
-            triggerRedeemRequest(
-                message.toUint64(1),
-                message.toBytes16(9),
-                message.toAddress(25),
-                message.toUint128(57),
-                message.toUint128(73)
-            );
+        } else if (kind == MessageType.FulfilledCancelRedeemRequest) {
+            MessageLib.FulfilledCancelRedeemRequest memory m = message.deserializeFulfilledCancelRedeemRequest();
+            fulfillCancelRedeemRequest(m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.cancelledShares);
+        } else if (kind == MessageType.TriggerRedeemRequest) {
+            MessageLib.TriggerRedeemRequest memory m = message.deserializeTriggerRedeemRequest();
+            triggerRedeemRequest(m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.shares);
         } else {
             revert("InvestmentManager/invalid-message");
         }
@@ -404,11 +389,13 @@ contract InvestmentManager is Auth, IInvestmentManager {
 
     /// @inheritdoc IInvestmentManager
     function maxWithdraw(address vault, address user) public view returns (uint256 assets) {
+        if (!_canTransfer(vault, user, address(0), 0)) return 0;
         assets = uint256(investments[vault][user].maxWithdraw);
     }
 
     /// @inheritdoc IInvestmentManager
     function maxRedeem(address vault, address user) public view returns (uint256 shares) {
+        if (!_canTransfer(vault, user, address(0), 0)) return 0;
         InvestmentState memory state = investments[vault][user];
         shares = uint256(_calculateShares(state.maxWithdraw, vault, state.redeemPrice, MathLib.Rounding.Down));
     }
@@ -505,7 +492,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
         InvestmentState storage state = investments[vault][controller];
         uint128 assetsUp = _calculateAssets(shares.toUint128(), vault, state.redeemPrice, MathLib.Rounding.Up);
         uint128 assetsDown = _calculateAssets(shares.toUint128(), vault, state.redeemPrice, MathLib.Rounding.Down);
-        _processRedeem(state, assetsUp, assetsDown, vault, receiver);
+        _processRedeem(state, assetsUp, assetsDown, vault, receiver, controller);
         assets = uint256(assetsDown);
     }
 
@@ -517,7 +504,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
     {
         InvestmentState storage state = investments[vault][controller];
         uint128 assets_ = assets.toUint128();
-        _processRedeem(state, assets_, assets_, vault, receiver);
+        _processRedeem(state, assets_, assets_, vault, receiver, controller);
         shares = uint256(_calculateShares(assets_, vault, state.redeemPrice, MathLib.Rounding.Down));
     }
 
@@ -526,9 +513,17 @@ contract InvestmentManager is Auth, IInvestmentManager {
         uint128 assetsUp,
         uint128 assetsDown,
         address vault,
-        address receiver
+        address receiver,
+        address controller
     ) internal {
         IERC7540Vault vault_ = IERC7540Vault(vault);
+        if (controller != receiver) {
+            require(
+                _canTransfer(vault, controller, receiver, convertToShares(vault, assetsDown)),
+                "InvestmentManager/transfer-not-allowed"
+            );
+        }
+
         require(
             _canTransfer(vault, receiver, address(0), convertToShares(vault, assetsDown)),
             "InvestmentManager/transfer-not-allowed"
@@ -548,6 +543,18 @@ contract InvestmentManager is Auth, IInvestmentManager {
         InvestmentState storage state = investments[vault][controller];
         assets = state.claimableCancelDepositRequest;
         state.claimableCancelDepositRequest = 0;
+
+        if (controller != receiver) {
+            require(
+                _canTransfer(vault, controller, receiver, convertToShares(vault, assets)),
+                "InvestmentManager/transfer-not-allowed"
+            );
+        }
+        require(
+            _canTransfer(vault, receiver, address(0), convertToShares(vault, assets)),
+            "InvestmentManager/transfer-not-allowed"
+        );
+
         if (assets > 0) {
             SafeTransferLib.safeTransferFrom(IERC7540Vault(vault).asset(), address(escrow), receiver, assets);
         }
@@ -638,8 +645,8 @@ contract InvestmentManager is Auth, IInvestmentManager {
         shareDecimals = IERC20Metadata(IERC7540Vault(vault).share()).decimals();
     }
 
-    /// @dev    Checks transfer restrictions for the vault shares. Sender (from) and receiver (to) have both to pass the
-    ///         restrictions for a successful share transfer.
+    /// @dev    Checks transfer restrictions for the vault shares. Sender (from) and receiver (to) have to both pass
+    ///         the restrictions for a successful share transfer.
     function _canTransfer(address vault, address from, address to, uint256 value) internal view returns (bool) {
         ITranche share = ITranche(IERC7540Vault(vault).share());
         return share.checkTransferRestriction(from, to, value);

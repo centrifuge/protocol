@@ -2,9 +2,11 @@
 pragma solidity 0.8.28;
 
 import "test/vaults/BaseTest.sol";
-import {CastLib} from "src/vaults/libraries/CastLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
 contract RedeemTest is BaseTest {
+    using MessageLib for *;
     using CastLib for *;
 
     function testRedeem(uint256 amount) public {
@@ -65,7 +67,8 @@ contract RedeemTest is BaseTest {
         // can redeem to self
         vault.redeem(amount / 2, self, self); // redeem half the amount to own wallet
 
-        // can also redeem to another user
+        // can also redeem to another user on the memberlist
+        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
         vault.redeem(amount / 2, investor, self); // redeem half the amount to investor wallet
 
         assertEq(tranche.balanceOf(self), 0);
@@ -116,7 +119,8 @@ contract RedeemTest is BaseTest {
         // can redeem to self
         vault.withdraw(amount / 2, self, self); // redeem half the amount to own wallet
 
-        // can also withdraw to another user
+        // can also withdraw to another user on the memberlist
+        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
         vault.withdraw(amount / 2, investor, self); // redeem half the amount to investor wallet
 
         assertTrue(tranche.balanceOf(self) <= 1);
@@ -141,7 +145,7 @@ contract RedeemTest is BaseTest {
 
         deposit(vault_, investor, amount); // deposit funds first // deposit funds first
 
-        vm.expectRevert(bytes("ERC20/insufficient-allowance"));
+        vm.expectRevert(IERC20.InsufficientAllowance.selector);
         vault.requestRedeem(amount, investor, investor);
 
         assertEq(tranche.allowance(investor, address(this)), 0);
@@ -179,14 +183,12 @@ contract RedeemTest is BaseTest {
 
         // check message was send out to centchain
         vault.cancelRedeemRequest(0, self);
-        bytes memory cancelOrderMessage = abi.encodePacked(
-            uint8(MessagesLib.Call.CancelRedeemRequest),
-            vault.poolId(),
-            vault.trancheId(),
-            bytes32(bytes20(self)),
-            defaultAssetId
-        );
-        assertEq(cancelOrderMessage, adapter1.values_bytes("send"));
+
+        MessageLib.CancelRedeemRequest memory m = adapter1.values_bytes("send").deserializeCancelRedeemRequest();
+        assertEq(m.poolId, vault.poolId());
+        assertEq(m.scId, vault.trancheId());
+        assertEq(m.investor, bytes32(bytes20(self)));
+        assertEq(m.assetId, defaultAssetId);
 
         assertEq(vault.pendingCancelRedeemRequest(0, self), true);
 
@@ -229,7 +231,7 @@ contract RedeemTest is BaseTest {
         assertApproxEqAbs(vault.maxMint(investor), amount / 2, 1);
 
         // Fail - Redeem amount too big
-        vm.expectRevert(bytes("ERC20/insufficient-balance"));
+        vm.expectRevert(IERC20.InsufficientBalance.selector);
         centrifugeChain.triggerIncreaseRedeemOrder(poolId, trancheId, investor, defaultAssetId, uint128(amount + 1));
 
         //Fail - Tranche token amount zero
@@ -257,7 +259,7 @@ contract RedeemTest is BaseTest {
             uint128(amount)
         );
 
-        vm.expectRevert(bytes("InvestmentManager/transfer-not-allowed"));
+        vm.expectRevert(bytes("InvestmentManager/exceeds-max-redeem"));
         vm.prank(investor);
         vault.redeem(amount, investor, investor);
     }
@@ -310,7 +312,7 @@ contract RedeemTest is BaseTest {
         bytes16 trancheId = vault.trancheId();
 
         // Fail - Redeem amount too big
-        vm.expectRevert(bytes("ERC20/insufficient-balance"));
+        vm.expectRevert(IERC20.InsufficientBalance.selector);
         centrifugeChain.triggerIncreaseRedeemOrder(poolId, trancheId, investor, defaultAssetId, uint128(amount + 1));
 
         // should work even if investor is frozen
@@ -341,7 +343,7 @@ contract RedeemTest is BaseTest {
             uint128(amount)
         );
 
-        vm.expectRevert(bytes("InvestmentManager/transfer-not-allowed"));
+        vm.expectRevert(bytes("InvestmentManager/exceeds-max-redeem"));
         vm.prank(investor);
         vault.redeem(amount, investor, investor);
     }

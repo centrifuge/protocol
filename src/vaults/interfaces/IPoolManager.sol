@@ -34,6 +34,7 @@ struct UndeployedTranche {
     /// @dev Metadata of the to be deployed erc20 token
     string tokenName;
     string tokenSymbol;
+    bytes32 salt;
     /// @dev Address of the hook
     address hook;
 }
@@ -43,11 +44,6 @@ struct VaultAsset {
     address asset;
     /// @dev Whether this wrapper conforms to the IERC20Wrapper interface
     bool isWrapper;
-}
-
-enum Domain {
-    Centrifuge,
-    EVM
 }
 
 interface IPoolManager is IMessageHandler, IRecoverable {
@@ -68,7 +64,6 @@ interface IPoolManager is IMessageHandler, IRecoverable {
         uint64 indexed poolId,
         bytes16 indexed trancheId,
         address indexed sender,
-        Domain destinationDomain,
         uint64 destinationId,
         bytes32 destinationAddress,
         uint128 amount
@@ -89,23 +84,17 @@ interface IPoolManager is IMessageHandler, IRecoverable {
     ///                'vaultFactory', or 'gasService'
     function file(bytes32 what, address data) external;
 
-    /// @notice transfers assets to a cross-chain recipient address
-    /// @dev    Addresses on centrifuge chain are represented as bytes32
-    function transferAssets(address asset, bytes32 recipient, uint128 amount) external;
-
     /// @notice transfers tranche tokens to a cross-chain recipient address
     /// @dev    To transfer to evm chains, pad a 20 byte evm address with 12 bytes of 0
     /// @param  poolId The centrifuge pool id
     /// @param  trancheId The tranche id
-    /// @param  destinationDomain an enum representing the destination domain (Centrifuge or EVM)
     /// @param  destinationId The destination chain id
     /// @param  recipient A bytes32 representation of the recipient address
     /// @param  amount The amount of tokens to transfer
     function transferTrancheTokens(
         uint64 poolId,
         bytes16 trancheId,
-        Domain destinationDomain,
-        uint64 destinationId,
+        uint32 destinationId,
         bytes32 recipient,
         uint128 amount
     ) external;
@@ -133,6 +122,7 @@ interface IPoolManager is IMessageHandler, IRecoverable {
         string memory tokenName,
         string memory tokenSymbol,
         uint8 decimals,
+        bytes32 salt,
         address hook
     ) external;
 
@@ -167,10 +157,6 @@ interface IPoolManager is IMessageHandler, IRecoverable {
     /// @notice Executes a message from the gateway
     /// @dev    The function can only be executed by the gateway contract.
     function handle(bytes calldata message) external;
-
-    /// @notice Transfers assets to a recipient from the escrow contract
-    /// @dev    The function can only be executed internally or by the gateway contract.
-    function handleTransfer(uint128 assetId, address recipient, uint128 amount) external;
 
     /// @notice Mints tranche tokens to a recipient
     /// @dev    The function can only be executed internally or by the gateway contract.

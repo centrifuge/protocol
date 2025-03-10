@@ -6,15 +6,14 @@ import {Auth} from "src/misc/Auth.sol";
 import {AccountId} from "src/pools/types/AccountId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
-import {PoolLocker} from "src/pools/PoolLocker.sol";
 
 contract Accounting is Auth, IAccounting {
     mapping(PoolId => mapping(AccountId => Account)) public accounts;
 
-    uint128 public /*TODO: transient*/ debited;
-    uint128 public /*TODO: transient*/ credited;
-    bytes32 private /*TODO: transient*/ _transactionId;
-    PoolId private /*TODO: transient*/ _currentPoolId;
+    uint128 public transient debited;
+    uint128 public transient credited;
+    bytes32 private transient _transactionId;
+    PoolId private transient _currentPoolId;
 
     constructor(address deployer) Auth(deployer) {}
 
@@ -65,13 +64,16 @@ contract Accounting is Auth, IAccounting {
         accounts[poolId][account] = Account(0, 0, isDebitNormal, uint64(block.timestamp), "");
     }
 
+    /// @inheritdoc IAccounting
     function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external auth {
+        require(accounts[poolId][account].lastUpdated != 0, AccountDoesNotExist());
         accounts[poolId][account].metadata = metadata;
     }
 
     /// @inheritdoc IAccounting
     function accountValue(PoolId poolId, AccountId account) public view returns (int128) {
         Account storage acc = accounts[poolId][account];
+        require(acc.lastUpdated != 0, AccountDoesNotExist());
 
         if (acc.isDebitNormal) {
             // For debit-normal accounts: Value = Total Debit - Total Credit

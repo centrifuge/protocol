@@ -1,13 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-enum RestrictionUpdate {
-    Invalid,
-    UpdateMember,
-    Freeze,
-    Unfreeze
-}
-
 interface IRestrictionManager {
     // --- Events ---
     event UpdateMember(address indexed token, address indexed user, uint64 validUntil);

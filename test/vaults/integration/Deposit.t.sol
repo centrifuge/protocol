@@ -1,16 +1,29 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+
 import "test/vaults/BaseTest.sol";
-import {CastLib} from "src/vaults/libraries/CastLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 contract DepositTest is BaseTest {
+    using MessageLib for *;
     using CastLib for *;
 
-    function testDepositMint(uint256 amount) public {
+    /// forge-config: default.isolate = true
+    function testDepositMint() public {
+        _testDepositMint(4, true);
+    }
+
+    /// forge-config: default.isolate = true
+    function testDepositMintFuzz(uint256 amount) public {
+        vm.assume(amount % 2 == 0);
+        _testDepositMint(amount, false);
+    }
+
+    function _testDepositMint(uint256 amount, bool snap) internal {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
         amount = uint128(bound(amount, 4, MAX_UINT128));
-        vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
 
@@ -36,7 +49,7 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(amount, nonMember, self);
 
         // will fail - user did not give asset allowance to vault
-        vm.expectRevert(bytes("SafeTransferLib/safe-transfer-from-failed"));
+        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
         vault.requestDeposit(amount, self, self);
 
         // will fail - zero deposit not allowed
@@ -65,9 +78,13 @@ contract DepositTest is BaseTest {
         // success
         centrifugeChain.allowAsset(vault.poolId(), defaultAssetId);
         erc20.approve(vault_, amount);
-        snapStart("ERC7540Vault_requestDeposit");
+        if (snap) {
+            snapStart("ERC7540Vault_requestDeposit");
+        }
         vault.requestDeposit(amount, self, self);
-        snapEnd();
+        if (snap) {
+            snapEnd();
+        }
 
         // fail: no asset left
         vm.expectRevert(bytes("ERC7540Vault/insufficient-balance"));
@@ -81,11 +98,15 @@ contract DepositTest is BaseTest {
 
         // trigger executed collectInvest
         assertApproxEqAbs(shares, amount / 2, 2);
-        snapStart("InvestmentManager_fulfillDepositRequest");
+        if (snap) {
+            snapStart("InvestmentManager_fulfillDepositRequest");
+        }
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), _assetId, uint128(amount), shares
         );
-        snapEnd();
+        if (snap) {
+            snapEnd();
+        }
 
         // assert deposit & mint values adjusted
         assertEq(vault.maxMint(self), shares);
@@ -140,7 +161,7 @@ contract DepositTest is BaseTest {
 
         assertEq(address(gateway).balance, GATEWAY_INITIAL_BALACE);
 
-        testDepositMint(amount);
+        _testDepositMint(amount, false);
 
         assertEq(address(gateway).balance, GATEWAY_INITIAL_BALACE - gasToBePaid);
     }
@@ -650,19 +671,17 @@ contract DepositTest is BaseTest {
         bytes16 trancheId = vault.trancheId();
         vm.expectRevert(bytes("InvestmentManager/no-pending-cancel-deposit-request"));
         centrifugeChain.isFulfilledCancelDepositRequest(
-            poolId, trancheId, self.toBytes32(), defaultAssetId, uint128(amount), uint128(amount)
+            poolId, trancheId, self.toBytes32(), defaultAssetId, uint128(amount)
         );
 
         // check message was send out to centchain
         vault.cancelDepositRequest(0, self);
-        bytes memory cancelOrderMessage = abi.encodePacked(
-            uint8(MessagesLib.Call.CancelDepositRequest),
-            vault.poolId(),
-            vault.trancheId(),
-            bytes32(bytes20(self)),
-            defaultAssetId
-        );
-        assertEq(cancelOrderMessage, adapter1.values_bytes("send"));
+
+        MessageLib.CancelDepositRequest memory m = adapter1.values_bytes("send").deserializeCancelDepositRequest();
+        assertEq(m.poolId, vault.poolId());
+        assertEq(m.scId, vault.trancheId());
+        assertEq(m.investor, bytes32(bytes20(self)));
+        assertEq(m.assetId, defaultAssetId);
 
         assertEq(vault.pendingCancelDepositRequest(0, self), true);
 
@@ -677,7 +696,7 @@ contract DepositTest is BaseTest {
         erc20.burn(self, amount);
 
         centrifugeChain.isFulfilledCancelDepositRequest(
-            vault.poolId(), vault.trancheId(), self.toBytes32(), defaultAssetId, uint128(amount), uint128(amount)
+            vault.poolId(), vault.trancheId(), self.toBytes32(), defaultAssetId, uint128(amount)
         );
         assertEq(erc20.balanceOf(address(escrow)), amount);
         assertEq(erc20.balanceOf(self), 0);

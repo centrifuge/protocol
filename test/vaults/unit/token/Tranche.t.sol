@@ -8,6 +8,8 @@ import {MockRoot} from "test/vaults/mocks/MockRoot.sol";
 import {MockRestrictionManager} from "test/vaults/mocks/MockRestrictionManager.sol";
 import "forge-std/Test.sol";
 import {GasSnapshot} from "forge-gas-snapshot/GasSnapshot.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
 interface ERC20Like {
     function balanceOf(address) external view returns (uint256);
@@ -55,7 +57,7 @@ contract TrancheTest is Test, GasSnapshot {
         vm.expectRevert(bytes("Tranche/not-authorized"));
         token.file("hook", hook);
 
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         token.updateVault(asset, vault);
     }
 
@@ -83,7 +85,19 @@ contract TrancheTest is Test, GasSnapshot {
 
     // --- RestrictionManager ---
     // transferFrom
-    function testTransferFrom(uint256 amount) public {
+    /// forge-config: default.isolate = true
+    function testTransferFrom() public {
+        _testTransferFrom(1, true);
+    }
+
+    // --- RestrictionManager ---
+    // transferFrom
+    /// forge-config: default.isolate = true
+    function testTransferFromFuzz(uint256 amount) public {
+        _testTransferFrom(amount, false);
+    }
+
+    function _testTransferFrom(uint256 amount, bool snap) internal {
         amount = bound(amount, 0, type(uint128).max / 2);
 
         restrictionManager.updateMember(address(token), self, uint64(validUntil));
@@ -110,9 +124,13 @@ contract TrancheTest is Test, GasSnapshot {
         assertEq(token.balanceOf(targetUser), 0);
 
         restrictionManager.unfreeze(address(token), targetUser);
-        snapStart("Tranche_transferFrom");
+        if (snap) {
+            snapStart("Tranche_transferFrom");
+        }
         token.transferFrom(self, targetUser, amount);
-        snapEnd();
+        if (snap) {
+            snapEnd();
+        }
         assertEq(token.balanceOf(targetUser), amount);
         afterTransferAssumptions(self, targetUser, amount);
 
@@ -129,7 +147,7 @@ contract TrancheTest is Test, GasSnapshot {
 
         restrictionManager.updateMember(address(token), targetUser, uint64(validUntil));
 
-        vm.expectRevert(bytes("ERC20/insufficient-allowance"));
+        vm.expectRevert(IERC20.InsufficientAllowance.selector);
         token.transferFrom(sender, targetUser, amount);
 
         vm.prank(sender);
@@ -178,7 +196,7 @@ contract TrancheTest is Test, GasSnapshot {
         token.mint(sourceUser, amount);
 
         vm.prank(address(2));
-        vm.expectRevert(bytes("Auth/not-authorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         token.authTransferFrom(sourceUser, sourceUser, self, amount);
         assertEq(token.balanceOf(sourceUser), amount);
         assertEq(token.balanceOf(self), 0);

@@ -12,12 +12,20 @@ import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 interface ISingleShareClass is IShareClassManager {
     /// Events
     event File(bytes32 what, address who);
+    event AddedShareClass(PoolId indexed poolId, ShareClassId indexed scId, string name, string symbol, bytes32 salt);
+    event UpdatedMetadata(PoolId indexed poolId, ShareClassId indexed scId, string name, string symbol, bytes32 salt);
 
     /// Errors
     error ApprovalRequired();
     error AlreadyApproved();
     error UnrecognizedFileParam();
-    error ApprovalRatioOutOfBounds();
+    error ZeroApprovalAmount();
+    error InvalidMetadataSize();
+    error InvalidMetadataName();
+    error InvalidMetadataSymbol();
+    error InvalidSalt();
+    error AlreadyUsedSalt();
+    error RevokeMoreThanIssued();
 
     /// @notice Emits new shares for the given identifier based on the provided NAV up to the desired epoch.
     ///
@@ -89,4 +97,14 @@ interface ISingleShareClass is IShareClassManager {
         AssetId payoutAssetId,
         uint32 endEpochId
     ) external returns (uint128 payoutAssetAmount, uint128 paymentShareAmount);
+
+    /// @notice returns The metadata of the share class.
+    ///
+    /// @param shareClassId Identifier of the share class
+    /// @return name The registered name of the share class token
+    /// @return symbol The registered symbol of the share class token
+    /// @return salt The registered salt of the share class token, used for deterministic deployments
+    function metadata(ShareClassId shareClassId)
+        external
+        returns (string memory name, string memory symbol, bytes32 salt);
 }

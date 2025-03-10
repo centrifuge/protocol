@@ -1,37 +1,39 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
+import {IERC20Metadata, IERC20Wrapper} from "src/misc/interfaces/IERC20.sol";
+import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
+import {Auth} from "src/misc/Auth.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
+
+import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+
 import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
 import {ITrancheFactory} from "src/vaults/interfaces/factories/ITrancheFactory.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
-import {IERC20Metadata, IERC20Wrapper} from "src/vaults/interfaces/IERC20.sol";
-import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
-import {Auth} from "src/vaults/Auth.sol";
-import {SafeTransferLib} from "src/vaults/libraries/SafeTransferLib.sol";
-import {MathLib} from "src/vaults/libraries/MathLib.sol";
-import {MessagesLib} from "src/vaults/libraries/MessagesLib.sol";
-import {CastLib} from "src/vaults/libraries/CastLib.sol";
 import {
     Pool,
     TrancheDetails,
     TranchePrice,
     UndeployedTranche,
     VaultAsset,
-    Domain,
     IPoolManager
 } from "src/vaults/interfaces/IPoolManager.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
 import {IGasService} from "src/vaults/interfaces/gateway/IGasService.sol";
-import {IAuth} from "src/vaults/interfaces/IAuth.sol";
 import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 
 /// @title  Pool Manager
 /// @notice This contract manages which pools & tranches exist,
 ///         as well as managing allowed pool currencies, and incoming and outgoing transfers.
 contract PoolManager is Auth, IPoolManager {
+    using MessageLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;
     using CastLib for *;
@@ -88,44 +90,29 @@ contract PoolManager is Auth, IPoolManager {
 
     // --- Outgoing message handling ---
     /// @inheritdoc IPoolManager
-    // TODO: Remove in separate PR - not needed anymore
-    function transferAssets(address asset, bytes32 recipient, uint128 amount) external {
-        uint128 assetId = _assetToId[_formatAssetIdKey(asset, 0)];
-        require(assetId != 0, "PoolManager/unknown-asset");
-
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(escrow), amount);
-
-        gateway.send(
-            abi.encodePacked(uint8(MessagesLib.Call.TransferAssets), assetId, recipient, amount), address(this)
-        );
-        emit TransferAssets(asset, msg.sender, recipient, amount);
-    }
-
-    /// @inheritdoc IPoolManager
     function transferTrancheTokens(
         uint64 poolId,
         bytes16 trancheId,
-        Domain destinationDomain,
-        uint64 destinationId,
+        uint32 destinationId,
         bytes32 recipient,
         uint128 amount
     ) external {
         ITranche tranche = ITranche(getTranche(poolId, trancheId));
         require(address(tranche) != address(0), "PoolManager/unknown-token");
         tranche.burn(msg.sender, amount);
-        bytes9 domain = _formatDomain(destinationDomain, destinationId);
+
         gateway.send(
-            abi.encodePacked(
-                uint8(MessagesLib.Call.TransferTrancheTokens), poolId, trancheId, domain, recipient, amount
+            destinationId,
+            MessageLib.TransferShares({poolId: poolId, scId: trancheId, recipient: recipient, amount: amount}).serialize(
             ),
             address(this)
         );
 
-        emit TransferTrancheTokens(poolId, trancheId, msg.sender, destinationDomain, destinationId, recipient, amount);
+        emit TransferTrancheTokens(poolId, trancheId, msg.sender, destinationId, recipient, amount);
     }
 
     // @inheritdoc IPoolManager
-    function registerAsset(address asset, uint256 tokenId, uint32 /* destinationChain */ )
+    function registerAsset(address asset, uint256 tokenId, uint32 destChainId )
         external
         returns (uint128 assetId)
     {
@@ -187,9 +174,9 @@ contract PoolManager is Auth, IPoolManager {
             // TODO: Fix for ERC6909 after merging https://github.com/centrifuge/protocol-v3/pull/96
         }
 
-        // TODO: Dispatch to destinationChain once Gateway supports dynamic recipient chains
         gateway.send(
-            abi.encodePacked(uint8(MessagesLib.Call.RegisterAsset), assetId, name, symbol.toBytes32(), decimals),
+            destChainId,
+            MessageLib.RegisterAsset({assetId: assetId, name: name, symbol: symbol.toBytes32(), decimals: decimals}).serialize(),
             address(this)
         );
 
@@ -199,48 +186,34 @@ contract PoolManager is Auth, IPoolManager {
     // --- Incoming message handling ---
     /// @inheritdoc IPoolManager
     function handle(bytes calldata message) external auth {
-        MessagesLib.Call call = MessagesLib.messageType(message);
+        MessageType kind = MessageLib.messageType(message);
 
-        if (call == MessagesLib.Call.AddPool) {
-            addPool(message.toUint64(1));
-        } else if (call == MessagesLib.Call.AddTranche) {
-            addTranche(
-                message.toUint64(1),
-                message.toBytes16(9),
-                message.slice(25, 128).bytes128ToString(),
-                message.toBytes32(153).toString(),
-                message.toUint8(185),
-                message.toAddress(186)
-            );
-        } else if (call == MessagesLib.Call.AllowAsset) {
-            allowAsset(message.toUint64(1), message.toUint128(9));
-        } else if (call == MessagesLib.Call.DisallowAsset) {
-            disallowAsset(message.toUint64(1), message.toUint128(9));
-        } else if (call == MessagesLib.Call.UpdateTranchePrice) {
-            updateTranchePrice(
-                message.toUint64(1),
-                message.toBytes16(9),
-                message.toUint128(25),
-                message.toUint128(41),
-                message.toUint64(57)
-            );
-        } else if (call == MessagesLib.Call.UpdateTrancheMetadata) {
-            updateTrancheMetadata(
-                message.toUint64(1),
-                message.toBytes16(9),
-                message.slice(25, 128).bytes128ToString(),
-                message.toBytes32(153).toString()
-            );
-        } else if (call == MessagesLib.Call.UpdateTrancheHook) {
-            updateTrancheHook(message.toUint64(1), message.toBytes16(9), message.toAddress(25));
-        } else if (call == MessagesLib.Call.TransferAssets) {
-            handleTransfer(message.toUint128(1), message.toAddress(17), message.toUint128(49));
-        } else if (call == MessagesLib.Call.TransferTrancheTokens) {
-            handleTransferTrancheTokens(
-                message.toUint64(1), message.toBytes16(9), message.toAddress(34), message.toUint128(66)
-            );
-        } else if (call == MessagesLib.Call.UpdateRestriction) {
-            updateRestriction(message.toUint64(1), message.toBytes16(9), message.slice(25, message.length - 25));
+        if (kind == MessageType.NotifyPool) {
+            addPool(MessageLib.deserializeNotifyPool(message).poolId);
+        } else if (kind == MessageType.NotifyShareClass) {
+            MessageLib.NotifyShareClass memory m = MessageLib.deserializeNotifyShareClass(message);
+            addTranche(m.poolId, m.scId, m.name, m.symbol.toString(), m.decimals, m.salt, address(bytes20(m.hook)));
+        } else if (kind == MessageType.AllowAsset) {
+            MessageLib.AllowAsset memory m = MessageLib.deserializeAllowAsset(message);
+            allowAsset(m.poolId, /* m.scId, */ m.assetId); // TODO: use scId
+        } else if (kind == MessageType.DisallowAsset) {
+            MessageLib.DisallowAsset memory m = MessageLib.deserializeDisallowAsset(message);
+            disallowAsset(m.poolId, /* m.scId, */ m.assetId); // TODO: use scId
+        } else if (kind == MessageType.UpdateShareClassPrice) {
+            MessageLib.UpdateShareClassPrice memory m = MessageLib.deserializeUpdateShareClassPrice(message);
+            updateTranchePrice(m.poolId, m.scId, m.assetId, m.price, m.timestamp);
+        } else if (kind == MessageType.UpdateShareClassMetadata) {
+            MessageLib.UpdateShareClassMetadata memory m = MessageLib.deserializeUpdateShareClassMetadata(message);
+            updateTrancheMetadata(m.poolId, m.scId, m.name, m.symbol.toString());
+        } else if (kind == MessageType.UpdateShareClassHook) {
+            MessageLib.UpdateShareClassHook memory m = MessageLib.deserializeUpdateShareClassHook(message);
+            updateTrancheHook(m.poolId, m.scId, address(bytes20(m.hook)));
+        } else if (kind == MessageType.TransferShares) {
+            MessageLib.TransferShares memory m = MessageLib.deserializeTransferShares(message);
+            handleTransferTrancheTokens(m.poolId, m.scId, address(bytes20(m.recipient)), m.amount);
+        } else if (kind == MessageType.UpdateRestriction) {
+            MessageLib.UpdateRestriction memory m = MessageLib.deserializeUpdateRestriction(message);
+            updateRestriction(m.poolId, m.scId, m.payload);
         } else {
             revert("PoolManager/invalid-message");
         }
@@ -283,6 +256,7 @@ contract PoolManager is Auth, IPoolManager {
         string memory name,
         string memory symbol,
         uint8 decimals,
+        bytes32 salt,
         address hook
     ) public auth {
         require(decimals >= MIN_DECIMALS, "PoolManager/too-few-tranche-token-decimals");
@@ -302,6 +276,7 @@ contract PoolManager is Auth, IPoolManager {
         undeployedTranche.decimals = decimals;
         undeployedTranche.tokenName = name;
         undeployedTranche.tokenSymbol = symbol;
+        undeployedTranche.salt = salt;
         undeployedTranche.hook = hook;
 
         emit AddTranche(poolId, trancheId);
@@ -360,15 +335,6 @@ contract PoolManager is Auth, IPoolManager {
     }
 
     /// @inheritdoc IPoolManager
-    // TODO: Remove in separate PR - not needed anymore
-    function handleTransfer(uint128 assetId, address recipient, uint128 amount) public auth {
-        address asset = _idToAsset[assetId].asset;
-        require(asset != address(0), "PoolManager/unknown-asset");
-
-        SafeTransferLib.safeTransferFrom(asset, address(escrow), recipient, amount);
-    }
-
-    /// @inheritdoc IPoolManager
     function handleTransferTrancheTokens(uint64 poolId, bytes16 trancheId, address destinationAddress, uint128 amount)
         public
         auth
@@ -391,11 +357,10 @@ contract PoolManager is Auth, IPoolManager {
 
         UndeployedTranche storage undeployedTranche = _undeployedTranches[poolId][trancheId];
         address token = trancheFactory.newTranche(
-            poolId,
-            trancheId,
             undeployedTranche.tokenName,
             undeployedTranche.tokenSymbol,
             undeployedTranche.decimals,
+            undeployedTranche.salt,
             trancheWards
         );
 
@@ -530,10 +495,6 @@ contract PoolManager is Auth, IPoolManager {
     /// @inheritdoc IPoolManager
     function isAllowedAsset(uint64 poolId, address asset) public view returns (bool) {
         return _pools[poolId].allowedAssets[asset];
-    }
-
-    function _formatDomain(Domain domain, uint64 chainId) internal pure returns (bytes9) {
-        return bytes9(BytesLib.slice(abi.encodePacked(uint8(domain), chainId), 0, 9));
     }
 
     function _formatAssetIdKey(address asset, uint256 tokenId) internal pure returns (bytes32) {
