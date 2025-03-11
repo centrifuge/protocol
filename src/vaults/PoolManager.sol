@@ -65,9 +65,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
             address factory = vaultFactories[i];
             vaultFactory[factory] = true;
         }
-        // Need to be ward in itself in order to call into `IUpdateContract(target).update(..) where target is
-        // `address(this)`
-        rely(address(this));
     }
 
     // --- Administration ---
@@ -268,7 +265,20 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
 
     /// @inheritdoc IPoolManager
     function updateContract(uint64 poolId, bytes16 trancheId, address target, bytes memory update_) public auth {
-        IUpdateContract(target).update(poolId, trancheId, update_);
+        if (target == address(this)) {
+            (bool success, bytes memory data) = address(this).delegatecall(
+                abi.encodeWithSelector(
+                    IUpdateContract.update.selector,
+                    poolId,
+                    trancheId,
+                    update_
+                )
+            );
+            require(success, "Delegatecall failed");
+        } else {
+            IUpdateContract(target).update(poolId, trancheId, update_);
+        }
+
         emit UpdateContract(poolId, trancheId, target, update_);
     }
 
