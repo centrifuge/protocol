@@ -11,14 +11,14 @@ contract OperatorTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        address vault_ = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleVault();
         address investor = makeAddr("investor");
         address operator = makeAddr("operator");
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
 
         centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), defaultAssetId, price, uint64(block.timestamp)
+            vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp)
         );
 
         erc20.mint(investor, amount);
@@ -49,7 +49,7 @@ contract OperatorTest is BaseTest {
             vault.poolId(),
             vault.trancheId(),
             bytes32(bytes20(investor)),
-            defaultAssetId,
+            assetId,
             uint128(amount),
             uint128(amount)
         );
@@ -73,13 +73,13 @@ contract OperatorTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        address vault_ = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleVault();
         (address controller, uint256 controllerPk) = makeAddrAndKey("controller");
         address operator = makeAddr("operator");
         ERC7540Vault vault = ERC7540Vault(vault_);
 
         centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), defaultAssetId, price, uint64(block.timestamp)
+            vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp)
         );
 
         erc20.mint(controller, amount);
@@ -152,14 +152,14 @@ contract OperatorTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
         vm.assume(amount % 2 == 0);
 
-        address vault_ = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleVault();
         address investor = makeAddr("investor");
         address operator = makeAddr("operator");
         ERC7540Vault vault = ERC7540Vault(vault_);
 
         deposit(vault_, investor, amount); // deposit funds first
         centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), defaultAssetId, defaultPrice, uint64(block.timestamp)
+            vault.poolId(), vault.trancheId(), assetId, defaultPrice, uint64(block.timestamp)
         );
 
         vm.prank(operator);
@@ -180,7 +180,7 @@ contract OperatorTest is BaseTest {
             vault.poolId(),
             vault.trancheId(),
             bytes32(bytes20(investor)),
-            defaultAssetId,
+            assetId,
             uint128(amount),
             uint128(amount)
         );
@@ -205,13 +205,13 @@ contract OperatorTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        address vault_ = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleVault();
         (address controller, uint256 controllerPk) = makeAddrAndKey("controller");
         address operator = makeAddr("operator");
         ERC7540Vault vault = ERC7540Vault(vault_);
 
         centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), defaultAssetId, price, uint64(block.timestamp)
+            vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp)
         );
 
         erc20.mint(controller, amount);

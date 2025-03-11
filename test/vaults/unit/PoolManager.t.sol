@@ -235,7 +235,7 @@ contract PoolManagerTest is BaseTest {
         vm.assume(amount > 0);
         uint64 validUntil = uint64(block.timestamp + 7 days);
         bytes32 centChainAddress = makeAddr("centChainAddress").toBytes32();
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
 
@@ -265,7 +265,7 @@ contract PoolManagerTest is BaseTest {
         vm.assume(amount > 0);
         uint64 validUntil = uint64(block.timestamp + 7 days);
         address destinationAddress = makeAddr("destinationAddress");
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
@@ -289,7 +289,7 @@ contract PoolManagerTest is BaseTest {
         address destinationAddress = makeAddr("destinationAddress");
         vm.assume(amount > 0);
 
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
 
@@ -320,7 +320,7 @@ contract PoolManagerTest is BaseTest {
 
     function testUpdateMember(uint64 validUntil) public {
         validUntil = uint64(bound(validUntil, block.timestamp, type(uint64).max));
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
 
@@ -343,7 +343,7 @@ contract PoolManagerTest is BaseTest {
     }
 
     function testFreezeAndUnfreeze() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
@@ -378,7 +378,7 @@ contract PoolManagerTest is BaseTest {
     }
 
     function testUpdateTrancheMetadata() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
@@ -406,7 +406,7 @@ contract PoolManagerTest is BaseTest {
     }
 
     function testUpdateTrancheHook() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
@@ -431,7 +431,7 @@ contract PoolManagerTest is BaseTest {
     }
 
     function testUpdateRestriction() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
@@ -525,7 +525,7 @@ contract PoolManagerTest is BaseTest {
     }
 
     function testRemoveVault() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
@@ -575,7 +575,7 @@ contract PoolManagerTest is BaseTest {
     }
 
     function testVaultMigration() public {
-        address oldVault_ = deploySimpleVault();
+        (address oldVault_,) = deploySimpleVault();
 
         ERC7540Vault oldVault = ERC7540Vault(oldVault_);
         uint64 poolId = oldVault.poolId();
@@ -600,7 +600,7 @@ contract PoolManagerTest is BaseTest {
     }
 
     function testGetVaultByAssetId() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
@@ -611,7 +611,7 @@ contract PoolManagerTest is BaseTest {
     }
 
     function testGetVaultByAsset() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
@@ -621,7 +621,7 @@ contract PoolManagerTest is BaseTest {
     }
 
     function testGetInvalidVaultByAssetIdFails() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
@@ -630,7 +630,7 @@ contract PoolManagerTest is BaseTest {
     }
 
     function testGetInvalidVaultByAssetFails() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
@@ -643,7 +643,7 @@ contract PoolManagerTest is BaseTest {
         address destinationAddress = makeAddr("destinationAddress");
         vm.assume(amount > 0);
 
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
         tranche.approve(address(poolManager), amount);

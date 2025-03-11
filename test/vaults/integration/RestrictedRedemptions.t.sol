@@ -11,9 +11,8 @@ contract RedeemTest is BaseTest {
     function testRestrictedRedemptions(uint256 amount) public {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
-        address vault_ =
+        (address vault_, uint128 assetId) =
             deployVault(5, 6, restrictedRedemptions, "name", "symbol", bytes16(bytes("1")), address(erc20), 0, 0);
-        uint128 assetId = poolManager.assetToId(address(erc20));
         ERC7540Vault vault = ERC7540Vault(vault_);
         RestrictedRedemptions hook = RestrictedRedemptions(restrictedRedemptions);
         ITranche tranche = ITranche(address(vault.share()));
@@ -59,7 +58,7 @@ contract RedeemTest is BaseTest {
         uint128 fulfillment = uint128(amount / 2);
 
         centrifugeChain.isFulfilledRedeemRequest(
-            vault.poolId(), vault.trancheId(), bytes32(bytes20(investor)), defaultAssetId, fulfillment, fulfillment
+            vault.poolId(), vault.trancheId(), bytes32(bytes20(investor)), assetId, fulfillment, fulfillment
         );
 
         vm.prank(investor);

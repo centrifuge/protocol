@@ -13,7 +13,7 @@ contract GatewayTest is BaseTest {
     function testDeployment(address nonWard) public {
         vm.assume(
             nonWard != address(root) && nonWard != address(guardian) && nonWard != address(this)
-            && nonWard != address(gateway)
+                && nonWard != address(gateway)
         );
 
         // redeploying within test to increase coverage
@@ -41,15 +41,15 @@ contract GatewayTest is BaseTest {
     // --- Batched messages ---
     function testBatchedAddPoolAddAssetAllowAssetMessage() public {
         uint64 poolId = 999;
-        uint128 assetId = defaultAssetId + 1;
         MockERC20 newAsset = deployMockERC20("newAsset", "NEW", 18);
+        uint128 assetId = poolManager.registerAsset(address(newAsset), 0, 0);
+
         bytes memory _addPool = MessageLib.NotifyPool(poolId).serialize();
-        bytes memory _allowAsset = MessageLib.AllowAsset(poolId, bytes16(0), defaultAssetId).serialize();
-        poolManager.registerAsset(address(newAsset), 0, 0);
+        bytes memory _allowAsset = MessageLib.AllowAsset(poolId, bytes16(0), assetId).serialize();
 
         bytes memory _message = abi.encodePacked(_addPool, _allowAsset);
         centrifugeChain.execute(_message);
-        assertEq(poolManager.idToAsset(defaultAssetId), address(newAsset));
+        assertEq(poolManager.idToAsset(assetId), address(newAsset));
         assertEq(poolManager.isAllowedAsset(poolId, address(newAsset)), true);
     }
 }

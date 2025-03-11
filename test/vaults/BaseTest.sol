@@ -46,7 +46,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
     address randomUser = makeAddr("randomUser");
 
     uint128 constant MAX_UINT128 = type(uint128).max;
-    uint256 constant GATEWAY_INITIAL_BALACE = 10 ether;
+    uint256 constant GATEWAY_INITIAL_BALANCE = 10 ether;
 
     // default values
     uint32 public defaultChainId = 1;
@@ -90,7 +90,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
 
         gateway.file("adapters", testAdapters);
         gateway.file("gasService", address(mockedGasService));
-        vm.deal(address(gateway), GATEWAY_INITIAL_BALACE);
+        vm.deal(address(gateway), GATEWAY_INITIAL_BALANCE);
 
         mockedGasService.setReturn("estimate", uint256(0.5 gwei));
         mockedGasService.setReturn("shouldRefuel", true);
@@ -143,9 +143,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         address asset,
         uint256 assetTokenId,
         uint32 destinationChain
-    ) public returns (address vaultAddress) {
-        // TODO: Return assetId too
-        uint128 assetId;
+    ) public returns (address vaultAddress, uint128 assetId) {
         if (poolManager.idToAsset(assetId) == address(0)) {
             assetId = poolManager.registerAsset(asset, assetTokenId, destinationChain);
         } else {
@@ -174,12 +172,12 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         string memory tokenName,
         string memory tokenSymbol,
         bytes16 trancheId
-    ) public returns (address) {
+    ) public returns (address vaultAddress, uint128 assetId) {
         return
             deployVault(poolId, decimals, restrictionManager, tokenName, tokenSymbol, trancheId, address(erc20), 0, 0);
     }
 
-    function deploySimpleVault() public returns (address) {
+    function deploySimpleVault() public returns (address vaultAddress, uint128 assetId) {
         return deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(erc20), 0, 0);
     }
 

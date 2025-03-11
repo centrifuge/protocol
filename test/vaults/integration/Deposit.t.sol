@@ -29,12 +29,10 @@ contract DepositTest is BaseTest {
 
         uint128 price = 2 * 10 ** 18;
 
-        address vault_ = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
-        centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), defaultAssetId, price, uint64(block.timestamp)
-        );
+        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
 
         erc20.mint(self, amount);
 
@@ -63,22 +61,21 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(amount, self, nonMember);
 
         // will fail - investment asset not allowed
-        centrifugeChain.disallowAsset(vault.poolId(), defaultAssetId);
+        centrifugeChain.disallowAsset(vault.poolId(), assetId);
         vm.expectRevert(bytes("InvestmentManager/asset-not-allowed"));
         vault.requestDeposit(amount, self, self);
 
         // will fail - cannot fulfill if there is no pending request
-        uint128 _assetId = poolManager.assetToId(address(erc20)); // retrieve assetId
         uint128 shares = uint128((amount * 10 ** 18) / price); // tranchePrice = 2$
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
         vm.expectRevert(bytes("InvestmentManager/no-pending-deposit-request"));
         centrifugeChain.isFulfilledDepositRequest(
-            poolId, trancheId, bytes32(bytes20(self)), _assetId, uint128(amount), shares
+            poolId, trancheId, bytes32(bytes20(self)), assetId, uint128(amount), shares
         );
 
         // success
-        centrifugeChain.allowAsset(vault.poolId(), defaultAssetId);
+        centrifugeChain.allowAsset(vault.poolId(), assetId);
         erc20.approve(vault_, amount);
         if (snap) {
             snapStart("ERC7540Vault_requestDeposit");
@@ -104,7 +101,7 @@ contract DepositTest is BaseTest {
             snapStart("InvestmentManager_fulfillDepositRequest");
         }
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), _assetId, uint128(amount), shares
+            vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), assetId, uint128(amount), shares
         );
         if (snap) {
             snapEnd();
@@ -159,13 +156,14 @@ contract DepositTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128));
         vm.assume(amount % 2 == 0);
 
-        (, uint256 gasToBePaid) = gateway.estimate(CHAIN_ID, "PAYLOAD_IS_IRRELEVANT");
+        (, uint256 gasPerMessage) = gateway.estimate(CHAIN_ID, "PAYLOAD_IS_IRRELEVANT");
 
-        assertEq(address(gateway).balance, GATEWAY_INITIAL_BALACE);
+        assertEq(address(gateway).balance, GATEWAY_INITIAL_BALANCE);
 
         _testDepositMint(amount, false);
 
-        assertEq(address(gateway).balance, GATEWAY_INITIAL_BALACE - gasToBePaid);
+        // Multiply estimated gas by two due to outgoing registerAsset and requestDeposit messages
+        assertEq(address(gateway).balance, GATEWAY_INITIAL_BALANCE - 2 * gasPerMessage);
     }
 
     function testPartialDepositExecutions(uint64 poolId, bytes16 trancheId) public {
@@ -173,9 +171,8 @@ contract DepositTest is BaseTest {
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        address vault_ =
+        (address vault_, uint128 assetId) =
             deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
-        uint128 assetId = poolManager.assetToId(address(asset));
         ERC7540Vault vault = ERC7540Vault(vault_);
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
 
@@ -324,14 +321,12 @@ contract DepositTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        address vault_ = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleVault();
         address receiver = makeAddr("receiver");
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
 
-        centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), defaultAssetId, price, uint64(block.timestamp)
-        );
+        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
 
         erc20.mint(self, amount);
 
@@ -340,11 +335,10 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(amount, self, self);
 
         // trigger executed collectInvest
-        uint128 _assetId = poolManager.assetToId(address(erc20)); // retrieve assetId
         uint128 shares = uint128(amount * 10 ** 18 / price); // tranchePrice = 2$
         assertApproxEqAbs(shares, amount / 2, 2);
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), _assetId, uint128(amount), shares
+            vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), assetId, uint128(amount), shares
         );
 
         // assert deposit & mint values adjusted
@@ -379,14 +373,12 @@ contract DepositTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        address vault_ = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleVault();
         address receiver = makeAddr("receiver");
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
 
-        centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), defaultAssetId, price, uint64(block.timestamp)
-        );
+        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
 
         erc20.mint(self, amount);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max); // add user as member
@@ -394,11 +386,10 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(amount, self, self);
 
         // trigger executed collectInvest
-        uint128 _currencyId = poolManager.assetToId(address(erc20)); // retrieve currencyId
         uint128 tranchePayout = uint128(amount * 10 ** 18 / price); // tranchePrice = 2$
         assertApproxEqAbs(tranchePayout, amount / 2, 2);
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), _currencyId, uint128(amount), tranchePayout
+            vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), assetId, uint128(amount), tranchePayout
         );
 
         // assert deposit & mint values adjusted
@@ -438,9 +429,8 @@ contract DepositTest is BaseTest {
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        address vault_ =
+        (address vault_, uint128 assetId) =
             deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
-        uint128 assetId = poolManager.assetToId(address(asset));
         ERC7540Vault vault = ERC7540Vault(vault_);
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
 
@@ -503,8 +493,8 @@ contract DepositTest is BaseTest {
         // uint8 INVESTMENT_CURRENCY_DECIMALS = 18; // 18, like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", 18);
-        address vault_ = deployVault(poolId, 6, restrictionManager, "", "", trancheId, address(asset), 0, 0);
-        uint128 assetId = poolManager.assetToId(address(asset));
+        (address vault_, uint128 assetId) =
+            deployVault(poolId, 6, restrictionManager, "", "", trancheId, address(asset), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         centrifugeChain.updateTranchePrice(
@@ -575,9 +565,8 @@ contract DepositTest is BaseTest {
         uint8 TRANCHE_TOKEN_DECIMALS = 18; // Like DAI
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        address vault_ =
+        (address vault_, uint128 assetId) =
             deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
-        uint128 assetId = poolManager.assetToId(address(asset));
         ERC7540Vault vault = ERC7540Vault(vault_);
 
         // price = (100*10**18) /  (99 * 10**18) = 101.010101 * 10**18
@@ -616,9 +605,8 @@ contract DepositTest is BaseTest {
         uint8 TRANCHE_TOKEN_DECIMALS = 6; // Like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        address vault_ =
+        (address vault_, uint128 assetId) =
             deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
-        uint128 assetId = poolManager.assetToId(address(asset));
         ERC7540Vault vault = ERC7540Vault(vault_);
 
         // price = (100*10**18) /  (99 * 10**18) = 101.010101 * 10**18
@@ -655,13 +643,11 @@ contract DepositTest is BaseTest {
         amount = uint128(bound(amount, 2, MAX_UINT128));
 
         uint128 price = 2 * 10 ** 18;
-        address vault_ = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
-        centrifugeChain.updateTranchePrice(
-            poolId, trancheId, defaultAssetId, price, uint64(block.timestamp)
-        );
+        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, price, uint64(block.timestamp));
         erc20.mint(self, amount);
         erc20.approve(vault_, amount);
         centrifugeChain.updateMember(poolId, trancheId, self, type(uint64).max);
@@ -672,9 +658,7 @@ contract DepositTest is BaseTest {
         assertEq(erc20.balanceOf(address(self)), 0);
 
         vm.expectRevert(bytes("InvestmentManager/no-pending-cancel-deposit-request"));
-        centrifugeChain.isFulfilledCancelDepositRequest(
-            poolId, trancheId, self.toBytes32(), defaultAssetId, uint128(amount)
-        );
+        centrifugeChain.isFulfilledCancelDepositRequest(poolId, trancheId, self.toBytes32(), assetId, uint128(amount));
 
         // check message was send out to centchain
         vault.cancelDepositRequest(0, self);
@@ -683,7 +667,7 @@ contract DepositTest is BaseTest {
         assertEq(m.poolId, vault.poolId());
         assertEq(m.scId, vault.trancheId());
         assertEq(m.investor, bytes32(bytes20(self)));
-        assertEq(m.assetId, defaultAssetId);
+        assertEq(m.assetId, assetId);
 
         assertEq(vault.pendingCancelDepositRequest(0, self), true);
 
@@ -698,7 +682,7 @@ contract DepositTest is BaseTest {
         erc20.burn(self, amount);
 
         centrifugeChain.isFulfilledCancelDepositRequest(
-            vault.poolId(), vault.trancheId(), self.toBytes32(), defaultAssetId, uint128(amount)
+            vault.poolId(), vault.trancheId(), self.toBytes32(), assetId, uint128(amount)
         );
         assertEq(erc20.balanceOf(address(escrow)), amount);
         assertEq(erc20.balanceOf(self), 0);
@@ -753,7 +737,7 @@ contract DepositTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128));
         vm.assume(amount % 2 == 0);
 
-        address vault_ = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
 
@@ -767,7 +751,6 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(amount, investor, investor);
         vm.stopPrank();
 
-        uint128 assetId = poolManager.assetToId(address(erc20));
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId(), vault.trancheId(), investor.toBytes32(), assetId, uint128(amount), uint128(amount)
         );
