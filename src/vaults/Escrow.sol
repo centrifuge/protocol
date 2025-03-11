@@ -27,6 +27,20 @@ contract Escrow is Auth, IPerPoolEscrow, IEscrow {
         if (IERC20(token).allowance(address(this), spender) == 0) {
             SafeTransferLib.safeApprove(token, spender, type(uint256).max);
             emit Approve(token, spender, type(uint256).max);
+        }    }
+
+    /// @inheritdoc IEscrow
+    function approveMax(address token, uint256 tokenId, address spender) external auth {
+        if (tokenId == 0) {
+        if (IERC20(token).allowance(address(this), spender) == 0) {
+            SafeTransferLib.safeApprove(token, spender, type(uint256).max);
+            emit Approve(token, spender, type(uint256).max);
+        }
+        } else {
+            if (IERC6909(token).allowance(address(this), spender, tokenId) == 0) {
+                IERC6909(token).approve(spender, tokenId, type(uint256).max);
+                emit Approve(token, tokenId, spender, type(uint256).max);
+            }
         }
     }
 
@@ -34,6 +48,17 @@ contract Escrow is Auth, IPerPoolEscrow, IEscrow {
     function unapprove(address token, address spender) external auth {
         SafeTransferLib.safeApprove(token, spender, 0);
         emit Approve(token, spender, 0);
+    }
+
+    /// @inheritdoc IEscrow
+    function unapprove(address token, uint256 tokenId, address spender) external auth {
+        if (tokenId == 0) {
+            SafeTransferLib.safeApprove(token, spender, 0);
+            emit Approve(token, spender, 0);
+        } else {
+            IERC6909(token).approve(spender, tokenId, 0);
+            emit Approve(token, tokenId, spender, 0);
+        }
     }
 
     function pendingDepositIncrease(address token, uint256 tokenId, uint64 poolId, uint16 scId, uint256 value)
