@@ -60,7 +60,12 @@ contract MockCentrifugeChain is Test {
                 poolId: poolId,
                 scId: trancheId,
                 target: bytes32(bytes20(address(poolManager))),
-                payload: abi.encode(address(0), poolManager.getVaultAssetId(vault), false, vault)
+                payload: MessageLib.UpdateContractVaultUpdate({
+                    factory: address(0),
+                    assetId: poolManager.getVaultAssetId(vault),
+                    isLinked: false,
+                    vault: vault
+                }).serialize()
             }).serialize()
         );
     }
@@ -71,7 +76,12 @@ contract MockCentrifugeChain is Test {
                 poolId: poolId,
                 scId: trancheId,
                 target: bytes32(bytes20(address(poolManager))),
-                payload: abi.encode(address(0), poolManager.getVaultAssetId(vault), true, vault)
+                payload: MessageLib.UpdateContractVaultUpdate({
+                    factory: address(0),
+                    assetId: poolManager.getVaultAssetId(vault),
+                    isLinked: true,
+                    vault: vault
+                }).serialize()
             }).serialize()
         );
     }

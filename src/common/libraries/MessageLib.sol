@@ -49,6 +49,12 @@ enum UpdateRestrictionType {
     Unfreeze
 }
 
+enum UpdateContractType {
+    /// @dev Placeholder for null update restriction type
+    Invalid,
+    VaultUpdate
+}
+
 enum MessageCategory {
     Invalid,
     Gateway,
@@ -139,6 +145,10 @@ library MessageLib {
 
     function updateRestrictionType(bytes memory message) internal pure returns (UpdateRestrictionType) {
         return UpdateRestrictionType(message.toUint8(0));
+    }
+
+    function updateContractType(bytes memory message) internal pure returns (UpdateContractType) {
+        return UpdateContractType(message.toUint8(0));
     }
 
     //---------------------------------------
@@ -621,6 +631,36 @@ library MessageLib {
         return abi.encodePacked(
             MessageType.UpdateContract, t.poolId, t.scId, t.target, uint16(t.payload.length), t.payload
         );
+    }
+
+    //---------------------------------------
+    //   UpdateContract.VaultUpdate (submsg)
+    //---------------------------------------
+
+    struct UpdateContractVaultUpdate {
+        address factory;
+        uint128 assetId;
+        bool isLinked;
+        address vault;
+    }
+
+    function deserializeUpdateContractVaultUpdate(bytes memory data)
+        internal
+        pure
+        returns (UpdateContractVaultUpdate memory)
+    {
+        require(updateContractType(data) == UpdateContractType.VaultUpdate, UnknownMessageType());
+
+        return UpdateContractVaultUpdate({
+            factory: data.toAddress(1),
+            assetId: data.toUint128(21),
+            isLinked: data.toBool(37),
+            vault: data.toAddress(38)
+        });
+    }
+
+    function serialize(UpdateContractVaultUpdate memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(UpdateContractType.VaultUpdate, t.factory, t.assetId, t.isLinked, t.vault);
     }
 
     //---------------------------------------

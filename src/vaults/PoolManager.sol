@@ -317,26 +317,22 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     /// @notice The pool manager either deploys the vault if a factory address is provided or it simply links/unlinks
     /// the vault
     function update(uint64 poolId, bytes16 trancheId, bytes memory payload) public auth {
-        if (payload.length != 128) {
-            revert("PoolManager/invalid-update-payload-length");
-        }
+        MessageLib.UpdateContractVaultUpdate memory m = MessageLib.deserializeUpdateContractVaultUpdate(payload);
 
-        (address factory, uint128 assetId, bool isLinked_, address vault) =
-            abi.decode(payload, (address, uint128, bool, address));
-
-        if (factory != address(0) && vault == address(0)) {
-            require(vaultFactory[factory], "PoolManager/invalid-vault-factory");
-            vault = deployVault(poolId, trancheId, idToAsset[assetId], factory);
+        address vault = m.vault;
+        if (m.factory != address(0) && vault == address(0)) {
+            require(vaultFactory[m.factory], "PoolManager/invalid-vault-factory");
+            vault = deployVault(poolId, trancheId, idToAsset[m.assetId], m.factory);
         }
 
         // Needed as safeguard against non-validated vaults
         // I.e. we only accept vaults that have been deployed by the pool manager
-        require(_vaultToAsset[vault].asset != address(0), "PoolManager/unknown-vault");
+        require(_vaultToAsset[m.vault].asset != address(0), "PoolManager/unknown-vault");
 
-        if (isLinked_) {
-            linkVault(poolId, trancheId, idToAsset[assetId], vault);
+        if (m.isLinked) {
+            linkVault(poolId, trancheId, idToAsset[m.assetId], vault);
         } else {
-            unlinkVault(poolId, trancheId, idToAsset[assetId], vault);
+            unlinkVault(poolId, trancheId, idToAsset[m.assetId], vault);
         }
     }
 
