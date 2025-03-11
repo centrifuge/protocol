@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IMessageHandler} from "src/vaults/interfaces/gateway/IGateway.sol";
-import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IRecoverable} from "src/common/interfaces/IRoot.sol";
+
 import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 
 /// @dev Vault requests and deposit/redeem bookkeeping per user
@@ -106,11 +107,6 @@ interface IInvestmentManager is IMessageHandler, IRecoverable, IVaultManager {
     /// @dev    The cancellation request might fail in case the pending redeem order already got fulfilled on
     ///         Centrifuge.
     function cancelRedeemRequest(address vaultAddr, address owner, address source) external;
-
-    // --- Incoming message handling ---
-    /// @notice Handle incoming messages from Centrifuge. Parse the function params and forward to the corresponding
-    ///         handler function.
-    function handle(bytes calldata message) external;
 
     /// @notice Fulfills pending deposit requests after successful epoch execution on Centrifuge.
     ///         The amount of shares that can be claimed by the user is minted and moved to the escrow contract.

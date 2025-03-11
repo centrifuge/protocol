@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IMessageHandler} from "src/vaults/interfaces/gateway/IGateway.sol";
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 
 interface IRecoverable {
     /// @notice Used to recover any ERC-20 token.
@@ -13,7 +13,7 @@ interface IRecoverable {
     function recoverTokens(address token, address to, uint256 amount) external;
 }
 
-interface IRoot is IMessageHandler {
+interface IRoot {
     // --- Events ---
     event File(bytes32 indexed what, uint256 data);
     event Pause();
@@ -25,6 +25,11 @@ interface IRoot is IMessageHandler {
     event RecoverTokens(address indexed target, address indexed token, address indexed to, uint256 amount);
     event Endorse(address indexed user);
     event Veto(address indexed user);
+
+    error DelayTooLong();
+    error FileUnrecognizedParam();
+    error TargetNotScheduled();
+    error TargetNotReady();
 
     /// @notice Returns whether the root is paused
     function paused() external view returns (bool);
@@ -73,9 +78,6 @@ interface IRoot is IMessageHandler {
     /// @notice Execute a scheduled rely
     /// @dev    Can be triggered by anyone since the scheduling is protected
     function executeScheduledRely(address target) external;
-
-    /// --- Incoming message handling ---
-    function handle(bytes calldata message) external;
 
     /// --- External contract ward management ---
     /// @notice Make an address a ward on any contract that Root is a ward on

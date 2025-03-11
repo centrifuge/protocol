@@ -7,7 +7,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 import {UpdateRestrictionType, MessageLib} from "src/common/libraries/MessageLib.sol";
 
-import {IRoot} from "src/vaults/interfaces/IRoot.sol";
+import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IHook, HookData} from "src/vaults/interfaces/token/IHook.sol";
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";

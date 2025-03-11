@@ -6,42 +6,40 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {Auth} from "src/misc/Auth.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
-import {IGateway} from "src/pools/interfaces/IGateway.sol";
-import {IMessageHandler} from "src/pools/interfaces/IMessageHandler.sol";
-import {IAdapter} from "src/pools/interfaces/IAdapter.sol";
+import {IMessageProcessor} from "src/pools/interfaces/IMessageProcessor.sol";
 import {IPoolManagerHandler} from "src/pools/interfaces/IPoolManager.sol";
 
-contract Gateway is Auth, IGateway, IMessageHandler {
+contract MessageProcessor is Auth, IMessageProcessor {
     using MessageLib for *;
     using BytesLib for bytes;
     using CastLib for *;
 
-    IAdapter public adapter; // TODO: several adapters
-    IPoolManagerHandler public handler;
+    IPoolManagerHandler public immutable manager;
+    IMessageSender public immutable sender;
 
-    constructor(IAdapter adapter_, IPoolManagerHandler handler_, address deployer) Auth(deployer) {
-        adapter = adapter_;
-        handler = handler_;
+    constructor(IMessageSender sender_, IPoolManagerHandler manager_, address deployer) Auth(deployer) {
+        sender = sender_;
+        manager = manager_;
     }
 
-    /// @inheritdoc IGateway
-    function file(bytes32 what, address data) external auth {
-        if (what == "adapter") adapter = IAdapter(data);
-        else if (what == "handler") handler = IPoolManagerHandler(data);
-        else revert FileUnrecognizedWhat();
-
-        emit File(what, data);
-    }
-
+    /// @inheritdoc IMessageProcessor
     function sendNotifyPool(uint32 chainId, PoolId poolId) external auth {
-        // TODO: call directly to CV.poolManager if same chain (apply in all send*() methods)
-        _send(chainId, MessageLib.NotifyPool({poolId: poolId.raw()}).serialize());
+        // In case we want to optimize for the same network:
+        //if chainId == uint32(block.chainId) {
+        //    cv.poolManager.notifyPool(poolId);
+        //}
+        //else {
+        sender.send(chainId, MessageLib.NotifyPool({poolId: poolId.raw()}).serialize());
+        //}
     }
 
+    /// @inheritdoc IMessageProcessor
     function sendNotifyShareClass(
         uint32 chainId,
         PoolId poolId,
@@ -52,7 +50,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         bytes32 salt,
         bytes32 hook
     ) external auth {
-        _send(
+        sender.send(
             chainId,
             MessageLib.NotifyShareClass({
                 poolId: poolId.raw(),
@@ -66,14 +64,16 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         );
     }
 
+    /// @inheritdoc IMessageProcessor
     function sendNotifyAllowedAsset(PoolId poolId, ShareClassId scId, AssetId assetId, bool isAllowed) external auth {
         bytes memory message = isAllowed
             ? MessageLib.AllowAsset({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw()}).serialize()
             : MessageLib.DisallowAsset({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw()}).serialize();
 
-        _send(assetId.chainId(), message);
+        sender.send(assetId.chainId(), message);
     }
 
+    /// @inheritdoc IMessageProcessor
     function sendFulfilledDepositRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -82,7 +82,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         uint128 assetAmount,
         uint128 shareAmount
     ) external auth {
-        _send(
+        sender.send(
             assetId.chainId(),
             MessageLib.FulfilledDepositRequest({
                 poolId: poolId.raw(),
@@ -95,6 +95,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         );
     }
 
+    /// @inheritdoc IMessageProcessor
     function sendFulfilledRedeemRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -103,7 +104,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         uint128 assetAmount,
         uint128 shareAmount
     ) external auth {
-        _send(
+        sender.send(
             assetId.chainId(),
             MessageLib.FulfilledRedeemRequest({
                 poolId: poolId.raw(),
@@ -116,6 +117,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         );
     }
 
+    /// @inheritdoc IMessageProcessor
     function sendFulfilledCancelDepositRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -123,7 +125,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         bytes32 investor,
         uint128 cancelledAmount
     ) external auth {
-        _send(
+        sender.send(
             assetId.chainId(),
             MessageLib.FulfilledCancelDepositRequest({
                 poolId: poolId.raw(),
@@ -135,6 +137,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         );
     }
 
+    /// @inheritdoc IMessageProcessor
     function sendFulfilledCancelRedeemRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -142,7 +145,7 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         bytes32 investor,
         uint128 cancelledShares
     ) external auth {
-        _send(
+        sender.send(
             assetId.chainId(),
             MessageLib.FulfilledCancelRedeemRequest({
                 poolId: poolId.raw(),
@@ -154,39 +157,35 @@ contract Gateway is Auth, IGateway, IMessageHandler {
         );
     }
 
-    function handle(bytes calldata message) external auth {
+    /// @inheritdoc IMessageHandler
+    function handle(uint32, /* chainId */ bytes memory message) external auth {
         MessageType kind = message.messageType();
 
         if (kind == MessageType.RegisterAsset) {
             MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
-            handler.registerAsset(AssetId.wrap(m.assetId), m.name, m.symbol.toString(), m.decimals);
+            manager.registerAsset(AssetId.wrap(m.assetId), m.name, m.symbol.toString(), m.decimals);
         } else if (kind == MessageType.DepositRequest) {
             MessageLib.DepositRequest memory m = message.deserializeDepositRequest();
-            handler.depositRequest(
+            manager.depositRequest(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId), m.amount
             );
         } else if (kind == MessageType.RedeemRequest) {
             MessageLib.RedeemRequest memory m = message.deserializeRedeemRequest();
-            handler.redeemRequest(
+            manager.redeemRequest(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId), m.amount
             );
         } else if (kind == MessageType.CancelDepositRequest) {
             MessageLib.CancelDepositRequest memory m = message.deserializeCancelDepositRequest();
-            handler.cancelDepositRequest(
+            manager.cancelDepositRequest(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId)
             );
         } else if (kind == MessageType.CancelRedeemRequest) {
             MessageLib.CancelRedeemRequest memory m = message.deserializeCancelRedeemRequest();
-            handler.cancelRedeemRequest(
+            manager.cancelRedeemRequest(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId)
             );
         } else {
             revert InvalidMessage(uint8(kind));
         }
-    }
-
-    function _send(uint32 chainId, bytes memory message) private {
-        // TODO: generate proofs and send message through handlers
-        adapter.send(chainId, message);
     }
 }

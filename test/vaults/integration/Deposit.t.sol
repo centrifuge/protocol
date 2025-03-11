@@ -11,6 +11,8 @@ contract DepositTest is BaseTest {
     using MessageLib for *;
     using CastLib for *;
 
+    uint32 constant CHAIN_ID = 1;
+
     /// forge-config: default.isolate = true
     function testDepositMint() public {
         _testDepositMint(4, true);
@@ -152,7 +154,7 @@ contract DepositTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128));
         vm.assume(amount % 2 == 0);
 
-        (, uint256 gasToBePaid) = gateway.estimate("PAYLOAD_IS_IRRELEVANT");
+        (, uint256 gasToBePaid) = gateway.estimate(CHAIN_ID, "PAYLOAD_IS_IRRELEVANT");
 
         assertEq(address(gateway).balance, GATEWAY_INITIAL_BALACE);
 

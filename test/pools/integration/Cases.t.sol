@@ -21,9 +21,17 @@ import {Deployer} from "script/pools/Deployer.s.sol";
 
 import {MockVaults} from "test/pools/mocks/MockVaults.sol";
 
-contract TestCommon is Deployer, Test {
+contract TestCases is Deployer, Test {
+    using CastLib for string;
+    using CastLib for bytes32;
+
     uint32 constant CHAIN_CP = 5;
     uint32 constant CHAIN_CV = 6;
+
+    string constant SC_NAME = "ExampleName";
+    string constant SC_SYMBOL = "ExampleSymbol";
+    bytes32 constant SC_SALT = bytes32("ExampleSalt");
+    bytes32 constant SC_HOOK = bytes32("ExampleHookData");
 
     address immutable FM = makeAddr("FM");
     address immutable ANY = makeAddr("Anyone");
@@ -31,13 +39,19 @@ contract TestCommon is Deployer, Test {
 
     AssetId immutable USDC_C2 = newAssetId(CHAIN_CV, 1);
 
+    uint128 constant INVESTOR_AMOUNT = 100 * 1e6; // USDC_C2
+    uint128 constant SHARE_AMOUNT = 10 * 1e18; // Share from USD
+    uint128 constant APPROVED_INVESTOR_AMOUNT = INVESTOR_AMOUNT / 5;
+    uint128 constant APPROVED_SHARE_AMOUNT = SHARE_AMOUNT / 5;
+    D18 immutable NAV_PER_SHARE = d18(2, 1);
+
     MockVaults cv;
 
     function setUp() public {
         deploy();
 
         // Adapting the CV mock
-        cv = new MockVaults(gateway);
+        cv = new MockVaults(CHAIN_CV, gateway);
         gateway.file("adapter", address(cv));
         gateway.rely(address(cv));
 
@@ -59,16 +73,6 @@ contract TestCommon is Deployer, Test {
         // We decide CP is located at CHAIN_CP for messaging
         vm.chainId(CHAIN_CP);
     }
-}
-
-contract TestConfiguration is TestCommon {
-    using CastLib for string;
-    using CastLib for bytes32;
-
-    string constant SC_NAME = "ExampleName";
-    string constant SC_SYMBOL = "ExampleSymbol";
-    bytes32 constant SC_SALT = bytes32("ExampleSalt");
-    bytes32 constant SC_HOOK = bytes32("ExampleHookData");
 
     /// forge-config: default.isolate = true
     function testPoolCreation() public returns (PoolId poolId, ShareClassId scId) {
@@ -113,13 +117,6 @@ contract TestConfiguration is TestCommon {
 
         cv.resetMessages();
     }
-}
-
-contract TestInvestments is TestConfiguration {
-    uint128 constant INVESTOR_AMOUNT = 100 * 1e6; // USDC_C2
-    uint128 constant SHARE_AMOUNT = 10 * 1e18; // Share from USD
-    D18 immutable PERCENT_20 = d18(1, 5);
-    D18 immutable NAV_PER_SHARE = d18(2, 1);
 
     /// forge-config: default.isolate = true
     function testDeposit() public returns (PoolId poolId, ShareClassId scId) {
@@ -130,7 +127,9 @@ contract TestInvestments is TestConfiguration {
         IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
-        cs[c++] = abi.encodeWithSelector(poolRouter.approveDeposits.selector, scId, USDC_C2, PERCENT_20, valuation);
+        cs[c++] = abi.encodeWithSelector(
+            poolRouter.approveDeposits.selector, scId, USDC_C2, APPROVED_INVESTOR_AMOUNT, valuation
+        );
         cs[c++] = abi.encodeWithSelector(poolRouter.issueShares.selector, scId, USDC_C2, NAV_PER_SHARE);
         assertEq(c, cs.length);
 
@@ -145,7 +144,7 @@ contract TestInvestments is TestConfiguration {
         assertEq(m0.scId, scId.raw());
         assertEq(m0.investor, INVESTOR);
         assertEq(m0.assetId, USDC_C2.raw());
-        assertEq(m0.assetAmount, PERCENT_20.mulUint128(INVESTOR_AMOUNT));
+        assertEq(m0.assetAmount, APPROVED_INVESTOR_AMOUNT);
         assertEq(m0.shareAmount, SHARE_AMOUNT);
 
         cv.resetMessages();
@@ -160,7 +159,7 @@ contract TestInvestments is TestConfiguration {
         IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
-        cs[c++] = abi.encodeWithSelector(poolRouter.approveRedeems.selector, scId, USDC_C2, PERCENT_20);
+        cs[c++] = abi.encodeWithSelector(poolRouter.approveRedeems.selector, scId, USDC_C2, APPROVED_SHARE_AMOUNT);
         cs[c++] = abi.encodeWithSelector(poolRouter.revokeShares.selector, scId, USDC_C2, NAV_PER_SHARE, valuation);
         assertEq(c, cs.length);
 
@@ -176,14 +175,12 @@ contract TestInvestments is TestConfiguration {
         assertEq(m0.investor, INVESTOR);
         assertEq(m0.assetId, USDC_C2.raw());
         /*
-        // TODO: Fix this - m0.assetAmount = 0, while NAV_PER_SHARE.mulUint128(..) = 4000000
+        // TODO: Fix this
         assertEq(
             m0.assetAmount,
-            NAV_PER_SHARE.mulUint128(
-                uint128(valuation.getQuote(PERCENT_20.mulUint128(SHARE_AMOUNT), USD.addr(), USDC_C2.addr()))
-            )
+            NAV_PER_SHARE.mulUint128(uint128(valuation.getQuote(APPROVED_SHARE_AMOUNT, USD.addr(), USDC_C2.addr())))
         );
-        assertEq(m0.shareAmount, PERCENT_20.mulUint128(SHARE_AMOUNT));
+        assertEq(m0.shareAmount, APPROVED_SHARE_AMOUNT);
         */
     }
 }

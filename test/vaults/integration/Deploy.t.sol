@@ -14,7 +14,7 @@ import {ERC20} from "src/misc/ERC20.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 import {ERC7540VaultTest} from "test/vaults/unit/ERC7540Vault.t.sol";
 import {PermissionlessAdapter} from "test/vaults/mocks/PermissionlessAdapter.sol";
-import {Root} from "src/vaults/Root.sol";
+import {Root} from "src/common/Root.sol";
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
 import {AxelarScript} from "script/vaults/Axelar.s.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
@@ -131,7 +131,6 @@ contract DeployTest is Test, Deployer {
 
     function testFilings() public view {
         assertEq(address(poolManager.gateway()), address(gateway));
-        assertEq(address(poolManager.gasService()), address(gasService));
 
         assertEq(address(investmentManager.poolManager()), address(poolManager));
         assertEq(address(investmentManager.gateway()), address(gateway));

@@ -12,14 +12,9 @@ import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
 import {AccountId, newAccountId} from "src/pools/types/AccountId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
-import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
-import {IGateway} from "src/pools/interfaces/IGateway.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
-import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
-import {ISingleShareClass} from "src/pools/interfaces/ISingleShareClass.sol";
-import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
-import {IPoolManager, IPoolManagerHandler, EscrowId, AccountType} from "src/pools/interfaces/IPoolManager.sol";
+import {IPoolManager} from "src/pools/interfaces/IPoolManager.sol";
 import {IPoolRouter} from "src/pools/interfaces/IPoolRouter.sol";
 
 contract PoolRouter is Multicall, IPoolRouter {
@@ -87,16 +82,16 @@ contract PoolRouter is Multicall, IPoolRouter {
     }
 
     /// @inheritdoc IPoolRouter
-    function approveDeposits(ShareClassId scId, AssetId paymentAssetId, D18 approvalRatio, IERC7726 valuation)
+    function approveDeposits(ShareClassId scId, AssetId paymentAssetId, uint128 maxApproval, IERC7726 valuation)
         external
         protected
     {
-        poolManager.approveDeposits(scId, paymentAssetId, approvalRatio, valuation);
+        poolManager.approveDeposits(scId, paymentAssetId, maxApproval, valuation);
     }
 
     /// @inheritdoc IPoolRouter
-    function approveRedeems(ShareClassId scId, AssetId payoutAssetId, D18 approvalRatio) external protected {
-        poolManager.approveRedeems(scId, payoutAssetId, approvalRatio);
+    function approveRedeems(ShareClassId scId, AssetId payoutAssetId, uint128 maxApproval) external protected {
+        poolManager.approveRedeems(scId, payoutAssetId, maxApproval);
     }
 
     /// @inheritdoc IPoolRouter
