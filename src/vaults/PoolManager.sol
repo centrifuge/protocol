@@ -21,12 +21,12 @@ import {
     TranchePrice,
     UndeployedTranche,
     VaultAsset,
-    IPoolManager
+    IPoolManager,
+    IMessageHandler
 } from "src/vaults/interfaces/IPoolManager.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
-import {IGasService} from "src/vaults/interfaces/gateway/IGasService.sol";
-import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
+import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 
 /// @title  Pool Manager
 /// @notice This contract manages which pools & tranches exist,
@@ -46,7 +46,6 @@ contract PoolManager is Auth, IPoolManager {
     address public investmentManager;
     ERC7540VaultFactory public vaultFactory;
     ITrancheFactory public trancheFactory;
-    IGasService public gasService;
 
     mapping(uint64 poolId => Pool) internal _pools;
     mapping(address => VaultAsset) internal _vaultToAsset;
@@ -70,7 +69,6 @@ contract PoolManager is Auth, IPoolManager {
         else if (what == "investmentManager") investmentManager = data;
         else if (what == "trancheFactory") trancheFactory = ITrancheFactory(data);
         else if (what == "vaultFactory") vaultFactory = ERC7540VaultFactory(data);
-        else if (what == "gasService") gasService = IGasService(data);
         else revert("PoolManager/file-unrecognized-param");
         emit File(what, data);
     }
@@ -104,8 +102,8 @@ contract PoolManager is Auth, IPoolManager {
     }
 
     // --- Incoming message handling ---
-    /// @inheritdoc IPoolManager
-    function handle(bytes calldata message) external auth {
+    /// @inheritdoc IMessageHandler
+    function handle(uint32, /*chainId*/ bytes calldata message) external auth {
         MessageType kind = MessageLib.messageType(message);
 
         if (kind == MessageType.RegisterAsset) {

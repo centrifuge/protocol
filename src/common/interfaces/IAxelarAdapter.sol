@@ -1,32 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAdapter} from "src/vaults/interfaces/gateway/IAdapter.sol";
-
-interface IAxelarGateway {
-    function callContract(string calldata destinationChain, string calldata contractAddress, bytes calldata payload)
-        external;
-
-    function validateContractCall(
-        bytes32 commandId,
-        string calldata sourceChain,
-        string calldata sourceAddress,
-        bytes32 payloadHash
-    ) external returns (bool);
-}
-
-interface IAxelarGasService {
-    function payNativeGasForContractCall(
-        address sender,
-        string calldata destinationChain,
-        string calldata destinationAddress,
-        bytes calldata payload,
-        address refundAddress
-    ) external payable;
-}
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 interface IAxelarAdapter is IAdapter {
     event File(bytes32 indexed what, uint256 value);
+
+    error FileUnrecognizedParam();
+    error InvalidChain();
+    error InvalidAddress();
+    error NotApprovedByAxelarGateway();
+    error NotGateway();
 
     /// @dev This value is in Axelar fees in ETH (wei)
     function axelarCost() external view returns (uint256);
