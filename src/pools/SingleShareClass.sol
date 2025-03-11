@@ -523,7 +523,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
 
 
     /// @inheritdoc IShareClassManager
-    function updateShareClassNav(PoolId poolId, ShareClassId shareClassId_) external view auth returns (D18, uint128) {
+    function updateShareClassNav(PoolId poolId, ShareClassId shareClassId_) external view auth returns (uint128, D18) {
         require(exists(poolId, shareClassId_), ShareClassNotFound());
         revert("unsupported");
     }

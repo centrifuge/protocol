@@ -229,11 +229,11 @@ interface IShareClassManager {
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
-    /// @return navPerShare Total value of assets of the pool and share class per share
     /// @return issuance Total issuance of the share class
+    /// @return navPerShare Total value of assets of the pool and share class per share
     function updateShareClassNav(PoolId poolId, ShareClassId scId)
         external
-        returns (D18 navPerShare, uint128 issuance);
+        returns (uint128 issuance, D18 navPerShare);
 
     /// @notice Generic update function for a pool.
     ///
