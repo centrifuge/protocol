@@ -266,7 +266,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     /// @inheritdoc IPoolManager
     function updateContract(uint64 poolId, bytes16 trancheId, address target, bytes memory update_) public auth {
         if (target == address(this)) {
-            (bool success, bytes memory data) = address(this).delegatecall(
+            (bool success, ) = address(this).delegatecall(
                 abi.encodeWithSelector(
                     IUpdateContract.update.selector,
                     poolId,

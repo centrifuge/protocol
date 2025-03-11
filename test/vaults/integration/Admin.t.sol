@@ -232,7 +232,7 @@ contract AdminTest is BaseTest {
     function testRecoverTokens() public {
         deploySimpleVault();
         address clumsyUser = vm.addr(0x1234);
-        address vault_ = investmentManager.getVault(5, bytes16(bytes("1")), defaultAssetId);
+        address vault_ = investmentManager.vault(5, bytes16(bytes("1")), defaultAssetId);
         ERC7540Vault vault = ERC7540Vault(vault_);
         address asset_ = vault.asset();
         ERC20 asset = ERC20(asset_);
