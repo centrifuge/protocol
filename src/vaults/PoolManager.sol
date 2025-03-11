@@ -11,6 +11,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
 
 import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
 import {ITrancheFactory} from "src/vaults/interfaces/factories/ITrancheFactory.sol";
@@ -25,7 +26,6 @@ import {
     IPoolManager
 } from "src/vaults/interfaces/IPoolManager.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
-import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
 import {IMessageProcessor} from "src/vaults/interfaces/IMessageProcessor.sol";
 
 /// @title  Pool Manager

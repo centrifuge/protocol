@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 contract Guardian is IGuardian {
     IRoot public immutable root;
@@ -48,7 +49,7 @@ contract Guardian is IGuardian {
     }
 
     /// @inheritdoc IGuardian
-    function disputeMessageRecovery(address adapter, bytes32 messageHash) external onlySafe {
+    function disputeMessageRecovery(IAdapter adapter, bytes32 messageHash) external onlySafe {
         gateway.disputeMessageRecovery(adapter, messageHash);
     }
 

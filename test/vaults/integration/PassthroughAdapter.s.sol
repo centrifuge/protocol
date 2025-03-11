@@ -16,7 +16,7 @@ contract PassthroughAdapterScript is Deployer {
 
         deploy(msg.sender);
         PassthroughAdapter router = new PassthroughAdapter();
-        wire(address(router));
+        wire(router);
 
         router.file("gateway", address(gateway));
         router.file("sourceChain", vm.envString("SOURCE_CHAIN"));

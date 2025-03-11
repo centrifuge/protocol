@@ -23,7 +23,7 @@ contract FactoryTest is Test {
             polygonFork = vm.createFork(vm.rpcUrl("polygon-mainnet"));
         }
 
-        root = address(new Root(address(new Escrow(address(this))), 48 hours, address(this)));
+        root = address(new Root(48 hours, address(this)));
     }
 
     function testTrancheFactoryIsDeterministicAcrossChains(uint64 poolId, bytes16 trancheId) public {

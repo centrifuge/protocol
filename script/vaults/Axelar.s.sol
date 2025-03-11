@@ -19,7 +19,7 @@ contract AxelarScript is Deployer {
         AxelarAdapter adapter = new AxelarAdapter(
             gateway, address(vm.envAddress("AXELAR_GATEWAY")), address(vm.envAddress("AXELAR_GAS_SERVICE"))
         );
-        wire(address(adapter));
+        wire(adapter);
 
         removeDeployerAccess(address(adapter), msg.sender);
 

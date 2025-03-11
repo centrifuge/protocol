@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {Properties} from "../Properties.sol";
 import {vm} from "@chimera/Hevm.sol";
-import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
+import {MockAdapter, IAdapter} from "test/vaults/mocks/MockAdapter.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
@@ -30,7 +30,7 @@ abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
         require(primaryIndex[messageIndex] == adapterId, "not-primary-router"); // Must be primary to send message
         // require(messageSentCount[keccak256(message)] == 0); /// TODO looks off
         // I think those should be: messagesSentCount[router][message] else what's the point?
-        MockAdapter(adapters[adapterId]).execute(message);
+        MockAdapter(address(adapters[adapterId])).execute(message);
         messageSentCount[keccak256(message)] += 1;
     }
 
@@ -39,7 +39,7 @@ abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
         require(primaryIndex[messageIndex] != adapterId); // Must not primary to send proof
         // require(messageSentCount[keccak256(message)] > 0); // NOTE: Proof could be sent before or after, not sure why
         // this exists
-        MockAdapter(adapters[adapterId]).execute(_formatMessageProof(message));
+        MockAdapter(address(adapters[adapterId])).execute(_formatMessageProof(message));
         proofSentCount[keccak256(message)] += 1;
     }
 
@@ -75,7 +75,7 @@ abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
 
         // NOTE: Can we recover for self?
         // TODO: CHECK THIS!
-        MockAdapter(adapters[calledRouterId]).execute(
+        MockAdapter(address(adapters[calledRouterId])).execute(
             MessageLib.InitiateMessageRecovery({
                 hash: keccak256(message),
                 adapter: bytes32(bytes20(address(adapters[recoverRouterId])))
@@ -86,7 +86,7 @@ abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
     function executeMessageRecovery(uint8 adapterId, uint256 messageIndex) public {
         adapterId %= uint8(RECON_ADAPTERS);
         messageIndex %= uint8(messages.length);
-        address router = routerAggregator.adapters(adapterId);
+        IAdapter router = routerAggregator.adapters(adapterId);
 
         bytes memory message = messages[messageIndex];
         require(recoverMessageTime[keccak256(message)] != 0);
@@ -103,7 +103,7 @@ abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
     function disputeMessageRecovery(uint8 adapterId, uint256 messageIndex) public {
         adapterId %= uint8(RECON_ADAPTERS);
         messageIndex %= uint8(messages.length);
-        address router = routerAggregator.adapters(adapterId);
+        IAdapter router = routerAggregator.adapters(adapterId);
 
         bytes memory message = messages[messageIndex];
         routerAggregator.disputeMessageRecovery(router, keccak256(message));

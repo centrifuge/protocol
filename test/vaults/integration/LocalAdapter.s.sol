@@ -19,7 +19,7 @@ contract LocalAdapterScript is Deployer {
 
         deploy(msg.sender);
         LocalAdapter adapter = new LocalAdapter();
-        wire(address(adapter));
+        wire(adapter);
 
         adapter.file("gateway", address(gateway));
         adapter.file("sourceChain", "TestDomain");

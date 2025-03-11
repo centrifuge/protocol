@@ -64,7 +64,7 @@ abstract contract Setup is BaseSetup, SharedStorage {
         vaultFactory = new ERC7540VaultFactory(address(this));
         trancheFactory = new TrancheFactory(address(this), address(this));
         escrow = new Escrow(address(address(this)));
-        root = new Root(address(escrow), 48 hours, address(this));
+        root = new Root(48 hours, address(this));
         restrictionManager = new RestrictionManager(address(root), address(this));
 
         root.endorse(address(escrow));

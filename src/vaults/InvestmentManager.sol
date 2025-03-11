@@ -10,12 +10,12 @@ import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
 
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IInvestmentManager, InvestmentState} from "src/vaults/interfaces/IInvestmentManager.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
-import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
 import {IMessageProcessor} from "src/vaults/interfaces/IMessageProcessor.sol";
 
 /// @title  Investment Manager

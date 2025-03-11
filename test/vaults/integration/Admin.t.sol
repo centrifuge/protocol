@@ -18,7 +18,6 @@ contract AdminTest is BaseTest {
 
     function testDeployment() public view {
         // values set correctly
-        assertEq(address(root.escrow()), address(escrow));
         assertEq(root.paused(), false);
 
         // permissions set correctly
@@ -298,19 +297,19 @@ contract AdminTest is BaseTest {
         _send(adapter1, MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
 
         vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
-        gateway.executeMessageRecovery(address(adapter3), proof);
+        gateway.executeMessageRecovery(adapter3, proof);
 
         vm.prank(makeAddr("unauthorized"));
         vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
-        guardian.disputeMessageRecovery(address(adapter3), keccak256(proof));
+        guardian.disputeMessageRecovery(adapter3, keccak256(proof));
 
         // Dispute recovery
         vm.prank(address(adminSafe));
-        guardian.disputeMessageRecovery(address(adapter3), keccak256(proof));
+        guardian.disputeMessageRecovery(adapter3, keccak256(proof));
 
         // Check that recovery is not possible anymore
         vm.expectRevert(bytes("Gateway/message-recovery-not-initiated"));
-        gateway.executeMessageRecovery(address(adapter3), proof);
+        gateway.executeMessageRecovery(adapter3, proof);
         assertEq(poolManager.received(message), 0);
     }
 

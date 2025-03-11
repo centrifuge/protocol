@@ -6,9 +6,9 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {Root} from "src/common/Root.sol";
 import {GasService} from "src/common/GasService.sol";
 import {Guardian, ISafe} from "src/common/Guardian.sol";
-import {IGateway} from "src/common/Gateway.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {Gateway} from "src/common/Gateway.sol";
 
-import {Gateway} from "src/vaults/gateway/Gateway.sol";
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
 import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
 import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
@@ -23,7 +23,7 @@ import "forge-std/Script.sol";
 contract Deployer is Script {
     uint256 internal constant delay = 48 hours;
     ISafe adminSafe;
-    address[] adapters;
+    IAdapter[] adapters;
 
     Root public root;
     InvestmentManager public investmentManager;
@@ -54,7 +54,7 @@ contract Deployer is Script {
 
         escrow = new Escrow{salt: salt}(deployer);
         routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(salt, "escrow2"))}(deployer);
-        root = new Root{salt: salt}(address(escrow), delay, deployer);
+        root = new Root{salt: salt}(delay, deployer);
         vaultFactory = address(new ERC7540VaultFactory(address(root)));
         restrictionManager = address(new RestrictionManager{salt: salt}(address(root), deployer));
         restrictedRedemptions = address(new RestrictedRedemptions{salt: salt}(address(root), address(escrow), deployer));
@@ -65,7 +65,7 @@ contract Deployer is Script {
         gateway = new Gateway(root, gasService);
         messageProcessor = new MessageProcessor(gateway, poolManager, investmentManager, root, gasService, deployer);
         router = new CentrifugeRouter(address(routerEscrow), address(gateway), address(poolManager));
-        guardian = new Guardian(adminSafe, root, IGateway(address(gateway)));
+        guardian = new Guardian(adminSafe, root, gateway);
 
         _endorse();
         _rely();
@@ -137,10 +137,10 @@ contract Deployer is Script {
         gateway.file("handler", address(messageProcessor));
     }
 
-    function wire(address adapter) public {
+    function wire(IAdapter adapter) public {
         adapters.push(adapter);
         gateway.file("adapters", adapters);
-        IAuth(adapter).rely(address(root));
+        IAuth(address(adapter)).rely(address(root));
     }
 
     function removeDeployerAccess(address adapter, address deployer) public {

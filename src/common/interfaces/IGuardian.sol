@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+
 interface ISafe {
     function isOwner(address signer) external view returns (bool);
 }
@@ -27,5 +29,5 @@ interface IGuardian {
 
     /// @notice Dispute an gateway message recovery
     /// @dev callable by safe only
-    function disputeMessageRecovery(address adapter, bytes32 messageHash) external;
+    function disputeMessageRecovery(IAdapter adapter, bytes32 messageHash) external;
 }

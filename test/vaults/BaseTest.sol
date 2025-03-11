@@ -8,6 +8,8 @@ import {ERC20} from "src/misc/ERC20.sol";
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 import {Root} from "src/common/Root.sol";
+import {Gateway} from "src/common/Gateway.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 // core contracts
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
@@ -18,15 +20,14 @@ import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
-import {Gateway} from "src/vaults/gateway/Gateway.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
 import {Deployer} from "script/vaults/Deployer.sol";
-import {MockSafe} from "test/vaults/mocks/MockSafe.sol";
 
 // mocks
 import {MockCentrifugeChain} from "test/vaults/mocks/MockCentrifugeChain.sol";
 import {MockGasService} from "test/vaults/mocks/MockGasService.sol";
 import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
+import {MockSafe} from "test/vaults/mocks/MockSafe.sol";
 
 // test env
 import "forge-std/Test.sol";
@@ -38,7 +39,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
     MockAdapter adapter1;
     MockAdapter adapter2;
     MockAdapter adapter3;
-    address[] testAdapters;
+    IAdapter[] testAdapters;
     ERC20 public erc20;
 
     address self = address(this);
@@ -67,20 +68,20 @@ contract BaseTest is Deployer, GasSnapshot, Test {
 
         // deploy mock adapters
 
-        adapter1 = new MockAdapter(address(gateway));
-        adapter2 = new MockAdapter(address(gateway));
-        adapter3 = new MockAdapter(address(gateway));
+        adapter1 = new MockAdapter(gateway);
+        adapter2 = new MockAdapter(gateway);
+        adapter3 = new MockAdapter(gateway);
 
         adapter1.setReturn("estimate", uint256(1 gwei));
         adapter2.setReturn("estimate", uint256(1.25 gwei));
         adapter3.setReturn("estimate", uint256(1.75 gwei));
 
-        testAdapters.push(address(adapter1));
-        testAdapters.push(address(adapter2));
-        testAdapters.push(address(adapter3));
+        testAdapters.push(adapter1);
+        testAdapters.push(adapter2);
+        testAdapters.push(adapter3);
 
         // wire contracts
-        wire(address(adapter1));
+        wire(adapter1);
         // remove deployer access
         // removeDeployerAccess(address(adapter)); // need auth permissions in tests
 

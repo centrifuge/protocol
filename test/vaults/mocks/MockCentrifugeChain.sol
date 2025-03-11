@@ -5,6 +5,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 import "forge-std/Test.sol";
 
@@ -16,9 +17,9 @@ contract MockCentrifugeChain is Test {
     using CastLib for *;
     using MessageLib for *;
 
-    address[] public adapters;
+    IAdapter[] public adapters;
 
-    constructor(address[] memory adapters_) {
+    constructor(IAdapter[] memory adapters_) {
         for (uint256 i = 0; i < adapters_.length; i++) {
             adapters.push(adapters_[i]);
         }
@@ -290,7 +291,7 @@ contract MockCentrifugeChain is Test {
     function execute(bytes memory message) public {
         bytes memory proof = MessageLib.MessageProof({hash: keccak256(message)}).serialize();
         for (uint256 i = 0; i < adapters.length; i++) {
-            AdapterLike(adapters[i]).execute(i == 0 ? message : proof);
+            AdapterLike(address(adapters[i])).execute(i == 0 ? message : proof);
         }
     }
 }

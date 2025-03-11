@@ -8,10 +8,9 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {Guardian} from "src/common/Guardian.sol";
 import {Root} from "src/common/Root.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {Gateway} from "src/common/Gateway.sol";
 
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
-import {Gateway} from "src/vaults/gateway/Gateway.sol";
 import {MockCentrifugeChain} from "test/vaults/mocks/MockCentrifugeChain.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
 import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
@@ -53,7 +52,7 @@ contract DeployTest is Test, Deployer {
         self = address(this);
         deploy(self);
         adapter = new PermissionlessAdapter(address(gateway));
-        wire(address(adapter));
+        wire(adapter);
 
         // overwrite deployed guardian with a new mock safe guardian
         accounts = new address[](3);
@@ -61,7 +60,7 @@ contract DeployTest is Test, Deployer {
         accounts[1] = makeAddr("account2");
         accounts[2] = makeAddr("account3");
         adminSafe = new MockSafe(accounts, 1);
-        fakeGuardian = new Guardian(adminSafe, root, IGateway(address(gateway)));
+        fakeGuardian = new Guardian(adminSafe, root, gateway);
 
         removeDeployerAccess(address(adapter), address(this));
 
@@ -141,7 +140,7 @@ contract DeployTest is Test, Deployer {
         assertEq(address(investmentManager.poolManager()), address(poolManager));
         assertEq(address(investmentManager.gateway()), address(gateway));
 
-        assertEq(gateway.adapters(0), address(adapter));
+        assertEq(address(gateway.adapters(0)), address(adapter));
         assertTrue(gateway.payers(address(router)));
     }
 

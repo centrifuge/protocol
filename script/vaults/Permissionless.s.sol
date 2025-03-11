@@ -18,7 +18,7 @@ contract PermissionlessScript is Deployer {
 
         deploy(msg.sender);
         PermissionlessAdapter adapter = new PermissionlessAdapter(address(gateway));
-        wire(address(adapter));
+        wire(adapter);
 
         vm.stopBroadcast();
     }
