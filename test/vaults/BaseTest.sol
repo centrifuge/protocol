@@ -8,7 +8,7 @@ import {ERC20} from "src/misc/ERC20.sol";
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 
 // core contracts
-import {Root} from "src/vaults/Root.sol";
+import {Root} from "src/common/Root.sol";
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {Escrow} from "src/vaults/Escrow.sol";

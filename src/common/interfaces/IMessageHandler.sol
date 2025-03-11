@@ -8,5 +8,5 @@ interface IMessageHandler {
 
     /// @notice Handling incoming messages.
     /// @param message Incoming message
-    function handle(bytes calldata message) external;
+    function handle(uint32 chainId, bytes calldata message) external;
 }

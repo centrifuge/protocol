@@ -5,16 +5,13 @@ import {Auth} from "src/misc/Auth.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
-
-import {IRoot, IRecoverable} from "src/vaults/interfaces/IRoot.sol";
+import {IRoot, IRecoverable} from "src/common/interfaces/IRoot.sol";
 
 /// @title  Root
 /// @notice Core contract that is a ward on all other deployed contracts.
 /// @dev    Pausing can happen instantaneously, but relying on other contracts
 ///         is restricted to the timelock set by the delay.
 contract Root is Auth, IRoot {
-    using MessageLib for *;
     using BytesLib for bytes;
 
     /// @dev To prevent filing a delay that would block any updates indefinitely
@@ -24,15 +21,18 @@ contract Root is Auth, IRoot {
 
     /// @inheritdoc IRoot
     bool public paused;
+
     /// @inheritdoc IRoot
     uint256 public delay;
+
     /// @inheritdoc IRoot
     mapping(address => uint256) public endorsements;
+
     /// @inheritdoc IRoot
     mapping(address relyTarget => uint256 timestamp) public schedule;
 
     constructor(address _escrow, uint256 _delay, address deployer) Auth(deployer) {
-        require(_delay <= MAX_DELAY, "Root/delay-too-long");
+        require(_delay <= MAX_DELAY, DelayTooLong());
 
         escrow = _escrow;
         delay = _delay;
@@ -42,10 +42,10 @@ contract Root is Auth, IRoot {
     /// @inheritdoc IRoot
     function file(bytes32 what, uint256 data) external auth {
         if (what == "delay") {
-            require(data <= MAX_DELAY, "Root/delay-too-long");
+            require(data <= MAX_DELAY, DelayTooLong());
             delay = data;
         } else {
-            revert("Root/file-unrecognized-param");
+            revert FileUnrecognizedParam();
         }
         emit File(what, data);
     }
@@ -90,39 +90,20 @@ contract Root is Auth, IRoot {
 
     /// @inheritdoc IRoot
     function cancelRely(address target) public auth {
-        require(schedule[target] != 0, "Root/target-not-scheduled");
+        require(schedule[target] != 0, TargetNotScheduled());
         schedule[target] = 0;
         emit CancelRely(target);
     }
 
     /// @inheritdoc IRoot
     function executeScheduledRely(address target) external {
-        require(schedule[target] != 0, "Root/target-not-scheduled");
-        require(schedule[target] <= block.timestamp, "Root/target-not-ready");
+        require(schedule[target] != 0, TargetNotScheduled());
+        require(schedule[target] <= block.timestamp, TargetNotReady());
 
         wards[target] = 1;
         emit Rely(target);
 
         schedule[target] = 0;
-    }
-
-    /// --- Incoming message handling ---
-    /// @inheritdoc IRoot
-    function handle(bytes calldata message) public auth {
-        MessageType kind = MessageLib.messageType(message);
-
-        if (kind == MessageType.ScheduleUpgrade) {
-            MessageLib.ScheduleUpgrade memory m = message.deserializeScheduleUpgrade();
-            scheduleRely(address(bytes20(m.target)));
-        } else if (kind == MessageType.CancelUpgrade) {
-            MessageLib.CancelUpgrade memory m = message.deserializeCancelUpgrade();
-            cancelRely(address(bytes20(m.target)));
-        } else if (kind == MessageType.RecoverTokens) {
-            MessageLib.RecoverTokens memory m = message.deserializeRecoverTokens();
-            recoverTokens(address(bytes20(m.target)), address(bytes20(m.token)), address(bytes20(m.to)), m.amount);
-        } else {
-            revert("Root/invalid-message");
-        }
     }
 
     /// --- External contract ward management ---

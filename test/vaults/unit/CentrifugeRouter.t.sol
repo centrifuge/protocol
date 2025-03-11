@@ -24,6 +24,7 @@ contract ERC20WrapperFake {
 contract CentrifugeRouterTest is BaseTest {
     using CastLib for *;
 
+    uint32 constant CHAIN_ID = 1;
     uint256 constant GAS_BUFFER = 10 gwei;
     /// @dev Payload is not taken into account during gas estimation
     bytes constant PAYLOAD_FOR_GAS_ESTIMATION = "irrelevant_value";
@@ -485,8 +486,8 @@ contract CentrifugeRouterTest is BaseTest {
 
     function testEstimate() public view {
         bytes memory message = "IRRELEVANT";
-        uint256 estimated = router.estimate(message);
-        (, uint256 gatewayEstimated) = gateway.estimate(message);
+        uint256 estimated = router.estimate(CHAIN_ID, message);
+        (, uint256 gatewayEstimated) = gateway.estimate(CHAIN_ID, message);
         assertEq(estimated, gatewayEstimated);
     }
 
@@ -506,7 +507,7 @@ contract CentrifugeRouterTest is BaseTest {
         router.lockDepositRequest(vault_, amount, self, self);
         assertEq(erc20.balanceOf(address(routerEscrow)), amount);
 
-        uint256 gasLimit = router.estimate("irrelevant_payload");
+        uint256 gasLimit = router.estimate(CHAIN_ID, "irrelevant_payload");
 
         vm.expectRevert(bytes("InvestmentManager/transfer-not-allowed"));
         router.executeLockedDepositRequest{value: gasLimit}(vault_, self, gasLimit);
@@ -521,6 +522,6 @@ contract CentrifugeRouterTest is BaseTest {
     }
 
     function estimateGas() internal view returns (uint256 total) {
-        (, total) = gateway.estimate(PAYLOAD_FOR_GAS_ESTIMATION);
+        (, total) = gateway.estimate(CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
     }
 }

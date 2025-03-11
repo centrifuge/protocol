@@ -8,12 +8,11 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
 import {MessageType, MessageCategory, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {IRoot, IRecoverable} from "src/common/interfaces/IRoot.sol";
+import {IGasService} from "src/common/interfaces/IGasService.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 import {IGateway, IMessageHandler} from "src/vaults/interfaces/gateway/IGateway.sol";
-import {IRoot} from "src/vaults/interfaces/IRoot.sol";
-import {IGasService} from "src/vaults/interfaces/gateway/IGasService.sol";
-import {IAdapter} from "src/vaults/interfaces/gateway/IAdapter.sol";
-import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 
 /// @title  Gateway
 /// @notice Routing contract that forwards outgoing messages to multiple adapters (1 full message, n-1 proofs)
@@ -128,8 +127,8 @@ contract Gateway is Auth, IGateway, IRecoverable {
     }
 
     // --- Incoming ---
-    /// @inheritdoc IGateway
-    function handle(bytes calldata message) external pauseable {
+    /// @inheritdoc IMessageHandler
+    function handle(uint32 /*chainId*/, bytes calldata message) external pauseable {
         _handle(message, msg.sender, false);
     }
 
@@ -201,21 +200,37 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     function _dispatch(bytes memory message) internal {
         while (true) {
-            address manager;
+            // TODO: The message dispatching will be moved to a vaults/IMessageProcessor
             MessageCategory cat = message.messageCode().category();
+            MessageType kind = MessageLib.messageType(message);
+
             if (cat == MessageCategory.Root) {
-                manager = address(root);
+                if (kind == MessageType.ScheduleUpgrade) {
+                    MessageLib.ScheduleUpgrade memory m = message.deserializeScheduleUpgrade();
+                    root.scheduleRely(address(bytes20(m.target)));
+                } else if (kind == MessageType.CancelUpgrade) {
+                    MessageLib.CancelUpgrade memory m = message.deserializeCancelUpgrade();
+                    root.cancelRely(address(bytes20(m.target)));
+                } else if (kind == MessageType.RecoverTokens) {
+                    MessageLib.RecoverTokens memory m = message.deserializeRecoverTokens();
+                    root.recoverTokens(address(bytes20(m.target)), address(bytes20(m.token)), address(bytes20(m.to)), m.amount);
+                } else {
+                    revert("Root/invalid-message");
+                }
             } else if (cat == MessageCategory.Gas) {
-                manager = address(gasService);
+                if (kind == MessageType.UpdateGasPrice) {
+                    MessageLib.UpdateGasPrice memory m = message.deserializeUpdateGasPrice();
+                    gasService.updateGasPrice(m.price, m.timestamp);
+                } else {
+                    revert("GasService/invalid-message");
+                }
             } else if (cat == MessageCategory.Pool) {
-                manager = poolManager;
+                IMessageHandler(poolManager).handle(0 /*chainId*/, message);
             } else if (cat == MessageCategory.Investment) {
-                manager = investmentManager;
+                IMessageHandler(investmentManager).handle(0 /*chainId*/, message);
             } else {
                 revert("Gateway/unexpected-category");
             }
-
-            IMessageHandler(manager).handle(message);
 
             uint256 offset = message.messageLength();
             uint256 remaining = message.length - offset;
@@ -270,48 +285,46 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     // --- Outgoing ---
     /// @inheritdoc IGateway
-    function send(uint32 /*chainId*/, bytes calldata message, address source) public payable pauseable {
-        bool isManager = msg.sender == investmentManager || msg.sender == poolManager;
-        require(isManager, "Gateway/invalid-manager");
+    function send(uint32 chainId, bytes calldata message, address source) public payable pauseable {
+        require(msg.sender == investmentManager || msg.sender == poolManager, "Gateway/invalid-manager");
 
         bytes memory proof = MessageLib.MessageProof({hash: keccak256(message)}).serialize();
 
-        uint256 numAdapters = adapters.length;
-        require(numAdapters != 0, "Gateway/not-initialized");
+        require(adapters.length != 0, "Gateway/not-initialized");
 
-        uint256 messageCost = gasService.estimate(message);
-        uint256 proofCost = gasService.estimate(proof);
+        uint256 messageCost = gasService.estimate(chainId, message);
+        uint256 proofCost = gasService.estimate(chainId, proof);
 
         if (fuel != 0) {
             uint256 tank = fuel;
-            for (uint256 i; i < numAdapters; i++) {
+            for (uint256 i; i < adapters.length; i++) {
                 IAdapter currentAdapter = IAdapter(adapters[i]);
                 bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
                 bytes memory payload = isPrimaryAdapter ? message : proof;
 
-                uint256 consumed = currentAdapter.estimate(payload, isPrimaryAdapter ? messageCost : proofCost);
+                uint256 consumed = currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageCost : proofCost);
 
                 require(consumed <= tank, "Gateway/not-enough-gas-funds");
                 tank -= consumed;
 
-                currentAdapter.pay{value: consumed}(payload, address(this));
+                currentAdapter.pay{value: consumed}(chainId, payload, address(this));
 
-                currentAdapter.send(payload);
+                currentAdapter.send(chainId, payload);
             }
             fuel = 0;
         } else if (gasService.shouldRefuel(source, message)) {
-            for (uint256 i; i < numAdapters; i++) {
+            for (uint256 i; i < adapters.length; i++) {
                 IAdapter currentAdapter = IAdapter(adapters[i]);
                 bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
                 bytes memory payload = isPrimaryAdapter ? message : proof;
 
-                uint256 consumed = currentAdapter.estimate(payload, isPrimaryAdapter ? messageCost : proofCost);
+                uint256 consumed = currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageCost : proofCost);
 
                 if (consumed <= address(this).balance) {
-                    currentAdapter.pay{value: consumed}(payload, address(this));
+                    currentAdapter.pay{value: consumed}(chainId, payload, address(this));
                 }
 
-                currentAdapter.send(payload);
+                currentAdapter.send(chainId, payload);
             }
         } else {
             revert("Gateway/not-enough-gas-funds");
@@ -329,17 +342,17 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     // --- Helpers ---
     /// @inheritdoc IGateway
-    function estimate(bytes calldata payload) external view returns (uint256[] memory perAdapter, uint256 total) {
+    function estimate(uint32 chainId, bytes calldata payload) external view returns (uint256[] memory perAdapter, uint256 total) {
         bytes memory proof = MessageLib.MessageProof({hash: keccak256(payload)}).serialize();
-        uint256 messageCost = gasService.estimate(payload);
-        uint256 proofCost = gasService.estimate(proof);
+        uint256 messageCost = gasService.estimate(chainId, payload);
+        uint256 proofCost = gasService.estimate(chainId, proof);
         perAdapter = new uint256[](adapters.length);
 
         uint256 adaptersCount = adapters.length;
         for (uint256 i; i < adaptersCount; i++) {
             uint256 centrifugeCost = i == PRIMARY_ADAPTER_ID - 1 ? messageCost : proofCost;
             bytes memory message = i == PRIMARY_ADAPTER_ID - 1 ? payload : proof;
-            uint256 estimated = IAdapter(adapters[i]).estimate(message, centrifugeCost);
+            uint256 estimated = IAdapter(adapters[i]).estimate(chainId, message, centrifugeCost);
             perAdapter[i] = estimated;
             total += estimated;
         }

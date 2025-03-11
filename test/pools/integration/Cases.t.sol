@@ -51,7 +51,7 @@ contract TestCases is Deployer, Test {
         deploy();
 
         // Adapting the CV mock
-        cv = new MockVaults(gateway);
+        cv = new MockVaults(CHAIN_CV, gateway);
         gateway.file("adapter", address(cv));
         gateway.rely(address(cv));
 

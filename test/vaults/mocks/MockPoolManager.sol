@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
-import "./Mock.sol";
+import {Mock} from "test/common/mocks/Mock.sol";
 
 interface ERC20Like {
     function transfer(address to, uint256 value) external returns (bool);

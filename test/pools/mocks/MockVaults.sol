@@ -21,16 +21,19 @@ contract MockVaults is Test, IAdapter {
     using BytesLib for bytes;
 
     IMessageHandler public handler;
+    uint32 public sourceChainId;
 
     uint32[] public lastChainDestinations;
     bytes[] public lastMessages;
 
-    constructor(IMessageHandler handler_) {
+    constructor(uint32 chainId, IMessageHandler handler_) {
         handler = handler_;
+        sourceChainId = chainId;
     }
 
     function registerAsset(AssetId assetId, string memory name, string memory symbol, uint8 decimals) public {
         handler.handle(
+            sourceChainId,
             MessageLib.RegisterAsset({
                 assetId: assetId.raw(),
                 name: name,
@@ -44,6 +47,7 @@ contract MockVaults is Test, IAdapter {
         public
     {
         handler.handle(
+            sourceChainId,
             MessageLib.DepositRequest({
                 poolId: poolId.raw(),
                 scId: scId.raw(),
@@ -58,6 +62,7 @@ contract MockVaults is Test, IAdapter {
         public
     {
         handler.handle(
+            sourceChainId,
             MessageLib.RedeemRequest({
                 poolId: poolId.raw(),
                 scId: scId.raw(),

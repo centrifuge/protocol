@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
-import {GasService} from "src/vaults/gateway/GasService.sol";
+import {GasService, IGasService} from "src/common/GasService.sol";
 
 contract GasServiceTest is Test {
     using MessageLib for *;
@@ -15,6 +15,7 @@ contract GasServiceTest is Test {
     uint64 constant PROOF_COST = 20000000000000000;
     uint128 constant GAS_PRICE = 2500000000000000000;
     uint256 constant TOKEN_PRICE = 178947400000000;
+    uint32 constant CHAIN_ID = 1;
 
     GasService service;
 
@@ -41,7 +42,7 @@ contract GasServiceTest is Test {
         assertEq(service.messageCost(), messageCost);
         assertEq(service.proofCost(), proofCost);
 
-        vm.expectRevert(bytes("GasService/file-unrecognized-param"));
+        vm.expectRevert(IGasService.FileUnrecognizedParam.selector);
         service.file(what, messageCost);
 
         vm.prank(makeAddr("unauthorized"));
@@ -58,15 +59,15 @@ contract GasServiceTest is Test {
 
         uint64 lastUpdateAt = uint64(service.lastUpdatedAt());
 
-        vm.expectRevert(bytes("GasService/price-cannot-be-zero"));
+        vm.expectRevert(IGasService.PriceCannotBeZero.selector);
         service.updateGasPrice(0, futureDate);
         assertEq(lastUpdateAt, service.lastUpdatedAt());
 
-        vm.expectRevert(bytes("GasService/already-set-price"));
+        vm.expectRevert(IGasService.AlreadySetPrice.selector);
         service.updateGasPrice(GAS_PRICE, futureDate);
         assertEq(lastUpdateAt, service.lastUpdatedAt());
 
-        vm.expectRevert(bytes("GasService/outdated-price"));
+        vm.expectRevert(IGasService.OutdatedPrice.selector);
         service.updateGasPrice(value, pastDate);
         assertEq(service.gasPrice(), GAS_PRICE);
 
@@ -93,8 +94,8 @@ contract GasServiceTest is Test {
         vm.assume(message.toUint8(0) != uint8(MessageType.MessageProof) && message.toUint8(0) <= 28);
         bytes memory proof = MessageLib.MessageProof(keccak256(message)).serialize();
 
-        uint256 messageCost = service.estimate(message);
-        uint256 proofCost = service.estimate(proof);
+        uint256 messageCost = service.estimate(CHAIN_ID, message);
+        uint256 proofCost = service.estimate(CHAIN_ID, proof);
 
         assertEq(messageCost, 17894740000000);
         assertEq(proofCost, 8947370000000);

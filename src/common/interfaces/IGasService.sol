@@ -6,6 +6,11 @@ interface IGasService {
     event UpdateGasPrice(uint128 value, uint256 computedAt);
     event UpdateTokenPrice(uint256 value);
 
+    error FileUnrecognizedParam();
+    error PriceCannotBeZero();
+    error AlreadySetPrice();
+    error OutdatedPrice();
+
     /// @notice Using file patter to update state variables;
     /// @dev    Used to update the messageCost and proofCost;
     ///         It is used in occasions where update is done rarely.
@@ -36,10 +41,6 @@ interface IGasService {
     /// @return The current price
     function tokenPrice() external returns (uint256);
 
-    /// @notice Executes a message from the gateway
-    /// @dev    The function can only be executed by the gateway contract.
-    function handle(bytes calldata message) external;
-
     /// @notice Updates the gas price on Centrifuge Chain
     /// @dev    The update comes as a message from the Centrifuge Chain.
     /// @param  value New price in Centrifuge Chain base unit
@@ -54,7 +55,7 @@ interface IGasService {
     /// @dev    Currently payload is disregarded and not included in the calculation.
     /// @param  payload Estimates the execution cost based on the payload
     /// @return Estimated cost in WEI units
-    function estimate(bytes calldata payload) external view returns (uint256);
+    function estimate(uint32 chainId, bytes calldata payload) external view returns (uint256);
 
     /// @notice Used to verify if given user for a given message can take advantage of
     ///         transaction cost prepayment.

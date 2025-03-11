@@ -14,6 +14,7 @@ import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
 import {MockReentrantERC20Wrapper1, MockReentrantERC20Wrapper2} from "test/vaults/mocks/MockReentrantERC20Wrapper.sol";
 
 contract CentrifugeRouterTest is BaseTest {
+    uint32 constant CHAIN_ID = 1;
     uint256 constant GAS_BUFFER = 10 gwei;
     /// @dev Payload is not taken into account during gas estimation
     bytes constant PAYLOAD_FOR_GAS_ESTIMATION = "irrelevant_value";
@@ -77,7 +78,11 @@ contract CentrifugeRouterTest is BaseTest {
             assertEq(payCalls.length, 1);
             assertEq(
                 payCalls[0],
-                adapter.estimate(PAYLOAD_FOR_GAS_ESTIMATION, mockedGasService.estimate(PAYLOAD_FOR_GAS_ESTIMATION))
+                adapter.estimate(
+                    CHAIN_ID,
+                    PAYLOAD_FOR_GAS_ESTIMATION,
+                    mockedGasService.estimate(CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION)
+                )
             );
         }
 
@@ -771,6 +776,6 @@ contract CentrifugeRouterTest is BaseTest {
     }
 
     function estimateGas() internal view returns (uint256 total) {
-        (, total) = gateway.estimate(PAYLOAD_FOR_GAS_ESTIMATION);
+        (, total) = gateway.estimate(CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
     }
 }

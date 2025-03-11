@@ -60,7 +60,7 @@ contract PoolManagerTest is BaseTest {
 
     function testHandleInvalidMessage() public {
         vm.expectRevert(bytes("PoolManager/invalid-message"));
-        poolManager.handle(abi.encodePacked(uint8(0)));
+        poolManager.handle(1, abi.encodePacked(uint8(0)));
     }
 
     function testAddPool(uint64 poolId) public {

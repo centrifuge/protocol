@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
-import {Root} from "src/vaults/Root.sol";
+import {Root} from "src/common/Root.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
 import {BaseTest} from "test/vaults/BaseTest.sol";
 import "forge-std/Test.sol";

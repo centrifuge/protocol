@@ -5,5 +5,5 @@ pragma solidity 0.8.28;
 interface IMessageSender {
     /// @notice Handling outgoing messages.
     /// @param chainId Destination chain
-    function send(uint32 chainId, bytes memory message) external;
+    function send(uint32 chainId, bytes calldata message) external;
 }

@@ -26,8 +26,8 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BiasedTarg
     //     routerAggregator.file(what, routers_);
     // }
 
-    function routerAggregator_handle(bytes memory payload) public {
-        routerAggregator.handle(payload);
+    function routerAggregator_handle(uint32 chainId, bytes memory payload) public {
+        routerAggregator.handle(chainId, payload);
     }
 
     // @todo: re-enable
