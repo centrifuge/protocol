@@ -130,7 +130,9 @@ abstract contract AdminTargets is
         poolManager.depositRequest(poolId, scId, investor, depositAssetId, amount);
     }  
 
-    function poolManager_redeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId, uint128 amount) public asAdmin {
+    function poolManager_redeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, uint32 isoCode, uint128 amount) public asAdmin {
+        AssetId payoutAssetId = newAssetId(isoCode);
+
         poolManager.redeemRequest(poolId, scId, investor, payoutAssetId, amount);
     }  
 
