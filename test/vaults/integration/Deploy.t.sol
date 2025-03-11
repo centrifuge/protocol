@@ -127,11 +127,9 @@ contract DeployTest is Test, Deployer {
         assertEq(root.wards(guardian_), 1);
 
         assertEq(routerEscrow.wards(address(router)), 1);
-        assertEq(investmentManager.wards(vaultFactory), 1);
     }
 
     function testFilings() public view {
-        assertEq(poolManager.investmentManager(), address(investmentManager));
         assertEq(address(poolManager.gateway()), address(gateway));
 
         assertEq(address(investmentManager.poolManager()), address(poolManager));
@@ -268,14 +266,15 @@ contract DeployTest is Test, Deployer {
     ) public returns (address) {
         vm.startPrank(address(gateway));
         poolManager.addPool(poolId);
-        poolManager.addTranche(poolId, trancheId, tokenName, tokenSymbol,decimals, keccak256(abi.encodePacked(poolId, trancheId)), hook);
+        poolManager.addTranche(
+            poolId, trancheId, tokenName, tokenSymbol, decimals, keccak256(abi.encodePacked(poolId, trancheId)), hook
+        );
         uint128 assetId = poolManager.registerAsset(address(erc20), 0, 0);
         poolManager.allowAsset(poolId, assetId);
         poolManager.updateTranchePrice(poolId, trancheId, assetId, uint128(10 ** 18), uint64(block.timestamp));
+        address vault = poolManager.deployVault(poolId, trancheId, address(erc20), address(vaultFactory));
+        poolManager.linkVault(poolId, trancheId, poolManager.idToAsset(assetId), vault);
         vm.stopPrank();
-
-        poolManager.deployTranche(poolId, trancheId);
-        address vault = poolManager.deployVault(poolId, trancheId, address(erc20));
 
         return vault;
     }

@@ -52,12 +52,16 @@ contract Deployer is Script {
         escrow = new Escrow{salt: salt}(deployer);
         routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(salt, "escrow2"))}(deployer);
         root = new Root{salt: salt}(address(escrow), delay, deployer);
-        vaultFactory = address(new ERC7540VaultFactory(address(root)));
         restrictionManager = address(new RestrictionManager{salt: salt}(address(root), deployer));
         restrictedRedemptions = address(new RestrictedRedemptions{salt: salt}(address(root), address(escrow), deployer));
         trancheFactory = address(new TrancheFactory{salt: salt}(address(root), deployer));
         investmentManager = new InvestmentManager(address(root), address(escrow));
-        poolManager = new PoolManager(address(escrow), vaultFactory, trancheFactory);
+        vaultFactory = address(new ERC7540VaultFactory(address(root), address(investmentManager)));
+
+        address[] memory vaultFactories = new address[](1);
+        vaultFactories[0] = vaultFactory;
+
+        poolManager = new PoolManager(address(escrow), trancheFactory, vaultFactories);
         gasService = new GasService(messageCost, proofCost, gasPrice, tokenPrice);
         gateway = new Gateway(address(root), address(poolManager), address(investmentManager), address(gasService));
         router = new CentrifugeRouter(address(routerEscrow), address(gateway), address(poolManager));
@@ -78,6 +82,7 @@ contract Deployer is Script {
         escrow.rely(address(poolManager));
         IAuth(vaultFactory).rely(address(poolManager));
         IAuth(trancheFactory).rely(address(poolManager));
+        IAuth(investmentManager).rely(address(poolManager));
         IAuth(restrictionManager).rely(address(poolManager));
         IAuth(restrictedRedemptions).rely(address(poolManager));
 
@@ -106,11 +111,9 @@ contract Deployer is Script {
 
         // Rely on others
         routerEscrow.rely(address(router));
-        investmentManager.rely(address(vaultFactory));
     }
 
     function _file() public {
-        poolManager.file("investmentManager", address(investmentManager));
         poolManager.file("gateway", address(gateway));
 
         investmentManager.file("poolManager", address(poolManager));

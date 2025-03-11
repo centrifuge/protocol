@@ -7,6 +7,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 
 import "forge-std/Test.sol";
+import {PoolManager} from "../../../src/vaults/PoolManager.sol";
 
 interface AdapterLike {
     function execute(bytes memory _message) external;
@@ -17,11 +18,13 @@ contract MockCentrifugeChain is Test {
     using MessageLib for *;
 
     address[] public adapters;
+    PoolManager public poolManager;
 
-    constructor(address[] memory adapters_) {
+    constructor(address[] memory adapters_, PoolManager poolManager_) {
         for (uint256 i = 0; i < adapters_.length; i++) {
             adapters.push(adapters_[i]);
         }
+        poolManager = poolManager_;
     }
 
     function addPool(uint64 poolId) public {
@@ -43,6 +46,38 @@ contract MockCentrifugeChain is Test {
 
     function disallowAsset(uint64 poolId, uint128 assetId) public {
         execute(MessageLib.DisallowAsset({poolId: poolId, scId: bytes16(0), assetId: assetId}).serialize());
+    }
+
+    function unlinkVault(uint64 poolId, bytes16 trancheId, address vault) public {
+        execute(
+            MessageLib.UpdateContract({
+                poolId: poolId,
+                scId: trancheId,
+                target: bytes32(bytes20(address(poolManager))),
+                payload: MessageLib.UpdateContractVaultUpdate({
+                    factory: address(0),
+                    assetId: poolManager.getVaultAssetId(vault),
+                    isLinked: false,
+                    vault: vault
+                }).serialize()
+            }).serialize()
+        );
+    }
+
+    function linkVault(uint64 poolId, bytes16 trancheId, address vault) public {
+        execute(
+            MessageLib.UpdateContract({
+                poolId: poolId,
+                scId: trancheId,
+                target: bytes32(bytes20(address(poolManager))),
+                payload: MessageLib.UpdateContractVaultUpdate({
+                    factory: address(0),
+                    assetId: poolManager.getVaultAssetId(vault),
+                    isLinked: true,
+                    vault: vault
+                }).serialize()
+            }).serialize()
+        );
     }
 
     function addTranche(

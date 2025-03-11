@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import "test/vaults/BaseTest.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 contract RedeemTest is BaseTest {
     using MessageLib for *;
@@ -26,8 +27,8 @@ contract RedeemTest is BaseTest {
         vault.requestRedeem(0, self, self);
 
         // will fail - investment asset not allowed
-        centrifugeChain.disallowAsset(vault.poolId(), assetId);
-        vm.expectRevert(bytes("InvestmentManager/asset-not-allowed"));
+        centrifugeChain.unlinkVault(vault.poolId(), vault.trancheId(), vault_);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         vault.requestRedeem(amount, address(this), address(this));
 
         // will fail - cannot fulfill if there is no pending redeem request
@@ -40,7 +41,7 @@ contract RedeemTest is BaseTest {
         );
 
         // success
-        centrifugeChain.allowAsset(vault.poolId(), assetId);
+        centrifugeChain.linkVault(vault.poolId(), vault.trancheId(), vault_);
         vault.requestRedeem(amount, address(this), address(this));
         assertEq(tranche.balanceOf(address(escrow)), amount);
         assertEq(vault.pendingRedeemRequest(0, self), amount);
