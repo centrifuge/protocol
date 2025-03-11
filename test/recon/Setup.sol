@@ -27,6 +27,8 @@ import "src/pools/interfaces/IAccounting.sol";
 import "src/pools/interfaces/IHoldings.sol";
 import "src/common/interfaces/IGateway.sol";
 import "src/pools/interfaces/IPoolManager.sol";
+import "src/misc/TransientValuation.sol";
+import "src/misc/IdentityValuation.sol";
 
 abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     Accounting accounting;
@@ -37,6 +39,8 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     PoolRegistry poolRegistry;
     PoolRouter poolRouter;
     SingleShareClass singleShareClass;
+    TransientValuation transientValuation;
+    IdentityValuation identityValuation;
     
     /// === Setup === ///
     /// This contains all calls to be performed in the tester constructor, both for Echidna and Foundry
@@ -51,12 +55,16 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         poolRouter = new PoolRouter(IPoolManager(address(poolManager)));
         singleShareClass = new SingleShareClass(IPoolRegistry(address(poolRegistry)), address(this));
 
+        transientValuation = new TransientValuation(assetRegistry, address(this));
+        identityValuation = new IdentityValuation(assetRegistry, address(this));
+
         poolRegistry.rely(address(poolManager));
         assetRegistry.rely(address(poolManager));
         accounting.rely(address(poolManager));
         holdings.rely(address(poolManager));
         gateway.rely(address(poolManager));
         singleShareClass.rely(address(poolManager));
+        poolManager.rely(address(poolRouter));
 
     }
 
