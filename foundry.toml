@@ -7,7 +7,7 @@ solc_version = "0.8.28"
 evm_version = "cancun"
 
 optimizer = true
-optimizer_runs = 100
+optimizer_runs = 90
 verbosity = 3
 
 ffi = true
