@@ -152,6 +152,8 @@ abstract contract PoolRouterTargets is
     function poolRouter_execute_clamped(PoolId poolId) public payable asActor {
         // TODO: clamp poolId here to one of the created pools
         poolRouter.execute{value: msg.value}(poolId, queuedCalls);
+
+        queuedCalls = new bytes[](0);
     }
 
     function poolRouter_multicall(bytes[] memory data) public payable asActor {
