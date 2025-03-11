@@ -10,6 +10,8 @@ import {PoolId} from "src/pools/types/PoolId.sol";
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {previewShareClassId} from "src/pools/SingleShareClass.sol";
 import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
+import {D18, d18} from "src/misc/types/D18.sol";
+
 // forge test --match-contract CryticToFoundry -vv
 contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     function setUp() public {
@@ -33,6 +35,13 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     bytes32 SC_SALT = bytes32("ExampleSalt");
     bytes32 SC_HOOK = bytes32("ExampleHookData");
     uint32 CHAIN_CV = 6;
+
+    uint128 constant INVESTOR_AMOUNT = 100 * 1e6; // USDC_C2
+    uint128 constant SHARE_AMOUNT = 10 * 1e18; // Share from USD
+    uint128 constant APPROVED_INVESTOR_AMOUNT = INVESTOR_AMOUNT / 5;
+    uint128 constant APPROVED_SHARE_AMOUNT = SHARE_AMOUNT / 5;
+    D18 NAV_PER_SHARE = d18(2, 1);
+
     PoolId poolId;
     ShareClassId scId;
     AssetId assetId;
@@ -45,27 +54,18 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         poolManager_registerAsset(123);
 
         // create pool 
-        return poolManager_createPool(address(this), 123, singleShareClass);
+        PoolId poolId = poolManager_createPool(address(this), 123, singleShareClass);
+
+        return poolId;
     }
     
-    function test_request_deposit() public {
+    function test_request_deposit() public returns (PoolId poolId, ShareClassId scId){
         poolId = _createPool();
 
         // request deposit
         scId = previewShareClassId(poolId);
         assetId = newAssetId(123);
-        
-        // TODO: create the actual share class
-        // (bytes[] memory cs, uint256 c) = (new bytes[](3), 0);
-        // cs[c++] = abi.encodeWithSelector(poolRouter.setPoolMetadata.selector, bytes("Testing pool"));
-        // cs[c++] = abi.encodeWithSelector(poolRouter.addShareClass.selector, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
-        // // TODO: figure out why these fail
-        // // cs[c++] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
-        // // cs[c++] = abi.encodeWithSelector(poolRouter.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
-        // cs[c++] = abi.encodeWithSelector(poolRouter.createHolding.selector, scId, assetId, identityValuation, 0x01);
-        // poolRouter_execute(poolId, cs);
 
-        // replacing the above with handlers that format bytes data for the poolRouter
         // necessary setup via the PoolRouter
         poolRouter_setPoolMetadata(bytes("Testing pool"));
         poolRouter_addShareClass(SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
@@ -73,28 +73,30 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         poolRouter_execute_clamped(poolId);
         
         // request deposit
-        poolManager_depositRequest(poolId, scId, INVESTOR, 123, 100);
+        poolManager_depositRequest(poolId, scId, INVESTOR, 123, INVESTOR_AMOUNT);
+        
+        poolRouter_approveDeposits(scId, assetId, APPROVED_INVESTOR_AMOUNT, identityValuation);
+        poolRouter_issueShares(scId, assetId, NAV_PER_SHARE);
+        poolRouter_execute_clamped(poolId);
 
         // claim deposit
         poolManager_claimDeposit(poolId, scId, assetId, INVESTOR);
+
+        return (poolId, scId);
     }
 
-    function test_request_redeem() public {
-        poolId = _createPool();
-
-        // request deposit
-        scId = previewShareClassId(poolId);
-        assetId = newAssetId(123);
-
-        // replacing the above with handlers that format bytes data for the poolRouter
-        poolRouter_setPoolMetadata(bytes("Testing pool"));
-        poolRouter_addShareClass(SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
-        poolRouter_createHolding(scId, assetId, identityValuation, 0x01);
-        poolRouter_execute_clamped(poolId);
-        
-        poolManager_depositRequest(poolId, scId, INVESTOR, 123, 100);
+    function test_request_redeem() public returns (PoolId poolId, ShareClassId scId){
+        (poolId, scId) = test_request_deposit();
 
         // request redemption
-        // poolManager_redeemRequest(poolId, scId, INVESTOR, 123, 100);
+        poolManager_redeemRequest(poolId, scId, INVESTOR, 123, SHARE_AMOUNT);
+
+        // executed via the PoolRouter
+        poolRouter_approveRedeems(scId, assetId, uint128(10000000));
+        poolRouter_revokeShares(scId, assetId, d18(10000000), identityValuation);
+        poolRouter_execute_clamped(poolId);
+
+        // claim redemption
+        poolManager_claimRedeem(poolId, scId, assetId, INVESTOR);
     }
 }
