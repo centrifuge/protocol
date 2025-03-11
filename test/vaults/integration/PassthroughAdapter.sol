@@ -2,7 +2,8 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
-import {IAdapter} from "src/vaults/interfaces/gateway/IAdapter.sol";
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 interface PrecompileLike {
     function execute(
@@ -13,10 +14,6 @@ interface PrecompileLike {
     ) external;
 }
 
-interface GatewayLike {
-    function handle(bytes memory message) external;
-}
-
 /// @title  PassthroughAdapter
 /// @notice Routing contract that accepts any incomming messages and forwards them
 ///         to the gateway and solely emits an event for outgoing messages.
@@ -24,7 +21,7 @@ contract PassthroughAdapter is Auth, IAdapter {
     address internal constant PRECOMPILE = 0x0000000000000000000000000000000000000800;
     bytes32 internal constant FAKE_COMMAND_ID = keccak256("FAKE_COMMAND_ID");
 
-    GatewayLike public gateway;
+    IMessageHandler public gateway;
     string public sourceChain;
     string public sourceAddress;
 
@@ -39,7 +36,7 @@ contract PassthroughAdapter is Auth, IAdapter {
     // --- Administrative ---
     function file(bytes32 what, address addr) external auth {
         if (what == "gateway") {
-            gateway = GatewayLike(addr);
+            gateway = IMessageHandler(addr);
         } else {
             revert("PassthroughAdapter/file-unrecognized-param");
         }
@@ -74,7 +71,7 @@ contract PassthroughAdapter is Auth, IAdapter {
     /// @inheritdoc IAdapter
     /// @notice From other domain to Centrifuge. Just emits an event.
     ///         Just used on EVM domains.
-    function send(bytes calldata message) public {
+    function send(uint32, bytes calldata message) public {
         emit Route(sourceChain, sourceAddress, message);
     }
 
@@ -92,17 +89,18 @@ contract PassthroughAdapter is Auth, IAdapter {
     function executeOnDomain(string calldata _sourceChain, string calldata _sourceAddress, bytes calldata payload)
         external
     {
-        gateway.handle(payload);
+        // TODO: get chainId
+        gateway.handle(1, payload);
         emit ExecuteOnDomain(_sourceChain, _sourceAddress, payload);
     }
 
     /// @inheritdoc IAdapter
-    function estimate(bytes calldata, uint256) external pure returns (uint256) {
+    function estimate(uint32, bytes calldata, uint256) external pure returns (uint256) {
         return 0;
     }
 
     /// @inheritdoc IAdapter
-    function pay(bytes calldata, address) public payable {
+    function pay(uint32, bytes calldata, address) public payable {
         return;
     }
 

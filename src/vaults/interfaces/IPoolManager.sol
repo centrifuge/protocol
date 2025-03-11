@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IMessageHandler} from "src/vaults/interfaces/gateway/IGateway.sol";
-import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 
 /// @dev Centrifuge pools
 struct Pool {
@@ -154,10 +154,6 @@ interface IPoolManager is IMessageHandler, IRecoverable {
     ///         The chain agnostic asset id has to be used to pass asset information to the Centrifuge.
     /// @dev    This function can only be executed by the gateway contract.
     function addAsset(uint128 assetId, address asset) external;
-
-    /// @notice Executes a message from the gateway
-    /// @dev    The function can only be executed by the gateway contract.
-    function handle(bytes calldata message) external;
 
     /// @notice Mints tranche tokens to a recipient
     /// @dev    The function can only be executed internally or by the gateway contract.

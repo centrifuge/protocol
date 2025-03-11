@@ -12,14 +12,9 @@ import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
 import {AccountId, newAccountId} from "src/pools/types/AccountId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
-import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
-import {IGateway} from "src/pools/interfaces/IGateway.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
-import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
-import {IMultiShareClass} from "src/pools/interfaces/IMultiShareClass.sol";
-import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
-import {IPoolManager, IPoolManagerHandler, EscrowId, AccountType} from "src/pools/interfaces/IPoolManager.sol";
+import {IPoolManager} from "src/pools/interfaces/IPoolManager.sol";
 import {IPoolRouter} from "src/pools/interfaces/IPoolRouter.sol";
 
 contract PoolRouter is Multicall, IPoolRouter {

@@ -2,7 +2,8 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
-import {IAdapter} from "src/vaults/interfaces/gateway/IAdapter.sol";
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 interface PrecompileLike {
     function execute(
@@ -13,10 +14,6 @@ interface PrecompileLike {
     ) external;
 }
 
-interface GatewayLike {
-    function handle(bytes memory message) external;
-}
-
 /// @title  Local Adapter
 /// @notice Routing contract that routes from Substrate to EVM and back.
 ///         I.e. for testing LP in a local Centrifuge Chain deployment.
@@ -24,7 +21,7 @@ contract LocalAdapter is Auth, IAdapter {
     address internal constant PRECOMPILE = 0x0000000000000000000000000000000000000800;
     bytes32 internal constant FAKE_COMMAND_ID = keccak256("FAKE_COMMAND_ID");
 
-    GatewayLike public gateway;
+    IMessageHandler public gateway;
     string public sourceChain;
     string public sourceAddress;
 
@@ -47,7 +44,7 @@ contract LocalAdapter is Auth, IAdapter {
     // --- Administrative ---
     function file(bytes32 what, address data) external {
         if (what == "gateway") {
-            gateway = GatewayLike(data);
+            gateway = IMessageHandler(data);
         } else {
             revert("LocalAdapter/file-unrecognized-param");
         }
@@ -74,14 +71,15 @@ contract LocalAdapter is Auth, IAdapter {
         string calldata destinationContractAddress,
         bytes calldata payload
     ) public {
-        gateway.handle(payload);
+        // TODO: get chainId
+        gateway.handle(1, payload);
         emit RouteToDomain(destinationChain, destinationContractAddress, payload);
     }
 
     // --- Outgoing ---
     /// @inheritdoc IAdapter
     /// @dev From LP on Centrifuge (faking other domain) to Centrifuge
-    function send(bytes calldata message) public {
+    function send(uint32, bytes calldata message) public {
         PrecompileLike precompile = PrecompileLike(PRECOMPILE);
         precompile.execute(FAKE_COMMAND_ID, sourceChain, sourceAddress, message);
 
@@ -103,12 +101,12 @@ contract LocalAdapter is Auth, IAdapter {
     }
 
     /// @inheritdoc IAdapter
-    function estimate(bytes calldata, uint256) external pure returns (uint256) {
+    function estimate(uint32, bytes calldata, uint256) external pure returns (uint256) {
         return 0;
     }
 
     /// @inheritdoc IAdapter
-    function pay(bytes calldata, address) public payable {
+    function pay(uint32, bytes calldata, address) public payable {
         return;
     }
 

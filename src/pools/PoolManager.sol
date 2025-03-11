@@ -8,17 +8,19 @@ import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {Multicall} from "src/misc/Multicall.sol";
 
+import {IGateway} from "src/common/interfaces/IGateway.sol";
+
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
 import {AccountId, newAccountId} from "src/pools/types/AccountId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
-import {IGateway} from "src/pools/interfaces/IGateway.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 import {IMultiShareClass} from "src/pools/interfaces/IMultiShareClass.sol";
 import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
+import {IMessageProcessor} from "src/pools/interfaces/IMessageProcessor.sol";
 import {IPoolManager, IPoolManagerHandler, EscrowId, AccountType} from "src/pools/interfaces/IPoolManager.sol";
 
 // @inheritdoc IPoolManager
@@ -36,6 +38,7 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
     IAccounting public accounting;
     IHoldings public holdings;
     IGateway public gateway;
+    IMessageProcessor public sender;
 
     /// @dev A requirement for methods that needs to be called through `execute()`
     modifier poolUnlocked() {
@@ -54,8 +57,8 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
         poolRegistry = poolRegistry_;
         assetRegistry = assetRegistry_;
         accounting = accounting_;
-        holdings = holdings_;
         gateway = gateway_;
+        holdings = holdings_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -64,7 +67,8 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
 
     /// @inheritdoc IPoolManager
     function file(bytes32 what, address data) external auth {
-        if (what == "gateway") gateway = IGateway(data);
+        if (what == "sender") sender = IMessageProcessor(data);
+        else if (what == "gateway") gateway = IGateway(data);
         else if (what == "holdings") holdings = IHoldings(data);
         else if (what == "poolRegistry") poolRegistry = IPoolRegistry(data);
         else if (what == "assetRegistry") assetRegistry = IAssetRegistry(data);
@@ -79,6 +83,9 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
         require(unlockedPoolId.isNull(), IPoolManager.PoolAlreadyUnlocked());
         require(poolRegistry.isAdmin(poolId, admin), IPoolManager.NotAuthorizedAdmin());
 
+        gateway.setPayableSource(admin);
+        gateway.startBatch();
+
         accounting.unlock(poolId, "TODO");
         unlockedPoolId = poolId;
     }
@@ -87,6 +94,8 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
     function lock() external auth {
         accounting.lock();
         unlockedPoolId = PoolId.wrap(0);
+
+        gateway.endBatch();
     }
 
     //----------------------------------------------------------------------------------------------
@@ -107,7 +116,7 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
 
         (uint128 shares, uint128 tokens) = scm.claimDeposit(poolId, scId, investor, assetId);
-        gateway.sendFulfilledDepositRequest(poolId, scId, assetId, investor, tokens, shares);
+        sender.sendFulfilledDepositRequest(poolId, scId, assetId, investor, tokens, shares);
     }
 
     /// @inheritdoc IPoolManager
@@ -118,7 +127,7 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
 
         assetRegistry.burn(escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS), assetId.raw(), tokens);
 
-        gateway.sendFulfilledRedeemRequest(poolId, scId, assetId, investor, tokens, shares);
+        sender.sendFulfilledRedeemRequest(poolId, scId, assetId, investor, tokens, shares);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -127,7 +136,7 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
 
     /// @inheritdoc IPoolManager
     function notifyPool(uint32 chainId) external auth poolUnlocked {
-        gateway.sendNotifyPool(chainId, unlockedPoolId);
+        sender.sendNotifyPool(chainId, unlockedPoolId);
     }
 
     /// @inheritdoc IPoolManager
@@ -138,7 +147,7 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
         (string memory name, string memory symbol, bytes32 salt) = IMultiShareClass(address(scm)).metadata(scId);
         uint8 decimals = assetRegistry.decimals(poolRegistry.currency(unlockedPoolId).raw());
 
-        gateway.sendNotifyShareClass(chainId, unlockedPoolId, scId, name, symbol, decimals, salt, hook);
+        sender.sendNotifyShareClass(chainId, unlockedPoolId, scId, name, symbol, decimals, salt, hook);
     }
 
     /// @inheritdoc IPoolManager
@@ -363,7 +372,7 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
         address pendingShareClassEscrow = escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS);
         assetRegistry.burn(pendingShareClassEscrow, depositAssetId.raw(), cancelledAssetAmount);
 
-        gateway.sendFulfilledCancelDepositRequest(poolId, scId, depositAssetId, investor, cancelledAssetAmount);
+        sender.sendFulfilledCancelDepositRequest(poolId, scId, depositAssetId, investor, cancelledAssetAmount);
     }
 
     /// @inheritdoc IPoolManagerHandler
@@ -374,7 +383,7 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
         uint128 cancelledShareAmount = scm.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
 
-        gateway.sendFulfilledCancelRedeemRequest(poolId, scId, payoutAssetId, investor, cancelledShareAmount);
+        sender.sendFulfilledCancelRedeemRequest(poolId, scId, payoutAssetId, investor, cancelledShareAmount);
     }
 
     //----------------------------------------------------------------------------------------------
