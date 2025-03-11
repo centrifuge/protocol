@@ -114,7 +114,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
 
     // --- Incoming message handling ---
     /// @inheritdoc IMessageHandler
-    function handle(uint32 /*chainId*/, bytes calldata message) external auth {
+    function handle(uint32, /*chainId*/ bytes calldata message) external auth {
         MessageType kind = MessageLib.messageType(message);
 
         if (kind == MessageType.RegisterAsset) {
@@ -264,13 +264,8 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     /// @inheritdoc IPoolManager
     function updateContract(uint64 poolId, bytes16 trancheId, address target, bytes memory update_) public auth {
         if (target == address(this)) {
-            (bool success, ) = address(this).delegatecall(
-                abi.encodeWithSelector(
-                    IUpdateContract.update.selector,
-                    poolId,
-                    trancheId,
-                    update_
-                )
+            (bool success,) = address(this).delegatecall(
+                abi.encodeWithSelector(IUpdateContract.update.selector, poolId, trancheId, update_)
             );
             require(success, "Delegatecall failed");
         } else {

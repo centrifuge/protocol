@@ -321,7 +321,7 @@ contract TestMessageLibIdentities is Test {
         // This message is a submessage and has not static message length defined
 
         MessageLib.UpdateContractVaultUpdate memory c =
-                            MessageLib.UpdateContractVaultUpdate({factory: address(1), assetId: 1, isLinked: true, vault: address(1)});
+            MessageLib.UpdateContractVaultUpdate({factory: address(1), assetId: 1, isLinked: true, vault: address(1)});
         MessageLib.UpdateContractVaultUpdate memory d = MessageLib.deserializeUpdateContractVaultUpdate(c.serialize());
 
         assertEq(c.factory, d.factory);

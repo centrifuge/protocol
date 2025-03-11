@@ -162,10 +162,13 @@ contract InvestmentManager is Auth, IInvestmentManager {
     }
 
     /// @dev    triggered indicates if the the _processRedeemRequest call was triggered from centrifugeChain
-    function _processRedeemRequest(address vaultAddr, uint128 shares, address controller, address source, bool triggered)
-        internal
-        returns (bool)
-    {
+    function _processRedeemRequest(
+        address vaultAddr,
+        uint128 shares,
+        address controller,
+        address source,
+        bool triggered
+    ) internal returns (bool) {
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
         InvestmentState storage state = investments[vaultAddr][controller];
         require(state.pendingCancelRedeemRequest != true || triggered, "InvestmentManager/cancellation-is-pending");
@@ -381,7 +384,9 @@ contract InvestmentManager is Auth, IInvestmentManager {
             state.maxMint = 0;
         }
 
-        require(_processRedeemRequest(vault_, shares, user, msg.sender, true), "InvestmentManager/failed-redeem-request");
+        require(
+            _processRedeemRequest(vault_, shares, user, msg.sender, true), "InvestmentManager/failed-redeem-request"
+        );
 
         // Transfer the tranche token amount that was not covered by tokens still in escrow for claims,
         // from user to escrow (lock tranche tokens in escrow)

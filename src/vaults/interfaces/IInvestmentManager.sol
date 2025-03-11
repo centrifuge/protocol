@@ -284,7 +284,9 @@ interface IInvestmentManager is IMessageHandler, IRecoverable, IVaultManager {
     ///         The shares required to fulfill the mint have already been minted and transferred to the escrow on
     ///         fulfillDepositRequest.
     ///         Receiver has to pass all the share token restrictions in order to receive the shares.
-    function mint(address vaultAddr, uint256 shares, address receiver, address owner) external returns (uint256 assets);
+    function mint(address vaultAddr, uint256 shares, address receiver, address owner)
+        external
+        returns (uint256 assets);
 
     /// @notice Processes owner's share redemption after the epoch has been executed on Centrifuge and the redeem order
     ///         has been successfully processed (partial fulfillment possible).
@@ -294,7 +296,9 @@ interface IInvestmentManager is IMessageHandler, IRecoverable, IVaultManager {
     ///         on fulfillRedeemRequest.
     ///         The assets required to fulfill the redemption have already been reserved in escrow on
     ///         fulfillRedeemtRequest.
-    function redeem(address vaultAddr, uint256 shares, address receiver, address owner) external returns (uint256 assets);
+    function redeem(address vaultAddr, uint256 shares, address receiver, address owner)
+        external
+        returns (uint256 assets);
 
     /// @notice Processes owner's asset withdrawal after the epoch has been executed on Centrifuge and the redeem order
     ///         has been successfully processed (partial fulfillment possible).
@@ -328,5 +332,8 @@ interface IInvestmentManager is IMessageHandler, IRecoverable, IVaultManager {
         returns (uint256 shares);
 
     /// @notice Returns the address of the vault for a given pool, tranche and asset
-    function vaultByAddress(uint64 poolId, bytes16 trancheId, address asset) external view returns (address vaultAddr);
+    function vaultByAddress(uint64 poolId, bytes16 trancheId, address asset)
+        external
+        view
+        returns (address vaultAddr);
 }
