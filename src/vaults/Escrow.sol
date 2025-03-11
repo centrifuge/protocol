@@ -12,12 +12,12 @@ import {IPerPoolEscrow, IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 /// @notice Escrow contract that holds tokens.
 ///         Only wards can approve funds to be taken out.
 contract Escrow is Auth, IPerPoolEscrow, IEscrow {
-    mapping(uint64 poolId => mapping(uint16 scId => mapping(address token => mapping(uint256 tokenId => uint256))))
-        internal pendingWithdraws;
-    mapping(uint64 poolId => mapping(uint16 scId => mapping(address token => mapping(uint256 tokenId => uint256))))
-        internal pendingDeposits;
-    mapping(uint64 poolId => mapping(uint16 scId => mapping(address token => mapping(uint256 tokenId => uint256))))
-        internal holdings;
+    mapping(uint64 poolId => mapping(bytes16 scId => mapping(address token => mapping(uint256 tokenId => uint256))))
+        internal reservedAmount;
+    mapping(uint64 poolId => mapping(bytes16 scId => mapping(address token => mapping(uint256 tokenId => uint256))))
+        internal pendingDeposit;
+    mapping(uint64 poolId => mapping(bytes16 scId => mapping(address token => mapping(uint256 tokenId => uint256))))
+        internal holding;
 
     constructor(address deployer) Auth(deployer) {}
 
@@ -61,81 +61,104 @@ contract Escrow is Auth, IPerPoolEscrow, IEscrow {
         }
     }
 
-    function pendingDepositIncrease(address token, uint256 tokenId, uint64 poolId, uint16 scId, uint256 value)
+    /// @inheritdoc IPerPoolEscrow
+    function pendingDepositIncrease(address token, uint256 tokenId, uint64 poolId, bytes16 scId, uint256 value)
         external
         override
         auth
     {
-        pendingDeposits[poolId][scId][token][tokenId] += value;
+        uint256 newValue = pendingDeposit[poolId][scId][token][tokenId] + value;
+        pendingDeposit[poolId][scId][token][tokenId] = newValue;
+
+        emit PendingDeposit(token, tokenId, poolId, scId, newValue);
     }
 
-    function pendingDepositDecrease(address token, uint256 tokenId, uint64 poolId, uint16 scId, uint256 value)
+    /// @inheritdoc IPerPoolEscrow
+    function pendingDepositDecrease(address token, uint256 tokenId, uint64 poolId, bytes16 scId, uint256 value)
         external
         override
         auth
     {
-        require(pendingDeposits[poolId][scId][token][tokenId] >= value, "Escrow/insufficient-pending-deposits");
+        require(pendingDeposit[poolId][scId][token][tokenId] >= value, InsufficientPendingDeposit());
 
-        pendingDeposits[poolId][scId][token][tokenId] -= value;
+        uint256 newValue = pendingDeposit[poolId][scId][token][tokenId] - value;
+        pendingDeposit[poolId][scId][token][tokenId] = newValue;
+
+        emit PendingDeposit(token, tokenId, poolId, scId, newValue);
     }
 
-    function deposit(address token, uint256 tokenId, uint64 poolId, uint16 scId, uint256 value)
+    /// @inheritdoc IPerPoolEscrow
+    function deposit(address token, uint256 tokenId, uint64 poolId, bytes16 scId, uint256 value)
         external
         override
         auth
     {
-        require(pendingDeposits[poolId][scId][token][tokenId] >= value, "Escrow/insufficient-pending-deposits");
+        require(pendingDeposit[poolId][scId][token][tokenId] >= value, InsufficientPendingDeposit());
 
-        uint256 prevHoldings = holdings[poolId][scId][token][tokenId];
+        uint256 prevholding = holding[poolId][scId][token][tokenId];
         if (tokenId == 0) {
-            uint256 curHoldings = IERC20(token).balanceOf(address(this));
-            require(curHoldings >= prevHoldings + value, "Escrow/insufficient-balance-increase");
+            uint256 curholding = IERC20(token).balanceOf(address(this));
+            require(curholding >= prevholding + value, InsufficientDeposit());
         } else {
-            uint256 curHoldings = IERC6909(token).balanceOf(address(this), tokenId);
-            require(curHoldings >= prevHoldings + value, "Escrow/insufficient-balance-increase");
+            uint256 curholding = IERC6909(token).balanceOf(address(this), tokenId);
+            require(curholding >= prevholding + value, InsufficientDeposit());
         }
 
-        pendingDeposits[poolId][scId][token][tokenId] -= value;
-        holdings[poolId][scId][token][tokenId] += value;
+        pendingDeposit[poolId][scId][token][tokenId] -= value;
+        holding[poolId][scId][token][tokenId] += value;
+
+        emit Deposit(token, tokenId, poolId, scId, value);
     }
 
-    function pendingWithdrawIncrease(address token, uint256 tokenId, uint64 poolId, uint16 scId, uint256 value)
+    /// @inheritdoc IPerPoolEscrow
+    function reserveIncrease(address token, uint256 tokenId, uint64 poolId, bytes16 scId, uint256 value)
         external
         override
         auth
     {
-        pendingWithdraws[poolId][scId][token][tokenId] += value;
+        uint256 newValue = reservedAmount[poolId][scId][token][tokenId] + value;
+        reservedAmount[poolId][scId][token][tokenId] = newValue;
+
+        emit Reserve(token, tokenId, poolId, scId, newValue);
     }
 
-    function pendingWithdrawDecrease(address token, uint256 tokenId, uint64 poolId, uint16 scId, uint256 value)
+    /// @inheritdoc IPerPoolEscrow
+    function reserveDecrease(address token, uint256 tokenId, uint64 poolId, bytes16 scId, uint256 value)
         external
         override
         auth
     {
-        require(pendingWithdraws[poolId][scId][token][tokenId] >= value, "Escrow/insufficient-pending-withdraws");
+        require(reservedAmount[poolId][scId][token][tokenId] >= value, InsufficientReservedAmount());
 
-        pendingWithdraws[poolId][scId][token][tokenId] -= value;
+        uint256 newValue = reservedAmount[poolId][scId][token][tokenId] - value;
+        reservedAmount[poolId][scId][token][tokenId] = newValue;
+
+        emit Reserve(token, tokenId, poolId, scId, newValue);
     }
 
-    function withdraw(address token, uint256 tokenId, uint64 poolId, uint16 scId, uint256 value) external auth {
-        require(availableBalanceOf(token, tokenId, poolId, scId) > value, "Escrow/insufficient-funds");
+    /// @inheritdoc IPerPoolEscrow
+    function withdraw(address token, uint256 tokenId, uint64 poolId, bytes16 scId, uint256 value) external auth {
+        require(availableBalanceOf(token, tokenId, poolId, scId) >= value, InsufficientBalance());
 
-        holdings[poolId][scId][token][tokenId] -= value;
+        holding[poolId][scId][token][tokenId] -= value;
+
+        emit Withdraw(token, tokenId, poolId, scId, value);
     }
 
-    function availableBalanceOf(address token, uint256 tokenId, uint64 poolId, uint16 scId)
+    /// @inheritdoc IPerPoolEscrow
+    function availableBalanceOf(address token, uint256 tokenId, uint64 poolId, bytes16 scId)
         public
         view
         override
         returns (uint256)
     {
-        uint256 holdings_ = holdings[poolId][scId][token][tokenId];
-        uint256 pendingWithdraws_ = pendingWithdraws[poolId][scId][token][tokenId];
+        uint256 holding_ = holding[poolId][scId][token][tokenId];
+        uint256 reservedAmount_ = reservedAmount[poolId][scId][token][tokenId];
 
-        if (holdings_ < pendingWithdraws_) {
+        if (holding_ < reservedAmount_) {
             return 0;
         } else {
-            return holdings_ - pendingWithdraws_;
+            return holding_ - reservedAmount_;
         }
     }
 }

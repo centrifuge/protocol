@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Escrow} from "src/vaults/Escrow.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {ERC6909} from "src/misc/ERC6909.sol";
+
+import {Escrow} from "src/vaults/Escrow.sol";
+import {IPerPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
+
 import "test/vaults/BaseTest.sol";
-import {ERC6909} from "../../../src/misc/ERC6909.sol";
 
 contract EscrowTest is BaseTest {
     function testApproveMax() public {
@@ -35,11 +38,16 @@ contract EscrowTest is BaseTest {
     }
 
     // -------------------------------------------------
-    // New tests for PerPoolEscrow / updated deposit/withdraw
+    // Tests for PerPoolEscrow
     // -------------------------------------------------
     uint256 constant TEST_TOKEN_ID = 0; // We'll treat this as an ERC20 scenario
+<<<<<<< HEAD
     uint64  constant TEST_POOL_ID  = 456;
     uint16  constant TEST_SC_ID    = 789;
+=======
+    uint64 constant TEST_POOL_ID = 456;
+    bytes16 constant TEST_SC_ID = bytes16(0);
+>>>>>>> ce45ccd (fix: docs, logic to act as reservance)
 
     function testPendingDepositIncrease() public {
         Escrow escrow = new Escrow(address(this));
@@ -62,7 +70,7 @@ contract EscrowTest is BaseTest {
 
         escrow.pendingDepositDecrease(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 50);
 
-        vm.expectRevert("Escrow/insufficient-pending-deposits");
+        vm.expectRevert(IPerPoolEscrow.InsufficientPendingDeposit.selector);
         escrow.pendingDepositDecrease(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 300);
     }
 
@@ -72,10 +80,10 @@ contract EscrowTest is BaseTest {
 
         erc20.mint(address(escrow), 300);
 
-        vm.expectRevert("Escrow/insufficient-balance-increase");
+        vm.expectRevert(IPerPoolEscrow.InsufficientDeposit.selector);
         escrow.deposit(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 500);
 
-        vm.expectRevert("Escrow/insufficient-pending-deposits");
+        vm.expectRevert(IPerPoolEscrow.InsufficientPendingDeposit.selector);
         escrow.deposit(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 600);
 
         escrow.deposit(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 300);
@@ -86,12 +94,12 @@ contract EscrowTest is BaseTest {
             "holdings should be 300 after deposit"
         );
 
-        vm.expectRevert("Escrow/insufficient-balance-increase");
+        vm.expectRevert(IPerPoolEscrow.InsufficientDeposit.selector);
         escrow.deposit(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 200);
 
         erc20.mint(address(escrow), 200);
 
-        vm.expectRevert("Escrow/insufficient-pending-deposits");
+        vm.expectRevert(IPerPoolEscrow.InsufficientPendingDeposit.selector);
         escrow.deposit(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 201);
 
         escrow.deposit(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 200);
@@ -103,29 +111,66 @@ contract EscrowTest is BaseTest {
         );
     }
 
-    function testPendingWithdrawIncrease() public {
+    function testReserveIncrease() public {
         Escrow escrow = new Escrow(address(this));
 
         vm.prank(randomUser);
-        vm.expectRevert("Auth/not-authorized");
-        escrow.pendingWithdrawIncrease(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 100);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        escrow.reserveIncrease(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 100);
 
-        escrow.pendingWithdrawIncrease(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 100);
+        escrow.reserveIncrease(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 100);
+
+        assertEq(
+            escrow.availableBalanceOf(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID),
+            0,
+            "Still zero, nothing is in holdings"
+        );
+
+        escrow.pendingDepositIncrease(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 300);
+        erc20.mint(address(escrow), 300);
+        escrow.deposit(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 100);
+
+        assertEq(escrow.availableBalanceOf(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID), 0, "100 - 100 = 0");
+
+        escrow.deposit(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 200);
+        assertEq(
+            escrow.availableBalanceOf(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID), 200, "100 - 100 = 0"
+        );
     }
 
     function testPendingWithdrawDecrease() public {
         Escrow escrow = new Escrow(address(this));
 
-        escrow.pendingWithdrawIncrease(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 200);
-
         vm.prank(randomUser);
-        vm.expectRevert("Auth/not-authorized");
-        escrow.pendingWithdrawDecrease(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 50);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        escrow.reserveIncrease(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 100);
 
-        escrow.pendingWithdrawDecrease(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 50);
+        escrow.reserveIncrease(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 100);
 
-        vm.expectRevert("Escrow/insufficient-pending-withdraws");
-        escrow.pendingWithdrawDecrease(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 300);
+        assertEq(
+            escrow.availableBalanceOf(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID),
+            0,
+            "Still zero, nothing is in holdings"
+        );
+
+        escrow.pendingDepositIncrease(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 300);
+        erc20.mint(address(escrow), 300);
+        escrow.deposit(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 100);
+
+        assertEq(escrow.availableBalanceOf(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID), 0, "100 - 100 = 0");
+
+        escrow.deposit(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 200);
+        assertEq(
+            escrow.availableBalanceOf(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID), 200, "300 - 100 = 200"
+        );
+
+        vm.expectRevert(IPerPoolEscrow.InsufficientReservedAmount.selector);
+        escrow.reserveDecrease(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 200);
+
+        escrow.reserveDecrease(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 100);
+        assertEq(
+            escrow.availableBalanceOf(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID), 300, "300 - 0 = 300"
+        );
     }
 
     function testWithdraw() public {
@@ -140,21 +185,14 @@ contract EscrowTest is BaseTest {
             "initial holdings should be 1000"
         );
 
-        escrow.pendingWithdrawIncrease(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 500);
+        escrow.reserveIncrease(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 500);
 
-        vm.expectRevert("Escrow/insufficient-funds");
+        vm.expectRevert(IPerPoolEscrow.InsufficientBalance.selector);
         escrow.withdraw(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 600);
 
-        escrow.approveMax(address(erc20), address(this)); // let test contract pull from escrow
-        erc20.transferFrom(address(escrow), address(this), 400);
+        escrow.withdraw(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 500);
 
-        escrow.withdraw(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 400);
-
-        assertEq(
-            escrow.availableBalanceOf(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID),
-            600 - 500, // still have 500 pending withdraw => 100 left available
-            "available balance should reflect updated holdings minus pendingWithdraw"
-        );
+        assertEq(escrow.availableBalanceOf(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID), 0);
     }
 
     function testAvailableBalanceOf() public {
@@ -177,19 +215,19 @@ contract EscrowTest is BaseTest {
 
         escrow.deposit(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 500);
 
-        escrow.pendingWithdrawIncrease(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 200);
+        escrow.reserveIncrease(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 200);
 
         assertEq(
             escrow.availableBalanceOf(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID),
             300,
-            "Should be 300 after pending withdraw"
+            "Should be 300 after reserve increase"
         );
 
-        escrow.pendingWithdrawIncrease(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 400);
+        escrow.reserveIncrease(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 300);
         assertEq(
             escrow.availableBalanceOf(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID),
             0,
-            "Should be zero if pendingWithdraw > holdings"
+            "Should be zero if pendingWithdraw >= holdings"
         );
     }
 }
