@@ -36,8 +36,8 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     PoolId poolId;
     ShareClassId scId;
     AssetId assetId;
-    
-    function test_request_deposit() public {
+
+    function _createPool() internal returns (PoolId) {
         // deploy new asset
         add_new_asset(18);
 
@@ -45,7 +45,11 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         poolManager_registerAsset(123);
 
         // create pool 
-        PoolId poolId = poolManager_createPool(address(this), 123, singleShareClass);
+        return poolManager_createPool(address(this), 123, singleShareClass);
+    }
+    
+    function test_request_deposit() public {
+        poolId = _createPool();
 
         // request deposit
         scId = previewShareClassId(poolId);
@@ -75,15 +79,8 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         poolManager_claimDeposit(poolId, scId, assetId, INVESTOR);
     }
 
-     function test_request_redeem() public {
-        // deploy new asset
-        add_new_asset(18);
-
-        //register asset 
-        poolManager_registerAsset(123);
-
-        // create pool 
-        PoolId poolId = poolManager_createPool(address(this), 123, singleShareClass);
+    function test_request_redeem() public {
+        poolId = _createPool();
 
         // request deposit
         scId = previewShareClassId(poolId);
@@ -93,9 +90,11 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         poolRouter_setPoolMetadata(bytes("Testing pool"));
         poolRouter_addShareClass(SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
         poolRouter_createHolding(scId, assetId, identityValuation, 0x01);
-
         poolRouter_execute_clamped(poolId);
         
         poolManager_depositRequest(poolId, scId, INVESTOR, 123, 100);
+
+        // request redemption
+        // poolManager_redeemRequest(poolId, scId, INVESTOR, 123, 100);
     }
 }

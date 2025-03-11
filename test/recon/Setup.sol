@@ -29,6 +29,8 @@ import "src/common/interfaces/IGateway.sol";
 import "src/pools/interfaces/IPoolManager.sol";
 import "src/misc/TransientValuation.sol";
 import "src/misc/IdentityValuation.sol";
+import "src/pools/MessageProcessor.sol";
+import "test/vaults/mocks/MockAdapter.sol";
 
 abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     Accounting accounting;
@@ -39,8 +41,11 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     PoolRegistry poolRegistry;
     PoolRouter poolRouter;
     SingleShareClass singleShareClass;
+    MessageProcessor messageProcessor;
     TransientValuation transientValuation;
     IdentityValuation identityValuation;
+
+    MockAdapter mockAdapter;
     
     /// === Setup === ///
     /// This contains all calls to be performed in the tester constructor, both for Echidna and Foundry
@@ -54,18 +59,27 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         poolManager = new PoolManager(IPoolRegistry(address(poolRegistry)), IAssetRegistry(address(assetRegistry)), IAccounting(address(accounting)), IHoldings(address(holdings)), IGateway(address(gateway)), address(this));
         poolRouter = new PoolRouter(IPoolManager(address(poolManager)));
         singleShareClass = new SingleShareClass(IPoolRegistry(address(poolRegistry)), address(this));
+        messageProcessor = new MessageProcessor(gateway, poolManager, address(this));
+        mockAdapter = new MockAdapter(address(gateway));
 
         transientValuation = new TransientValuation(assetRegistry, address(this));
         identityValuation = new IdentityValuation(assetRegistry, address(this));
 
+        // set addresses on the PoolManager and Gateway
+        poolManager.file("sender", address(messageProcessor));
+        gateway.file("handle", address(messageProcessor));
+        gateway.file("adapter", address(mockAdapter));
+        
+        // set permissions for calling privileged functions
         poolRegistry.rely(address(poolManager));
         assetRegistry.rely(address(poolManager));
         accounting.rely(address(poolManager));
         holdings.rely(address(poolManager));
         gateway.rely(address(poolManager));
+        gateway.rely(address(messageProcessor));
         singleShareClass.rely(address(poolManager));
         poolManager.rely(address(poolRouter));
-
+        messageProcessor.rely(address(poolManager));
     }
 
     /// === MODIFIERS === ///
