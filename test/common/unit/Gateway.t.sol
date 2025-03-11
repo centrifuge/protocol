@@ -11,10 +11,10 @@ import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {Gateway, IRoot, IGasService} from "src/common/Gateway.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
-import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
-import {MockRoot} from "test/vaults/mocks/MockRoot.sol";
-import {MockManager} from "test/vaults/mocks/MockManager.sol";
-import {MockGasService} from "test/vaults/mocks/MockGasService.sol";
+import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
+import {MockRoot} from "test/common/mocks/MockRoot.sol";
+import {MockManager} from "test/common/mocks/MockManager.sol";
+import {MockGasService} from "test/common/mocks/MockGasService.sol";
 
 contract GatewayTest is Test {
     using CastLib for *;

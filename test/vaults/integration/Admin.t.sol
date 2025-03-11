@@ -8,7 +8,7 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGuardian} from "src/common/Guardian.sol";
 
 import "test/vaults/BaseTest.sol";
-import {MockManager} from "test/vaults/mocks/MockManager.sol";
+import {MockManager} from "test/common/mocks/MockManager.sol";
 
 contract AdminTest is BaseTest {
     using MessageLib for *;

@@ -86,7 +86,7 @@ contract Deployer is Script {
         IAuth(restrictedRedemptions).rely(address(poolManager));
         messageProcessor.rely(address(poolManager));
 
-        // Rely of InvestmentManager
+        // Rely on InvestmentManager
         messageProcessor.rely(address(investmentManager));
 
         // Rely on Root

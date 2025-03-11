@@ -84,7 +84,7 @@ fail_on_revert = false
     "src/pools/Accounting.sol", #Because transient keyword
     "src/pools/PoolManager.sol", #Because transient keyword
     "src/pools/SingleShareClass.sol", #Because transient keyword
-    "src/vaults/gateway/Gateway.sol", #Because transient keyword
+    "src/common/Gateway.sol", #Because transient keyword
   ]
 
 [rpc_endpoints]

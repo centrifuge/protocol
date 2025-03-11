@@ -13,16 +13,18 @@ import {Gateway} from "src/common/Gateway.sol";
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
 import {MockCentrifugeChain} from "test/vaults/mocks/MockCentrifugeChain.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
-import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
 import {MockSafe} from "test/vaults/mocks/MockSafe.sol";
 import {PoolManager, Pool} from "src/vaults/PoolManager.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 import {ERC7540VaultTest} from "test/vaults/unit/ERC7540Vault.t.sol";
 import {PermissionlessAdapter} from "test/vaults/mocks/PermissionlessAdapter.sol";
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
+
 import {AxelarScript} from "script/vaults/Axelar.s.sol";
 import "script/vaults/Deployer.sol";
+
 import "forge-std/Test.sol";
+import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
 
 interface ApproveLike {
     function approve(address, uint256) external;

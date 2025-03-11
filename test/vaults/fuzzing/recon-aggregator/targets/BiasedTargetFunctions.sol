@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {Properties} from "../Properties.sol";
 import {vm} from "@chimera/Hevm.sol";
-import {MockAdapter, IAdapter} from "test/vaults/mocks/MockAdapter.sol";
+import {MockAdapter, IAdapter} from "test/common/mocks/MockAdapter.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 

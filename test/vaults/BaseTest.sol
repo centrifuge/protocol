@@ -25,8 +25,8 @@ import {Deployer} from "script/vaults/Deployer.sol";
 
 // mocks
 import {MockCentrifugeChain} from "test/vaults/mocks/MockCentrifugeChain.sol";
-import {MockGasService} from "test/vaults/mocks/MockGasService.sol";
-import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
+import {MockGasService} from "test/common/mocks/MockGasService.sol";
+import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
 import {MockSafe} from "test/vaults/mocks/MockSafe.sol";
 
 // test env
