@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-interface IERC7540VaultFactory {
+interface IVaultFactory {
     /// @notice Deploys new vault for `poolId`, `trancheId` and `asset`.
     ///
     /// @param poolId Id of the pool. Id is one of the already supported pools.
@@ -9,7 +9,6 @@ interface IERC7540VaultFactory {
     /// @param asset Address of the underlying asset that's getting deposited inside the pool.
     /// @param tranche Address of the tranche token that's getting issues against the deposited asset.
     /// @param escrow  A intermediary contract that holdsa temporary funds until request is fulfilled.
-    /// @param investmentManager Address of a contract that manages incoming/outgoing transactions.
     /// @param wards_   Address which can call methods behind authorized only.
     function newVault(
         uint64 poolId,
@@ -17,7 +16,6 @@ interface IERC7540VaultFactory {
         address asset,
         address tranche,
         address escrow,
-        address investmentManager,
         address[] calldata wards_
     ) external returns (address);
 }
