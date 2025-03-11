@@ -452,7 +452,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         view
         returns (bool)
     {
-        // TODO: Check whether to check against asset of vault in storage??
         return _vaultToAsset[vault].isLinked;
     }
 
