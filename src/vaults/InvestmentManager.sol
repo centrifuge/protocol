@@ -11,6 +11,7 @@ import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IInvestmentManager, InvestmentState, IMessageHandler} from "src/vaults/interfaces/IInvestmentManager.sol";
+import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
@@ -59,6 +60,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
     }
 
     // --- IVaultManager ---
+    /// @inheritdoc IVaultManager
     function addVault(uint64 poolId, bytes16 trancheId, address vaultAddr, address asset_, uint128 assetId)
         public
         override
@@ -77,6 +79,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
         rely(vaultAddr);
     }
 
+    /// @inheritdoc IVaultManager
     function removeVault(uint64 poolId, bytes16 trancheId, address vaultAddr, address asset_, uint128 assetId)
         public
         override

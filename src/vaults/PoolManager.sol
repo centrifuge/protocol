@@ -431,6 +431,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         return (_asset.asset, _asset.isWrapper);
     }
 
+    /// @inheritdoc IPoolManager
     function getVaultAssetId(address vault) public view override returns (uint128) {
         VaultAsset memory _asset = _vaultToAsset[vault];
         require(_asset.asset != address(0), "PoolManager/unknown-vault");
