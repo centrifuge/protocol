@@ -93,7 +93,7 @@ contract PoolManager is Auth, IPoolManager {
         require(address(tranche) != address(0), "PoolManager/unknown-token");
         tranche.burn(msg.sender, amount);
 
-        gateway.setPayableSource(address(this));
+        gateway.setPayableSource(msg.sender);
         sender.sendTransferShares(destinationId, poolId, trancheId, recipient, amount);
 
         emit TransferTrancheTokens(poolId, trancheId, msg.sender, destinationId, recipient, amount);
