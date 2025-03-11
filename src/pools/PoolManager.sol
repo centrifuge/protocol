@@ -17,7 +17,7 @@ import {IGateway} from "src/pools/interfaces/IGateway.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
-import {ISingleShareClass} from "src/pools/interfaces/ISingleShareClass.sol";
+import {IMultiShareClass} from "src/pools/interfaces/IMultiShareClass.sol";
 import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
 import {IPoolManager, IPoolManagerHandler, EscrowId, AccountType} from "src/pools/interfaces/IPoolManager.sol";
 
@@ -135,7 +135,7 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
         IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
         require(scm.exists(unlockedPoolId, scId), IShareClassManager.ShareClassNotFound());
 
-        (string memory name, string memory symbol, bytes32 salt) = ISingleShareClass(address(scm)).metadata(scId);
+        (string memory name, string memory symbol, bytes32 salt) = IMultiShareClass(address(scm)).metadata(scId);
         uint8 decimals = assetRegistry.decimals(poolRegistry.currency(unlockedPoolId).raw());
 
         gateway.sendNotifyShareClass(chainId, unlockedPoolId, scId, name, symbol, decimals, salt, hook);

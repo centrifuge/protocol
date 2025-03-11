@@ -9,7 +9,7 @@ import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 
-interface ISingleShareClass is IShareClassManager {
+interface IMultiShareClass is IShareClassManager {
     /// Events
     event File(bytes32 what, address who);
     event AddedShareClass(

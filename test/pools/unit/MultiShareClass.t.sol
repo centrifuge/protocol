@@ -14,16 +14,16 @@ import {AssetId} from "src/pools/types/AssetId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
-import {ISingleShareClass} from "src/pools/interfaces/ISingleShareClass.sol";
+import {IMultiShareClass} from "src/pools/interfaces/IMultiShareClass.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {
-    SingleShareClass,
+    MultiShareClass,
     EpochAmounts,
     UserOrder,
     EpochPointers,
     ShareClassMetadata,
     ShareClassMetrics
-} from "src/pools/SingleShareClass.sol";
+} from "src/pools/MultiShareClass.sol";
 
 uint64 constant POOL_ID = 42;
 uint32 constant SC_ID_INDEX = 1;
@@ -78,8 +78,8 @@ contract OracleMock is IERC7726 {
     }
 }
 
-contract SingleShareClassExt is SingleShareClass {
-    constructor(IPoolRegistry poolRegistry, address deployer) SingleShareClass(poolRegistry, deployer) {
+contract MultiShareClassExt is MultiShareClass {
+    constructor(IPoolRegistry poolRegistry, address deployer) MultiShareClass(poolRegistry, deployer) {
         poolRegistry = poolRegistry;
     }
 
@@ -88,12 +88,12 @@ contract SingleShareClassExt is SingleShareClass {
     }
 }
 
-abstract contract SingleShareClassBaseTest is Test {
+abstract contract MultiShareClassBaseTest is Test {
     using MathLib for uint128;
     using MathLib for uint256;
     using CastLib for string;
 
-    SingleShareClassExt public shareClass;
+    MultiShareClassExt public shareClass;
 
     OracleMock oracleMock = new OracleMock();
     PoolRegistryMock poolRegistryMock = new PoolRegistryMock();
@@ -109,10 +109,10 @@ abstract contract SingleShareClassBaseTest is Test {
     }
 
     function setUp() public virtual {
-        shareClass = new SingleShareClassExt(IPoolRegistry(poolRegistryAddress), address(this));
+        shareClass = new MultiShareClassExt(IPoolRegistry(poolRegistryAddress), address(this));
 
         vm.expectEmit();
-        emit ISingleShareClass.AddedShareClass(poolId, scId, SC_ID_INDEX, SC_NAME, SC_SYMBOL, SC_SALT);
+        emit IMultiShareClass.AddedShareClass(poolId, scId, SC_ID_INDEX, SC_NAME, SC_SYMBOL, SC_SALT);
         shareClass.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
 
         // Mock IPoolRegistry.currency call
@@ -204,7 +204,7 @@ abstract contract SingleShareClassBaseTest is Test {
 }
 
 ///@dev Contains all simple tests which are expected to succeed
-contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
+contract MultiShareClassSimpleTest is MultiShareClassBaseTest {
     using MathLib for uint128;
     using CastLib for string;
 
@@ -226,7 +226,7 @@ contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
     function testFile() public {
         address poolRegistryNew = makeAddr("poolRegistryNew");
         vm.expectEmit(true, true, true, true);
-        emit ISingleShareClass.File("poolRegistry", poolRegistryNew);
+        emit IMultiShareClass.File("poolRegistry", poolRegistryNew);
         shareClass.file("poolRegistry", poolRegistryNew);
 
         assertEq(address(shareClass.poolRegistry()), poolRegistryNew);
@@ -260,7 +260,7 @@ contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
         vm.assume(salt != bytes32(0));
 
         vm.expectEmit();
-        emit ISingleShareClass.UpdatedMetadata(poolId, scId, name, symbol, salt);
+        emit IMultiShareClass.UpdatedMetadata(poolId, scId, name, symbol, salt);
         shareClass.updateMetadata(poolId, scId, name, symbol, salt, bytes(""));
 
         (string memory name_, string memory symbol_, bytes32 salt_) = shareClass.metadata(scId);
@@ -294,7 +294,7 @@ contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
 
         ShareClassId nextScId = shareClass.previewNextShareClassId(poolId);
 
-        emit ISingleShareClass.AddedShareClass(poolId, nextScId, 2, name, symbol, salt);
+        emit IMultiShareClass.AddedShareClass(poolId, nextScId, 2, name, symbol, salt);
         shareClass.addShareClass(poolId, name, symbol, salt, bytes(""));
 
         assertEq(shareClass.shareClassCount(poolId), 2);
@@ -307,7 +307,7 @@ contract SingleShareClassSimpleTest is SingleShareClassBaseTest {
 }
 
 ///@dev Contains all deposit related tests which are expected to succeed and don't make use of transient storage
-contract SingleShareClassDepositsNonTransientTest is SingleShareClassBaseTest {
+contract MultiShareClassDepositsNonTransientTest is MultiShareClassBaseTest {
     using MathLib for uint128;
 
     function testRequestDeposit(uint128 amount) public notThisContract(poolRegistryAddress) {
@@ -518,13 +518,13 @@ contract SingleShareClassDepositsNonTransientTest is SingleShareClassBaseTest {
         shareClass.requestRedeem(poolId, scId, 10, bytes32("investorOther"), USDC);
         shareClass.approveRedeems(poolId, scId, 1, USDC);
 
-        vm.expectRevert(abi.encodeWithSelector(ISingleShareClass.RevokeMoreThanIssued.selector));
+        vm.expectRevert(abi.encodeWithSelector(IMultiShareClass.RevokeMoreThanIssued.selector));
         shareClass.revokeShares(poolId, scId, USDC, d18(1), oracleMock);
     }
 }
 
 ///@dev Contains all redeem related tests which are expected to succeed and don't make use of transient storage
-contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
+contract MultiShareClassRedeemsNonTransientTest is MultiShareClassBaseTest {
     using MathLib for uint128;
 
     function testRequestRedeem(uint128 amount) public notThisContract(poolRegistryAddress) {
@@ -733,7 +733,7 @@ contract SingleShareClassRedeemsNonTransientTest is SingleShareClassBaseTest {
 }
 
 ///@dev Contains all tests which require transient storage to reset between calls
-contract SingleShareClassTransientTest is SingleShareClassBaseTest {
+contract MultiShareClassTransientTest is MultiShareClassBaseTest {
     using MathLib for uint128;
 
     function testIssueSharesManyEpochs(
@@ -795,7 +795,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         assertEq(issuance, shares, "totalIssuance mismatch");
 
         // Ensure another issuance reverts
-        vm.expectRevert(abi.encodeWithSelector(ISingleShareClass.ApprovalRequired.selector));
+        vm.expectRevert(abi.encodeWithSelector(IMultiShareClass.ApprovalRequired.selector));
         shareClass.issueShares(poolId, scId, USDC, shareToPoolQuote);
     }
 
@@ -915,7 +915,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
         assertEq(issuance, totalIssuance_);
 
         // Ensure another issuance reverts
-        vm.expectRevert(abi.encodeWithSelector(ISingleShareClass.ApprovalRequired.selector));
+        vm.expectRevert(abi.encodeWithSelector(IMultiShareClass.ApprovalRequired.selector));
         shareClass.revokeShares(poolId, scId, USDC, shareToPoolQuote, oracleMock);
     }
 
@@ -1064,7 +1064,7 @@ contract SingleShareClassTransientTest is SingleShareClassBaseTest {
 }
 
 ///@dev Contains all deposit tests which deal with rounding edge cases
-contract SingleShareClassRoundingEdgeCasesDeposit is SingleShareClassBaseTest {
+contract MultiShareClassRoundingEdgeCasesDeposit is MultiShareClassBaseTest {
     using MathLib for uint128;
 
     bytes32 constant INVESTOR_A = bytes32("investorA");
@@ -1142,7 +1142,7 @@ contract SingleShareClassRoundingEdgeCasesDeposit is SingleShareClassBaseTest {
 }
 
 ///@dev Contains all deposit tests which deal with rounding edge cases
-contract SingleShareClassRoundingEdgeCasesRedeem is SingleShareClassBaseTest {
+contract MultiShareClassRoundingEdgeCasesRedeem is MultiShareClassBaseTest {
     using MathLib for uint128;
     using MathLib for uint256;
 
@@ -1152,7 +1152,7 @@ contract SingleShareClassRoundingEdgeCasesRedeem is SingleShareClassBaseTest {
     uint128 TOTAL_ISSUANCE = 1000 * DENO_POOL;
 
     function setUp() public override {
-        SingleShareClassBaseTest.setUp();
+        MultiShareClassBaseTest.setUp();
 
         // Mock total issuance such that we can redeem
         vm.store(
@@ -1249,7 +1249,7 @@ contract SingleShareClassRoundingEdgeCasesRedeem is SingleShareClassBaseTest {
 }
 
 ///@dev Contains all tests which are expected to revert
-contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
+contract MultiShareClassRevertsTest is MultiShareClassBaseTest {
     using MathLib for uint128;
 
     ShareClassId wrongShareClassId = ShareClassId.wrap(bytes16(uint128(POOL_ID + 42)));
@@ -1257,7 +1257,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
 
     function testFile(bytes32 what) public {
         vm.assume(what != "poolRegistry");
-        vm.expectRevert(abi.encodeWithSelector(ISingleShareClass.UnrecognizedFileParam.selector));
+        vm.expectRevert(abi.encodeWithSelector(IMultiShareClass.UnrecognizedFileParam.selector));
         shareClass.file(what, address(0));
     }
 
@@ -1406,12 +1406,12 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
     }
 
     function testIssueSharesBeforeApproval() public {
-        vm.expectRevert(abi.encodeWithSelector(ISingleShareClass.ApprovalRequired.selector));
+        vm.expectRevert(abi.encodeWithSelector(IMultiShareClass.ApprovalRequired.selector));
         shareClass.issueShares(poolId, scId, USDC, d18(1));
     }
 
     function testRevokeSharesBeforeApproval() public {
-        vm.expectRevert(abi.encodeWithSelector(ISingleShareClass.ApprovalRequired.selector));
+        vm.expectRevert(abi.encodeWithSelector(IMultiShareClass.ApprovalRequired.selector));
         shareClass.revokeShares(poolId, scId, USDC, d18(1), oracleMock);
     }
 
@@ -1465,7 +1465,7 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
         shareClass.requestDeposit(poolId, scId, 1, investor, USDC);
         shareClass.approveDeposits(poolId, scId, 1, USDC, oracleMock);
 
-        vm.expectRevert(ISingleShareClass.AlreadyApproved.selector);
+        vm.expectRevert(IMultiShareClass.AlreadyApproved.selector);
         shareClass.approveDeposits(poolId, scId, 1, USDC, oracleMock);
     }
 
@@ -1473,89 +1473,89 @@ contract SingleShareClassRevertsTest is SingleShareClassBaseTest {
         shareClass.requestRedeem(poolId, scId, 1, investor, USDC);
         shareClass.approveRedeems(poolId, scId, 1, USDC);
 
-        vm.expectRevert(ISingleShareClass.AlreadyApproved.selector);
+        vm.expectRevert(IMultiShareClass.AlreadyApproved.selector);
         shareClass.approveRedeems(poolId, scId, 1, USDC);
     }
 
     function testApproveDepositsZeroApproval() public {
-        vm.expectRevert(ISingleShareClass.ZeroApprovalAmount.selector);
+        vm.expectRevert(IMultiShareClass.ZeroApprovalAmount.selector);
         shareClass.approveDeposits(poolId, scId, 0, USDC, oracleMock);
     }
 
     function testApproveDepositsZeroPending() public {
-        vm.expectRevert(ISingleShareClass.ZeroApprovalAmount.selector);
+        vm.expectRevert(IMultiShareClass.ZeroApprovalAmount.selector);
         shareClass.approveDeposits(poolId, scId, 1, USDC, oracleMock);
     }
 
     function testApproveRedeemsZeroApproval() public {
-        vm.expectRevert(ISingleShareClass.ZeroApprovalAmount.selector);
+        vm.expectRevert(IMultiShareClass.ZeroApprovalAmount.selector);
         shareClass.approveRedeems(poolId, scId, 0, USDC);
     }
 
     function testApproveRedeemsZeroPending() public {
-        vm.expectRevert(ISingleShareClass.ZeroApprovalAmount.selector);
+        vm.expectRevert(IMultiShareClass.ZeroApprovalAmount.selector);
         shareClass.approveRedeems(poolId, scId, 1, USDC);
     }
 
     function testAddShareClassInvalidNameEmpty() public {
-        vm.expectRevert(ISingleShareClass.InvalidMetadataName.selector);
+        vm.expectRevert(IMultiShareClass.InvalidMetadataName.selector);
         shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), "", SC_SYMBOL, SC_SALT, bytes(""));
     }
 
     function testAddShareClassInvalidNameExcess() public {
-        vm.expectRevert(ISingleShareClass.InvalidMetadataName.selector);
+        vm.expectRevert(IMultiShareClass.InvalidMetadataName.selector);
         shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), string(new bytes(129)), SC_SYMBOL, SC_SALT, bytes(""));
     }
 
     function testAddShareClassInvalidSymbolEmpty() public {
-        vm.expectRevert(ISingleShareClass.InvalidMetadataSymbol.selector);
+        vm.expectRevert(IMultiShareClass.InvalidMetadataSymbol.selector);
         shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), SC_NAME, "", SC_SALT, bytes(""));
     }
 
     function testAddShareClassInvalidSymbolExcess() public {
-        vm.expectRevert(ISingleShareClass.InvalidMetadataSymbol.selector);
+        vm.expectRevert(IMultiShareClass.InvalidMetadataSymbol.selector);
         shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), SC_NAME, string(new bytes(33)), SC_SALT, bytes(""));
     }
 
     function testAddShareClassEmptySalt() public {
-        vm.expectRevert(ISingleShareClass.InvalidSalt.selector);
+        vm.expectRevert(IMultiShareClass.InvalidSalt.selector);
         shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), SC_NAME, SC_SYMBOL, bytes32(0), bytes(""));
     }
 
     function testAddShareClassSaltAlreadyUsed() public {
         shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), SC_NAME, SC_SYMBOL, SC_SECOND_SALT, bytes(""));
-        vm.expectRevert(ISingleShareClass.AlreadyUsedSalt.selector);
+        vm.expectRevert(IMultiShareClass.AlreadyUsedSalt.selector);
         shareClass.addShareClass(PoolId.wrap(POOL_ID + 2), SC_NAME, SC_SYMBOL, SC_SECOND_SALT, bytes(""));
     }
 
     function testUpdateMetadataClassInvalidNameEmpty() public {
-        vm.expectRevert(ISingleShareClass.InvalidMetadataName.selector);
+        vm.expectRevert(IMultiShareClass.InvalidMetadataName.selector);
         shareClass.updateMetadata(poolId, scId, "", SC_SYMBOL, SC_SALT, bytes(""));
     }
 
     function testUpdateMetadataClassInvalidNameExcess() public {
-        vm.expectRevert(ISingleShareClass.InvalidMetadataName.selector);
+        vm.expectRevert(IMultiShareClass.InvalidMetadataName.selector);
         shareClass.updateMetadata(poolId, scId, string(new bytes(129)), SC_SYMBOL, SC_SALT, bytes(""));
     }
 
     function testUpdateMetadataClassInvalidSymbolEmpty() public {
-        vm.expectRevert(ISingleShareClass.InvalidMetadataSymbol.selector);
+        vm.expectRevert(IMultiShareClass.InvalidMetadataSymbol.selector);
         shareClass.updateMetadata(poolId, scId, SC_NAME, "", bytes32(0), bytes(""));
     }
 
     function testUpdateMetadataClassInvalidSymbolExcess() public {
-        vm.expectRevert(ISingleShareClass.InvalidMetadataSymbol.selector);
+        vm.expectRevert(IMultiShareClass.InvalidMetadataSymbol.selector);
         shareClass.updateMetadata(poolId, scId, SC_NAME, string(new bytes(33)), bytes32(0), bytes(""));
     }
 
     function testUpdateMetadataInvalidSalt() public {
-        vm.expectRevert(ISingleShareClass.InvalidSalt.selector);
+        vm.expectRevert(IMultiShareClass.InvalidSalt.selector);
         shareClass.updateMetadata(poolId, scId, SC_NAME, SC_SYMBOL, bytes32(0), bytes(""));
     }
 
     function testUpdateMetadataSaltAlreadyUsed() public {
         shareClass.addShareClass(PoolId.wrap(POOL_ID + 1), SC_NAME, SC_SYMBOL, SC_SECOND_SALT, bytes(""));
-        vm.expectRevert(ISingleShareClass.AlreadyUsedSalt.selector);
+        vm.expectRevert(IMultiShareClass.AlreadyUsedSalt.selector);
         shareClass.updateMetadata(poolId, scId, SC_NAME, SC_SYMBOL, SC_SECOND_SALT, bytes(""));
     }
 }

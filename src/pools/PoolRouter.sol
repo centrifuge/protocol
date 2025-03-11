@@ -17,7 +17,7 @@ import {IGateway} from "src/pools/interfaces/IGateway.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
-import {ISingleShareClass} from "src/pools/interfaces/ISingleShareClass.sol";
+import {IMultiShareClass} from "src/pools/interfaces/IMultiShareClass.sol";
 import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
 import {IPoolManager, IPoolManagerHandler, EscrowId, AccountType} from "src/pools/interfaces/IPoolManager.sol";
 import {IPoolRouter} from "src/pools/interfaces/IPoolRouter.sol";

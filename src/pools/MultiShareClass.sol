@@ -10,7 +10,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
-import {ISingleShareClass} from "src/pools/interfaces/ISingleShareClass.sol";
+import {IMultiShareClass} from "src/pools/interfaces/IMultiShareClass.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
@@ -51,8 +51,11 @@ struct EpochPointers {
 }
 
 struct ShareClassMetadata {
+    /// @dev The name of the share class token
     string name;
+    /// @dev The symbol of the share class token
     string symbol;
+    /// @dev The salt of the share class token
     bytes32 salt;
 }
 
@@ -63,7 +66,7 @@ struct ShareClassMetrics {
     D18 navPerShare;
 }
 
-contract SingleShareClass is Auth, ISingleShareClass {
+contract MultiShareClass is Auth, IMultiShareClass {
     using MathLib for D18;
     using MathLib for uint128;
     using MathLib for uint256;
@@ -276,7 +279,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         issueSharesUntilEpoch(poolId, shareClassId_, depositAssetId, navPerShare, epochPointers_.latestDepositApproval);
     }
 
-    /// @inheritdoc ISingleShareClass
+    /// @inheritdoc IMultiShareClass
     function issueSharesUntilEpoch(
         PoolId poolId,
         ShareClassId shareClassId_,
@@ -328,7 +331,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         );
     }
 
-    /// @inheritdoc ISingleShareClass
+    /// @inheritdoc IMultiShareClass
     function revokeSharesUntilEpoch(
         PoolId poolId,
         ShareClassId shareClassId_,
@@ -386,7 +389,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         );
     }
 
-    /// @inheritdoc ISingleShareClass
+    /// @inheritdoc IMultiShareClass
     function claimDepositUntilEpoch(
         PoolId poolId,
         ShareClassId shareClassId_,
@@ -455,7 +458,7 @@ contract SingleShareClass is Auth, ISingleShareClass {
         );
     }
 
-    /// @inheritdoc ISingleShareClass
+    /// @inheritdoc IMultiShareClass
     function claimRedeemUntilEpoch(
         PoolId poolId,
         ShareClassId shareClassId_,

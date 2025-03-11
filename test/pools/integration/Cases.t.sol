@@ -48,7 +48,7 @@ contract TestCommon is Deployer, Test {
         vm.label(address(assetRegistry), "AssetRegistry");
         vm.label(address(accounting), "Accounting");
         vm.label(address(holdings), "Holdings");
-        vm.label(address(singleShareClass), "SingleShareClass");
+        vm.label(address(singleShareClass), "MultiShareClass");
         vm.label(address(poolManager), "PoolManager");
         vm.label(address(gateway), "Gateway");
         vm.label(address(poolRouter), "PoolRouter");

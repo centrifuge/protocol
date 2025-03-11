@@ -10,7 +10,7 @@ import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
 import {IGateway} from "src/pools/interfaces/IGateway.sol";
 import {IAdapter} from "src/pools/interfaces/IAdapter.sol";
 import {PoolRegistry} from "src/pools/PoolRegistry.sol";
-import {SingleShareClass} from "src/pools/SingleShareClass.sol";
+import {MultiShareClass} from "src/pools/MultiShareClass.sol";
 import {Holdings} from "src/pools/Holdings.sol";
 import {AssetRegistry} from "src/pools/AssetRegistry.sol";
 import {Accounting} from "src/pools/Accounting.sol";
@@ -28,7 +28,7 @@ contract Deployer is Script {
     AssetRegistry public assetRegistry;
     Accounting public accounting;
     Holdings public holdings;
-    SingleShareClass public singleShareClass;
+    MultiShareClass public singleShareClass;
     PoolManager public poolManager;
     Gateway public gateway;
     PoolRouter public poolRouter;
@@ -46,7 +46,7 @@ contract Deployer is Script {
         accounting = new Accounting(address(this));
         holdings = new Holdings(poolRegistry, address(this));
 
-        singleShareClass = new SingleShareClass(poolRegistry, address(this));
+        singleShareClass = new MultiShareClass(poolRegistry, address(this));
         poolManager =
             new PoolManager(poolRegistry, assetRegistry, accounting, holdings, IGateway(ADDRESS_TO_FILE), address(this));
         gateway = new Gateway(IAdapter(address(0 /* TODO */ )), poolManager, address(this));
