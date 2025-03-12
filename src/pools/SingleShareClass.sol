@@ -413,11 +413,15 @@ contract SingleShareClass is Auth, ISingleShareClass {
                 epochAmounts_.depositShares, epochAmounts_.depositApproved
             ).toUint128();
 
-            // NOTE: If claimableShareAmount == 0, then we still reduced pendingDeposits by userOrder.pending despite not reducing the latter due to zero claimable. 
+            // NOTE: During approvals, we reduce pendingDeposits by the approved asset amount. However, we only reduce the pending user amount if the claimable amount is non-zero.
+            // 
             // This extreme edge case has two implications:
             //  1. The sum of pending user orders <= pendingDeposits (instead of equality)
             //  2. The sum of claimable user amounts <= amount of minted share class tokens corresponding to the approved deposit asset amount (instead of equality). 
             //     I.e., it is possible for an epoch to have an excess of a share class token atom which cannot be claimed by anyone.
+            //
+            // The first implication can be switched to equality if we reduce the pending user amount independent of the claimable amount.
+            // However, in practice, it should be extremely unlikely to have users with non-zero pending but zero claimable for an epoch.
             if (claimableShareAmount > 0) {
                 userOrder.pending -= approvedAssetAmount;
                 payoutShareAmount += claimableShareAmount;
@@ -482,11 +486,15 @@ contract SingleShareClass is Auth, ISingleShareClass {
                 epochAmounts_.redeemAssets, epochAmounts_.redeemApproved
             ).toUint128();
 
-            // NOTE: If claimableAssetAmount == 0, then we still reduced pendingRedeems by userOrder.pending despite not reducing the latter due to zero claimable. 
+            // NOTE: During approvals, we reduce pendingRedeems by the approved share class token amount. However, we only reduce the pending user amount if the claimable amount is non-zero.
+            //
             // This extreme edge case has two implications:
             //  1. The sum of pending user orders <= pendingRedeems (instead of equality)
             //  2. The sum of claimable user amounts <= amount of payout asset corresponding to the approved share class token amount (instead of equality). 
             //     I.e., it is possible for an epoch to have an excess of a single payout asset atom which cannot be claimed by anyone.
+            //
+            // The first implication can be switched to equality if we reduce the pending user amount independent of the claimable amount.
+            // However, in practice, it should be extremely unlikely to have users with non-zero pending but zero claimable for an epoch.
             if (claimableAssetAmount > 0) {
                 paymentShareAmount += approvedShareAmount;
                 payoutAssetAmount += claimableAssetAmount;
