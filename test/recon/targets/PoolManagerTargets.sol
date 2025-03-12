@@ -14,12 +14,25 @@ import "src/pools/PoolManager.sol";
 
 import {BeforeAfter} from "../BeforeAfter.sol";
 import {Properties} from "../Properties.sol";
+import {Helpers} from "../utils/Helpers.sol";
 
 abstract contract PoolManagerTargets is
     BaseTargetFunctions,
     Properties
 {
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
+    /// CLAMPED HANDLERS /// 
+    function poolManager_claimDeposit_clamped(PoolId poolId, ShareClassId scId, AssetId assetId) public asActor {
+        bytes32 investor = Helpers.addressToBytes32(_getActor());
+
+        poolManager.claimDeposit(poolId, scId, assetId, investor);
+    }
+
+    function poolManager_claimRedeem_clamped(PoolId poolId, ShareClassId scId, AssetId assetId) public asActor {
+        bytes32 investor = Helpers.addressToBytes32(_getActor());
+
+        poolManager.claimRedeem(poolId, scId, assetId, investor);
+    }
 
     // === PoolManager === //
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
@@ -39,5 +52,6 @@ abstract contract PoolManagerTargets is
     function poolManager_claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) public asActor {
         poolManager.claimRedeem(poolId, scId, assetId, investor);
     }
+    
 
 }

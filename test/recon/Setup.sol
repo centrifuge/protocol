@@ -53,6 +53,10 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     /// === Setup === ///
     /// This contains all calls to be performed in the tester constructor, both for Echidna and Foundry
     function setup() internal virtual override {
+        // add two actors in addition to the default admin (address(this))
+        _addActor(address(0x10000));
+        _addActor(address(0x20000));
+
         accounting = new Accounting(address(this)); 
         assetRegistry = new AssetRegistry(address(this)); 
         gateway = new Gateway(address(this));
