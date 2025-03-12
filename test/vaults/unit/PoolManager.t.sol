@@ -646,7 +646,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         _assertAssetCounterEq(expectedAssetCounter);
     }
 
-    function testRegisterAssetERC20() public {
+    function testRegisterSingleAssetERC20() public {
         address asset = address(erc20);
         bytes memory message = MessageLib.RegisterAsset({
             assetId: defaultAssetId,
@@ -665,9 +665,24 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         _assertAssetRegistered(asset, assetId, 0, 1);
     }
 
-    function testRegisterAssetERC6909() public {
+    function testRegisterMultipleAssetsERC20(string calldata name, string calldata symbol, uint8 decimals) public {
+        decimals = uint8(bound(decimals, 2, 18));
+
+        ERC20 assetA = erc20;
+        ERC20 assetB = _newErc20(name, symbol, decimals);
+
+        uint128 assetIdA = poolManager.registerAsset(address(assetA), 0, defaultChainId);
+        _assertAssetRegistered(address(assetA), assetIdA, 0, 1);
+
+        uint128 assetIdB = poolManager.registerAsset(address(assetB), 0, defaultChainId);
+        _assertAssetRegistered(address(assetB), assetIdB, 0, 2);
+
+        assert(assetIdA != assetIdB);
+    }
+
+    function testRegisterSingleAssetERC6909(uint8 decimals) public {
+        uint256 tokenId = uint256(bound(decimals, 2, 18));
         MockERC6909 erc6909 = new MockERC6909();
-        uint256 tokenId = 18;
         address asset = address(erc6909);
 
         bytes memory message = MessageLib.RegisterAsset({
@@ -687,5 +702,55 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         assertEq(assetId, defaultAssetId);
         assertEq(erc6909.allowance(address(poolManager.escrow()), address(poolManager), tokenId), type(uint256).max);
         _assertAssetRegistered(asset, assetId, tokenId, 1);
+    }
+
+    function testRegisterMultipleAssetsERC6909(uint8 decimals) public {
+        MockERC6909 assetA = new MockERC6909();
+        MockERC6909 assetB = new MockERC6909();
+        uint256 tokenIdA = uint256(bound(decimals, 3, 18));
+        uint256 tokenIdB = uint256(bound(decimals, 2, tokenIdA));
+
+        uint128 assetIdA = poolManager.registerAsset(address(assetA), tokenIdA, defaultChainId);
+        _assertAssetRegistered(address(assetA), assetIdA, tokenIdA, 1);
+
+        uint128 assetIdB = poolManager.registerAsset(address(assetB), tokenIdB, defaultChainId);
+        _assertAssetRegistered(address(assetB), assetIdB, tokenIdB, 2);
+
+        assert(assetIdA != assetIdB);
+    }
+
+    function testRegisterAsset_decimalsMissing() public {
+        address asset = address(new MockERC6909());
+        vm.expectRevert("PoolManager/asset-missing-decimals");
+        poolManager.registerAsset(asset, 0, defaultChainId);
+    }
+
+    function testRegisterAsset_invalidContract(uint256 tokenId) public {
+        vm.expectRevert("PoolManager/invalid-asset-contract");
+        poolManager.registerAsset(address(0), tokenId, defaultChainId);
+    }
+
+    function testRegisterAssetERC20_decimalDeficit() public {
+        ERC20 asset = _newErc20("", "", 1);
+        vm.expectRevert("PoolManager/too-few-asset-decimals");
+        poolManager.registerAsset(address(asset), 0, defaultChainId);
+    }
+
+    function testRegisterAssetERC20_decimalExcess() public {
+        ERC20 asset = _newErc20("", "", 19);
+        vm.expectRevert("PoolManager/too-many-asset-decimals");
+        poolManager.registerAsset(address(asset), 0, defaultChainId);
+    }
+
+    function testRegisterAssetERC6909_decimalDeficit() public {
+        MockERC6909 asset = new MockERC6909();
+        vm.expectRevert("PoolManager/too-few-asset-decimals");
+        poolManager.registerAsset(address(asset), 1, defaultChainId);
+    }
+
+    function testRegisterAssetERC6909_decimalExcess() public {
+        MockERC6909 asset = new MockERC6909();
+        vm.expectRevert("PoolManager/too-many-asset-decimals");
+        poolManager.registerAsset(address(asset), 19, defaultChainId);
     }
 }

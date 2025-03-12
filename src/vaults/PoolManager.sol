@@ -130,38 +130,20 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         string memory symbol;
         uint8 decimals;
 
+        require(asset.code.length > 0, "PoolManager/invalid-asset-contract");
+
+        decimals = _safeGetAssetDecimals(asset, tokenId);
+        require(decimals >= MIN_DECIMALS, "PoolManager/too-few-asset-decimals");
+        require(decimals <= MAX_DECIMALS, "PoolManager/too-many-asset-decimals");
+
         if (tokenId == 0) {
-            try IERC20Metadata(asset).name() returns (string memory _name) {
-                name = _name;
-            } catch {}
-
-            try IERC20Metadata(asset).symbol() returns (string memory _symbol) {
-                symbol = _symbol;
-            } catch {}
-
-            try IERC20Metadata(asset).decimals() returns (uint8 _decimals) {
-                require(_decimals >= MIN_DECIMALS, "PoolManager/too-few-asset-decimals");
-                require(_decimals <= MAX_DECIMALS, "PoolManager/too-many-asset-decimals");
-                decimals = _decimals;
-            } catch {
-                revert("PoolManager/asset-missing-decimals");
-            }
+            IERC20Metadata meta = IERC20Metadata(asset);
+            name = meta.name();
+            symbol = meta.symbol();
         } else {
-            try IERC6909MetadataExt(asset).name(tokenId) returns (string memory _name) {
-                name = _name;
-            } catch {}
-
-            try IERC6909MetadataExt(asset).symbol(tokenId) returns (string memory _symbol) {
-                symbol = _symbol;
-            } catch {}
-
-            try IERC6909MetadataExt(asset).decimals(tokenId) returns (uint8 _decimals) {
-                require(_decimals >= MIN_DECIMALS, "PoolManager/too-few-asset-decimals");
-                require(_decimals <= MAX_DECIMALS, "PoolManager/too-many-asset-decimals");
-                decimals = _decimals;
-            } catch {
-                revert("PoolManager/asset-missing-decimals");
-            }
+            IERC6909MetadataExt meta = IERC6909MetadataExt(asset);
+            name = meta.name(tokenId);
+            symbol = meta.symbol(tokenId);
         }
 
         assetId = assetToId[asset];
@@ -515,5 +497,20 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     /// @inheritdoc IPoolManager
     function idToAsset(uint128 assetId) public view returns (address asset) {
         return idToAsset_[assetId].asset;
+    }
+
+    function _safeGetAssetDecimals(address asset, uint256 tokenId) private view returns (uint8) {
+        bytes memory callData;
+
+        if (tokenId == 0) {
+            callData = abi.encodeWithSignature("decimals()");
+        } else {
+            callData = abi.encodeWithSignature("decimals(uint256)", tokenId);
+        }
+
+        (bool success, bytes memory data) = asset.staticcall(callData);
+        require(success && data.length >= 32, "PoolManager/asset-missing-decimals");
+
+        return abi.decode(data, (uint8));
     }
 }
