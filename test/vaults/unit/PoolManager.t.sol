@@ -631,20 +631,23 @@ contract PoolManagerRegisterAssetTest is BaseTest {
 
         // Extract `_assetCounter` at offset 20 bytes (rightmost 4 bytes)
         uint32 assetCounter = uint32(uint256(slotData >> (STORAGE_OFFSET_ASSET_COUNTER * 8)));
-
-        // Verify the loaded value matches the expected value
         assertEq(assetCounter, expected, "Asset counter does not match expected value");
     }
 
-    function _assertAssetRegistered(address asset, uint128 assetId, uint32 expectedAssetCounter) internal view {
-        assertEq(poolManager.assetToId(asset), assetId);
-        assertEq(poolManager.idToAsset(assetId), asset);
+    function _assertAssetRegistered(address asset, uint128 assetId, uint256 tokenId, uint32 expectedAssetCounter)
+        internal
+        view
+    {
+        assertEq(poolManager.assetToId(asset), assetId, "Asset to id mismatch");
+        assertEq(poolManager.idToAsset(assetId), asset, "Id to asset mismatch");
+        (address asset_, uint256 tokenId_) = poolManager.idToAsset_(assetId);
+        assertEq(asset_, asset);
+        assertEq(tokenId_, tokenId);
         _assertAssetCounterEq(expectedAssetCounter);
     }
 
     function testRegisterAssetERC20() public {
         address asset = address(erc20);
-        console.log("AssetId: ", defaultAssetId);
         bytes memory message = MessageLib.RegisterAsset({
             assetId: defaultAssetId,
             name: erc20.name(),
@@ -659,6 +662,30 @@ contract PoolManagerRegisterAssetTest is BaseTest {
 
         assertEq(assetId, defaultAssetId);
         assertEq(erc20.allowance(address(poolManager.escrow()), address(poolManager)), type(uint256).max);
-        _assertAssetRegistered(asset, assetId, 1);
+        _assertAssetRegistered(asset, assetId, 0, 1);
+    }
+
+    function testRegisterAssetERC6909() public {
+        MockERC6909 erc6909 = new MockERC6909();
+        uint256 tokenId = 18;
+        address asset = address(erc6909);
+
+        bytes memory message = MessageLib.RegisterAsset({
+            assetId: defaultAssetId,
+            name: erc6909.name(tokenId),
+            symbol: erc6909.symbol(tokenId).toBytes32(),
+            decimals: erc6909.decimals(tokenId)
+        }).serialize();
+
+        vm.expectEmit();
+        emit IGateway.SendMessage(message);
+        emit IPoolManager.RegisterAsset(
+            defaultAssetId, asset, tokenId, erc6909.name(tokenId), erc6909.symbol(tokenId), erc6909.decimals(tokenId)
+        );
+        uint128 assetId = poolManager.registerAsset(asset, tokenId, defaultChainId);
+
+        assertEq(assetId, defaultAssetId);
+        assertEq(erc6909.allowance(address(poolManager.escrow()), address(poolManager), tokenId), type(uint256).max);
+        _assertAssetRegistered(asset, assetId, tokenId, 1);
     }
 }

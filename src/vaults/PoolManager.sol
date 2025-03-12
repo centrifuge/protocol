@@ -61,8 +61,8 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     mapping(address => VaultAsset) internal _vaultToAsset;
     mapping(address factory => bool) public vaultFactory;
 
-    mapping(uint128 assetId => AssetIdKey) public _idToAsset;
-    mapping(bytes32 assetIdKey => uint128 assetId) public _assetToId;
+    mapping(uint128 assetId => AssetIdKey) public idToAsset_;
+    mapping(address asset => uint128 assetId) public assetToId;
     mapping(uint64 poolId => mapping(address asset => bool)) allowedAssets;
 
     constructor(address escrow_, address trancheFactory_, address[] memory vaultFactories, uint32 chainId)
@@ -164,20 +164,17 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
             }
         }
 
-        bytes32 key = _formatAssetIdKey(asset, tokenId);
-        assetId = _assetToId[key];
+        assetId = assetToId[asset];
         if (assetId == 0) {
             _assetCounter++;
             assetId = uint128(bytes16(abi.encodePacked(uint32(_chainId), _assetCounter)));
 
-            _idToAsset[assetId] = AssetIdKey(asset, tokenId);
-            _assetToId[key] = assetId;
+            idToAsset_[assetId] = AssetIdKey(asset, tokenId);
+            assetToId[asset] = assetId;
 
             // Give pool manager infinite approval for asset
             // in the escrow to transfer to the user on transfer
-            escrow.approveMax(asset, address(this));
-        } else {
-            // TODO: Fix for ERC6909 after merging https://github.com/centrifuge/protocol-v3/pull/96
+            escrow.approveMax(asset, tokenId, address(this));
         }
 
         gateway.send(
@@ -240,7 +237,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     /// @inheritdoc IPoolManager
     function allowAsset(uint64 poolId, uint128 assetId) public auth {
         require(isPoolActive(poolId), "PoolManager/invalid-pool");
-        address asset = _idToAsset[assetId].asset;
+        address asset = idToAsset_[assetId].asset;
         require(asset != address(0), "PoolManager/unknown-asset");
 
         // TODO: Fix for ERC6909 once escrow PR is in
@@ -251,7 +248,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     /// @inheritdoc IPoolManager
     function disallowAsset(uint64 poolId, uint128 assetId) public auth {
         require(isPoolActive(poolId), "PoolManager/invalid-pool");
-        address asset = _idToAsset[assetId].asset;
+        address asset = idToAsset_[assetId].asset;
         require(asset != address(0), "PoolManager/unknown-asset");
 
         delete allowedAssets[poolId][asset];
@@ -321,7 +318,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         TrancheDetails storage tranche = _pools[poolId].tranches[trancheId];
         require(tranche.token != address(0), "PoolManager/tranche-does-not-exist");
 
-        address asset = _idToAsset[assetId].asset;
+        address asset = idToAsset_[assetId].asset;
         require(computedAt >= tranche.prices[asset].computedAt, "PoolManager/cannot-set-older-price");
 
         tranche.prices[asset] = TranchePrice(price, computedAt);
@@ -443,7 +440,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         require(tranche.token != address(0), "PoolManager/tranche-does-not-exist");
 
         address manager = IBaseVault(vault).manager();
-        uint128 assetId = assetToId(asset);
+        uint128 assetId = assetToId[asset];
         IVaultManager(manager).addVault(poolId, trancheId, vault, asset, assetId);
         _vaultToAsset[vault].isLinked = true;
 
@@ -456,7 +453,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         require(tranche.token != address(0), "PoolManager/tranche-does-not-exist");
 
         address manager = IBaseVault(vault).manager();
-        uint128 assetId = assetToId(asset);
+        uint128 assetId = assetToId[asset];
         IVaultManager(manager).removeVault(poolId, trancheId, vault, asset, assetId);
         _vaultToAsset[vault].isLinked = false;
 
@@ -498,7 +495,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     function getVaultAssetId(address vault) public view override returns (uint128) {
         VaultAsset memory _asset = _vaultToAsset[vault];
         require(_asset.asset != address(0), "PoolManager/unknown-vault");
-        return assetToId(_asset.asset);
+        return assetToId[_asset.asset];
     }
 
     /// @inheritdoc IPoolManager
@@ -516,16 +513,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     }
 
     /// @inheritdoc IPoolManager
-    function assetToId(address asset) public view returns (uint128 assetId) {
-        return _assetToId[_formatAssetIdKey(asset, 0)];
-    }
-
-    /// @inheritdoc IPoolManager
     function idToAsset(uint128 assetId) public view returns (address asset) {
-        return _idToAsset[assetId].asset;
-    }
-
-    function _formatAssetIdKey(address asset, uint256 tokenId) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(asset, tokenId));
+        return idToAsset_[assetId].asset;
     }
 }
