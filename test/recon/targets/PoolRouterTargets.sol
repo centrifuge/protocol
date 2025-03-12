@@ -159,4 +159,10 @@ abstract contract PoolRouterTargets is
     function poolRouter_multicall(bytes[] memory data) public payable asActor {
         poolRouter.multicall{value: msg.value}(data);
     }
+
+    function poolRouter_multicall_clamped(bytes[] memory data) public payable asActor {
+        poolRouter.multicall{value: msg.value}(queuedCalls);
+
+        queuedCalls = new bytes[](0);
+    }
 }
