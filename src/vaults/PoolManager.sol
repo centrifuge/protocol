@@ -132,7 +132,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
 
         if (tokenId == 0) {
             try IERC20Metadata(asset).name() returns (string memory _name) {
-                name = string(bytes(_name).sliceZeroPadded(0, 128));
+                name = _name;
             } catch {}
 
             try IERC20Metadata(asset).symbol() returns (string memory _symbol) {
@@ -148,7 +148,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
             }
         } else {
             try IERC6909MetadataExt(asset).name(tokenId) returns (string memory _name) {
-                name = string(bytes(_name).sliceZeroPadded(0, 128));
+                name = _name;
             } catch {}
 
             try IERC6909MetadataExt(asset).symbol(tokenId) returns (string memory _symbol) {

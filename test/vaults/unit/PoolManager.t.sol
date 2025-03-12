@@ -1,18 +1,21 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
+import "test/vaults/BaseTest.sol";
+import {MockHook} from "test/vaults/mocks/MockHook.sol";
+
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
-
-import "test/vaults/BaseTest.sol";
-import {MockHook} from "test/vaults/mocks/MockHook.sol";
 
 import {IRestrictionManager} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBaseVault, IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
+import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
 
 contract PoolManagerTest is BaseTest {
     using MessageLib for *;
@@ -612,5 +615,50 @@ contract PoolManagerTest is BaseTest {
             }
         }
         return false;
+    }
+}
+
+contract PoolManagerRegisterAssetTest is BaseTest {
+    using MessageLib for *;
+    using CastLib for *;
+    using BytesLib for *;
+
+    uint32 constant STORAGE_INDEX_ASSET_COUNTER = 2;
+    uint256 constant STORAGE_OFFSET_ASSET_COUNTER = 20;
+
+    function _assertAssetCounterEq(uint32 expected) internal view {
+        bytes32 slotData = vm.load(address(poolManager), bytes32(uint256(STORAGE_INDEX_ASSET_COUNTER)));
+
+        // Extract `_assetCounter` at offset 20 bytes (rightmost 4 bytes)
+        uint32 assetCounter = uint32(uint256(slotData >> (STORAGE_OFFSET_ASSET_COUNTER * 8)));
+
+        // Verify the loaded value matches the expected value
+        assertEq(assetCounter, expected, "Asset counter does not match expected value");
+    }
+
+    function _assertAssetRegistered(address asset, uint128 assetId, uint32 expectedAssetCounter) internal view {
+        assertEq(poolManager.assetToId(asset), assetId);
+        assertEq(poolManager.idToAsset(assetId), asset);
+        _assertAssetCounterEq(expectedAssetCounter);
+    }
+
+    function testRegisterAssetERC20() public {
+        address asset = address(erc20);
+        console.log("AssetId: ", defaultAssetId);
+        bytes memory message = MessageLib.RegisterAsset({
+            assetId: defaultAssetId,
+            name: erc20.name(),
+            symbol: erc20.symbol().toBytes32(),
+            decimals: erc20.decimals()
+        }).serialize();
+
+        vm.expectEmit();
+        emit IGateway.SendMessage(message);
+        emit IPoolManager.RegisterAsset(defaultAssetId, asset, 0, erc20.name(), erc20.symbol(), erc20.decimals());
+        uint128 assetId = poolManager.registerAsset(asset, 0, defaultChainId);
+
+        assertEq(assetId, defaultAssetId);
+        assertEq(erc20.allowance(address(poolManager.escrow()), address(poolManager)), type(uint256).max);
+        _assertAssetRegistered(asset, assetId, 1);
     }
 }
