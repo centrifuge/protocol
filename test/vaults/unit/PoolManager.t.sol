@@ -12,7 +12,7 @@ import {MockHook} from "test/vaults/mocks/MockHook.sol";
 
 import {IRestrictionManager} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
-import {IBaseVault} from "src/vaults/interfaces/IVaultManager.sol";
+import {IBaseVault, IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 
 contract PoolManagerTest is BaseTest {
     using MessageLib for *;
@@ -537,33 +537,30 @@ contract PoolManagerTest is BaseTest {
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, price, uint64(block.timestamp - 1));
     }
 
-    // TODO: Fix
-    /*
     function testVaultMigration() public {
-        (address oldVault_,) = deploySimpleVault();
+        (address oldVault_, uint128 assetId) = deploySimpleVault();
 
         ERC7540Vault oldVault = ERC7540Vault(oldVault_);
         uint64 poolId = oldVault.poolId();
         bytes16 trancheId = oldVault.trancheId();
         address asset = address(oldVault.asset());
 
-        ERC7540VaultFactory newVaultFactory = new ERC7540VaultFactory(address(root));
+        ERC7540VaultFactory newVaultFactory = new ERC7540VaultFactory(address(root), address(investmentManager));
 
         // rewire factory contracts
         newVaultFactory.rely(address(poolManager));
         investmentManager.rely(address(newVaultFactory));
-        poolManager.file("vaultFactory", address(newVaultFactory));
+        poolManager.file("vaultFactory", address(newVaultFactory), true);
 
         // Remove old vault
-        poolManager.removeVault(poolId, trancheId, asset);
-        vm.expectRevert(bytes("PoolManager/unknown-vault"));
-        poolManager.getVault(poolId, trancheId, asset);
+        address vaultManager = IBaseVault(oldVault_).manager();
+        IVaultManager(vaultManager).removeVault(poolId, trancheId, oldVault_, asset, assetId);
+        assertEq(Tranche(poolManager.getTranche(poolId, trancheId)).vault(asset), address(0));
 
         // Deploy new vault
-        address newVault = poolManager.deployVault(poolId, trancheId, asset);
-        assertEq(poolManager.getVault(poolId, trancheId, asset), newVault);
+        address newVault = poolManager.deployVault(poolId, trancheId, asset, address(newVaultFactory));
+        assert(oldVault_ != newVault);
     }
-    */
 
     function testPoolManagerCannotTransferTrancheTokensOnAccountRestrictions(uint128 amount) public {
         uint64 validUntil = uint64(block.timestamp + 7 days);
