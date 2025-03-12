@@ -142,15 +142,11 @@ contract EscrowTest is BaseTest {
         erc20.mint(address(escrow), 300);
         escrow.deposit(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 100);
 
-        assertEq(
-            escrow.availableBalanceOf(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID), 0, "100 - 100 = 0"
-        );
+        assertEq(escrow.availableBalanceOf(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID), 0, "100 - 100 = 0");
 
         escrow.deposit(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 200);
         assertEq(
-            escrow.availableBalanceOf(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID),
-            200,
-            "300 - 100 = 200"
+            escrow.availableBalanceOf(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID), 200, "300 - 100 = 200"
         );
     }
 
@@ -173,15 +169,11 @@ contract EscrowTest is BaseTest {
         erc20.mint(address(escrow), 300);
         escrow.deposit(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 100);
 
-        assertEq(
-            escrow.availableBalanceOf(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID), 0, "100 - 100 = 0"
-        );
+        assertEq(escrow.availableBalanceOf(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID), 0, "100 - 100 = 0");
 
         escrow.deposit(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID, 200);
         assertEq(
-            escrow.availableBalanceOf(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID),
-            200,
-            "300 - 100 = 200"
+            escrow.availableBalanceOf(address(erc20), TEST_TOKEN_ID, TEST_POOL_ID, TEST_SC_ID), 200, "300 - 100 = 200"
         );
 
         vm.expectRevert(IPerPoolEscrow.InsufficientReservedAmount.selector);

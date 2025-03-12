@@ -27,15 +27,16 @@ contract Escrow is Auth, IPerPoolEscrow, IEscrow {
         if (IERC20(token).allowance(address(this), spender) == 0) {
             SafeTransferLib.safeApprove(token, spender, type(uint256).max);
             emit Approve(token, spender, type(uint256).max);
-        }    }
+        }
+    }
 
     /// @inheritdoc IEscrow
     function approveMax(address token, uint256 tokenId, address spender) external auth {
         if (tokenId == 0) {
-        if (IERC20(token).allowance(address(this), spender) == 0) {
-            SafeTransferLib.safeApprove(token, spender, type(uint256).max);
-            emit Approve(token, spender, type(uint256).max);
-        }
+            if (IERC20(token).allowance(address(this), spender) == 0) {
+                SafeTransferLib.safeApprove(token, spender, type(uint256).max);
+                emit Approve(token, spender, type(uint256).max);
+            }
         } else {
             if (IERC6909(token).allowance(address(this), spender, tokenId) == 0) {
                 IERC6909(token).approve(spender, tokenId, type(uint256).max);
