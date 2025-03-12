@@ -104,10 +104,12 @@ contract Escrow is Auth, IPerPoolEscrow, IEscrow {
             require(curholding >= prevholding + value, InsufficientDeposit());
         }
 
-        pendingDeposit[poolId][scId][token][tokenId] -= value;
+        uint256 newPending = pendingDeposit[poolId][scId][token][tokenId] - value;
+        pendingDeposit[poolId][scId][token][tokenId] = newPending;
         holding[poolId][scId][token][tokenId] += value;
 
         emit Deposit(token, tokenId, poolId, scId, value);
+        emit PendingDeposit(token, tokenId, poolId, scId, newPending);
     }
 
     /// @inheritdoc IPerPoolEscrow
