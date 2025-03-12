@@ -17,9 +17,7 @@ contract OperatorTest is BaseTest {
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
 
-        centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp)
-        );
+        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
 
         erc20.mint(investor, amount);
 
@@ -46,12 +44,7 @@ contract OperatorTest is BaseTest {
         assertEq(vault.pendingDepositRequest(0, operator), 0);
 
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId(),
-            vault.trancheId(),
-            bytes32(bytes20(investor)),
-            assetId,
-            uint128(amount),
-            uint128(amount)
+            vault.poolId(), vault.trancheId(), bytes32(bytes20(investor)), assetId, uint128(amount), uint128(amount)
         );
 
         vm.prank(operator);
@@ -78,9 +71,7 @@ contract OperatorTest is BaseTest {
         address operator = makeAddr("operator");
         ERC7540Vault vault = ERC7540Vault(vault_);
 
-        centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp)
-        );
+        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
 
         erc20.mint(controller, amount);
 
@@ -177,12 +168,7 @@ contract OperatorTest is BaseTest {
         assertEq(vault.pendingRedeemRequest(0, operator), 0);
 
         centrifugeChain.isFulfilledRedeemRequest(
-            vault.poolId(),
-            vault.trancheId(),
-            bytes32(bytes20(investor)),
-            assetId,
-            uint128(amount),
-            uint128(amount)
+            vault.poolId(), vault.trancheId(), bytes32(bytes20(investor)), assetId, uint128(amount), uint128(amount)
         );
 
         vm.prank(operator);
@@ -210,9 +196,7 @@ contract OperatorTest is BaseTest {
         address operator = makeAddr("operator");
         ERC7540Vault vault = ERC7540Vault(vault_);
 
-        centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp)
-        );
+        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
 
         erc20.mint(controller, amount);
 
