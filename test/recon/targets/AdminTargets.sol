@@ -55,6 +55,18 @@ abstract contract AdminTargets is
         poolManager.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
     }
 
+    // === PoolRouter === //
+    function poolRouter_execute(PoolId poolId, bytes[] memory data) public payable asAdmin {
+        poolRouter.execute{value: msg.value}(poolId, data);
+    }
+
+    function poolRouter_execute_clamped(PoolId poolId) public payable asAdmin {
+        // TODO: clamp poolId here to one of the created pools
+        poolRouter.execute{value: msg.value}(poolId, queuedCalls);
+
+        queuedCalls = new bytes[](0);
+    }
+
     // === SingleShareClass === //
 
     function singleShareClass_claimDepositUntilEpoch(PoolId poolId, ShareClassId shareClassId_, bytes32 investor, AssetId depositAssetId, uint32 endEpochId) public asAdmin {

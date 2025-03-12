@@ -18,7 +18,6 @@ abstract contract PoolRouterTargets is
     BaseTargetFunctions,
     Properties
 {
-    bytes[] internal queuedCalls;
 
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
     
@@ -145,17 +144,8 @@ abstract contract PoolRouterTargets is
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
     
     /// === EXECUTION FUNCTIONS === ///
-    function poolRouter_execute(PoolId poolId, bytes[] memory data) public payable asActor {
-        poolRouter.execute{value: msg.value}(poolId, data);
-    }
 
-    function poolRouter_execute_clamped(PoolId poolId) public payable asActor {
-        // TODO: clamp poolId here to one of the created pools
-        poolRouter.execute{value: msg.value}(poolId, queuedCalls);
-
-        queuedCalls = new bytes[](0);
-    }
-
+    /// Multicall is publicly exposed without access protections so can be called by anyone
     function poolRouter_multicall(bytes[] memory data) public payable asActor {
         poolRouter.multicall{value: msg.value}(data);
     }
