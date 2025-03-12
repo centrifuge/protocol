@@ -680,6 +680,12 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         assert(assetIdA != assetIdB);
     }
 
+    function testRegisterSingleAssetERC20_emptyNameSymbol() public {
+        ERC20 asset = _newErc20("", "", 10);
+        poolManager.registerAsset(address(asset), 0, defaultChainId);
+        _assertAssetRegistered(address(asset), defaultAssetId, 0, 1);
+    }
+
     function testRegisterSingleAssetERC6909(uint8 decimals) public {
         uint256 tokenId = uint256(bound(decimals, 2, 18));
         MockERC6909 erc6909 = new MockERC6909();
