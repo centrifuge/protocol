@@ -389,7 +389,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
 
         // Needed as safeguard against non-validated vaults
         // I.e. we only accept vaults that have been deployed by the pool manager
-        require(_vaultToAsset[m.vault].asset != address(0), "PoolManager/unknown-vault");
+        require(_vaultToAsset[vault].asset != address(0), "PoolManager/unknown-vault");
 
         if (m.isLinked) {
             linkVault(poolId, trancheId, idToAsset(m.assetId), vault);
