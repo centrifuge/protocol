@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {ERC6909} from "src/misc/ERC6909.sol";
 import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
 
-contract MockERC6909 is IERC6909MetadataExt {
+contract MockERC6909 is IERC6909MetadataExt, ERC6909 {
     function decimals(uint256 tokenId) external pure returns (uint8) {
         return uint8(tokenId);
     }
