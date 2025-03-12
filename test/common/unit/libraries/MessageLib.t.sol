@@ -27,6 +27,7 @@ contract TestMessageLibCategories is Test {
         assert(MessageCategory.Pool == uint8(MessageType.UpdateShareClassHook).category());
         assert(MessageCategory.Pool == uint8(MessageType.TransferShares).category());
         assert(MessageCategory.Pool == uint8(MessageType.UpdateRestriction).category());
+        assert(MessageCategory.Pool == uint8(MessageType.UpdateContract).category());
         assert(MessageCategory.Investment == uint8(MessageType.DepositRequest).category());
         assert(MessageCategory.Investment == uint8(MessageType.RedeemRequest).category());
         assert(MessageCategory.Investment == uint8(MessageType.FulfilledDepositRequest).category());
@@ -285,6 +286,48 @@ contract TestMessageLibIdentities is Test {
         assertEq(aa.user, bb.user);
 
         // This message is a submessage and has not static message length defined
+    }
+
+    function testUpdateContract() public pure {
+        MessageLib.UpdateContract memory a = MessageLib.UpdateContract({
+            poolId: 1,
+            scId: bytes16("sc"),
+            target: bytes32("updateContract"),
+            payload: bytes("ABCD")
+        });
+        MessageLib.UpdateContract memory b = MessageLib.deserializeUpdateContract(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.target, b.target);
+        assertEq(a.payload, b.payload);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+
+        // Check the payload length is correctly encoded as little endian
+        assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
+    }
+
+    function testUpdateContractVaultUpdate() public pure {
+        MessageLib.UpdateContractVaultUpdate memory a =
+            MessageLib.UpdateContractVaultUpdate({factory: address(0), assetId: 1, isLinked: false, vault: address(0)});
+        MessageLib.UpdateContractVaultUpdate memory b = MessageLib.deserializeUpdateContractVaultUpdate(a.serialize());
+
+        assertEq(a.factory, b.factory);
+        assertEq(a.assetId, b.assetId);
+        assertEq(a.isLinked, b.isLinked);
+        assertEq(a.vault, b.vault);
+
+        // This message is a submessage and has not static message length defined
+
+        MessageLib.UpdateContractVaultUpdate memory c =
+            MessageLib.UpdateContractVaultUpdate({factory: address(1), assetId: 1, isLinked: true, vault: address(1)});
+        MessageLib.UpdateContractVaultUpdate memory d = MessageLib.deserializeUpdateContractVaultUpdate(c.serialize());
+
+        assertEq(c.factory, d.factory);
+        assertEq(c.assetId, d.assetId);
+        assertEq(c.isLinked, d.isLinked);
+        assertEq(c.vault, d.vault);
     }
 
     function testDepositRequest() public pure {
