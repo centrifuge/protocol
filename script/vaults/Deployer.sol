@@ -61,7 +61,7 @@ contract Deployer is Script {
         address[] memory vaultFactories = new address[](1);
         vaultFactories[0] = vaultFactory;
 
-        poolManager = new PoolManager(address(escrow), trancheFactory, vaultFactories);
+        poolManager = new PoolManager(address(escrow), trancheFactory, vaultFactories, uint32(block.chainid));
         gasService = new GasService(messageCost, proofCost, gasPrice, tokenPrice);
         gateway = new Gateway(address(root), address(poolManager), address(investmentManager), address(gasService));
         router = new CentrifugeRouter(address(routerEscrow), address(gateway), address(poolManager));
