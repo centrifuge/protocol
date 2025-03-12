@@ -67,7 +67,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         assetId = newAssetId(123);
 
         // necessary setup via the PoolRouter
-        poolRouter_setPoolMetadata(bytes("Testing pool"));
         poolRouter_addShareClass(SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
         poolRouter_createHolding(scId, assetId, identityValuation, 0x01);
         poolRouter_execute_clamped(poolId);
@@ -80,7 +79,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         poolRouter_execute_clamped(poolId);
 
         // claim deposit
-        poolManager_claimDeposit(poolId, scId, assetId, INVESTOR);
+        poolManager_claimDeposit(poolId, scId, 123, INVESTOR);
 
         return (poolId, scId);
     }
@@ -97,6 +96,20 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         poolRouter_execute_clamped(poolId);
 
         // claim redemption
-        poolManager_claimRedeem_clamped(poolId, scId, assetId);
+        poolManager_claimRedeem_clamped(poolId, scId, 123);
+    }
+
+    function test_shortcut_create_pool_and_holding() public {
+        shortcut_create_pool_and_holding(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), true, 0x01);
+    }
+
+    function test_shortcut_deposit_and_claim() public {
+        shortcut_deposit_and_claim(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+    }
+
+    function test_shortcut_redeem_and_claim() public {
+        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+        
+        shortcut_redeem_and_claim(poolId, scId, SHARE_AMOUNT, 123, uint128(10000000), d18(10000000), true);
     }
 }

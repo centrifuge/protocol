@@ -22,15 +22,17 @@ abstract contract PoolManagerTargets is
 {
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
     /// CLAMPED HANDLERS /// 
-    function poolManager_claimDeposit_clamped(PoolId poolId, ShareClassId scId, AssetId assetId) public asActor {
+    function poolManager_claimDeposit_clamped(PoolId poolId, ShareClassId scId, uint32 isoCode) public asActor {
         bytes32 investor = Helpers.addressToBytes32(_getActor());
+        AssetId assetId = newAssetId(isoCode);
 
         poolManager.claimDeposit(poolId, scId, assetId, investor);
     }
 
-    function poolManager_claimRedeem_clamped(PoolId poolId, ShareClassId scId, AssetId assetId) public asActor {
+    function poolManager_claimRedeem_clamped(PoolId poolId, ShareClassId scId, uint32 isoCode) public asActor {
         bytes32 investor = Helpers.addressToBytes32(_getActor());
-
+        AssetId assetId = newAssetId(isoCode);
+        
         poolManager.claimRedeem(poolId, scId, assetId, investor);
     }
 
@@ -45,11 +47,15 @@ abstract contract PoolManagerTargets is
         return poolId;
     }
 
-    function poolManager_claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) public asActor {
+    function poolManager_claimDeposit(PoolId poolId, ShareClassId scId, uint32 isoCode, bytes32 investor) public asActor {
+        AssetId assetId = newAssetId(isoCode);
+        
         poolManager.claimDeposit(poolId, scId, assetId, investor);
     }
 
-    function poolManager_claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) public asActor {
+    function poolManager_claimRedeem(PoolId poolId, ShareClassId scId, uint32 isoCode, bytes32 investor) public asActor {
+        AssetId assetId = newAssetId(isoCode);
+        
         poolManager.claimRedeem(poolId, scId, assetId, investor);
     }
     

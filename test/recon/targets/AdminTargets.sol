@@ -122,31 +122,6 @@ abstract contract AdminTargets is
         queuedCalls.push(abi.encodeWithSelector(poolRouter.updateHoldingValuation.selector, scId, assetId, valuation));
     }
 
-    /// === SHORTCUT FUNCTIONS === ///
-    // NOTE: these are shortcuts for the most common calls
-    function poolRouter_add_share_class_and_holding(
-        string memory name, 
-        string memory symbol, 
-        bytes32 salt, 
-        bytes memory data, 
-        ShareClassId scId, 
-        AssetId assetId, 
-        uint8 valuationIndex, 
-        uint24 prefix) public 
-        {
-        poolRouter_addShareClass(name, symbol, salt, data);
-
-        valuationIndex %= 2;
-        IERC7726 valuation;
-        if (valuationIndex == 0) {
-            valuation = identityValuation;
-        } else {
-            valuation = transientValuation;
-        }
-
-        poolRouter_createHolding(scId, assetId, valuation, prefix);
-    }
-
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
 
     // === PoolManager === //
