@@ -32,6 +32,8 @@ import "forge-std/Test.sol";
 import {GasSnapshot} from "forge-gas-snapshot/GasSnapshot.sol";
 
 contract BaseTest is Deployer, GasSnapshot, Test {
+    using MessageLib for *;
+
     MockCentrifugeChain centrifugeChain;
     MockGasService mockedGasService;
     MockAdapter adapter1;
@@ -50,6 +52,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
 
     // default values
     uint32 public defaultChainId = 1;
+    uint256 public defaultTokenId = 0;
     uint128 public defaultAssetId = uint128(bytes16(abi.encodePacked(uint32(defaultChainId), uint32(1))));
     uint128 public defaultPrice = 1 * 10 ** 18;
     uint8 public defaultDecimals = 8;
@@ -161,9 +164,15 @@ contract BaseTest is Deployer, GasSnapshot, Test {
 
         poolManager.updateTranchePrice(poolId, trancheId, assetId, uint128(10 ** 18), uint64(block.timestamp));
 
-        // TODO: Use .update() from poolManager if possible
-        vaultAddress = poolManager.deployVault(poolId, trancheId, asset, vaultFactory);
-        poolManager.linkVault(poolId, trancheId, asset, vaultAddress);
+        // Trigger new vault deployment via UpdateContract
+        bytes memory vaultUpdate = MessageLib.UpdateContractVaultUpdate({
+            factory: vaultFactory,
+            assetId: assetId,
+            isLinked: true,
+            vault: address(0)
+        }).serialize();
+        poolManager.update(poolId, trancheId, vaultUpdate);
+        vaultAddress = ITranche(poolManager.getTranche(poolId, trancheId)).vault(asset);
     }
 
     function deployVault(
@@ -173,12 +182,31 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         string memory tokenSymbol,
         bytes16 trancheId
     ) public returns (address vaultAddress, uint128 assetId) {
-        return
-            deployVault(poolId, decimals, restrictionManager, tokenName, tokenSymbol, trancheId, address(erc20), 0, 0);
+        return deployVault(
+            poolId,
+            decimals,
+            restrictionManager,
+            tokenName,
+            tokenSymbol,
+            trancheId,
+            address(erc20),
+            defaultTokenId,
+            defaultChainId
+        );
     }
 
     function deploySimpleVault() public returns (address vaultAddress, uint128 assetId) {
-        return deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(erc20), 0, 0);
+        return deployVault(
+            5,
+            6,
+            restrictionManager,
+            "name",
+            "symbol",
+            bytes16(bytes("1")),
+            address(erc20),
+            defaultTokenId,
+            defaultChainId
+        );
     }
 
     function deposit(address _vault, address _investor, uint256 amount) public {

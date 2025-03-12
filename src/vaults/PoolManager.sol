@@ -30,6 +30,13 @@ import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 
+struct AssetIdKey {
+    /// @dev The address of the asset
+    address asset;
+    /// @dev The ERC6909 token id or 0, if the underlying asset is an ERC20
+    uint256 tokenId;
+}
+
 /// @title  Pool Manager
 /// @notice This contract manages which pools & tranches exist,
 ///         as well as managing allowed pool currencies, and incoming and outgoing transfers.
@@ -48,13 +55,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     ITrancheFactory public trancheFactory;
 
     uint32 internal _assetCounter;
-
-    struct AssetIdKey {
-        /// @dev The address of the asset
-        address asset;
-        /// @dev The ERC6909 token id or 0, if the underlying asset is an ERC20
-        uint256 tokenId;
-    }
 
     mapping(uint64 poolId => Pool) internal _pools;
     mapping(address => VaultAsset) internal _vaultToAsset;
