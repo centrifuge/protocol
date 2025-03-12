@@ -257,6 +257,7 @@ contract MultiShareClassSimpleTest is MultiShareClassBaseTest {
     {
         vm.assume(bytes(name).length > 0 && bytes(name).length <= 128);
         vm.assume(bytes(symbol).length > 0 && bytes(symbol).length <= 32);
+        vm.assume(salt != SC_SALT && salt != bytes32(0));
         vm.assume(salt != bytes32(0));
 
         vm.expectEmit();

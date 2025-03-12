@@ -171,4 +171,9 @@ library BytesLib {
 
         return tempBytes16;
     }
+
+    function toBool(bytes memory _bytes, uint256 _start) internal pure returns (bool) {
+        require(_bytes.length > _start, "toBool_outOfBounds");
+        return _bytes[_start] != 0;
+    }
 }
