@@ -150,7 +150,7 @@ contract EscrowTest is BaseTest {
         );
     }
 
-    function testPendingWithdrawDecrease() public {
+    function testReserveDecrease() public {
         Escrow escrow = new Escrow(address(this));
 
         vm.prank(randomUser);
