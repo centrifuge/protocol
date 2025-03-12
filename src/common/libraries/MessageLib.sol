@@ -17,7 +17,7 @@ enum MessageType {
     RecoverTokens,
     // -- Gas messages 7
     UpdateGasPrice,
-    // -- Pool manager messages 8 - 17
+    // -- Pool manager messages 8 - 18
     RegisterAsset,
     NotifyPool,
     NotifyShareClass,
@@ -28,7 +28,8 @@ enum MessageType {
     UpdateShareClassHook,
     TransferShares,
     UpdateRestriction,
-    // -- Investment manager messages 18 - 26
+    UpdateContract,
+    // -- Investment manager messages 19 - 27
     DepositRequest,
     RedeemRequest,
     FulfilledDepositRequest,
@@ -46,6 +47,12 @@ enum UpdateRestrictionType {
     Member,
     Freeze,
     Unfreeze
+}
+
+enum UpdateContractType {
+    /// @dev Placeholder for null update restriction type
+    Invalid,
+    VaultUpdate
 }
 
 enum MessageCategory {
@@ -86,6 +93,7 @@ library MessageLib {
         (57 << uint8(MessageType.UpdateShareClassHook) * 8) +
         (73 << uint8(MessageType.TransferShares) * 8) +
         (27 << uint8(MessageType.UpdateRestriction) * 8) +
+        (59 << uint8(MessageType.UpdateContract) * 8) +
         (89 << uint8(MessageType.DepositRequest) * 8) +
         (89 << uint8(MessageType.RedeemRequest) * 8) +
         (105 << uint8(MessageType.FulfilledDepositRequest) * 8) +
@@ -112,6 +120,8 @@ library MessageLib {
 
         if (kind == uint8(MessageType.UpdateRestriction)) {
             length += message.toUint16(length - 2); //payloadLength
+        } else if (kind == uint8(MessageType.UpdateContract)) {
+            length += message.toUint16(length - 2); //payloadLength
         }
     }
 
@@ -124,9 +134,9 @@ library MessageLib {
             return MessageCategory.Root;
         } else if (code == 7) {
             return MessageCategory.Gas;
-        } else if (code >= 8 && code <= 17) {
+        } else if (code >= 8 && code <= 18) {
             return MessageCategory.Pool;
-        } else if (code >= 18 && code <= 26) {
+        } else if (code >= 19 && code <= 27) {
             return MessageCategory.Investment;
         } else {
             return MessageCategory.Other;
@@ -135,6 +145,10 @@ library MessageLib {
 
     function updateRestrictionType(bytes memory message) internal pure returns (UpdateRestrictionType) {
         return UpdateRestrictionType(message.toUint8(0));
+    }
+
+    function updateContractType(bytes memory message) internal pure returns (UpdateContractType) {
+        return UpdateContractType(message.toUint8(0));
     }
 
     //---------------------------------------
@@ -589,6 +603,64 @@ library MessageLib {
 
     function serialize(UpdateRestrictionUnfreeze memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(UpdateRestrictionType.Unfreeze, t.user);
+    }
+
+    //---------------------------------------
+    //    UpdateContract
+    //---------------------------------------
+
+    struct UpdateContract {
+        uint64 poolId;
+        bytes16 scId;
+        bytes32 target;
+        bytes payload;
+    }
+
+    function deserializeUpdateContract(bytes memory data) internal pure returns (UpdateContract memory) {
+        require(messageType(data) == MessageType.UpdateContract, UnknownMessageType());
+        uint16 payloadLength = data.toUint16(57);
+        return UpdateContract({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            target: data.toBytes32(25),
+            payload: data.slice(59, payloadLength)
+        });
+    }
+
+    function serialize(UpdateContract memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(
+            MessageType.UpdateContract, t.poolId, t.scId, t.target, uint16(t.payload.length), t.payload
+        );
+    }
+
+    //---------------------------------------
+    //   UpdateContract.VaultUpdate (submsg)
+    //---------------------------------------
+
+    struct UpdateContractVaultUpdate {
+        address factory;
+        uint128 assetId;
+        bool isLinked;
+        address vault;
+    }
+
+    function deserializeUpdateContractVaultUpdate(bytes memory data)
+        internal
+        pure
+        returns (UpdateContractVaultUpdate memory)
+    {
+        require(updateContractType(data) == UpdateContractType.VaultUpdate, UnknownMessageType());
+
+        return UpdateContractVaultUpdate({
+            factory: data.toAddress(1),
+            assetId: data.toUint128(21),
+            isLinked: data.toBool(37),
+            vault: data.toAddress(38)
+        });
+    }
+
+    function serialize(UpdateContractVaultUpdate memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(UpdateContractType.VaultUpdate, t.factory, t.assetId, t.isLinked, t.vault);
     }
 
     //---------------------------------------

@@ -103,7 +103,7 @@ contract AssetShareConversionTest is BaseTest {
         assertEq(vault.pricePerShare(), 1.2e18);
     }
 
-    function testPriceWorksAfterRemovingVault(uint64 poolId, bytes16 trancheId, uint128 assetId) public {
+    function testPriceWorksAfterUnlinkVault(uint64 poolId, bytes16 trancheId, uint128 assetId) public {
         vm.assume(assetId > 0);
 
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
@@ -121,7 +121,7 @@ contract AssetShareConversionTest is BaseTest {
         assertEq(vault.priceLastUpdated(), uint64(block.timestamp));
         assertEq(vault.pricePerShare(), 1.2e6);
 
-        poolManager.removeVault(poolId, trancheId, address(vault.asset()));
+        poolManager.unlinkVault(poolId, trancheId, address(vault.asset()), address(vault));
 
         assertEq(vault.priceLastUpdated(), uint64(block.timestamp));
         assertEq(vault.pricePerShare(), 1.2e6);

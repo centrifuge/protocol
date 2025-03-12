@@ -154,6 +154,9 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
             } else if (kind == MessageType.UpdateRestriction) {
                 MessageLib.UpdateRestriction memory m = MessageLib.deserializeUpdateRestriction(message);
                 poolManager.updateRestriction(m.poolId, m.scId, m.payload);
+            } else if (kind == MessageType.UpdateContract) {
+                MessageLib.UpdateContract memory m = MessageLib.deserializeUpdateContract(message);
+                poolManager.updateContract(m.poolId, m.scId, address(bytes20(m.target)), m.payload);
             } else {
                 revert InvalidMessage(uint8(kind));
             }

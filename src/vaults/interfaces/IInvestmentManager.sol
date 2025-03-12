@@ -3,6 +3,8 @@ pragma solidity 0.8.28;
 
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 
+import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
+
 /// @dev Vault requests and deposit/redeem bookkeeping per user
 struct InvestmentState {
     /// @dev Shares that can be claimed using `mint()`
@@ -27,7 +29,7 @@ struct InvestmentState {
     bool pendingCancelRedeemRequest;
 }
 
-interface IInvestmentManager is IRecoverable {
+interface IInvestmentManager is IRecoverable, IVaultManager {
     // --- Events ---
     event File(bytes32 indexed what, address data);
     event TriggerRedeemRequest(
@@ -35,7 +37,7 @@ interface IInvestmentManager is IRecoverable {
     );
 
     /// @notice Returns the investment state
-    function investments(address vault, address investor)
+    function investments(address vaultAddr, address investor)
         external
         view
         returns (
@@ -67,7 +69,7 @@ interface IInvestmentManager is IRecoverable {
     /// @dev    The assets required to fulfill the deposit request have to be locked and are transferred from the
     ///         owner to the escrow, even though the share payout can only happen after epoch execution.
     ///         The receiver becomes the owner of deposit request fulfillment.
-    function requestDeposit(address vault, uint256 assets, address receiver, address owner, address source)
+    function requestDeposit(address vaultAddr, uint256 assets, address receiver, address owner, address source)
         external
         returns (bool);
 
@@ -79,7 +81,7 @@ interface IInvestmentManager is IRecoverable {
     /// @dev    The shares required to fulfill the redemption request have to be locked and are transferred from the
     ///         owner to the escrow, even though the asset payout can only happen after epoch execution.
     ///         The receiver becomes the owner of redeem request fulfillment.
-    function requestRedeem(address vault, uint256 shares, address receiver, address, /* owner */ address source)
+    function requestRedeem(address vaultAddr, uint256 shares, address receiver, address, /* owner */ address source)
         external
         returns (bool);
 
@@ -92,7 +94,7 @@ interface IInvestmentManager is IRecoverable {
     ///         if orders could be cancelled successfully.
     /// @dev    The cancellation request might fail in case the pending deposit order already got fulfilled on
     ///         Centrifuge.
-    function cancelDepositRequest(address vault, address owner, address source) external;
+    function cancelDepositRequest(address vaultAddr, address owner, address source) external;
 
     /// @notice Requests the cancellation of an pending redeem request. Liquidity pools have to request the
     ///         cancellation of outstanding requests from Centrifuge before actual shares can be unlocked and
@@ -103,7 +105,7 @@ interface IInvestmentManager is IRecoverable {
     ///         if the orders could be cancelled successfully.
     /// @dev    The cancellation request might fail in case the pending redeem order already got fulfilled on
     ///         Centrifuge.
-    function cancelRedeemRequest(address vault, address owner, address source) external;
+    function cancelRedeemRequest(address vaultAddr, address owner, address source) external;
 
     /// @notice Fulfills pending deposit requests after successful epoch execution on Centrifuge.
     ///         The amount of shares that can be claimed by the user is minted and moved to the escrow contract.
@@ -215,50 +217,50 @@ interface IInvestmentManager is IRecoverable {
 
     // --- View functions ---
     /// @notice Converts the assets value to share decimals.
-    function convertToShares(address vault, uint256 _assets) external view returns (uint256 shares);
+    function convertToShares(address vaultAddr, uint256 _assets) external view returns (uint256 shares);
 
     /// @notice Converts the shares value to assets decimals.
-    function convertToAssets(address vault, uint256 _shares) external view returns (uint256 assets);
+    function convertToAssets(address vaultAddr, uint256 _shares) external view returns (uint256 assets);
 
     /// @notice Returns the max amount of assets based on the unclaimed amount of shares after at least one successful
     ///         deposit order fulfillment on Centrifuge.
-    function maxDeposit(address vault, address user) external view returns (uint256);
+    function maxDeposit(address vaultAddr, address user) external view returns (uint256);
 
     /// @notice Returns the max amount of shares a user can claim after at least one successful deposit order
     ///         fulfillment on Centrifuge.
-    function maxMint(address vault, address user) external view returns (uint256 shares);
+    function maxMint(address vaultAddr, address user) external view returns (uint256 shares);
 
     /// @notice Returns the max amount of assets a user can claim after at least one successful redeem order fulfillment
     ///         on Centrifuge.
-    function maxWithdraw(address vault, address user) external view returns (uint256 assets);
+    function maxWithdraw(address vaultAddr, address user) external view returns (uint256 assets);
 
     /// @notice Returns the max amount of shares based on the unclaimed number of assets after at least one successful
     ///         redeem order fulfillment on Centrifuge.
-    function maxRedeem(address vault, address user) external view returns (uint256 shares);
+    function maxRedeem(address vaultAddr, address user) external view returns (uint256 shares);
 
     /// @notice Indicates whether a user has pending deposit requests and returns the total deposit request asset
     /// request value.
-    function pendingDepositRequest(address vault, address user) external view returns (uint256 assets);
+    function pendingDepositRequest(address vaultAddr, address user) external view returns (uint256 assets);
 
     /// @notice Indicates whether a user has pending redeem requests and returns the total share request value.
-    function pendingRedeemRequest(address vault, address user) external view returns (uint256 shares);
+    function pendingRedeemRequest(address vaultAddr, address user) external view returns (uint256 shares);
 
     /// @notice Indicates whether a user has pending deposit request cancellations.
-    function pendingCancelDepositRequest(address vault, address user) external view returns (bool isPending);
+    function pendingCancelDepositRequest(address vaultAddr, address user) external view returns (bool isPending);
 
     /// @notice Indicates whether a user has pending redeem request cancellations.
-    function pendingCancelRedeemRequest(address vault, address user) external view returns (bool isPending);
+    function pendingCancelRedeemRequest(address vaultAddr, address user) external view returns (bool isPending);
 
     /// @notice Indicates whether a user has claimable deposit request cancellation and returns the total claim
     ///         value in assets.
-    function claimableCancelDepositRequest(address vault, address user) external view returns (uint256 assets);
+    function claimableCancelDepositRequest(address vaultAddr, address user) external view returns (uint256 assets);
 
     /// @notice Indicates whether a user has claimable redeem request cancellation and returns the total claim
     ///         value in shares.
-    function claimableCancelRedeemRequest(address vault, address user) external view returns (uint256 shares);
+    function claimableCancelRedeemRequest(address vaultAddr, address user) external view returns (uint256 shares);
 
-    /// @notice Returns the timestamp of the last share price update for a vault.
-    function priceLastUpdated(address vault) external view returns (uint64 lastUpdated);
+    /// @notice Returns the timestamp of the last share price update for a vaultAddr.
+    function priceLastUpdated(address vaultAddr) external view returns (uint64 lastUpdated);
 
     // --- Vault claim functions ---
     /// @notice Processes owner's asset deposit after the epoch has been executed on Centrifuge and the deposit order
@@ -269,7 +271,7 @@ interface IInvestmentManager is IRecoverable {
     ///         The shares required to fulfill the deposit have already been minted and transferred to the escrow on
     ///         fulfillDepositRequest.
     ///         Receiver has to pass all the share token restrictions in order to receive the shares.
-    function deposit(address vault, uint256 assets, address receiver, address owner)
+    function deposit(address vaultAddr, uint256 assets, address receiver, address owner)
         external
         returns (uint256 shares);
 
@@ -281,7 +283,9 @@ interface IInvestmentManager is IRecoverable {
     ///         The shares required to fulfill the mint have already been minted and transferred to the escrow on
     ///         fulfillDepositRequest.
     ///         Receiver has to pass all the share token restrictions in order to receive the shares.
-    function mint(address vault, uint256 shares, address receiver, address owner) external returns (uint256 assets);
+    function mint(address vaultAddr, uint256 shares, address receiver, address owner)
+        external
+        returns (uint256 assets);
 
     /// @notice Processes owner's share redemption after the epoch has been executed on Centrifuge and the redeem order
     ///         has been successfully processed (partial fulfillment possible).
@@ -291,7 +295,9 @@ interface IInvestmentManager is IRecoverable {
     ///         on fulfillRedeemRequest.
     ///         The assets required to fulfill the redemption have already been reserved in escrow on
     ///         fulfillRedeemtRequest.
-    function redeem(address vault, uint256 shares, address receiver, address owner) external returns (uint256 assets);
+    function redeem(address vaultAddr, uint256 shares, address receiver, address owner)
+        external
+        returns (uint256 assets);
 
     /// @notice Processes owner's asset withdrawal after the epoch has been executed on Centrifuge and the redeem order
     ///         has been successfully processed (partial fulfillment possible).
@@ -301,7 +307,7 @@ interface IInvestmentManager is IRecoverable {
     ///         on fulfillRedeemRequest.
     ///         The assets required to fulfill the withdrawal have already been reserved in escrow on
     ///         fulfillRedeemtRequest.
-    function withdraw(address vault, uint256 assets, address receiver, address owner)
+    function withdraw(address vaultAddr, uint256 assets, address receiver, address owner)
         external
         returns (uint256 shares);
 
@@ -310,7 +316,7 @@ interface IInvestmentManager is IRecoverable {
     ///         Assets are transferred from the escrow to the receiver.
     /// @dev    The assets required to fulfill the claim have already been reserved for the owner in escrow on
     ///         fulfillCancelDepositRequest.
-    function claimCancelDepositRequest(address vault, address receiver, address owner)
+    function claimCancelDepositRequest(address vaultAddr, address receiver, address owner)
         external
         returns (uint256 assets);
 
@@ -320,7 +326,13 @@ interface IInvestmentManager is IRecoverable {
     /// @dev    The shares required to fulfill the claim have already been reserved for the owner in escrow on
     ///         fulfillCancelRedeemRequest.
     ///         Receiver has to pass all the share token restrictions in order to receive the shares.
-    function claimCancelRedeemRequest(address vault, address receiver, address owner)
+    function claimCancelRedeemRequest(address vaultAddr, address receiver, address owner)
         external
         returns (uint256 shares);
+
+    /// @notice Returns the address of the vault for a given pool, tranche and asset
+    function vaultByAddress(uint64 poolId, bytes16 trancheId, address asset)
+        external
+        view
+        returns (address vaultAddr);
 }

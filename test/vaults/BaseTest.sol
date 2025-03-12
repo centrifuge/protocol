@@ -85,7 +85,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         // remove deployer access
         // removeDeployerAccess(address(adapter)); // need auth permissions in tests
 
-        centrifugeChain = new MockCentrifugeChain(testAdapters);
+        centrifugeChain = new MockCentrifugeChain(testAdapters, poolManager);
         mockedGasService = new MockGasService();
         erc20 = _newErc20("X's Dollar", "USDX", 6);
 
@@ -113,7 +113,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         vm.label(address(routerEscrow), "RouterEscrow");
         vm.label(address(guardian), "Guardian");
         vm.label(address(poolManager.trancheFactory()), "TrancheFactory");
-        vm.label(address(poolManager.vaultFactory()), "ERC7540VaultFactory");
+        vm.label(address(vaultFactory), "ERC7540VaultFactory");
 
         // Exclude predeployed contracts from invariant tests by default
         excludeContract(address(root));
@@ -130,7 +130,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         excludeContract(address(routerEscrow));
         excludeContract(address(guardian));
         excludeContract(address(poolManager.trancheFactory()));
-        excludeContract(address(poolManager.vaultFactory()));
+        excludeContract(address(vaultFactory));
     }
 
     // helpers
@@ -151,8 +151,6 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         if (poolManager.getTranche(poolId, trancheId) == address(0)) {
             centrifugeChain.batchAddPoolAllowAsset(poolId, assetId);
             centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, trancheDecimals, hook);
-
-            poolManager.deployTranche(poolId, trancheId);
         }
 
         if (!poolManager.isAllowedAsset(poolId, asset)) {
@@ -161,7 +159,9 @@ contract BaseTest is Deployer, GasSnapshot, Test {
 
         poolManager.updateTranchePrice(poolId, trancheId, assetId, uint128(10 ** 18), uint64(block.timestamp));
 
-        address vaultAddress = poolManager.deployVault(poolId, trancheId, asset);
+        // TODO: Use .update() from poolManager if possible
+        address vaultAddress = poolManager.deployVault(poolId, trancheId, asset, vaultFactory);
+        poolManager.linkVault(poolId, trancheId, asset, vaultAddress);
 
         return vaultAddress;
     }

@@ -33,7 +33,6 @@ contract InvestmentManagerTest is BaseTest {
         assertEq(address(investmentManager.gateway()), address(gateway));
         assertEq(address(investmentManager.poolManager()), address(poolManager));
         assertEq(address(gateway.handler()), address(investmentManager.sender()));
-        assertEq(address(poolManager.investmentManager()), address(investmentManager));
 
         // permissions set correctly
         assertEq(investmentManager.wards(address(root)), 1);
