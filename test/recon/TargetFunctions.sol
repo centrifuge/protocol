@@ -59,7 +59,7 @@ abstract contract TargetFunctions is
         return (poolId, scId);
     }
 
-    function shortcut_deposit_and_claim(
+    function shortcut_deposit(
         uint8 decimals,
         uint32 isoCode,
         string memory name,
@@ -87,6 +87,27 @@ abstract contract TargetFunctions is
             isIdentityValuation, navPerShare
         );
 
+        return (poolId, scId);
+    }
+
+    function shortcut_deposit_and_claim(
+        uint8 decimals,
+        uint32 isoCode,
+        string memory name,
+        string memory symbol,
+        bytes32 salt,
+        bytes memory data,
+        bool isIdentityValuation,
+        uint24 prefix,
+        uint128 amount,
+        uint128 maxApproval,
+        D18 navPerShare
+    ) public returns (PoolId poolId, ShareClassId scId) {
+        (poolId, scId) = shortcut_deposit(
+            decimals, isoCode, name, symbol, salt, data, 
+            isIdentityValuation, prefix, amount, maxApproval, navPerShare
+        );
+
         // claim deposit as actor
         bytes32 investor = Helpers.addressToBytes32(_getActor());
         poolManager_claimDeposit(poolId, scId, isoCode, investor);
@@ -94,7 +115,7 @@ abstract contract TargetFunctions is
         return (poolId, scId);
     }
 
-    function shortcut_redeem_and_claim(
+    function shortcut_redeem(
         PoolId poolId,
         ShareClassId scId,
         uint128 shareAmount,
@@ -110,6 +131,18 @@ abstract contract TargetFunctions is
         shortcut_approve_and_revoke_shares(
             poolId, scId, isoCode, maxApproval, navPerShare, isIdentityValuation
         );
+    }
+
+    function shortcut_redeem_and_claim(
+        PoolId poolId,
+        ShareClassId scId,
+        uint128 shareAmount,
+        uint32 isoCode,
+        uint128 maxApproval,
+        D18 navPerShare,
+        bool isIdentityValuation
+    ) public {
+        shortcut_redeem(poolId, scId, shareAmount, isoCode, maxApproval, navPerShare, isIdentityValuation);
         
         // claim redemption as actor
         bytes32 investor = Helpers.addressToBytes32(_getActor());
