@@ -15,6 +15,8 @@ import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 
+import "forge-std/Test.sol";
+
 /// @title  Gateway
 /// @notice Routing contract that forwards outgoing messages to multiple adapters (1 full message, n-1 proofs)
 ///         and validates that multiple adapters have confirmed a message.
@@ -32,6 +34,9 @@ contract Gateway is Auth, IGateway, IRecoverable {
     uint256 public constant RECOVERY_CHALLENGE_PERIOD = 7 days;
 
     uint256 public transient fuel;
+
+    /// @dev Says if a send() was performed, but it's still pending to finalize the batch
+    bool public transient sendWasBuffered;
 
     IRoot public immutable root;
     IGasService public gasService;
@@ -57,7 +62,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
     uint32[] public /*transient*/ chainIds;
 
     /// @notice Tells is the gateway is actually configured to create batches
-    bool public /*transient*/ isBatching;
+    uint8 public /*transient*/ batchingLevel;
 
     /// @notice The payer of the transaction.
     address public /*transient*/ payableSource;
@@ -269,7 +274,10 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     /// @inheritdoc IMessageSender
     function send(uint32 chainId, bytes calldata message) external pauseable auth {
-        if (isBatching) {
+        if (batchingLevel > 0) {
+            console.log("abcd");
+            sendWasBuffered = true;
+
             bytes storage previousMessage = batch[chainId];
             if (previousMessage.length == 0) {
                 chainIds.push(chainId);
@@ -329,9 +337,11 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     /// @inheritdoc IGateway
     function topUp() external payable {
-        require(payers[msg.sender], "Gateway/only-payers-can-top-up");
-        require(msg.value != 0, "Gateway/cannot-topup-with-nothing");
-        fuel = msg.value;
+        if (batchingLevel == 0 || sendWasBuffered) {
+            require(payers[msg.sender], "Gateway/only-payers-can-top-up");
+            require(msg.value != 0, "Gateway/cannot-topup-with-nothing");
+            fuel = msg.value;
+        }
     }
 
     function setPayableSource(address source) external {
@@ -339,11 +349,11 @@ contract Gateway is Auth, IGateway, IRecoverable {
     }
 
     function startBatch() external {
-        isBatching = true;
+        batchingLevel++;
     }
 
     function endBatch() external {
-        require(isBatching, NoBatched());
+        require(batchingLevel > 0, NoBatched());
 
         for (uint256 i; i < chainIds.length; i++) {
             uint32 chainId = chainIds[i];
@@ -353,7 +363,8 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
         delete chainIds;
 
-        isBatching = false;
+        batchingLevel--;
+        sendWasBuffered = false;
     }
 
     //----------------------------------------------------------------------------------------------

@@ -44,7 +44,7 @@ contract TestCases is Deployer, Test {
     uint128 constant APPROVED_SHARE_AMOUNT = SHARE_AMOUNT / 5;
     D18 immutable NAV_PER_SHARE = d18(2, 1);
 
-    uint256 constant GAS = 1 wei;
+    uint128 constant GAS = 100 wei;
 
     MockVaults cv;
 
@@ -57,11 +57,16 @@ contract TestCases is Deployer, Test {
         gateway.file("adapters", testAdapters);
     }
 
+    function _configGasPrice() private {
+        gasService.file("messageCost", 1);
+        gasService.updateGasPrice(GAS, uint64(block.timestamp) + 1);
+        gasService.updateTokenPrice(1);
+    }
+
     function setUp() public {
         deploy();
-
         _configMockVaultsAdapter();
-
+        _configGasPrice();
         removeDeployerAccess();
 
         vm.deal(FM, 1 ether);
@@ -188,5 +193,57 @@ contract TestCases is Deployer, Test {
             NAV_PER_SHARE.mulUint128(uint128(valuation.getQuote(APPROVED_SHARE_AMOUNT, USD.addr(), USDC_C2.addr())))
         );
         assertEq(m0.shareAmount, APPROVED_SHARE_AMOUNT);
+    }
+
+    /// forge-config: default.isolate = true
+    function testExecuteNoSendNoPay() public {
+        vm.startPrank(FM);
+
+        PoolId poolId = poolRouter.createPool(USD, multiShareClass);
+
+        bytes[] memory cs = new bytes[](1);
+        cs[0] = abi.encodeWithSelector(poolRouter.setPoolMetadata.selector, "");
+
+        poolRouter.execute(poolId, cs);
+    }
+
+    /// forge-config: default.isolate = true
+    function testExecuteSendNoPay() public {
+        vm.startPrank(FM);
+
+        PoolId poolId = poolRouter.createPool(USD, multiShareClass);
+
+        bytes[] memory cs = new bytes[](1);
+        cs[0] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
+
+        vm.expectRevert(bytes("Gateway/cannot-topup-with-nothing"));
+        poolRouter.execute(poolId, cs);
+    }
+
+    /// Test the following:
+    /// - multicall()
+    ///   - execute(poolA)
+    ///      - notifyPool()
+    ///   - execute(poolB)
+    ///      - notifyPool()
+    ///
+    /// will pay only for one message. The batch sent is [NotifyPool, NotifyPool].
+    ///
+    /// forge-config: default.isolate = true
+    function testMultipleMulticall() public {
+        vm.startPrank(FM);
+
+        PoolId poolA = poolRouter.createPool(USD, multiShareClass);
+        PoolId poolB = poolRouter.createPool(USD, multiShareClass);
+
+        bytes[] memory innerCalls = new bytes[](1);
+        innerCalls[0] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
+
+        (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
+        cs[c++] = abi.encodeWithSelector(poolRouter.execute.selector, poolA, innerCalls);
+        cs[c++] = abi.encodeWithSelector(poolRouter.execute.selector, poolB, innerCalls);
+        assertEq(c, cs.length);
+
+        poolRouter.multicall{value: GAS}(cs);
     }
 }

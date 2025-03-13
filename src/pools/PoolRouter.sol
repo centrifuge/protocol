@@ -6,7 +6,9 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {Auth} from "src/misc/Auth.sol";
-import {Multicall} from "src/misc/Multicall.sol";
+import {Multicall, IMulticall} from "src/misc/Multicall.sol";
+
+import {IGateway} from "src/common/interfaces/IGateway.sol";
 
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
@@ -19,9 +21,27 @@ import {IPoolRouter} from "src/pools/interfaces/IPoolRouter.sol";
 
 contract PoolRouter is Multicall, IPoolRouter {
     IPoolManager public immutable poolManager;
+    IGateway public gateway;
 
-    constructor(IPoolManager poolManager_) {
+    constructor(IPoolManager poolManager_, IGateway gateway_) {
         poolManager = poolManager_;
+        gateway = gateway_;
+    }
+
+    // --- Administration ---
+    /// @inheritdoc IMulticall
+    /// @notice performs a multicall but all messages sent in the process will be batched
+    function multicall(bytes[] calldata data) public payable override {
+        gateway.startBatch();
+
+        super.multicall(data);
+
+        if (gateway.batchingLevel() == 1) {
+            // We only pay the fees in the top batching level
+            gateway.topUp{value: msg.value}();
+        }
+
+        gateway.endBatch();
     }
 
     /// @inheritdoc IPoolRouter
@@ -30,7 +50,7 @@ contract PoolRouter is Multicall, IPoolRouter {
 
         multicall(data);
 
-        poolManager.lock{value: msg.value}();
+        poolManager.lock();
     }
 
     /// @inheritdoc IPoolRouter

@@ -60,7 +60,7 @@ interface IPoolManager {
     function unlock(PoolId poolId, address admin) external;
 
     /// @notice lock the unlocked pool
-    function lock() external payable;
+    function lock() external;
 
     /// @notice Creates a new pool. `msg.sender` will be the admin of the created pool.
     /// @param currency The pool currency. Usually an AssetId identifying by a ISO4217 code.

@@ -31,9 +31,6 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
     uint256 private constant REQUEST_ID = 0;
 
-    /// @dev Tells if a method that requires to pay was called in a multicall
-    bool public transient methodRequiresToPay;
-
     IEscrow public immutable escrow;
     IGateway public immutable gateway;
     IPoolManager public immutable poolManager;
@@ -55,7 +52,8 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
 
         super.multicall(data);
 
-        if (methodRequiresToPay) {
+        if (gateway.batchingLevel() == 1) {
+            // We only pay the fees in the top batching level
             gateway.topUp{value: msg.value}();
         }
 
@@ -298,15 +296,10 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
         }
     }
 
-    /// @notice Send native tokens to the gateway for transaction payment in case we're not batching.
-    /// If we're batching the specific multicall will send the tokens to the gateway once before submiting the final
-    /// message
+    /// @notice Send native tokens to the gateway for transaction payment if it's not in a multicall.
     function _pay() internal {
-        if (!gateway.isBatching()) {
+        if (gateway.batchingLevel() == 0) {
             gateway.topUp{value: msg.value}();
-        } else {
-            // Will be paid in the multicall
-            methodRequiresToPay = true;
         }
     }
 
