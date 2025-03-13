@@ -91,8 +91,8 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         poolManager_redeemRequest(poolId, scId, 123, SHARE_AMOUNT);
 
         // executed via the PoolRouter
-        poolRouter_approveRedeems(scId, assetId, uint128(10000000));
-        poolRouter_revokeShares(scId, assetId, d18(10000000), identityValuation);
+        poolRouter_approveRedeems(scId, 123, uint128(10000000));
+        poolRouter_revokeShares(scId, 123, d18(10000000), identityValuation);
         poolRouter_execute_clamped(poolId);
 
         // claim redemption
@@ -128,6 +128,15 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     function test_shortcut_redeem_and_cancel() public {
         (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
 
-        shortcut_redeem_and_cancel(poolId, scId, SHARE_AMOUNT, 123, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE, true);
+        shortcut_redeem_and_cancel(poolId, scId, SHARE_AMOUNT, 123, 50000000, NAV_PER_SHARE, true);
     }
+
+    function test_shortcut_deposit_redeem_and_claim() public {
+        shortcut_deposit_redeem_and_claim(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+    }
+
+    function test_shortcut_deposit_cancel_redemption() public {
+        shortcut_deposit_cancel_redemption(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+    }
+
 }

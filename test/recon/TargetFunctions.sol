@@ -161,6 +161,17 @@ abstract contract TargetFunctions is
         );
     }
 
+    function shortcut_claim_redemption(
+        PoolId poolId,
+        ShareClassId scId,
+        uint32 isoCode
+    ) public {        
+        // claim redemption as actor
+        bytes32 investor = Helpers.addressToBytes32(_getActor());
+        poolManager_claimRedeem(poolId, scId, isoCode, investor);
+    }
+
+
     function shortcut_redeem_and_claim(
         PoolId poolId,
         ShareClassId scId,
@@ -191,6 +202,75 @@ abstract contract TargetFunctions is
         // claim redemption as actor
         // bytes32 investor = Helpers.addressToBytes32(_getActor());
         // poolManager_claimRedeem(poolId, scId, isoCode, investor);
+
+        // cancel redemption
+        poolManager_cancelRedeemRequest(poolId, scId, isoCode);
+    }
+
+    // deposit and redeem in one call
+    // NOTE: this reimplements logic in the shortcut_deposit_and_claim function but is necessary to avoid stack too deep errors
+    function shortcut_deposit_redeem_and_claim(
+        uint8 decimals,
+        uint32 isoCode,
+        string memory name,
+        string memory symbol,
+        bytes32 salt,
+        bytes memory data,
+        bool isIdentityValuation,
+        uint24 prefix,
+        uint128 depositAmount,
+        uint128 shareAmount,
+        uint128 maxApproval,
+        D18 navPerShare
+    ) public {
+        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(
+            decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix, depositAmount, maxApproval, navPerShare
+        );
+
+        // request redemption
+        poolManager_redeemRequest(poolId, scId, isoCode, shareAmount);
+        
+        // approve and revoke shares as the pool admin
+        // revokes the shares that were issued in the deposit
+        shortcut_approve_and_revoke_shares(
+            poolId, scId, isoCode, singleShareClass.totalIssuance(scId), navPerShare, isIdentityValuation
+        );
+
+        // claim redemption as actor
+        shortcut_claim_redemption(poolId, scId, isoCode);
+    }
+
+    // deposit and cancel redemption in one call
+    // NOTE: this reimplements logic in the shortcut_deposit_and_claim function but is necessary to avoid stack too deep errors
+    function shortcut_deposit_cancel_redemption(
+        uint8 decimals,
+        uint32 isoCode,
+        string memory name,
+        string memory symbol,
+        bytes32 salt,
+        bytes memory data,
+        bool isIdentityValuation,
+        uint24 prefix,
+        uint128 depositAmount,
+        uint128 shareAmount,
+        uint128 maxApproval,
+        D18 navPerShare
+    ) public {
+        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(
+            decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix, depositAmount, maxApproval, navPerShare
+        );
+
+        // request redemption
+        poolManager_redeemRequest(poolId, scId, isoCode, shareAmount);
+        
+        // approve and revoke shares as the pool admin
+        // shortcut_approve_and_revoke_shares(
+        //     poolId, scId, isoCode, singleShareClass.totalIssuance(scId), navPerShare, isIdentityValuation
+        // );
+
+        poolRouter_approveRedeems(scId, isoCode, maxApproval);
+        poolRouter_revokeShares(scId, isoCode, navPerShare, isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation)));
+        poolRouter_execute_clamped(poolId);
 
         // cancel redemption
         poolManager_cancelRedeemRequest(poolId, scId, isoCode);
@@ -242,13 +322,11 @@ abstract contract TargetFunctions is
         uint128 maxApproval,
         D18 navPerShare,
         bool isIdentityValuation
-    ) public {
-        AssetId assetId = newAssetId(isoCode);
-        
+    ) public {        
         IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
         
-        poolRouter_approveRedeems(scId, assetId, maxApproval);
-        poolRouter_revokeShares(scId, assetId, navPerShare, valuation);
+        poolRouter_approveRedeems(scId, isoCode, maxApproval);
+        poolRouter_revokeShares(scId, isoCode, navPerShare, valuation);
         poolRouter_execute_clamped(poolId);
     }
 
