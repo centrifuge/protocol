@@ -11,10 +11,10 @@ import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
-import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
-import {PoolId} from "src/pools/types/PoolId.sol";
-import {AccountId} from "src/pools/types/AccountId.sol";
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AccountType} from "src/pools/interfaces/IPoolManager.sol";
 import {Deployer} from "script/pools/Deployer.s.sol";
 

@@ -9,9 +9,9 @@ import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
-import {AssetId} from "src/pools/types/AssetId.sol";
-import {PoolId} from "src/pools/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 import {IMessageProcessor} from "src/pools/interfaces/IMessageProcessor.sol";
 import {IPoolManagerHandler} from "src/pools/interfaces/IPoolManager.sol";
 

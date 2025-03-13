@@ -10,7 +10,7 @@ import {Gateway} from "src/common/Gateway.sol";
 import {Root} from "src/common/Root.sol";
 import {GasService} from "src/common/GasService.sol";
 
-import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
+import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {PoolRegistry} from "src/pools/PoolRegistry.sol";
 import {MultiShareClass} from "src/pools/MultiShareClass.sol";
 import {Holdings} from "src/pools/Holdings.sol";

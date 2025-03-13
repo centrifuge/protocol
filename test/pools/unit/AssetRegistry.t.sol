@@ -8,7 +8,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IERC6909, IERC6909MetadataExt, IERC6909TotalSupplyExt} from "src/misc/interfaces/IERC6909.sol";
 
-import {AssetId} from "src/pools/types/AssetId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 import {AssetRegistry} from "src/pools/AssetRegistry.sol";
 import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 

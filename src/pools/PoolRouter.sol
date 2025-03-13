@@ -8,10 +8,10 @@ import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {Multicall} from "src/misc/Multicall.sol";
 
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
-import {AssetId} from "src/pools/types/AssetId.sol";
-import {AccountId, newAccountId} from "src/pools/types/AccountId.sol";
-import {PoolId} from "src/pools/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 import {IPoolManager} from "src/pools/interfaces/IPoolManager.sol";

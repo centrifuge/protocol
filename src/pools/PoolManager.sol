@@ -10,10 +10,10 @@ import {Multicall} from "src/misc/Multicall.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
-import {AssetId} from "src/pools/types/AssetId.sol";
-import {AccountId, newAccountId} from "src/pools/types/AccountId.sol";
-import {PoolId} from "src/pools/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";

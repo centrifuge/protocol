@@ -6,9 +6,9 @@ import "forge-std/Test.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {PoolId, newPoolId} from "src/pools/types/PoolId.sol";
-import {AssetId} from "src/pools/types/AssetId.sol";
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
+import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolRegistry} from "src/pools/PoolRegistry.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
