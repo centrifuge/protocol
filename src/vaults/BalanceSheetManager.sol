@@ -9,9 +9,9 @@ import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {Noted, Entry, IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
 import {IPerPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IMessageProcessor} from "src/vaults/interfaces/IMessageProcessor.sol";
+import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 
-
-contract BalanceSheetManager is IAuth, IBalanceSheetManager {
+contract BalanceSheetManager is IAuth, IBalanceSheetManager, IUpdateContract {
     using BytesLib for bytes;
     using MathLib for uint256;
     using CastLib for *;
@@ -51,6 +51,16 @@ contract BalanceSheetManager is IAuth, IBalanceSheetManager {
         SafeTransferLib.safeTransfer(token, to, amount);
     }
 
+    /// --- IUpdateContract Implementation ---
+    function updateContract(uint64 poolId, bytes16 shareClassId, bytes memory payload) external override auth {
+        MessageLib.UpdateContractPermission memory m = MessageLib.deserializeUpdateContractPermission(payload);
+
+        permission[poolId][shareClassId][m.contractAddr] = m.allowed;
+
+        emit Permission(poolId, shareClassId, m.contractAddr, m.allowed);
+    }
+
+    /// --- Outgoing ---
     function increase(
         uint64 poolId,
         bytes16 shareClassId,
@@ -89,14 +99,13 @@ contract BalanceSheetManager is IAuth, IBalanceSheetManager {
         address asset,
         uint256 tokenId,
         address receiver,
-        uint256 base,
-        uint256 add,
+        uint256 amount,
         uint256 pricePerUnit,
         uint64 timestamp,
         Entry[] memory debits,
         Entry[] memory credits
     ) external authOrPermission(msg.sender, poolId, shareClassId) {
-        _decrease(poolId, shareClassId, asset, tokenId, receiver, base, add, pricePerUnit, timestamp, debits, credits);
+        _decrease(poolId, shareClassId, asset, tokenId, receiver, amount, pricePerUnit, timestamp, debits, credits);
     }
 
     function decrease(
@@ -104,8 +113,7 @@ contract BalanceSheetManager is IAuth, IBalanceSheetManager {
         bytes16 shareClassId,
         AssetId assetId,
         address receiver,
-        uint256 base,
-        uint256 add,
+        uint256 amount,
         uint256 pricePerUnit,
         uint64 timestamp,
         Entry[] memory debits,
@@ -114,7 +122,7 @@ contract BalanceSheetManager is IAuth, IBalanceSheetManager {
         (address asset, uint256 tokenId) = poolManager.idToAsset(assetId));
         require(asset != address(0), "PoolManager/invalid-asset-id");
 
-        _decrease(poolId, shareClassId, asset, tokenId, receiver, base, add, pricePerUnit, timestamp, debits, credits);
+        _decrease(poolId, shareClassId, asset, tokenId, receiver, amount, pricePerUnit, timestamp, debits, credits);
     }
 
     function issue(
@@ -155,6 +163,7 @@ contract BalanceSheetManager is IAuth, IBalanceSheetManager {
         // TODO: Send message to CP JournalEntry()
     }
 
+    // --- Incoming ---
     function adaptNotedWithdraw(
         uint64 poolId,
         bytes16 shareClassId,
@@ -178,7 +187,13 @@ contract BalanceSheetManager is IAuth, IBalanceSheetManager {
         notedWithdraw.debits = debits;
         notedWithdraw.credits = credits;
 
+        if (notedDeposit.amount == 0) {
+            delete notedWithdraw[poolId][shareClassId][from][assetId];
+        }
+
         notedWithdraw[poolId][shareClassId][receiver][assetId] = notedWithdraw;
+
+        emit NotedWithdraw(poolId, shareClassId, from, assetId, notedWithdraw.amount, pricePerUnit, debits, credits);
     }
 
     function adaptNotedDeposit(
@@ -204,7 +219,13 @@ contract BalanceSheetManager is IAuth, IBalanceSheetManager {
         notedDeposit.debits = debits;
         notedDeposit.credits = credits;
 
+        if (notedDeposit.amount == 0) {
+            delete notedDeposit[poolId][shareClassId][from][assetId];
+        }
+
         notedDeposit[poolId][shareClassId][from][assetId] = notedDeposit;
+
+        emit NotedDeposit(poolId, shareClassId, from, assetId, notedWithdraw.amount, pricePerUnit, debits, credits);
     }
 
     function executeNotedWithdraw(
@@ -219,7 +240,9 @@ contract BalanceSheetManager is IAuth, IBalanceSheetManager {
         Noted storage notedWithdraw = notedWithdraw[poolId][shareClassId][receiver][assetId];
         require(notedWithdraw.amount > 0, "BalanceSheetManager/invalid-noted-withdraw");
 
-        _decrease(poolId, shareClassId, asset, tokenId, receiver, notedWithdraw.amount, 0, notedWithdraw.pricePerUnit, block.timestamp, notedWithdraw.debits, notedWithdraw.credits);
+        _decrease(poolId, shareClassId, asset, tokenId, receiver, notedWithdraw.amount, notedWithdraw.pricePerUnit, block.timestamp, notedWithdraw.debits, notedWithdraw.credits);
+
+        delete notedWithdraw[poolId][shareClassId][from][assetId];
     }
 
     function executeNotedDeposit(
@@ -230,11 +253,13 @@ contract BalanceSheetManager is IAuth, IBalanceSheetManager {
         address provider,
     ) external {
         uint256 assetId = poolManager.assetToId(assetId, tokenId);
-        
+
         Noted storage notedDeposit = notedDeposit[poolId][shareClassId][provider][assetId];
         require(notedDeposit.amount > 0, "BalanceSheetManager/invalid-noted-deposit");
 
-        _increase(poolId, shareClassId, asset, tokenId, provider, notedDeposit.amount, 0, notedDeposit.pricePerUnit, block.timestamp, notedDeposit.debits, notedDeposit.credits);
+        _increase(poolId, shareClassId, asset, tokenId, provider, notedDeposit.amount, notedDeposit.pricePerUnit, block.timestamp, notedDeposit.debits, notedDeposit.credits);
+
+        delete notedDeposit[poolId][shareClassId][from][assetId];
     }
 
 
@@ -248,7 +273,7 @@ contract BalanceSheetManager is IAuth, IBalanceSheetManager {
         Noted storage notedWithdraw = notedWithdraw[poolId][shareClassId][receiver][assetId];
         require(notedWithdraw.amount > 0, "BalanceSheetManager/invalid-noted-withdraw");
 
-        _decrease(poolId, shareClassId, asset, tokenId, receiver, notedWithdraw.amount, 0, notedWithdraw.pricePerUnit, block.timestamp, notedWithdraw.debits, notedWithdraw.credits);
+        _decrease(poolId, shareClassId, asset, tokenId, receiver, notedWithdraw.amount, notedWithdraw.pricePerUnit, block.timestamp, notedWithdraw.debits, notedWithdraw.credits);
     }
 
     function executeNotedDeposit(
@@ -260,7 +285,7 @@ contract BalanceSheetManager is IAuth, IBalanceSheetManager {
         Noted storage notedDeposit = notedDeposit[poolId][shareClassId][provider][assetId];
         require(notedDeposit.amount > 0, "BalanceSheetManager/invalid-noted-deposit");
 
-        _increase(poolId, shareClassId, asset, tokenId, provider, notedDeposit.amount, 0, notedDeposit.pricePerUnit, block.timestamp, notedDeposit.debits, notedDeposit.credits);
+        _increase(poolId, shareClassId, asset, tokenId, provider, notedDeposit.amount, notedDeposit.pricePerUnit, block.timestamp, notedDeposit.debits, notedDeposit.credits);
     }
 
     // --- Internal ---
@@ -268,9 +293,11 @@ contract BalanceSheetManager is IAuth, IBalanceSheetManager {
         uint64 poolId,
         bytes16 shareClassId,
         address from,
-        uint256 assetId,
+        address asset,
+        uint256 tokenId
         uint256 amount,
         uint256 pricePerUnit,
+        uint64 timestamp,
         Entry[] memory debits,
         Entry[] memory credits,
     ) internal {
@@ -280,9 +307,9 @@ contract BalanceSheetManager is IAuth, IBalanceSheetManager {
     function _increase(
         uint64 poolId,
         bytes16 shareClassId,
+        address provider,
         address asset,
         uint256 tokenId
-        address provider,
         uint256 amount,
         uint256 pricePerUnit,
         uint64 timestamp,
