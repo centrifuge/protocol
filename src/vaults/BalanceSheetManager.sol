@@ -14,8 +14,6 @@ import {IPerPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IMessageProcessor} from "src/vaults/interfaces/IMessageProcessor.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 
-
-
 contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdateContract {
     IPerPoolEscrow public immutable escrow;
 
@@ -31,7 +29,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         escrow = IPerPoolEscrow(escrow_);
     }
 
-        /// @dev Check if the msg.sender has permissions
+    /// @dev Check if the msg.sender has permissions
     modifier authOrPermission(uint64 poolId, bytes16 shareClassId) {
         require(wards[msg.sender] == 1 || permission[poolId][shareClassId][msg.sender], "NotAuthorized");
         _;
@@ -139,9 +137,8 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint256 pricePerShare,
         uint64 timestamp
     ) external authOrPermission(poolId, shareClassId) {
-        
         // TODO: Mint shares to to
-        
+
         // TODO: Send message to CP IssuedShares()
     }
 
@@ -154,9 +151,8 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint64 timestamp
     ) external authOrPermission(poolId, shareClassId) {
         // TODO: burn shares from from
-     
-        // TODO: Send message to CP RevokedShares()
 
+        // TODO: Send message to CP RevokedShares()
     }
 
     function journal(
@@ -210,7 +206,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
     ) external authOrPermission(poolId, shareClassId) {
         Noted storage notedDeposit_ = notedDeposit[poolId][shareClassId][from][assetId];
 
-            notedDeposit_.amount = amount;
+        notedDeposit_.amount = amount;
 
         notedDeposit_.pricePerUnit = pricePerUnit;
         /* TODO: Fix this with via-ir pipelie?
@@ -227,48 +223,32 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         emit NoteDeposit(poolId, shareClassId, from, assetId, amount, pricePerUnit, debits, credits);
     }
 
-    function executeNotedWithdraw(
-        uint64 poolId,
-        bytes16 shareClassId,
-        address asset,
-        uint256 tokenId,
-        address receiver
-    ) external {
+    function executeNotedWithdraw(uint64 poolId, bytes16 shareClassId, address asset, uint256 tokenId, address receiver)
+        external
+    {
         // TODO
     }
 
-    function executeNotedWithdraw(
-        uint64 poolId,
-        bytes16 shareClassId,
-        uint256 assetId,
-        address receiver
-    ) external {
+    function executeNotedWithdraw(uint64 poolId, bytes16 shareClassId, uint256 assetId, address receiver) external {
         Noted storage notedWithdraw_ = notedWithdraw[poolId][shareClassId][receiver][assetId];
         require(notedWithdraw_.amount > 0, "BalanceSheetManager/invalid-noted-withdraw");
 
-        // _decrease(poolId, shareClassId, asset, tokenId, receiver, notedWithdraw_.amount, notedWithdraw_.pricePerUnit, block.timestamp, notedWithdraw_.debits, notedWithdraw_.credits);
+        // _decrease(poolId, shareClassId, asset, tokenId, receiver, notedWithdraw_.amount, notedWithdraw_.pricePerUnit,
+        // block.timestamp, notedWithdraw_.debits, notedWithdraw_.credits);
     }
 
-    function executeNotedDeposit(
-        uint64 poolId,
-        bytes16 shareClassId,
-        address asset,
-        uint256 tokenId,
-        address provider
-    ) external {
+    function executeNotedDeposit(uint64 poolId, bytes16 shareClassId, address asset, uint256 tokenId, address provider)
+        external
+    {
         // TODO
     }
 
-    function executeNotedDeposit(
-        uint64 poolId,
-        bytes16 shareClassId,
-        uint256 assetId,
-        address provider
-    ) external {
+    function executeNotedDeposit(uint64 poolId, bytes16 shareClassId, uint256 assetId, address provider) external {
         Noted storage notedDeposit_ = notedDeposit[poolId][shareClassId][provider][assetId];
         require(notedDeposit_.amount > 0, "BalanceSheetManager/invalid-noted-deposit");
 
-        // _increase(poolId, shareClassId, asset, tokenId, provider, notedDeposit_.amount, notedDeposit_.pricePerUnit, block.timestamp, notedDeposit_.debits, notedDeposit_.credits);
+        // _increase(poolId, shareClassId, asset, tokenId, provider, notedDeposit_.amount, notedDeposit_.pricePerUnit,
+        // block.timestamp, notedDeposit_.debits, notedDeposit_.credits);
     }
 
     // --- Internal ---

@@ -14,33 +14,31 @@ struct Noted {
 }
 
 interface IBalanceSheetManager {
-
     // --- Errors ---
 
-// --- Events ---
-event File(bytes32 indexed what, address data);
-event Permission(uint64 indexed poolId, bytes16 indexed shareClassId, address contractAddr, bool allowed);
-event NoteWithdraw(
-    uint64 indexed poolId,
-    bytes16 indexed shareClassId,
-    address from,
-    uint256 assetId,
-    uint256 amount,
-    uint256 pricePerUnit,
-    Entry[] debits,
-    Entry[] credits
-);
-event NoteDeposit(
-    uint64 indexed poolId,
-    bytes16 indexed shareClassId,
-    address from,
-    uint256 assetId,
-    uint256 amount,
-    uint256 pricePerUnit,
-    Entry[] debits,
-    Entry[] credits
-);
-
+    // --- Events ---
+    event File(bytes32 indexed what, address data);
+    event Permission(uint64 indexed poolId, bytes16 indexed shareClassId, address contractAddr, bool allowed);
+    event NoteWithdraw(
+        uint64 indexed poolId,
+        bytes16 indexed shareClassId,
+        address from,
+        uint256 assetId,
+        uint256 amount,
+        uint256 pricePerUnit,
+        Entry[] debits,
+        Entry[] credits
+    );
+    event NoteDeposit(
+        uint64 indexed poolId,
+        bytes16 indexed shareClassId,
+        address from,
+        uint256 assetId,
+        uint256 amount,
+        uint256 pricePerUnit,
+        Entry[] debits,
+        Entry[] credits
+    );
 
     // Overloaded increase
     function increase(
@@ -142,36 +140,14 @@ event NoteDeposit(
     ) external;
 
     // Overloaded executeNotedWithdraw
-    function executeNotedWithdraw(
-        uint64 poolId,
-        bytes16 shareClassId,
-        address asset,
-        uint256 tokenId,
-        address receiver
-    ) external;
+    function executeNotedWithdraw(uint64 poolId, bytes16 shareClassId, address asset, uint256 tokenId, address receiver)
+        external;
 
-    function executeNotedWithdraw(
-        uint64 poolId,
-        bytes16 shareClassId,
-        uint256 assetId,
-        address receiver
-    ) external;
+    function executeNotedWithdraw(uint64 poolId, bytes16 shareClassId, uint256 assetId, address receiver) external;
 
     // Overloaded executeNotedDeposit
-    function executeNotedDeposit(
-        uint64 poolId,
-        bytes16 shareClassId,
-        address asset,
-        uint256 tokenId,
-        address receiver
-    ) external;
+    function executeNotedDeposit(uint64 poolId, bytes16 shareClassId, address asset, uint256 tokenId, address receiver)
+        external;
 
-    function executeNotedDeposit(
-        uint64 poolId,
-        bytes16 shareClassId,
-        uint256 assetId,
-        address receiver
-    ) external;
+    function executeNotedDeposit(uint64 poolId, bytes16 shareClassId, uint256 assetId, address receiver) external;
 }
-
-
