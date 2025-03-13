@@ -29,7 +29,7 @@ contract PoolManagerTest is BaseTest {
         vaultFactories[0] = address(vaultFactory);
 
         // redeploying within test to increase coverage
-        new PoolManager(address(escrow), trancheFactory, vaultFactories, uint32(block.chainid));
+        new PoolManager(address(escrow), trancheFactory, vaultFactories);
 
         // values set correctly
         assertEq(address(poolManager.gateway()), address(gateway));

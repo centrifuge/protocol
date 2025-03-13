@@ -74,7 +74,7 @@ abstract contract Setup is BaseSetup, SharedStorage {
         address[] memory vaultFactories = new address[](1);
         vaultFactories[0] = address(vaultFactory);
 
-        poolManager = new PoolManager(address(escrow), address(trancheFactory), vaultFactories, uint32(block.chainid));
+        poolManager = new PoolManager(address(escrow), address(trancheFactory), vaultFactories);
         poolManager.file("gateway", address(this));
 
         investmentManager.file("gateway", address(this));

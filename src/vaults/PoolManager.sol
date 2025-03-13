@@ -50,7 +50,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     uint8 internal constant MAX_DECIMALS = 18;
 
     IEscrow public immutable escrow;
-    uint32 private immutable _chainId;
 
     IGateway public gateway;
     IMessageProcessor public sender;
@@ -66,12 +65,9 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     mapping(address asset => uint128 assetId) public assetToId;
     mapping(uint64 poolId => mapping(address asset => bool)) allowedAssets;
 
-    constructor(address escrow_, address trancheFactory_, address[] memory vaultFactories, uint32 chainId)
-        Auth(msg.sender)
-    {
+    constructor(address escrow_, address trancheFactory_, address[] memory vaultFactories) Auth(msg.sender) {
         escrow = IEscrow(escrow_);
         trancheFactory = ITrancheFactory(trancheFactory_);
-        _chainId = chainId;
 
         for (uint256 i = 0; i < vaultFactories.length; i++) {
             address factory = vaultFactories[i];
@@ -147,7 +143,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         assetId = assetToId[asset];
         if (assetId == 0) {
             _assetCounter++;
-            assetId = uint128(bytes16(abi.encodePacked(uint32(_chainId), _assetCounter)));
+            assetId = uint128(bytes16(abi.encodePacked(uint32(block.chainid), _assetCounter)));
 
             idToAsset_[assetId] = AssetIdKey(asset, tokenId);
             assetToId[asset] = assetId;

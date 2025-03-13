@@ -64,7 +64,7 @@ contract Deployer is Script {
         address[] memory vaultFactories = new address[](1);
         vaultFactories[0] = vaultFactory;
 
-        poolManager = new PoolManager(address(escrow), trancheFactory, vaultFactories, uint32(block.chainid));
+        poolManager = new PoolManager(address(escrow), trancheFactory, vaultFactories);
         gasService = new GasService(messageCost, proofCost, gasPrice, tokenPrice);
         gateway = new Gateway(root, gasService);
         messageProcessor = new MessageProcessor(gateway, poolManager, investmentManager, root, gasService, deployer);
