@@ -157,12 +157,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
             escrow.approveMax(asset, tokenId, address(this));
         }
 
-        gateway.send(
-            destChainId,
-            MessageLib.RegisterAsset({assetId: assetId, name: name, symbol: symbol.toBytes32(), decimals: decimals})
-                .serialize(),
-            address(this)
-        );
+        sender.sendRegisterAsset(destChainId, assetId, name, symbol, decimals);
 
         emit RegisterAsset(assetId, asset, tokenId, name, symbol, decimals);
     }

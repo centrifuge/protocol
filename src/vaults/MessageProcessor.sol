@@ -95,6 +95,21 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         );
     }
 
+    /// @inheritdoc IMessageProcessor
+    function sendRegisterAsset(
+        uint32 chainId,
+        uint128 assetId,
+        string memory name,
+        string memory symbol,
+        uint8 decimals
+    ) external auth {
+        gateway.send(
+            chainId,
+            MessageLib.RegisterAsset({assetId: assetId, name: name, symbol: symbol.toBytes32(), decimals: decimals})
+                .serialize()
+        );
+    }
+
     /// @inheritdoc IMessageHandler
     function handle(uint32, /* chainId */ bytes memory message) external auth {
         MessageCategory cat = message.messageCode().category();
@@ -123,10 +138,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
                 revert InvalidMessage(uint8(kind));
             }
         } else if (cat == MessageCategory.Pool) {
-            if (kind == MessageType.RegisterAsset) {
-                // TODO: This must be removed
-                poolManager.addAsset(message.toUint128(1), message.toAddress(17));
-            } else if (kind == MessageType.NotifyPool) {
+            if (kind == MessageType.NotifyPool) {
                 poolManager.addPool(MessageLib.deserializeNotifyPool(message).poolId);
             } else if (kind == MessageType.NotifyShareClass) {
                 MessageLib.NotifyShareClass memory m = MessageLib.deserializeNotifyShareClass(message);

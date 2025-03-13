@@ -51,8 +51,7 @@ contract CentrifugeRouterTest is BaseTest {
         router.requestDeposit{value: 1 wei}(vault_, amount, self, self, 1 wei);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
 
-        // Multiply estimated gas by two due to outgoing registerAsset and requestDeposit messages
-        uint256 gas = 2 * estimateGas() + GAS_BUFFER;
+        uint256 gas = estimateGas() + GAS_BUFFER;
 
         vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
         router.requestDeposit{value: gas}(vault_, amount, self, self, gas);
@@ -72,7 +71,10 @@ contract CentrifugeRouterTest is BaseTest {
             snapEnd();
         }
 
-        assertEq(address(gateway).balance, GATEWAY_INITIAL_BALANCE + GAS_BUFFER, "Gateway balance mismatch");
+        // Subtract registerAsset gas from deployment
+        assertEq(
+            address(gateway).balance, GATEWAY_INITIAL_BALANCE + GAS_BUFFER - estimateGas(), "Gateway balance mismatch"
+        );
         for (uint8 i; i < testAdapters.length; i++) {
             MockAdapter adapter = MockAdapter(address(testAdapters[i]));
             uint256[] memory payCalls = adapter.callsWithValue("pay");

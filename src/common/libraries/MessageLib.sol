@@ -83,7 +83,7 @@ library MessageLib {
         (33 << uint8(MessageType.CancelUpgrade) * 8) +
         (129 << uint8(MessageType.RecoverTokens) * 8) +
         (25 << uint8(MessageType.UpdateGasPrice) * 8) +
-        (37 << uint8(MessageType.RegisterAsset) * 8) + //TODO: modify to 178 when registerAsset feature is merged
+        (178 << uint8(MessageType.RegisterAsset) * 8) +
         (9 << uint8(MessageType.NotifyPool) * 8) +
         (250 << uint8(MessageType.NotifyShareClass) * 8) +
         (41 << uint8(MessageType.AllowAsset) * 8) +

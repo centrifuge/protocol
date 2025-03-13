@@ -129,8 +129,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.symbol, b.symbol);
         assertEq(a.decimals, b.decimals);
 
-        //TODO: modify to 'a.serialize().length' when registerAsset feature is merged
-        assertEq(a.serialize().messageLength(), 37);
+        assertEq(a.serialize().messageLength(), 178);
     }
 
     function testNotifyPool() public pure {

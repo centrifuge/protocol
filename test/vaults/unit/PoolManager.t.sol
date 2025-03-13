@@ -6,6 +6,7 @@ import "test/vaults/BaseTest.sol";
 import {MockHook} from "test/vaults/mocks/MockHook.sol";
 
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
@@ -15,7 +16,6 @@ import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IRestrictionManager} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBaseVault, IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
-import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
 
 contract PoolManagerTest is BaseTest {
     using MessageLib for *;
@@ -618,7 +618,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
     using CastLib for *;
     using BytesLib for *;
 
-    uint32 constant STORAGE_INDEX_ASSET_COUNTER = 2;
+    uint32 constant STORAGE_INDEX_ASSET_COUNTER = 3;
     uint256 constant STORAGE_OFFSET_ASSET_COUNTER = 20;
 
     function _assertAssetCounterEq(uint32 expected) internal view {
@@ -650,8 +650,9 @@ contract PoolManagerRegisterAssetTest is BaseTest {
             decimals: erc20.decimals()
         }).serialize();
 
-        vm.expectEmit();
+        vm.expectEmit(false, false, false, false);
         emit IGateway.SendMessage(message);
+        vm.expectEmit();
         emit IPoolManager.RegisterAsset(defaultAssetId, asset, 0, erc20.name(), erc20.symbol(), erc20.decimals());
         uint128 assetId = poolManager.registerAsset(asset, 0, defaultChainId);
 
@@ -693,8 +694,9 @@ contract PoolManagerRegisterAssetTest is BaseTest {
             decimals: erc6909.decimals(tokenId)
         }).serialize();
 
-        vm.expectEmit();
+        vm.expectEmit(false, false, false, false);
         emit IGateway.SendMessage(message);
+        vm.expectEmit();
         emit IPoolManager.RegisterAsset(
             defaultAssetId, asset, tokenId, erc6909.name(tokenId), erc6909.symbol(tokenId), erc6909.decimals(tokenId)
         );
