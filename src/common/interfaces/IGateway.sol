@@ -36,9 +36,9 @@ interface IGateway is IMessageHandler, IMessageSender {
     }
 
     // --- Events ---
-    event ProcessMessage(bytes message, IAdapter adapter);
-    event ProcessProof(bytes32 messageHash, IAdapter adapter);
-    event ExecuteMessage(bytes message, IAdapter adapter);
+    event ProcessMessage(uint32 chainId, bytes message, IAdapter adapter);
+    event ProcessProof(uint32 chainId, bytes32 messageHash, IAdapter adapter);
+    event ExecuteMessage(uint32 chainId, bytes message, IAdapter adapter);
     event SendMessage(bytes message);
     event RecoverMessage(IAdapter adapter, bytes message);
     event RecoverProof(IAdapter adapter, bytes32 messageHash);

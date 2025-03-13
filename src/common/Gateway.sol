@@ -176,7 +176,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
         if (adapter.quorum == 1 && !isMessageProof) {
             // Special case for gas efficiency
             handler.handle(chainId, payload);
-            emit ExecuteMessage(payload, adapter_);
+            emit ExecuteMessage(chainId, payload, adapter_);
             return;
         }
 
@@ -185,11 +185,11 @@ contract Gateway is Auth, IGateway, IRecoverable {
         if (isMessageProof) {
             require(isRecovery || adapter.id != PRIMARY_ADAPTER_ID, "Gateway/non-proof-adapter");
             messageHash = payload.deserializeMessageProof().hash;
-            emit ProcessProof(messageHash, adapter_);
+            emit ProcessProof(chainId, messageHash, adapter_);
         } else {
             require(isRecovery || adapter.id == PRIMARY_ADAPTER_ID, "Gateway/non-message-adapter");
             messageHash = keccak256(payload);
-            emit ProcessMessage(payload, adapter_);
+            emit ProcessMessage(chainId, payload, adapter_);
         }
 
         Message storage state = _messages[messageHash];
@@ -210,10 +210,10 @@ contract Gateway is Auth, IGateway, IRecoverable {
             // Handle message
             if (isMessageProof) {
                 handler.handle(chainId, state.pendingMessage);
-                emit ExecuteMessage(state.pendingMessage, adapter_);
+                emit ExecuteMessage(chainId, state.pendingMessage, adapter_);
             } else {
                 handler.handle(chainId, payload);
-                emit ExecuteMessage(payload, adapter_);
+                emit ExecuteMessage(chainId, payload, adapter_);
             }
 
             // Only if there are no more pending messages, remove the pending message
