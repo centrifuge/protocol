@@ -52,7 +52,8 @@ enum UpdateRestrictionType {
 enum UpdateContractType {
     /// @dev Placeholder for null update restriction type
     Invalid,
-    VaultUpdate
+    VaultUpdate,
+    Permission
 }
 
 enum MessageCategory {
@@ -661,6 +662,32 @@ library MessageLib {
 
     function serialize(UpdateContractVaultUpdate memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(UpdateContractType.VaultUpdate, t.factory, t.assetId, t.isLinked, t.vault);
+    }
+
+    //---------------------------------------
+    //   UpdateContract.Permission (submsg)
+    //---------------------------------------
+
+    struct UpdateContractPermission {
+        address who;
+        bool allowed;
+    }
+
+    function deserializeUpdateContractPermission(bytes memory data)
+        internal
+        pure
+        returns (UpdateContractPermission memory)
+    {
+        require(updateContractType(data) == UpdateContractType.Permission, UnknownMessageType());
+
+        return UpdateContractPermission({
+            who: data.toAddress(1),
+            allowed: data.toBool(21)
+        });
+    }
+
+    function serialize(UpdateContractPermission memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(UpdateContractType.Permission, t.who, t.allowed);
     }
 
     //---------------------------------------
