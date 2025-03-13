@@ -17,8 +17,6 @@ contract Root is Auth, IRoot {
     /// @dev To prevent filing a delay that would block any updates indefinitely
     uint256 internal constant MAX_DELAY = 4 weeks;
 
-    address public immutable escrow;
-
     /// @inheritdoc IRoot
     bool public paused;
 
@@ -31,10 +29,9 @@ contract Root is Auth, IRoot {
     /// @inheritdoc IRoot
     mapping(address relyTarget => uint256 timestamp) public schedule;
 
-    constructor(address _escrow, uint256 _delay, address deployer) Auth(deployer) {
+    constructor(uint256 _delay, address deployer) Auth(deployer) {
         require(_delay <= MAX_DELAY, DelayTooLong());
 
-        escrow = _escrow;
         delay = _delay;
     }
 

@@ -63,7 +63,7 @@ abstract contract Setup is BaseSetup, SharedStorage {
         // Dependencies
         trancheFactory = new TrancheFactory(address(this), address(this));
         escrow = new Escrow(address(address(this)));
-        root = new Root(address(escrow), 48 hours, address(this));
+        root = new Root(48 hours, address(this));
         restrictionManager = new RestrictionManager(address(root), address(this));
 
         root.endorse(address(escrow));

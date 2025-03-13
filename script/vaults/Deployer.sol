@@ -5,8 +5,10 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {Root} from "src/common/Root.sol";
 import {GasService} from "src/common/GasService.sol";
+import {Guardian, ISafe} from "src/common/Guardian.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {Gateway} from "src/common/Gateway.sol";
 
-import {Gateway} from "src/vaults/gateway/Gateway.sol";
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
 import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
 import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
@@ -15,13 +17,13 @@ import {RestrictedRedemptions} from "src/vaults/token/RestrictedRedemptions.sol"
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
 import {CentrifugeRouter} from "src/vaults/CentrifugeRouter.sol";
-import {Guardian} from "src/vaults/admin/Guardian.sol";
+import {MessageProcessor} from "src/vaults/MessageProcessor.sol";
 import "forge-std/Script.sol";
 
 contract Deployer is Script {
     uint256 internal constant delay = 48 hours;
-    address adminSafe;
-    address[] adapters;
+    ISafe adminSafe;
+    IAdapter[] adapters;
 
     Root public root;
     InvestmentManager public investmentManager;
@@ -30,6 +32,7 @@ contract Deployer is Script {
     Escrow public routerEscrow;
     Guardian public guardian;
     Gateway public gateway;
+    MessageProcessor public messageProcessor;
     GasService public gasService;
     CentrifugeRouter public router;
     address public vaultFactory;
@@ -51,7 +54,7 @@ contract Deployer is Script {
 
         escrow = new Escrow{salt: salt}(deployer);
         routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(salt, "escrow2"))}(deployer);
-        root = new Root{salt: salt}(address(escrow), delay, deployer);
+        root = new Root{salt: salt}(delay, deployer);
         restrictionManager = address(new RestrictionManager{salt: salt}(address(root), deployer));
         restrictedRedemptions = address(new RestrictedRedemptions{salt: salt}(address(root), address(escrow), deployer));
         trancheFactory = address(new TrancheFactory{salt: salt}(address(root), deployer));
@@ -63,9 +66,10 @@ contract Deployer is Script {
 
         poolManager = new PoolManager(address(escrow), trancheFactory, vaultFactories);
         gasService = new GasService(messageCost, proofCost, gasPrice, tokenPrice);
-        gateway = new Gateway(address(root), address(poolManager), address(investmentManager), address(gasService));
+        gateway = new Gateway(root, gasService);
+        messageProcessor = new MessageProcessor(gateway, poolManager, investmentManager, root, gasService, deployer);
         router = new CentrifugeRouter(address(routerEscrow), address(gateway), address(poolManager));
-        guardian = new Guardian(adminSafe, address(root), address(gateway));
+        guardian = new Guardian(adminSafe, root, gateway);
 
         _endorse();
         _rely();
@@ -85,6 +89,10 @@ contract Deployer is Script {
         IAuth(investmentManager).rely(address(poolManager));
         IAuth(restrictionManager).rely(address(poolManager));
         IAuth(restrictedRedemptions).rely(address(poolManager));
+        messageProcessor.rely(address(poolManager));
+
+        // Rely on InvestmentManager
+        messageProcessor.rely(address(investmentManager));
 
         // Rely on Root
         router.rely(address(root));
@@ -104,28 +112,38 @@ contract Deployer is Script {
         gateway.rely(address(guardian));
 
         // Rely on gateway
-        root.rely(address(gateway));
+        messageProcessor.rely(address(gateway));
         investmentManager.rely(address(gateway));
         poolManager.rely(address(gateway));
         gasService.rely(address(gateway));
 
         // Rely on others
         routerEscrow.rely(address(router));
+
+        // Rely on messageProcessor
+        gateway.rely(address(messageProcessor));
+        poolManager.rely(address(messageProcessor));
+        investmentManager.rely(address(messageProcessor));
+        root.rely(address(messageProcessor));
+        gasService.rely(address(messageProcessor));
     }
 
     function _file() public {
         poolManager.file("gateway", address(gateway));
+        poolManager.file("sender", address(messageProcessor));
 
         investmentManager.file("poolManager", address(poolManager));
         investmentManager.file("gateway", address(gateway));
+        investmentManager.file("sender", address(messageProcessor));
 
         gateway.file("payers", address(router), true);
+        gateway.file("handler", address(messageProcessor));
     }
 
-    function wire(address adapter) public {
+    function wire(IAdapter adapter) public {
         adapters.push(adapter);
         gateway.file("adapters", adapters);
-        IAuth(adapter).rely(address(root));
+        IAuth(address(adapter)).rely(address(root));
     }
 
     function removeDeployerAccess(address adapter, address deployer) public {

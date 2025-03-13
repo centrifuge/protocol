@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "test/vaults/BaseTest.sol";
-import {MockManager} from "test/vaults/mocks/MockManager.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
+import {IGuardian} from "src/common/Guardian.sol";
+
+import "test/vaults/BaseTest.sol";
+import {MockManager} from "test/common/mocks/MockManager.sol";
 
 contract AdminTest is BaseTest {
     using MessageLib for *;
@@ -16,7 +18,6 @@ contract AdminTest is BaseTest {
 
     function testDeployment() public view {
         // values set correctly
-        assertEq(address(root.escrow()), address(escrow));
         assertEq(root.paused(), false);
 
         // permissions set correctly
@@ -26,8 +27,8 @@ contract AdminTest is BaseTest {
 
     //------ pause tests ------//
     function testUnauthorizedPauseFails() public {
-        MockSafe(adminSafe).removeOwner(address(this));
-        vm.expectRevert("Guardian/not-the-authorized-safe-or-its-owner");
+        MockSafe(address(adminSafe)).removeOwner(address(this));
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafeOrItsOwner.selector);
         guardian.pause();
     }
 
@@ -43,7 +44,7 @@ contract AdminTest is BaseTest {
     }
 
     function testUnauthorizedUnpauseFails() public {
-        vm.expectRevert("Guardian/not-the-authorized-safe");
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
         guardian.unpause();
     }
 
@@ -96,8 +97,8 @@ contract AdminTest is BaseTest {
     }
 
     function testGuardianPauseAuth(address user) public {
-        vm.assume(user != address(this) && user != adminSafe);
-        vm.expectRevert("Guardian/not-the-authorized-safe-or-its-owner");
+        vm.assume(user != address(this) && user != address(adminSafe));
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafeOrItsOwner.selector);
         vm.prank(user);
         guardian.pause();
     }
@@ -145,23 +146,23 @@ contract AdminTest is BaseTest {
         vm.prank(address(adminSafe));
         guardian.scheduleRely(spell);
         address badActor = vm.addr(0xBAD);
-        vm.expectRevert("Guardian/not-the-authorized-safe");
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
         vm.prank(badActor);
         guardian.cancelRely(spell);
     }
 
     function testAddedSafeOwnerCanPause() public {
         address newOwner = vm.addr(0xABCDE);
-        MockSafe(adminSafe).addOwner(newOwner);
+        MockSafe(address(adminSafe)).addOwner(newOwner);
         vm.prank(newOwner);
         guardian.pause();
         assertEq(root.paused(), true);
     }
 
     function testRemovedOwnerCannotPause() public {
-        MockSafe(adminSafe).removeOwner(address(this));
-        assertEq(MockSafe(adminSafe).isOwner(address(this)), false);
-        vm.expectRevert("Guardian/not-the-authorized-safe-or-its-owner");
+        MockSafe(address(adminSafe)).removeOwner(address(this));
+        assertEq(MockSafe(address(adminSafe)).isOwner(address(this)), false);
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafeOrItsOwner.selector);
         vm.prank(address(this));
         guardian.pause();
     }
@@ -296,19 +297,19 @@ contract AdminTest is BaseTest {
         _send(adapter1, MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
 
         vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
-        gateway.executeMessageRecovery(address(adapter3), proof);
+        gateway.executeMessageRecovery(adapter3, proof);
 
         vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert("Guardian/not-the-authorized-safe");
-        guardian.disputeMessageRecovery(address(adapter3), keccak256(proof));
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
+        guardian.disputeMessageRecovery(adapter3, keccak256(proof));
 
         // Dispute recovery
         vm.prank(address(adminSafe));
-        guardian.disputeMessageRecovery(address(adapter3), keccak256(proof));
+        guardian.disputeMessageRecovery(adapter3, keccak256(proof));
 
         // Check that recovery is not possible anymore
         vm.expectRevert(bytes("Gateway/message-recovery-not-initiated"));
-        gateway.executeMessageRecovery(address(adapter3), proof);
+        gateway.executeMessageRecovery(adapter3, proof);
         assertEq(poolManager.received(message), 0);
     }
 

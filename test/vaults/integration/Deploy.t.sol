@@ -1,26 +1,30 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {ERC20} from "src/misc/ERC20.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
+
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {Guardian} from "src/common/Guardian.sol";
+import {Root} from "src/common/Root.sol";
+import {Gateway} from "src/common/Gateway.sol";
+
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
-import {Gateway} from "src/vaults/gateway/Gateway.sol";
 import {MockCentrifugeChain} from "test/vaults/mocks/MockCentrifugeChain.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
-import {Guardian} from "src/vaults/admin/Guardian.sol";
-import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
 import {MockSafe} from "test/vaults/mocks/MockSafe.sol";
 import {PoolManager, Pool} from "src/vaults/PoolManager.sol";
-import {ERC20} from "src/misc/ERC20.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 import {ERC7540VaultTest} from "test/vaults/unit/ERC7540Vault.t.sol";
 import {PermissionlessAdapter} from "test/vaults/mocks/PermissionlessAdapter.sol";
-import {Root} from "src/common/Root.sol";
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
+
 import {AxelarScript} from "script/vaults/Axelar.s.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import "script/vaults/Deployer.sol";
-import "src/misc/libraries/MathLib.sol";
+
 import "forge-std/Test.sol";
+import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
 
 interface ApproveLike {
     function approve(address, uint256) external;
@@ -50,15 +54,15 @@ contract DeployTest is Test, Deployer {
         self = address(this);
         deploy(self);
         adapter = new PermissionlessAdapter(address(gateway));
-        wire(address(adapter));
+        wire(adapter);
 
         // overwrite deployed guardian with a new mock safe guardian
         accounts = new address[](3);
         accounts[0] = makeAddr("account1");
         accounts[1] = makeAddr("account2");
         accounts[2] = makeAddr("account3");
-        adminSafe = address(new MockSafe(accounts, 1));
-        fakeGuardian = new Guardian(adminSafe, address(root), address(gateway));
+        adminSafe = new MockSafe(accounts, 1);
+        fakeGuardian = new Guardian(adminSafe, root, gateway);
 
         removeDeployerAccess(address(adapter), address(this));
 
@@ -85,14 +89,14 @@ contract DeployTest is Test, Deployer {
     }
 
     function testAdminSetup(address nonAdmin, address nonPauser) public view {
-        vm.assume(nonAdmin != adminSafe);
+        vm.assume(nonAdmin != address(adminSafe));
         vm.assume(nonPauser != accounts[0] && nonPauser != accounts[1] && nonPauser != accounts[2]);
 
-        assertEq(address(fakeGuardian.safe()), adminSafe);
+        assertEq(address(fakeGuardian.safe()), address(adminSafe));
         for (uint256 i = 0; i < accounts.length; i++) {
-            assertEq(MockSafe(adminSafe).isOwner(accounts[i]), true);
+            assertEq(adminSafe.isOwner(accounts[i]), true);
         }
-        assertEq(MockSafe(adminSafe).isOwner(nonPauser), false);
+        assertEq(adminSafe.isOwner(nonPauser), false);
     }
 
     function testAccessRightsAssignment() public {
@@ -100,6 +104,7 @@ contract DeployTest is Test, Deployer {
         address root_ = address(root);
         address gateway_ = address(gateway);
         address guardian_ = address(guardian);
+        address messageProcessor_ = address(messageProcessor);
 
         assertEq(gasService.wards(gateway_), 1);
         assertEq(escrow.wards(poolManager_), 1);
@@ -119,9 +124,9 @@ contract DeployTest is Test, Deployer {
         assertEq(WardLike(restrictionManager).wards(root_), 1);
         assertEq(WardLike(trancheFactory).wards(root_), 1);
 
-        assertEq(root.wards(gateway_), 1);
-        assertEq(poolManager.wards(gateway_), 1);
-        assertEq(investmentManager.wards(gateway_), 1);
+        assertEq(root.wards(messageProcessor_), 1);
+        assertEq(poolManager.wards(messageProcessor_), 1);
+        assertEq(investmentManager.wards(messageProcessor_), 1);
 
         assertEq(gateway.wards(guardian_), 1);
         assertEq(root.wards(guardian_), 1);
@@ -135,7 +140,7 @@ contract DeployTest is Test, Deployer {
         assertEq(address(investmentManager.poolManager()), address(poolManager));
         assertEq(address(investmentManager.gateway()), address(gateway));
 
-        assertEq(gateway.adapters(0), address(adapter));
+        assertEq(address(gateway.adapters(0)), address(adapter));
         assertTrue(gateway.payers(address(router)));
     }
 

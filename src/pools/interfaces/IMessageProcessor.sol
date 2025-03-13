@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
 
 /// @notice Interface for dispatch-only gateway
-interface IMessageProcessor is IMessageHandler {
+interface IMessageProcessor {
     /// @notice Creates and send the message
     function sendNotifyPool(uint32 chainId, PoolId poolId) external;
 

@@ -9,6 +9,7 @@ import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
@@ -45,13 +46,19 @@ contract TestCases is Deployer, Test {
 
     MockVaults cv;
 
+    function _configMockVaultsAdapter() private {
+        cv = new MockVaults(CHAIN_CV, gateway);
+
+        IAdapter[] memory testAdapters = new IAdapter[](1);
+        testAdapters[0] = cv;
+
+        gateway.file("adapters", testAdapters);
+    }
+
     function setUp() public {
         deploy();
 
-        // Adapting the CV mock
-        cv = new MockVaults(CHAIN_CV, gateway);
-        gateway.file("adapter", address(cv));
-        gateway.rely(address(cv));
+        _configMockVaultsAdapter();
 
         removeDeployerAccess();
 

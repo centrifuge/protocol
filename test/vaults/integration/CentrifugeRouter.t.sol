@@ -73,7 +73,7 @@ contract CentrifugeRouterTest is BaseTest {
 
         assertEq(address(gateway).balance, GATEWAY_INITIAL_BALACE + GAS_BUFFER);
         for (uint8 i; i < testAdapters.length; i++) {
-            MockAdapter adapter = MockAdapter(testAdapters[i]);
+            MockAdapter adapter = MockAdapter(address(testAdapters[i]));
             uint256[] memory payCalls = adapter.callsWithValue("pay");
             assertEq(payCalls.length, 1);
             assertEq(
