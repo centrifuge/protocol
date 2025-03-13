@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 
-import {PoolId, newPoolId} from "src/pools/types/PoolId.sol";
+import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 
 contract PoolIdTest is Test {
     function testPoolId(uint32 id) public view {

@@ -1,16 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-struct Entry {
-    uint256 amount;
-    uint32 accountId;
-}
+import {JournalEntry} from "src/common/types/JournalEntry.sol";
 
 struct Noted {
     uint256 amount;
     uint256 pricePerUnit;
-    Entry[] debits;
-    Entry[] credits;
+    JournalEntry[] debits;
+    JournalEntry[] credits;
 }
 
 interface IBalanceSheetManager {
@@ -26,8 +23,8 @@ interface IBalanceSheetManager {
         uint256 assetId,
         uint256 amount,
         uint256 pricePerUnit,
-        Entry[] debits,
-        Entry[] credits
+        JournalEntry[] debits,
+        JournalEntry[] credits
     );
     event NoteDeposit(
         uint64 indexed poolId,
@@ -36,12 +33,12 @@ interface IBalanceSheetManager {
         uint256 assetId,
         uint256 amount,
         uint256 pricePerUnit,
-        Entry[] debits,
-        Entry[] credits
+        JournalEntry[] debits,
+        JournalEntry[] credits
     );
 
     // Overloaded increase
-    function increase(
+    function deposit(
         uint64 poolId,
         bytes16 shareClassId,
         address asset,
@@ -50,11 +47,11 @@ interface IBalanceSheetManager {
         uint256 amount,
         uint256 pricePerUnit,
         uint64 timestamp,
-        Entry[] memory debits,
-        Entry[] memory credits
+        JournalEntry[] memory debits,
+        JournalEntry[] memory credits
     ) external;
 
-    function increase(
+    function deposit(
         uint64 poolId,
         bytes16 shareClassId,
         uint256 assetId, // Replace with correct type if needed
@@ -62,11 +59,11 @@ interface IBalanceSheetManager {
         uint256 amount,
         uint256 pricePerUnit,
         uint64 timestamp,
-        Entry[] memory debits,
-        Entry[] memory credits
+        JournalEntry[] memory debits,
+        JournalEntry[] memory credits
     ) external;
 
-    function decrease(
+    function withdraw(
         uint64 poolId,
         bytes16 shareClassId,
         address asset,
@@ -75,11 +72,11 @@ interface IBalanceSheetManager {
         uint256 amount,
         uint256 pricePerUnit,
         uint64 timestamp,
-        Entry[] memory debits,
-        Entry[] memory credits
+        JournalEntry[] memory debits,
+        JournalEntry[] memory credits
     ) external;
 
-    function decrease(
+    function withdraw(
         uint64 poolId,
         bytes16 shareClassId,
         uint256 assetId, // Replace with correct type if needed
@@ -87,8 +84,8 @@ interface IBalanceSheetManager {
         uint256 amount,
         uint256 pricePerUnit,
         uint64 timestamp,
-        Entry[] memory debits,
-        Entry[] memory credits
+        JournalEntry[] memory debits,
+        JournalEntry[] memory credits
     ) external;
 
     function issue(
@@ -109,12 +106,12 @@ interface IBalanceSheetManager {
         uint64 timestamp
     ) external;
 
-    function journal(
+    function journalEntry(
         uint64 poolId,
         bytes16 shareClassId,
         uint64 timestamp,
-        Entry[] memory debits,
-        Entry[] memory credits
+        JournalEntry[] memory debits,
+        JournalEntry[] memory credits
     ) external;
 
     function adaptNotedWithdraw(
@@ -124,8 +121,8 @@ interface IBalanceSheetManager {
         uint256 assetId,
         uint256 amount,
         uint256 pricePerUnit,
-        Entry[] memory debits,
-        Entry[] memory credits
+        JournalEntry[] memory debits,
+        JournalEntry[] memory credits
     ) external;
 
     function adaptNotedDeposit(
@@ -135,8 +132,8 @@ interface IBalanceSheetManager {
         uint256 assetId,
         uint256 amount,
         uint256 pricePerUnit,
-        Entry[] memory debits,
-        Entry[] memory credits
+        JournalEntry[] memory debits,
+        JournalEntry[] memory credits
     ) external;
 
     // Overloaded executeNotedWithdraw

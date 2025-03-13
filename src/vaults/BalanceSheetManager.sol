@@ -9,7 +9,7 @@ import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
-import {Noted, Entry, IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
+import {Noted, JournalEntry, IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
 import {IPerPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IMessageProcessor} from "src/vaults/interfaces/IMessageProcessor.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
@@ -59,7 +59,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
     }
 
     /// --- Outgoing ---
-    function increase(
+    function deposit(
         uint64 poolId,
         bytes16 shareClassId,
         address asset,
@@ -68,10 +68,10 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint256 amount,
         uint256 pricePerUnit,
         uint64 timestamp,
-        Entry[] calldata debits,
-        Entry[] calldata credits
+        JournalEntry[] calldata debits,
+        JournalEntry[] calldata credits
     ) external authOrPermission(poolId, shareClassId) {
-        _increase(poolId, shareClassId, asset, tokenId, provider, amount, pricePerUnit, timestamp, debits, credits);
+        _deposit(poolId, shareClassId, asset, tokenId, provider, amount, pricePerUnit, timestamp, debits, credits);
     }
 
     function increase(
@@ -82,19 +82,19 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint256 amount,
         uint256 pricePerUnit,
         uint64 timestamp,
-        Entry[] calldata debits,
-        Entry[] calldata credits
+        JournalEntry[] calldata debits,
+        JournalEntry[] calldata credits
     ) external authOrPermission(poolId, shareClassId) {
         // TODO
         /*
         (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
         require(asset != address(0), "PoolManager/invalid-asset-id");
 
-        _increase(poolId, shareClassId, asset, tokenId, provider, amount, pricePerUnit, timestamp, debits, credits);
+        _deposit(poolId, shareClassId, asset, tokenId, provider, amount, pricePerUnit, timestamp, debits, credits);
         */
     }
 
-    function decrease(
+    function withdraw(
         uint64 poolId,
         bytes16 shareClassId,
         address asset,
@@ -103,13 +103,13 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint256 amount,
         uint256 pricePerUnit,
         uint64 timestamp,
-        Entry[] calldata debits,
-        Entry[] calldata credits
+        JournalEntry[] calldata debits,
+        JournalEntry[] calldata credits
     ) external authOrPermission(poolId, shareClassId) {
-        _decrease(poolId, shareClassId, asset, tokenId, receiver, amount, pricePerUnit, timestamp, debits, credits);
+        _withdraw(poolId, shareClassId, asset, tokenId, receiver, amount, pricePerUnit, timestamp, debits, credits);
     }
 
-    function decrease(
+    function withdraw(
         uint64 poolId,
         bytes16 shareClassId,
         uint256 assetId,
@@ -117,15 +117,15 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint256 amount,
         uint256 pricePerUnit,
         uint64 timestamp,
-        Entry[] calldata debits,
-        Entry[] calldata credits
+        JournalEntry[] calldata debits,
+        JournalEntry[] calldata credits
     ) external authOrPermission(poolId, shareClassId) {
         // TODO
         /*
         (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
         require(asset != address(0), "PoolManager/invalid-asset-id");
 
-        _decrease(poolId, shareClassId, asset, tokenId, receiver, amount, pricePerUnit, timestamp, debits, credits);
+        _withdraw(poolId, shareClassId, asset, tokenId, receiver, amount, pricePerUnit, timestamp, debits, credits);
         */
     }
 
@@ -155,12 +155,12 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         // TODO: Send message to CP RevokedShares()
     }
 
-    function journal(
+    function journalEntry(
         uint64 poolId,
         bytes16 shareClassId,
         uint64 timestamp,
-        Entry[] calldata debits,
-        Entry[] calldata credits
+        JournalEntry[] calldata debits,
+        JournalEntry[] calldata credits
     ) external authOrPermission(poolId, shareClassId) {
         // TODO: Send message to CP JournalEntry()
     }
@@ -173,8 +173,8 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint256 assetId,
         uint256 amount,
         uint256 pricePerUnit,
-        Entry[] calldata debits,
-        Entry[] calldata credits
+        JournalEntry[] calldata debits,
+        JournalEntry[] calldata credits
     ) external authOrPermission(poolId, shareClassId) {
         Noted storage notedWithdraw_ = notedWithdraw[poolId][shareClassId][receiver][assetId];
 
@@ -201,8 +201,8 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint256 assetId,
         uint256 amount,
         uint256 pricePerUnit,
-        Entry[] calldata debits,
-        Entry[] calldata credits
+        JournalEntry[] calldata debits,
+        JournalEntry[] calldata credits
     ) external authOrPermission(poolId, shareClassId) {
         Noted storage notedDeposit_ = notedDeposit[poolId][shareClassId][from][assetId];
 
@@ -233,7 +233,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         Noted storage notedWithdraw_ = notedWithdraw[poolId][shareClassId][receiver][assetId];
         require(notedWithdraw_.amount > 0, "BalanceSheetManager/invalid-noted-withdraw");
 
-        // _decrease(poolId, shareClassId, asset, tokenId, receiver, notedWithdraw_.amount, notedWithdraw_.pricePerUnit,
+        // _withdraw(poolId, shareClassId, asset, tokenId, receiver, notedWithdraw_.amount, notedWithdraw_.pricePerUnit,
         // block.timestamp, notedWithdraw_.debits, notedWithdraw_.credits);
     }
 
@@ -247,12 +247,12 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         Noted storage notedDeposit_ = notedDeposit[poolId][shareClassId][provider][assetId];
         require(notedDeposit_.amount > 0, "BalanceSheetManager/invalid-noted-deposit");
 
-        // _increase(poolId, shareClassId, asset, tokenId, provider, notedDeposit_.amount, notedDeposit_.pricePerUnit,
+        // _deposit(poolId, shareClassId, asset, tokenId, provider, notedDeposit_.amount, notedDeposit_.pricePerUnit,
         // block.timestamp, notedDeposit_.debits, notedDeposit_.credits);
     }
 
     // --- Internal ---
-    function _decrease(
+    function _withdraw(
         uint64 poolId,
         bytes16 shareClassId,
         address asset,
@@ -261,13 +261,13 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint256 amount,
         uint256 pricePerUnit,
         uint64 timestamp,
-        Entry[] calldata debits,
-        Entry[] calldata credits
+        JournalEntry[] calldata debits,
+        JournalEntry[] calldata credits
     ) internal {
         // TODO: ...
     }
 
-    function _increase(
+    function _deposit(
         uint64 poolId,
         bytes16 shareClassId,
         address asset,
@@ -276,8 +276,8 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint256 amount,
         uint256 pricePerUnit,
         uint64 timestamp,
-        Entry[] calldata debits,
-        Entry[] calldata credits
+        JournalEntry[] calldata debits,
+        JournalEntry[] calldata credits
     ) internal {
         // TODO: Use PM to convert holding to assetId
 

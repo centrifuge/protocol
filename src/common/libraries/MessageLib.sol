@@ -4,6 +4,8 @@ pragma solidity 0.8.28;
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
+import {JournalEntry, JournalEntryLib} from "src/common/types/JournalEntry.sol";
+
 enum MessageType {
     /// @dev Placeholder for null message type
     Invalid,
@@ -38,7 +40,13 @@ enum MessageType {
     CancelRedeemRequest,
     FulfilledCancelDepositRequest,
     FulfilledCancelRedeemRequest,
-    TriggerRedeemRequest
+    TriggerRedeemRequest,
+    // -- BalanceSheetManager messages 28 - 33
+    IncreaseHolding,
+    DecreaseHolding,
+    IssueShares,
+    RevokeShares,
+    JournalEntry
 }
 
 enum UpdateRestrictionType {
@@ -63,12 +71,14 @@ enum MessageCategory {
     Gas,
     Pool,
     Investment,
+    BalanceSheet,
     Other
 }
 
 library MessageLib {
     using MessageLib for bytes;
     using BytesLib for bytes;
+    using JournalEntryLib for bytes;
     using CastLib for *;
 
     error UnknownMessageType();
@@ -139,6 +149,8 @@ library MessageLib {
             return MessageCategory.Pool;
         } else if (code >= 19 && code <= 27) {
             return MessageCategory.Investment;
+        } else if (code >= 28 && code <= 33) {
+            return MessageCategory.BalanceSheet;
         } else {
             return MessageCategory.Other;
         }
@@ -952,5 +964,59 @@ library MessageLib {
 
     function serialize(TriggerRedeemRequest memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(MessageType.TriggerRedeemRequest, t.poolId, t.scId, t.investor, t.assetId, t.shares);
+    }
+
+    //---------------------------------------
+    //    IncreaseHolding
+    //---------------------------------------
+
+    struct IncreaseHolding {
+        uint64 poolId;
+        bytes16 scId;
+        uint128 assetId;
+        bytes32 provider; // who provided the funds
+        uint256 amount;
+        uint256 pricePerUnit;
+        uint64 timestamp;
+        bool execute; // ONLY relevant for CV side, if false, only note the action
+        JournalEntry[] debits;
+        JournalEntry[] credits;
+    }
+
+    function deserializeIncreaseHolding(bytes memory data) internal pure returns (IncreaseHolding memory) {
+        require(messageType(data) == MessageType.IncreaseHolding, UnknownMessageType());
+
+        uint16 debitsLength = data.toUint16(57);
+        uint16 creditsLength = data.toUint16(57);
+        return IncreaseHolding({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            assetId: data.toUint128(25),
+            provider: data.toBytes32(41),
+            amount: data.toUint256(73),
+            pricePerUnit: data.toUint256(105),
+            timestamp: data.toUint64(137),
+            execute: data.toBool(145),
+            debits: data.toJournalEntries(data, 146, debitsLength),
+            credits: data.toJournalEntries(data, 146 + debitsLength + 2, creditsLength)
+        });
+    }
+
+    function serialize(IncreaseHolding memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(
+            MessageType.IncreaseHolding,
+            t.poolId,
+            t.scId,
+            t.assetId,
+            t.provider,
+            t.amount,
+            t.pricePerUnit,
+            t.timestamp,
+            t.execute,
+            uint16(t.debits.length),
+            t.debits.encodePacked(),
+            uint16(t.credits.length),
+            t.credits.encodePacked()
+        );
     }
 }
