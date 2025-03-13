@@ -74,7 +74,7 @@ contract CentrifugeRouterTest is BaseTest {
 
         assertEq(address(gateway).balance, GATEWAY_INITIAL_BALANCE + GAS_BUFFER, "Gateway balance mismatch");
         for (uint8 i; i < testAdapters.length; i++) {
-            MockAdapter adapter = MockAdapter(testAdapters[i]);
+            MockAdapter adapter = MockAdapter(address(testAdapters[i]));
             uint256[] memory payCalls = adapter.callsWithValue("pay");
             // Messages: registerAsset and requestDeposit
             assertEq(payCalls.length, 2, "paycalls length mismatch");

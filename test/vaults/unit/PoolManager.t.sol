@@ -34,7 +34,7 @@ contract PoolManagerTest is BaseTest {
         // values set correctly
         assertEq(address(poolManager.gateway()), address(gateway));
         assertEq(address(poolManager.escrow()), address(escrow));
-        assertEq(address(gateway.poolManager()), address(poolManager));
+        assertEq(address(gateway.handler()), address(poolManager.sender()));
         assertEq(address(investmentManager.poolManager()), address(poolManager));
 
         // permissions set correctly
@@ -62,11 +62,6 @@ contract PoolManagerTest is BaseTest {
         address newEscrow = makeAddr("newEscrow");
         vm.expectRevert("PoolManager/file-unrecognized-param");
         poolManager.file("escrow", newEscrow);
-    }
-
-    function testHandleInvalidMessage() public {
-        vm.expectRevert(bytes("PoolManager/invalid-message"));
-        poolManager.handle(1, abi.encodePacked(uint8(0)));
     }
 
     function testAddPool(uint64 poolId) public {

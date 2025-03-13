@@ -96,7 +96,7 @@ max_test_rejects = 65_536 # default value
     "src/pools/Accounting.sol", #Because transient keyword
     "src/pools/PoolManager.sol", #Because transient keyword
     "src/pools/MultiShareClass.sol", #Because transient keyword
-    "src/vaults/gateway/Gateway.sol", #Because transient keyword
+    "src/common/Gateway.sol", #Because transient keyword
   ]
 
 [rpc_endpoints]

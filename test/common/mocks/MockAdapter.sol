@@ -14,8 +14,8 @@ contract MockAdapter is Auth, Mock, IAdapter {
 
     mapping(bytes => uint256) public sent;
 
-    constructor(address gateway_) Auth(msg.sender) {
-        gateway = IMessageHandler(gateway_);
+    constructor(IMessageHandler gateway_) Auth(msg.sender) {
+        gateway = gateway_;
     }
 
     function execute(bytes memory _message) external {

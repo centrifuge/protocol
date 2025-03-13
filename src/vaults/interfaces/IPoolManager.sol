@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 
 /// @dev Centrifuge pools
@@ -48,7 +47,7 @@ struct VaultAsset {
     bool isLinked;
 }
 
-interface IPoolManager is IMessageHandler, IRecoverable {
+interface IPoolManager is IRecoverable {
     event File(bytes32 indexed what, address data);
     event RegisterAsset(
         uint128 indexed assetId,

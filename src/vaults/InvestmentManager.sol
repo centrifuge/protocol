@@ -4,18 +4,21 @@ pragma solidity 0.8.28;
 import {Auth} from "src/misc/Auth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {IRecoverable} from "src/common/interfaces/IRoot.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
-import {IInvestmentManager, InvestmentState, IMessageHandler} from "src/vaults/interfaces/IInvestmentManager.sol";
+import {IInvestmentManager, InvestmentState} from "src/vaults/interfaces/IInvestmentManager.sol";
 import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
-import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
-import {IRecoverable} from "src/common/interfaces/IRoot.sol";
+import {IMessageProcessor} from "src/vaults/interfaces/IMessageProcessor.sol";
 
 /// @title  Investment Manager
 /// @notice This is the main contract vaults interact with for
@@ -33,6 +36,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
     address public immutable escrow;
 
     IGateway public gateway;
+    IMessageProcessor public sender;
     IPoolManager public poolManager;
 
     mapping(uint64 poolId => mapping(bytes16 trancheId => mapping(uint128 assetId => address vault))) public vault;
@@ -49,6 +53,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
     /// @inheritdoc IInvestmentManager
     function file(bytes32 what, address data) external auth {
         if (what == "gateway") gateway = IGateway(data);
+        else if (what == "sender") sender = IMessageProcessor(data);
         else if (what == "poolManager") poolManager = IPoolManager(data);
         else revert("InvestmentManager/file-unrecognized-param");
         emit File(what, data);
@@ -124,16 +129,10 @@ contract InvestmentManager is Auth, IInvestmentManager {
         require(state.pendingCancelDepositRequest != true, "InvestmentManager/cancellation-is-pending");
 
         state.pendingDepositRequest = state.pendingDepositRequest + _assets;
-        gateway.send(
-            uint32(vault_.poolId() >> 32),
-            MessageLib.DepositRequest({
-                poolId: vault_.poolId(),
-                scId: vault_.trancheId(),
-                investor: controller.toBytes32(),
-                assetId: poolManager.assetToId(asset),
-                amount: _assets
-            }).serialize(),
-            source
+
+        gateway.setPayableSource(source);
+        sender.sendDepositRequest(
+            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), poolManager.assetToId(asset), _assets
         );
 
         return true;
@@ -178,16 +177,9 @@ contract InvestmentManager is Auth, IInvestmentManager {
 
         state.pendingRedeemRequest = state.pendingRedeemRequest + shares;
 
-        gateway.send(
-            uint32(vault_.poolId() >> 32),
-            MessageLib.RedeemRequest({
-                poolId: vault_.poolId(),
-                scId: vault_.trancheId(),
-                investor: controller.toBytes32(),
-                assetId: poolManager.assetToId(vault_.asset()),
-                amount: shares
-            }).serialize(),
-            source
+        gateway.setPayableSource(source);
+        sender.sendRedeemRequest(
+            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), poolManager.assetToId(vault_.asset()), shares
         );
 
         return true;
@@ -202,15 +194,9 @@ contract InvestmentManager is Auth, IInvestmentManager {
         require(state.pendingCancelDepositRequest != true, "InvestmentManager/cancellation-is-pending");
         state.pendingCancelDepositRequest = true;
 
-        gateway.send(
-            uint32(vault_.poolId() >> 32),
-            MessageLib.CancelDepositRequest({
-                poolId: vault_.poolId(),
-                scId: vault_.trancheId(),
-                investor: controller.toBytes32(),
-                assetId: poolManager.assetToId(vault_.asset())
-            }).serialize(),
-            source
+        gateway.setPayableSource(source);
+        sender.sendCancelDepositRequest(
+            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), poolManager.assetToId(vault_.asset())
         );
     }
 
@@ -228,47 +214,10 @@ contract InvestmentManager is Auth, IInvestmentManager {
         require(state.pendingCancelRedeemRequest != true, "InvestmentManager/cancellation-is-pending");
         state.pendingCancelRedeemRequest = true;
 
-        gateway.send(
-            uint32(vault_.poolId() >> 32),
-            MessageLib.CancelRedeemRequest({
-                poolId: vault_.poolId(),
-                scId: vault_.trancheId(),
-                investor: controller.toBytes32(),
-                assetId: poolManager.assetToId(vault_.asset())
-            }).serialize(),
-            source
+        gateway.setPayableSource(source);
+        sender.sendCancelRedeemRequest(
+            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), poolManager.assetToId(vault_.asset())
         );
-    }
-
-    // --- Incoming message handling ---
-    /// @inheritdoc IMessageHandler
-    function handle(uint32, /*chainId*/ bytes calldata message) public auth {
-        MessageType kind = message.messageType();
-
-        if (kind == MessageType.FulfilledDepositRequest) {
-            MessageLib.FulfilledDepositRequest memory m = message.deserializeFulfilledDepositRequest();
-            fulfillDepositRequest(
-                m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.assetAmount, m.shareAmount
-            );
-        } else if (kind == MessageType.FulfilledRedeemRequest) {
-            MessageLib.FulfilledRedeemRequest memory m = message.deserializeFulfilledRedeemRequest();
-            fulfillRedeemRequest(
-                m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.assetAmount, m.shareAmount
-            );
-        } else if (kind == MessageType.FulfilledCancelDepositRequest) {
-            MessageLib.FulfilledCancelDepositRequest memory m = message.deserializeFulfilledCancelDepositRequest();
-            fulfillCancelDepositRequest(
-                m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.cancelledAmount, m.cancelledAmount
-            );
-        } else if (kind == MessageType.FulfilledCancelRedeemRequest) {
-            MessageLib.FulfilledCancelRedeemRequest memory m = message.deserializeFulfilledCancelRedeemRequest();
-            fulfillCancelRedeemRequest(m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.cancelledShares);
-        } else if (kind == MessageType.TriggerRedeemRequest) {
-            MessageLib.TriggerRedeemRequest memory m = message.deserializeTriggerRedeemRequest();
-            triggerRedeemRequest(m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.shares);
-        } else {
-            revert("InvestmentManager/invalid-message");
-        }
     }
 
     /// @inheritdoc IInvestmentManager

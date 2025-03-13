@@ -12,6 +12,8 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 import {IBaseVault, IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {IRecoverable} from "src/common/interfaces/IRoot.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
 
 import {ITrancheFactory} from "src/vaults/interfaces/factories/ITrancheFactory.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
@@ -23,12 +25,10 @@ import {
     TranchePrice,
     UndeployedTranche,
     VaultAsset,
-    IPoolManager,
-    IMessageHandler
+    IPoolManager
 } from "src/vaults/interfaces/IPoolManager.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
-import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
-import {IRecoverable} from "src/common/interfaces/IRoot.sol";
+import {IMessageProcessor} from "src/vaults/interfaces/IMessageProcessor.sol";
 
 struct AssetIdKey {
     /// @dev The address of the asset
@@ -53,6 +53,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     uint32 private immutable _chainId;
 
     IGateway public gateway;
+    IMessageProcessor public sender;
     ITrancheFactory public trancheFactory;
 
     uint32 internal _assetCounter;
@@ -82,6 +83,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     /// @inheritdoc IPoolManager
     function file(bytes32 what, address data) external auth {
         if (what == "gateway") gateway = IGateway(data);
+        else if (what == "sender") sender = IMessageProcessor(data);
         else if (what == "trancheFactory") trancheFactory = ITrancheFactory(data);
         else revert("PoolManager/file-unrecognized-param");
         emit File(what, data);
@@ -114,12 +116,8 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         require(address(tranche) != address(0), "PoolManager/unknown-token");
         tranche.burn(msg.sender, amount);
 
-        gateway.send(
-            destinationId,
-            MessageLib.TransferShares({poolId: poolId, scId: trancheId, recipient: recipient, amount: amount}).serialize(
-            ),
-            address(this)
-        );
+        gateway.setPayableSource(msg.sender);
+        sender.sendTransferShares(destinationId, poolId, trancheId, recipient, amount);
 
         emit TransferTrancheTokens(poolId, trancheId, msg.sender, destinationId, recipient, amount);
     }
@@ -167,45 +165,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         );
 
         emit RegisterAsset(assetId, asset, tokenId, name, symbol, decimals);
-    }
-
-    // --- Incoming message handling ---
-    /// @inheritdoc IMessageHandler
-    function handle(uint32, /*chainId*/ bytes calldata message) external auth {
-        MessageType kind = MessageLib.messageType(message);
-
-        if (kind == MessageType.NotifyPool) {
-            addPool(MessageLib.deserializeNotifyPool(message).poolId);
-        } else if (kind == MessageType.NotifyShareClass) {
-            MessageLib.NotifyShareClass memory m = MessageLib.deserializeNotifyShareClass(message);
-            addTranche(m.poolId, m.scId, m.name, m.symbol.toString(), m.decimals, m.salt, address(bytes20(m.hook)));
-        } else if (kind == MessageType.AllowAsset) {
-            MessageLib.AllowAsset memory m = MessageLib.deserializeAllowAsset(message);
-            allowAsset(m.poolId, /* m.scId, */ m.assetId); // TODO: use scId
-        } else if (kind == MessageType.DisallowAsset) {
-            MessageLib.DisallowAsset memory m = MessageLib.deserializeDisallowAsset(message);
-            disallowAsset(m.poolId, /* m.scId, */ m.assetId); // TODO: use scId
-        } else if (kind == MessageType.UpdateShareClassPrice) {
-            MessageLib.UpdateShareClassPrice memory m = MessageLib.deserializeUpdateShareClassPrice(message);
-            updateTranchePrice(m.poolId, m.scId, m.assetId, m.price, m.timestamp);
-        } else if (kind == MessageType.UpdateShareClassMetadata) {
-            MessageLib.UpdateShareClassMetadata memory m = MessageLib.deserializeUpdateShareClassMetadata(message);
-            updateTrancheMetadata(m.poolId, m.scId, m.name, m.symbol.toString());
-        } else if (kind == MessageType.UpdateShareClassHook) {
-            MessageLib.UpdateShareClassHook memory m = MessageLib.deserializeUpdateShareClassHook(message);
-            updateTrancheHook(m.poolId, m.scId, address(bytes20(m.hook)));
-        } else if (kind == MessageType.TransferShares) {
-            MessageLib.TransferShares memory m = MessageLib.deserializeTransferShares(message);
-            handleTransferTrancheTokens(m.poolId, m.scId, address(bytes20(m.recipient)), m.amount);
-        } else if (kind == MessageType.UpdateRestriction) {
-            MessageLib.UpdateRestriction memory m = MessageLib.deserializeUpdateRestriction(message);
-            updateRestriction(m.poolId, m.scId, m.payload);
-        } else if (kind == MessageType.UpdateContract) {
-            MessageLib.UpdateContract memory m = MessageLib.deserializeUpdateContract(message);
-            updateContract(m.poolId, m.scId, address(bytes20(m.target)), m.payload);
-        } else {
-            revert("PoolManager/invalid-message");
-        }
     }
 
     /// @inheritdoc IPoolManager
