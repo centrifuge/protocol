@@ -141,4 +141,12 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         shortcut_deposit_cancel_redemption(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
     }
 
+    function test_shortcut_update_holding() public {
+        shortcut_update_holding(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), true, 0x01);
+    }
+
+    function test_shortcut_update_valuation() public {
+        shortcut_update_valuation(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), true, 0x01);
+    }
+
 }

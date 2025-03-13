@@ -276,6 +276,40 @@ abstract contract TargetFunctions is
         poolManager_cancelRedeemRequest(poolId, scId, isoCode);
     }
 
+    function shortcut_update_holding(
+        uint8 decimals,
+        uint32 isoCode,
+        string memory name, 
+        string memory symbol, 
+        bytes32 salt, 
+        bytes memory data,
+        bool isIdentityValuation,
+        uint24 prefix
+    ) public {
+        (PoolId poolId, ShareClassId scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
+    
+        AssetId assetId = newAssetId(isoCode);
+        poolRouter_updateHolding(scId, assetId);
+        poolRouter_execute_clamped(poolId);
+    }
+
+    function shortcut_update_valuation(
+        uint8 decimals,
+        uint32 isoCode,
+        string memory name, 
+        string memory symbol, 
+        bytes32 salt, 
+        bytes memory data,
+        bool isIdentityValuation,
+        uint24 prefix
+    ) public {
+        (PoolId poolId, ShareClassId scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
+    
+        AssetId assetId = newAssetId(isoCode);
+        poolRouter_updateHoldingValuation(scId, assetId, isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation)));
+        poolRouter_execute_clamped(poolId);
+    }
+
     /// === POOL ADMIN SHORTCUTS === ///
     function shortcut_add_share_class_and_holding(
         PoolId poolId,
