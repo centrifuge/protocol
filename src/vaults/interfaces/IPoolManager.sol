@@ -86,9 +86,6 @@ interface IPoolManager is IMessageHandler, IRecoverable {
         uint64 indexed poolId, bytes16 indexed trancheId, uint128 indexed assetId, address asset, address vault
     );
 
-    /// @notice Dispatched when the PoolManagers updateContract function fails without a clear revert reason
-    error UpdateContractFailed();
-
     /// @notice returns the asset address associated with a given asset id
     function idToAsset(uint128 assetId) external view returns (address asset);
 

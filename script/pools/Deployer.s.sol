@@ -10,7 +10,7 @@ import {Gateway} from "src/common/Gateway.sol";
 
 import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
 import {PoolRegistry} from "src/pools/PoolRegistry.sol";
-import {SingleShareClass} from "src/pools/SingleShareClass.sol";
+import {MultiShareClass} from "src/pools/MultiShareClass.sol";
 import {Holdings} from "src/pools/Holdings.sol";
 import {AssetRegistry} from "src/pools/AssetRegistry.sol";
 import {Accounting} from "src/pools/Accounting.sol";
@@ -24,7 +24,7 @@ contract Deployer is Script {
     AssetRegistry public assetRegistry;
     Accounting public accounting;
     Holdings public holdings;
-    SingleShareClass public singleShareClass;
+    MultiShareClass public multiShareClass;
     Gateway public gateway;
     PoolManager public poolManager;
     MessageProcessor public messageProcessor;
@@ -42,7 +42,7 @@ contract Deployer is Script {
         assetRegistry = new AssetRegistry(address(this));
         accounting = new Accounting(address(this));
         holdings = new Holdings(poolRegistry, address(this));
-        singleShareClass = new SingleShareClass(poolRegistry, address(this));
+        multiShareClass = new MultiShareClass(poolRegistry, address(this));
         gateway = new Gateway(address(this));
         poolManager = new PoolManager(poolRegistry, assetRegistry, accounting, holdings, gateway, address(this));
         messageProcessor = new MessageProcessor(gateway, poolManager, address(this));
@@ -66,7 +66,7 @@ contract Deployer is Script {
         assetRegistry.rely(address(poolManager));
         holdings.rely(address(poolManager));
         accounting.rely(address(poolManager));
-        singleShareClass.rely(address(poolManager));
+        multiShareClass.rely(address(poolManager));
         gateway.rely(address(poolManager));
         gateway.rely(address(messageProcessor));
         poolManager.rely(address(messageProcessor));
@@ -84,7 +84,7 @@ contract Deployer is Script {
         assetRegistry.deny(address(this));
         accounting.deny(address(this));
         holdings.deny(address(this));
-        singleShareClass.deny(address(this));
+        multiShareClass.deny(address(this));
         gateway.deny(address(this));
         messageProcessor.deny(address(this));
         poolManager.deny(address(this));

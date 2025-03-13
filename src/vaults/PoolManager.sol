@@ -319,18 +319,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     /// @inheritdoc IPoolManager
     function updateContract(uint64 poolId, bytes16 trancheId, address target, bytes memory update_) public auth {
         if (target == address(this)) {
-            (bool success, bytes memory returnData) = address(this).delegatecall(
-                abi.encodeWithSelector(IUpdateContract.update.selector, poolId, trancheId, update_)
-            );
-
-            if (!success) {
-                uint256 length = returnData.length;
-                require(length != 0, UpdateContractFailed());
-
-                assembly ("memory-safe") {
-                    revert(add(32, returnData), length)
-                }
-            }
+            update(poolId, trancheId, update_);
         } else {
             IUpdateContract(target).update(poolId, trancheId, update_);
         }
