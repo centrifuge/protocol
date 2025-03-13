@@ -276,7 +276,7 @@ contract DeployTest is Test, Deployer {
         );
         uint128 assetId = poolManager.registerAsset(address(erc20), 0, 0);
         poolManager.updateTranchePrice(poolId, trancheId, assetId, uint128(10 ** 18), uint64(block.timestamp));
-        address vault = poolManager.deployVault(poolId, trancheId, address(erc20), address(vaultFactory));
+        address vault = poolManager.deployVault(poolId, trancheId, assetId, address(vaultFactory));
         poolManager.linkVault(poolId, trancheId, assetId, vault);
         vm.stopPrank();
 

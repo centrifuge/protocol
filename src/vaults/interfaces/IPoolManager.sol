@@ -41,9 +41,8 @@ struct UndeployedTranche {
 struct VaultAsset {
     /// @dev Address of the asset
     address asset;
-    // TODO: Enable?
     /// @dev AssetId of the asset
-    // uint128 assetId;
+    uint128 assetId;
     /// @dev Whether this wrapper conforms to the IERC20Wrapper interface
     bool isWrapper;
     /// @dev Whether the vault is linked to a tranche atm
@@ -166,7 +165,9 @@ interface IPoolManager is IRecoverable {
         external
         returns (uint128 assetId);
 
-    function deployVault(uint64 poolId, bytes16 trancheId, address asset, address factory) external returns (address);
+    function deployVault(uint64 poolId, bytes16 trancheId, uint128 assetId, address factory)
+        external
+        returns (address);
 
     function linkVault(uint64 poolId, bytes16 trancheId, uint128 assetId, address vault) external;
 

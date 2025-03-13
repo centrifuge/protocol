@@ -38,7 +38,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     // Basically the real complete setup
     function deployNewTokenPoolAndTranche(uint8 decimals, uint256 initialMintPerUsers)
         public
-        returns (address newToken, address newTranche, address newVault)
+        returns (address newToken, address newTranche, address newVault, uint128 newAssetId)
     {
         // NOTE: TEMPORARY
         require(!hasDoneADeploy); // This bricks the function for this one for Medusa
@@ -60,8 +60,8 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
 
         newToken = addToken(decimals, initialMintPerUsers);
         {
-            CURRENCY_ID += 1;
-            poolManager_registerAsset(CURRENCY_ID, address(newToken));
+            ASSET_ID_COUNTER += 1;
+            newAssetId = poolManager_registerAsset(address(newToken), 0);
         }
 
         {
@@ -78,7 +78,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
             newTranche = poolManager_addTranche(POOL_ID, TRANCHE_ID, name, symbol, 18, address(restrictionManager));
         }
 
-        newVault = poolManager_deployVault(POOL_ID, TRANCHE_ID, address(newToken));
+        newVault = poolManager_deployVault(POOL_ID, TRANCHE_ID, newAssetId);
 
         // NOTE: Add to storage! So this will be called by other functions
         // NOTE: This sets the actors
@@ -103,7 +103,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
 
         trancheId = TRANCHE_ID;
         poolId = POOL_ID;
-        currencyId = CURRENCY_ID;
+        assetId = newAssetId;
 
         // NOTE: Iplicit return
     }
@@ -112,12 +112,12 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     // Add it to All Pools
 
     // Step 2
-    function poolManager_registerAsset(uint128 currencyId, address currencyAddress) public {
-        poolManager.registerAsset(currencyAddress, currencyId, 0);
+    function poolManager_registerAsset(address assetAddress, uint256 erc6909TokenId) public returns (uint128 assetId) {
+        assetId = poolManager.registerAsset(assetAddress, erc6909TokenId, DEFAULT_DESTINATION_CHAIN);
 
-        // Only if success full
-        tokenToCurrencyId[currencyAddress] = currencyId;
-        currencyIdToToken[currencyId] = currencyAddress;
+        // Only if successful
+        assetAddressToAssetId[assetAddress] = assetId;
+        assetIdToAssetAddress[assetId] = assetAddress;
     }
 
     // Step 3
@@ -144,8 +144,8 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     }
 
     // Step 5
-    function poolManager_deployVault(uint64 poolId, bytes16 trancheId, address currency) public returns (address) {
-        return poolManager.deployVault(poolId, trancheId, currency, address(vaultFactory));
+    function poolManager_deployVault(uint64 poolId, bytes16 trancheId, uint128 assetId) public returns (address) {
+        return poolManager.deployVault(poolId, trancheId, assetId, address(vaultFactory));
     }
 
     /**
@@ -159,7 +159,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
 
     // TODO: Price is capped at u64 to test overflows
     function poolManager_updateTranchePrice(uint64 price, uint64 computedAt) public {
-        poolManager.updateTranchePrice(poolId, trancheId, currencyId, price, computedAt);
+        poolManager.updateTranchePrice(poolId, trancheId, assetId, price, computedAt);
     }
 
     function poolManager_updateTrancheMetadata(string memory tokenName, string memory tokenSymbol) public {
@@ -217,8 +217,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
 
     // Step 6 deploy the pool
     function deployVault(uint64 poolId, bytes16 trancheId, uint128 assetId) public {
-        address asset = poolManager.idToAsset(assetId);
-        address newVault = poolManager.deployVault(poolId, trancheId, asset, address(vaultFactory));
+        address newVault = poolManager.deployVault(poolId, trancheId, assetId, address(vaultFactory));
         poolManager.linkVault(poolId, trancheId, assetId, newVault);
 
         vaults.push(newVault);

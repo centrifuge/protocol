@@ -157,9 +157,10 @@ contract PoolManagerTest is BaseTest {
         centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook);
 
         // Check event except for vault address which cannot be known
+        (uint128 assetId) = poolManager.registerAsset(asset, 0, defaultChainId);
         vm.expectEmit(true, true, true, false);
         emit IPoolManager.DeployVault(poolId, trancheId, asset, vaultFactory, address(0));
-        address vaultAddress = poolManager.deployVault(poolId, trancheId, asset, vaultFactory);
+        address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, vaultFactory);
 
         // Check Vault asset
         (address asset_, bool isWrapper) = poolManager.getVaultAsset(vaultAddress);
@@ -216,7 +217,7 @@ contract PoolManagerTest is BaseTest {
         centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook);
 
         (uint128 assetId) = poolManager.registerAsset(asset, 0, defaultChainId);
-        address vaultAddress = poolManager.deployVault(poolId, trancheId, asset, vaultFactory);
+        address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, vaultFactory);
         poolManager.linkVault(poolId, trancheId, assetId, vaultAddress);
 
         address tranche_ = poolManager.getTranche(poolId, trancheId);
@@ -528,7 +529,7 @@ contract PoolManagerTest is BaseTest {
         assertEq(Tranche(poolManager.getTranche(poolId, trancheId)).vault(asset), address(0));
 
         // Deploy new vault
-        address newVault = poolManager.deployVault(poolId, trancheId, asset, address(newVaultFactory));
+        address newVault = poolManager.deployVault(poolId, trancheId, assetId, address(newVaultFactory));
         assert(oldVault_ != newVault);
     }
 

@@ -285,7 +285,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         address vault = m.vault;
         if (m.factory != address(0) && vault == address(0)) {
             require(vaultFactory[m.factory], "PoolManager/invalid-vault-factory");
-            vault = deployVault(poolId, trancheId, idToAsset(m.assetId), m.factory);
+            vault = deployVault(poolId, trancheId, m.assetId, m.factory);
         }
 
         // Needed as safeguard against non-validated vaults
@@ -301,7 +301,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
 
     // --- Public functions ---
     /// @inheritdoc IPoolManager
-    function deployVault(uint64 poolId, bytes16 trancheId, address asset, address factory)
+    function deployVault(uint64 poolId, bytes16 trancheId, uint128 assetId, address factory)
         public
         auth
         returns (address)
@@ -314,14 +314,15 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         address[] memory vaultWards = new address[](0);
 
         // Deploy vault
+        address asset = idToAsset(assetId);
         address vault =
             IVaultFactory(factory).newVault(poolId, trancheId, asset, tranche.token, address(escrow), vaultWards);
 
-        // Check whether the ERC20 token is a wrapper
+        // Check whether asset is an ERC20 token wrapper
         try IERC20Wrapper(asset).underlying() returns (address) {
-            _vaultToAsset[vault] = VaultAsset(asset, true, false);
+            _vaultToAsset[vault] = VaultAsset(asset, assetId, true, false);
         } catch {
-            _vaultToAsset[vault] = VaultAsset(asset, false, false);
+            _vaultToAsset[vault] = VaultAsset(asset, assetId, false, false);
         }
 
         address manager = IBaseVault(vault).manager();
@@ -395,8 +396,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     function getVaultAssetId(address vault) public view override returns (uint128) {
         VaultAsset memory _asset = _vaultToAsset[vault];
         require(_asset.asset != address(0), "PoolManager/unknown-vault");
-        // FIXME: How to get tokenId?
-        return assetToId[_asset.asset][0];
+        return _asset.assetId;
     }
 
     /// @inheritdoc IPoolManager
