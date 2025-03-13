@@ -151,13 +151,15 @@ abstract contract AdminTargets is
         poolManager.redeemRequest(poolId, scId, investor, payoutAssetId, amount);
     }  
 
-    function poolManager_cancelDepositRequest(PoolId poolId, ShareClassId scId, AssetId depositAssetId) public asAdmin {
+    function poolManager_cancelDepositRequest(PoolId poolId, ShareClassId scId, uint32 isoCode) public asAdmin {
+        AssetId depositAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
         poolManager.cancelDepositRequest(poolId, scId, investor, depositAssetId);
     }
 
-    function poolManager_cancelRedeemRequest(PoolId poolId, ShareClassId scId, AssetId payoutAssetId) public asAdmin {
+    function poolManager_cancelRedeemRequest(PoolId poolId, ShareClassId scId, uint32 isoCode) public asAdmin {
+        AssetId payoutAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
         poolManager.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);

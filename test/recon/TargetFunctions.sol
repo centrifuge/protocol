@@ -115,6 +115,34 @@ abstract contract TargetFunctions is
         return (poolId, scId);
     }
 
+    function shortcut_deposit_and_cancel(
+        uint8 decimals,
+        uint32 isoCode,
+        string memory name,
+        string memory symbol,
+        bytes32 salt,
+        bytes memory data,
+        bool isIdentityValuation,
+        uint24 prefix,
+        uint128 amount,
+        uint128 maxApproval,
+        D18 navPerShare
+    ) public returns (PoolId poolId, ShareClassId scId) {
+        (poolId, scId) = shortcut_deposit(
+            decimals, isoCode, name, symbol, salt, data, 
+            isIdentityValuation, prefix, amount, maxApproval, navPerShare
+        );
+
+        // claim deposit as actor
+        bytes32 investor = Helpers.addressToBytes32(_getActor());
+        poolManager_claimDeposit(poolId, scId, isoCode, investor);
+
+        // cancel deposit
+        poolManager_cancelDepositRequest(poolId, scId, isoCode);
+
+        return (poolId, scId);
+    }
+
     function shortcut_redeem(
         PoolId poolId,
         ShareClassId scId,
@@ -147,6 +175,25 @@ abstract contract TargetFunctions is
         // claim redemption as actor
         bytes32 investor = Helpers.addressToBytes32(_getActor());
         poolManager_claimRedeem(poolId, scId, isoCode, investor);
+    }
+
+    function shortcut_redeem_and_cancel(
+        PoolId poolId,
+        ShareClassId scId,
+        uint128 shareAmount,
+        uint32 isoCode,
+        uint128 maxApproval,
+        D18 navPerShare,
+        bool isIdentityValuation
+    ) public {
+        shortcut_redeem(poolId, scId, shareAmount, isoCode, maxApproval, navPerShare, isIdentityValuation);
+        
+        // claim redemption as actor
+        // bytes32 investor = Helpers.addressToBytes32(_getActor());
+        // poolManager_claimRedeem(poolId, scId, isoCode, investor);
+
+        // cancel redemption
+        poolManager_cancelRedeemRequest(poolId, scId, isoCode);
     }
 
     /// === POOL ADMIN SHORTCUTS === ///
