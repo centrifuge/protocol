@@ -22,13 +22,13 @@ abstract contract Auth is IAuth {
     }
 
     /// @inheritdoc IAuth
-    function rely(address user) external auth {
+    function rely(address user) public auth {
         wards[user] = 1;
         emit Rely(user);
     }
 
     /// @inheritdoc IAuth
-    function deny(address user) external auth {
+    function deny(address user) public auth {
         wards[user] = 0;
         emit Deny(user);
     }

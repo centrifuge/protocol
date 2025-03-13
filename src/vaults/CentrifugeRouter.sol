@@ -8,13 +8,14 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC20, IERC20Permit, IERC20Wrapper} from "src/misc/interfaces/IERC20.sol";
 
+import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {IRecoverable} from "src/common/interfaces/IRoot.sol";
+
 import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
 import {ICentrifugeRouter} from "src/vaults/interfaces/ICentrifugeRouter.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
-import {IGateway} from "src/vaults/interfaces/gateway/IGateway.sol";
-import {IRecoverable} from "src/vaults/interfaces/IRoot.sol";
 
 /// @title  CentrifugeRouter
 /// @notice This is a helper contract, designed to be the entrypoint for EOAs.
@@ -266,8 +267,8 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
     }
 
     /// @inheritdoc ICentrifugeRouter
-    function estimate(bytes calldata payload) external view returns (uint256 amount) {
-        (, amount) = IGateway(gateway).estimate(payload);
+    function estimate(uint32 chainId, bytes calldata payload) external view returns (uint256 amount) {
+        (, amount) = IGateway(gateway).estimate(chainId, payload);
     }
 
     /// @inheritdoc ICentrifugeRouter

@@ -7,6 +7,8 @@ import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
+import {IGateway} from "src/common/interfaces/IGateway.sol";
+
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
 import {AccountId} from "src/pools/types/AccountId.sol";
@@ -16,7 +18,6 @@ import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
 import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
 import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
-import {IGateway} from "src/pools/interfaces/IGateway.sol";
 import {IPoolManager} from "src/pools/interfaces/IPoolManager.sol";
 import {PoolManager} from "src/pools/PoolManager.sol";
 
@@ -30,8 +31,8 @@ contract TestCommon is Test {
     IHoldings immutable holdings = IHoldings(makeAddr("Holdings"));
     IAccounting immutable accounting = IAccounting(makeAddr("Accounting"));
     IAssetRegistry immutable assetRegistry = IAssetRegistry(makeAddr("AssetRegistry"));
-    IGateway immutable gateway = IGateway(makeAddr("Gateway"));
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
+    IGateway immutable gateway = IGateway(makeAddr("Gateway"));
 
     PoolManager poolManager = new PoolManager(poolRegistry, assetRegistry, accounting, holdings, gateway, address(this));
 
@@ -45,6 +46,10 @@ contract TestCommon is Test {
         vm.mockCall(
             address(accounting), abi.encodeWithSelector(accounting.unlock.selector, POOL_A, "TODO"), abi.encode(true)
         );
+
+        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.setPayableSource.selector, ADMIN), abi.encode());
+        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.startBatch.selector), abi.encode());
+        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endBatch.selector), abi.encode());
     }
 }
 
@@ -71,10 +76,10 @@ contract TestMainMethodsChecks is TestCommon {
         poolManager.addShareClass("", "", bytes32(0), bytes(""));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolManager.approveDeposits(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
+        poolManager.approveDeposits(ShareClassId.wrap(0), AssetId.wrap(0), 0, IERC7726(address(0)));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolManager.approveRedeems(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
+        poolManager.approveRedeems(ShareClassId.wrap(0), AssetId.wrap(0), 0);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         poolManager.issueShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
@@ -150,10 +155,10 @@ contract TestMainMethodsChecks is TestCommon {
         poolManager.addShareClass("", "", bytes32(0), bytes(""));
 
         vm.expectRevert(IPoolManager.PoolLocked.selector);
-        poolManager.approveDeposits(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
+        poolManager.approveDeposits(ShareClassId.wrap(0), AssetId.wrap(0), 0, IERC7726(address(0)));
 
         vm.expectRevert(IPoolManager.PoolLocked.selector);
-        poolManager.approveRedeems(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
+        poolManager.approveRedeems(ShareClassId.wrap(0), AssetId.wrap(0), 0);
 
         vm.expectRevert(IPoolManager.PoolLocked.selector);
         poolManager.issueShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));

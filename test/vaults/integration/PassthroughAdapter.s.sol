@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {ISafe} from "src/common/interfaces/IGuardian.sol";
+
 import {Deployer} from "script/vaults/Deployer.sol";
 import {PassthroughAdapter} from "./PassthroughAdapter.sol";
 
@@ -10,11 +12,11 @@ contract PassthroughAdapterScript is Deployer {
     function run() public {
         vm.startBroadcast();
 
-        adminSafe = vm.envAddress("ADMIN");
+        adminSafe = ISafe(vm.envAddress("ADMIN"));
 
         deploy(msg.sender);
         PassthroughAdapter router = new PassthroughAdapter();
-        wire(address(router));
+        wire(router);
 
         router.file("gateway", address(gateway));
         router.file("sourceChain", vm.envString("SOURCE_CHAIN"));

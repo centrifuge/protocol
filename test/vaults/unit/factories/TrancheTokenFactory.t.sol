@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
-import {Root} from "src/vaults/Root.sol";
+import {Root} from "src/common/Root.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
 import {BaseTest} from "test/vaults/BaseTest.sol";
 import "forge-std/Test.sol";
@@ -23,7 +23,7 @@ contract FactoryTest is Test {
             polygonFork = vm.createFork(vm.rpcUrl("polygon-mainnet"));
         }
 
-        root = address(new Root(address(new Escrow(address(this))), 48 hours, address(this)));
+        root = address(new Root(48 hours, address(this)));
     }
 
     function testTrancheFactoryIsDeterministicAcrossChains(uint64 poolId, bytes16 trancheId) public {

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "./Mock.sol";
+import {ISafe} from "src/common/Guardian.sol";
+import {Mock} from "test/common/mocks/Mock.sol";
 
-contract MockSafe is Mock {
+contract MockSafe is Mock, ISafe {
     constructor(address[] memory owners, uint256 threshold) {
         values_uint256["threshold"] = threshold;
         for (uint256 i = 0; i < owners.length; i++) {
