@@ -85,7 +85,7 @@ interface IShareClassManager {
         uint128 claimedAssetAmount
     );
     event UpdatedNav(PoolId indexed poolId, ShareClassId indexed scId, uint128 newAmount);
-    event AddedShareClass(PoolId indexed poolId, ShareClassId indexed scId);
+    event AddedShareClass(PoolId indexed poolId, ShareClassId indexed scId, uint32 indexed index);
 
     /// Errors
     error PoolMissing();
@@ -229,11 +229,11 @@ interface IShareClassManager {
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
-    /// @return navPerShare Total value of assets of the pool and share class per share
     /// @return issuance Total issuance of the share class
+    /// @return navPerShare Total value of assets of the pool and share class per share
     function updateShareClassNav(PoolId poolId, ShareClassId scId)
         external
-        returns (D18 navPerShare, uint128 issuance);
+        returns (uint128 issuance, D18 navPerShare);
 
     /// @notice Generic update function for a pool.
     ///
@@ -274,20 +274,15 @@ interface IShareClassManager {
         bytes calldata metadata
     ) external;
 
-    /// @notice Returns the current NAV of a share class of a pool per share as well as the issuance.
-    ///
-    /// @param poolId Identifier of the pool
-    /// @param scId Identifier of the share class
-    /// @return navPerShare Total value of assets of the pool and share class per share
-    /// @return issuance Total issuance of the share class
-    function shareClassNavPerShare(PoolId poolId, ShareClassId scId)
-        external
-        view
-        returns (D18 navPerShare, uint128 issuance);
-
     /// @notice Checks the existence of a share class.
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     function exists(PoolId poolId, ShareClassId scId) external view returns (bool);
+
+    /// @notice Determines the next share class id for the given pool.
+    ///
+    /// @param poolId Identifier of the pool
+    /// @return scId Identifier of the next share class
+    function previewNextShareClassId(PoolId poolId) external view returns (ShareClassId scId);
 }
