@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
-import {Multicall} from "src/misc/Multicall.sol";
+import {Multicall, IMulticall} from "src/misc/Multicall.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
@@ -31,6 +31,9 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
     uint256 private constant REQUEST_ID = 0;
 
+    /// @dev Tells if a method that requires to pay was called in a multicall
+    bool public transient methodRequiresToPay;
+
     IEscrow public immutable escrow;
     IGateway public immutable gateway;
     IPoolManager public immutable poolManager;
@@ -45,6 +48,20 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
     }
 
     // --- Administration ---
+    /// @inheritdoc IMulticall
+    /// @notice performs a multicall but all message sent in the process will be batched
+    function multicall(bytes[] calldata data) public payable override(Multicall, IMulticall) {
+        gateway.startBatch();
+
+        super.multicall(data);
+
+        if (methodRequiresToPay) {
+            gateway.topUp{value: msg.value}();
+        }
+
+        gateway.endBatch();
+    }
+
     /// @inheritdoc IRecoverable
     function recoverTokens(address token, address to, uint256 amount) external auth {
         SafeTransferLib.safeTransfer(token, to, amount);
@@ -61,7 +78,7 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
 
     // --- Deposit ---
     /// @inheritdoc ICentrifugeRouter
-    function requestDeposit(address vault, uint256 amount, address controller, address owner, uint256 topUpAmount)
+    function requestDeposit(address vault, uint256 amount, address controller, address owner)
         external
         payable
         protected
@@ -73,7 +90,7 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
             _approveMax(asset, vault);
         }
 
-        _pay(topUpAmount);
+        _pay();
         IERC7540Vault(vault).requestDeposit(amount, controller, owner);
     }
 
@@ -120,11 +137,7 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
     }
 
     /// @inheritdoc ICentrifugeRouter
-    function executeLockedDepositRequest(address vault, address controller, uint256 topUpAmount)
-        external
-        payable
-        protected
-    {
+    function executeLockedDepositRequest(address vault, address controller) external payable protected {
         uint256 lockedRequest = lockedRequests[controller][vault];
         require(lockedRequest != 0, "CentrifugeRouter/no-locked-request");
         lockedRequests[controller][vault] = 0;
@@ -134,7 +147,7 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
         escrow.approveMax(asset, address(this));
         SafeTransferLib.safeTransferFrom(asset, address(escrow), address(this), lockedRequest);
 
-        _pay(topUpAmount);
+        _pay();
         _approveMax(asset, vault);
         IERC7540Vault(vault).requestDeposit(lockedRequest, controller, address(this));
         emit ExecuteLockedDepositRequest(vault, controller, msg.sender);
@@ -148,8 +161,8 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
     }
 
     /// @inheritdoc ICentrifugeRouter
-    function cancelDepositRequest(address vault, uint256 topUpAmount) external payable protected {
-        _pay(topUpAmount);
+    function cancelDepositRequest(address vault) external payable protected {
+        _pay();
         IERC7540Vault(vault).cancelDepositRequest(REQUEST_ID, msg.sender);
     }
 
@@ -165,13 +178,13 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
 
     // --- Redeem ---
     /// @inheritdoc ICentrifugeRouter
-    function requestRedeem(address vault, uint256 amount, address controller, address owner, uint256 topUpAmount)
+    function requestRedeem(address vault, uint256 amount, address controller, address owner)
         external
         payable
         protected
     {
         require(owner == msg.sender || owner == address(this), "CentrifugeRouter/invalid-owner");
-        _pay(topUpAmount);
+        _pay();
         IERC7540Vault(vault).requestRedeem(amount, controller, owner);
     }
 
@@ -191,8 +204,8 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
     }
 
     /// @inheritdoc ICentrifugeRouter
-    function cancelRedeemRequest(address vault, uint256 topUpAmount) external payable protected {
-        _pay(topUpAmount);
+    function cancelRedeemRequest(address vault) external payable protected {
+        _pay();
         IERC7540Vault(vault).cancelRedeemRequest(REQUEST_ID, msg.sender);
     }
 
@@ -204,30 +217,26 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
 
     // --- Transfer ---
     /// @inheritdoc ICentrifugeRouter
-    function transferTrancheTokens(
-        address vault,
-        uint32 chainId,
-        bytes32 recipient,
-        uint128 amount,
-        uint256 topUpAmount
-    ) public payable protected {
+    function transferTrancheTokens(address vault, uint32 chainId, bytes32 recipient, uint128 amount)
+        public
+        payable
+        protected
+    {
         SafeTransferLib.safeTransferFrom(IERC7540Vault(vault).share(), msg.sender, address(this), amount);
         _approveMax(IERC7540Vault(vault).share(), address(poolManager));
-        _pay(topUpAmount);
+        _pay();
         IPoolManager(poolManager).transferTrancheTokens(
             IERC7540Vault(vault).poolId(), IERC7540Vault(vault).trancheId(), chainId, recipient, amount
         );
     }
 
     /// @inheritdoc ICentrifugeRouter
-    function transferTrancheTokens(
-        address vault,
-        uint32 chainId,
-        address recipient,
-        uint128 amount,
-        uint256 topUpAmount
-    ) external payable protected {
-        transferTrancheTokens(vault, chainId, recipient.toBytes32(), amount, topUpAmount);
+    function transferTrancheTokens(address vault, uint32 chainId, address recipient, uint128 amount)
+        external
+        payable
+        protected
+    {
+        transferTrancheTokens(vault, chainId, recipient.toBytes32(), amount);
     }
 
     // --- ERC20 permits ---
@@ -289,10 +298,16 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
         }
     }
 
-    /// @notice Send native tokens to the gateway for transaction payment.
-    function _pay(uint256 amount) internal {
-        require(amount <= address(this).balance, "CentrifugeRouter/insufficient-funds");
-        gateway.topUp{value: amount}();
+    /// @notice Send native tokens to the gateway for transaction payment in case we're not batching.
+    /// If we're batching the specific multicall will send the tokens to the gateway once before submiting the final
+    /// message
+    function _pay() internal {
+        if (!gateway.isBatching()) {
+            gateway.topUp{value: msg.value}();
+        } else {
+            // Will be paid in the multicall
+            methodRequiresToPay = true;
+        }
     }
 
     /// @notice Ensures msg.sender is either the controller, or can permissionlessly claim

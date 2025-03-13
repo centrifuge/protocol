@@ -91,10 +91,11 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
     }
 
     /// @inheritdoc IPoolManager
-    function lock() external auth {
+    function lock() external payable auth {
         accounting.lock();
         unlockedPoolId = PoolId.wrap(0);
 
+        gateway.topUp{value: msg.value}();
         gateway.endBatch();
     }
 

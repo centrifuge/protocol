@@ -70,6 +70,7 @@ contract Deployer is Script {
     function _file() private {
         poolManager.file("sender", address(messageProcessor));
         gateway.file("handler", address(messageProcessor));
+        gateway.file("payers", address(poolManager), true);
     }
 
     function _rely() private {

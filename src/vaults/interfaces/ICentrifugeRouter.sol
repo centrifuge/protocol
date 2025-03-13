@@ -36,10 +36,7 @@ interface ICentrifugeRouter is IMulticall, IRecoverable {
     /// @param  amount Check @param IERC7540Deposit.requestDeposit.assets
     /// @param  controller Check @param IERC7540Deposit.requestDeposit.controller
     /// @param  owner Check @param IERC7540Deposit.requestDeposit.owner
-    /// @param  topUpAmount Amount that covers all costs outside EVM
-    function requestDeposit(address vault, uint256 amount, address controller, address owner, uint256 topUpAmount)
-        external
-        payable;
+    function requestDeposit(address vault, uint256 amount, address controller, address owner) external payable;
 
     /// @notice Locks `amount` of `vault`'s asset in an escrow before actually sending a deposit LockDepositRequest
     ///         There are users that would like to interact with the protocol but don't have permissions yet. They can
@@ -92,8 +89,7 @@ interface ICentrifugeRouter is IMulticall, IRecoverable {
     ///         actually request a deposit with the locked funds on the behalf of the `controller`
     /// @param  vault The vault for which funds are locked
     /// @param  controller Owner of the deposit position
-    /// @param  topUpAmount Amount that covers all costs outside EVM
-    function executeLockedDepositRequest(address vault, address controller, uint256 topUpAmount) external payable;
+    function executeLockedDepositRequest(address vault, address controller) external payable;
 
     /// @notice Check IERC7540Deposit.mint
     /// @param  vault Address of the vault
@@ -107,8 +103,7 @@ interface ICentrifugeRouter is IMulticall, IRecoverable {
     ///         The caller must call `CentrifugeRouter.estimate` to get estimates how much the deposit will cost.
     ///
     /// @param  vault The vault where the deposit was initiated
-    /// @param  topUpAmount Amount that covers all costs outside EVM
-    function cancelDepositRequest(address vault, uint256 topUpAmount) external payable;
+    function cancelDepositRequest(address vault) external payable;
 
     /// @notice Check IERC7540CancelDeposit.claimCancelDepositRequest
     ///
@@ -126,10 +121,7 @@ interface ICentrifugeRouter is IMulticall, IRecoverable {
     /// @param  amount Check @param IERC7540Redeem.requestRedeem.shares
     /// @param  controller Check @param IERC7540Redeem.requestRedeem.controller
     /// @param  owner Check @param IERC7540Redeem.requestRedeem.owner
-    /// @param  topUpAmount Amount that covers all costs outside EVM
-    function requestRedeem(address vault, uint256 amount, address controller, address owner, uint256 topUpAmount)
-        external
-        payable;
+    function requestRedeem(address vault, uint256 amount, address controller, address owner) external payable;
 
     /// @notice Check IERC7575.withdraw
     /// @dev    If the underlying vault asset is a wrapped one,
@@ -145,8 +137,7 @@ interface ICentrifugeRouter is IMulticall, IRecoverable {
     ///         The caller must call `CentrifugeRouter.estimate` to get estimates how much the deposit will cost.
     ///
     /// @param  vault The vault where the deposit was initiated
-    /// @param  topUpAmount Amount that covers all costs outside EVM
-    function cancelRedeemRequest(address vault, uint256 topUpAmount) external payable;
+    function cancelRedeemRequest(address vault) external payable;
 
     /// @notice Check IERC7540CancelRedeem.claimableCancelRedeemRequest
     ///
@@ -164,24 +155,11 @@ interface ICentrifugeRouter is IMulticall, IRecoverable {
     /// @param  chainId Check `IPoolManager.transferTrancheTokens.destinationId`
     /// @param  recipient Check `IPoolManager.transferTrancheTokens.recipient`
     /// @param  amount Check `IPoolManager.transferTrancheTokens.amount`
-    /// @param  topUpAmount Amount that covers all costs outside EVM
-    function transferTrancheTokens(
-        address vault,
-        uint32 chainId,
-        bytes32 recipient,
-        uint128 amount,
-        uint256 topUpAmount
-    ) external payable;
+    function transferTrancheTokens(address vault, uint32 chainId, bytes32 recipient, uint128 amount) external payable;
 
     /// @notice This is a more friendly version where the recipient is and EVM address
     /// @dev    The recipient address is padded to 32 bytes internally
-    function transferTrancheTokens(
-        address vault,
-        uint32 chainId,
-        address recipient,
-        uint128 amount,
-        uint256 topUpAmount
-    ) external payable;
+    function transferTrancheTokens(address vault, uint32 chainId, address recipient, uint128 amount) external payable;
 
     // --- ERC20 permit ---
     /// @notice Check IERC20.permit

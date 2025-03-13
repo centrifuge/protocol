@@ -44,6 +44,8 @@ contract TestCases is Deployer, Test {
     uint128 constant APPROVED_SHARE_AMOUNT = SHARE_AMOUNT / 5;
     D18 immutable NAV_PER_SHARE = d18(2, 1);
 
+    uint256 constant GAS = 1 wei;
+
     MockVaults cv;
 
     function _configMockVaultsAdapter() private {
@@ -61,6 +63,8 @@ contract TestCases is Deployer, Test {
         _configMockVaultsAdapter();
 
         removeDeployerAccess();
+
+        vm.deal(FM, 1 ether);
 
         // Label contracts & actors (for debugging)
         vm.label(address(transientValuation), "TransientValuation");
@@ -103,7 +107,7 @@ contract TestCases is Deployer, Test {
         assertEq(c, cs.length);
 
         vm.prank(FM);
-        poolRouter.execute(poolId, cs);
+        poolRouter.execute{value: GAS}(poolId, cs);
 
         assertEq(poolRegistry.metadata(poolId), "Testing pool");
         assertEq(multiShareClass.exists(poolId, scId), true);
@@ -139,7 +143,7 @@ contract TestCases is Deployer, Test {
         assertEq(c, cs.length);
 
         vm.prank(FM);
-        poolRouter.execute(poolId, cs);
+        poolRouter.execute{value: GAS}(poolId, cs);
 
         vm.prank(ANY);
         poolRouter.claimDeposit(poolId, scId, USDC_C2, INVESTOR);
@@ -169,7 +173,7 @@ contract TestCases is Deployer, Test {
         assertEq(c, cs.length);
 
         vm.prank(FM);
-        poolRouter.execute(poolId, cs);
+        poolRouter.execute{value: GAS}(poolId, cs);
 
         vm.prank(ANY);
         poolRouter.claimRedeem(poolId, scId, USDC_C2, INVESTOR);

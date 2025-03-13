@@ -151,4 +151,7 @@ interface IGateway is IMessageHandler, IMessageSender {
 
     /// @notice Returns the timestamp when the given recovery can be executed.
     function recoveries(IAdapter adapter, bytes32 messageHash) external view returns (uint256 timestamp);
+
+    /// @notice Returns if the gateway is batching.
+    function isBatching() external view returns (bool);
 }

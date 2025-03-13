@@ -16,72 +16,80 @@ interface IPoolRouter {
     function execute(PoolId poolId, bytes[] calldata data) external payable;
 
     /// @notice See counterpart in PoolManager contract
-    function createPool(AssetId currency, IShareClassManager shareClassManager) external returns (PoolId poolId);
+    function createPool(AssetId currency, IShareClassManager shareClassManager)
+        external
+        payable
+        returns (PoolId poolId);
 
     /// @notice See counterpart in PoolManager contract
-    function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external;
+    function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external payable;
 
     /// @notice See counterpart in PoolManager contract
-    function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external;
+    function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external payable;
 
     /// @notice See counterpart in PoolManager contract
-    function notifyPool(uint32 chainId) external;
+    function notifyPool(uint32 chainId) external payable;
 
     /// @notice See counterpart in PoolManager contract
-    function notifyShareClass(uint32 chainId, ShareClassId scId, bytes32 hook) external;
+    function notifyShareClass(uint32 chainId, ShareClassId scId, bytes32 hook) external payable;
 
     /// @notice See counterpart in PoolManager contract
-    function setPoolMetadata(bytes calldata metadata) external;
+    function setPoolMetadata(bytes calldata metadata) external payable;
 
     /// @notice See counterpart in PoolManager contract
-    function allowPoolAdmin(address account, bool allow) external;
+    function allowPoolAdmin(address account, bool allow) external payable;
 
     /// @notice See counterpart in PoolManager contract
-    function allowAsset(ShareClassId scId, AssetId assetId, bool allow) external;
+    function allowAsset(ShareClassId scId, AssetId assetId, bool allow) external payable;
 
     /// @notice See counterpart in PoolManager contract
-    function addShareClass(string calldata name, string calldata symbol, bytes32 salt, bytes calldata data) external;
+    function addShareClass(string calldata name, string calldata symbol, bytes32 salt, bytes calldata data)
+        external
+        payable;
 
     /// @notice See counterpart in PoolManager contract
     function approveDeposits(ShareClassId scId, AssetId paymentAssetId, uint128 maxApproval, IERC7726 valuation)
-        external;
+        external
+        payable;
 
     /// @notice See counterpart in PoolManager contract
-    function approveRedeems(ShareClassId scId, AssetId payoutAssetId, uint128 maxApproval) external;
+    function approveRedeems(ShareClassId scId, AssetId payoutAssetId, uint128 maxApproval) external payable;
 
     /// @notice See counterpart in PoolManager contract
-    function issueShares(ShareClassId scId, AssetId depositAssetId, D18 navPerShare) external;
+    function issueShares(ShareClassId scId, AssetId depositAssetId, D18 navPerShare) external payable;
 
     /// @notice See counterpart in PoolManager contract
-    function revokeShares(ShareClassId scId, AssetId payoutAssetId, D18 navPerShare, IERC7726 valuation) external;
+    function revokeShares(ShareClassId scId, AssetId payoutAssetId, D18 navPerShare, IERC7726 valuation)
+        external
+        payable;
 
     /// @notice See counterpart in PoolManager contract
-    function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint24 prefix) external;
+    function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint24 prefix) external payable;
 
     /// @notice See counterpart in PoolManager contract
-    function increaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount) external;
+    function increaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount) external payable;
 
     /// @notice See counterpart in PoolManager contract
-    function decreaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount) external;
+    function decreaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount) external payable;
 
     /// @notice See counterpart in PoolManager contract
-    function updateHolding(ShareClassId scId, AssetId assetId) external;
+    function updateHolding(ShareClassId scId, AssetId assetId) external payable;
 
     /// @notice See counterpart in PoolManager contract
-    function updateHoldingValuation(ShareClassId scId, AssetId assetId, IERC7726 valuation) external;
+    function updateHoldingValuation(ShareClassId scId, AssetId assetId, IERC7726 valuation) external payable;
 
     /// @notice See counterpart in PoolManager contract
-    function setHoldingAccountId(ShareClassId scId, AssetId assetId, AccountId accountId) external;
+    function setHoldingAccountId(ShareClassId scId, AssetId assetId, AccountId accountId) external payable;
 
     /// @notice See counterpart in PoolManager contract
-    function createAccount(AccountId account, bool isDebitNormal) external;
+    function createAccount(AccountId account, bool isDebitNormal) external payable;
 
     /// @notice See counterpart in PoolManager contract
-    function setAccountMetadata(AccountId account, bytes calldata metadata) external;
+    function setAccountMetadata(AccountId account, bytes calldata metadata) external payable;
 
     /// @notice See counterpart in PoolManager contract
-    function addDebit(AccountId account, uint128 amount) external;
+    function addDebit(AccountId account, uint128 amount) external payable;
 
     /// @notice See counterpart in PoolManager contract
-    function addCredit(AccountId account, uint128 amount) external;
+    function addCredit(AccountId account, uint128 amount) external payable;
 }
