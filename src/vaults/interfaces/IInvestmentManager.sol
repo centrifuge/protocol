@@ -331,7 +331,7 @@ interface IInvestmentManager is IRecoverable, IVaultManager {
         returns (uint256 shares);
 
     /// @notice Returns the address of the vault for a given pool, tranche and asset
-    function vaultByAddress(uint64 poolId, bytes16 trancheId, address asset)
+    function vaultByAssetId(uint64 poolId, bytes16 trancheId, uint128 assetId)
         external
         view
         returns (address vaultAddr);

@@ -132,7 +132,11 @@ contract InvestmentManager is Auth, IInvestmentManager {
 
         gateway.setPayableSource(source);
         sender.sendDepositRequest(
-            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), poolManager.assetToId(asset), _assets
+            vault_.poolId(),
+            vault_.trancheId(),
+            controller.toBytes32(),
+            poolManager.getVaultAssetId(address(vault_)),
+            _assets
         );
 
         return true;
@@ -179,7 +183,11 @@ contract InvestmentManager is Auth, IInvestmentManager {
 
         gateway.setPayableSource(source);
         sender.sendRedeemRequest(
-            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), poolManager.assetToId(vault_.asset()), shares
+            vault_.poolId(),
+            vault_.trancheId(),
+            controller.toBytes32(),
+            poolManager.getVaultAssetId(address(vault_)),
+            shares
         );
 
         return true;
@@ -196,7 +204,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
 
         gateway.setPayableSource(source);
         sender.sendCancelDepositRequest(
-            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), poolManager.assetToId(vault_.asset())
+            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), poolManager.getVaultAssetId(address(vault_))
         );
     }
 
@@ -216,7 +224,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
 
         gateway.setPayableSource(source);
         sender.sendCancelRedeemRequest(
-            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), poolManager.assetToId(vault_.asset())
+            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), poolManager.getVaultAssetId(address(vault_))
         );
     }
 
@@ -653,7 +661,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
     }
 
     /// @inheritdoc IInvestmentManager
-    function vaultByAddress(uint64 poolId, bytes16 trancheId, address asset) public view returns (address) {
-        return vault[poolId][trancheId][poolManager.assetToId(asset)];
+    function vaultByAssetId(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (address) {
+        return vault[poolId][trancheId][assetId];
     }
 }

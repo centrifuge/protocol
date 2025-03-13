@@ -398,7 +398,7 @@ contract RedeemTest is BaseTest {
     function partialRedeem(uint64 poolId, bytes16 trancheId, ERC7540Vault vault, ERC20 asset) public {
         ITranche tranche = ITranche(address(vault.share()));
 
-        uint128 assetId = poolManager.assetToId(address(asset));
+        uint128 assetId = poolManager.assetToId(address(asset), erc20TokenId);
         uint256 totalTranches = tranche.balanceOf(self);
         uint256 redeemAmount = 50000000000000000000;
         assertTrue(redeemAmount <= totalTranches);

@@ -143,7 +143,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         return newTranche;
     }
 
-    // Step 10
+    // Step 5
     function poolManager_deployVault(uint64 poolId, bytes16 trancheId, address currency) public returns (address) {
         return poolManager.deployVault(poolId, trancheId, currency, address(vaultFactory));
     }
@@ -210,25 +210,23 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     // Step 2 = poolManager_registerAsset - GatewayMockFunctions
     // Step 3 = poolManager_addPool - GatewayMockFunctions
     // Step 4 = poolManager_addTranche - GatewayMockFunctions
-
-    // Step 7 is copied from step 5, ignore
+    // Step 5 = poolManager_deployVault - GatewayMockFunctions
 
     // A pool can belong to a tranche
     // A Vault can belong to a tranche and a currency
 
-    // Step 7 is copied from step 5, ignore
-
-    // Step 8, deploy the pool
-    function deployVault(uint64 poolId, bytes16 trancheId, address currency) public {
-        address newVault = poolManager.deployVault(poolId, trancheId, currency, address(vaultFactory));
-        poolManager.linkVault(poolId, trancheId, currency, newVault);
+    // Step 6 deploy the pool
+    function deployVault(uint64 poolId, bytes16 trancheId, uint128 assetId) public {
+        address asset = poolManager.idToAsset(assetId);
+        address newVault = poolManager.deployVault(poolId, trancheId, asset, address(vaultFactory));
+        poolManager.linkVault(poolId, trancheId, assetId, newVault);
 
         vaults.push(newVault);
     }
 
-    // Extra 9 - Remove liquidity Pool
-    function removeVault(uint64 poolId, bytes16 trancheId, address currency) public {
-        poolManager.unlinkVault(poolId, trancheId, currency, vaults[0]);
+    // Extra 7 - Remove liquidity Pool
+    function removeVault(uint64 poolId, bytes16 trancheId, uint128 assetId) public {
+        poolManager.unlinkVault(poolId, trancheId, assetId, vaults[0]);
     }
 }
 

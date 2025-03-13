@@ -177,7 +177,7 @@ contract DepositTest is BaseTest {
         asset.approve(vault_, investmentAmount);
         asset.mint(self, investmentAmount);
         vault.requestDeposit(investmentAmount, self, self);
-        uint128 _assetId = poolManager.assetToId(address(asset)); // retrieve assetId
+        uint128 _assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
 
         // first trigger executed collectInvest of the first 50% at a price of 1.4
         uint128 assets = 50000000; // 50 * 10**6
@@ -437,7 +437,7 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(investmentAmount, self, self);
 
         // trigger executed collectInvest of the first 50% at a price of 1.2
-        uint128 _assetId = poolManager.assetToId(address(asset)); // retrieve assetId
+        uint128 _assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
         uint128 assets = 50000000; // 50 * 10**6
         uint128 firstTranchePayout = 41666666666666666666; // 50 * 10**18 / 1.2, rounded down
         centrifugeChain.isFulfilledDepositRequest(
@@ -504,7 +504,7 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(investmentAmount, self, self);
 
         // trigger executed collectInvest of the first 50% at a price of 1.2
-        uint128 _assetId = poolManager.assetToId(address(asset)); // retrieve assetId
+        uint128 _assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
         uint128 assets = 50000000000000000000; // 50 * 10**18
         uint128 firstTranchePayout = 41666666; // 50 * 10**6 / 1.2, rounded down
         centrifugeChain.isFulfilledDepositRequest(
@@ -575,7 +575,7 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(investmentAmount, self, self);
 
         // trigger executed collectInvest at a tranche token price of 1.2
-        uint128 _assetId = poolManager.assetToId(address(asset)); // retrieve assetId
+        uint128 _assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
         uint128 assets = 99000000; // 99 * 10**6
 
         // invested amount in dai is 99 * 10**18
@@ -615,7 +615,7 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(investmentAmount, self, self);
 
         // trigger executed collectInvest at a tranche token price of 1.2
-        uint128 _assetId = poolManager.assetToId(address(asset)); // retrieve assetId
+        uint128 _assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
         uint128 assets = 99000000000000000000; // 99 * 10**18
 
         // invested amount in dai is 99 * 10**18
@@ -698,7 +698,7 @@ contract DepositTest is BaseTest {
         asset.approve(address(vault), investmentAmount);
         asset.mint(self, investmentAmount);
         vault.requestDeposit(investmentAmount, self, self);
-        uint128 _assetId = poolManager.assetToId(address(asset)); // retrieve assetId
+        uint128 _assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
 
         // first trigger executed collectInvest of the first 50% at a price of 1.4
         uint128 assets = 50000000; // 50 * 10**6

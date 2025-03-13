@@ -28,7 +28,7 @@ contract AssetShareConversionTest is BaseTest {
         vault.requestDeposit(investmentAmount, self, self);
 
         // trigger executed collectInvest at a price of 1.0
-        uint128 _assetId = poolManager.assetToId(address(asset)); // retrieve assetId
+        uint128 _assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
         uint128 shares = 100000000000000000000; // 100 * 10**18
         centrifugeChain.isFulfilledDepositRequest(
             poolId, trancheId, bytes32(bytes20(self)), _assetId, uint128(investmentAmount), shares
@@ -73,7 +73,7 @@ contract AssetShareConversionTest is BaseTest {
         vault.requestDeposit(investmentAmount, self, self);
 
         // trigger executed collectInvest at a price of 1.0
-        uint128 _assetId = poolManager.assetToId(address(asset)); // retrieve assetId
+        uint128 _assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
         uint128 shares = 100000000; // 100 * 10**6
         centrifugeChain.isFulfilledDepositRequest(
             poolId, trancheId, bytes32(bytes20(self)), _assetId, uint128(investmentAmount), shares
@@ -115,7 +115,7 @@ contract AssetShareConversionTest is BaseTest {
         assertEq(vault.priceLastUpdated(), uint64(block.timestamp));
         assertEq(vault.pricePerShare(), 1.2e6);
 
-        poolManager.unlinkVault(poolId, trancheId, address(vault.asset()), address(vault));
+        poolManager.unlinkVault(poolId, trancheId, assetId, address(vault));
 
         assertEq(vault.priceLastUpdated(), uint64(block.timestamp));
         assertEq(vault.pricePerShare(), 1.2e6);

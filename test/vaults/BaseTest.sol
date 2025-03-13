@@ -54,7 +54,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
 
     // default values
     uint32 public defaultChainId = 1;
-    uint256 public defaultTokenId = 0;
+    uint256 public erc20TokenId = 0;
     uint128 public defaultAssetId = uint128(bytes16(abi.encodePacked(uint32(defaultChainId), uint32(1))));
     uint128 public defaultPrice = 1 * 10 ** 18;
     uint8 public defaultDecimals = 8;
@@ -152,7 +152,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         if (poolManager.idToAsset(assetId) == address(0)) {
             assetId = poolManager.registerAsset(asset, assetTokenId, destinationChain);
         } else {
-            assetId = poolManager.assetToId(asset);
+            assetId = poolManager.assetToId(asset, assetTokenId);
         }
 
         if (poolManager.getTranche(poolId, trancheId) == address(0)) {
@@ -188,7 +188,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
             tokenSymbol,
             trancheId,
             address(erc20),
-            defaultTokenId,
+            erc20TokenId,
             defaultChainId
         );
     }
@@ -202,7 +202,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
             "symbol",
             bytes16(bytes("1")),
             address(erc20),
-            defaultTokenId,
+            erc20TokenId,
             defaultChainId
         );
     }
@@ -214,19 +214,18 @@ contract BaseTest is Deployer, GasSnapshot, Test {
     function deposit(address _vault, address _investor, uint256 amount, bool claimDeposit) public {
         ERC7540Vault vault = ERC7540Vault(_vault);
         erc20.mint(_investor, amount);
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), _investor, type(uint64).max); // add user as
-            // member
+        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), _investor, type(uint64).max);
         vm.startPrank(_investor);
         erc20.approve(_vault, amount); // add allowance
         vault.requestDeposit(amount, _investor, _investor);
         // trigger executed collectInvest
-        uint128 assetId = poolManager.assetToId(address(erc20)); // retrieve assetId
+        uint128 assetId = poolManager.assetToId(address(erc20), erc20TokenId);
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId(), vault.trancheId(), bytes32(bytes20(_investor)), assetId, uint128(amount), uint128(amount)
         );
 
         if (claimDeposit) {
-            vault.deposit(amount, _investor); // claim the tranches
+            vault.deposit(amount, _investor);
         }
         vm.stopPrank();
     }

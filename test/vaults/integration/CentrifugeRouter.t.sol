@@ -255,8 +255,8 @@ contract CentrifugeRouterTest is BaseTest {
         router.requestDeposit{value: fuel}(address(vault2), amount2, self, self, fuel);
 
         // trigger - deposit order fulfillment
-        uint128 assetId1 = poolManager.assetToId(address(erc20X));
-        uint128 assetId2 = poolManager.assetToId(address(erc20Y));
+        uint128 assetId1 = poolManager.assetToId(address(erc20X), erc20TokenId);
+        uint128 assetId2 = poolManager.assetToId(address(erc20Y), erc20TokenId);
         (uint128 tranchePayout1) = fulfillDepositRequest(vault1, assetId1, amount1, self);
         (uint128 tranchePayout2) = fulfillDepositRequest(vault2, assetId2, amount2, self);
 
@@ -295,8 +295,8 @@ contract CentrifugeRouterTest is BaseTest {
         router.requestDeposit{value: fuel}(address(vault1), amount1, self, self, fuel);
         router.requestDeposit{value: fuel}(address(vault2), amount2, self, self, fuel);
 
-        uint128 assetId1 = poolManager.assetToId(address(erc20X));
-        uint128 assetId2 = poolManager.assetToId(address(erc20Y));
+        uint128 assetId1 = poolManager.assetToId(address(erc20X), erc20TokenId);
+        uint128 assetId2 = poolManager.assetToId(address(erc20Y), erc20TokenId);
         (uint128 tranchePayout1) = fulfillDepositRequest(vault1, assetId1, amount1, self);
         (uint128 tranchePayout2) = fulfillDepositRequest(vault2, assetId2, amount2, self);
         router.claimDeposit(address(vault1), self, self);
@@ -420,8 +420,8 @@ contract CentrifugeRouterTest is BaseTest {
         router.multicall{value: gas * calls.length}(calls);
 
         // trigger - deposit order fulfillment
-        uint128 assetId1 = poolManager.assetToId(address(erc20X));
-        uint128 assetId2 = poolManager.assetToId(address(erc20Y));
+        uint128 assetId1 = poolManager.assetToId(address(erc20X), erc20TokenId);
+        uint128 assetId2 = poolManager.assetToId(address(erc20Y), erc20TokenId);
         (uint128 tranchePayout1) = fulfillDepositRequest(vault1, assetId1, amount1, self);
         (uint128 tranchePayout2) = fulfillDepositRequest(vault2, assetId2, amount2, self);
 

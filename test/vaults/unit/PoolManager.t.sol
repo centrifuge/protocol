@@ -172,7 +172,6 @@ contract PoolManagerTest is BaseTest {
         assertEq(Tranche(tranche_).wards(vaultManager), 1);
 
         // Check approvals
-        console.log("vaultManager: ", vaultManager);
         assertEq(
             IERC20(asset).allowance(address(poolManager.escrow()), vaultManager),
             type(uint256).max,
@@ -216,8 +215,9 @@ contract PoolManagerTest is BaseTest {
         centrifugeChain.addPool(poolId);
         centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook);
 
+        (uint128 assetId) = poolManager.registerAsset(asset, 0, defaultChainId);
         address vaultAddress = poolManager.deployVault(poolId, trancheId, asset, vaultFactory);
-        poolManager.linkVault(poolId, trancheId, asset, vaultAddress);
+        poolManager.linkVault(poolId, trancheId, assetId, vaultAddress);
 
         address tranche_ = poolManager.getTranche(poolId, trancheId);
         address vault_ = ITranche(tranche_).vault(asset);
@@ -605,7 +605,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         internal
         view
     {
-        assertEq(poolManager.assetToId(asset), assetId, "Asset to id mismatch");
+        assertEq(poolManager.assetToId(asset, tokenId), assetId, "Asset to id mismatch");
         assertEq(poolManager.idToAsset(assetId), asset, "Id to asset mismatch");
         (address asset_, uint256 tokenId_) = poolManager.idToAsset_(assetId);
         assertEq(asset_, asset);
@@ -622,10 +622,10 @@ contract PoolManagerRegisterAssetTest is BaseTest {
             decimals: erc20.decimals()
         }).serialize();
 
-        vm.expectEmit(false, false, false, false);
-        emit IGateway.SendMessage(message);
         vm.expectEmit();
         emit IPoolManager.RegisterAsset(defaultAssetId, asset, 0, erc20.name(), erc20.symbol(), erc20.decimals());
+        vm.expectEmit(false, false, false, false);
+        emit IGateway.SendMessage(message);
         uint128 assetId = poolManager.registerAsset(asset, 0, defaultChainId);
 
         assertEq(assetId, defaultAssetId);
@@ -666,12 +666,12 @@ contract PoolManagerRegisterAssetTest is BaseTest {
             decimals: erc6909.decimals(tokenId)
         }).serialize();
 
-        vm.expectEmit(false, false, false, false);
-        emit IGateway.SendMessage(message);
         vm.expectEmit();
         emit IPoolManager.RegisterAsset(
             defaultAssetId, asset, tokenId, erc6909.name(tokenId), erc6909.symbol(tokenId), erc6909.decimals(tokenId)
         );
+        vm.expectEmit(false, false, false, false);
+        emit IGateway.SendMessage(message);
         uint128 assetId = poolManager.registerAsset(asset, tokenId, defaultChainId);
 
         assertEq(assetId, defaultAssetId);
@@ -680,18 +680,29 @@ contract PoolManagerRegisterAssetTest is BaseTest {
     }
 
     function testRegisterMultipleAssetsERC6909(uint8 decimals) public {
-        MockERC6909 assetA = new MockERC6909();
-        MockERC6909 assetB = new MockERC6909();
+        MockERC6909 erc6909 = new MockERC6909();
         uint256 tokenIdA = uint256(bound(decimals, 3, 18));
-        uint256 tokenIdB = uint256(bound(decimals, 2, tokenIdA));
+        uint256 tokenIdB = uint256(bound(decimals, 2, tokenIdA - 1));
 
-        uint128 assetIdA = poolManager.registerAsset(address(assetA), tokenIdA, defaultChainId);
-        _assertAssetRegistered(address(assetA), assetIdA, tokenIdA, 1);
+        uint128 assetIdA = poolManager.registerAsset(address(erc6909), tokenIdA, defaultChainId);
+        _assertAssetRegistered(address(erc6909), assetIdA, tokenIdA, 1);
 
-        uint128 assetIdB = poolManager.registerAsset(address(assetB), tokenIdB, defaultChainId);
-        _assertAssetRegistered(address(assetB), assetIdB, tokenIdB, 2);
+        uint128 assetIdB = poolManager.registerAsset(address(erc6909), tokenIdB, defaultChainId);
+        _assertAssetRegistered(address(erc6909), assetIdB, tokenIdB, 2);
 
         assert(assetIdA != assetIdB);
+    }
+
+    function testRegisterAssetTwice() public {
+        vm.expectEmit();
+        emit IPoolManager.RegisterAsset(
+            defaultAssetId, address(erc20), 0, erc20.name(), erc20.symbol(), erc20.decimals()
+        );
+        vm.expectEmit(false, false, false, false);
+        emit IGateway.SendMessage(bytes(""));
+        emit IGateway.SendMessage(bytes(""));
+        poolManager.registerAsset(address(erc20), 0, defaultChainId);
+        poolManager.registerAsset(address(erc20), 0, defaultChainId + 1);
     }
 
     function testRegisterAsset_decimalsMissing() public {

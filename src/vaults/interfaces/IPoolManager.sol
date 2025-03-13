@@ -41,6 +41,9 @@ struct UndeployedTranche {
 struct VaultAsset {
     /// @dev Address of the asset
     address asset;
+    // TODO: Enable?
+    /// @dev AssetId of the asset
+    // uint128 assetId;
     /// @dev Whether this wrapper conforms to the IERC20Wrapper interface
     bool isWrapper;
     /// @dev Whether the vault is linked to a tranche atm
@@ -86,9 +89,6 @@ interface IPoolManager is IRecoverable {
     /// @notice returns the asset address associated with a given asset id
     function idToAsset(uint128 assetId) external view returns (address asset);
 
-    /// @notice returns the asset id associated with a given address
-    function assetToId(address) external view returns (uint128 assetId);
-
     /// @notice Updates a contract parameter
     /// @param what Accepts a bytes32 representation of 'gateway', 'investmentManager', 'trancheFactory',
     ///                'vaultFactory', or 'gasService'
@@ -116,7 +116,7 @@ interface IPoolManager is IRecoverable {
     /// @notice    New pool details from an existing Centrifuge pool are added.
     /// @dev       The function can only be executed by the gateway contract.
     function addPool(uint64 poolId) external;
-    
+
     /// @notice     New tranche details from an existing Centrifuge pool are added.
     /// @dev        The function can only be executed by the gateway contract.
     function addTranche(
@@ -168,9 +168,9 @@ interface IPoolManager is IRecoverable {
 
     function deployVault(uint64 poolId, bytes16 trancheId, address asset, address factory) external returns (address);
 
-    function linkVault(uint64 poolId, bytes16 trancheId, address asset, address vault) external;
+    function linkVault(uint64 poolId, bytes16 trancheId, uint128 assetId, address vault) external;
 
-    function unlinkVault(uint64 poolId, bytes16 trancheId, address asset, address vault) external;
+    function unlinkVault(uint64 poolId, bytes16 trancheId, uint128 assetId, address vault) external;
 
     /// @notice Mints tranche tokens to a recipient
     /// @dev    The function can only be executed internally or by the gateway contract.

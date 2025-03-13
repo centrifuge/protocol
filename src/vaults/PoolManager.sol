@@ -62,7 +62,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     mapping(address factory => bool) public vaultFactory;
 
     mapping(uint128 assetId => AssetIdKey) public idToAsset_;
-    mapping(address asset => uint128 assetId) public assetToId;
+    mapping(address asset => mapping(uint256 tokenId => uint128 assetId)) public assetToId;
     mapping(uint64 poolId => mapping(address asset => bool)) allowedAssets;
 
     constructor(address escrow_, address trancheFactory_, address[] memory vaultFactories) Auth(msg.sender) {
@@ -140,22 +140,22 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
             symbol = meta.symbol(tokenId);
         }
 
-        assetId = assetToId[asset];
+        assetId = assetToId[asset][tokenId];
         if (assetId == 0) {
             _assetCounter++;
             assetId = uint128(bytes16(abi.encodePacked(uint32(block.chainid), _assetCounter)));
 
             idToAsset_[assetId] = AssetIdKey(asset, tokenId);
-            assetToId[asset] = assetId;
+            assetToId[asset][tokenId] = assetId;
 
             // Give pool manager infinite approval for asset
             // in the escrow to transfer to the user on transfer
             escrow.approveMax(asset, tokenId, address(this));
+
+            emit RegisterAsset(assetId, asset, tokenId, name, symbol, decimals);
         }
 
         sender.sendRegisterAsset(destChainId, assetId, name, symbol, decimals);
-
-        emit RegisterAsset(assetId, asset, tokenId, name, symbol, decimals);
     }
 
     /// @inheritdoc IPoolManager
@@ -293,9 +293,9 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         require(_vaultToAsset[vault].asset != address(0), "PoolManager/unknown-vault");
 
         if (m.isLinked) {
-            linkVault(poolId, trancheId, idToAsset(m.assetId), vault);
+            linkVault(poolId, trancheId, m.assetId, vault);
         } else {
-            unlinkVault(poolId, trancheId, idToAsset(m.assetId), vault);
+            unlinkVault(poolId, trancheId, m.assetId, vault);
         }
     }
 
@@ -335,12 +335,12 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     }
 
     /// @inheritdoc IPoolManager
-    function linkVault(uint64 poolId, bytes16 trancheId, address asset, address vault) public auth {
+    function linkVault(uint64 poolId, bytes16 trancheId, uint128 assetId, address vault) public auth {
         TrancheDetails storage tranche = _pools[poolId].tranches[trancheId];
         require(tranche.token != address(0), "PoolManager/tranche-does-not-exist");
 
         address manager = IBaseVault(vault).manager();
-        uint128 assetId = assetToId[asset];
+        address asset = idToAsset(assetId);
         IVaultManager(manager).addVault(poolId, trancheId, vault, asset, assetId);
         _vaultToAsset[vault].isLinked = true;
 
@@ -348,12 +348,12 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     }
 
     /// @inheritdoc IPoolManager
-    function unlinkVault(uint64 poolId, bytes16 trancheId, address asset, address vault) public auth {
+    function unlinkVault(uint64 poolId, bytes16 trancheId, uint128 assetId, address vault) public auth {
         TrancheDetails storage tranche = _pools[poolId].tranches[trancheId];
         require(tranche.token != address(0), "PoolManager/tranche-does-not-exist");
 
         address manager = IBaseVault(vault).manager();
-        uint128 assetId = assetToId[asset];
+        address asset = idToAsset(assetId);
         IVaultManager(manager).removeVault(poolId, trancheId, vault, asset, assetId);
         _vaultToAsset[vault].isLinked = false;
 
@@ -395,7 +395,8 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     function getVaultAssetId(address vault) public view override returns (uint128) {
         VaultAsset memory _asset = _vaultToAsset[vault];
         require(_asset.asset != address(0), "PoolManager/unknown-vault");
-        return assetToId[_asset.asset];
+        // FIXME: How to get tokenId?
+        return assetToId[_asset.asset][0];
     }
 
     /// @inheritdoc IPoolManager
