@@ -99,10 +99,12 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         poolManager_claimRedeem_clamped(poolId, scId, 123);
     }
 
-    function test_shortcut_create_pool_and_holding() public {
+    function test_shortcut_create_pool_and_update_holding() public {
         (PoolId poolId, ShareClassId scId) = shortcut_create_pool_and_holding(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), true, 0x01);
     
+        assetId = newAssetId(123);
         poolRouter_updateHolding(scId, assetId);
+        poolRouter_execute_clamped(poolId); 
     }
 
     function test_shortcut_deposit_and_claim() public {
