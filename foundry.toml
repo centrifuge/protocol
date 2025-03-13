@@ -83,7 +83,7 @@ fail_on_revert = false
     "src/misc/ReentrancyProtection.sol", #Because transient keyword
     "src/pools/Accounting.sol", #Because transient keyword
     "src/pools/PoolManager.sol", #Because transient keyword
-    "src/pools/SingleShareClass.sol", #Because transient keyword
+    "src/pools/MultiShareClass.sol", #Because transient keyword
     "src/vaults/gateway/Gateway.sol", #Because transient keyword
   ]
 

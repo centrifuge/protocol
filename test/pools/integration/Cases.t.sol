@@ -15,8 +15,6 @@ import {PoolId} from "src/pools/types/PoolId.sol";
 import {AccountId} from "src/pools/types/AccountId.sol";
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AccountType} from "src/pools/interfaces/IPoolManager.sol";
-import {previewShareClassId} from "src/pools/SingleShareClass.sol";
-
 import {Deployer} from "script/pools/Deployer.s.sol";
 
 import {MockVaults} from "test/pools/mocks/MockVaults.sol";
@@ -64,7 +62,7 @@ contract TestCases is Deployer, Test {
         vm.label(address(assetRegistry), "AssetRegistry");
         vm.label(address(accounting), "Accounting");
         vm.label(address(holdings), "Holdings");
-        vm.label(address(singleShareClass), "SingleShareClass");
+        vm.label(address(multiShareClass), "MultiShareClass");
         vm.label(address(poolManager), "PoolManager");
         vm.label(address(gateway), "Gateway");
         vm.label(address(poolRouter), "PoolRouter");
@@ -84,9 +82,9 @@ contract TestCases is Deployer, Test {
         assertEq(decimals, 6);
 
         vm.prank(FM);
-        poolId = poolRouter.createPool(USD, singleShareClass);
+        poolId = poolRouter.createPool(USD, multiShareClass);
 
-        scId = previewShareClassId(poolId);
+        scId = multiShareClass.previewNextShareClassId(poolId);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](5), 0);
         cs[c++] = abi.encodeWithSelector(poolRouter.setPoolMetadata.selector, bytes("Testing pool"));
@@ -101,7 +99,7 @@ contract TestCases is Deployer, Test {
         poolRouter.execute(poolId, cs);
 
         assertEq(poolRegistry.metadata(poolId), "Testing pool");
-        assertEq(singleShareClass.exists(poolId, scId), true);
+        assertEq(multiShareClass.exists(poolId, scId), true);
 
         MessageLib.NotifyPool memory m0 = MessageLib.deserializeNotifyPool(cv.lastMessages(0));
         assertEq(m0.poolId, poolId.raw());
