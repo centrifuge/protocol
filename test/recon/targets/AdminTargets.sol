@@ -52,7 +52,9 @@ abstract contract AdminTargets is
         queuedCalls.push(abi.encodeWithSelector(poolRouter.approveDeposits.selector, scId, paymentAssetId, maxApproval, valuation));
     }
 
-    function poolRouter_approveRedeems(ShareClassId scId, AssetId payoutAssetId, uint128 maxApproval) public {
+    function poolRouter_approveRedeems(ShareClassId scId, uint32 isoCode, uint128 maxApproval) public {
+        AssetId payoutAssetId = newAssetId(isoCode);
+        
         queuedCalls.push(abi.encodeWithSelector(poolRouter.approveRedeems.selector, scId, payoutAssetId, maxApproval));
     }
 
@@ -98,7 +100,9 @@ abstract contract AdminTargets is
         queuedCalls.push(abi.encodeWithSelector(poolRouter.notifyShareClass.selector, chainId, scId, hook));
     }
 
-    function poolRouter_revokeShares(ShareClassId scId, AssetId payoutAssetId, D18 navPerShare, IERC7726 valuation) public {
+    function poolRouter_revokeShares(ShareClassId scId, uint32 isoCode, D18 navPerShare, IERC7726 valuation) public {
+        AssetId payoutAssetId = newAssetId(isoCode);
+
         queuedCalls.push(abi.encodeWithSelector(poolRouter.revokeShares.selector, scId, payoutAssetId, navPerShare, valuation));
     }
 
@@ -116,6 +120,11 @@ abstract contract AdminTargets is
 
     function poolRouter_updateHolding(ShareClassId scId, AssetId assetId) public {
         queuedCalls.push(abi.encodeWithSelector(poolRouter.updateHolding.selector, scId, assetId));
+
+        // state space enrichment to help get coverage over this function
+        if(poolCreated && deposited) { 
+            emit LogString("poolCreated && deposited should allow updateHolding");
+        }
     }
 
     function poolRouter_updateHoldingValuation(ShareClassId scId, AssetId assetId, IERC7726 valuation) public {
@@ -142,6 +151,8 @@ abstract contract AdminTargets is
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
         poolManager.depositRequest(poolId, scId, investor, depositAssetId, amount);
+
+        deposited = true;
     }  
 
     function poolManager_redeemRequest(PoolId poolId, ShareClassId scId, uint32 isoCode, uint128 amount) public asAdmin {

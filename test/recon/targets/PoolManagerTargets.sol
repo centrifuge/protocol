@@ -44,6 +44,8 @@ abstract contract PoolManagerTargets is
         
         poolId = poolManager.createPool(admin, assetId_, shareClassManager);
 
+        poolCreated = true;
+        
         return poolId;
     }
 

@@ -48,7 +48,12 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     MockAdapter mockAdapter;
 
     bytes[] internal queuedCalls; // used for storing calls to PoolRouter to be executed in a single transaction
+    
+    // Canaries
+    bool poolCreated;
+    bool deposited;
 
+    event LogString(string);
     
     /// === Setup === ///
     /// This contains all calls to be performed in the tester constructor, both for Echidna and Foundry
