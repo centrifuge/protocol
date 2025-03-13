@@ -156,12 +156,8 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         }
 
         if (poolManager.getTranche(poolId, trancheId) == address(0)) {
-            centrifugeChain.batchAddPoolAllowAsset(poolId, assetId);
+            centrifugeChain.addPool(poolId);
             centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, trancheDecimals, hook);
-        }
-
-        if (!poolManager.isAllowedAsset(poolId, asset)) {
-            centrifugeChain.allowAsset(poolId, assetId);
         }
 
         poolManager.updateTranchePrice(poolId, trancheId, assetId, uint128(10 ** 18), uint64(block.timestamp));

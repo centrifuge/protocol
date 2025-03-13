@@ -20,8 +20,6 @@ contract TestMessageLibCategories is Test {
         assert(MessageCategory.Pool == uint8(MessageType.RegisterAsset).category());
         assert(MessageCategory.Pool == uint8(MessageType.NotifyPool).category());
         assert(MessageCategory.Pool == uint8(MessageType.NotifyShareClass).category());
-        assert(MessageCategory.Pool == uint8(MessageType.AllowAsset).category());
-        assert(MessageCategory.Pool == uint8(MessageType.DisallowAsset).category());
         assert(MessageCategory.Pool == uint8(MessageType.UpdateShareClassPrice).category());
         assert(MessageCategory.Pool == uint8(MessageType.UpdateShareClassMetadata).category());
         assert(MessageCategory.Pool == uint8(MessageType.UpdateShareClassHook).category());
@@ -160,28 +158,6 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.decimals, b.decimals);
         assertEq(a.salt, b.salt);
         assertEq(a.hook, b.hook);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-    }
-
-    function testAllowAsset() public pure {
-        MessageLib.AllowAsset memory a = MessageLib.AllowAsset({poolId: 1, scId: bytes16("sc"), assetId: 5});
-        MessageLib.AllowAsset memory b = MessageLib.deserializeAllowAsset(a.serialize());
-
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.assetId, b.assetId);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-    }
-
-    function testDisallowAsset() public pure {
-        MessageLib.DisallowAsset memory a = MessageLib.DisallowAsset({poolId: 1, scId: bytes16("sc"), assetId: 5});
-        MessageLib.DisallowAsset memory b = MessageLib.deserializeDisallowAsset(a.serialize());
-
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.assetId, b.assetId);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
     }

@@ -470,33 +470,6 @@ contract PoolManagerTest is BaseTest {
         poolManager.updateRestriction(poolId, trancheId, update);
     }
 
-    function testAllowAsset() public {
-        uint64 poolId = 1;
-        uint128 assetId = poolManager.registerAsset(address(erc20), 0, 0);
-
-        centrifugeChain.addPool(poolId);
-
-        centrifugeChain.allowAsset(poolId, assetId);
-        assertTrue(poolManager.isAllowedAsset(poolId, address(erc20)));
-
-        centrifugeChain.disallowAsset(poolId, assetId);
-        assertEq(poolManager.isAllowedAsset(poolId, address(erc20)), false);
-
-        uint128 randomCurrency = 100;
-
-        vm.expectRevert(bytes("PoolManager/unknown-asset"));
-        centrifugeChain.allowAsset(poolId, randomCurrency);
-
-        vm.expectRevert(bytes("PoolManager/invalid-pool"));
-        centrifugeChain.allowAsset(poolId + 1, randomCurrency);
-
-        vm.expectRevert(bytes("PoolManager/unknown-asset"));
-        centrifugeChain.disallowAsset(poolId, randomCurrency);
-
-        vm.expectRevert(bytes("PoolManager/invalid-pool"));
-        centrifugeChain.disallowAsset(poolId + 1, randomCurrency);
-    }
-
     function testUpdateTranchePriceWorks(
         uint64 poolId,
         uint8 decimals,
@@ -517,7 +490,6 @@ contract PoolManagerTest is BaseTest {
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, price, uint64(block.timestamp));
 
         centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook);
-        centrifugeChain.allowAsset(poolId, assetId);
 
         // Allows us to go back in time later
         vm.warp(block.timestamp + 1 days);

@@ -67,7 +67,6 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         {
             POOL_ID += 1;
             poolManager_addPool(POOL_ID);
-            poolManager_allowAsset(POOL_ID, CURRENCY_ID);
         }
 
         {
@@ -119,11 +118,6 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         // Only if success full
         tokenToCurrencyId[currencyAddress] = currencyId;
         currencyIdToToken[currencyId] = currencyAddress;
-    }
-
-    // Step 5
-    function poolManager_allowAsset(uint64 poolId, uint128 currencyId) public {
-        poolManager.allowAsset(poolId, currencyId);
     }
 
     // Step 3
@@ -184,10 +178,6 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         );
     }
 
-    function poolManager_disallowAsset() public {
-        poolManager.disallowAsset(poolId, currencyId);
-    }
-
     // TODO: Rely / Permissions
     // Only after all system is setup
     function root_scheduleRely(address target) public {
@@ -220,8 +210,6 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     // Step 2 = poolManager_registerAsset - GatewayMockFunctions
     // Step 3 = poolManager_addPool - GatewayMockFunctions
     // Step 4 = poolManager_addTranche - GatewayMockFunctions
-
-    // Step 5 = poolManager_allowAsset - GatewayMockFunctions
 
     // Step 7 is copied from step 5, ignore
 

@@ -167,27 +167,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     }
 
     /// @inheritdoc IPoolManager
-    function allowAsset(uint64 poolId, uint128 assetId) public auth {
-        require(isPoolActive(poolId), "PoolManager/invalid-pool");
-        address asset = idToAsset_[assetId].asset;
-        require(asset != address(0), "PoolManager/unknown-asset");
-
-        // TODO: Fix for ERC6909 once escrow PR is in
-        allowedAssets[poolId][asset] = true;
-        emit AllowAsset(poolId, asset);
-    }
-
-    /// @inheritdoc IPoolManager
-    function disallowAsset(uint64 poolId, uint128 assetId) public auth {
-        require(isPoolActive(poolId), "PoolManager/invalid-pool");
-        address asset = idToAsset_[assetId].asset;
-        require(asset != address(0), "PoolManager/unknown-asset");
-
-        delete allowedAssets[poolId][asset];
-        emit DisallowAsset(poolId, asset);
-    }
-
-    /// @inheritdoc IPoolManager
     function addTranche(
         uint64 poolId,
         bytes16 trancheId,

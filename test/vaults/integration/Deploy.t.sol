@@ -275,7 +275,6 @@ contract DeployTest is Test, Deployer {
             poolId, trancheId, tokenName, tokenSymbol, decimals, keccak256(abi.encodePacked(poolId, trancheId)), hook
         );
         uint128 assetId = poolManager.registerAsset(address(erc20), 0, 0);
-        poolManager.allowAsset(poolId, assetId);
         poolManager.updateTranchePrice(poolId, trancheId, assetId, uint128(10 ** 18), uint64(block.timestamp));
         address vault = poolManager.deployVault(poolId, trancheId, address(erc20), address(vaultFactory));
         poolManager.linkVault(poolId, trancheId, poolManager.idToAsset(assetId), vault);

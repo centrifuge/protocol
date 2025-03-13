@@ -145,12 +145,6 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
                 poolManager.addTranche(
                     m.poolId, m.scId, m.name, m.symbol.toString(), m.decimals, m.salt, address(bytes20(m.hook))
                 );
-            } else if (kind == MessageType.AllowAsset) {
-                MessageLib.AllowAsset memory m = MessageLib.deserializeAllowAsset(message);
-                poolManager.allowAsset(m.poolId, /* m.scId, */ m.assetId); // TODO: use scId
-            } else if (kind == MessageType.DisallowAsset) {
-                MessageLib.DisallowAsset memory m = MessageLib.deserializeDisallowAsset(message);
-                poolManager.disallowAsset(m.poolId, /* m.scId, */ m.assetId); // TODO: use scId
             } else if (kind == MessageType.UpdateShareClassPrice) {
                 MessageLib.UpdateShareClassPrice memory m = MessageLib.deserializeUpdateShareClassPrice(message);
                 poolManager.updateTranchePrice(m.poolId, m.scId, m.assetId, m.price, m.timestamp);

@@ -32,23 +32,6 @@ contract MockCentrifugeChain is Test {
         execute(MessageLib.NotifyPool({poolId: poolId}).serialize());
     }
 
-    function batchAddPoolAllowAsset(uint64 poolId, uint128 assetId) public {
-        bytes memory _addPool = MessageLib.NotifyPool({poolId: poolId}).serialize();
-        bytes memory _allowAsset =
-            MessageLib.AllowAsset({poolId: poolId, scId: bytes16(0), assetId: assetId}).serialize();
-
-        bytes memory _message = abi.encodePacked(_addPool, _allowAsset);
-        execute(_message);
-    }
-
-    function allowAsset(uint64 poolId, uint128 assetId) public {
-        execute(MessageLib.AllowAsset({poolId: poolId, scId: bytes16(0), assetId: assetId}).serialize());
-    }
-
-    function disallowAsset(uint64 poolId, uint128 assetId) public {
-        execute(MessageLib.DisallowAsset({poolId: poolId, scId: bytes16(0), assetId: assetId}).serialize());
-    }
-
     function unlinkVault(uint64 poolId, bytes16 trancheId, address vault) public {
         execute(
             MessageLib.UpdateContract({

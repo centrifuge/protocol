@@ -59,8 +59,6 @@ interface IPoolManager is IRecoverable {
     );
     event File(bytes32 indexed what, address factory, bool status);
     event AddPool(uint64 indexed poolId);
-    event AllowAsset(uint64 indexed poolId, address indexed asset);
-    event DisallowAsset(uint64 indexed poolId, address indexed asset);
     event AddTranche(uint64 indexed poolId, bytes16 indexed trancheId, address token);
     event DeployVault(
         uint64 indexed poolId, bytes16 indexed trancheId, address indexed asset, address factory, address vault
@@ -118,18 +116,7 @@ interface IPoolManager is IRecoverable {
     /// @notice    New pool details from an existing Centrifuge pool are added.
     /// @dev       The function can only be executed by the gateway contract.
     function addPool(uint64 poolId) external;
-
-    /// @notice     Centrifuge pools can support multiple currencies for investing. this function adds
-    ///             a new supported asset to the pool details.
-    ///             Adding new currencies allow the creation of new vaults for the underlying Centrifuge pool.
-    /// @dev        The function can only be executed by the gateway contract.
-    function allowAsset(uint64 poolId, uint128 assetId) external;
-
-    /// @notice    Centrifuge pools can support multiple currencies for investing. this function removes
-    ///            a supported asset from the pool details.
-    /// @dev       The function can only be executed by the gateway contract.
-    function disallowAsset(uint64 poolId, uint128 assetId) external;
-
+    
     /// @notice     New tranche details from an existing Centrifuge pool are added.
     /// @dev        The function can only be executed by the gateway contract.
     function addTranche(
