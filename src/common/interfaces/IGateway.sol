@@ -153,5 +153,5 @@ interface IGateway is IMessageHandler, IMessageSender {
     function recoveries(IAdapter adapter, bytes32 messageHash) external view returns (uint256 timestamp);
 
     /// @notice Returns the current gateway batching level.
-    function batchingLevel() external view returns (uint8);
+    function isBatching() external view returns (bool);
 }

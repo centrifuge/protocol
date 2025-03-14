@@ -44,7 +44,7 @@ contract TestCases is Deployer, Test {
     uint128 constant APPROVED_SHARE_AMOUNT = SHARE_AMOUNT / 5;
     D18 immutable NAV_PER_SHARE = d18(2, 1);
 
-    uint128 constant GAS = 100 wei;
+    uint64 constant GAS = 100 wei;
 
     MockVaults cv;
 
@@ -58,9 +58,9 @@ contract TestCases is Deployer, Test {
     }
 
     function _configGasPrice() private {
-        gasService.file("messageCost", 1);
-        gasService.updateGasPrice(GAS, uint64(block.timestamp) + 1);
-        gasService.updateTokenPrice(1);
+        gasService.file("messageCost", GAS);
+        gasService.updateGasPrice(1e18, uint64(block.timestamp) + 1);
+        gasService.updateTokenPrice(1e18);
     }
 
     function setUp() public {
@@ -148,10 +148,11 @@ contract TestCases is Deployer, Test {
         assertEq(c, cs.length);
 
         vm.prank(FM);
-        poolRouter.execute{value: GAS}(poolId, cs);
+        poolRouter.execute(poolId, cs);
 
         vm.prank(ANY);
-        poolRouter.claimDeposit(poolId, scId, USDC_C2, INVESTOR);
+        vm.deal(ANY, GAS);
+        poolRouter.claimDeposit{value: GAS}(poolId, scId, USDC_C2, INVESTOR);
 
         MessageLib.FulfilledDepositRequest memory m0 = MessageLib.deserializeFulfilledDepositRequest(cv.lastMessages(0));
         assertEq(m0.poolId, poolId.raw());
@@ -178,10 +179,11 @@ contract TestCases is Deployer, Test {
         assertEq(c, cs.length);
 
         vm.prank(FM);
-        poolRouter.execute{value: GAS}(poolId, cs);
+        poolRouter.execute(poolId, cs);
 
         vm.prank(ANY);
-        poolRouter.claimRedeem(poolId, scId, USDC_C2, INVESTOR);
+        vm.deal(ANY, GAS);
+        poolRouter.claimRedeem{value: GAS}(poolId, scId, USDC_C2, INVESTOR);
 
         MessageLib.FulfilledRedeemRequest memory m0 = MessageLib.deserializeFulfilledRedeemRequest(cv.lastMessages(0));
         assertEq(m0.poolId, poolId.raw());

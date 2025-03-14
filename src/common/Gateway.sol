@@ -15,8 +15,6 @@ import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 
-import "forge-std/Test.sol";
-
 /// @title  Gateway
 /// @notice Routing contract that forwards outgoing messages to multiple adapters (1 full message, n-1 proofs)
 ///         and validates that multiple adapters have confirmed a message.
@@ -62,7 +60,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
     uint32[] public /*transient*/ chainIds;
 
     /// @notice Tells is the gateway is actually configured to create batches
-    uint8 public /*transient*/ batchingLevel;
+    bool public /*transient*/ isBatching;
 
     /// @notice The payer of the transaction.
     address public /*transient*/ payableSource;
@@ -274,8 +272,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     /// @inheritdoc IMessageSender
     function send(uint32 chainId, bytes calldata message) external pauseable auth {
-        if (batchingLevel > 0) {
-            console.log("abcd");
+        if (isBatching) {
             sendWasBuffered = true;
 
             bytes storage previousMessage = batch[chainId];
@@ -337,7 +334,10 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     /// @inheritdoc IGateway
     function topUp() external payable {
-        if (batchingLevel == 0 || sendWasBuffered) {
+        // We only require the top up if:
+        // - We're not in a multicall.
+        // - Or we're in a multicall, but at least one message is required to be sent
+        if (!isBatching || sendWasBuffered) {
             require(payers[msg.sender], "Gateway/only-payers-can-top-up");
             require(msg.value != 0, "Gateway/cannot-topup-with-nothing");
             fuel = msg.value;
@@ -349,11 +349,11 @@ contract Gateway is Auth, IGateway, IRecoverable {
     }
 
     function startBatch() external {
-        batchingLevel++;
+        isBatching = true;
     }
 
     function endBatch() external {
-        require(batchingLevel > 0, NoBatched());
+        require(isBatching, NoBatched());
 
         for (uint256 i; i < chainIds.length; i++) {
             uint32 chainId = chainIds[i];
@@ -362,9 +362,8 @@ contract Gateway is Auth, IGateway, IRecoverable {
         }
 
         delete chainIds;
-
-        batchingLevel--;
         sendWasBuffered = false;
+        isBatching = false;
     }
 
     //----------------------------------------------------------------------------------------------

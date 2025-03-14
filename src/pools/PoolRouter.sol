@@ -32,16 +32,17 @@ contract PoolRouter is Multicall, IPoolRouter {
     /// @inheritdoc IMulticall
     /// @notice performs a multicall but all messages sent in the process will be batched
     function multicall(bytes[] calldata data) public payable override {
-        gateway.startBatch();
+        bool wasBatching = gateway.isBatching();
+        if (!wasBatching) {
+            gateway.startBatch();
+        }
 
         super.multicall(data);
 
-        if (gateway.batchingLevel() == 1) {
-            // We only pay the fees in the top batching level
+        if (!wasBatching) {
             gateway.topUp{value: msg.value}();
+            gateway.endBatch();
         }
-
-        gateway.endBatch();
     }
 
     /// @inheritdoc IPoolRouter
@@ -68,6 +69,7 @@ contract PoolRouter is Multicall, IPoolRouter {
         payable
         protected
     {
+        _pay();
         poolManager.claimDeposit(poolId, scId, assetId, investor);
     }
 
@@ -77,6 +79,7 @@ contract PoolRouter is Multicall, IPoolRouter {
         payable
         protected
     {
+        _pay();
         poolManager.claimRedeem(poolId, scId, assetId, investor);
     }
 
@@ -206,5 +209,12 @@ contract PoolRouter is Multicall, IPoolRouter {
     /// @inheritdoc IPoolRouter
     function addCredit(AccountId account, uint128 amount) external payable protected {
         poolManager.addCredit(account, amount);
+    }
+
+    /// @notice Send native tokens to the gateway for transaction payment if it's not in a multicall.
+    function _pay() internal {
+        if (!gateway.isBatching()) {
+            gateway.topUp{value: msg.value}();
+        }
     }
 }

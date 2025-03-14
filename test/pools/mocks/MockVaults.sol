@@ -22,6 +22,7 @@ contract MockVaults is Test, IAdapter {
 
     IMessageHandler public handler;
     uint32 public sourceChainId;
+    bool public wasPaid;
 
     uint32[] public lastChainDestinations;
     bytes[] public lastMessages;
@@ -74,6 +75,8 @@ contract MockVaults is Test, IAdapter {
     }
 
     function send(uint32 chainId, bytes memory data) external {
+        assertEq(wasPaid, true, "Before sending, pay must be called with a value > 0");
+
         lastChainDestinations.push(chainId);
 
         while (data.length > 0) {
@@ -84,11 +87,18 @@ contract MockVaults is Test, IAdapter {
 
             data = data.slice(messageLength, data.length - messageLength);
         }
+
+        wasPaid = false;
     }
 
-    function estimate(uint32 chainId, bytes calldata payload, uint256 baseCost) external view returns (uint256) {}
+    function estimate(uint32, bytes calldata, uint256 baseCost) external pure returns (uint256) {
+        return baseCost;
+    }
 
-    function pay(uint32 chainId, bytes calldata payload, address refund) external payable {}
+    function pay(uint32, bytes calldata, address) external payable {
+        wasPaid = msg.value != 0;
+        payable(0).transfer(msg.value);
+    }
 
     function resetMessages() external {
         delete lastChainDestinations;
