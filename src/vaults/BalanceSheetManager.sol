@@ -74,7 +74,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         _deposit(poolId, shareClassId, asset, tokenId, provider, amount, pricePerUnit, timestamp, debits, credits);
     }
 
-    function increase(
+    function deposit(
         uint64 poolId,
         bytes16 shareClassId,
         uint256 assetId,

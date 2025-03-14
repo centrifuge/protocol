@@ -80,6 +80,7 @@ library MessageLib {
     using BytesLib for bytes;
     using JournalEntryLib for bytes;
     using CastLib for *;
+    using JournalEntryLib for JournalEntry[];
 
     error UnknownMessageType();
 
@@ -986,8 +987,15 @@ library MessageLib {
     function deserializeIncreaseHolding(bytes memory data) internal pure returns (IncreaseHolding memory) {
         require(messageType(data) == MessageType.IncreaseHolding, UnknownMessageType());
 
-        uint16 debitsLength = data.toUint16(57);
-        uint16 creditsLength = data.toUint16(57);
+        uint16 debitsLength = data.toUint16(146);
+        uint256 offset = 148;
+        JournalEntry[] memory debits = data.toJournalEntries(offset, debitsLength);
+        offset += debitsLength;
+
+        uint16 creditsLength = data.toUint16(offset);
+        offset += 2;
+        JournalEntry[] memory credits = data.toJournalEntries(offset, creditsLength);
+
         return IncreaseHolding({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
@@ -997,12 +1005,15 @@ library MessageLib {
             pricePerUnit: data.toUint256(105),
             timestamp: data.toUint64(137),
             execute: data.toBool(145),
-            debits: data.toJournalEntries(data, 146, debitsLength),
-            credits: data.toJournalEntries(data, 146 + debitsLength + 2, creditsLength)
+            debits: debits,
+            credits: credits
         });
     }
 
     function serialize(IncreaseHolding memory t) internal pure returns (bytes memory) {
+        bytes memory debits = t.debits.encodePacked();
+        bytes memory credits = t.credits.encodePacked();
+
         return abi.encodePacked(
             MessageType.IncreaseHolding,
             t.poolId,
@@ -1013,10 +1024,10 @@ library MessageLib {
             t.pricePerUnit,
             t.timestamp,
             t.execute,
-            uint16(t.debits.length),
-            t.debits.encodePacked(),
-            uint16(t.credits.length),
-            t.credits.encodePacked()
+            uint16(debits.length),
+            debits,
+            uint16(credits.length),
+            credits
         );
     }
 }
