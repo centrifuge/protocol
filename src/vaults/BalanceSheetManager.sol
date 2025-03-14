@@ -137,7 +137,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
     {
         // TODO: Mint shares to to
 
-        // TODO: Send message to CP IssuedShares()
+        // TODO: Send message to CP UpdateShares()
     }
 
     function revoke(uint64 poolId, bytes16 scId, address from, uint128 shares, D18 pricePerShare, uint64 timestamp)
@@ -146,7 +146,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
     {
         // TODO: burn shares from from
 
-        // TODO: Send message to CP RevokedShares()
+        // TODO: Send message to CP UpdateShares()
     }
 
     function journalEntry(uint64 poolId, bytes16 scId, Meta calldata m) external authOrPermission(poolId, scId) {
@@ -163,16 +163,16 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         D18 pricePerUnit,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
-        Noted storage notedWithdraw_ = notedWithdraw[poolId][scId][receiver][assetId];
+        Noted storage noted = notedWithdraw[poolId][scId][receiver][assetId];
 
-        notedWithdraw_.amount = amount;
-        notedWithdraw_.pricePerUnit = pricePerUnit;
-        notedWithdraw_.m = m;
+        noted.amount = amount;
+        noted.pricePerUnit = pricePerUnit;
+        noted.m = m;
 
-        if (notedWithdraw_.amount == 0) {
+        if (noted.amount == 0) {
             delete notedWithdraw[poolId][scId][receiver][assetId];
         } else {
-            notedWithdraw[poolId][scId][receiver][assetId] = notedWithdraw_;
+            notedWithdraw[poolId][scId][receiver][assetId] = noted;
         }
 
         emit NoteWithdraw(
@@ -198,16 +198,16 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         D18 pricePerUnit,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
-        Noted storage notedDeposit_ = notedDeposit[poolId][scId][provider][assetId];
+        Noted storage noted = notedDeposit[poolId][scId][provider][assetId];
 
-        notedDeposit_.amount = amount;
-        notedDeposit_.pricePerUnit = pricePerUnit;
-        notedDeposit_.m = m;
+        noted.amount = amount;
+        noted.pricePerUnit = pricePerUnit;
+        noted.m = m;
 
-        if (notedDeposit_.amount == 0) {
+        if (noted.amount == 0) {
             delete notedDeposit[poolId][scId][provider][assetId];
         } else {
-            notedDeposit[poolId][scId][provider][assetId] = notedDeposit_;
+            notedDeposit[poolId][scId][provider][assetId] = noted;
         }
 
         emit NoteDeposit(
