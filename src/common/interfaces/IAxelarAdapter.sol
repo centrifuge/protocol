@@ -31,10 +31,9 @@ interface IAxelarAdapter is IAdapter {
     event File(bytes32 indexed what, uint256 value);
 
     error FileUnrecognizedParam();
+    error NotApproved();
     error InvalidChain();
     error InvalidAddress();
-    error NotApprovedByAxelarGateway();
-    error NotGateway();
 
     /// @dev This value is in Axelar fees in ETH (wei)
     function axelarCost() external view returns (uint256);

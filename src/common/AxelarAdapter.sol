@@ -48,8 +48,7 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
         require(keccak256(bytes(sourceChain)) == centrifugeIdHash, InvalidChain());
         require(keccak256(bytes(sourceAddress)) == centrifugeAddressHash, InvalidAddress());
         require(
-            axelarGateway.validateContractCall(commandId, sourceChain, sourceAddress, keccak256(payload)),
-            NotApprovedByAxelarGateway()
+            axelarGateway.validateContractCall(commandId, sourceChain, sourceAddress, keccak256(payload)), NotApproved()
         );
 
         //TODO extract the Id from the storage of this contract

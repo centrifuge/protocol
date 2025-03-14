@@ -7,7 +7,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {Mock} from "test/common/mocks/Mock.sol";
 
-import {AxelarAdapter, IAxelarAdapter} from "src/common/AxelarAdapter.sol";
+import {AxelarAdapter, IAdapter, IAxelarAdapter} from "src/common/AxelarAdapter.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 
 contract MockAxelarGateway is Mock {
@@ -132,7 +132,7 @@ contract AxelarAdapterTest is Test {
 
         axelarGateway.setReturn("validateContractCall", false);
         vm.prank(address(relayer));
-        vm.expectRevert(IAxelarAdapter.NotApprovedByAxelarGateway.selector);
+        vm.expectRevert(IAxelarAdapter.NotApproved.selector);
         adapter.execute(commandId, axelarCentrifugeChainId, axelarCentrifugeChainAddress, payload);
 
         axelarGateway.setReturn("validateContractCall", true);
@@ -143,7 +143,7 @@ contract AxelarAdapterTest is Test {
     function testOutgoingCalls(bytes calldata message, address invalidOrigin) public {
         vm.assume(invalidOrigin != address(GATEWAY));
 
-        vm.expectRevert(IAxelarAdapter.NotGateway.selector);
+        vm.expectRevert(IAdapter.NotGateway.selector);
         adapter.send(CHAIN_ID, message);
 
         vm.prank(address(GATEWAY));
