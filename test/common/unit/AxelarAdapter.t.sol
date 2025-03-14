@@ -132,7 +132,7 @@ contract AxelarAdapterTest is Test {
 
         axelarGateway.setReturn("validateContractCall", false);
         vm.prank(address(relayer));
-        vm.expectRevert(IAxelarAdapter.NotApproved.selector);
+        vm.expectRevert(IAxelarAdapter.NotApprovedByAxelarGateway.selector);
         adapter.execute(commandId, axelarCentrifugeChainId, axelarCentrifugeChainAddress, payload);
 
         axelarGateway.setReturn("validateContractCall", true);
