@@ -39,7 +39,7 @@ contract TestMessageLibCategories is Test {
         assert(MessageCategory.Investment == uint8(MessageType.CancelRedeemRequest).category());
         assert(MessageCategory.Investment == uint8(MessageType.FulfilledCancelDepositRequest).category());
         assert(MessageCategory.Investment == uint8(MessageType.FulfilledCancelRedeemRequest).category());
-        assert(MessageCategory.BalanceSheet == uint8(MessageType.IncreaseHolding).category());
+        assert(MessageCategory.BalanceSheet == uint8(MessageType.UpdateHolding).category());
     }
 }
 
@@ -499,39 +499,41 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageLength(), a.serialize().length);
     }
 
-    function testIncreaseHolding() public pure {
+    function testUpdateHolding() public pure {
         JournalEntry[] memory debits = new JournalEntry[](0);
 
         JournalEntry[] memory credits = new JournalEntry[](2);
         credits[0] = JournalEntry({accountId: 1, amount: 2});
         credits[1] = JournalEntry({accountId: 3, amount: 4});
 
-        MessageLib.IncreaseHolding memory a = MessageLib.IncreaseHolding({
+        MessageLib.UpdateHolding memory a = MessageLib.UpdateHolding({
             poolId: 1,
             scId: bytes16("sc"),
             assetId: 5,
-            provider: bytes32("alice"),
+            who: bytes32("alice"),
             amount: 100,
-            pricePerUnit: d18(3,1),
+            pricePerUnit: d18(3, 1),
             timestamp: 12345,
+            isIncrease: false,
             execute: true,
             debits: debits,
             credits: credits
         });
 
-        MessageLib.IncreaseHolding memory b = MessageLib.deserializeIncreaseHolding(a.serialize());
+        MessageLib.UpdateHolding memory b = MessageLib.deserializeUpdateHolding(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
         assertEq(a.assetId, b.assetId);
-        assertEq(a.provider, b.provider);
+        assertEq(a.who, b.who);
         assertEq(a.amount, b.amount);
         assert(a.pricePerUnit.eq(b.pricePerUnit));
         assertEq(a.timestamp, b.timestamp);
+        assertEq(a.isIncrease, b.isIncrease);
         assertEq(a.execute, b.execute);
         assertEq(a.debits.length, b.debits.length);
         assertEq(a.credits.length, b.credits.length);
-        
+
         for (uint256 i = 0; i < a.credits.length; i++) {
             assertEq(a.credits[i].accountId, b.credits[i].accountId);
             assertEq(a.credits[i].amount, b.credits[i].amount);

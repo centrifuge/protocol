@@ -42,11 +42,9 @@ enum MessageType {
     FulfilledCancelDepositRequest,
     FulfilledCancelRedeemRequest,
     TriggerRedeemRequest,
-    // -- BalanceSheetManager messages 28 - 33
-    IncreaseHolding,
-    DecreaseHolding,
-    IssueShares,
-    RevokeShares,
+    // -- BalanceSheetManager messages 28 - 30
+    UpdateHolding,
+    UpdateShares,
     JournalEntry
 }
 
@@ -116,7 +114,7 @@ library MessageLib {
         (89 << uint8(MessageType.FulfilledCancelDepositRequest) * 8) +
         (89 << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (89 << uint8(MessageType.TriggerRedeemRequest) * 8) +
-        (118 << uint8(MessageType.IncreaseHolding) * 8);
+        (119 << uint8(MessageType.UpdateHolding) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -136,7 +134,7 @@ library MessageLib {
             length += message.toUint16(length - 2); //payloadLength
         } else if (kind == uint8(MessageType.UpdateContract)) {
             length += message.toUint16(length - 2); //payloadLength
-        } else if (kind == uint8(MessageType.IncreaseHolding)) {
+        } else if (kind == uint8(MessageType.UpdateHolding)) {
             length += message.toUint16(length - 2); // credits length
             length += message.toUint16(length - 4); //debits length
         }
@@ -973,56 +971,58 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //    IncreaseHolding
+    //    UpdateHolding
     //---------------------------------------
 
-    struct IncreaseHolding {
+    struct UpdateHolding {
         uint64 poolId;
         bytes16 scId;
         uint128 assetId;
-        bytes32 provider; // who provided the funds
+        bytes32 who; // who provided the funds
         uint128 amount;
         D18 pricePerUnit;
         uint64 timestamp;
+        bool isIncrease; // Signals whether this is an increase or a decrease
         bool execute; // ONLY relevant for CV side, if false, only note the action
         JournalEntry[] debits;
         JournalEntry[] credits;
     }
 
-    function deserializeIncreaseHolding(bytes memory data) internal pure returns (IncreaseHolding memory) {
-        require(messageType(data) == MessageType.IncreaseHolding, UnknownMessageType());
+    function deserializeUpdateHolding(bytes memory data) internal pure returns (UpdateHolding memory) {
+        require(messageType(data) == MessageType.UpdateHolding, UnknownMessageType());
 
-        uint16 debitsLength = data.toUint16(114);
-        uint16 creditsLength = data.toUint16(116);
-        uint256 offset = 118;
+        uint16 debitsLength = data.toUint16(115);
+        uint16 creditsLength = data.toUint16(117);
+        uint256 offset = 119;
         JournalEntry[] memory debits = data.toJournalEntries(offset, debitsLength);
         offset += debitsLength;
         JournalEntry[] memory credits = data.toJournalEntries(offset, creditsLength);
 
-        return IncreaseHolding({
+        return UpdateHolding({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
-            provider: data.toBytes32(41),
+            who: data.toBytes32(41),
             amount: data.toUint128(73),
             pricePerUnit: d18(data.toUint128(89)),
             timestamp: data.toUint64(105),
-            execute: data.toBool(113),
+            isIncrease: data.toBool(113),
+            execute: data.toBool(114),
             debits: debits,
             credits: credits
         });
     }
 
-    function serialize(IncreaseHolding memory t) internal pure returns (bytes memory) {
+    function serialize(UpdateHolding memory t) internal pure returns (bytes memory) {
         bytes memory debits = t.debits.encodePacked();
         bytes memory credits = t.credits.encodePacked();
 
         return abi.encodePacked(
-            MessageType.IncreaseHolding,
+            MessageType.UpdateHolding,
             t.poolId,
             t.scId,
             t.assetId,
-            t.provider,
+            t.who,
             t.amount,
             t.pricePerUnit,
             t.timestamp,

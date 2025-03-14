@@ -3,6 +3,8 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
+import {D18} from "src/misc/types/D18.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
@@ -71,7 +73,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         JournalEntry[] calldata debits,
         JournalEntry[] calldata credits
     ) external authOrPermission(poolId, shareClassId) {
-        _deposit(poolId, shareClassId, asset, tokenId, provider, amount, pricePerUnit, timestamp, debits, credits);
+        //_deposit(poolId, shareClassId, asset, tokenId, provider, amount, pricePerUnit, timestamp, debits, credits);
     }
 
     function deposit(
@@ -106,7 +108,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         JournalEntry[] calldata debits,
         JournalEntry[] calldata credits
     ) external authOrPermission(poolId, shareClassId) {
-        _withdraw(poolId, shareClassId, asset, tokenId, receiver, amount, pricePerUnit, timestamp, debits, credits);
+        //_withdraw(poolId, shareClassId, asset, tokenId, receiver, amount, pricePerUnit, timestamp, debits, credits);
     }
 
     function withdraw(
@@ -175,15 +177,15 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint256 pricePerUnit,
         JournalEntry[] calldata debits,
         JournalEntry[] calldata credits
-    ) external authOrPermission(poolId, shareClassId) {
+    ) external auth {
+        /*
         Noted storage notedWithdraw_ = notedWithdraw[poolId][shareClassId][receiver][assetId];
 
         notedWithdraw_.amount = amount;
         notedWithdraw_.pricePerUnit = pricePerUnit;
-        /* TODO: Fix this with via-ir pipelie?
+         TODO: Fix this with via-ir pipelie?
         notedWithdraw_.debits = debits;
         notedWithdraw_.credits = credits;
-        */
 
         if (notedWithdraw_.amount == 0) {
             delete notedWithdraw[poolId][shareClassId][receiver][assetId];
@@ -192,6 +194,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         notedWithdraw[poolId][shareClassId][receiver][assetId] = notedWithdraw_;
 
         emit NoteWithdraw(poolId, shareClassId, receiver, assetId, amount, pricePerUnit, debits, credits);
+        */
     }
 
     function adaptNotedDeposit(
@@ -203,16 +206,16 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint256 pricePerUnit,
         JournalEntry[] calldata debits,
         JournalEntry[] calldata credits
-    ) external authOrPermission(poolId, shareClassId) {
+    ) external auth {
+        /*
         Noted storage notedDeposit_ = notedDeposit[poolId][shareClassId][from][assetId];
 
         notedDeposit_.amount = amount;
 
         notedDeposit_.pricePerUnit = pricePerUnit;
-        /* TODO: Fix this with via-ir pipelie?
+         TODO: Fix this with via-ir pipelie?
         notedDeposit_.debits = debits;
         notedDeposit_.credits = credits;
-        */
 
         if (notedDeposit_.amount == 0) {
             delete notedDeposit[poolId][shareClassId][from][assetId];
@@ -220,7 +223,8 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
 
         notedDeposit[poolId][shareClassId][from][assetId] = notedDeposit_;
 
-        emit NoteDeposit(poolId, shareClassId, from, assetId, amount, pricePerUnit, debits, credits);
+        //emit NoteDeposit(poolId, shareClassId, from, assetId, amount, pricePerUnit, debits, credits);
+        */
     }
 
     function executeNotedWithdraw(uint64 poolId, bytes16 shareClassId, address asset, uint256 tokenId, address receiver)
@@ -230,8 +234,8 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
     }
 
     function executeNotedWithdraw(uint64 poolId, bytes16 shareClassId, uint256 assetId, address receiver) external {
-        Noted storage notedWithdraw_ = notedWithdraw[poolId][shareClassId][receiver][assetId];
-        require(notedWithdraw_.amount > 0, "BalanceSheetManager/invalid-noted-withdraw");
+        //Noted storage notedWithdraw_ = notedWithdraw[poolId][shareClassId][receiver][assetId];
+        //require(notedWithdraw_.amount > 0, "BalanceSheetManager/invalid-noted-withdraw");
 
         // _withdraw(poolId, shareClassId, asset, tokenId, receiver, notedWithdraw_.amount, notedWithdraw_.pricePerUnit,
         // block.timestamp, notedWithdraw_.debits, notedWithdraw_.credits);
@@ -244,8 +248,8 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
     }
 
     function executeNotedDeposit(uint64 poolId, bytes16 shareClassId, uint256 assetId, address provider) external {
-        Noted storage notedDeposit_ = notedDeposit[poolId][shareClassId][provider][assetId];
-        require(notedDeposit_.amount > 0, "BalanceSheetManager/invalid-noted-deposit");
+        //Noted storage notedDeposit_ = notedDeposit[poolId][shareClassId][provider][assetId];
+        //require(notedDeposit_.amount > 0, "BalanceSheetManager/invalid-noted-deposit");
 
         // _deposit(poolId, shareClassId, asset, tokenId, provider, notedDeposit_.amount, notedDeposit_.pricePerUnit,
         // block.timestamp, notedDeposit_.debits, notedDeposit_.credits);
@@ -254,39 +258,54 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
     // --- Internal ---
     function _withdraw(
         uint64 poolId,
-        bytes16 shareClassId,
+        bytes16 scId,
+        uint128 assetId,
         address asset,
         uint256 tokenId,
         address receiver,
-        uint256 amount,
-        uint256 pricePerUnit,
+        uint128 amount,
+        D18 pricePerUnit,
         uint64 timestamp,
         JournalEntry[] calldata debits,
         JournalEntry[] calldata credits
     ) internal {
-        // TODO: ...
+        escrow.withdraw(asset, tokenId, poolId, scId, amount);
+
+        if (tokenId == 0) {
+            SafeTransferLib.safeTransferFrom(asset, address(escrow), receiver, amount);
+        } else {
+            IERC6909(asset).transferFrom(address(escrow), receiver, tokenId, amount);
+        }
+
+        sender.sendDecreaseHolding(poolId, scId, assetId, receiver, amount, pricePerUnit, timestamp, debits, credits);
+
+        emit Withdraw(poolId, scId, asset, tokenId, receiver, amount, pricePerUnit, timestamp, debits, credits);
     }
 
     function _deposit(
         uint64 poolId,
-        bytes16 shareClassId,
+        bytes16 scId,
+        uint128 assetId,
         address asset,
         uint256 tokenId,
         address provider,
-        uint256 amount,
-        uint256 pricePerUnit,
+        uint128 amount,
+        D18 pricePerUnit,
         uint64 timestamp,
         JournalEntry[] calldata debits,
         JournalEntry[] calldata credits
     ) internal {
-        // TODO: Use PM to convert holding to assetId
+        escrow.pendingDepositIncrease(asset, tokenId, poolId, scId, amount);
 
-        //   IPerPoolEscrow(escrow).pendingDepositIncrease(holding, assetId, poolId, shareClassId, add);
+        if (tokenId == 0) {
+            SafeTransferLib.safeTransferFrom(asset, provider, address(escrow), amount);
+        } else {
+            IERC6909(asset).transferFrom(provider, address(escrow), tokenId, amount);
+        }
 
-        // TODO: Transfer from provider to escrow
+        escrow.deposit(asset, tokenId, poolId, scId, amount);
+        sender.sendIncreaseHolding(poolId, scId, assetId, provider, amount, pricePerUnit, timestamp, debits, credits);
 
-        //        IPerPoolEscrow(escrow).deposit(holding, assetId, poolId, shareClassId, add);
-
-        // TODO: Send message to CP IncreaseHoldings()
+        emit Deposit(poolId, scId, asset, tokenId, provider, amount, pricePerUnit, timestamp, debits, credits);
     }
 }

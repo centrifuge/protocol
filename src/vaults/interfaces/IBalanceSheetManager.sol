@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {D18} from "src/misc/types/D18.sol";
+
 import {JournalEntry} from "src/common/types/JournalEntry.sol";
 
 struct Noted {
@@ -20,9 +22,10 @@ interface IBalanceSheetManager {
         uint64 indexed poolId,
         bytes16 indexed shareClassId,
         address from,
-        uint256 assetId,
-        uint256 amount,
-        uint256 pricePerUnit,
+        address asset,
+        uint256 tokenId,
+        uint128 amount,
+        D18 pricePerUnit,
         JournalEntry[] debits,
         JournalEntry[] credits
     );
@@ -30,9 +33,34 @@ interface IBalanceSheetManager {
         uint64 indexed poolId,
         bytes16 indexed shareClassId,
         address from,
-        uint256 assetId,
-        uint256 amount,
-        uint256 pricePerUnit,
+        address asset,
+        uint256 tokenId,
+        uint128 amount,
+        D18 pricePerUnit,
+        JournalEntry[] debits,
+        JournalEntry[] credits
+    );
+    event Withdraw(
+        uint64 indexed poolId,
+        bytes16 indexed shareClassId,
+        address asset,
+        uint256 tokenId,
+        address receiver,
+        uint128 amount,
+        D18 pricePerUnit,
+        uint64 timestamp,
+        JournalEntry[] debits,
+        JournalEntry[] credits
+    );
+    event Deposit(
+        uint64 indexed poolId,
+        bytes16 indexed shareClassId,
+        address asset,
+        uint256 tokenId,
+        address provider,
+        uint128 amount,
+        D18 pricePerUnit,
+        uint64 timestamp,
         JournalEntry[] debits,
         JournalEntry[] credits
     );

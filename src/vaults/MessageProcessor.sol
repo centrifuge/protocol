@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {Auth} from "src/misc/Auth.sol";
+import {D18} from "src/misc/types/D18.sol";
 
 import {MessageCategory, MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
@@ -11,6 +12,7 @@ import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
+import {JournalEntry} from "src/common/types/JournalEntry.sol";
 
 import {IMessageProcessor} from "src/vaults/interfaces/IMessageProcessor.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
@@ -93,6 +95,64 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
             MessageLib.CancelRedeemRequest({poolId: poolId, scId: scId, investor: investor, assetId: assetId}).serialize(
             )
         );
+    }
+
+    /// @inheritdoc IMessageProcessor
+    function sendIncreaseHolding(
+        uint64 poolId,
+        bytes16 shareClassId,
+        uint128 assetId,
+        address provider,
+        uint128 amount,
+        D18 pricePerUnit,
+        uint64 timestamp,
+        JournalEntry[] calldata debits,
+        JournalEntry[] calldata credits
+    ) external auth {
+        MessageLib.UpdateHolding memory data = MessageLib.UpdateHolding({
+            poolId: poolId,
+            scId: shareClassId,
+            assetId: assetId,
+            who: provider.toBytes32(),
+            amount: amount,
+            pricePerUnit: pricePerUnit,
+            timestamp: timestamp,
+            isIncrease: true,
+            execute: true,
+            debits: debits,
+            credits: credits
+        });
+
+        gateway.send(uint32(poolId >> 32), data.serialize());
+    }
+
+    /// @inheritdoc IMessageProcessor
+    function sendDecreaseHolding(
+        uint64 poolId,
+        bytes16 shareClassId,
+        uint128 assetId,
+        address receiver,
+        uint128 amount,
+        D18 pricePerUnit,
+        uint64 timestamp,
+        JournalEntry[] calldata debits,
+        JournalEntry[] calldata credits
+    ) external auth {
+        MessageLib.UpdateHolding memory data = MessageLib.UpdateHolding({
+            poolId: poolId,
+            scId: shareClassId,
+            assetId: assetId,
+            who: receiver.toBytes32(),
+            amount: amount,
+            pricePerUnit: pricePerUnit,
+            timestamp: timestamp,
+            isIncrease: false,
+            execute: true,
+            debits: debits,
+            credits: credits
+        });
+
+        gateway.send(uint32(poolId >> 32), data.serialize());
     }
 
     /// @inheritdoc IMessageHandler
