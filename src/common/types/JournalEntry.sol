@@ -52,7 +52,7 @@ library JournalEntryLib {
         JournalEntry[] memory entries = new JournalEntry[](count);
 
         for (uint256 i = 0; i < count; i++) {
-            uint256 offset = i * 20;
+            uint256 offset = _start + i * 20;
 
             // 1) Decode amount (uint128) from 16 bytes big-endian
             uint128 amount;

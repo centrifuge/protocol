@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {D18, d18} from "src/misc/types/D18.sol";
 
 import {JournalEntry, JournalEntryLib} from "src/common/types/JournalEntry.sol";
 
@@ -114,7 +115,8 @@ library MessageLib {
         (73 << uint8(MessageType.CancelRedeemRequest) * 8) +
         (89 << uint8(MessageType.FulfilledCancelDepositRequest) * 8) +
         (89 << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
-        (89 << uint8(MessageType.TriggerRedeemRequest) * 8);
+        (89 << uint8(MessageType.TriggerRedeemRequest) * 8) +
+        (118 << uint8(MessageType.IncreaseHolding) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -134,6 +136,9 @@ library MessageLib {
             length += message.toUint16(length - 2); //payloadLength
         } else if (kind == uint8(MessageType.UpdateContract)) {
             length += message.toUint16(length - 2); //payloadLength
+        } else if (kind == uint8(MessageType.IncreaseHolding)) {
+            length += message.toUint16(length - 2); // credits length
+            length += message.toUint16(length - 4); //debits length
         }
     }
 
@@ -976,8 +981,8 @@ library MessageLib {
         bytes16 scId;
         uint128 assetId;
         bytes32 provider; // who provided the funds
-        uint256 amount;
-        uint256 pricePerUnit;
+        uint128 amount;
+        D18 pricePerUnit;
         uint64 timestamp;
         bool execute; // ONLY relevant for CV side, if false, only note the action
         JournalEntry[] debits;
@@ -987,13 +992,11 @@ library MessageLib {
     function deserializeIncreaseHolding(bytes memory data) internal pure returns (IncreaseHolding memory) {
         require(messageType(data) == MessageType.IncreaseHolding, UnknownMessageType());
 
-        uint16 debitsLength = data.toUint16(146);
-        uint256 offset = 148;
+        uint16 debitsLength = data.toUint16(114);
+        uint16 creditsLength = data.toUint16(116);
+        uint256 offset = 118;
         JournalEntry[] memory debits = data.toJournalEntries(offset, debitsLength);
         offset += debitsLength;
-
-        uint16 creditsLength = data.toUint16(offset);
-        offset += 2;
         JournalEntry[] memory credits = data.toJournalEntries(offset, creditsLength);
 
         return IncreaseHolding({
@@ -1001,10 +1004,10 @@ library MessageLib {
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
             provider: data.toBytes32(41),
-            amount: data.toUint256(73),
-            pricePerUnit: data.toUint256(105),
-            timestamp: data.toUint64(137),
-            execute: data.toBool(145),
+            amount: data.toUint128(73),
+            pricePerUnit: d18(data.toUint128(89)),
+            timestamp: data.toUint64(105),
+            execute: data.toBool(113),
             debits: debits,
             credits: credits
         });
@@ -1025,8 +1028,8 @@ library MessageLib {
             t.timestamp,
             t.execute,
             uint16(debits.length),
-            debits,
             uint16(credits.length),
+            debits,
             credits
         );
     }

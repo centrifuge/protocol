@@ -2,6 +2,9 @@
 pragma solidity 0.8.28;
 
 import {MessageType, MessageCategory, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {JournalEntry} from "src/common/types/JournalEntry.sol";
+
+import {D18, d18} from "src/misc/types/D18.sol";
 
 import "forge-std/Test.sol";
 
@@ -36,6 +39,7 @@ contract TestMessageLibCategories is Test {
         assert(MessageCategory.Investment == uint8(MessageType.CancelRedeemRequest).category());
         assert(MessageCategory.Investment == uint8(MessageType.FulfilledCancelDepositRequest).category());
         assert(MessageCategory.Investment == uint8(MessageType.FulfilledCancelRedeemRequest).category());
+        assert(MessageCategory.BalanceSheet == uint8(MessageType.IncreaseHolding).category());
     }
 }
 
@@ -491,6 +495,52 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.investor, b.investor);
         assertEq(a.assetId, b.assetId);
         assertEq(a.shares, b.shares);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+    }
+
+    function testIncreaseHolding() public pure {
+        JournalEntry[] memory debits = new JournalEntry[](0);
+
+        JournalEntry[] memory credits = new JournalEntry[](2);
+        credits[0] = JournalEntry({accountId: 1, amount: 2});
+        credits[1] = JournalEntry({accountId: 3, amount: 4});
+
+        MessageLib.IncreaseHolding memory a = MessageLib.IncreaseHolding({
+            poolId: 1,
+            scId: bytes16("sc"),
+            assetId: 5,
+            provider: bytes32("alice"),
+            amount: 100,
+            pricePerUnit: d18(3,1),
+            timestamp: 12345,
+            execute: true,
+            debits: debits,
+            credits: credits
+        });
+
+        MessageLib.IncreaseHolding memory b = MessageLib.deserializeIncreaseHolding(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.assetId, b.assetId);
+        assertEq(a.provider, b.provider);
+        assertEq(a.amount, b.amount);
+        assert(a.pricePerUnit.eq(b.pricePerUnit));
+        assertEq(a.timestamp, b.timestamp);
+        assertEq(a.execute, b.execute);
+        assertEq(a.debits.length, b.debits.length);
+        assertEq(a.credits.length, b.credits.length);
+        
+        for (uint256 i = 0; i < a.credits.length; i++) {
+            assertEq(a.credits[i].accountId, b.credits[i].accountId);
+            assertEq(a.credits[i].amount, b.credits[i].amount);
+        }
+
+        for (uint256 i = 0; i < a.debits.length; i++) {
+            assertEq(a.debits[i].accountId, b.debits[i].accountId);
+            assertEq(a.debits[i].amount, b.debits[i].amount);
+        }
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
     }
