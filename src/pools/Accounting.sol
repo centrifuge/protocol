@@ -12,8 +12,8 @@ contract Accounting is Auth, IAccounting {
 
     uint128 public transient debited;
     uint128 public transient credited;
-    bytes32 private transient _transactionId;
-    PoolId private transient _currentPoolId;
+    bytes32 internal transient _transactionId;
+    PoolId internal transient _currentPoolId;
 
     constructor(address deployer) Auth(deployer) {}
 
