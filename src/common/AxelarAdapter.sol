@@ -1,33 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAxelarAdapter, IAdapter} from "src/common/interfaces/IAxelarAdapter.sol";
+import {IAxelarAdapter, IAdapter, IAxelarGateway, IAxelarGasService} from "src/common/interfaces/IAxelarAdapter.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-
-// From https://github.com/axelarnetwork/axelar-cgp-solidity/blob/main/contracts/interfaces/IAxelarGateway.sol
-interface IAxelarGateway {
-    function callContract(string calldata destinationChain, string calldata contractAddress, bytes calldata payload)
-        external;
-
-    function validateContractCall(
-        bytes32 commandId,
-        string calldata sourceChain,
-        string calldata sourceAddress,
-        bytes32 payloadHash
-    ) external returns (bool);
-}
-
-// From https://github.com/axelarnetwork/axelar-cgp-solidity/blob/main/contracts/interfaces/IAxelarGasService.sol
-interface IAxelarGasService {
-    function payNativeGasForContractCall(
-        address sender,
-        string calldata destinationChain,
-        string calldata destinationAddress,
-        bytes calldata payload,
-        address refundAddress
-    ) external payable;
-}
 
 /// @title  Axelar Adapter
 /// @notice Routing contract that integrates with an Axelar Gateway
