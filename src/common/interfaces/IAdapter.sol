@@ -5,6 +5,7 @@ import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 
 interface IAdapter is IMessageSender {
     error NotGateway();
+    error UnknownChainId();
 
     /// @notice Send a payload to Centrifuge Chain
     /// @notice Send a payload to the destination chain

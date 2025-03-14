@@ -5,6 +5,11 @@ import {IWormholeAdapter, IAdapter, IWormholeRelayer} from "src/common/interface
 import {Auth} from "src/misc/Auth.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 
+struct Target {
+    uint16 wormholeId;
+    address addr;
+}
+
 /// @title  Wormhole Adapter
 /// @notice Routing contract that integrates with the Wormhole Gateway
 contract WormholeAdapter is Auth, IWormholeAdapter {
@@ -12,10 +17,9 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     IMessageHandler public immutable gateway;
     IWormholeRelayer public immutable relayer;
 
-    mapping(uint32 centrifugeId => uint16 wormholeId) public chainIdLookup;
+    mapping(uint32 centrifugeId => Target) public targets;
     mapping(uint16 wormholeId => bytes32 sourceAddress) public adapters;
 
-    uint256 public gasLimit = 0;
     uint256 public /* transient */ gasPaid;
     address public /* transient */ refund;
 
@@ -27,15 +31,15 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
 
     // --- Administrative ---
     /// @inheritdoc IWormholeAdapter
-    function file(bytes32 what, uint32 centrifugeId, uint16 wormholeId) external auth {
-        if (what == "chainIdLookup") chainIdLookup[centrifugeId] = wormholeId;
+    function file(bytes32 what, uint32 centrifugeId, uint16 wormholeId, address addr) external auth {
+        if (what == "target") targets[centrifugeId] = Target(wormholeId, addr);
         else revert FileUnrecognizedParam();
-        emit File(what, centrifugeId, wormholeId);
+        emit File(what, centrifugeId, wormholeId, addr);
     }
 
     /// @inheritdoc IWormholeAdapter
     function file(bytes32 what, uint16 wormholeId, bytes32 sourceAddress) external auth {
-        if (what == "chainIdLookup") adapters[wormholeId] = sourceAddress;
+        if (what == "adapters") adapters[wormholeId] = sourceAddress;
         else revert FileUnrecognizedParam();
         emit File(what, wormholeId, sourceAddress);
     }
@@ -59,21 +63,24 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     // --- Outgoing ---
     function send(uint32 chainId, bytes calldata payload) public {
         require(msg.sender == address(gateway), NotGateway());
+        Target memory target = targets[chainId];
+        require(target.wormholeId != 0, UnknownChainId());
 
-        address targetAddress = address(0); // TODO
+        uint256 gasLimit = 1; // TODO
 
         relayer.sendPayloadToEvm{value: address(this).balance}(
-            chainIdLookup[chainId], targetAddress, abi.encode(payload), 0, gasLimit, refundChain, address(gateway)
+            target.wormholeId, target.addr, payload, 0, gasLimit, refundChain, address(gateway)
         );
     }
 
     /// @inheritdoc IAdapter
-    function estimate(uint32 chainId, bytes calldata, uint256 /* baseCost */ )
+    function estimate(uint32 chainId, bytes calldata, uint256 baseCost)
         public
         view
         returns (uint256 nativePriceQuote)
     {
-        (nativePriceQuote,) = relayer.quoteEVMDeliveryPrice(chainIdLookup[chainId], 0, gasLimit);
+        /// TODO: Wormhole assumes passing gasLimit and estimating based on this
+        (nativePriceQuote,) = relayer.quoteEVMDeliveryPrice(targets[chainId].wormholeId, 0, baseCost);
     }
 
     /// @inheritdoc IAdapter
