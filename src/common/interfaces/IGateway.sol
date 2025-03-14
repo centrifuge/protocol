@@ -99,7 +99,7 @@ interface IGateway is IMessageHandler, IMessageSender {
     /// @notice Prepays for the TX cost for sending through the adapters
     ///         and Centrifuge Chain
     /// @dev    It can be called only through endorsed contracts.
-    ///         Currently being called from Centrifuge Router only.
+    ///         Currently being called from Vaults Router only.
     ///         In order to prepay, the method MUST be called with `msg.value`.
     ///         Called is assumed to have called IGateway.estimate before calling this.
     function topUp() external payable;

@@ -106,7 +106,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         vm.label(address(adapter3), "MockAdapter3");
         vm.label(address(erc20), "ERC20");
         vm.label(address(centrifugeChain), "CentrifugeChain");
-        vm.label(address(router), "CentrifugeRouter");
+        vm.label(address(router), "VaultsRouter");
         vm.label(address(gasService), "GasService");
         vm.label(address(mockedGasService), "MockGasService");
         vm.label(address(escrow), "Escrow");

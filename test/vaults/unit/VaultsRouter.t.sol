@@ -5,7 +5,7 @@ import "test/vaults/BaseTest.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/misc/interfaces/IERC20.sol";
-import {CentrifugeRouter} from "src/vaults/CentrifugeRouter.sol";
+import {VaultsRouter} from "src/vaults/VaultsRouter.sol";
 import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
@@ -21,7 +21,7 @@ contract ERC20WrapperFake {
     }
 }
 
-contract CentrifugeRouterTest is BaseTest {
+contract VaultsRouterTest is BaseTest {
     using CastLib for *;
 
     uint32 constant CHAIN_ID = 1;
@@ -31,7 +31,7 @@ contract CentrifugeRouterTest is BaseTest {
 
     function testInitialization() public {
         // redeploying within test to increase coverage
-        new CentrifugeRouter(address(routerEscrow), address(gateway), address(poolManager));
+        new VaultsRouter(address(routerEscrow), address(gateway), address(poolManager));
 
         assertEq(address(router.escrow()), address(routerEscrow));
         assertEq(address(router.gateway()), address(gateway));
@@ -105,7 +105,7 @@ contract CentrifugeRouterTest is BaseTest {
         erc20.mint(self, amount);
         erc20.approve(address(router), amount);
 
-        vm.expectRevert(bytes("CentrifugeRouter/no-locked-balance"));
+        vm.expectRevert(bytes("VaultsRouter/no-locked-balance"));
         router.unlockDepositRequest(vault_, self);
 
         router.lockDepositRequest(vault_, amount, self, self);
@@ -175,7 +175,7 @@ contract CentrifugeRouterTest is BaseTest {
 
         address nonMember = makeAddr("nonMember");
         vm.prank(nonMember);
-        vm.expectRevert("CentrifugeRouter/invalid-sender");
+        vm.expectRevert("VaultsRouter/invalid-sender");
         router.claimCancelDepositRequest(vault_, nonMember, self);
 
         vm.expectRevert("InvestmentManager/transfer-not-allowed");
@@ -288,7 +288,7 @@ contract CentrifugeRouterTest is BaseTest {
 
         address sender = makeAddr("maliciousUser");
         vm.prank(sender);
-        vm.expectRevert("CentrifugeRouter/invalid-sender");
+        vm.expectRevert("VaultsRouter/invalid-sender");
         router.claimCancelRedeemRequest(vault_, sender, self);
 
         router.claimCancelRedeemRequest(vault_, self, self);
@@ -350,7 +350,7 @@ contract CentrifugeRouterTest is BaseTest {
         vm.expectRevert("Gateway/not-enough-gas-funds");
         router.transferTrancheTokens{value: fuel - 1}(vault_, destinationChainId, destinationAddress, uint128(amount));
 
-        snapStart("CentrifugeRouter_transferTrancheTokens");
+        snapStart("VaultsRouter_transferTrancheTokens");
         router.transferTrancheTokens{value: fuel}(vault_, destinationChainId, destinationAddress, uint128(amount));
         snapEnd();
         assertEq(share.balanceOf(address(router)), 0);
@@ -413,16 +413,16 @@ contract CentrifugeRouterTest is BaseTest {
         address receiver = makeAddr("receiver");
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
 
-        vm.expectRevert(bytes("CentrifugeRouter/invalid-owner"));
+        vm.expectRevert(bytes("VaultsRouter/invalid-owner"));
         router.wrap(address(wrapper), amount, receiver, makeAddr("ownerIsNeitherCallerNorRouter"));
 
-        vm.expectRevert(bytes("CentrifugeRouter/zero-balance"));
+        vm.expectRevert(bytes("VaultsRouter/zero-balance"));
         router.wrap(address(wrapper), amount, receiver, self);
 
         erc20.mint(self, balance);
         erc20.approve(address(router), amount);
         wrapper.setFail("depositFor", true);
-        vm.expectRevert(bytes("CentrifugeRouter/wrap-failed"));
+        vm.expectRevert(bytes("VaultsRouter/wrap-failed"));
         router.wrap(address(wrapper), amount, receiver, self);
 
         wrapper.setFail("depositFor", false);
@@ -443,12 +443,12 @@ contract CentrifugeRouterTest is BaseTest {
         erc20.mint(self, balance);
         erc20.approve(address(router), amount);
 
-        vm.expectRevert(bytes("CentrifugeRouter/zero-balance"));
+        vm.expectRevert(bytes("VaultsRouter/zero-balance"));
         router.unwrap(address(wrapper), amount, self);
 
         router.wrap(address(wrapper), amount, address(router), self);
         wrapper.setFail("withdrawTo", true);
-        vm.expectRevert(bytes("CentrifugeRouter/unwrap-failed"));
+        vm.expectRevert(bytes("VaultsRouter/unwrap-failed"));
         router.unwrap(address(wrapper), amount, self);
         wrapper.setFail("withdrawTo", false);
 

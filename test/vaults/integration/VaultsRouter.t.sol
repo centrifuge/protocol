@@ -9,11 +9,11 @@ import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 import "test/vaults/BaseTest.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 import "src/vaults/interfaces/IERC7540.sol";
-import {CentrifugeRouter} from "src/vaults/CentrifugeRouter.sol";
+import {VaultsRouter} from "src/vaults/VaultsRouter.sol";
 import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
 import {MockReentrantERC20Wrapper1, MockReentrantERC20Wrapper2} from "test/vaults/mocks/MockReentrantERC20Wrapper.sol";
 
-contract CentrifugeRouterTest is BaseTest {
+contract VaultsRouterTest is BaseTest {
     uint32 constant CHAIN_ID = 1;
     uint256 constant GAS_BUFFER = 10 gwei;
     /// @dev Payload is not taken into account during gas estimation
@@ -60,11 +60,11 @@ contract CentrifugeRouterTest is BaseTest {
         address nonOwner = makeAddr("NonOwner");
         vm.deal(nonOwner, 10 ether);
         vm.prank(nonOwner);
-        vm.expectRevert(bytes("CentrifugeRouter/invalid-owner"));
+        vm.expectRevert(bytes("VaultsRouter/invalid-owner"));
         router.requestDeposit{value: gas}(vault_, amount, self, self);
 
         if (snap) {
-            snapStart("CentrifugeRouter_requestDeposit");
+            snapStart("VaultsRouter_requestDeposit");
         }
         router.requestDeposit{value: gas}(vault_, amount, self, self);
         if (snap) {
@@ -96,7 +96,7 @@ contract CentrifugeRouterTest is BaseTest {
         assertEq(tranche.balanceOf(address(escrow)), tranchePayout);
 
         if (snap) {
-            snapStart("CentrifugeRouter_claimDeposit");
+            snapStart("VaultsRouter_claimDeposit");
         }
         router.claimDeposit(vault_, self, self);
         if (snap) {
@@ -197,7 +197,7 @@ contract CentrifugeRouterTest is BaseTest {
         erc20.approve(vault_, amount);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
         if (snap) {
-            snapStart("CentrifugeRouter_enable");
+            snapStart("VaultsRouter_enable");
         }
         router.enable(vault_);
         if (snap) {
@@ -216,12 +216,12 @@ contract CentrifugeRouterTest is BaseTest {
         address nonOwner = makeAddr("NonOwner");
         vm.deal(nonOwner, 10 ether);
         vm.prank(nonOwner);
-        vm.expectRevert(bytes("CentrifugeRouter/invalid-owner"));
+        vm.expectRevert(bytes("VaultsRouter/invalid-owner"));
         router.requestRedeem{value: fuel}(vault_, tranchePayout, self, self);
 
         // redeem
         if (snap) {
-            snapStart("CentrifugeRouter_requestRedeem");
+            snapStart("VaultsRouter_requestRedeem");
         }
         router.requestRedeem{value: fuel}(vault_, tranchePayout, self, self);
         if (snap) {
@@ -346,7 +346,7 @@ contract CentrifugeRouterTest is BaseTest {
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
         router.enable(address(vault_));
         if (snap) {
-            snapStart("CentrifugeRouter_lockDepositRequest");
+            snapStart("VaultsRouter_lockDepositRequest");
         }
         router.lockDepositRequest(vault_, amount, self, self);
         if (snap) {
@@ -658,7 +658,7 @@ contract CentrifugeRouterTest is BaseTest {
         assertEq(erc20.balanceOf(self), 0);
 
         // Testing with empty balance for both wrapped and underlying
-        vm.expectRevert(bytes("CentrifugeRouter/zero-balance"));
+        vm.expectRevert(bytes("VaultsRouter/zero-balance"));
         router.enableLockDepositRequest(vault_, wrappedAmount);
     }
 
