@@ -6,7 +6,7 @@ import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
 import {Deployer} from "script/vaults/Deployer.sol";
 
-// Script to deploy Liquidity Pools with an Wormhole Adapter.
+// Script to deploy Vaults with an Wormhole Adapter.
 contract WormholeScript is Deployer {
     function setUp() public {}
 

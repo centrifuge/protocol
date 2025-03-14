@@ -6,7 +6,7 @@ import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
 import {Deployer} from "script/vaults/Deployer.sol";
 
-// Script to deploy Liquidity Pools with an Axelar Adapter.
+// Script to deploy Vaults with an Axelar Adapter.
 contract AxelarScript is Deployer {
     function setUp() public {}
 
