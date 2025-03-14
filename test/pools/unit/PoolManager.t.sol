@@ -16,6 +16,8 @@ import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
 import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
+import {ITransactionId} from "src/pools/interfaces/ITransactionId.sol";
+import {TransactionId} from "src/pools/TransactionId.sol";
 import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 import {IPoolManager} from "src/pools/interfaces/IPoolManager.sol";
@@ -30,11 +32,12 @@ contract TestCommon is Test {
     IPoolRegistry immutable poolRegistry = IPoolRegistry(makeAddr("PoolRegistry"));
     IHoldings immutable holdings = IHoldings(makeAddr("Holdings"));
     IAccounting immutable accounting = IAccounting(makeAddr("Accounting"));
+    ITransactionId immutable transactionId = ITransactionId(makeAddr("TransactionId"));
     IAssetRegistry immutable assetRegistry = IAssetRegistry(makeAddr("AssetRegistry"));
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
     IGateway immutable gateway = IGateway(makeAddr("Gateway"));
 
-    PoolManager poolManager = new PoolManager(poolRegistry, assetRegistry, accounting, holdings, gateway, address(this));
+    PoolManager poolManager = new PoolManager(poolRegistry, assetRegistry, accounting, transactionId, holdings, gateway, address(this));
 
     function setUp() public {
         vm.mockCall(
@@ -44,7 +47,11 @@ contract TestCommon is Test {
         );
 
         vm.mockCall(
-            address(accounting), abi.encodeWithSelector(accounting.unlock.selector, POOL_A, "TODO"), abi.encode(true)
+            address(transactionId), abi.encodeWithSelector(transactionId.generateTransactionId.selector, POOL_A), abi.encode("1")
+        );
+
+        vm.mockCall(
+            address(accounting), abi.encodeWithSelector(accounting.unlock.selector, POOL_A, "1"), abi.encode(true)
         );
 
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.setPayableSource.selector, ADMIN), abi.encode());
