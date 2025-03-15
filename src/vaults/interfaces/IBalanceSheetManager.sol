@@ -126,8 +126,8 @@ interface IBalanceSheetManager {
     function adaptNotedWithdraw(
         uint64 poolId,
         bytes16 scId,
-        address from,
         uint128 assetId,
+        address from,
         uint128 amount,
         D18 pricePerUnit,
         Meta calldata m
@@ -136,8 +136,8 @@ interface IBalanceSheetManager {
     function adaptNotedDeposit(
         uint64 poolId,
         bytes16 scId,
-        address from,
         uint128 assetId,
+        address from,
         uint128 amount,
         D18 pricePerUnit,
         Meta calldata m

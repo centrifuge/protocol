@@ -17,6 +17,7 @@ import {JournalEntry} from "src/common/types/JournalEntry.sol";
 import {IMessageProcessor} from "src/vaults/interfaces/IMessageProcessor.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IInvestmentManager} from "src/vaults/interfaces/IInvestmentManager.sol";
+import {Meta, IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
 
 contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
     using MessageLib for *;
@@ -26,6 +27,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
     IMessageSender public immutable gateway;
     IPoolManager public immutable poolManager;
     IInvestmentManager public immutable investmentManager;
+    IBalanceSheetManager public immutable balanceSheetManager;
     IRoot public immutable root;
     IGasService public immutable gasService;
 
@@ -33,6 +35,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         IMessageSender sender_,
         IPoolManager poolManager_,
         IInvestmentManager investmentManager_,
+        IBalanceSheetManager balanceSheetManager_,
         IRoot root_,
         IGasService gasService_,
         address deployer
@@ -40,6 +43,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         gateway = sender_;
         poolManager = poolManager_;
         investmentManager = investmentManager_;
+        balanceSheetManager = balanceSheetManager_;
         root = root_;
         gasService = gasService_;
     }
@@ -246,6 +250,34 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
                 investmentManager.triggerRedeemRequest(
                     m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.shares
                 );
+            } else {
+                revert InvalidMessage(uint8(kind));
+            }
+        } else if (cat == MessageCategory.BalanceSheet) {
+            if (kind == MessageType.UpdateHolding) {
+                MessageLib.UpdateHolding memory m = message.deserializeUpdateHolding();
+                Meta memory meta = Meta({timestamp: m.timestamp, debits: m.debits, credits: m.credits});
+                if (m.execute) {
+                    if (m.isIncrease) {
+                        balanceSheetManager.withdraw(
+                            m.poolId, m.scId, m.assetId, address(bytes20(m.who)), m.amount, m.pricePerUnit, meta
+                        );
+                    } else {
+                        balanceSheetManager.deposit(
+                            m.poolId, m.scId, m.assetId, address(bytes20(m.who)), m.amount, m.pricePerUnit, meta
+                        );
+                    }
+                } else {
+                    if (m.isIncrease) {
+                        balanceSheetManager.adaptNotedWithdraw(
+                            m.poolId, m.scId, m.assetId, address(bytes20(m.who)), m.amount, m.pricePerUnit, meta
+                        );
+                    } else {
+                        balanceSheetManager.adaptNotedDeposit(
+                            m.poolId, m.scId, m.assetId, address(bytes20(m.who)), m.amount, m.pricePerUnit, meta
+                        );
+                    }
+                }
             } else {
                 revert InvalidMessage(uint8(kind));
             }

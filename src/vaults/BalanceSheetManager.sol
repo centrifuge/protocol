@@ -157,8 +157,8 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
     function adaptNotedWithdraw(
         uint64 poolId,
         bytes16 scId,
-        address receiver,
         uint128 assetId,
+        address receiver,
         uint128 amount,
         D18 pricePerUnit,
         Meta calldata m
@@ -192,8 +192,8 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
     function adaptNotedDeposit(
         uint64 poolId,
         bytes16 scId,
-        address provider,
         uint128 assetId,
+        address provider,
         uint128 amount,
         D18 pricePerUnit,
         Meta calldata m
@@ -237,17 +237,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
             // noted.m.timestamp = block.timestamp;
         }
 
-        _withdraw(
-            poolId,
-            scId,
-            assetId,
-            asset,
-            tokenId,
-            receiver,
-            noted.amount,
-            noted.pricePerUnit,
-            noted.m
-        );
+        _withdraw(poolId, scId, assetId, asset, tokenId, receiver, noted.amount, noted.pricePerUnit, noted.m);
     }
 
     function executeNotedWithdraw(uint64 poolId, bytes16 scId, uint128 assetId, address receiver) external {
@@ -286,17 +276,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
             // noted.m.timestamp = block.timestamp;
         }
 
-        _deposit(
-            poolId,
-            scId,
-            assetId,
-            asset,
-            tokenId,
-            provider,
-            noted.amount,
-            noted.pricePerUnit,
-            noted.m
-        );
+        _deposit(poolId, scId, assetId, asset, tokenId, provider, noted.amount, noted.pricePerUnit, noted.m);
     }
 
     function executeNotedDeposit(uint64 poolId, bytes16 scId, uint128 assetId, address provider) external {
@@ -355,7 +335,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint128 assetId,
         address asset,
         uint256 tokenId,
-        address who,
+        address provider,
         uint128 amount,
         D18 pricePerUnit,
         Meta memory m
@@ -363,14 +343,16 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         escrow.pendingDepositIncrease(asset, tokenId, poolId, scId, amount);
 
         if (tokenId == 0) {
-            SafeTransferLib.safeTransferFrom(asset, who, address(escrow), amount);
+            SafeTransferLib.safeTransferFrom(asset, provider, address(escrow), amount);
         } else {
-            IERC6909(asset).transferFrom(who, address(escrow), tokenId, amount);
+            IERC6909(asset).transferFrom(provider, address(escrow), tokenId, amount);
         }
 
         escrow.deposit(asset, tokenId, poolId, scId, amount);
-        sender.sendIncreaseHolding(poolId, scId, assetId, who, amount, pricePerUnit, m.timestamp, m.debits, m.credits);
+        sender.sendIncreaseHolding(
+            poolId, scId, assetId, provider, amount, pricePerUnit, m.timestamp, m.debits, m.credits
+        );
 
-        emit Deposit(poolId, scId, asset, tokenId, who, amount, pricePerUnit, m.timestamp, m.debits, m.credits);
+        emit Deposit(poolId, scId, asset, tokenId, provider, amount, pricePerUnit, m.timestamp, m.debits, m.credits);
     }
 }

@@ -10,6 +10,7 @@ import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {Gateway} from "src/common/Gateway.sol";
 
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
+import {BalanceSheetManager} from "src/vaults/BalanceSheetManager.sol";
 import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
 import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
@@ -26,6 +27,7 @@ contract Deployer is Script {
     IAdapter[] adapters;
 
     Root public root;
+    BalanceSheetManager public balanceSheetManager;
     InvestmentManager public investmentManager;
     PoolManager public poolManager;
     Escrow public escrow;
@@ -65,9 +67,12 @@ contract Deployer is Script {
         vaultFactories[0] = vaultFactory;
 
         poolManager = new PoolManager(address(escrow), trancheFactory, vaultFactories);
+        balanceSheetManager = new BalanceSheetManager(address(escrow));
         gasService = new GasService(messageCost, proofCost, gasPrice, tokenPrice);
         gateway = new Gateway(root, gasService);
-        messageProcessor = new MessageProcessor(gateway, poolManager, investmentManager, root, gasService, deployer);
+        messageProcessor = new MessageProcessor(
+            gateway, poolManager, investmentManager, balanceSheetManager, root, gasService, deployer
+        );
         router = new CentrifugeRouter(address(routerEscrow), address(gateway), address(poolManager));
         guardian = new Guardian(adminSafe, root, gateway);
 
