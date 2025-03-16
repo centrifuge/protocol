@@ -136,7 +136,7 @@ abstract contract AdminTargets is
     // === PoolManager === //
     /// Gateway owner methods: these get called directly because we're not using the gateway in our setup
 
-    function poolManager_registerAsset(uint32 isoCode) public asAdmin {
+    function poolManager_registerAsset(uint32 isoCode) public updateGhosts asAdmin {
         AssetId assetId_ = newAssetId(isoCode); 
 
         string memory name = MockERC20(_getAsset()).name();
@@ -146,7 +146,7 @@ abstract contract AdminTargets is
         poolManager.registerAsset(assetId_, name, symbol, decimals);
     }  
 
-    function poolManager_depositRequest(PoolId poolId, ShareClassId scId, uint32 isoCode, uint128 amount) public asAdmin {
+    function poolManager_depositRequest(PoolId poolId, ShareClassId scId, uint32 isoCode, uint128 amount) public updateGhosts asAdmin {
         AssetId depositAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
@@ -155,21 +155,21 @@ abstract contract AdminTargets is
         deposited = true;
     }  
 
-    function poolManager_redeemRequest(PoolId poolId, ShareClassId scId, uint32 isoCode, uint128 amount) public asAdmin {
+    function poolManager_redeemRequest(PoolId poolId, ShareClassId scId, uint32 isoCode, uint128 amount) public updateGhosts asAdmin {
         AssetId payoutAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
         poolManager.redeemRequest(poolId, scId, investor, payoutAssetId, amount);
     }  
 
-    function poolManager_cancelDepositRequest(PoolId poolId, ShareClassId scId, uint32 isoCode) public asAdmin {
+    function poolManager_cancelDepositRequest(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asAdmin {
         AssetId depositAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
         poolManager.cancelDepositRequest(poolId, scId, investor, depositAssetId);
     }
 
-    function poolManager_cancelRedeemRequest(PoolId poolId, ShareClassId scId, uint32 isoCode) public asAdmin {
+    function poolManager_cancelRedeemRequest(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asAdmin {
         AssetId payoutAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
@@ -178,11 +178,11 @@ abstract contract AdminTargets is
 
     // === PoolRouter === //
 
-    function poolRouter_execute(PoolId poolId, bytes[] memory data) public payable asAdmin {
+    function poolRouter_execute(PoolId poolId, bytes[] memory data) public payable updateGhosts asAdmin {
         poolRouter.execute{value: msg.value}(poolId, data);
     }
 
-    function poolRouter_execute_clamped(PoolId poolId) public payable asAdmin {
+    function poolRouter_execute_clamped(PoolId poolId) public payable updateGhosts asAdmin {
         // TODO: clamp poolId here to one of the created pools
         poolRouter.execute{value: msg.value}(poolId, queuedCalls);
 
@@ -191,25 +191,25 @@ abstract contract AdminTargets is
 
     // === SingleShareClass === //
 
-    function singleShareClass_claimDepositUntilEpoch(PoolId poolId, ShareClassId shareClassId_, AssetId depositAssetId, uint32 endEpochId) public asAdmin {
+    function singleShareClass_claimDepositUntilEpoch(PoolId poolId, ShareClassId shareClassId_, AssetId depositAssetId, uint32 endEpochId) public updateGhosts asAdmin {
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
         singleShareClass.claimDepositUntilEpoch(poolId, shareClassId_, investor, depositAssetId, endEpochId);
     }
 
-    function singleShareClass_claimRedeemUntilEpoch(PoolId poolId, ShareClassId shareClassId_, bytes32 investor, AssetId payoutAssetId, uint32 endEpochId) public asAdmin {
+    function singleShareClass_claimRedeemUntilEpoch(PoolId poolId, ShareClassId shareClassId_, bytes32 investor, AssetId payoutAssetId, uint32 endEpochId) public updateGhosts asAdmin {
         singleShareClass.claimRedeemUntilEpoch(poolId, shareClassId_, investor, payoutAssetId, endEpochId);
     }
 
-    function singleShareClass_issueSharesUntilEpoch(PoolId poolId, ShareClassId shareClassId_, AssetId depositAssetId, D18 navPerShare, uint32 endEpochId) public asAdmin {
+    function singleShareClass_issueSharesUntilEpoch(PoolId poolId, ShareClassId shareClassId_, AssetId depositAssetId, D18 navPerShare, uint32 endEpochId) public updateGhosts asAdmin {
         singleShareClass.issueSharesUntilEpoch(poolId, shareClassId_, depositAssetId, navPerShare, endEpochId);
     }
 
-    function singleShareClass_revokeSharesUntilEpoch(PoolId poolId, ShareClassId shareClassId_, AssetId payoutAssetId, D18 navPerShare, IERC7726 valuation, uint32 endEpochId) public asAdmin {
+    function singleShareClass_revokeSharesUntilEpoch(PoolId poolId, ShareClassId shareClassId_, AssetId payoutAssetId, D18 navPerShare, IERC7726 valuation, uint32 endEpochId) public updateGhosts asAdmin {
         singleShareClass.revokeSharesUntilEpoch(poolId, shareClassId_, payoutAssetId, navPerShare, valuation, endEpochId);
     }
 
-    function singleShareClass_updateMetadata(PoolId poolId, ShareClassId shareClassId_, string memory name, string memory symbol, bytes32 salt, bytes memory data) public asActor {
+    function singleShareClass_updateMetadata(PoolId poolId, ShareClassId shareClassId_, string memory name, string memory symbol, bytes32 salt, bytes memory data) public updateGhosts asActor {
         singleShareClass.updateMetadata(PoolId(poolId), ShareClassId(shareClassId_), name, symbol, salt, data);
     }
 }

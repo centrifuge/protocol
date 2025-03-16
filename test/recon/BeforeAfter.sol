@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0
 pragma solidity ^0.8.0;
 
+import {PoolId} from "src/pools/types/PoolId.sol";
 import {Setup} from "./Setup.sol";
 
 // ghost variables for tracking state variable values before and after function calls
 abstract contract BeforeAfter is Setup {
     struct Vars {
-        uint256 __ignore__;
+        PoolId ghostUnlockedPoolId;
+        uint128 ghostDebited;
+        uint128 ghostCredited;
     }
 
     Vars internal _before;
@@ -19,10 +22,14 @@ abstract contract BeforeAfter is Setup {
     }
 
     function __before() internal {
-
+        _before.ghostUnlockedPoolId = poolManager.unlockedPoolId();
+        _before.ghostDebited = accounting.debited();
+        _before.ghostCredited = accounting.credited();
     }
 
     function __after() internal {
-
+        _after.ghostUnlockedPoolId = poolManager.unlockedPoolId();
+        _after.ghostDebited = accounting.debited();
+        _after.ghostCredited = accounting.credited();
     }
 }

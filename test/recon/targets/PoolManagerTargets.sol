@@ -22,14 +22,14 @@ abstract contract PoolManagerTargets is
 {
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
     /// CLAMPED HANDLERS /// 
-    function poolManager_claimDeposit_clamped(PoolId poolId, ShareClassId scId, uint32 isoCode) public asActor {
+    function poolManager_claimDeposit_clamped(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asActor {
         bytes32 investor = Helpers.addressToBytes32(_getActor());
         AssetId assetId = newAssetId(isoCode);
 
         poolManager.claimDeposit(poolId, scId, assetId, investor);
     }
 
-    function poolManager_claimRedeem_clamped(PoolId poolId, ShareClassId scId, uint32 isoCode) public asActor {
+    function poolManager_claimRedeem_clamped(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asActor {
         bytes32 investor = Helpers.addressToBytes32(_getActor());
         AssetId assetId = newAssetId(isoCode);
         
@@ -39,7 +39,7 @@ abstract contract PoolManagerTargets is
     // === PoolManager === //
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
 
-    function poolManager_createPool(address admin, uint32 isoCode, IShareClassManager shareClassManager) public asActor returns (PoolId poolId) {
+    function poolManager_createPool(address admin, uint32 isoCode, IShareClassManager shareClassManager) public updateGhosts asActor returns (PoolId poolId) {
         AssetId assetId_ = newAssetId(isoCode); 
         
         poolId = poolManager.createPool(admin, assetId_, shareClassManager);
@@ -49,17 +49,16 @@ abstract contract PoolManagerTargets is
         return poolId;
     }
 
-    function poolManager_claimDeposit(PoolId poolId, ShareClassId scId, uint32 isoCode, bytes32 investor) public asActor {
+    function poolManager_claimDeposit(PoolId poolId, ShareClassId scId, uint32 isoCode, bytes32 investor) public updateGhosts asActor {
         AssetId assetId = newAssetId(isoCode);
         
         poolManager.claimDeposit(poolId, scId, assetId, investor);
     }
 
-    function poolManager_claimRedeem(PoolId poolId, ShareClassId scId, uint32 isoCode, bytes32 investor) public asActor {
+    function poolManager_claimRedeem(PoolId poolId, ShareClassId scId, uint32 isoCode, bytes32 investor) public updateGhosts asActor {
         AssetId assetId = newAssetId(isoCode);
         
         poolManager.claimRedeem(poolId, scId, assetId, investor);
     }
-    
 
 }

@@ -26,11 +26,11 @@ abstract contract PoolRouterTargets is
     /// === EXECUTION FUNCTIONS === ///
 
     /// Multicall is publicly exposed without access protections so can be called by anyone
-    function poolRouter_multicall(bytes[] memory data) public payable asActor {
+    function poolRouter_multicall(bytes[] memory data) public payable updateGhosts asActor {
         poolRouter.multicall{value: msg.value}(data);
     }
 
-    function poolRouter_multicall_clamped() public payable asActor {
+    function poolRouter_multicall_clamped() public payable updateGhosts asActor {
         poolRouter.multicall{value: msg.value}(queuedCalls);
 
         queuedCalls = new bytes[](0);
