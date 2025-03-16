@@ -12,7 +12,7 @@ struct Target {
 }
 
 /// @title  Wormhole Adapter
-/// @notice Routing contract that integrates with the Wormhole Gateway
+/// @notice Routing contract that integrates with the Wormhole Relayer service
 contract WormholeAdapter is Auth, IWormholeAdapter {
     using CastLib for bytes32;
 
@@ -35,7 +35,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     // --- Administrative ---
     /// @inheritdoc IWormholeAdapter
     function file(bytes32 what, uint32 centrifugeId, uint16 wormholeId, address addr) external auth {
-        if (what == "target") targets[centrifugeId] = Target(wormholeId, addr);
+        if (what == "targets") targets[centrifugeId] = Target(wormholeId, addr);
         else revert FileUnrecognizedParam();
         emit File(what, centrifugeId, wormholeId, addr);
     }
@@ -47,7 +47,6 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         emit File(what, wormholeId, sourceAddress);
     }
 
-    // --- Incoming ---
     /// @inheritdoc IWormholeAdapter
     function receiveWormholeMessages(
         bytes memory payload,
@@ -58,7 +57,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     ) external {
         require(msg.sender == address(relayer), NotWormholeRelayer());
         address source = sourceAddress.toAddress();
-        require(adapters[sourceChain] == source, InvalidSource(sourceChain, source));
+        require(adapters[sourceChain] == source, InvalidSource());
 
         // TODO extract the Id from the storage of this contract
         gateway.handle(0, payload);

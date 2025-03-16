@@ -69,7 +69,7 @@ interface IWormholeAdapter is IAdapter {
 
     error FileUnrecognizedParam();
     error NotWormholeRelayer();
-    error InvalidSource(uint16 sourceChain, address source);
+    error InvalidSource();
 
     function file(bytes32 what, uint32 centrifugeId, uint16 wormholeId, address addr) external;
     function file(bytes32 what, uint16 wormholeId, address source) external;

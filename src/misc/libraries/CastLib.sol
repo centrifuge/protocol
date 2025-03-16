@@ -11,6 +11,10 @@ library CastLib {
         return address(uint160(uint256(addr)));
     }
 
+    function toBytes32LeftPadded(address addr) internal pure returns (bytes32) {
+        return bytes32(uint256(uint160(addr)));
+    }
+
     function toBytes32(address addr) internal pure returns (bytes32) {
         return bytes32(bytes20(addr));
     }
