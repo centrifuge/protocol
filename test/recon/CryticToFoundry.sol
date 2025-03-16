@@ -142,11 +142,12 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     function test_shortcut_update_holding() public {
-        shortcut_update_holding(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), true, 0x01);
-    }
+        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), false, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+        
+        AssetId assetId = newAssetId(123);
+        transientValuation_setPrice(assetId.addr(), assetId.addr(), d18(20e18));
 
-    function test_shortcut_update_valuation() public {
-        shortcut_update_valuation(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), true, 0x01);
+        shortcut_update_holding(123);
     }
 
 }

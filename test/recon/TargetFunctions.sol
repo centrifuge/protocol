@@ -12,7 +12,7 @@ import {Panic} from "@recon/Panic.sol";
 import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
-import {PoolId} from "src/pools/types/PoolId.sol";
+import {PoolId, newPoolId} from "src/pools/types/PoolId.sol";
 import {previewShareClassId} from "src/pools/SingleShareClass.sol";
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 
@@ -47,7 +47,11 @@ abstract contract TargetFunctions is
         // add and register asset
         add_new_asset(decimals);
         poolManager_registerAsset(isoCode);
-        
+
+        // set the initial price of the asset
+        // transientValuation.setPrice(_getAsset(), _getAsset(), INITIAL_PRICE);
+        // console2.log("asset address: ", _getAsset());
+
         // defaults to pool admined by the admin actor (address(this))
         poolId = poolManager_createPool(address(this), isoCode, singleShareClass);
         
@@ -293,6 +297,18 @@ abstract contract TargetFunctions is
         poolRouter_execute_clamped(poolId);
     }
 
+    // update holding for most recent poolId
+    function shortcut_update_holding(
+        uint32 isoCode
+    ) public {
+        PoolId poolId = newPoolId(poolRegistry.latestId());
+        ShareClassId scId = previewShareClassId(poolId);
+
+        AssetId assetId = newAssetId(isoCode);
+        poolRouter_updateHolding(scId, assetId);
+        poolRouter_execute_clamped(poolId);
+    }
+
     function shortcut_update_valuation(
         uint8 decimals,
         uint32 isoCode,
@@ -344,6 +360,8 @@ abstract contract TargetFunctions is
 
         IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
 
+        transientValuation.setPrice(assetId.addr(), assetId.addr(), INITIAL_PRICE);
+
         poolRouter_approveDeposits(scId, assetId, maxApproval, valuation);
         poolRouter_issueShares(scId, assetId, navPerShare);
         poolRouter_execute_clamped(poolId);
@@ -364,6 +382,17 @@ abstract contract TargetFunctions is
         poolRouter_execute_clamped(poolId);
     }
 
+    /// === Transient Valuation === ///
+    function transientValuation_setPrice(address base, address quote, D18 price) public {
+        transientValuation.setPrice(base, quote, price);
+    }
+
+    // set the price of the asset in the transient valuation for a given pool
+    function transientValuation_setPrice_clamped(PoolId poolId, D18 price) public {
+        AssetId assetId = poolRegistry.currency(poolId);
+
+        transientValuation.setPrice(assetId.addr(), assetId.addr(), price);
+    }
 
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
 }
