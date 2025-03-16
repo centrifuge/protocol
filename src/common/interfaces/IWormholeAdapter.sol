@@ -64,15 +64,15 @@ interface IWormholeRelayer {
 }
 
 interface IWormholeAdapter is IAdapter {
-    event File(bytes32 indexed what, uint32 centrifugeId, uint16 wormholeId, address addr);
-    event File(bytes32 indexed what, uint16 wormholeID, address source);
+    event File(bytes32 indexed what, uint16 wormholeID, uint32 centrifugeId, address source);
+    event File(bytes32 indexed what, uint32 centrifugeId, uint16 wormholeId, address destination);
 
     error FileUnrecognizedParam();
     error NotWormholeRelayer();
     error InvalidSource();
 
-    function file(bytes32 what, uint32 centrifugeId, uint16 wormholeId, address addr) external;
-    function file(bytes32 what, uint16 wormholeId, address source) external;
+    function file(bytes32 what, uint16 wormholeId, uint32 centrifugeId, address source) external;
+    function file(bytes32 what, uint32 centrifugeId, uint16 wormholeId, address destination) external;
 
     // --- Incoming ---
     /// @notice Execute a message

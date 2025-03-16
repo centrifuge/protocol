@@ -114,8 +114,6 @@ contract WormholeAdapterTest is Test {
         vm.assume(invalidChain != WORMHOLE_CHAIN_ID);
         vm.assume(invalidOrigin != address(relayer));
 
-        adapter.file("targets", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, validAddress);
-
         bytes[] memory vaas;
 
         vm.mockCall(
@@ -131,7 +129,7 @@ contract WormholeAdapterTest is Test {
             payload, vaas, validAddress.toBytes32LeftPadded(), WORMHOLE_CHAIN_ID, bytes32(0)
         );
 
-        adapter.file("adapters", WORMHOLE_CHAIN_ID, validAddress);
+        adapter.file("sources", WORMHOLE_CHAIN_ID, CENTRIFUGE_CHAIN_ID, validAddress);
 
         // Incorrect address
         vm.prank(address(relayer));
@@ -163,7 +161,7 @@ contract WormholeAdapterTest is Test {
         vm.expectRevert(IAdapter.UnknownChainId.selector);
         adapter.send(CENTRIFUGE_CHAIN_ID, message);
 
-        adapter.file("targets", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, makeAddr("DestinationAdapter"));
+        adapter.file("destinations", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, makeAddr("DestinationAdapter"));
 
         vm.prank(address(GATEWAY));
         adapter.send(CENTRIFUGE_CHAIN_ID, message);
