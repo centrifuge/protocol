@@ -63,6 +63,16 @@ interface IWormholeRelayer {
         returns (uint256 nativePriceQuote, uint256 targetChainRefundPerGasUnused);
 }
 
+struct WormholeSource {
+    uint32 centrifugeId;
+    address addr;
+}
+
+struct WormholeDestination {
+    uint16 wormholeId;
+    address addr;
+}
+
 interface IWormholeAdapter is IAdapter {
     event File(bytes32 indexed what, uint16 wormholeID, uint32 centrifugeId, address source);
     event File(bytes32 indexed what, uint32 centrifugeId, uint16 wormholeId, address destination);
