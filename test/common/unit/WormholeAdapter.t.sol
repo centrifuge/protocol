@@ -67,7 +67,7 @@ contract WormholeAdapterTest is Test {
         assertEq(adapter.wards(address(this)), 1);
     }
 
-    function testEstimate(uint64 gasLimit) public pure {
+    function testEstimate(uint64 gasLimit) public view {
         bytes memory payload = "irrelevant";
         assertEq(adapter.estimate(CENTRIFUGE_CHAIN_ID, payload, gasLimit), uint128(gasLimit) * 2);
     }
