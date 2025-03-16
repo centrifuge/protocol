@@ -45,7 +45,7 @@ enum MessageType {
     // -- BalanceSheetManager messages 28 - 30
     UpdateHolding,
     UpdateShares,
-    JournalEntry
+    UpdateJournal
 }
 
 enum UpdateRestrictionType {
@@ -114,7 +114,9 @@ library MessageLib {
         (89 << uint8(MessageType.FulfilledCancelDepositRequest) * 8) +
         (89 << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (89 << uint8(MessageType.TriggerRedeemRequest) * 8) +
-        (119 << uint8(MessageType.UpdateHolding) * 8);
+        (120 << uint8(MessageType.UpdateHolding) * 8);
+        (81 << uint8(MessageType.UpdateShares) * 8);
+        (29 << uint8(MessageType.UpdateJoural) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -983,6 +985,7 @@ library MessageLib {
         D18 pricePerUnit;
         uint64 timestamp;
         bool isIncrease; // Signals whether this is an increase or a decrease
+        bool asAllowance; // Signals whether the amount is transfered or allowed to who on the BSM
         bool execute; // ONLY relevant for CV side, if false, only note the action
         JournalEntry[] debits;
         JournalEntry[] credits;
@@ -991,9 +994,9 @@ library MessageLib {
     function deserializeUpdateHolding(bytes memory data) internal pure returns (UpdateHolding memory) {
         require(messageType(data) == MessageType.UpdateHolding, UnknownMessageType());
 
-        uint16 debitsLength = data.toUint16(115);
-        uint16 creditsLength = data.toUint16(117);
-        uint256 offset = 119;
+        uint16 debitsLength = data.toUint16(116);
+        uint16 creditsLength = data.toUint16(118);
+        uint256 offset = 120;
         JournalEntry[] memory debits = data.toJournalEntries(offset, debitsLength);
         offset += debitsLength;
         JournalEntry[] memory credits = data.toJournalEntries(offset, creditsLength);
@@ -1007,7 +1010,8 @@ library MessageLib {
             pricePerUnit: d18(data.toUint128(89)),
             timestamp: data.toUint64(105),
             isIncrease: data.toBool(113),
-            execute: data.toBool(114),
+            asAllowance: data.toBool(114),
+            execute: data.toBool(115),
             debits: debits,
             credits: credits
         });
@@ -1026,7 +1030,91 @@ library MessageLib {
             t.amount,
             t.pricePerUnit,
             t.timestamp,
+            t.isIncrease,
+            t.asAllowance,
             t.execute,
+            uint16(debits.length),
+            uint16(credits.length),
+            debits,
+            credits
+        );
+    }
+
+    //---------------------------------------
+    //    UpdateShares
+    //---------------------------------------
+
+    struct UpdateShares {
+        uint64 poolId;
+        bytes16 scId;
+        bytes32 who;
+        uint128 shares;
+        uint64 timestamp;
+        bool isIssuance;
+    }
+
+    function deserializeUpdateShares(bytes memory data) internal pure returns (UpdateShares memory) {
+        require(messageType(data) == MessageType.UpdateShares, UnknownMessageType());
+
+        return UpdateShares({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            who: data.toBytes32(25),
+            shares: data.toUint128(57),
+            timestamp: data.toUint64(73),
+            isIncrease: data.toBool(81),
+        });
+    }
+
+    function serialize(UpdateShares memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(
+            MessageType.UpdateShares,
+            t.poolId,
+            t.scId,
+            t.who,
+            t.shares,
+            t.timestamp,
+            t.isIncrease
+        );
+    }
+
+    //---------------------------------------
+    //    UpdateJournal
+    //---------------------------------------
+
+    struct UpdateJournal {
+        uint64 poolId;
+        bytes16 scId;
+        JournalEntry[] debits;
+        JournalEntry[] credits;
+    }
+
+    function deserializeUpdateJournal(bytes memory data) internal pure returns (UpdateHolding memory) {
+        require(messageType(data) == MessageType.UpdateJournal, UnknownMessageType());
+
+        uint16 debitsLength = data.toUint16(25);
+        uint16 creditsLength = data.toUint16(27);
+        uint256 offset = 29;
+        JournalEntry[] memory debits = data.toJournalEntries(offset, debitsLength);
+        offset += debitsLength;
+        JournalEntry[] memory credits = data.toJournalEntries(offset, creditsLength);
+
+        return UpdateJournal({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            debits: debits,
+            credits: credits
+        });
+    }
+
+    function serialize(UpdateJournal memory t) internal pure returns (bytes memory) {
+        bytes memory debits = t.debits.encodePacked();
+        bytes memory credits = t.credits.encodePacked();
+
+        return abi.encodePacked(
+            MessageType.UpdateJournal,
+            t.poolId,
+            t.scId,
             uint16(debits.length),
             uint16(credits.length),
             debits,

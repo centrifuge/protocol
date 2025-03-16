@@ -150,7 +150,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
     }
 
     function journalEntry(uint64 poolId, bytes16 scId, Meta calldata m) external authOrPermission(poolId, scId) {
-        // TODO: Send message to CP JournalEntry()
+        sender.sendJournalEntry(poolId, scId, m);
     }
 
     // --- Incoming ---
