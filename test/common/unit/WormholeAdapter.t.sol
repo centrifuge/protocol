@@ -36,7 +36,7 @@ contract MockWormholeRelayer is Mock {
 
     function quoteEVMDeliveryPrice(uint16, uint256, uint256 gasLimit)
         external
-        view
+        pure
         returns (uint256 nativePriceQuote, uint256 targetChainRefundPerGasUnused)
     {
         nativePriceQuote = gasLimit * 2;
@@ -67,7 +67,7 @@ contract WormholeAdapterTest is Test {
         assertEq(adapter.wards(address(this)), 1);
     }
 
-    function testEstimate(uint64 gasLimit) public {
+    function testEstimate(uint64 gasLimit) public pure {
         bytes memory payload = "irrelevant";
         assertEq(adapter.estimate(CENTRIFUGE_CHAIN_ID, payload, gasLimit), uint128(gasLimit) * 2);
     }
