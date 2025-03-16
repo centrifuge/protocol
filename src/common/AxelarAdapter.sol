@@ -17,9 +17,6 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     IAxelarGateway public immutable axelarGateway;
     IAxelarGasService public immutable axelarGasService;
 
-    /// @inheritdoc IAxelarAdapter
-    uint256 public axelarCost = 58_039_058_122_843;
-
     constructor(IMessageHandler gateway_, address axelarGateway_, address axelarGasService_) Auth(msg.sender) {
         gateway = gateway_;
         axelarGateway = IAxelarGateway(axelarGateway_);
@@ -27,14 +24,6 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
 
         centrifugeIdHash = keccak256(bytes(CENTRIFUGE_ID));
         centrifugeAddressHash = keccak256(bytes("0x7369626CEF070000000000000000000000000000"));
-    }
-
-    // --- Administrative ---
-    /// @inheritdoc IAxelarAdapter
-    function file(bytes32 what, uint256 value) external auth {
-        if (what == "axelarCost") axelarCost = value;
-        else revert FileUnrecognizedParam();
-        emit File(what, value);
     }
 
     // --- Incoming ---
@@ -64,10 +53,9 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     }
 
     /// @inheritdoc IAdapter
-    /// @dev Currently the payload (message) is not taken into consideration during cost estimation
-    ///      A predefined `axelarCost` value is used.
-    function estimate(uint32, /*chainId*/ bytes calldata, uint256 baseCost) public view returns (uint256) {
-        return baseCost + axelarCost;
+    function estimate(uint32, /*chainId*/ bytes calldata payload, uint256 gasLimit) public view returns (uint256) {
+        return
+            axelarGasService.estimateGasFee(CENTRIFUGE_ID, CENTRIFUGE_AXELAR_EXECUTABLE, payload, gasLimit, bytes(""));
     }
 
     /// @inheritdoc IAdapter

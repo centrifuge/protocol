@@ -25,6 +25,16 @@ contract MockAxelarGateway is Mock {
 }
 
 contract MockAxelarGasService is Mock {
+    function estimateGasFee(
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        bytes calldata payload,
+        uint256 executionGasLimit,
+        bytes calldata /* params */
+    ) external view returns (uint256 gasEstimate) {
+        return values_uint256_return["estimateGasFee"];
+    }
+
     function payNativeGasForContractCall(
         address sender,
         string calldata destinationChain,
@@ -66,29 +76,12 @@ contract AxelarAdapterTest is Test {
     }
 
     function testEstimate(uint256 gasLimit) public {
-        uint256 axelarCost = 10;
-        vm.assume(gasLimit < type(uint256).max - axelarCost);
-
-        adapter.file("axelarCost", axelarCost);
-
         bytes memory payload = "irrelevant";
 
+        axelarGasService.setReturn("estimateGasFee", gasLimit - 1);
+
         uint256 estimation = adapter.estimate(CHAIN_ID, payload, gasLimit);
-        assertEq(estimation, gasLimit + axelarCost);
-    }
-
-    function testFiling(uint256 value) public {
-        vm.assume(value != adapter.axelarCost());
-
-        adapter.file("axelarCost", value);
-        assertEq(adapter.axelarCost(), value);
-
-        vm.expectRevert(IAxelarAdapter.FileUnrecognizedParam.selector);
-        adapter.file("random", value);
-
-        vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        adapter.file("axelarCost", value);
+        assertEq(estimation, gasLimit - 1);
     }
 
     function testPayment(bytes calldata payload, uint256 value) public {

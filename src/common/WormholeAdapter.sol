@@ -78,13 +78,12 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     }
 
     /// @inheritdoc IAdapter
-    function estimate(uint32 chainId, bytes calldata, uint256 baseCost)
+    function estimate(uint32 chainId, bytes calldata, uint256 gasLimit)
         public
         view
         returns (uint256 nativePriceQuote)
     {
-        /// TODO: Wormhole assumes passing gasLimit and estimating based on this
-        (nativePriceQuote,) = relayer.quoteEVMDeliveryPrice(destinations[chainId].wormholeId, 0, baseCost);
+        (nativePriceQuote,) = relayer.quoteEVMDeliveryPrice(destinations[chainId].wormholeId, 0, gasLimit);
     }
 
     /// @inheritdoc IAdapter

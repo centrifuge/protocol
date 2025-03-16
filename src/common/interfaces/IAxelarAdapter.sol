@@ -16,8 +16,18 @@ interface IAxelarGateway {
     ) external returns (bool);
 }
 
-// From https://github.com/axelarnetwork/axelar-cgp-solidity/blob/main/contracts/interfaces/IAxelarGasService.sol
 interface IAxelarGasService {
+    // From
+    // https://github.com/axelarnetwork/axelar-gmp-sdk-solidity/blob/00682b6c3db0cc922ec0c4ea3791852c93d7ae31/contracts/gas-estimation/InterchainGasEstimation.sol#L48
+    function estimateGasFee(
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        bytes calldata payload,
+        uint256 executionGasLimit,
+        bytes calldata params
+    ) external view returns (uint256 gasEstimate);
+
+    // From https://github.com/axelarnetwork/axelar-cgp-solidity/blob/main/contracts/interfaces/IAxelarGasService.sol
     function payNativeGasForContractCall(
         address sender,
         string calldata destinationChain,
@@ -34,13 +44,6 @@ interface IAxelarAdapter is IAdapter {
     error NotApprovedByAxelarGateway();
     error InvalidChain();
     error InvalidAddress();
-
-    /// @dev This value is in Axelar fees in ETH (wei)
-    function axelarCost() external view returns (uint256);
-
-    /// @notice Updates a contract parameter
-    /// @param what Accepts a bytes32 representation of 'axelarCost'
-    function file(bytes32 what, uint256 value) external;
 
     // --- Incoming ---
     /// @notice Execute a message

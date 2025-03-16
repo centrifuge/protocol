@@ -59,7 +59,7 @@ enum MessageCategory {
     Invalid,
     Gateway,
     Root,
-    Gas,
+    Gas, // TODO: remove
     Pool,
     Investment,
     Other

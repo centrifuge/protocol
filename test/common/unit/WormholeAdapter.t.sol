@@ -103,7 +103,7 @@ contract WormholeAdapterTest is Test {
         assertEq(adapter.refund(), address(this));
     }
 
-    function testIncomingCallsWormhole(
+    function testIncomingCalls(
         bytes memory payload,
         address validAddress,
         address invalidAddress,
