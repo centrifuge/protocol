@@ -4,10 +4,12 @@ pragma solidity 0.8.28;
 import "forge-std/Test.sol";
 
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {Mock} from "test/common/mocks/Mock.sol";
 
 import {WormholeAdapter} from "src/common/WormholeAdapter.sol";
+import {IWormholeAdapter} from "src/common/interfaces/IWormholeAdapter.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
@@ -43,6 +45,8 @@ contract MockWormholeRelayer is Mock {
 }
 
 contract WormholeAdapterTest is Test {
+    using CastLib for *;
+
     MockWormholeRelayer relayer;
     WormholeAdapter adapter;
 
@@ -63,10 +67,10 @@ contract WormholeAdapterTest is Test {
         assertEq(adapter.wards(address(this)), 1);
     }
 
-    // function testEstimate(uint64 gasLimit) public {
-    //     bytes memory payload = "irrelevant";
-    //     assertEq(adapter.estimate(CENTRIFUGE_CHAIN_ID, payload, gasLimit), gasLimit * 2);
-    // }
+    function testEstimate(uint64 gasLimit) public {
+        bytes memory payload = "irrelevant";
+        assertEq(adapter.estimate(CENTRIFUGE_CHAIN_ID, payload, gasLimit), uint128(gasLimit) * 2);
+    }
 
     // function testFiling(uint256 value) public {
     //     vm.assume(value != adapter.axelarCost());
@@ -82,55 +86,52 @@ contract WormholeAdapterTest is Test {
     //     adapter.file("axelarCost", value);
     // }
 
-    // function testPayment(bytes calldata payload, uint256 value) public {
-    //     vm.deal(address(this), value);
-    //     adapter.pay{value: value}(CHAIN_ID, payload, address(this));
+    function testPayment(bytes calldata payload) public {
+        vm.deal(address(this), 0.3 ether);
 
-    //     uint256[] memory call = axelarGasService.callsWithValue("payNativeGasForContractCall");
-    //     assertEq(call.length, 1);
-    //     assertEq(call[0], value);
-    //     assertEq(axelarGasService.values_address("sender"), address(adapter));
-    //     assertEq(axelarGasService.values_string("destinationChain"), adapter.CENTRIFUGE_ID());
-    //     assertEq(axelarGasService.values_string("destinationAddress"), adapter.CENTRIFUGE_AXELAR_EXECUTABLE());
-    //     assertEq(axelarGasService.values_bytes("payload"), payload);
-    //     assertEq(axelarGasService.values_address("refundAddress"), address(this));
-    // }
+        assertEq(adapter.gasPaid(), 0 ether);
+        assertEq(adapter.refund(), address(0));
 
-    // function testIncomingCalls(
-    //     bytes32 commandId,
-    //     string calldata sourceChain,
-    //     string calldata sourceAddress,
-    //     bytes calldata payload,
-    //     address invalidOrigin,
-    //     address relayer
-    // ) public {
-    //     vm.assume(keccak256(abi.encodePacked(sourceChain)) != keccak256(abi.encodePacked("centrifuge")));
-    //     vm.assume(invalidOrigin != address(axelarGateway));
-    //     vm.assume(
-    //         keccak256(abi.encodePacked(sourceAddress)) != keccak256(abi.encodePacked(axelarCentrifugeChainAddress))
-    //     );
-    //     vm.assume(relayer.code.length == 0);
+        adapter.pay{value: 0.1 ether}(CENTRIFUGE_CHAIN_ID, payload, address(this));
 
-    //     vm.mockCall(address(GATEWAY), abi.encodeWithSelector(GATEWAY.handle.selector, CHAIN_ID, payload),
-    // abi.encode());
+        assertEq(adapter.gasPaid(), 0.1 ether);
+        assertEq(adapter.refund(), address(this));
 
-    //     vm.prank(address(relayer));
-    //     vm.expectRevert(IAxelarAdapter.InvalidChain.selector);
-    //     adapter.execute(commandId, sourceChain, axelarCentrifugeChainAddress, payload);
+        adapter.pay{value: 0.2 ether}(CENTRIFUGE_CHAIN_ID, payload, address(this));
 
-    //     vm.prank(address(relayer));
-    //     vm.expectRevert(IAxelarAdapter.InvalidAddress.selector);
-    //     adapter.execute(commandId, axelarCentrifugeChainId, sourceAddress, payload);
+        assertEq(adapter.gasPaid(), 0.3 ether);
+        assertEq(adapter.refund(), address(this));
+    }
 
-    //     axelarGateway.setReturn("validateContractCall", false);
-    //     vm.prank(address(relayer));
-    //     vm.expectRevert(IAxelarAdapter.NotApprovedByAxelarGateway.selector);
-    //     adapter.execute(commandId, axelarCentrifugeChainId, axelarCentrifugeChainAddress, payload);
+    function testIncomingCalls(
+        bytes memory payload,
+        address validAddress,
+        address invalidAddress,
+        uint16 invalidChain,
+        address invalidOrigin
+    ) public {
+        vm.assume(keccak256(abi.encodePacked(invalidAddress)) != keccak256(abi.encodePacked(validAddress)));
+        vm.assume(invalidChain != WORMHOLE_CHAIN_ID);
+        vm.assume(invalidOrigin != address(relayer));
 
-    //     axelarGateway.setReturn("validateContractCall", true);
-    //     vm.prank(address(relayer));
-    //     adapter.execute(commandId, axelarCentrifugeChainId, axelarCentrifugeChainAddress, payload);
-    // }
+        adapter.file("target", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, validAddress);
+
+        bytes[] memory vaas;
+
+        vm.prank(address(relayer));
+        vm.expectRevert(IWormholeAdapter.InvalidSource.selector);
+        adapter.receiveWormholeMessages(payload, vaas, validAddress.toBytes32(), invalidChain, bytes32(0));
+
+        vm.prank(address(relayer));
+        vm.expectRevert(IWormholeAdapter.InvalidSource.selector);
+        adapter.receiveWormholeMessages(payload, vaas, invalidAddress.toBytes32(), WORMHOLE_CHAIN_ID, bytes32(0));
+
+        vm.expectRevert(IWormholeAdapter.NotWormholeRelayer.selector);
+        adapter.receiveWormholeMessages(payload, vaas, validAddress.toBytes32(), WORMHOLE_CHAIN_ID, bytes32(0));
+
+        vm.prank(address(relayer));
+        adapter.receiveWormholeMessages(payload, vaas, validAddress.toBytes32(), WORMHOLE_CHAIN_ID, bytes32(0));
+    }
 
     function testOutgoingCalls(bytes calldata message, address invalidOrigin) public {
         vm.assume(invalidOrigin != address(GATEWAY));

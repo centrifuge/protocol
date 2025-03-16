@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IWormholeAdapter, IAdapter, IWormholeRelayer} from "src/common/interfaces/IWormholeAdapter.sol";
 import {Auth} from "src/misc/Auth.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IWormholeAdapter, IAdapter, IWormholeRelayer} from "src/common/interfaces/IWormholeAdapter.sol";
 
 struct Target {
     uint16 wormholeId;
@@ -13,12 +14,14 @@ struct Target {
 /// @title  Wormhole Adapter
 /// @notice Routing contract that integrates with the Wormhole Gateway
 contract WormholeAdapter is Auth, IWormholeAdapter {
+    using CastLib for bytes32;
+
     uint16 public immutable refundChain;
     IMessageHandler public immutable gateway;
     IWormholeRelayer public immutable relayer;
 
     mapping(uint32 centrifugeId => Target) public targets;
-    mapping(uint16 wormholeId => bytes32 sourceAddress) public adapters;
+    mapping(uint16 wormholeId => address source) public adapters;
 
     uint256 public /* transient */ gasPaid;
     address public /* transient */ refund;
@@ -38,7 +41,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     }
 
     /// @inheritdoc IWormholeAdapter
-    function file(bytes32 what, uint16 wormholeId, bytes32 sourceAddress) external auth {
+    function file(bytes32 what, uint16 wormholeId, address sourceAddress) external auth {
         if (what == "adapters") adapters[wormholeId] = sourceAddress;
         else revert FileUnrecognizedParam();
         emit File(what, wormholeId, sourceAddress);
@@ -54,7 +57,8 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         bytes32 /* deliveryHash */
     ) external {
         require(msg.sender == address(relayer), NotWormholeRelayer());
-        require(adapters[sourceChain] == sourceAddress, InvalidSource(sourceChain, sourceAddress));
+        address source = sourceAddress.toAddress();
+        require(adapters[sourceChain] == source, InvalidSource(sourceChain, source));
 
         // TODO extract the Id from the storage of this contract
         gateway.handle(0, payload);
@@ -85,7 +89,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
 
     /// @inheritdoc IAdapter
     function pay(uint32, /*chainId*/ bytes calldata, /* payload */ address refund_) public payable {
-        gasPaid = msg.value;
+        gasPaid += msg.value;
         refund = refund_;
     }
 }
