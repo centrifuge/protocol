@@ -113,6 +113,8 @@ contract WormholeAdapterTest is Test {
         vm.assume(keccak256(abi.encodePacked(invalidAddress)) != keccak256(abi.encodePacked(validAddress)));
         vm.assume(invalidChain != WORMHOLE_CHAIN_ID);
         vm.assume(invalidOrigin != address(relayer));
+        assumeNotZeroAddress(validAddress);
+        assumeNotZeroAddress(invalidAddress);
 
         bytes[] memory vaas;
 
