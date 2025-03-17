@@ -6,7 +6,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 /// @title  CastLib
 library CastLib {
-    function toAddress(bytes32 addr) internal pure returns (address) {
+    function toAddressLeftPadded(bytes32 addr) internal pure returns (address) {
         require(bytes12(addr) == 0, "First 12 bytes should be zero");
         return address(uint160(uint256(addr)));
     }
