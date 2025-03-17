@@ -50,4 +50,30 @@ interface IMessageProcessor {
         JournalEntry[] calldata debits,
         JournalEntry[] calldata credits
     ) external;
+
+    /// @notice Creates and send the message
+    function sendIssueShares(
+        uint64 poolId,
+        bytes16 shareClassId,
+        address receiver,
+        uint128 shares,
+        uint256 timestamp,
+    ) external;
+
+    /// @notice Creates and send the message
+    function sendRevokeShares(
+        uint64 poolId,
+        bytes16 shareClassId,
+        address provider,
+        uint128 shares,
+        uint256 timestamp,
+    ) external;
+
+    function sendJournalEntry(
+        uint64 poolId,
+        bytes16 shareClassId,
+        uint256 timestamp,
+        JournalEntry[] calldata debits,
+        JournalEntry[] calldata credits
+    ) external;
 }

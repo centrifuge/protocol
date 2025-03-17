@@ -5,6 +5,8 @@ import {Auth} from "src/misc/Auth.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {D18} from "src/misc/types/D18.sol";
+import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
+import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
@@ -15,6 +17,7 @@ import {Noted, JournalEntry, IBalanceSheetManager, Meta} from "src/vaults/interf
 import {IPerPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IMessageProcessor} from "src/vaults/interfaces/IMessageProcessor.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
+import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 
 contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdateContract {
     IPerPoolEscrow public immutable escrow;
@@ -131,26 +134,36 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         );
     }
 
-    function issue(uint64 poolId, bytes16 scId, address to, uint128 shares, D18 pricePerShare, uint64 timestamp)
+    function issue(uint64 poolId, bytes16 scId, address to, uint128 shares, bool asAllowance)
         external
         authOrPermission(poolId, scId)
     {
-        // TODO: Mint shares to to
+        address token = poolManager.getTranche(poolId, scId);
 
-        // TODO: Send message to CP UpdateShares()
+        if (asAllowance) {
+            ITranche(token).mint(address(this), shares);
+            IERC20(token).approve(address(to), shares);
+        } else {
+            IERC20(token).mint(address(to), shares);
+        }
+
+        sender.sendIssueShares(poolId, scId, to, shares, block.timestamp);
+        emit IssueShares(poolId, scId, to, shares);
     }
 
-    function revoke(uint64 poolId, bytes16 scId, address from, uint128 shares, D18 pricePerShare, uint64 timestamp)
+    function revoke(uint64 poolId, bytes16 scId, address from, uint128 shares)
         external
         authOrPermission(poolId, scId)
     {
-        // TODO: burn shares from from
+        address token = poolManager.getTranche(poolId, scId);   
+        ITranche(token).burn(address(from), shares);
 
-        // TODO: Send message to CP UpdateShares()
+        sender.sendRevokeShares(poolId, scId, from, shares, block.timestamp);
+        emit RevokeShares(poolId, scId, from, shares);
     }
 
     function journalEntry(uint64 poolId, bytes16 scId, Meta calldata m) external authOrPermission(poolId, scId) {
-        sender.sendJournalEntry(poolId, scId, m);
+        sender.sendJournalEntry(poolId, scId, block.timestamp, m);
     }
 
     // --- Incoming ---
@@ -312,14 +325,25 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         address receiver,
         uint128 amount,
         D18 pricePerUnit,
+        bool asAllowance,
         Meta memory m
     ) internal {
         escrow.withdraw(asset, tokenId, poolId, scId, amount);
 
         if (tokenId == 0) {
-            SafeTransferLib.safeTransferFrom(asset, address(escrow), receiver, amount);
+            if (asAllowance) {
+                SafeTransferLib.safeTransferFrom(asset, address(escrow), address(this), amount);
+                SafeTransferLib.safeApprove(asset, receiver, amount);
+            } else {
+                SafeTransferLib.safeTransferFrom(asset, address(escrow), receiver, amount);
+            }
         } else {
-            IERC6909(asset).transferFrom(address(escrow), receiver, tokenId, amount);
+            if (asAllowance) {
+                IERC6909(asset).transferFrom(address(escrow), recaddress(this), tokenId, amount);
+                IERC6909(asset).approve(receiver, tokenId, amount);
+            } else {
+                IERC6909(asset).transferFrom(address(escrow), receiver, tokenId, amount);
+            }
         }
 
         sender.sendDecreaseHolding(

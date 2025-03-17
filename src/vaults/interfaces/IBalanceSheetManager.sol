@@ -71,6 +71,18 @@ interface IBalanceSheetManager {
         JournalEntry[] debits,
         JournalEntry[] credits
     );
+    event IssueShares(
+        uint64 indexed poolId,
+        bytes16 indexed scId,
+        address to,
+        uint128 shares,
+    );
+    event RevokeShares(
+        uint64 indexed poolId,
+        bytes16 indexed scId,
+        address from,
+        uint128 shares,
+    );
 
     // Overloaded increase
     function deposit(
@@ -115,10 +127,10 @@ interface IBalanceSheetManager {
         Meta calldata m
     ) external;
 
-    function issue(uint64 poolId, bytes16 scId, address to, uint128 shares, D18 pricePerShare, uint64 timestamp)
+    function issue(uint64 poolId, bytes16 scId, address to, uint128 shares, bool asAllowance)
         external;
 
-    function revoke(uint64 poolId, bytes16 scId, address from, uint128 shares, D18 pricePerShare, uint64 timestamp)
+    function revoke(uint64 poolId, bytes16 scId, address from, uint128 shares)
         external;
 
     function journalEntry(uint64 poolId, bytes16 scId, Meta calldata m) external;
