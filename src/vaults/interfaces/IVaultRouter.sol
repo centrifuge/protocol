@@ -5,7 +5,7 @@ import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 
-interface IVaultsRouter is IMulticall, IRecoverable {
+interface IVaultRouter is IMulticall, IRecoverable {
     // --- Events ---
     event LockDepositRequest(
         address indexed vault, address indexed controller, address indexed owner, address sender, uint256 amount
@@ -20,8 +20,8 @@ interface IVaultsRouter is IMulticall, IRecoverable {
     // --- Manage permissionless claiming ---
     /// @notice Enable permissionless claiming
     /// @dev    After this is called, anyone can claim tokens to msg.sender.
-    ///         Even any requests submitted directly to the vault (not through the VaultsRouter) will be
-    ///         permissionlessly claimable through the VaultsRouter, until `disable()` is called.
+    ///         Even any requests submitted directly to the vault (not through the VaultRouter) will be
+    ///         permissionlessly claimable through the VaultRouter, until `disable()` is called.
     function enable(address vault) external payable;
 
     /// @notice Disable permissionless claiming
@@ -30,7 +30,7 @@ interface IVaultsRouter is IMulticall, IRecoverable {
     // --- Deposit ---
     /// @notice Check `IERC7540Deposit.requestDeposit`.
     /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
-    ///         The caller must call `VaultsRouter.estimate` to get estimates how much the deposit will cost.
+    ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
     ///
     /// @param  vault The vault to deposit into
     /// @param  amount Check @param IERC7540Deposit.requestDeposit.assets
@@ -100,7 +100,7 @@ interface IVaultsRouter is IMulticall, IRecoverable {
     // --- Redeem ---
     /// @notice Check `IERC7540CancelDeposit.cancelDepositRequest`.
     /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
-    ///         The caller must call `VaultsRouter.estimate` to get estimates how much the deposit will cost.
+    ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
     ///
     /// @param  vault The vault where the deposit was initiated
     function cancelDepositRequest(address vault) external payable;
@@ -115,7 +115,7 @@ interface IVaultsRouter is IMulticall, IRecoverable {
     // --- Redeem ---
     /// @notice Check `IERC7540Redeem.requestRedeem`.
     /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
-    ///         The caller must call `VaultsRouter.estimate` to get estimates how much the deposit will cost.
+    ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
     ///
     /// @param  vault The vault to deposit into
     /// @param  amount Check @param IERC7540Redeem.requestRedeem.shares
@@ -125,7 +125,7 @@ interface IVaultsRouter is IMulticall, IRecoverable {
 
     /// @notice Check IERC7575.withdraw
     /// @dev    If the underlying vault asset is a wrapped one,
-    ///         `VaultsRouter.unwrap` is called and the unwrapped
+    ///         `VaultRouter.unwrap` is called and the unwrapped
     ///         asset is sent to the receiver
     /// @param  vault Address of the vault
     /// @param  receiver Check IERC7575.withdraw.receiver
@@ -134,7 +134,7 @@ interface IVaultsRouter is IMulticall, IRecoverable {
 
     /// @notice Check `IERC7540CancelRedeem.cancelRedeemRequest`.
     /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
-    ///         The caller must call `VaultsRouter.estimate` to get estimates how much the deposit will cost.
+    ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
     ///
     /// @param  vault The vault where the deposit was initiated
     function cancelRedeemRequest(address vault) external payable;
@@ -149,7 +149,7 @@ interface IVaultsRouter is IMulticall, IRecoverable {
     // --- Transfer ---
     /// @notice Check `IPoolManager.transferTrancheTokens`.
     /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
-    ///         The caller must call `VaultsRouter.estimate` to get estimates how much the deposit will cost.
+    ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
     ///
     /// @param  vault The vault for the corresponding tranche token
     /// @param  chainId Check `IPoolManager.transferTrancheTokens.destinationId`
@@ -177,7 +177,7 @@ interface IVaultsRouter is IMulticall, IRecoverable {
     function wrap(address wrapper, uint256 amount, address receiver, address owner) external payable;
 
     /// @notice There are vault which underlying asset is actuall a wrapped one.
-    /// @dev    Wrapped tokens need to be held by the VaultsRouter to be unwrapped.
+    /// @dev    Wrapped tokens need to be held by the VaultRouter to be unwrapped.
     /// @param  wrapper The address of the wrapper
     /// @param  amount  Amount to be wrapped
     /// @param  receiver Receiver of the unwrapped tokens

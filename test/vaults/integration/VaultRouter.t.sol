@@ -9,7 +9,7 @@ import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 import "test/vaults/BaseTest.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 import "src/vaults/interfaces/IERC7540.sol";
-import {VaultsRouter} from "src/vaults/VaultsRouter.sol";
+import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
 import {MockReentrantERC20Wrapper1, MockReentrantERC20Wrapper2} from "test/vaults/mocks/MockReentrantERC20Wrapper.sol";
 
@@ -60,7 +60,7 @@ contract VaultsRouterTest is BaseTest {
         address nonOwner = makeAddr("NonOwner");
         vm.deal(nonOwner, 10 ether);
         vm.prank(nonOwner);
-        vm.expectRevert(bytes("VaultsRouter/invalid-owner"));
+        vm.expectRevert(bytes("VaultRouter/invalid-owner"));
         router.requestDeposit{value: gas}(vault_, amount, self, self);
 
         if (snap) {
@@ -216,7 +216,7 @@ contract VaultsRouterTest is BaseTest {
         address nonOwner = makeAddr("NonOwner");
         vm.deal(nonOwner, 10 ether);
         vm.prank(nonOwner);
-        vm.expectRevert(bytes("VaultsRouter/invalid-owner"));
+        vm.expectRevert(bytes("VaultRouter/invalid-owner"));
         router.requestRedeem{value: fuel}(vault_, tranchePayout, self, self);
 
         // redeem
@@ -658,7 +658,7 @@ contract VaultsRouterTest is BaseTest {
         assertEq(erc20.balanceOf(self), 0);
 
         // Testing with empty balance for both wrapped and underlying
-        vm.expectRevert(bytes("VaultsRouter/zero-balance"));
+        vm.expectRevert(bytes("VaultRouter/zero-balance"));
         router.enableLockDepositRequest(vault_, wrappedAmount);
     }
 

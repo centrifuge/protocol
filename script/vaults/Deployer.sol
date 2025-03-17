@@ -16,7 +16,7 @@ import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
 import {RestrictedRedemptions} from "src/vaults/token/RestrictedRedemptions.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
-import {VaultsRouter} from "src/vaults/VaultsRouter.sol";
+import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {MessageProcessor} from "src/vaults/MessageProcessor.sol";
 import "forge-std/Script.sol";
 
@@ -34,7 +34,7 @@ contract Deployer is Script {
     Gateway public gateway;
     MessageProcessor public messageProcessor;
     GasService public gasService;
-    VaultsRouter public router;
+    VaultRouter public router;
     address public vaultFactory;
     address public restrictionManager;
     address public restrictedRedemptions;
@@ -68,7 +68,7 @@ contract Deployer is Script {
         gasService = new GasService(messageCost, proofCost, gasPrice, tokenPrice);
         gateway = new Gateway(root, gasService);
         messageProcessor = new MessageProcessor(gateway, poolManager, investmentManager, root, gasService, deployer);
-        router = new VaultsRouter(address(routerEscrow), address(gateway), address(poolManager));
+        router = new VaultRouter(address(routerEscrow), address(gateway), address(poolManager));
         guardian = new Guardian(adminSafe, root, gateway);
 
         _endorse();
@@ -127,7 +127,7 @@ contract Deployer is Script {
         root.rely(address(messageProcessor));
         gasService.rely(address(messageProcessor));
 
-        // Rely on VaultsRouter
+        // Rely on VaultRouter
         gateway.rely(address(router));
     }
 

@@ -5,7 +5,7 @@ import "test/vaults/BaseTest.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/misc/interfaces/IERC20.sol";
-import {VaultsRouter} from "src/vaults/VaultsRouter.sol";
+import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
@@ -31,7 +31,7 @@ contract VaultsRouterTest is BaseTest {
 
     function testInitialization() public {
         // redeploying within test to increase coverage
-        new VaultsRouter(address(routerEscrow), address(gateway), address(poolManager));
+        new VaultRouter(address(routerEscrow), address(gateway), address(poolManager));
 
         assertEq(address(router.escrow()), address(routerEscrow));
         assertEq(address(router.gateway()), address(gateway));
@@ -105,7 +105,7 @@ contract VaultsRouterTest is BaseTest {
         erc20.mint(self, amount);
         erc20.approve(address(router), amount);
 
-        vm.expectRevert(bytes("VaultsRouter/no-locked-balance"));
+        vm.expectRevert(bytes("VaultRouter/no-locked-balance"));
         router.unlockDepositRequest(vault_, self);
 
         router.lockDepositRequest(vault_, amount, self, self);
@@ -175,7 +175,7 @@ contract VaultsRouterTest is BaseTest {
 
         address nonMember = makeAddr("nonMember");
         vm.prank(nonMember);
-        vm.expectRevert("VaultsRouter/invalid-sender");
+        vm.expectRevert("VaultRouter/invalid-sender");
         router.claimCancelDepositRequest(vault_, nonMember, self);
 
         vm.expectRevert("InvestmentManager/transfer-not-allowed");
@@ -288,7 +288,7 @@ contract VaultsRouterTest is BaseTest {
 
         address sender = makeAddr("maliciousUser");
         vm.prank(sender);
-        vm.expectRevert("VaultsRouter/invalid-sender");
+        vm.expectRevert("VaultRouter/invalid-sender");
         router.claimCancelRedeemRequest(vault_, sender, self);
 
         router.claimCancelRedeemRequest(vault_, self, self);
@@ -413,16 +413,16 @@ contract VaultsRouterTest is BaseTest {
         address receiver = makeAddr("receiver");
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
 
-        vm.expectRevert(bytes("VaultsRouter/invalid-owner"));
+        vm.expectRevert(bytes("VaultRouter/invalid-owner"));
         router.wrap(address(wrapper), amount, receiver, makeAddr("ownerIsNeitherCallerNorRouter"));
 
-        vm.expectRevert(bytes("VaultsRouter/zero-balance"));
+        vm.expectRevert(bytes("VaultRouter/zero-balance"));
         router.wrap(address(wrapper), amount, receiver, self);
 
         erc20.mint(self, balance);
         erc20.approve(address(router), amount);
         wrapper.setFail("depositFor", true);
-        vm.expectRevert(bytes("VaultsRouter/wrap-failed"));
+        vm.expectRevert(bytes("VaultRouter/wrap-failed"));
         router.wrap(address(wrapper), amount, receiver, self);
 
         wrapper.setFail("depositFor", false);
@@ -443,12 +443,12 @@ contract VaultsRouterTest is BaseTest {
         erc20.mint(self, balance);
         erc20.approve(address(router), amount);
 
-        vm.expectRevert(bytes("VaultsRouter/zero-balance"));
+        vm.expectRevert(bytes("VaultRouter/zero-balance"));
         router.unwrap(address(wrapper), amount, self);
 
         router.wrap(address(wrapper), amount, address(router), self);
         wrapper.setFail("withdrawTo", true);
-        vm.expectRevert(bytes("VaultsRouter/unwrap-failed"));
+        vm.expectRevert(bytes("VaultRouter/unwrap-failed"));
         router.unwrap(address(wrapper), amount, self);
         wrapper.setFail("withdrawTo", false);
 
