@@ -94,4 +94,8 @@ contract MockVaults is Test, IAdapter {
         delete lastChainDestinations;
         delete lastMessages;
     }
+
+    function messageCount() external view returns (uint256) {
+        return lastMessages.length;
+    }
 }

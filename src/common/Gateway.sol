@@ -34,7 +34,13 @@ contract Gateway is Auth, IGateway, IRecoverable {
     uint256 public transient fuel;
 
     /// @dev Says if a send() was performed, but it's still pending to finalize the batch
-    bool public transient sendWasBuffered;
+    bool public transient pendingBatch;
+
+    /// @notice Tells is the gateway is actually configured to create batches
+    bool public transient isBatching;
+
+    /// @notice The payer of the transaction.
+    address public transient payableSource;
 
     IRoot public immutable root;
     IGasService public gasService;
@@ -55,12 +61,6 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     /// @notice Chains ID with pendign batch messages
     uint32[] public /*transient*/ chainIds;
-
-    /// @notice Tells is the gateway is actually configured to create batches
-    bool public /*transient*/ isBatching;
-
-    /// @notice The payer of the transaction.
-    address public /*transient*/ payableSource;
 
     constructor(IRoot root_, IGasService gasService_) Auth(msg.sender) {
         root = root_;
@@ -262,7 +262,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
     /// @inheritdoc IMessageSender
     function send(uint32 chainId, bytes calldata message) external pauseable auth {
         if (isBatching) {
-            sendWasBuffered = true;
+            pendingBatch = true;
 
             bytes storage previousMessage = batch[chainId];
             if (previousMessage.length == 0) {
@@ -291,12 +291,15 @@ contract Gateway is Auth, IGateway, IRecoverable {
                 bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
                 bytes memory payload = isPrimaryAdapter ? message : proof;
 
-                uint256 consumed = currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit);
+                uint256 consumed =
+                    currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit);
 
                 require(consumed <= tank, "Gateway/not-enough-gas-funds");
                 tank -= consumed;
 
-                currentAdapter.send{value: consumed}(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this));
+                currentAdapter.send{value: consumed}(
+                    chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this)
+                );
             }
             fuel = 0;
         } else if (gasService.shouldRefuel(payableSource, message)) {
@@ -305,12 +308,17 @@ contract Gateway is Auth, IGateway, IRecoverable {
                 bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
                 bytes memory payload = isPrimaryAdapter ? message : proof;
 
-                uint256 consumed = currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit);
+                uint256 consumed =
+                    currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit);
 
                 if (consumed <= address(this).balance) {
-                    currentAdapter.send{value: consumed}(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this));
+                    currentAdapter.send{value: consumed}(
+                        chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this)
+                    );
                 } else {
-                    currentAdapter.send(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this));
+                    currentAdapter.send(
+                        chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this)
+                    );
                 }
             }
         } else {
@@ -325,7 +333,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
         // We only require the top up if:
         // - We're not in a multicall.
         // - Or we're in a multicall, but at least one message is required to be sent
-        if (!isBatching || sendWasBuffered) {
+        if (!isBatching || pendingBatch) {
             require(msg.value != 0, "Gateway/cannot-topup-with-nothing");
             fuel = msg.value;
         }
@@ -352,7 +360,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
         }
 
         delete chainIds;
-        sendWasBuffered = false;
+        pendingBatch = false;
         isBatching = false;
     }
 

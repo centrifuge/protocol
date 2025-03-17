@@ -13,7 +13,7 @@ import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
 import {MockReentrantERC20Wrapper1, MockReentrantERC20Wrapper2} from "test/vaults/mocks/MockReentrantERC20Wrapper.sol";
 
-contract VaultsRouterTest is BaseTest {
+contract VaultRouterTest is BaseTest {
     uint32 constant CHAIN_ID = 1;
     uint256 constant GAS_BUFFER = 10 gwei;
     /// @dev Payload is not taken into account during gas estimation
@@ -64,7 +64,7 @@ contract VaultsRouterTest is BaseTest {
         router.requestDeposit{value: gas}(vault_, amount, self, self);
 
         if (snap) {
-            snapStart("VaultsRouter_requestDeposit");
+            snapStart("VaultRouter_requestDeposit");
         }
         router.requestDeposit{value: gas}(vault_, amount, self, self);
         if (snap) {
@@ -96,7 +96,7 @@ contract VaultsRouterTest is BaseTest {
         assertEq(tranche.balanceOf(address(escrow)), tranchePayout);
 
         if (snap) {
-            snapStart("VaultsRouter_claimDeposit");
+            snapStart("VaultRouter_claimDeposit");
         }
         router.claimDeposit(vault_, self, self);
         if (snap) {
@@ -197,7 +197,7 @@ contract VaultsRouterTest is BaseTest {
         erc20.approve(vault_, amount);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
         if (snap) {
-            snapStart("VaultsRouter_enable");
+            snapStart("VaultRouter_enable");
         }
         router.enable(vault_);
         if (snap) {
@@ -221,7 +221,7 @@ contract VaultsRouterTest is BaseTest {
 
         // redeem
         if (snap) {
-            snapStart("VaultsRouter_requestRedeem");
+            snapStart("VaultRouter_requestRedeem");
         }
         router.requestRedeem{value: fuel}(vault_, tranchePayout, self, self);
         if (snap) {
@@ -346,7 +346,7 @@ contract VaultsRouterTest is BaseTest {
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
         router.enable(address(vault_));
         if (snap) {
-            snapStart("VaultsRouter_lockDepositRequest");
+            snapStart("VaultRouter_lockDepositRequest");
         }
         router.lockDepositRequest(vault_, amount, self, self);
         if (snap) {

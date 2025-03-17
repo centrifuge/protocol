@@ -205,6 +205,9 @@ contract TestCases is Deployer, Test {
         cs[0] = abi.encodeWithSelector(poolRouter.setPoolMetadata.selector, "");
 
         poolRouter.execute(poolId, cs);
+
+        // Check no messages were sent as intended
+        assertEq(cv.messageCount(), 0);
     }
 
     /// forge-config: default.isolate = true

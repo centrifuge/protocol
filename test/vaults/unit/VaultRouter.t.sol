@@ -21,7 +21,7 @@ contract ERC20WrapperFake {
     }
 }
 
-contract VaultsRouterTest is BaseTest {
+contract VaultRouterTest is BaseTest {
     using CastLib for *;
 
     uint32 constant CHAIN_ID = 1;
@@ -350,7 +350,7 @@ contract VaultsRouterTest is BaseTest {
         vm.expectRevert("Gateway/not-enough-gas-funds");
         router.transferTrancheTokens{value: fuel - 1}(vault_, destinationChainId, destinationAddress, uint128(amount));
 
-        snapStart("VaultsRouter_transferTrancheTokens");
+        snapStart("VaultRouter_transferTrancheTokens");
         router.transferTrancheTokens{value: fuel}(vault_, destinationChainId, destinationAddress, uint128(amount));
         snapEnd();
         assertEq(share.balanceOf(address(router)), 0);
