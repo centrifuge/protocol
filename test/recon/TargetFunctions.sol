@@ -290,7 +290,7 @@ abstract contract TargetFunctions is
         (PoolId poolId, ShareClassId scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
     
         AssetId assetId = newAssetId(isoCode);
-        transientValuation_setPrice(assetId.addr(), assetId.addr(), newPrice);
+        transientValuation_setPrice(assetId.addr(), poolRegistry.currency(poolId).addr(), newPrice);
 
         poolRouter_updateHolding(scId, assetId);
         poolRouter_execute_clamped(poolId);
