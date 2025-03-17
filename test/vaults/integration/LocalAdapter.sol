@@ -79,11 +79,15 @@ contract LocalAdapter is Auth, IAdapter {
     // --- Outgoing ---
     /// @inheritdoc IAdapter
     /// @dev From LP on Centrifuge (faking other domain) to Centrifuge
-    function send(uint32, bytes calldata message) public {
+    function send(uint32, bytes calldata message, uint256 /* gasLimit */ ) public {
         PrecompileLike precompile = PrecompileLike(PRECOMPILE);
         precompile.execute(FAKE_COMMAND_ID, sourceChain, sourceAddress, message);
 
         emit RouteToCentrifuge(FAKE_COMMAND_ID, sourceChain, sourceAddress, message);
+    }
+
+    function send(uint32 chainId, bytes calldata payload) public {
+        send(chainId, payload, 0);
     }
 
     function payNativeGasForContractCall(

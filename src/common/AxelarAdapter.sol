@@ -46,10 +46,14 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     }
 
     // --- Outgoing ---
-    function send(uint32, /*chainId*/ bytes calldata payload) public {
+    function send(uint32, /*chainId*/ bytes calldata payload, uint256 /* gasLimit */ ) public {
         //TODO (chainName, chainExecutable) = chainConfig[chainId];
         require(msg.sender == address(gateway), NotGateway());
         axelarGateway.callContract(CENTRIFUGE_ID, CENTRIFUGE_AXELAR_EXECUTABLE, payload);
+    }
+
+    function send(uint32 chainId, bytes calldata payload) public {
+        send(chainId, payload, 0);
     }
 
     /// @inheritdoc IAdapter

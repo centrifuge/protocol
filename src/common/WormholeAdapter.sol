@@ -24,8 +24,8 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     mapping(uint16 wormholeId => WormholeSource) public sources;
     mapping(uint32 centrifugeId => WormholeDestination) public destinations;
 
-    uint256 public /* transient */ gasPaid;
     address public /* transient */ refund;
+    uint256 public /* transient */ gasPaid;
 
     constructor(IMessageHandler gateway_, address relayer_, uint16 refundChain_) Auth(msg.sender) {
         gateway = gateway_;
@@ -65,16 +65,17 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     }
 
     // --- Outgoing ---
-    function send(uint32 chainId, bytes calldata payload) public {
+    /// @inheritdoc IAdapter
+    function send(uint32 chainId, bytes calldata payload, uint256 gasLimit) public {
         require(msg.sender == address(gateway), NotGateway());
         WormholeDestination memory destination = destinations[chainId];
         require(destination.wormholeId != 0, UnknownChainId());
 
-        uint256 gasLimit = 1; // TODO
-
         relayer.sendPayloadToEvm{value: address(this).balance}(
             destination.wormholeId, destination.addr, payload, 0, gasLimit, refundChain, address(gateway)
         );
+
+        gasPaid = 0;
     }
 
     /// @inheritdoc IAdapter

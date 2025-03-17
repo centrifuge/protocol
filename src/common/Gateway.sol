@@ -303,7 +303,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
                 tank -= consumed;
 
                 currentAdapter.pay{value: consumed}(chainId, payload, address(this));
-                currentAdapter.send(chainId, payload);
+                currentAdapter.send(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit);
             }
             fuel = 0;
         } else if (gasService.shouldRefuel(payableSource, message)) {
@@ -318,7 +318,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
                     currentAdapter.pay{value: consumed}(chainId, payload, address(this));
                 }
 
-                currentAdapter.send(chainId, payload);
+                currentAdapter.send(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit);
             }
         } else {
             revert("Gateway/not-enough-gas-funds");

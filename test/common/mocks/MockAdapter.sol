@@ -22,7 +22,7 @@ contract MockAdapter is Auth, Mock, IAdapter {
         gateway.handle(1, _message);
     }
 
-    function send(uint32, bytes calldata message) public {
+    function send(uint32, bytes calldata message, uint256 gasLimit) public {
         values_bytes["send"] = message;
         sent[message]++;
     }

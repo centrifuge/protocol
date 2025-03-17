@@ -20,7 +20,7 @@ contract PermissionlessAdapter is Auth, IAdapter {
     }
 
     // --- Outgoing ---
-    function send(uint32, bytes memory message) public {
+    function send(uint32, bytes memory message, uint256) public {
         emit Send(message);
     }
 

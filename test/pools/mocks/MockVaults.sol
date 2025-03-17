@@ -73,7 +73,7 @@ contract MockVaults is Test, IAdapter {
         );
     }
 
-    function send(uint32 chainId, bytes memory data) external {
+    function send(uint32 chainId, bytes memory data, uint256 /* gasLimit */ ) external {
         lastChainDestinations.push(chainId);
 
         while (data.length > 0) {

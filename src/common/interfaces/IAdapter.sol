@@ -1,18 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
-
-interface IAdapter is IMessageSender {
+interface IAdapter {
     error NotGateway();
     error UnknownChainId();
 
-    /// @notice Send a payload to Centrifuge Chain
     /// @notice Send a payload to the destination chain
-    function send(uint32 chainId, bytes calldata payload) external;
+    function send(uint32 chainId, bytes calldata payload, uint256 gasLimit) external;
 
     /// @notice Estimate the total cost in native gas tokens
-    function estimate(uint32 chainId, bytes calldata payload, uint256 baseCost) external view returns (uint256);
+    function estimate(uint32 chainId, bytes calldata payload, uint256 gasLimit) external view returns (uint256);
 
     /// @notice Pay the gas cost
     function pay(uint32 chainId, bytes calldata payload, address refund) external payable;

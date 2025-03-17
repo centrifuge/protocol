@@ -153,26 +153,32 @@ contract WormholeAdapterTest is Test {
         );
     }
 
-    function testOutgoingCalls(bytes calldata message, address invalidOrigin) public {
+    function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint256 gasLimit) public {
         vm.assume(invalidOrigin != address(GATEWAY));
 
+        vm.deal(address(this), 0.1 ether);
+        adapter.pay{value: 0.1 ether}(CENTRIFUGE_CHAIN_ID, payload, address(this));
+        assertEq(adapter.gasPaid(), 0.1 ether);
+
         vm.expectRevert(IAdapter.NotGateway.selector);
-        adapter.send(CENTRIFUGE_CHAIN_ID, message);
+        adapter.send(CENTRIFUGE_CHAIN_ID, payload, gasLimit);
 
         vm.prank(address(GATEWAY));
         vm.expectRevert(IAdapter.UnknownChainId.selector);
-        adapter.send(CENTRIFUGE_CHAIN_ID, message);
+        adapter.send(CENTRIFUGE_CHAIN_ID, payload, gasLimit);
 
         adapter.file("destinations", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, makeAddr("DestinationAdapter"));
 
         vm.prank(address(GATEWAY));
-        adapter.send(CENTRIFUGE_CHAIN_ID, message);
+        adapter.send(CENTRIFUGE_CHAIN_ID, payload, gasLimit);
+
+        assertEq(adapter.gasPaid(), 0 ether);
 
         assertEq(relayer.values_uint16("targetChain"), WORMHOLE_CHAIN_ID);
         assertEq(relayer.values_address("targetAddress"), makeAddr("DestinationAdapter"));
-        assertEq(relayer.values_bytes("payload"), message);
+        assertEq(relayer.values_bytes("payload"), payload);
         assertEq(relayer.values_uint256("receiverValue"), 0);
-        assertEq(relayer.values_uint256("gasLimit"), 1); // TODO
+        assertEq(relayer.values_uint256("gasLimit"), gasLimit);
         assertEq(relayer.values_uint16("refundChain"), 2);
         assertEq(relayer.values_address("refundAddress"), address(GATEWAY));
     }

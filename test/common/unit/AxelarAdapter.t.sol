@@ -25,13 +25,11 @@ contract MockAxelarGateway is Mock {
 }
 
 contract MockAxelarGasService is Mock {
-    function estimateGasFee(
-        string calldata destinationChain,
-        string calldata destinationAddress,
-        bytes calldata payload,
-        uint256 executionGasLimit,
-        bytes calldata /* params */
-    ) external view returns (uint256 gasEstimate) {
+    function estimateGasFee(string calldata, string calldata, bytes calldata, uint256, bytes calldata /* params */ )
+        external
+        view
+        returns (uint256 gasEstimate)
+    {
         return values_uint256_return["estimateGasFee"];
     }
 
@@ -76,6 +74,8 @@ contract AxelarAdapterTest is Test {
     }
 
     function testEstimate(uint256 gasLimit) public {
+        vm.assume(gasLimit > 0);
+
         bytes memory payload = "irrelevant";
 
         axelarGasService.setReturn("estimateGasFee", gasLimit - 1);

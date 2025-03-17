@@ -71,8 +71,12 @@ contract PassthroughAdapter is Auth, IAdapter {
     /// @inheritdoc IAdapter
     /// @notice From other domain to Centrifuge. Just emits an event.
     ///         Just used on EVM domains.
-    function send(uint32, bytes calldata message) public {
+    function send(uint32, bytes calldata message, uint256 /* gasLimit */ ) public {
         emit Route(sourceChain, sourceAddress, message);
+    }
+
+    function send(uint32 chainId, bytes calldata payload) public {
+        send(chainId, payload, 0);
     }
 
     /// @notice Execute message on centrifuge
