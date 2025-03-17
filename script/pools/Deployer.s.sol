@@ -58,7 +58,8 @@ contract Deployer is Script {
         transactionId = new TransactionId(address(this));
         holdings = new Holdings(poolRegistry, address(this));
         multiShareClass = new MultiShareClass(poolRegistry, address(this));
-        poolManager = new PoolManager(poolRegistry, assetRegistry, accounting, transactionId, holdings, gateway, address(this));
+        poolManager =
+            new PoolManager(poolRegistry, assetRegistry, accounting, transactionId, holdings, gateway, address(this));
         messageProcessor = new MessageProcessor(gateway, poolManager, address(this));
         poolRouter = new PoolRouter(poolManager);
 

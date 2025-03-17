@@ -8,7 +8,7 @@ interface IAccounting {
     /// @notice Emitted when a an entry is done
     event Credit(PoolId indexed poolId, bytes32 indexed transactionId, AccountId indexed account, uint128 value);
     event Debit(PoolId indexed poolId, bytes32 indexed transactionId, AccountId indexed account, uint128 value);
-    
+
     event AccountCreated(PoolId indexed poolId, AccountId indexed account, bool isDebitNormal);
     event AccountMetadataSet(PoolId indexed poolId, AccountId indexed account, bytes metadata);
 

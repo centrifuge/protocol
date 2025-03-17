@@ -37,7 +37,8 @@ contract TestCommon is Test {
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
     IGateway immutable gateway = IGateway(makeAddr("Gateway"));
 
-    PoolManager poolManager = new PoolManager(poolRegistry, assetRegistry, accounting, transactionId, holdings, gateway, address(this));
+    PoolManager poolManager =
+        new PoolManager(poolRegistry, assetRegistry, accounting, transactionId, holdings, gateway, address(this));
 
     function setUp() public {
         vm.mockCall(
@@ -47,7 +48,9 @@ contract TestCommon is Test {
         );
 
         vm.mockCall(
-            address(transactionId), abi.encodeWithSelector(transactionId.generateTransactionId.selector, POOL_A), abi.encode("1")
+            address(transactionId),
+            abi.encodeWithSelector(transactionId.generateTransactionId.selector, POOL_A),
+            abi.encode("1")
         );
 
         vm.mockCall(
