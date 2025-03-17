@@ -133,14 +133,14 @@ contract AxelarAdapterTest is Test {
         adapter.execute(commandId, axelarCentrifugeChainId, axelarCentrifugeChainAddress, payload);
     }
 
-    function testOutgoingCalls(bytes calldata message, address invalidOrigin) public {
+    function testOutgoingCalls(bytes calldata message, address invalidOrigin, uint256 gasLimit) public {
         vm.assume(invalidOrigin != address(GATEWAY));
 
         vm.expectRevert(IAdapter.NotGateway.selector);
-        adapter.send(CHAIN_ID, message);
+        adapter.send(CHAIN_ID, message, gasLimit);
 
         vm.prank(address(GATEWAY));
-        adapter.send(CHAIN_ID, message);
+        adapter.send(CHAIN_ID, message, gasLimit);
 
         assertEq(axelarGateway.values_string("destinationChain"), axelarCentrifugeChainId);
         assertEq(axelarGateway.values_string("contractAddress"), adapter.CENTRIFUGE_AXELAR_EXECUTABLE());

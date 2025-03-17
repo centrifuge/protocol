@@ -72,19 +72,24 @@ contract WormholeAdapterTest is Test {
         assertEq(adapter.estimate(CENTRIFUGE_CHAIN_ID, payload, gasLimit), uint128(gasLimit) * 2);
     }
 
-    // function testFiling(uint256 value) public {
-    //     vm.assume(value != adapter.axelarCost());
+    function testFiling(address validAddress) public {
+        adapter.file("sources", WORMHOLE_CHAIN_ID, CENTRIFUGE_CHAIN_ID, validAddress);
+        adapter.file("destinations", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, makeAddr("DestinationAdapter"));
 
-    //     adapter.file("axelarCost", value);
-    //     assertEq(adapter.axelarCost(), value);
+        vm.expectRevert(IWormholeAdapter.FileUnrecognizedParam.selector);
+        adapter.file("random", WORMHOLE_CHAIN_ID, CENTRIFUGE_CHAIN_ID, validAddress);
 
-    //     vm.expectRevert(IAxelarAdapter.FileUnrecognizedParam.selector);
-    //     adapter.file("random", value);
+        vm.expectRevert(IWormholeAdapter.FileUnrecognizedParam.selector);
+        adapter.file("random", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, makeAddr("DestinationAdapter"));
 
-    //     vm.prank(makeAddr("unauthorized"));
-    //     vm.expectRevert(IAuth.NotAuthorized.selector);
-    //     adapter.file("axelarCost", value);
-    // }
+        vm.prank(makeAddr("unauthorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        adapter.file("sources", WORMHOLE_CHAIN_ID, CENTRIFUGE_CHAIN_ID, validAddress);
+
+        vm.prank(makeAddr("unauthorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        adapter.file("destinations", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, makeAddr("DestinationAdapter"));
+    }
 
     function testPayment(bytes calldata payload) public {
         vm.deal(address(this), 0.3 ether);
