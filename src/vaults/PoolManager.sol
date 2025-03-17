@@ -275,15 +275,16 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     function update(uint64 poolId, bytes16 trancheId, bytes memory payload) public auth {
         MessageLib.UpdateContractVaultUpdate memory m = MessageLib.deserializeUpdateContractVaultUpdate(payload);
 
-        address vault = m.vault;
-        if (m.factory != address(0) && vault == address(0)) {
-            require(vaultFactory[m.factory], "PoolManager/invalid-vault-factory");
-            vault = deployVault(poolId, trancheId, idToAsset[m.assetId], m.factory);
+        address vault = address(bytes20(m.vault));
+        address factory = address(bytes20(m.factory));
+
+        if (factory != address(0) && vault == address(0)) {
+            vault = deployVault(poolId, trancheId, idToAsset[m.assetId], factory);
         }
 
         // Needed as safeguard against non-validated vaults
         // I.e. we only accept vaults that have been deployed by the pool manager
-        require(_vaultToAsset[m.vault].asset != address(0), "PoolManager/unknown-vault");
+        require(_vaultToAsset[vault].asset != address(0), "PoolManager/unknown-vault");
 
         if (m.isLinked) {
             linkVault(poolId, trancheId, idToAsset[m.assetId], vault);

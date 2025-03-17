@@ -89,9 +89,6 @@ contract TestMainMethodsChecks is TestCommon {
         poolRouter.allowPoolAdmin(address(0), false);
 
         vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.allowAsset(ShareClassId.wrap(0), AssetId.wrap(0), false);
-
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.addShareClass("", "", bytes32(0), bytes(""));
 
         vm.expectRevert(IPoolRouter.PoolLocked.selector);
@@ -105,6 +102,9 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.revokeShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
+
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
+        poolRouter.updateVault(ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), bytes32(0), bytes32(0), false);
 
         vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.createHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
@@ -168,7 +168,9 @@ contract TestAllowAsset is TestCommon {
         );
 
         bytes[] memory cs = new bytes[](1);
-        cs[0] = abi.encodeWithSelector(poolRouter.allowAsset.selector, SC_A, ASSET_A, false);
+        cs[0] = abi.encodeWithSelector(
+            poolRouter.updateVault.selector, SC_A, ASSET_A, bytes32(0), bytes32(0), bytes32(0), false
+        );
 
         vm.prank(ADMIN);
         vm.expectRevert(IHoldings.HoldingNotFound.selector);

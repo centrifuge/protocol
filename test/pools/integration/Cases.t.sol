@@ -99,13 +99,21 @@ contract TestCases is Deployer, Test {
 
         scId = multiShareClass.previewNextShareClassId(poolId);
 
-        (bytes[] memory cs, uint256 c) = (new bytes[](5), 0);
+        (bytes[] memory cs, uint256 c) = (new bytes[](6), 0);
         cs[c++] = abi.encodeWithSelector(poolRouter.setPoolMetadata.selector, bytes("Testing pool"));
         cs[c++] = abi.encodeWithSelector(poolRouter.addShareClass.selector, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
         cs[c++] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
         cs[c++] = abi.encodeWithSelector(poolRouter.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
         cs[c++] = abi.encodeWithSelector(poolRouter.createHolding.selector, scId, USDC_C2, identityValuation, 0x01);
-        //TODO: CAL update contract here
+        cs[c++] = abi.encodeWithSelector(
+            poolRouter.updateVault.selector,
+            scId,
+            USDC_C2,
+            bytes32("target"),
+            bytes32("factory"),
+            bytes32("vault"),
+            true
+        );
         assertEq(c, cs.length);
 
         vm.prank(FM);
@@ -125,6 +133,16 @@ contract TestCases is Deployer, Test {
         assertEq(m1.decimals, 18);
         assertEq(m1.salt, SC_SALT);
         assertEq(m1.hook, SC_HOOK);
+
+        MessageLib.UpdateContract memory m2 = MessageLib.deserializeUpdateContract(cv.lastMessages(2));
+        assertEq(m2.scId, scId.raw());
+        assertEq(m2.target, bytes32("target"));
+
+        MessageLib.UpdateContractVaultUpdate memory m3 = MessageLib.deserializeUpdateContractVaultUpdate(m2.payload);
+        assertEq(m3.assetId, USDC_C2.raw());
+        assertEq(m3.factory, bytes32("factory"));
+        assertEq(m3.vault, bytes32("vault"));
+        assertEq(m3.isLinked, true);
 
         cv.resetMessages();
     }

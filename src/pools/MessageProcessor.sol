@@ -157,6 +157,32 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         );
     }
 
+    /// @inheritdoc IMessageProcessor
+    function sendUpdateContractVaultUpdate(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 target,
+        bytes32 factory,
+        bytes32 vault,
+        bool link
+    ) external auth {
+        gateway.send(
+            assetId.chainId(),
+            MessageLib.UpdateContract({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                target: target,
+                payload: MessageLib.UpdateContractVaultUpdate({
+                    factory: factory,
+                    assetId: assetId.raw(),
+                    isLinked: link,
+                    vault: vault
+                }).serialize()
+            }).serialize()
+        );
+    }
+
     /// @inheritdoc IMessageHandler
     function handle(uint32, /* chainId */ bytes memory message) external auth {
         MessageType kind = message.messageType();

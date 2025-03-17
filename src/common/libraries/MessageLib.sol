@@ -614,10 +614,10 @@ library MessageLib {
     //---------------------------------------
 
     struct UpdateContractVaultUpdate {
-        address factory;
+        bytes32 factory;
         uint128 assetId;
         bool isLinked;
-        address vault;
+        bytes32 vault;
     }
 
     function deserializeUpdateContractVaultUpdate(bytes memory data)
@@ -628,10 +628,10 @@ library MessageLib {
         require(updateContractType(data) == UpdateContractType.VaultUpdate, UnknownMessageType());
 
         return UpdateContractVaultUpdate({
-            factory: data.toAddress(1),
-            assetId: data.toUint128(21),
-            isLinked: data.toBool(37),
-            vault: data.toAddress(38)
+            factory: data.toBytes32(1),
+            assetId: data.toUint128(33),
+            isLinked: data.toBool(49),
+            vault: data.toBytes32(50)
         });
     }
 

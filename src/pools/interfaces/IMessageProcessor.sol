@@ -62,4 +62,15 @@ interface IMessageProcessor {
         bytes32 investor,
         uint128 cancelledShares
     ) external;
+
+    /// @notice Creates and send the message
+    function sendUpdateContractVaultUpdate(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 target,
+        bytes32 factory,
+        bytes32 vault,
+        bool link
+    ) external;
 }

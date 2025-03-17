@@ -180,15 +180,6 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
     }
 
     /// @inheritdoc IPoolRouter
-    function allowAsset(ShareClassId scId, AssetId assetId, bool /*allow*/ ) external payable {
-        _protectedAndUnlocked();
-
-        require(holdings.exists(unlockedPoolId, scId, assetId), IHoldings.HoldingNotFound());
-
-        // TODO: cal update contract feature
-    }
-
-    /// @inheritdoc IPoolRouter
     function addShareClass(string calldata name, string calldata symbol, bytes32 salt, bytes calldata data)
         external payable
     {
@@ -254,6 +245,17 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
         );
 
         decreaseHolding(scId, payoutAssetId, valuation, payoutAssetAmount);
+    }
+
+    /// @inheritdoc IPoolRouter
+    function updateVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 factory, bytes32 vault, bool link)
+        external payable
+    {
+        _protectedAndUnlocked();
+
+        require(holdings.exists(unlockedPoolId, scId, assetId), IHoldings.HoldingNotFound());
+
+        sender.sendUpdateContractVaultUpdate(unlockedPoolId, scId, assetId, target, factory, vault, link);
     }
 
     /// @inheritdoc IPoolRouter

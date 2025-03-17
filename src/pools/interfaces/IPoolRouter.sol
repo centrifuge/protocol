@@ -89,10 +89,6 @@ interface IPoolRouter {
     /// @notice Allow/disallow an account to interact as pool admin
     function allowPoolAdmin(address account, bool allow) external payable;
 
-    /// @notice Allow/disallow an asset for investment.
-    /// Notify to the CV instance of that asset that the asset is available for investing for such share class id
-    function allowAsset(ShareClassId scId, AssetId assetId, bool allow) external payable;
-
     /// @notice Add a new share class to the pool
     function addShareClass(string calldata name, string calldata symbol, bytes32 salt, bytes calldata data)
         external
@@ -126,6 +122,18 @@ interface IPoolRouter {
     /// @param navPerShare Total value of assets of the share class per share
     /// @param valuation Used to transform between payout assets and pool currency
     function revokeShares(ShareClassId scId, AssetId payoutAssetId, D18 navPerShare, IERC7726 valuation)
+        external
+        payable;
+
+    /// @notice Update remotely an exiting vault
+    /// @param assetId Asset used in the vault.
+    /// @param factory Factory address. Check `IVaultFactory` interface.
+    /// If the vault is already created, this isn't used.
+    /// @param vault Vault address. Check `IBaseVault`.
+    /// If the vault is created first time, this should be 0.
+    /// @param link decides if the action should link or unlink the vault.
+    /// If the vault is created first time, this should be true.
+    function updateVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 factory, bytes32 vault, bool link)
         external
         payable;
 
