@@ -8,6 +8,7 @@ import {MockHook} from "test/vaults/mocks/MockHook.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
@@ -104,7 +105,7 @@ contract PoolManagerTest is BaseTest {
         centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, 19, hook);
 
         centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, salt, hook);
-        Tranche tranche = Tranche(poolManager.getTranche(poolId, trancheId));
+        Tranche tranche = Tranche(poolManager.tranche(poolId, trancheId));
         assertEq(tokenName, tranche.name());
         assertEq(tokenSymbol, tranche.symbol());
         assertEq(decimals, tranche.decimals());
@@ -132,117 +133,11 @@ contract PoolManagerTest is BaseTest {
 
         for (uint256 i = 0; i < trancheIds.length; i++) {
             centrifugeChain.addTranche(poolId, trancheIds[i], tokenName, tokenSymbol, decimals, hook);
-            Tranche tranche = Tranche(poolManager.getTranche(poolId, trancheIds[i]));
+            Tranche tranche = Tranche(poolManager.tranche(poolId, trancheIds[i]));
             assertEq(tokenName, tranche.name());
             assertEq(tokenSymbol, tranche.symbol());
             assertEq(decimals, tranche.decimals());
         }
-    }
-
-    function testDeployVaultWithoutLink(
-        uint64 poolId,
-        uint8 decimals,
-        string memory tokenName,
-        string memory tokenSymbol,
-        bytes16 trancheId
-    ) public {
-        decimals = uint8(bound(decimals, 2, 18));
-        vm.assume(bytes(tokenName).length <= 128);
-        vm.assume(bytes(tokenSymbol).length <= 32);
-
-        address hook = address(new MockHook());
-        address asset = address(erc20);
-
-        centrifugeChain.addPool(poolId);
-        centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook);
-
-        // Check event except for vault address which cannot be known
-        (uint128 assetId) = poolManager.registerAsset(asset, 0, defaultChainId);
-        vm.expectEmit(true, true, true, false);
-        emit IPoolManager.DeployVault(poolId, trancheId, asset, vaultFactory, address(0));
-        address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, vaultFactory);
-
-        // Check Vault asset
-        (address asset_, bool isWrapper) = poolManager.vaultToAssetAddress(vaultAddress);
-        assertEq(asset, asset_, "vault asset mismatch");
-        assertEq(isWrapper, false);
-
-        // Check Tranche permissions
-        address tranche_ = poolManager.getTranche(poolId, trancheId);
-        address vaultManager = IBaseVault(vaultAddress).manager();
-        assertEq(Tranche(tranche_).wards(vaultManager), 1);
-
-        // Check approvals
-        assertEq(
-            IERC20(asset).allowance(address(poolManager.escrow()), vaultManager),
-            type(uint256).max,
-            "Asset allowance missing"
-        );
-        assertEq(
-            IERC20(tranche_).allowance(address(poolManager.escrow()), vaultManager),
-            type(uint256).max,
-            "Tranche token allowance missing"
-        );
-
-        // Check missing link
-        address vault_ = ITranche(tranche_).vault(asset);
-        assertEq(vault_, address(0), "Tranche link to vault requires linkVault");
-        assertEq(investmentManager.wards(vaultAddress), 0, "Vault auth on investmentManager set up in linkVault");
-
-        // Check tranche state
-        Tranche tranche = Tranche(tranche_);
-        assertEq(tranche.name(), tokenName, "tranche name mismatch");
-        assertEq(tranche.symbol(), tokenSymbol, "tranche symbol mismatch");
-        assertEq(tranche.decimals(), decimals, "tranche decimals mismatch");
-        assertEq(tranche.wards(address(poolManager)), 1);
-        assertEq(tranche.wards(address(this)), 0);
-        assertEq(tranche.wards(vault_), 0, "Vault auth on Tranche set up in linkVault");
-    }
-
-    function testDeployVaultWithLink(
-        uint64 poolId,
-        uint8 decimals,
-        string memory tokenName,
-        string memory tokenSymbol,
-        bytes16 trancheId
-    ) public {
-        decimals = uint8(bound(decimals, 2, 18));
-        vm.assume(bytes(tokenName).length <= 128);
-        vm.assume(bytes(tokenSymbol).length <= 32);
-
-        address hook = address(new MockHook());
-        address asset = address(erc20);
-
-        centrifugeChain.addPool(poolId);
-        centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook);
-
-        (uint128 assetId) = poolManager.registerAsset(asset, 0, defaultChainId);
-        address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, vaultFactory);
-        poolManager.linkVault(poolId, trancheId, assetId, vaultAddress);
-
-        address tranche_ = poolManager.getTranche(poolId, trancheId);
-        address vault_ = ITranche(tranche_).vault(asset);
-        assertEq(vaultAddress, vault_);
-
-        // check vault state
-        ERC7540Vault vault = ERC7540Vault(vault_);
-        Tranche tranche = Tranche(tranche_);
-        assertEq(address(vault.manager()), address(investmentManager), "investment manager mismatch");
-        assertEq(vault.asset(), asset, "asset mismatch");
-        assertEq(vault.poolId(), poolId, "poolId mismatch");
-        assertEq(vault.trancheId(), trancheId, "trancheId mismatch");
-        assertEq(address(vault.share()), tranche_, "tranche mismatch");
-        assertEq(vault.wards(address(investmentManager)), 1);
-        assertEq(vault.wards(address(this)), 0);
-        assertEq(investmentManager.wards(vaultAddress), 1);
-
-        assertEq(tranche.name(), tokenName, "tranche name mismatch");
-        assertEq(tranche.symbol(), tokenSymbol, "tranche symbol mismatch");
-        assertEq(tranche.decimals(), decimals, "tranche decimals mismatch");
-
-        assertEq(tranche.wards(address(poolManager)), 1);
-        assertEq(tranche.wards(vault_), 1);
-        assertEq(tranche.wards(address(this)), 0);
     }
 
     function testTransferTrancheTokensToCentrifuge(uint128 amount) public {
@@ -500,7 +395,7 @@ contract PoolManagerTest is BaseTest {
         poolManager.updateTranchePrice(poolId, trancheId, assetId, price, uint64(block.timestamp));
 
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, price, uint64(block.timestamp));
-        (uint256 latestPrice, uint64 priceComputedAt) = poolManager.getTranchePrice(poolId, trancheId, address(erc20));
+        (uint256 latestPrice, uint64 priceComputedAt) = poolManager.tranchePrice(poolId, trancheId, assetId);
         assertEq(latestPrice, price);
         assertEq(priceComputedAt, block.timestamp);
 
@@ -526,7 +421,7 @@ contract PoolManagerTest is BaseTest {
         // Remove old vault
         address vaultManager = IBaseVault(oldVault_).manager();
         IVaultManager(vaultManager).removeVault(poolId, trancheId, oldVault_, asset, assetId);
-        assertEq(Tranche(poolManager.getTranche(poolId, trancheId)).vault(asset), address(0));
+        assertEq(Tranche(poolManager.tranche(poolId, trancheId)).vault(asset), address(0));
 
         // Deploy new vault
         address newVault = poolManager.deployVault(poolId, trancheId, assetId, address(newVaultFactory));
@@ -586,6 +481,211 @@ contract PoolManagerTest is BaseTest {
     }
 }
 
+contract PoolManagerDeployVaultTest is BaseTest {
+    using MessageLib for *;
+    using CastLib for *;
+    using BytesLib for *;
+
+    address hook = address(new MockHook());
+
+    uint64 poolId;
+    uint8 decimals;
+    string tokenName;
+    string tokenSymbol;
+    bytes16 trancheId;
+
+    function _assertVaultSetup(address vaultAddress, uint128 assetId, address asset, bool isLinked) private view {
+        address vaultManager = IBaseVault(vaultAddress).manager();
+        address tranche_ = poolManager.tranche(poolId, trancheId);
+        address vault_ = ITranche(tranche_).vault(asset);
+
+        assert(poolManager.isPoolActive(poolId));
+
+        (address asset_, bool isWrapper) = poolManager.vaultToAssetAddress(vaultAddress);
+        assertEq(asset, asset_, "vault asset mismatch");
+        assertEq(isWrapper, false);
+        uint128 assetId_ = poolManager.vaultToAssetId(vaultAddress);
+        assertEq(assetId, assetId_, "vault assetId mismatch");
+
+        if (isLinked) {
+            assert(poolManager.isLinked(poolId, trancheId, asset, vaultAddress));
+
+            // check vault state
+            assertEq(vaultAddress, vault_, "vault address mismatch");
+            ERC7540Vault vault = ERC7540Vault(vault_);
+            assertEq(address(vault.manager()), address(investmentManager), "investment manager mismatch");
+            assertEq(vault.asset(), asset, "asset mismatch");
+            assertEq(vault.poolId(), poolId, "poolId mismatch");
+            assertEq(vault.trancheId(), trancheId, "trancheId mismatch");
+            assertEq(address(vault.share()), tranche_, "tranche mismatch");
+
+            assertEq(vault.wards(address(investmentManager)), 1);
+            assertEq(vault.wards(address(this)), 0);
+            assertEq(investmentManager.wards(vaultAddress), 1);
+        } else {
+            assert(!poolManager.isLinked(poolId, trancheId, asset, vaultAddress));
+            // Check Tranche permissions
+            assertEq(Tranche(tranche_).wards(vaultManager), 1);
+
+            // Check missing link
+            assertEq(vault_, address(0), "Tranche link to vault requires linkVault");
+            assertEq(investmentManager.wards(vaultAddress), 0, "Vault auth on investmentManager set up in linkVault");
+        }
+    }
+
+    function _assertTrancheSetup(address vaultAddress, bool isLinked) private view {
+        address tranche_ = poolManager.tranche(poolId, trancheId);
+        Tranche tranche = Tranche(tranche_);
+
+        assertEq(tranche.wards(address(poolManager)), 1);
+        assertEq(tranche.wards(address(this)), 0);
+
+        assertEq(tranche.name(), tokenName, "tranche name mismatch");
+        assertEq(tranche.symbol(), tokenSymbol, "tranche symbol mismatch");
+        assertEq(tranche.decimals(), decimals, "tranche decimals mismatch");
+
+        if (isLinked) {
+            assertEq(tranche.wards(vaultAddress), 1);
+        } else {
+            assertEq(tranche.wards(vaultAddress), 0, "Vault auth on Tranche set up in linkVault");
+        }
+    }
+
+    function _assertAllowance(address vaultAddress, address asset, uint256 tokenId) private view {
+        address vaultManager = IBaseVault(vaultAddress).manager();
+        address escrow_ = address(poolManager.escrow());
+        address tranche_ = poolManager.tranche(poolId, trancheId);
+
+        assertEq(
+            IERC20(tranche_).allowance(escrow_, vaultManager), type(uint256).max, "Tranche token allowance missing"
+        );
+
+        if (tokenId == 0) {
+            assertEq(IERC20(asset).allowance(escrow_, vaultManager), type(uint256).max, "ERC20 Asset allowance missing");
+        } else {
+            assertEq(
+                IERC6909(asset).allowance(escrow_, vaultManager, tokenId),
+                type(uint256).max,
+                "ERC6909 Asset allowance missing"
+            );
+        }
+    }
+
+    function _assertDeployedVault(address vaultAddress, uint128 assetId, address asset, uint256 tokenId, bool isLinked)
+        internal
+        view
+    {
+        _assertVaultSetup(vaultAddress, assetId, asset, isLinked);
+        _assertTrancheSetup(vaultAddress, isLinked);
+        _assertAllowance(vaultAddress, asset, tokenId);
+    }
+
+    function setUpPool(
+        uint64 poolId_,
+        uint8 decimals_,
+        string memory tokenName_,
+        string memory tokenSymbol_,
+        bytes16 trancheId_
+    ) public {
+        decimals_ = uint8(bound(decimals_, 2, 18));
+        vm.assume(bytes(tokenName_).length <= 128);
+        vm.assume(bytes(tokenSymbol_).length <= 32);
+
+        poolId = poolId_;
+        decimals = decimals_;
+        tokenName = tokenName;
+        tokenSymbol = tokenSymbol_;
+        trancheId = trancheId_;
+
+        centrifugeChain.addPool(poolId);
+        centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook);
+    }
+
+    function testDeployVaultWithoutLinkERC20(
+        uint64 poolId_,
+        uint8 decimals_,
+        string memory tokenName_,
+        string memory tokenSymbol_,
+        bytes16 trancheId_
+    ) public {
+        setUpPool(poolId_, decimals_, tokenName_, tokenSymbol_, trancheId_);
+
+        address asset = address(erc20);
+
+        // Check event except for vault address which cannot be known
+        (uint128 assetId) = poolManager.registerAsset(asset, erc20TokenId, defaultChainId);
+        vm.expectEmit(true, true, true, false);
+        emit IPoolManager.DeployVault(poolId, trancheId, asset, erc20TokenId, vaultFactory, address(0));
+        address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, vaultFactory);
+
+        _assertDeployedVault(vaultAddress, assetId, asset, erc20TokenId, false);
+    }
+
+    function testDeployVaultWithLinkERC20(
+        uint64 poolId_,
+        uint8 decimals_,
+        string memory tokenName_,
+        string memory tokenSymbol_,
+        bytes16 trancheId_
+    ) public {
+        setUpPool(poolId_, decimals_, tokenName_, tokenSymbol_, trancheId_);
+
+        address asset = address(erc20);
+
+        (uint128 assetId) = poolManager.registerAsset(asset, erc20TokenId, defaultChainId);
+        address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, vaultFactory);
+
+        vm.expectEmit(true, true, true, false);
+        emit IPoolManager.LinkVault(poolId, trancheId, asset, erc20TokenId, vaultAddress);
+        poolManager.linkVault(poolId, trancheId, assetId, vaultAddress);
+
+        _assertDeployedVault(vaultAddress, assetId, asset, erc20TokenId, true);
+    }
+
+    function testDeployVaultWithoutLinkERC6909(
+        uint64 poolId_,
+        uint8 decimals_,
+        string memory tokenName_,
+        string memory tokenSymbol_,
+        bytes16 trancheId_
+    ) public {
+        setUpPool(poolId_, decimals_, tokenName_, tokenSymbol_, trancheId_);
+
+        uint256 tokenId = decimals;
+        address asset = address(new MockERC6909());
+
+        // Check event except for vault address which cannot be known
+        (uint128 assetId) = poolManager.registerAsset(asset, tokenId, defaultChainId);
+        vm.expectEmit(true, true, true, false);
+        emit IPoolManager.DeployVault(poolId, trancheId, asset, tokenId, vaultFactory, address(0));
+        address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, vaultFactory);
+
+        _assertDeployedVault(vaultAddress, assetId, asset, tokenId, false);
+    }
+
+    function testDeployVaultWithLinkERC6909(
+        uint64 poolId_,
+        uint8 decimals_,
+        string memory tokenName_,
+        string memory tokenSymbol_,
+        bytes16 trancheId_
+    ) public {
+        setUpPool(poolId_, decimals_, tokenName_, tokenSymbol_, trancheId_);
+
+        uint256 tokenId = decimals;
+        address asset = address(new MockERC6909());
+
+        (uint128 assetId) = poolManager.registerAsset(asset, tokenId, defaultChainId);
+        address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, vaultFactory);
+
+        vm.expectEmit(true, true, true, false);
+        emit IPoolManager.LinkVault(poolId, trancheId, asset, tokenId, vaultAddress);
+        poolManager.linkVault(poolId, trancheId, assetId, vaultAddress);
+
+        _assertDeployedVault(vaultAddress, assetId, asset, tokenId, true);
+    }
+}
+
 contract PoolManagerRegisterAssetTest is BaseTest {
     using MessageLib for *;
     using CastLib for *;
@@ -607,7 +707,6 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         view
     {
         assertEq(poolManager.assetToId(asset, tokenId), assetId, "Asset to id mismatch");
-        assertEq(poolManager.idToAsset(assetId), asset, "Id to asset mismatch");
         (address asset_, uint256 tokenId_) = poolManager.idToAsset_(assetId);
         assertEq(asset_, asset);
         assertEq(tokenId_, tokenId);

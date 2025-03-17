@@ -15,9 +15,9 @@ struct TrancheDetails {
     /// @dev Each tranche can have multiple vaults deployed,
     ///      multiple vaults can be linked to the same asset.
     ///      A vault in this storage DOES NOT mean the vault can be used
-    mapping(address asset => address[]) vaults;
+    mapping(address asset => mapping(uint256 tokenId => address[])) vaults;
     /// @dev Each tranche has a price per asset
-    mapping(address asset => TranchePrice) prices;
+    mapping(address asset => mapping(uint256 tokenId => TranchePrice)) prices;
 }
 
 struct TranchePrice {
@@ -39,14 +39,21 @@ struct UndeployedTranche {
 }
 
 struct VaultAsset {
-    /// @dev Address of the asset
-    address asset;
     /// @dev AssetId of the asset
     uint128 assetId;
+    /// @dev Address of the asset
+    address asset;
     /// @dev Whether this wrapper conforms to the IERC20Wrapper interface
     bool isWrapper;
     /// @dev Whether the vault is linked to a tranche atm
     bool isLinked;
+}
+
+struct AssetIdKey {
+    /// @dev The address of the asset
+    address asset;
+    /// @dev The ERC6909 token id or 0, if the underlying asset is an ERC20
+    uint256 tokenId;
 }
 
 interface IPoolManager is IRecoverable {
@@ -63,12 +70,21 @@ interface IPoolManager is IRecoverable {
     event AddPool(uint64 indexed poolId);
     event AddTranche(uint64 indexed poolId, bytes16 indexed trancheId, address token);
     event DeployVault(
-        uint64 indexed poolId, bytes16 indexed trancheId, address indexed asset, address factory, address vault
+        uint64 indexed poolId,
+        bytes16 indexed trancheId,
+        address indexed asset,
+        uint256 tokenId,
+        address factory,
+        address vault
     );
     event PriceUpdate(
-        uint64 indexed poolId, bytes16 indexed trancheId, address indexed asset, uint256 price, uint64 computedAt
+        uint64 indexed poolId,
+        bytes16 indexed trancheId,
+        address indexed asset,
+        uint256 tokenId,
+        uint256 price,
+        uint64 computedAt
     );
-    event TransferAssets(address indexed asset, address indexed sender, bytes32 indexed recipient, uint128 amount);
     event TransferTrancheTokens(
         uint64 indexed poolId,
         bytes16 indexed trancheId,
@@ -79,14 +95,18 @@ interface IPoolManager is IRecoverable {
     );
     event UpdateContract(uint64 indexed poolId, bytes16 indexed trancheId, address target, bytes payload);
     event LinkVault(
-        uint64 indexed poolId, bytes16 indexed trancheId, uint128 indexed assetId, address asset, address vault
+        uint64 indexed poolId, bytes16 indexed trancheId, address indexed asset, uint256 tokenId, address vault
     );
     event UnlinkVault(
-        uint64 indexed poolId, bytes16 indexed trancheId, uint128 indexed assetId, address asset, address vault
+        uint64 indexed poolId, bytes16 indexed trancheId, address indexed asset, uint256 tokenId, address vault
     );
 
-    /// @notice returns the asset address associated with a given asset id
-    function idToAsset(uint128 assetId) external view returns (address asset);
+    /// @notice Returns the asset address and tokenId associated with a given asset id.
+    ///
+    /// @param assetId The underlying internal uint128 assetId.
+    /// @return asset The address of the asset linked to the given asset id.
+    /// @return tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
+    function idToAsset(uint128 assetId) external view returns (address asset, uint256 tokenId);
 
     /// @notice Updates a contract parameter
     /// @param what Accepts a bytes32 representation of 'gateway', 'investmentManager', 'trancheFactory',
@@ -182,10 +202,10 @@ interface IPoolManager is IRecoverable {
     function isPoolActive(uint64 poolId) external view returns (bool);
 
     /// @notice Returns the tranche token for a given pool and tranche id
-    function getTranche(uint64 poolId, bytes16 trancheId) external view returns (address);
+    function tranche(uint64 poolId, bytes16 trancheId) external view returns (address);
 
-    /// @notice Retuns the latest tranche token price for a given pool, tranche id, and asset id
-    function getTranchePrice(uint64 poolId, bytes16 trancheId, address asset)
+    /// @notice Retuns the latest tranche token price for a given pool, tranche id, and asset
+    function tranchePrice(uint64 poolId, bytes16 trancheId, uint128 assetId)
         external
         view
         returns (uint128 price, uint64 computedAt);

@@ -39,6 +39,7 @@ contract ERC7540Vault is Auth, IERC7540Vault {
 
     /// @inheritdoc IERC7575
     address public immutable asset;
+    uint256 public immutable tokenId;
 
     /// @inheritdoc IERC7575
     address public immutable share;
@@ -61,12 +62,19 @@ contract ERC7540Vault is Auth, IERC7540Vault {
     // --- Events ---
     event File(bytes32 indexed what, address data);
 
-    constructor(uint64 poolId_, bytes16 trancheId_, address asset_, address share_, address root_, address manager_)
-        Auth(msg.sender)
-    {
+    constructor(
+        uint64 poolId_,
+        bytes16 trancheId_,
+        address asset_,
+        uint256 tokenId_,
+        address share_,
+        address root_,
+        address manager_
+    ) Auth(msg.sender) {
         poolId = poolId_;
         trancheId = trancheId_;
         asset = asset_;
+        tokenId = tokenId_;
         share = share_;
         _shareDecimals = IERC20Metadata(share).decimals();
         root = IRoot(root_);

@@ -149,13 +149,13 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         uint256 assetTokenId,
         uint32 destinationChain
     ) public returns (address vaultAddress, uint128 assetId) {
-        if (poolManager.idToAsset(assetId) == address(0)) {
+        if (poolManager.assetToId(asset, assetTokenId) == 0) {
             assetId = poolManager.registerAsset(asset, assetTokenId, destinationChain);
         } else {
             assetId = poolManager.assetToId(asset, assetTokenId);
         }
 
-        if (poolManager.getTranche(poolId, trancheId) == address(0)) {
+        if (poolManager.tranche(poolId, trancheId) == address(0)) {
             centrifugeChain.addPool(poolId);
             centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, trancheDecimals, hook);
         }
@@ -170,7 +170,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
             vault: address(0)
         }).serialize();
         poolManager.update(poolId, trancheId, vaultUpdate);
-        vaultAddress = ITranche(poolManager.getTranche(poolId, trancheId)).vault(asset);
+        vaultAddress = ITranche(poolManager.tranche(poolId, trancheId)).vault(asset);
     }
 
     function deployVault(

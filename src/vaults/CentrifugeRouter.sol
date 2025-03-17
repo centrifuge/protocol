@@ -263,7 +263,7 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
     // --- View Methods ---
     /// @inheritdoc ICentrifugeRouter
     function getVault(uint64 poolId, bytes16 trancheId, address asset) external view returns (address) {
-        return ITranche(IPoolManager(poolManager).getTranche(poolId, trancheId)).vault(asset);
+        return ITranche(IPoolManager(poolManager).tranche(poolId, trancheId)).vault(asset);
     }
 
     /// @inheritdoc ICentrifugeRouter

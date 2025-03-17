@@ -30,7 +30,7 @@ contract ERC7540VaultTest is BaseTest {
         assertEq(vault.asset(), address(erc20));
         assertEq(vault.poolId(), poolId);
         assertEq(vault.trancheId(), trancheId);
-        address token = poolManager.getTranche(poolId, trancheId);
+        address token = poolManager.tranche(poolId, trancheId);
         assertEq(address(vault.share()), token);
         // assertEq(tokenName, ERC20(token).name());
         // assertEq(tokenSymbol, ERC20(token).symbol());

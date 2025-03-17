@@ -359,7 +359,8 @@ contract InvestmentManager is Auth, IInvestmentManager {
             );
         }
 
-        emit TriggerRedeemRequest(poolId, trancheId, user, poolManager.idToAsset(assetId), shares);
+        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
+        emit TriggerRedeemRequest(poolId, trancheId, user, asset, tokenId, shares);
         IERC7540Vault(vault_).onRedeemRequest(user, user, shares);
     }
 
@@ -367,14 +368,16 @@ contract InvestmentManager is Auth, IInvestmentManager {
     /// @inheritdoc IInvestmentManager
     function convertToShares(address vaultAddr, uint256 _assets) public view returns (uint256 shares) {
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
-        (uint128 latestPrice,) = poolManager.getTranchePrice(vault_.poolId(), vault_.trancheId(), vault_.asset());
+        (uint128 latestPrice,) =
+            poolManager.tranchePrice(vault_.poolId(), vault_.trancheId(), poolManager.vaultToAssetId(address(vault_)));
         shares = uint256(_calculateShares(_assets.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down));
     }
 
     /// @inheritdoc IInvestmentManager
     function convertToAssets(address vaultAddr, uint256 _shares) public view returns (uint256 assets) {
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
-        (uint128 latestPrice,) = poolManager.getTranchePrice(vault_.poolId(), vault_.trancheId(), vault_.asset());
+        (uint128 latestPrice,) =
+            poolManager.tranchePrice(vault_.poolId(), vault_.trancheId(), poolManager.vaultToAssetId(address(vault_)));
         assets = uint256(_calculateAssets(_shares.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down));
     }
 
@@ -441,7 +444,8 @@ contract InvestmentManager is Auth, IInvestmentManager {
     /// @inheritdoc IInvestmentManager
     function priceLastUpdated(address vaultAddr) public view returns (uint64 lastUpdated) {
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
-        (, lastUpdated) = poolManager.getTranchePrice(vault_.poolId(), vault_.trancheId(), vault_.asset());
+        (, lastUpdated) =
+            poolManager.tranchePrice(vault_.poolId(), vault_.trancheId(), poolManager.vaultToAssetId(address(vault_)));
     }
 
     // --- Vault claim functions ---
