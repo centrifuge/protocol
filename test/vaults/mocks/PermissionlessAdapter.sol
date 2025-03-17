@@ -20,7 +20,7 @@ contract PermissionlessAdapter is Auth, IAdapter {
     }
 
     // --- Outgoing ---
-    function send(uint32, bytes memory message, uint256) public {
+    function send(uint32, bytes memory message, uint256, address) public payable {
         emit Send(message);
     }
 
@@ -30,6 +30,4 @@ contract PermissionlessAdapter is Auth, IAdapter {
     function estimate(uint32, bytes calldata, uint256) public pure returns (uint256 estimation) {
         return 1.5 gwei;
     }
-
-    function pay(uint32, bytes calldata, address) external payable {}
 }

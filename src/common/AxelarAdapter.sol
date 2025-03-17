@@ -46,8 +46,16 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     }
 
     // --- Outgoing ---
-    function send(uint32, /*chainId*/ bytes calldata payload, uint256 /* gasLimit */ ) public {
+    function send(uint32, /*chainId*/ bytes calldata payload, uint256, /* gasLimit */ address refund)
+        external
+        payable
+    {
         //TODO (chainName, chainExecutable) = chainConfig[chainId];
+
+        axelarGasService.payNativeGasForContractCall{value: msg.value}(
+            address(this), CENTRIFUGE_ID, CENTRIFUGE_AXELAR_EXECUTABLE, payload, refund
+        );
+
         require(msg.sender == address(gateway), NotGateway());
         axelarGateway.callContract(CENTRIFUGE_ID, CENTRIFUGE_AXELAR_EXECUTABLE, payload);
     }
@@ -56,13 +64,5 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     function estimate(uint32, /*chainId*/ bytes calldata payload, uint256 gasLimit) public view returns (uint256) {
         return
             axelarGasService.estimateGasFee(CENTRIFUGE_ID, CENTRIFUGE_AXELAR_EXECUTABLE, payload, gasLimit, bytes(""));
-    }
-
-    /// @inheritdoc IAdapter
-    function pay(uint32, /*chainId*/ bytes calldata payload, address refund) public payable {
-        //TODO (chainName, chainExecutable) = chainConfig[chainId];
-        axelarGasService.payNativeGasForContractCall{value: msg.value}(
-            address(this), CENTRIFUGE_ID, CENTRIFUGE_AXELAR_EXECUTABLE, payload, refund
-        );
     }
 }

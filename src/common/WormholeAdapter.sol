@@ -24,9 +24,6 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     mapping(uint16 wormholeId => WormholeSource) public sources;
     mapping(uint32 centrifugeId => WormholeDestination) public destinations;
 
-    address public /* transient */ refund;
-    uint256 public /* transient */ gasPaid;
-
     constructor(IMessageHandler gateway_, address relayer_, uint16 refundChain_) Auth(msg.sender) {
         gateway = gateway_;
         relayer = IWormholeRelayer(relayer_);
@@ -66,16 +63,14 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
 
     // --- Outgoing ---
     /// @inheritdoc IAdapter
-    function send(uint32 chainId, bytes calldata payload, uint256 gasLimit) public {
+    function send(uint32 chainId, bytes calldata payload, uint256 gasLimit, address refund) external payable {
         require(msg.sender == address(gateway), NotGateway());
         WormholeDestination memory destination = destinations[chainId];
         require(destination.wormholeId != 0, UnknownChainId());
 
-        relayer.sendPayloadToEvm{value: address(this).balance}(
-            destination.wormholeId, destination.addr, payload, 0, gasLimit, refundChain, address(gateway)
+        relayer.sendPayloadToEvm{value: msg.value}(
+            destination.wormholeId, destination.addr, payload, 0, gasLimit, refundChain, refund
         );
-
-        gasPaid = 0;
     }
 
     /// @inheritdoc IAdapter
@@ -85,12 +80,5 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         returns (uint256 nativePriceQuote)
     {
         (nativePriceQuote,) = relayer.quoteEVMDeliveryPrice(destinations[chainId].wormholeId, 0, gasLimit);
-    }
-
-    /// @inheritdoc IAdapter
-    /// @dev If called multiple times within the same transaction, the last refund address will be used
-    function pay(uint32, /*chainId*/ bytes calldata, /* payload */ address refund_) public payable {
-        gasPaid += msg.value;
-        refund = refund_;
     }
 }

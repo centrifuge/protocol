@@ -84,20 +84,6 @@ contract AxelarAdapterTest is Test {
         assertEq(estimation, gasLimit - 1);
     }
 
-    function testPayment(bytes calldata payload, uint256 value) public {
-        vm.deal(address(this), value);
-        adapter.pay{value: value}(CHAIN_ID, payload, address(this));
-
-        uint256[] memory call = axelarGasService.callsWithValue("payNativeGasForContractCall");
-        assertEq(call.length, 1);
-        assertEq(call[0], value);
-        assertEq(axelarGasService.values_address("sender"), address(adapter));
-        assertEq(axelarGasService.values_string("destinationChain"), adapter.CENTRIFUGE_ID());
-        assertEq(axelarGasService.values_string("destinationAddress"), adapter.CENTRIFUGE_AXELAR_EXECUTABLE());
-        assertEq(axelarGasService.values_bytes("payload"), payload);
-        assertEq(axelarGasService.values_address("refundAddress"), address(this));
-    }
-
     function testIncomingCalls(
         bytes32 commandId,
         string calldata sourceChain,
@@ -133,17 +119,30 @@ contract AxelarAdapterTest is Test {
         adapter.execute(commandId, axelarCentrifugeChainId, axelarCentrifugeChainAddress, payload);
     }
 
-    function testOutgoingCalls(bytes calldata message, address invalidOrigin, uint256 gasLimit) public {
+    function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint256 gasLimit, address refund)
+        public
+    {
         vm.assume(invalidOrigin != address(GATEWAY));
 
+        vm.deal(address(this), 0.1 ether);
         vm.expectRevert(IAdapter.NotGateway.selector);
-        adapter.send(CHAIN_ID, message, gasLimit);
+        adapter.send{value: 0.1 ether}(CHAIN_ID, payload, gasLimit, refund);
 
+        vm.deal(address(GATEWAY), 0.1 ether);
         vm.prank(address(GATEWAY));
-        adapter.send(CHAIN_ID, message, gasLimit);
+        adapter.send{value: 0.1 ether}(CHAIN_ID, payload, gasLimit, refund);
+
+        uint256[] memory call = axelarGasService.callsWithValue("payNativeGasForContractCall");
+        assertEq(call.length, 1);
+        assertEq(call[0], 0.1 ether);
+        assertEq(axelarGasService.values_address("sender"), address(adapter));
+        assertEq(axelarGasService.values_string("destinationChain"), adapter.CENTRIFUGE_ID());
+        assertEq(axelarGasService.values_string("destinationAddress"), adapter.CENTRIFUGE_AXELAR_EXECUTABLE());
+        assertEq(axelarGasService.values_bytes("payload"), payload);
+        assertEq(axelarGasService.values_address("refundAddress"), refund);
 
         assertEq(axelarGateway.values_string("destinationChain"), axelarCentrifugeChainId);
         assertEq(axelarGateway.values_string("contractAddress"), adapter.CENTRIFUGE_AXELAR_EXECUTABLE());
-        assertEq(axelarGateway.values_bytes("payload"), message);
+        assertEq(axelarGateway.values_bytes("payload"), payload);
     }
 }
