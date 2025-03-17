@@ -14,3 +14,5 @@ The `adapter` set on the `Gateway` is set to the address of a `MockAdapter` in t
 
 The current setup uses one instance of the 
 `SingleShareClass` if the relationship between pools and Pools is one-to-many, more will need to be added.
+
+The `Gateway` contract is mocked since we're not actually using it to call the `PoolManager` functions and the extra transferring of gas adds unnecessary complexity to the tester.
