@@ -52,7 +52,7 @@ interface IRoot {
     /// @notice Endorses the `user`
     /// @dev    Endorsed users are trusted contracts in the system. They are allowed to bypass
     ///         token restrictions (e.g. the Escrow can automatically receive tranche tokens by being endorsed), and
-    ///         can automatically set operators in ERC-7540 vaults (e.g. the CentrifugeRouter) is always an operator.
+    ///         can automatically set operators in ERC-7540 vaults (e.g. the VaultRouter) is always an operator.
     function endorse(address user) external;
 
     /// @notice Removes the endorsed user

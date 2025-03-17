@@ -67,7 +67,7 @@ interface IInvestmentManager is IRecoverable, IVaultManager {
     function file(bytes32 what, address data) external;
 
     // --- Outgoing message handling ---
-    /// @notice Requests assets deposit. Liquidity pools have to request investments from Centrifuge before
+    /// @notice Requests assets deposit. Vaults have to request investments from Centrifuge before
     ///         shares can be minted. The deposit requests are added to the order book
     ///         on Centrifuge. Once the next epoch is executed on Centrifuge, vaults can
     ///         proceed with share payouts in case the order got fulfilled.
@@ -78,7 +78,7 @@ interface IInvestmentManager is IRecoverable, IVaultManager {
         external
         returns (bool);
 
-    /// @notice Requests share redemption. Liquidity pools have to request redemptions
+    /// @notice Requests share redemption. Vaults have to request redemptions
     ///         from Centrifuge before actual asset payouts can be done. The redemption
     ///         requests are added to the order book on Centrifuge. Once the next epoch is
     ///         executed on Centrifuge, vaults can proceed with asset payouts
@@ -90,7 +90,7 @@ interface IInvestmentManager is IRecoverable, IVaultManager {
         external
         returns (bool);
 
-    /// @notice Requests the cancellation of a pending deposit request. Liquidity pools have to request the
+    /// @notice Requests the cancellation of a pending deposit request. Vaults have to request the
     ///         cancellation of outstanding requests from Centrifuge before actual assets can be unlocked and
     /// transferred
     ///         to the owner.
@@ -101,7 +101,7 @@ interface IInvestmentManager is IRecoverable, IVaultManager {
     ///         Centrifuge.
     function cancelDepositRequest(address vaultAddr, address owner, address source) external;
 
-    /// @notice Requests the cancellation of an pending redeem request. Liquidity pools have to request the
+    /// @notice Requests the cancellation of an pending redeem request. Vaults have to request the
     ///         cancellation of outstanding requests from Centrifuge before actual shares can be unlocked and
     ///         transferred to the owner.
     ///         While users have outstanding cancellation requests no new redeem requests can be submitted (exception:

@@ -47,7 +47,7 @@ contract Deployer is Script {
 
     function deploy() public {
         root = new Root(delay, address(this));
-        gasService = new GasService(0, 0, 0, 0); // TODO: Configure properly
+        gasService = new GasService(0, 0); // TODO: Configure properly
         gateway = new Gateway(root, gasService);
 
         poolRegistry = new PoolRegistry(address(this));
@@ -55,9 +55,9 @@ contract Deployer is Script {
         accounting = new Accounting(address(this));
         holdings = new Holdings(poolRegistry, address(this));
         multiShareClass = new MultiShareClass(poolRegistry, address(this));
-        poolManager = new PoolManager(poolRegistry, assetRegistry, accounting, holdings, gateway, address(this));
+        poolManager = new PoolManager(poolRegistry, assetRegistry, accounting, holdings, address(this));
         messageProcessor = new MessageProcessor(gateway, poolManager, address(this));
-        poolRouter = new PoolRouter(poolManager);
+        poolRouter = new PoolRouter(poolManager, gateway);
 
         transientValuation = new TransientValuation(assetRegistry, address(this));
         identityValuation = new IdentityValuation(assetRegistry, address(this));

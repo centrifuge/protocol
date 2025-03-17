@@ -145,6 +145,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
             emit RegisterAsset(assetId, asset, tokenId, name, symbol, decimals);
         }
 
+        gateway.setPayableSource(msg.sender);
         sender.sendRegisterAsset(destChainId, assetId, name, symbol, decimals);
     }
 
