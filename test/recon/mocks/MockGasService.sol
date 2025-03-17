@@ -6,6 +6,6 @@ contract MockGasService {
     /// --- Estimations ---
     function estimate(uint32, /*chainId*/ bytes calldata payload) public view returns (uint256) {
         // uses propMaxGas from echidna config
-        return 12500000;
+        return 0;
     }
 }
