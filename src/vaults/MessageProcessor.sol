@@ -159,6 +159,53 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         gateway.send(uint32(poolId >> 32), data.serialize());
     }
 
+    /// @notice Creates and send the message
+    function sendIssueShares(uint64 poolId, bytes16 shareClassId, address receiver, uint128 shares, uint256 timestamp)
+        external
+    {
+        gateway.send(
+            uint32(poolId >> 32),
+            MessageLib.UpdateShares({
+                poolId: poolId,
+                scId: scId,
+                who: receiver.toBytes32(),
+                shares: shares,
+                timestamp: timestamp,
+                isIssue: true
+            }).serialize()
+        );
+    }
+
+    /// @notice Creates and send the message
+    function sendRevokeShares(uint64 poolId, bytes16 shareClassId, address provider, uint128 shares, uint256 timestamp)
+        external
+    {
+        gateway.send(
+            uint32(poolId >> 32),
+            MessageLib.UpdateShares({
+                poolId: poolId,
+                scId: scId,
+                who: provider.toBytes32(),
+                shares: shares,
+                timestamp: timestamp,
+                isIssue: false
+            }).serialize()
+        );
+    }
+
+    /// @notice Creates and send the message
+    function sendJournalEntry(
+        uint64 poolId,
+        bytes16 shareClassId,
+        JournalEntry[] calldata debits,
+        JournalEntry[] calldata credits
+    ) external {
+        gateway.send(
+            uint32(poolId >> 32),
+            MessageLib.UpdateJournal({poolId: poolId, scId: scId, debits: debits, credits: credits}).serialize()
+        );
+    }
+
     /// @inheritdoc IMessageHandler
     function handle(uint32, /* chainId */ bytes memory message) external auth {
         MessageCategory cat = message.messageCode().category();

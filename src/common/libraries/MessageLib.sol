@@ -114,8 +114,8 @@ library MessageLib {
         (89 << uint8(MessageType.FulfilledCancelDepositRequest) * 8) +
         (89 << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (89 << uint8(MessageType.TriggerRedeemRequest) * 8) +
-        (120 << uint8(MessageType.UpdateHolding) * 8);
-        (81 << uint8(MessageType.UpdateShares) * 8);
+        (120 << uint8(MessageType.UpdateHolding) * 8) +
+        (81 << uint8(MessageType.UpdateShares) * 8) +
         (29 << uint8(MessageType.UpdateJoural) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
@@ -1049,7 +1049,7 @@ library MessageLib {
         bytes16 scId;
         bytes32 who;
         uint128 shares;
-        uint64 timestamp;
+        uint256 timestamp;
         bool isIssuance;
     }
 
@@ -1061,21 +1061,13 @@ library MessageLib {
             scId: data.toBytes16(9),
             who: data.toBytes32(25),
             shares: data.toUint128(57),
-            timestamp: data.toUint64(73),
-            isIncrease: data.toBool(81),
+            timestamp: data.toUint256(73),
+            isIssuance: data.toBool(105)
         });
     }
 
     function serialize(UpdateShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(
-            MessageType.UpdateShares,
-            t.poolId,
-            t.scId,
-            t.who,
-            t.shares,
-            t.timestamp,
-            t.isIncrease
-        );
+        return abi.encodePacked(MessageType.UpdateShares, t.poolId, t.scId, t.who, t.shares, t.timestamp, t.isIssuance);
     }
 
     //---------------------------------------
@@ -1099,12 +1091,7 @@ library MessageLib {
         offset += debitsLength;
         JournalEntry[] memory credits = data.toJournalEntries(offset, creditsLength);
 
-        return UpdateJournal({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            debits: debits,
-            credits: credits
-        });
+        return UpdateJournal({poolId: data.toUint64(1), scId: data.toBytes16(9), debits: debits, credits: credits});
     }
 
     function serialize(UpdateJournal memory t) internal pure returns (bytes memory) {
@@ -1112,13 +1099,7 @@ library MessageLib {
         bytes memory credits = t.credits.encodePacked();
 
         return abi.encodePacked(
-            MessageType.UpdateJournal,
-            t.poolId,
-            t.scId,
-            uint16(debits.length),
-            uint16(credits.length),
-            debits,
-            credits
+            MessageType.UpdateJournal, t.poolId, t.scId, uint16(debits.length), uint16(credits.length), debits, credits
         );
     }
 }

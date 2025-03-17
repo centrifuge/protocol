@@ -106,10 +106,24 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint256 tokenId,
         address receiver,
         uint128 amount,
-        D18 pricePerUnit,
+        IERC7726 valuation,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
-        _withdraw(poolId, scId, poolManager.assetToId(asset), asset, tokenId, receiver, amount, pricePerUnit, m);
+        _withdraw(
+            poolId,
+            scId,
+            poolManager.assetToId(asset),
+            asset,
+            tokenId,
+            receiver,
+            amount,
+            valuation.getQuote(
+                1 * poolManager.poolDecimals(poolId),
+                poolManager.poolCurrency(poolId),
+                asset /* TODO: tokenId compatible */
+            ),
+            m
+        );
     }
 
     function withdraw(
@@ -118,18 +132,24 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint128 assetId,
         address receiver,
         uint128 amount,
-        D18 pricePerUnit,
+        IERC7726 valuation,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
+        address asset = poolManager.idToAsset(assetId);
+
         _withdraw(
             poolId,
             scId,
             assetId,
-            poolManager.idToAsset(assetId),
+            asset,
             0, // TODO: Fix this when pool manager returns tokenId
             receiver,
             amount,
-            pricePerUnit,
+            valuation.getQuote(
+                1 * poolManager.poolDecimals(poolId),
+                poolManager.poolCurrency(poolId),
+                asset /* TODO: tokenId compatible */
+            ),
             m
         );
     }
@@ -155,7 +175,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         external
         authOrPermission(poolId, scId)
     {
-        address token = poolManager.getTranche(poolId, scId);   
+        address token = poolManager.getTranche(poolId, scId);
         ITranche(token).burn(address(from), shares);
 
         sender.sendRevokeShares(poolId, scId, from, shares, block.timestamp);
@@ -163,7 +183,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
     }
 
     function journalEntry(uint64 poolId, bytes16 scId, Meta calldata m) external authOrPermission(poolId, scId) {
-        sender.sendJournalEntry(poolId, scId, block.timestamp, m);
+        sender.sendJournalEntry(poolId, scId, m.debits, m.credits);
     }
 
     // --- Incoming ---
@@ -173,13 +193,13 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint128 assetId,
         address receiver,
         uint128 amount,
-        D18 pricePerUnit,
+        IERC7726 valuation,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
         Noted storage noted = notedWithdraw[poolId][scId][receiver][assetId];
 
         noted.amount = amount;
-        noted.pricePerUnit = pricePerUnit;
+        noted.valuation = valuation;
         noted.m = m;
 
         if (noted.amount == 0) {
@@ -208,13 +228,14 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint128 assetId,
         address provider,
         uint128 amount,
-        D18 pricePerUnit,
+        IERC7726 valuation,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
         Noted storage noted = notedDeposit[poolId][scId][provider][assetId];
 
         noted.amount = amount;
-        noted.pricePerUnit = pricePerUnit;
+        noted.valuation = valuation;
+
         noted.m = m;
 
         if (noted.amount == 0) {
@@ -250,7 +271,21 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
             // noted.m.timestamp = block.timestamp;
         }
 
-        _withdraw(poolId, scId, assetId, asset, tokenId, receiver, noted.amount, noted.pricePerUnit, noted.m);
+        _withdraw(
+            poolId,
+            scId,
+            assetId,
+            asset,
+            tokenId,
+            receiver,
+            noted.amount,
+            noted.valuation.getQuote(
+                1 * poolManager.poolDecimals(poolId),
+                poolManager.poolCurrency(poolId),
+                asset /* TODO: tokenId compatible */
+            ),
+            noted.m
+        );
     }
 
     function executeNotedWithdraw(uint64 poolId, bytes16 scId, uint128 assetId, address receiver) external {
@@ -263,6 +298,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
             // noted.m.timestamp = block.timestamp;
         }
 
+        address asset = poolManager.idToAsset(assetId);
         _withdraw(
             poolId,
             scId,
@@ -271,7 +307,11 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
             0, /* TODO: Fix once ERC6909 is in */
             receiver,
             noted.amount,
-            noted.pricePerUnit,
+            noted.valuation.getQuote(
+                1 * poolManager.poolDecimals(poolId),
+                poolManager.poolCurrency(poolId),
+                asset /* TODO: tokenId compatible */
+            ),
             noted.m
         );
     }
@@ -289,7 +329,21 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
             // noted.m.timestamp = block.timestamp;
         }
 
-        _deposit(poolId, scId, assetId, asset, tokenId, provider, noted.amount, noted.pricePerUnit, noted.m);
+        _deposit(
+            poolId,
+            scId,
+            assetId,
+            asset,
+            tokenId,
+            provider,
+            noted.amount,
+            noted.valuation.getQuote(
+                1 * poolManager.poolDecimals(poolId),
+                poolManager.poolCurrency(poolId),
+                asset /* TODO: tokenId compatible */
+            ),
+            noted.m
+        );
     }
 
     function executeNotedDeposit(uint64 poolId, bytes16 scId, uint128 assetId, address provider) external {
@@ -302,15 +356,20 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
             // noted.m.timestamp = block.timestamp;
         }
 
+        address asset = poolManager.idToAsset(assetId);
         _deposit(
             poolId,
             scId,
             assetId,
-            poolManager.idToAsset(assetId),
+            asset,
             0, /* TODO: Fix once ERC6909 is in */
             provider,
             noted.amount,
-            noted.pricePerUnit,
+            noted.valuation.getQuote(
+                1 * poolManager.poolDecimals(poolId),
+                poolManager.poolCurrency(poolId),
+                asset /* TODO: tokenId compatible */
+            ),
             noted.m
         );
     }

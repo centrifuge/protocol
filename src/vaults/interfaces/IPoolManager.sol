@@ -188,7 +188,6 @@ interface IPoolManager is IRecoverable {
     /// @notice Returns the tranche token for a given pool and tranche id
     function getTranche(uint64 poolId, bytes16 trancheId) external view returns (address);
 
-
     /// @notice Returns the tranche token for a given pool and tranche id
     function getTranche(uint64 poolId, bytes16 trancheId) external view returns (address);
 
