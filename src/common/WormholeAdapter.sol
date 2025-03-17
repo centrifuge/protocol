@@ -8,6 +8,7 @@ import {
     IWormholeAdapter,
     IAdapter,
     IWormholeRelayer,
+    IWormholeReceiver,
     WormholeSource,
     WormholeDestination
 } from "src/common/interfaces/IWormholeAdapter.sol";
@@ -46,14 +47,14 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     }
 
     // --- Incoming ---
-    /// @inheritdoc IWormholeAdapter
+    /// @inheritdoc IWormholeReceiver
     function receiveWormholeMessages(
         bytes memory payload,
         bytes[] memory, /* additionalVaas */
         bytes32 sourceAddr,
         uint16 sourceWormholeId,
         bytes32 /* deliveryHash */
-    ) external {
+    ) external payable {
         WormholeSource memory source = sources[sourceWormholeId];
         require(source.addr == sourceAddr.toAddressLeftPadded(), InvalidSource());
         require(msg.sender == address(relayer), NotWormholeRelayer());
