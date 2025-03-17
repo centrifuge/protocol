@@ -52,10 +52,6 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
         axelarGateway.callContract(CENTRIFUGE_ID, CENTRIFUGE_AXELAR_EXECUTABLE, payload);
     }
 
-    function send(uint32 chainId, bytes calldata payload) public {
-        send(chainId, payload, 0);
-    }
-
     /// @inheritdoc IAdapter
     function estimate(uint32, /*chainId*/ bytes calldata payload, uint256 gasLimit) public view returns (uint256) {
         return
