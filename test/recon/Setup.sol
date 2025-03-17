@@ -20,17 +20,20 @@ import "src/pools/Holdings.sol";
 import "src/pools/PoolManager.sol";
 import "src/pools/PoolRegistry.sol";
 import "src/pools/PoolRouter.sol";
-import "src/pools/SingleShareClass.sol";
+import "src/pools/MultiShareClass.sol";
 import "src/pools/interfaces/IPoolRegistry.sol";
 import "src/pools/interfaces/IAssetRegistry.sol";
 import "src/pools/interfaces/IAccounting.sol";
 import "src/pools/interfaces/IHoldings.sol";
+import "src/common/interfaces/IGasService.sol";
 import "src/common/interfaces/IGateway.sol";
 import "src/pools/interfaces/IPoolManager.sol";
 import "src/misc/TransientValuation.sol";
 import "src/misc/IdentityValuation.sol";
 import "src/pools/MessageProcessor.sol";
-import "test/vaults/mocks/MockAdapter.sol";
+import "src/common/Root.sol";
+import "test/common/mocks/MockAdapter.sol";
+import "test/common/mocks/MockGasService.sol";
 
 abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     Accounting accounting;
@@ -40,12 +43,14 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     PoolManager poolManager;
     PoolRegistry poolRegistry;
     PoolRouter poolRouter;
-    SingleShareClass singleShareClass;
+    MultiShareClass multiShareClass;
     MessageProcessor messageProcessor;
     TransientValuation transientValuation;
     IdentityValuation identityValuation;
+    Root root;
 
     MockAdapter mockAdapter;
+    MockGasService gasService;
 
     bytes[] internal queuedCalls; // used for storing calls to PoolRouter to be executed in a single transaction
     
@@ -65,17 +70,20 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         _addActor(address(0x10000));
         _addActor(address(0x20000));
 
+        gasService = new MockGasService();
+        root = new Root(7 days, address(this));
         accounting = new Accounting(address(this)); 
         assetRegistry = new AssetRegistry(address(this)); 
-        gateway = new Gateway(address(this));
+        gateway = new Gateway(root, IGasService(address(gasService)));
         poolRegistry = new PoolRegistry(address(this)); 
 
         holdings = new Holdings(IPoolRegistry(address(poolRegistry)), address(this));
-        poolManager = new PoolManager(IPoolRegistry(address(poolRegistry)), IAssetRegistry(address(assetRegistry)), IAccounting(address(accounting)), IHoldings(address(holdings)), IGateway(address(gateway)), address(this));
-        poolRouter = new PoolRouter(IPoolManager(address(poolManager)));
-        singleShareClass = new SingleShareClass(IPoolRegistry(address(poolRegistry)), address(this));
+        poolManager = new PoolManager(IPoolRegistry(address(poolRegistry)), IAssetRegistry(address(assetRegistry)), IAccounting(address(accounting)), IHoldings(address(holdings)), address(this));
+        poolRouter = new PoolRouter(IPoolManager(address(poolManager)), IGateway(address(gateway)));
+        multiShareClass = new MultiShareClass(IPoolRegistry(address(poolRegistry)), address(this));
         messageProcessor = new MessageProcessor(gateway, poolManager, address(this));
-        mockAdapter = new MockAdapter(address(gateway));
+
+        mockAdapter = new MockAdapter(IMessageHandler(address(gateway)));
 
         transientValuation = new TransientValuation(assetRegistry, address(this));
         identityValuation = new IdentityValuation(assetRegistry, address(this));
@@ -92,7 +100,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         holdings.rely(address(poolManager));
         gateway.rely(address(poolManager));
         gateway.rely(address(messageProcessor));
-        singleShareClass.rely(address(poolManager));
+        multiShareClass.rely(address(poolManager));
         poolManager.rely(address(poolRouter));
         messageProcessor.rely(address(poolManager));
     }

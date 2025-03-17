@@ -13,7 +13,6 @@ import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {PoolId, newPoolId} from "src/pools/types/PoolId.sol";
-import {previewShareClassId} from "src/pools/SingleShareClass.sol";
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 
 import {AdminTargets} from "./targets/AdminTargets.sol";
@@ -53,10 +52,10 @@ abstract contract TargetFunctions is
         // console2.log("asset address: ", _getAsset());
 
         // defaults to pool admined by the admin actor (address(this))
-        poolId = poolManager_createPool(address(this), isoCode, singleShareClass);
+        poolId = poolManager_createPool(address(this), isoCode, multiShareClass);
         
         // create holding
-        scId = previewShareClassId(poolId);
+        scId = multiShareClass.previewNextShareClassId(poolId);
         AssetId assetId = newAssetId(isoCode);
         shortcut_add_share_class_and_holding(poolId, name, symbol, salt, data, scId, assetId, isIdentityValuation, prefix);
         
@@ -237,11 +236,17 @@ abstract contract TargetFunctions is
         // approve and revoke shares as the pool admin
         // revokes the shares that were issued in the deposit
         shortcut_approve_and_revoke_shares(
-            poolId, scId, isoCode, singleShareClass.totalIssuance(scId), navPerShare, isIdentityValuation
+            poolId, scId, isoCode, _getMultiShareClassMetrics(scId), navPerShare, isIdentityValuation
         );
+        
 
         // claim redemption as actor
         shortcut_claim_redemption(poolId, scId, isoCode);
+    }
+
+    function _getMultiShareClassMetrics(ShareClassId scId) internal view returns (uint128 totalIssuance) {
+        (totalIssuance,) = multiShareClass.metrics(scId);
+        return totalIssuance;
     }
 
     // deposit and cancel redemption in one call
@@ -302,7 +307,7 @@ abstract contract TargetFunctions is
         D18 newPrice
     ) public {
         PoolId poolId = newPoolId(poolRegistry.latestId());
-        ShareClassId scId = previewShareClassId(poolId);
+        ShareClassId scId = multiShareClass.previewNextShareClassId(poolId);
 
         AssetId assetId = newAssetId(isoCode);
         transientValuation_setPrice(assetId.addr(), poolRegistry.currency(poolId).addr(), newPrice);

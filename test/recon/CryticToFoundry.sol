@@ -8,7 +8,6 @@ import {TargetFunctions} from "./TargetFunctions.sol";
 
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
-import {previewShareClassId} from "src/pools/SingleShareClass.sol";
 import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
@@ -26,7 +25,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         poolManager_registerAsset(123);
 
         // create pool 
-        poolManager_createPool(address(this), 123, singleShareClass);
+        poolManager_createPool(address(this), 123, multiShareClass);
     }
 
     bytes32 INVESTOR = bytes32("Investor");
@@ -54,7 +53,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         poolManager_registerAsset(123);
 
         // create pool 
-        PoolId poolId = poolManager_createPool(address(this), 123, singleShareClass);
+        PoolId poolId = poolManager_createPool(address(this), 123, multiShareClass);
 
         return poolId;
     }
@@ -63,7 +62,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         poolId = _createPool();
 
         // request deposit
-        scId = previewShareClassId(poolId);
+        scId = multiShareClass.previewNextShareClassId(poolId);
         assetId = newAssetId(123);
 
         // necessary setup via the PoolRouter
