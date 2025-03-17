@@ -63,7 +63,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
 
     mapping(uint128 assetId => AssetIdKey) public idToAsset_;
     mapping(address asset => mapping(uint256 tokenId => uint128 assetId)) public assetToId;
-    mapping(uint64 poolId => mapping(address asset => bool)) allowedAssets;
 
     constructor(address escrow_, address trancheFactory_, address[] memory vaultFactories) Auth(msg.sender) {
         escrow = IEscrow(escrow_);
@@ -406,11 +405,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         returns (bool)
     {
         return _vaultToAsset[vault].isLinked;
-    }
-
-    /// @inheritdoc IPoolManager
-    function isAllowedAsset(uint64 poolId, address asset) public view override returns (bool) {
-        return allowedAssets[poolId][asset];
     }
 
     /// @inheritdoc IPoolManager

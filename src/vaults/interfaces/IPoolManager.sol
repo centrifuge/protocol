@@ -204,7 +204,4 @@ interface IPoolManager is IRecoverable {
 
     /// @notice Checks whether a given asset-vault pair is eligible for investing into a tranche of a pool
     function isLinked(uint64 poolId, bytes16 trancheId, address asset, address vault) external view returns (bool);
-
-    // TODO: TEMP for
-    function isAllowedAsset(uint64 poolId, address asset) external view returns (bool);
 }
