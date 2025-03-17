@@ -88,6 +88,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     }
 
     /// @inheritdoc IAdapter
+    /// @dev If called multiple times within the same transaction, the last refund address will be used
     function pay(uint32, /*chainId*/ bytes calldata, /* payload */ address refund_) public payable {
         gasPaid += msg.value;
         refund = refund_;
