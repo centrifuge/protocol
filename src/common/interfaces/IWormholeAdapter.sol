@@ -122,7 +122,7 @@ struct WormholeDestination {
 }
 
 interface IWormholeAdapter is IAdapter, IWormholeReceiver {
-    event File(bytes32 indexed what, uint16 wormholeID, uint32 centrifugeId, address source);
+    event File(bytes32 indexed what, uint16 wormholeId, uint32 centrifugeId, address source);
     event File(bytes32 indexed what, uint32 centrifugeId, uint16 wormholeId, address destination);
 
     error FileUnrecognizedParam();

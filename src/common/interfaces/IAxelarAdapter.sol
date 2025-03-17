@@ -37,21 +37,53 @@ interface IAxelarGasService {
     ) external payable;
 }
 
-interface IAxelarAdapter is IAdapter {
-    event File(bytes32 indexed what, uint256 value);
-
-    error FileUnrecognizedParam();
-    error NotApprovedByAxelarGateway();
-    error InvalidChain();
+// From
+// https://github.com/axelarnetwork/axelar-gmp-sdk-solidity/blob/00682b6c3db0cc922ec0c4ea3791852c93d7ae31/contracts/interfaces/IAxelarExecutable.sol#L14
+interface IAxelarExecutable {
+    /**
+     * @dev Thrown when a function is called with an invalid address.
+     */
     error InvalidAddress();
 
-    // --- Incoming ---
-    /// @notice Execute a message
-    /// @dev    Relies on Axelar to ensure messages cannot be executed more than once.
+    /**
+     * @dev Thrown when the call is not approved by the Axelar Gateway.
+     */
+    error NotApprovedByGateway();
+
+    /**
+     * @notice Executes the specified command sent from another chain.
+     * @dev This function is called by the Axelar Gateway to carry out cross-chain commands.
+     * Reverts if the call is not approved by the gateway or other checks fail.
+     * @param commandId The identifier of the command to execute.
+     * @param sourceChain The name of the source chain from where the command originated.
+     * @param sourceAddress The address on the source chain that sent the command.
+     * @param payload The payload of the command to be executed. This typically includes the function selector and
+     * encoded arguments.
+     */
     function execute(
         bytes32 commandId,
         string calldata sourceChain,
         string calldata sourceAddress,
         bytes calldata payload
     ) external;
+}
+
+struct AxelarSource {
+    uint32 centrifugeId;
+    address addr;
+}
+
+struct AxelarDestination {
+    string axelarId;
+    address addr;
+}
+
+interface IAxelarAdapter is IAdapter, IAxelarExecutable {
+    event File(bytes32 indexed what, string axelarId, uint32 centrifugeId, address source);
+    event File(bytes32 indexed what, uint32 centrifugeId, string axelarId, address destination);
+
+    error FileUnrecognizedParam();
+
+    function file(bytes32 what, string calldata axelarId, uint32 centrifugeId, address source) external;
+    function file(bytes32 what, uint32 centrifugeId, string calldata axelarId, address destination) external;
 }

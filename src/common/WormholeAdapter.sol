@@ -51,12 +51,12 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     function receiveWormholeMessages(
         bytes memory payload,
         bytes[] memory, /* additionalVaas */
-        bytes32 sourceAddr,
+        bytes32 sourceAddress,
         uint16 sourceWormholeId,
         bytes32 /* deliveryHash */
     ) external payable {
         WormholeSource memory source = sources[sourceWormholeId];
-        require(source.addr == sourceAddr.toAddressLeftPadded(), InvalidSource());
+        require(source.addr == sourceAddress.toAddressLeftPadded(), InvalidSource());
         require(msg.sender == address(relayer), NotWormholeRelayer());
 
         gateway.handle(source.centrifugeId, payload);
@@ -64,9 +64,9 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
 
     // --- Outgoing ---
     /// @inheritdoc IAdapter
-    function send(uint32 chainId, bytes calldata payload, uint256 gasLimit, address refund) external payable {
+    function send(uint32 centrifugeId, bytes calldata payload, uint256 gasLimit, address refund) external payable {
         require(msg.sender == address(gateway), NotGateway());
-        WormholeDestination memory destination = destinations[chainId];
+        WormholeDestination memory destination = destinations[centrifugeId];
         require(destination.wormholeId != 0, UnknownChainId());
 
         relayer.sendPayloadToEvm{value: msg.value}(
@@ -75,11 +75,11 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     }
 
     /// @inheritdoc IAdapter
-    function estimate(uint32 chainId, bytes calldata, uint256 gasLimit)
+    function estimate(uint32 centrifugeId, bytes calldata, uint256 gasLimit)
         public
         view
         returns (uint256 nativePriceQuote)
     {
-        (nativePriceQuote,) = relayer.quoteEVMDeliveryPrice(destinations[chainId].wormholeId, 0, gasLimit);
+        (nativePriceQuote,) = relayer.quoteEVMDeliveryPrice(destinations[centrifugeId].wormholeId, 0, gasLimit);
     }
 }

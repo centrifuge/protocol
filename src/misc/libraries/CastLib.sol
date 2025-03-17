@@ -15,6 +15,15 @@ library CastLib {
         return bytes32(uint256(uint160(addr)));
     }
 
+    function toAddress(string calldata addr) internal pure returns (address) {
+        require(bytes(addr).length == 20, "Input should be 20 bytes");
+        return address(bytes20(bytes(addr)));
+    }
+
+    function toString(address addr) internal pure returns (string memory) {
+        return string(abi.encodePacked(addr));
+    }
+
     function toBytes32(address addr) internal pure returns (bytes32) {
         return bytes32(bytes20(addr));
     }
