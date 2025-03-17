@@ -5,20 +5,20 @@ import {D18, d18} from "src/misc/types/D18.sol";
 
 import {ConversionLib} from "src/misc/libraries/ConversionLib.sol";
 import {TransientStorage} from "src/misc/libraries/TransientStorage.sol";
-
+import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
 
 import {BaseValuation} from "src/misc/BaseValuation.sol";
 
-contract TransientValuation is BaseValuation, ITransientValuation {
+contract TransientValuation is BaseValuation, ReentrancyProtection, ITransientValuation {
     using TransientStorage for bytes32;
 
     constructor(IERC6909MetadataExt erc6909, address deployer) BaseValuation(erc6909, deployer) {}
 
     /// @inheritdoc ITransientValuation
-    function setPrice(address base, address quote, D18 price) external {
+    function setPrice(address base, address quote, D18 price) external protected {
         bytes32 slot = keccak256(abi.encode(base, quote));
         slot.tstore(uint256(price.inner()));
     }
