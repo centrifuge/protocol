@@ -75,10 +75,6 @@ contract PassthroughAdapter is Auth, IAdapter {
         emit Route(sourceChain, sourceAddress, message);
     }
 
-    function send(uint32 chainId, bytes calldata payload) public {
-        send(chainId, payload, 0);
-    }
-
     /// @notice Execute message on centrifuge
     function executeOnCentrifuge(string calldata _sourceChain, string calldata _sourceAddress, bytes calldata payload)
         external

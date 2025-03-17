@@ -86,10 +86,6 @@ contract LocalAdapter is Auth, IAdapter {
         emit RouteToCentrifuge(FAKE_COMMAND_ID, sourceChain, sourceAddress, message);
     }
 
-    function send(uint32 chainId, bytes calldata payload) public {
-        send(chainId, payload, 0);
-    }
-
     function payNativeGasForContractCall(
         address sender,
         string calldata destinationChain,
