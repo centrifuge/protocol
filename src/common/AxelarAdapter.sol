@@ -78,7 +78,7 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
 
         string memory destinationAddress = destination.addr.toString();
         axelarGasService.payNativeGasForContractCall{value: msg.value}(
-            address(this), destination.axelarId, destination.addr.toString(), payload, refund
+            address(this), destination.axelarId, destinationAddress, payload, refund
         );
 
         axelarGateway.callContract(destination.axelarId, destinationAddress, payload);
