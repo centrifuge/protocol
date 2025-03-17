@@ -51,7 +51,6 @@ contract GatewayTest is Test {
         handler = new MockManager();
         gasService = new MockGasService();
         gateway = new Gateway(IRoot(address(root)), IGasService(address(gasService)));
-        gateway.file("payers", self, true);
         gateway.file("handler", address(handler));
         gasService.setReturn("shouldRefuel", true);
         vm.deal(address(gateway), INITIAL_BALANCE);
@@ -341,11 +340,6 @@ contract GatewayTest is Test {
     function testPrepayment() public {
         uint256 topUpAmount = 1 gwei;
 
-        gateway.file("payers", self, false);
-        vm.expectRevert(bytes("Gateway/only-payers-can-top-up"));
-        gateway.topUp{value: topUpAmount}();
-
-        gateway.file("payers", self, true);
         vm.expectRevert(bytes("Gateway/cannot-topup-with-nothing"));
         gateway.topUp{value: 0}();
 

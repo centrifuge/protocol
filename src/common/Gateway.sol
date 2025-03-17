@@ -48,9 +48,6 @@ contract Gateway is Auth, IGateway, IRecoverable {
     IAdapter[] public adapters;
 
     /// @inheritdoc IGateway
-    mapping(address payer => bool) public payers;
-
-    /// @inheritdoc IGateway
     mapping(IAdapter adapter => mapping(bytes32 messageHash => uint256 timestamp)) public recoveries;
 
     /// @notice Current batch messages pending to be sent
@@ -122,14 +119,6 @@ contract Gateway is Auth, IGateway, IRecoverable {
         else revert("Gateway/file-unrecognized-param");
 
         emit File(what, instance);
-    }
-
-    /// @inheritdoc IGateway
-    function file(bytes32 what, address payer, bool isAllowed) external auth {
-        if (what == "payers") payers[payer] = isAllowed;
-        else revert("Gateway/file-unrecognized-param");
-
-        emit File(what, payer, isAllowed);
     }
 
     /// @inheritdoc IRecoverable
@@ -338,20 +327,22 @@ contract Gateway is Auth, IGateway, IRecoverable {
         // - We're not in a multicall.
         // - Or we're in a multicall, but at least one message is required to be sent
         if (!isBatching || sendWasBuffered) {
-            require(payers[msg.sender], "Gateway/only-payers-can-top-up");
             require(msg.value != 0, "Gateway/cannot-topup-with-nothing");
             fuel = msg.value;
         }
     }
 
+    /// @inheritdoc IGateway
     function setPayableSource(address source) external {
         payableSource = source;
     }
 
+    /// @inheritdoc IGateway
     function startBatch() external {
         isBatching = true;
     }
 
+    /// @inheritdoc IGateway
     function endBatch() external {
         require(isBatching, NoBatched());
 

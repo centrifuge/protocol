@@ -126,6 +126,9 @@ contract Deployer is Script {
         investmentManager.rely(address(messageProcessor));
         root.rely(address(messageProcessor));
         gasService.rely(address(messageProcessor));
+
+        // Rely on VaultsRouter
+        gateway.rely(address(router));
     }
 
     function _file() public {
@@ -136,7 +139,6 @@ contract Deployer is Script {
         investmentManager.file("gateway", address(gateway));
         investmentManager.file("sender", address(messageProcessor));
 
-        gateway.file("payers", address(router), true);
         gateway.file("handler", address(messageProcessor));
     }
 
