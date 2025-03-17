@@ -313,8 +313,11 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
                 uint256 consumed = currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit);
 
-                uint256 value = consumed <= address(this).balance ? consumed : 0;
-                currentAdapter.send{value: value}(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this));
+                if (consumed <= address(this).balance) {
+                    currentAdapter.send{value: consumed}(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this));
+                } else {
+                    currentAdapter.send(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this));
+                }
             }
         } else {
             revert("Gateway/not-enough-gas-funds");

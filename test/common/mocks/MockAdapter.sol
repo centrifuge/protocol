@@ -23,7 +23,7 @@ contract MockAdapter is Auth, Mock, IAdapter {
     }
 
     function send(uint32, bytes calldata message, uint256 gasLimit, address) public payable {
-        callWithValue("pay", msg.value);
+        callWithValue("send", msg.value);
         values_bytes["send"] = message;
         sent[message]++;
     }
