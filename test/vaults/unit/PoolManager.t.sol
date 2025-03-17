@@ -163,7 +163,7 @@ contract PoolManagerTest is BaseTest {
         address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, vaultFactory);
 
         // Check Vault asset
-        (address asset_, bool isWrapper) = poolManager.getVaultAsset(vaultAddress);
+        (address asset_, bool isWrapper) = poolManager.vaultToAssetAddress(vaultAddress);
         assertEq(asset, asset_, "vault asset mismatch");
         assertEq(isWrapper, false);
 

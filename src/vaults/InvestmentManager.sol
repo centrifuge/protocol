@@ -135,7 +135,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
             vault_.poolId(),
             vault_.trancheId(),
             controller.toBytes32(),
-            poolManager.getVaultAssetId(address(vault_)),
+            poolManager.vaultToAssetId(address(vault_)),
             _assets
         );
 
@@ -186,7 +186,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
             vault_.poolId(),
             vault_.trancheId(),
             controller.toBytes32(),
-            poolManager.getVaultAssetId(address(vault_)),
+            poolManager.vaultToAssetId(address(vault_)),
             shares
         );
 
@@ -204,7 +204,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
 
         gateway.setPayableSource(source);
         sender.sendCancelDepositRequest(
-            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), poolManager.getVaultAssetId(address(vault_))
+            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), poolManager.vaultToAssetId(address(vault_))
         );
     }
 
@@ -224,7 +224,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
 
         gateway.setPayableSource(source);
         sender.sendCancelRedeemRequest(
-            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), poolManager.getVaultAssetId(address(vault_))
+            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), poolManager.vaultToAssetId(address(vault_))
         );
     }
 

@@ -191,16 +191,19 @@ interface IPoolManager is IRecoverable {
         returns (uint128 price, uint64 computedAt);
 
     /// @notice Function to get the vault's underlying asset
-    /// @dev    Function vaultToAsset which is a state variable getter could be used
-    ///         but in that case each caller MUST make sure they handle the case
-    ///         where a 0 address is returned. Using this method, that handling is done
-    ///         on the behalf the caller.
-    function getVaultAsset(address vault) external view returns (address asset, bool isWrapper);
+    /// @dev    Reverts if vault does not exist
+    ///
+    /// @param vault The address of the vault to be checked for
+    /// @return asset The address of the asset
+    /// @return isWrapper Whether the asset is a wrapper one
+    function vaultToAssetAddress(address vault) external view returns (address asset, bool isWrapper);
 
-    /// @notice Function to get the vault's underlying assetId
-    /// @dev    Function getVaultAssetId handles non-existing vault errors and provides the underlying assetId of a
-    /// vault
-    function getVaultAssetId(address vault) external view returns (uint128);
+    /// @notice Retrieve the underlying assetId of the vault
+    /// @dev    Reverts if vault does not exist
+    ///
+    /// @param vault The address of the vault to be checked for
+    /// @return assetId The uint128 assetId
+    function vaultToAssetId(address vault) external view returns (uint128 assetId);
 
     /// @notice Checks whether a given asset-vault pair is eligible for investing into a tranche of a pool
     function isLinked(uint64 poolId, bytes16 trancheId, address asset, address vault) external view returns (bool);

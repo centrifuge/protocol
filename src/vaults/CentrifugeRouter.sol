@@ -68,7 +68,7 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
     {
         require(owner == msg.sender || owner == address(this), "CentrifugeRouter/invalid-owner");
 
-        (address asset,) = poolManager.getVaultAsset(vault);
+        (address asset,) = poolManager.vaultToAssetAddress(vault);
         if (owner == address(this)) {
             _approveMax(asset, vault);
         }
@@ -86,7 +86,7 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
         require(owner == msg.sender || owner == address(this), "CentrifugeRouter/invalid-owner");
 
         lockedRequests[controller][vault] += amount;
-        (address asset,) = poolManager.getVaultAsset(vault);
+        (address asset,) = poolManager.vaultToAssetAddress(vault);
         SafeTransferLib.safeTransferFrom(asset, owner, address(escrow), amount);
 
         emit LockDepositRequest(vault, controller, owner, msg.sender, amount);
@@ -96,7 +96,7 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
     function enableLockDepositRequest(address vault, uint256 amount) external payable protected {
         enable(vault);
 
-        (address asset, bool isWrapper) = poolManager.getVaultAsset(vault);
+        (address asset, bool isWrapper) = poolManager.vaultToAssetAddress(vault);
         uint256 assetBalance = IERC20(asset).balanceOf(msg.sender);
         if (isWrapper && assetBalance < amount) {
             wrap(asset, amount, address(this), msg.sender);
@@ -112,7 +112,7 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
         require(lockedRequest != 0, "CentrifugeRouter/no-locked-balance");
         lockedRequests[msg.sender][vault] = 0;
 
-        (address asset,) = poolManager.getVaultAsset(vault);
+        (address asset,) = poolManager.vaultToAssetAddress(vault);
         escrow.approveMax(asset, address(this));
         SafeTransferLib.safeTransferFrom(asset, address(escrow), receiver, lockedRequest);
 
@@ -129,7 +129,7 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
         require(lockedRequest != 0, "CentrifugeRouter/no-locked-request");
         lockedRequests[controller][vault] = 0;
 
-        (address asset,) = poolManager.getVaultAsset(vault);
+        (address asset,) = poolManager.vaultToAssetAddress(vault);
 
         escrow.approveMax(asset, address(this));
         SafeTransferLib.safeTransferFrom(asset, address(escrow), address(this), lockedRequest);
@@ -180,7 +180,7 @@ contract CentrifugeRouter is Auth, Multicall, ICentrifugeRouter {
         _canClaim(vault, receiver, controller);
         uint256 maxWithdraw = IERC7540Vault(vault).maxWithdraw(controller);
 
-        (address asset, bool isWrapper) = poolManager.getVaultAsset(vault);
+        (address asset, bool isWrapper) = poolManager.vaultToAssetAddress(vault);
         if (isWrapper && controller != msg.sender) {
             // Auto-unwrap if permissionlessly claiming for another controller
             IERC7540Vault(vault).withdraw(maxWithdraw, address(this), controller);

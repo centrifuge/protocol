@@ -40,7 +40,7 @@ contract MockCentrifugeChain is Test {
                 target: bytes32(bytes20(address(poolManager))),
                 payload: MessageLib.UpdateContractVaultUpdate({
                     factory: address(0),
-                    assetId: poolManager.getVaultAssetId(vault),
+                    assetId: poolManager.vaultToAssetId(vault),
                     isLinked: false,
                     vault: vault
                 }).serialize()
@@ -56,7 +56,7 @@ contract MockCentrifugeChain is Test {
                 target: bytes32(bytes20(address(poolManager))),
                 payload: MessageLib.UpdateContractVaultUpdate({
                     factory: address(0),
-                    assetId: poolManager.getVaultAssetId(vault),
+                    assetId: poolManager.vaultToAssetId(vault),
                     isLinked: true,
                     vault: vault
                 }).serialize()

@@ -383,14 +383,14 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     }
 
     /// @inheritdoc IPoolManager
-    function getVaultAsset(address vault) public view override returns (address, bool) {
+    function vaultToAssetAddress(address vault) public view override returns (address, bool) {
         VaultAsset memory _asset = _vaultToAsset[vault];
         require(_asset.asset != address(0), "PoolManager/unknown-vault");
         return (_asset.asset, _asset.isWrapper);
     }
 
     /// @inheritdoc IPoolManager
-    function getVaultAssetId(address vault) public view override returns (uint128) {
+    function vaultToAssetId(address vault) public view override returns (uint128) {
         VaultAsset memory _asset = _vaultToAsset[vault];
         require(_asset.asset != address(0), "PoolManager/unknown-vault");
         return _asset.assetId;
