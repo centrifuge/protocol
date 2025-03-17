@@ -159,9 +159,10 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
             "PoolManager/invalid-hook"
         );
 
-        address[] memory trancheWards = new address[](2);
+        address[] memory trancheWards = new address[](1);
         trancheWards[0] = address(this);
-        trnacheWards[1] = address(balanceSheetManager);
+        // TODO: Fix this
+        // trnacheWards[1] = address(balanceSheetManager);
 
         address token = trancheFactory.newTranche(name, symbol, decimals, salt, trancheWards);
 

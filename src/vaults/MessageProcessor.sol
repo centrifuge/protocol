@@ -104,7 +104,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
     /// @inheritdoc IMessageProcessor
     function sendIncreaseHolding(
         uint64 poolId,
-        bytes16 shareClassId,
+        bytes16 scId,
         uint128 assetId,
         address provider,
         uint128 amount,
@@ -115,7 +115,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
     ) external auth {
         MessageLib.UpdateHolding memory data = MessageLib.UpdateHolding({
             poolId: poolId,
-            scId: shareClassId,
+            scId: scId,
             assetId: assetId,
             who: provider.toBytes32(),
             amount: amount,
@@ -133,7 +133,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
     /// @inheritdoc IMessageProcessor
     function sendDecreaseHolding(
         uint64 poolId,
-        bytes16 shareClassId,
+        bytes16 scId,
         uint128 assetId,
         address receiver,
         uint128 amount,
@@ -144,7 +144,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
     ) external auth {
         MessageLib.UpdateHolding memory data = MessageLib.UpdateHolding({
             poolId: poolId,
-            scId: shareClassId,
+            scId: scId,
             assetId: assetId,
             who: receiver.toBytes32(),
             amount: amount,
@@ -160,7 +160,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
     }
 
     /// @notice Creates and send the message
-    function sendIssueShares(uint64 poolId, bytes16 shareClassId, address receiver, uint128 shares, uint256 timestamp)
+    function sendIssueShares(uint64 poolId, bytes16 scId, address receiver, uint128 shares, uint256 timestamp)
         external
     {
         gateway.send(
@@ -177,7 +177,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
     }
 
     /// @notice Creates and send the message
-    function sendRevokeShares(uint64 poolId, bytes16 shareClassId, address provider, uint128 shares, uint256 timestamp)
+    function sendRevokeShares(uint64 poolId, bytes16 scId, address provider, uint128 shares, uint256 timestamp)
         external
     {
         gateway.send(
@@ -196,7 +196,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
     /// @notice Creates and send the message
     function sendJournalEntry(
         uint64 poolId,
-        bytes16 shareClassId,
+        bytes16 scId,
         JournalEntry[] calldata debits,
         JournalEntry[] calldata credits
     ) external {

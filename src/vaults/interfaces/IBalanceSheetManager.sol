@@ -1,15 +1,44 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {D18} from "src/misc/types/D18.sol";
+import {D18, d18} from "src/misc/types/D18.sol";
 
 import {JournalEntry} from "src/common/types/JournalEntry.sol";
 
 struct Noted {
     uint128 amount;
-    address valuation;
+    bytes32 encoded;
+    bool asAllowance;
     Meta m;
 }
+
+/// @dev Easy way to construct a decimal number
+function isRawPrice(Noted memory n) pure returns (bool) {
+    // TODO: Fix retrieving price from bytes32
+    return true;
+}
+
+function isValuation(Noted memory n) pure returns (bool) {
+    // TODO: Fix retrieving price from bytes32
+    return true;
+}
+
+function asRawPrice(Noted memory n) pure returns (D18) {
+    // TODO: Fix retrieving price from bytes32
+    return d18(1);
+}
+
+function asValuation(Noted memory n) pure returns (address) {
+    // TODO: Fix retrieving valuation from bytes32
+    return address(uint160(uint256(0)));
+}
+
+function allowance(Noted memory n) pure returns (bool) {
+    // TODO: Fix retrieving allowance from bytes32
+    return false;
+}
+
+using {asValuation, asRawPrice, isRawPrice, isValuation, allowance} for Noted global;
 
 struct Meta {
     uint64 timestamp;
@@ -30,7 +59,7 @@ interface IBalanceSheetManager {
         address asset,
         uint256 tokenId,
         uint128 amount,
-        D18 pricePerUnit,
+        bytes32 valuation,
         uint64 timestamp,
         JournalEntry[] debits,
         JournalEntry[] credits
@@ -42,7 +71,7 @@ interface IBalanceSheetManager {
         address asset,
         uint256 tokenId,
         uint128 amount,
-        D18 pricePerUnit,
+        bytes32 valuation,
         uint64 timestamp,
         JournalEntry[] debits,
         JournalEntry[] credits

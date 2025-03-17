@@ -116,7 +116,7 @@ library MessageLib {
         (89 << uint8(MessageType.TriggerRedeemRequest) * 8) +
         (120 << uint8(MessageType.UpdateHolding) * 8) +
         (81 << uint8(MessageType.UpdateShares) * 8) +
-        (29 << uint8(MessageType.UpdateJoural) * 8);
+        (29 << uint8(MessageType.UpdateJournal) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -1081,7 +1081,7 @@ library MessageLib {
         JournalEntry[] credits;
     }
 
-    function deserializeUpdateJournal(bytes memory data) internal pure returns (UpdateHolding memory) {
+    function deserializeUpdateJournal(bytes memory data) internal pure returns (UpdateJournal memory) {
         require(messageType(data) == MessageType.UpdateJournal, UnknownMessageType());
 
         uint16 debitsLength = data.toUint16(25);

@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {Auth} from "src/misc/Auth.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
-import {D18} from "src/misc/types/D18.sol";
+import {D18, d18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
@@ -71,10 +71,12 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint256 tokenId,
         address provider,
         uint128 amount,
-        D18 pricePerUnit,
+        IERC7726 valuation,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
-        _deposit(poolId, scId, poolManager.assetToId(asset), asset, tokenId, provider, amount, pricePerUnit, m);
+        _deposit(
+            poolId, scId, poolManager.assetToId(asset), asset, tokenId, provider, amount, _getPrice(valuation, asset), m
+        );
     }
 
     function deposit(
@@ -83,18 +85,19 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint128 assetId,
         address provider,
         uint128 amount,
-        D18 pricePerUnit,
+        IERC7726 valuation,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
+        address asset = poolManager.idToAsset(assetId);
         _deposit(
             poolId,
             scId,
             assetId,
-            poolManager.idToAsset(assetId),
+            asset,
             0, // TODO: Fix this when pool manager returns tokenId
             provider,
             amount,
-            pricePerUnit,
+            _getPrice(valuation, asset),
             m
         );
     }
@@ -110,19 +113,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
         _withdraw(
-            poolId,
-            scId,
-            poolManager.assetToId(asset),
-            asset,
-            tokenId,
-            receiver,
-            amount,
-            valuation.getQuote(
-                1 * poolManager.poolDecimals(poolId),
-                poolManager.poolCurrency(poolId),
-                asset /* TODO: tokenId compatible */
-            ),
-            m
+            poolId, scId, poolManager.assetToId(asset), asset, tokenId, receiver, amount, _getPrice(valuation, asset), m
         );
     }
 
@@ -145,11 +136,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
             0, // TODO: Fix this when pool manager returns tokenId
             receiver,
             amount,
-            valuation.getQuote(
-                1 * poolManager.poolDecimals(poolId),
-                poolManager.poolCurrency(poolId),
-                asset /* TODO: tokenId compatible */
-            ),
+            _getPrice(valuation, asset),
             m
         );
     }
@@ -164,7 +151,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
             ITranche(token).mint(address(this), shares);
             IERC20(token).approve(address(to), shares);
         } else {
-            IERC20(token).mint(address(to), shares);
+            ITranche(token).mint(address(to), shares);
         }
 
         sender.sendIssueShares(poolId, scId, to, shares, block.timestamp);
@@ -193,13 +180,13 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint128 assetId,
         address receiver,
         uint128 amount,
-        IERC7726 valuation,
+        bytes32 encoded,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
         Noted storage noted = notedWithdraw[poolId][scId][receiver][assetId];
 
         noted.amount = amount;
-        noted.valuation = valuation;
+        noted.encoded = encoded;
         noted.m = m;
 
         if (noted.amount == 0) {
@@ -215,7 +202,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
             poolManager.idToAsset(assetId),
             0, /* TODO: Fix once ERC6909 is in */
             amount,
-            pricePerUnit,
+            encoded,
             m.timestamp,
             m.debits,
             m.credits
@@ -228,14 +215,13 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint128 assetId,
         address provider,
         uint128 amount,
-        IERC7726 valuation,
+        bytes32 encoded,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
         Noted storage noted = notedDeposit[poolId][scId][provider][assetId];
 
         noted.amount = amount;
-        noted.valuation = valuation;
-
+        noted.encoded = encoded;
         noted.m = m;
 
         if (noted.amount == 0) {
@@ -251,7 +237,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
             poolManager.idToAsset(assetId),
             0, /* TODO: Fix once ERC6909 is in */
             amount,
-            pricePerUnit,
+            encoded,
             m.timestamp,
             m.debits,
             m.credits
@@ -271,20 +257,16 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
             // noted.m.timestamp = block.timestamp;
         }
 
+        D18 pricePerUnit;
+        if (noted.isRawPrice()) {
+            pricePerUnit = noted.asRawPrice();
+        } else {
+            // TODO: Check cast?
+            pricePerUnit = _getPrice(noted.asValuation(), asset);
+        }
+
         _withdraw(
-            poolId,
-            scId,
-            assetId,
-            asset,
-            tokenId,
-            receiver,
-            noted.amount,
-            noted.valuation.getQuote(
-                1 * poolManager.poolDecimals(poolId),
-                poolManager.poolCurrency(poolId),
-                asset /* TODO: tokenId compatible */
-            ),
-            noted.m
+            poolId, scId, assetId, asset, tokenId, receiver, noted.amount, pricePerUnit, noted.allowance(), noted.m
         );
     }
 
@@ -299,19 +281,25 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         }
 
         address asset = poolManager.idToAsset(assetId);
+
+        D18 pricePerUnit;
+        if (noted.isRawPrice()) {
+            pricePerUnit = noted.asRawPrice();
+        } else {
+            // TODO: Check cast?
+            pricePerUnit = _getPrice(noted.asValuation(), asset);
+        }
+
         _withdraw(
             poolId,
             scId,
             assetId,
-            poolManager.idToAsset(assetId),
-            0, /* TODO: Fix once ERC6909 is in */
+            asset,
+            0, // TODO: Fix this when pool manager returns tokenId
             receiver,
             noted.amount,
-            noted.valuation.getQuote(
-                1 * poolManager.poolDecimals(poolId),
-                poolManager.poolCurrency(poolId),
-                asset /* TODO: tokenId compatible */
-            ),
+            pricePerUnit,
+            noted.allowance(),
             noted.m
         );
     }
@@ -329,21 +317,15 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
             // noted.m.timestamp = block.timestamp;
         }
 
-        _deposit(
-            poolId,
-            scId,
-            assetId,
-            asset,
-            tokenId,
-            provider,
-            noted.amount,
-            noted.valuation.getQuote(
-                1 * poolManager.poolDecimals(poolId),
-                poolManager.poolCurrency(poolId),
-                asset /* TODO: tokenId compatible */
-            ),
-            noted.m
-        );
+        D18 pricePerUnit;
+        if (noted.isRawPrice()) {
+            pricePerUnit = noted.asRawPrice();
+        } else {
+            // TODO: Check cast?
+            pricePerUnit = _getPrice(noted.asValuation(), asset);
+        }
+
+        _deposit(poolId, scId, assetId, asset, tokenId, provider, noted.amount, pricePerUnit, noted.m);
     }
 
     function executeNotedDeposit(uint64 poolId, bytes16 scId, uint128 assetId, address provider) external {
@@ -357,19 +339,22 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         }
 
         address asset = poolManager.idToAsset(assetId);
+        D18 pricePerUnit;
+        if (noted.isRawPrice()) {
+            pricePerUnit = noted.asRawPrice();
+        } else {
+            pricePerUnit = _getPrice(noted.asValuation(), asset);
+        }
+
         _deposit(
             poolId,
             scId,
             assetId,
             asset,
-            0, /* TODO: Fix once ERC6909 is in */
+            0, /* TODO: Fix this when pool manager returns tokenId */
             provider,
             noted.amount,
-            noted.valuation.getQuote(
-                1 * poolManager.poolDecimals(poolId),
-                poolManager.poolCurrency(poolId),
-                asset /* TODO: tokenId compatible */
-            ),
+            pricePerUnit,
             noted.m
         );
     }
@@ -398,7 +383,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
             }
         } else {
             if (asAllowance) {
-                IERC6909(asset).transferFrom(address(escrow), recaddress(this), tokenId, amount);
+                IERC6909(asset).transferFrom(address(escrow), address(this), tokenId, amount);
                 IERC6909(asset).approve(receiver, tokenId, amount);
             } else {
                 IERC6909(asset).transferFrom(address(escrow), receiver, tokenId, amount);
@@ -437,5 +422,18 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         );
 
         emit Deposit(poolId, scId, asset, tokenId, provider, amount, pricePerUnit, m.timestamp, m.debits, m.credits);
+    }
+
+    function _getPrice(address valuation, address asset) internal view returns (D18) {
+        // TODO: Check cast?
+        return d18(
+            uint128(
+                IERC7726(valuation).getQuote(
+                    1, // TODO: Fix this - e.g. 1 * poolManager.poolDecimals(poolId),
+                    address(0), // TODO: Fix this - e.g. poolManager.poolCurrency(poolId),
+                    asset /* TODO: tokenId compatible */
+                )
+            )
+        );
     }
 }
