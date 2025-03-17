@@ -324,9 +324,8 @@ contract Gateway is Auth, IGateway, IRecoverable {
     /// @inheritdoc IGateway
     function topUp() external payable {
         // We only require the top up if:
-        // - We're not in a multicall.
         // - Or we're in a multicall, but at least one message is required to be sent
-        if (!isBatching || sendWasBuffered) {
+        if (sendWasBuffered) {
             require(msg.value != 0, "Gateway/cannot-topup-with-nothing");
             fuel = msg.value;
         }

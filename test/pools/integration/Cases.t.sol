@@ -152,7 +152,9 @@ contract TestCases is Deployer, Test {
 
         vm.prank(ANY);
         vm.deal(ANY, GAS);
-        poolRouter.claimDeposit{value: GAS}(poolId, scId, USDC_C2, INVESTOR);
+        cs = (new bytes[](1));
+        cs[0] = abi.encodeWithSelector(poolRouter.claimDeposit.selector, poolId, scId, USDC_C2, INVESTOR);
+        poolRouter.multicall{value: GAS}(cs);
 
         MessageLib.FulfilledDepositRequest memory m0 = MessageLib.deserializeFulfilledDepositRequest(cv.lastMessages(0));
         assertEq(m0.poolId, poolId.raw());
@@ -183,7 +185,9 @@ contract TestCases is Deployer, Test {
 
         vm.prank(ANY);
         vm.deal(ANY, GAS);
-        poolRouter.claimRedeem{value: GAS}(poolId, scId, USDC_C2, INVESTOR);
+        cs = (new bytes[](1));
+        cs[0] = abi.encodeWithSelector(poolRouter.claimRedeem.selector, poolId, scId, USDC_C2, INVESTOR);
+        poolRouter.multicall{value: GAS}(cs);
 
         MessageLib.FulfilledRedeemRequest memory m0 = MessageLib.deserializeFulfilledRedeemRequest(cv.lastMessages(0));
         assertEq(m0.poolId, poolId.raw());

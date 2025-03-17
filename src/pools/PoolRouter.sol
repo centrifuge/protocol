@@ -69,7 +69,6 @@ contract PoolRouter is Multicall, IPoolRouter {
         payable
         protected
     {
-        _pay();
         poolManager.claimDeposit(poolId, scId, assetId, investor);
     }
 
@@ -79,7 +78,6 @@ contract PoolRouter is Multicall, IPoolRouter {
         payable
         protected
     {
-        _pay();
         poolManager.claimRedeem(poolId, scId, assetId, investor);
     }
 
@@ -209,12 +207,5 @@ contract PoolRouter is Multicall, IPoolRouter {
     /// @inheritdoc IPoolRouter
     function addCredit(AccountId account, uint128 amount) external payable protected {
         poolManager.addCredit(account, amount);
-    }
-
-    /// @notice Send native tokens to the gateway for transaction payment if it's not in a multicall.
-    function _pay() internal {
-        if (!gateway.isBatching()) {
-            gateway.topUp{value: msg.value}();
-        }
     }
 }

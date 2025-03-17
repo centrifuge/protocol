@@ -89,7 +89,6 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
             _approveMax(asset, vault);
         }
 
-        _pay();
         IERC7540Vault(vault).requestDeposit(amount, controller, owner);
     }
 
@@ -146,7 +145,6 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
         escrow.approveMax(asset, address(this));
         SafeTransferLib.safeTransferFrom(asset, address(escrow), address(this), lockedRequest);
 
-        _pay();
         _approveMax(asset, vault);
         IERC7540Vault(vault).requestDeposit(lockedRequest, controller, address(this));
         emit ExecuteLockedDepositRequest(vault, controller, msg.sender);
@@ -161,7 +159,6 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
 
     /// @inheritdoc IVaultRouter
     function cancelDepositRequest(address vault) external payable protected {
-        _pay();
         IERC7540Vault(vault).cancelDepositRequest(REQUEST_ID, msg.sender);
     }
 
@@ -183,7 +180,6 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
         protected
     {
         require(owner == msg.sender || owner == address(this), "VaultRouter/invalid-owner");
-        _pay();
         IERC7540Vault(vault).requestRedeem(amount, controller, owner);
     }
 
@@ -204,7 +200,6 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
 
     /// @inheritdoc IVaultRouter
     function cancelRedeemRequest(address vault) external payable protected {
-        _pay();
         IERC7540Vault(vault).cancelRedeemRequest(REQUEST_ID, msg.sender);
     }
 
@@ -223,7 +218,6 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
     {
         SafeTransferLib.safeTransferFrom(IERC7540Vault(vault).share(), msg.sender, address(this), amount);
         _approveMax(IERC7540Vault(vault).share(), address(poolManager));
-        _pay();
         IPoolManager(poolManager).transferTrancheTokens(
             IERC7540Vault(vault).poolId(), IERC7540Vault(vault).trancheId(), chainId, recipient, amount
         );
@@ -294,13 +288,6 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
     function _approveMax(address token, address spender) internal {
         if (IERC20(token).allowance(address(this), spender) == 0) {
             SafeTransferLib.safeApprove(token, spender, type(uint256).max);
-        }
-    }
-
-    /// @notice Send native tokens to the gateway for transaction payment if it's not in a multicall.
-    function _pay() internal {
-        if (!gateway.isBatching()) {
-            gateway.topUp{value: msg.value}();
         }
     }
 
