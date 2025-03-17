@@ -56,7 +56,8 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     MockGateway gateway;
 
     bytes[] internal queuedCalls; // used for storing calls to PoolRouter to be executed in a single transaction
-    
+    PoolId[] internal createdPools;
+
     // Canaries
     bool poolCreated;
     bool deposited;

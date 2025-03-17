@@ -43,9 +43,9 @@ abstract contract PoolManagerTargets is
         AssetId assetId_ = newAssetId(isoCode); 
         
         poolId = poolManager.createPool(admin, assetId_, shareClassManager);
-
         poolCreated = true;
-        
+        createdPools.push(poolId);
+
         return poolId;
     }
 
