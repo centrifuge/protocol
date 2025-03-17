@@ -266,13 +266,9 @@ abstract contract TargetFunctions is
 
         // request redemption
         poolManager_redeemRequest(poolId, scId, isoCode, shareAmount);
-        
-        // approve and revoke shares as the pool admin
-        // shortcut_approve_and_revoke_shares(
-        //     poolId, scId, isoCode, singleShareClass.totalIssuance(scId), navPerShare, isIdentityValuation
-        // );
 
-        poolRouter_approveRedeems(scId, isoCode, maxApproval);
+        // TODO: this is a hack to avoid revoke more than issued, could maybe just pass in totalIssuance_ here
+        poolRouter_approveRedeems(scId, isoCode, maxApproval / 2);
         poolRouter_revokeShares(scId, isoCode, navPerShare, isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation)));
         poolRouter_execute_clamped(poolId);
 
@@ -280,7 +276,7 @@ abstract contract TargetFunctions is
         poolManager_cancelRedeemRequest(poolId, scId, isoCode);
     }
 
-    function shortcut_update_holding(
+    function shortcut_create_pool_and_update_holding(
         uint8 decimals,
         uint32 isoCode,
         string memory name, 
@@ -288,23 +284,29 @@ abstract contract TargetFunctions is
         bytes32 salt, 
         bytes memory data,
         bool isIdentityValuation,
-        uint24 prefix
+        uint24 prefix,
+        D18 newPrice
     ) public {
         (PoolId poolId, ShareClassId scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
     
         AssetId assetId = newAssetId(isoCode);
+        transientValuation_setPrice(assetId.addr(), assetId.addr(), newPrice);
+
         poolRouter_updateHolding(scId, assetId);
         poolRouter_execute_clamped(poolId);
     }
 
-    // update holding for most recent poolId
+    // change price and update holding for most recent poolId
     function shortcut_update_holding(
-        uint32 isoCode
+        uint32 isoCode, 
+        D18 newPrice
     ) public {
         PoolId poolId = newPoolId(poolRegistry.latestId());
         ShareClassId scId = previewShareClassId(poolId);
 
         AssetId assetId = newAssetId(isoCode);
+        transientValuation_setPrice(assetId.addr(), poolRegistry.currency(poolId).addr(), newPrice);
+
         poolRouter_updateHolding(scId, assetId);
         poolRouter_execute_clamped(poolId);
     }
