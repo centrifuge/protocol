@@ -173,10 +173,6 @@ contract MockCentrifugeChain is Test {
         );
     }
 
-    function updateCentrifugeGasPrice(uint128 price, uint64 computedAt) public {
-        execute(MessageLib.UpdateGasPrice({price: price, timestamp: computedAt}).serialize());
-    }
-
     function triggerIncreaseRedeemOrder(
         uint64 poolId,
         bytes16 trancheId,

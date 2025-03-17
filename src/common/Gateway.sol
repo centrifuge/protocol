@@ -287,8 +287,8 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
         require(adapters.length != 0, "Gateway/not-initialized");
 
-        uint256 messageCost = gasService.estimate(chainId, message);
-        uint256 proofCost = gasService.estimate(chainId, proof);
+        uint256 messageGasLimit = gasService.estimate(chainId, message);
+        uint256 proofGasLimit = gasService.estimate(chainId, proof);
 
         if (fuel != 0) {
             uint256 tank = fuel;
@@ -297,13 +297,12 @@ contract Gateway is Auth, IGateway, IRecoverable {
                 bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
                 bytes memory payload = isPrimaryAdapter ? message : proof;
 
-                uint256 consumed = currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageCost : proofCost);
+                uint256 consumed = currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit);
 
                 require(consumed <= tank, "Gateway/not-enough-gas-funds");
                 tank -= consumed;
 
-                currentAdapter.pay{value: consumed}(chainId, payload, address(this));
-                currentAdapter.send(chainId, payload);
+                currentAdapter.send{value: consumed}(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this));
             }
             fuel = 0;
         } else if (gasService.shouldRefuel(payableSource, message)) {
@@ -312,13 +311,13 @@ contract Gateway is Auth, IGateway, IRecoverable {
                 bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
                 bytes memory payload = isPrimaryAdapter ? message : proof;
 
-                uint256 consumed = currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageCost : proofCost);
+                uint256 consumed = currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit);
 
                 if (consumed <= address(this).balance) {
-                    currentAdapter.pay{value: consumed}(chainId, payload, address(this));
+                    currentAdapter.send{value: consumed}(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this));
+                } else {
+                    currentAdapter.send(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this));
                 }
-
-                currentAdapter.send(chainId, payload);
             }
         } else {
             revert("Gateway/not-enough-gas-funds");
@@ -367,13 +366,13 @@ contract Gateway is Auth, IGateway, IRecoverable {
         returns (uint256[] memory perAdapter, uint256 total)
     {
         bytes memory proof = MessageLib.MessageProof({hash: keccak256(payload)}).serialize();
-        uint256 messageCost = gasService.estimate(chainId, payload);
-        uint256 proofCost = gasService.estimate(chainId, proof);
+        uint256 messageGasLimit = gasService.estimate(chainId, payload);
+        uint256 proofGasLimit = gasService.estimate(chainId, proof);
         perAdapter = new uint256[](adapters.length);
 
         uint256 adaptersCount = adapters.length;
         for (uint256 i; i < adaptersCount; i++) {
-            uint256 centrifugeCost = i == PRIMARY_ADAPTER_ID - 1 ? messageCost : proofCost;
+            uint256 centrifugeCost = i == PRIMARY_ADAPTER_ID - 1 ? messageGasLimit : proofGasLimit;
             bytes memory message = i == PRIMARY_ADAPTER_ID - 1 ? payload : proof;
             uint256 estimated = IAdapter(adapters[i]).estimate(chainId, message, centrifugeCost);
             perAdapter[i] = estimated;

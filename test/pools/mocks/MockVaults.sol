@@ -73,7 +73,7 @@ contract MockVaults is Test, IAdapter {
         );
     }
 
-    function send(uint32 chainId, bytes memory data) external {
+    function send(uint32 chainId, bytes memory data, uint256, address) external payable {
         lastChainDestinations.push(chainId);
 
         while (data.length > 0) {
@@ -87,8 +87,6 @@ contract MockVaults is Test, IAdapter {
     }
 
     function estimate(uint32 chainId, bytes calldata payload, uint256 baseCost) external view returns (uint256) {}
-
-    function pay(uint32 chainId, bytes calldata payload, address refund) external payable {}
 
     function resetMessages() external {
         delete lastChainDestinations;

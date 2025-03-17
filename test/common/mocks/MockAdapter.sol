@@ -22,7 +22,8 @@ contract MockAdapter is Auth, Mock, IAdapter {
         gateway.handle(1, _message);
     }
 
-    function send(uint32, bytes calldata message) public {
+    function send(uint32, bytes calldata message, uint256, address) public payable {
+        callWithValue("send", msg.value);
         values_bytes["send"] = message;
         sent[message]++;
     }
@@ -31,9 +32,6 @@ contract MockAdapter is Auth, Mock, IAdapter {
         estimation = values_uint256_return["estimate"] + baseCost;
     }
 
-    function pay(uint32, bytes calldata, address) external payable {
-        callWithValue("pay", msg.value);
-    }
     // Added to be ignored in coverage report
 
     function test() public {}

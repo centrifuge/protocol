@@ -47,10 +47,8 @@ contract Deployer is Script {
             "DEPLOYMENT_SALT", keccak256(abi.encodePacked(string(abi.encodePacked(blockhash(block.number - 1)))))
         );
 
-        uint64 messageCost = uint64(vm.envOr("MESSAGE_COST", uint256(20000000000000000))); // in Weight
-        uint64 proofCost = uint64(vm.envOr("PROOF_COST", uint256(20000000000000000))); // in Weigth
-        uint128 gasPrice = uint128(vm.envOr("GAS_PRICE", uint256(2500000000000000000))); // Centrifuge Chain
-        uint256 tokenPrice = vm.envOr("TOKEN_PRICE", uint256(178947400000000)); // CFG/ETH
+        uint64 messageGasLimit = uint64(vm.envOr("MESSAGE_COST", uint256(20000000000000000))); // in Weight
+        uint64 proofGasLimit = uint64(vm.envOr("PROOF_COST", uint256(20000000000000000))); // in Weigth
 
         escrow = new Escrow{salt: salt}(deployer);
         routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(salt, "escrow2"))}(deployer);
@@ -65,7 +63,7 @@ contract Deployer is Script {
         vaultFactories[0] = vaultFactory;
 
         poolManager = new PoolManager(address(escrow), trancheFactory, vaultFactories);
-        gasService = new GasService(messageCost, proofCost, gasPrice, tokenPrice);
+        gasService = new GasService(messageGasLimit, proofGasLimit);
         gateway = new Gateway(root, gasService);
         messageProcessor = new MessageProcessor(gateway, poolManager, investmentManager, root, gasService, deployer);
         router = new CentrifugeRouter(address(routerEscrow), address(gateway), address(poolManager));
