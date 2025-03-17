@@ -56,6 +56,9 @@ interface IPoolManager {
     /// sender' as string value.
     function file(bytes32 what, address data) external;
 
+    /// @notice Main method to unlock the pool and call the rest of the admin methods
+    function execute(PoolId poolId, bytes[] calldata data) external payable;
+
     /// @notice unlock a pool
     function unlock(PoolId poolId, address admin) external;
 

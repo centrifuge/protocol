@@ -7,6 +7,8 @@ import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
+import {IGateway} from "src/common/interfaces/IGateway.sol";
+
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
 import {AccountId} from "src/pools/types/AccountId.sol";
@@ -30,8 +32,9 @@ contract TestCommon is Test {
     IAccounting immutable accounting = IAccounting(makeAddr("Accounting"));
     IAssetRegistry immutable assetRegistry = IAssetRegistry(makeAddr("AssetRegistry"));
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
+    IGateway immutable gateway = IGateway(makeAddr("Gateway"));
 
-    PoolManager poolManager = new PoolManager(poolRegistry, assetRegistry, accounting, holdings, address(this));
+    PoolManager poolManager = new PoolManager(poolRegistry, assetRegistry, accounting, holdings, gateway, address(this));
 
     function setUp() public {
         vm.mockCall(
