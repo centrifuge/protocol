@@ -9,11 +9,11 @@ import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 import "test/vaults/BaseTest.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 import "src/vaults/interfaces/IERC7540.sol";
-import {CentrifugeRouter} from "src/vaults/CentrifugeRouter.sol";
+import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
 import {MockReentrantERC20Wrapper1, MockReentrantERC20Wrapper2} from "test/vaults/mocks/MockReentrantERC20Wrapper.sol";
 
-contract CentrifugeRouterTest is BaseTest {
+contract VaultRouterTest is BaseTest {
     uint32 constant CHAIN_ID = 1;
     uint256 constant GAS_BUFFER = 10 gwei;
     /// @dev Payload is not taken into account during gas estimation
@@ -41,32 +41,32 @@ contract CentrifugeRouterTest is BaseTest {
         erc20.mint(self, amount);
 
         vm.expectRevert(bytes("Gateway/cannot-topup-with-nothing"));
-        router.requestDeposit(vault_, amount, self, self, 0);
+        router.requestDeposit(vault_, amount, self, self);
 
         vm.expectRevert(bytes("ERC7540Vault/invalid-owner"));
-        router.requestDeposit{value: 1 wei}(vault_, amount, self, self, 1 wei);
+        router.requestDeposit{value: 1 wei}(vault_, amount, self, self);
 
         router.enable(vault_);
         vm.expectRevert(bytes("InvestmentManager/transfer-not-allowed"));
-        router.requestDeposit{value: 1 wei}(vault_, amount, self, self, 1 wei);
+        router.requestDeposit{value: 1 wei}(vault_, amount, self, self);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
 
         uint256 gas = estimateGas() + GAS_BUFFER;
 
         vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
-        router.requestDeposit{value: gas}(vault_, amount, self, self, gas);
+        router.requestDeposit{value: gas}(vault_, amount, self, self);
         erc20.approve(vault_, amount);
 
         address nonOwner = makeAddr("NonOwner");
         vm.deal(nonOwner, 10 ether);
         vm.prank(nonOwner);
-        vm.expectRevert(bytes("CentrifugeRouter/invalid-owner"));
-        router.requestDeposit{value: gas}(vault_, amount, self, self, gas);
+        vm.expectRevert(bytes("VaultRouter/invalid-owner"));
+        router.requestDeposit{value: gas}(vault_, amount, self, self);
 
         if (snap) {
-            snapStart("CentrifugeRouter_requestDeposit");
+            snapStart("VaultRouter_requestDeposit");
         }
-        router.requestDeposit{value: gas}(vault_, amount, self, self, gas);
+        router.requestDeposit{value: gas}(vault_, amount, self, self);
         if (snap) {
             snapEnd();
         }
@@ -96,7 +96,7 @@ contract CentrifugeRouterTest is BaseTest {
         assertEq(tranche.balanceOf(address(escrow)), tranchePayout);
 
         if (snap) {
-            snapStart("CentrifugeRouter_claimDeposit");
+            snapStart("VaultRouter_claimDeposit");
         }
         router.claimDeposit(vault_, self, self);
         if (snap) {
@@ -156,7 +156,7 @@ contract CentrifugeRouterTest is BaseTest {
         vm.label(randomAddress, "randomAddress");
         vm.deal(randomAddress, 10 ether);
         vm.startPrank(randomAddress);
-        router.executeLockedDepositRequest{value: fuel}(vault_, address(this), fuel);
+        router.executeLockedDepositRequest{value: fuel}(vault_, address(this));
         vm.stopPrank();
 
         uint128 assetId = poolManager.assetToId(address(erc20));
@@ -197,7 +197,7 @@ contract CentrifugeRouterTest is BaseTest {
         erc20.approve(vault_, amount);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
         if (snap) {
-            snapStart("CentrifugeRouter_enable");
+            snapStart("VaultRouter_enable");
         }
         router.enable(vault_);
         if (snap) {
@@ -205,7 +205,7 @@ contract CentrifugeRouterTest is BaseTest {
         }
 
         uint256 fuel = estimateGas();
-        router.requestDeposit{value: fuel}(vault_, amount, self, self, fuel);
+        router.requestDeposit{value: fuel}(vault_, amount, self, self);
 
         uint128 assetId = poolManager.assetToId(address(erc20));
         (uint128 tranchePayout) = fulfillDepositRequest(vault, assetId, amount, self);
@@ -216,14 +216,14 @@ contract CentrifugeRouterTest is BaseTest {
         address nonOwner = makeAddr("NonOwner");
         vm.deal(nonOwner, 10 ether);
         vm.prank(nonOwner);
-        vm.expectRevert(bytes("CentrifugeRouter/invalid-owner"));
-        router.requestRedeem{value: fuel}(vault_, tranchePayout, self, self, fuel);
+        vm.expectRevert(bytes("VaultRouter/invalid-owner"));
+        router.requestRedeem{value: fuel}(vault_, tranchePayout, self, self);
 
         // redeem
         if (snap) {
-            snapStart("CentrifugeRouter_requestRedeem");
+            snapStart("VaultRouter_requestRedeem");
         }
-        router.requestRedeem{value: fuel}(vault_, tranchePayout, self, self, fuel);
+        router.requestRedeem{value: fuel}(vault_, tranchePayout, self, self);
         if (snap) {
             snapEnd();
         }
@@ -249,8 +249,8 @@ contract CentrifugeRouterTest is BaseTest {
         router.enable(address(vault1));
         router.enable(address(vault2));
 
-        router.requestDeposit{value: fuel}(address(vault1), amount1, self, self, fuel);
-        router.requestDeposit{value: fuel}(address(vault2), amount2, self, self, fuel);
+        router.requestDeposit{value: fuel}(address(vault1), amount1, self, self);
+        router.requestDeposit{value: fuel}(address(vault2), amount2, self, self);
 
         // trigger - deposit order fulfillment
         uint128 assetId1 = poolManager.assetToId(address(erc20X));
@@ -290,8 +290,8 @@ contract CentrifugeRouterTest is BaseTest {
         router.enable(address(vault1));
         router.enable(address(vault2));
 
-        router.requestDeposit{value: fuel}(address(vault1), amount1, self, self, fuel);
-        router.requestDeposit{value: fuel}(address(vault2), amount2, self, self, fuel);
+        router.requestDeposit{value: fuel}(address(vault1), amount1, self, self);
+        router.requestDeposit{value: fuel}(address(vault2), amount2, self, self);
 
         uint128 assetId1 = poolManager.assetToId(address(erc20X));
         uint128 assetId2 = poolManager.assetToId(address(erc20Y));
@@ -303,8 +303,8 @@ contract CentrifugeRouterTest is BaseTest {
         // redeem
         ITranche(address(vault1.share())).approve(address(router), tranchePayout1);
         ITranche(address(vault2.share())).approve(address(router), tranchePayout2);
-        router.requestRedeem{value: fuel}(address(vault1), tranchePayout1, self, self, fuel);
-        router.requestRedeem{value: fuel}(address(vault2), tranchePayout2, self, self, fuel);
+        router.requestRedeem{value: fuel}(address(vault1), tranchePayout1, self, self);
+        router.requestRedeem{value: fuel}(address(vault2), tranchePayout2, self, self);
         (uint128 assetPayout1) = fulfillRedeemRequest(vault1, assetId1, tranchePayout1, self);
         (uint128 assetPayout2) = fulfillRedeemRequest(vault2, assetId2, tranchePayout2, self);
         assertApproxEqAbs(ITranche(address(vault1.share())).balanceOf(self), 0, 1);
@@ -346,7 +346,7 @@ contract CentrifugeRouterTest is BaseTest {
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
         router.enable(address(vault_));
         if (snap) {
-            snapStart("CentrifugeRouter_lockDepositRequest");
+            snapStart("VaultRouter_lockDepositRequest");
         }
         router.lockDepositRequest(vault_, amount, self, self);
         if (snap) {
@@ -382,7 +382,7 @@ contract CentrifugeRouterTest is BaseTest {
         router.enable(vault_);
 
         uint256 fuel = estimateGas();
-        router.requestDeposit{value: fuel}(vault_, amount, self, self, fuel);
+        router.requestDeposit{value: fuel}(vault_, amount, self, self);
 
         uint128 assetId = poolManager.assetToId(address(erc20));
         (uint128 tranchePayout) = fulfillDepositRequest(vault, assetId, amount, self);
@@ -415,8 +415,8 @@ contract CentrifugeRouterTest is BaseTest {
 
         uint256 gas = estimateGas();
         bytes[] memory calls = new bytes[](2);
-        calls[0] = abi.encodeWithSelector(router.requestDeposit.selector, vault1, amount1, self, self, gas);
-        calls[1] = abi.encodeWithSelector(router.requestDeposit.selector, vault2, amount2, self, self, gas);
+        calls[0] = abi.encodeWithSelector(router.requestDeposit.selector, vault1, amount1, self, self);
+        calls[1] = abi.encodeWithSelector(router.requestDeposit.selector, vault2, amount2, self, self);
         router.multicall{value: gas * calls.length}(calls);
 
         // trigger - deposit order fulfillment
@@ -526,7 +526,7 @@ contract CentrifugeRouterTest is BaseTest {
         vm.deal(investor, 10 ether);
         uint256 fuel = estimateGas();
         router.wrap(address(wrapper), amount, address(router), investor);
-        router.requestDeposit{value: fuel}(address(vault), amount, investor, address(router), fuel);
+        router.requestDeposit{value: fuel}(address(vault), amount, investor, address(router));
     }
 
     function testWrapAndAutoUnwrapOnRedeem(uint256 amount) public {
@@ -553,7 +553,7 @@ contract CentrifugeRouterTest is BaseTest {
         // Anyone else can execute the request and claim the deposit
         uint256 fuel = estimateGas();
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
-        router.executeLockedDepositRequest{value: fuel}(vault_, investor, fuel);
+        router.executeLockedDepositRequest{value: fuel}(vault_, investor);
         uint128 assetId = poolManager.assetToId(address(wrapper));
         (uint128 tranchePayout) = fulfillDepositRequest(vault, assetId, amount, investor);
 
@@ -564,7 +564,7 @@ contract CentrifugeRouterTest is BaseTest {
         vm.deal(investor, 10 ether);
         vm.startPrank(investor);
         tranche.approve(address(router), tranchePayout);
-        router.requestRedeem{value: fuel}(vault_, tranchePayout, investor, investor, fuel);
+        router.requestRedeem{value: fuel}(vault_, tranchePayout, investor, investor);
         vm.stopPrank();
 
         // Anyone else claims the redeem
@@ -658,7 +658,7 @@ contract CentrifugeRouterTest is BaseTest {
         assertEq(erc20.balanceOf(self), 0);
 
         // Testing with empty balance for both wrapped and underlying
-        vm.expectRevert(bytes("CentrifugeRouter/zero-balance"));
+        vm.expectRevert(bytes("VaultRouter/zero-balance"));
         router.enableLockDepositRequest(vault_, wrappedAmount);
     }
 
@@ -680,31 +680,20 @@ contract CentrifugeRouterTest is BaseTest {
         uint256 lessGas = gasLimit - 1;
 
         vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        router.requestDeposit(vault_, amount, self, self, 0);
-
-        vm.expectRevert("CentrifugeRouter/insufficient-funds");
-        router.requestDeposit{value: lessGas}(vault_, amount, self, self, gasLimit);
+        router.requestDeposit(vault_, amount, self, self);
 
         vm.expectRevert("Gateway/not-enough-gas-funds");
-        router.requestDeposit{value: lessGas}(vault_, amount, self, self, lessGas);
+        router.requestDeposit{value: lessGas}(vault_, amount, self, self);
 
         vm.expectRevert("PoolManager/unknown-vault");
-        router.requestDeposit{value: lessGas}(makeAddr("maliciousVault"), amount, self, self, lessGas);
-
-        vm.expectRevert("PoolManager/unknown-vault");
-        router.requestDeposit{value: lessGas}(makeAddr("maliciousVault"), amount, self, self, lessGas);
+        router.requestDeposit{value: lessGas}(makeAddr("maliciousVault"), amount, self, self);
 
         bytes[] memory calls = new bytes[](2);
-        calls[0] = abi.encodeWithSelector(router.requestDeposit.selector, vault_, amount / 2, self, self, gasLimit);
-        calls[1] = abi.encodeWithSelector(router.requestDeposit.selector, vault_, amount / 2, self, self, gasLimit);
+        calls[0] = abi.encodeWithSelector(router.requestDeposit.selector, vault_, amount / 2, self, self);
+        calls[1] = abi.encodeWithSelector(router.requestDeposit.selector, vault_, amount / 2, self, self);
 
-        vm.expectRevert("CentrifugeRouter/insufficient-funds");
-        router.multicall{value: gasLimit}(calls);
-
-        uint256 coverMoreThanItIsNeeded = gasLimit * calls.length + 1;
         assertEq(address(router).balance, 0);
-        router.multicall{value: coverMoreThanItIsNeeded}(calls);
-        assertEq(address(router).balance, 1);
+        router.multicall{value: gasLimit}(calls);
     }
 
     // --- helpers ---

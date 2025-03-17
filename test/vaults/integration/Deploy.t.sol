@@ -141,7 +141,6 @@ contract DeployTest is Test, Deployer {
         assertEq(address(investmentManager.gateway()), address(gateway));
 
         assertEq(address(gateway.adapters(0)), address(adapter));
-        assertTrue(gateway.payers(address(router)));
     }
 
     function testEndorsements() public view {

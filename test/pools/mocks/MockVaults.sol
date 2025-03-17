@@ -86,10 +86,16 @@ contract MockVaults is Test, IAdapter {
         }
     }
 
-    function estimate(uint32 chainId, bytes calldata payload, uint256 baseCost) external view returns (uint256) {}
+    function estimate(uint32, bytes calldata, uint256 baseCost) external pure returns (uint256) {
+        return baseCost;
+    }
 
     function resetMessages() external {
         delete lastChainDestinations;
         delete lastMessages;
+    }
+
+    function messageCount() external view returns (uint256) {
+        return lastMessages.length;
     }
 }

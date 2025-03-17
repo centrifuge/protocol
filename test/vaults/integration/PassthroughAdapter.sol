@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 interface PrecompileLike {
