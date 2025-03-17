@@ -395,7 +395,7 @@ contract GatewayTest is Test {
 
         for (uint256 i; i < threeMockAdapters.length; i++) {
             MockAdapter currentAdapter = MockAdapter(address(threeMockAdapters[i]));
-            uint256[] memory metadata = currentAdapter.callsWithValue("pay");
+            uint256[] memory metadata = currentAdapter.callsWithValue("send");
             assertEq(metadata.length, 1);
             assertEq(metadata[0], tranches[i]);
 
@@ -427,7 +427,7 @@ contract GatewayTest is Test {
 
         for (uint256 i; i < threeMockAdapters.length; i++) {
             MockAdapter currentAdapter = MockAdapter(address(threeMockAdapters[i]));
-            uint256[] memory metadata = currentAdapter.callsWithValue("pay");
+            uint256[] memory metadata = currentAdapter.callsWithValue("send");
             assertEq(metadata.length, 1);
             assertEq(metadata[0], tranches[i]);
 
@@ -457,7 +457,7 @@ contract GatewayTest is Test {
 
         for (uint256 i; i < threeMockAdapters.length; i++) {
             MockAdapter currentAdapter = MockAdapter(address(threeMockAdapters[i]));
-            uint256[] memory metadata = currentAdapter.callsWithValue("pay");
+            uint256[] memory metadata = currentAdapter.callsWithValue("send");
             assertEq(metadata.length, 1);
             assertEq(metadata[0], tranches[i]);
 
@@ -487,18 +487,19 @@ contract GatewayTest is Test {
 
         assertEq(gasService.calls("shouldRefuel"), 1);
 
-        uint256[] memory r1Metadata = adapter1.callsWithValue("pay");
+        uint256[] memory r1Metadata = adapter1.callsWithValue("send");
         assertEq(r1Metadata.length, 1);
         assertEq(r1Metadata[0], tranches[0]);
         assertEq(adapter1.sent(message), 1);
 
-        uint256[] memory r2Metadata = adapter2.callsWithValue("pay");
+        uint256[] memory r2Metadata = adapter2.callsWithValue("send");
         assertEq(r2Metadata.length, 1);
         assertEq(r2Metadata[0], tranches[1]);
         assertEq(adapter2.sent(proof), 1);
 
-        uint256[] memory r3Metadata = adapter3.callsWithValue("pay");
-        assertEq(r3Metadata.length, 0);
+        uint256[] memory r3Metadata = adapter3.callsWithValue("send");
+        assertEq(r3Metadata.length, 1);
+        assertEq(r3Metadata[0], 0);
         assertEq(adapter3.sent(proof), 1);
 
         assertEq(address(gateway).balance, balanceBeforeTx - fundsToCoverTwoAdaptersOnly);
@@ -520,16 +521,19 @@ contract GatewayTest is Test {
 
         assertEq(gasService.calls("shouldRefuel"), 1);
 
-        uint256[] memory r1Metadata = adapter1.callsWithValue("pay");
-        assertEq(r1Metadata.length, 0);
+        uint256[] memory r1Metadata = adapter1.callsWithValue("send");
+        assertEq(r1Metadata.length, 1);
+        assertEq(r1Metadata[0], 0);
         assertEq(adapter1.sent(message), 1);
 
-        uint256[] memory r2Metadata = adapter2.callsWithValue("pay");
-        assertEq(r2Metadata.length, 0);
+        uint256[] memory r2Metadata = adapter2.callsWithValue("send");
+        assertEq(r2Metadata.length, 1);
+        assertEq(r2Metadata[0], 0);
         assertEq(adapter2.sent(proof), 1);
 
-        uint256[] memory r3Metadata = adapter3.callsWithValue("pay");
-        assertEq(r3Metadata.length, 0);
+        uint256[] memory r3Metadata = adapter3.callsWithValue("send");
+        assertEq(r3Metadata.length, 1);
+        assertEq(r3Metadata[0], 0);
         assertEq(adapter3.sent(proof), 1);
 
         assertEq(_quota(), 0);

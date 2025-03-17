@@ -58,9 +58,7 @@ contract TestCases is Deployer, Test {
     }
 
     function _configGasPrice() private {
-        gasService.file("messageCost", GAS);
-        gasService.updateGasPrice(1e18, uint64(block.timestamp) + 1);
-        gasService.updateTokenPrice(1e18);
+        gasService.file("messageGasLimit", GAS);
     }
 
     function setUp() public {

@@ -115,13 +115,6 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
             } else {
                 revert InvalidMessage(uint8(kind));
             }
-        } else if (cat == MessageCategory.Gas) {
-            if (kind == MessageType.UpdateGasPrice) {
-                MessageLib.UpdateGasPrice memory m = message.deserializeUpdateGasPrice();
-                gasService.updateGasPrice(m.price, m.timestamp);
-            } else {
-                revert InvalidMessage(uint8(kind));
-            }
         } else if (cat == MessageCategory.Pool) {
             if (kind == MessageType.RegisterAsset) {
                 // TODO: This must be removed

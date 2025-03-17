@@ -15,8 +15,6 @@ enum MessageType {
     ScheduleUpgrade,
     CancelUpgrade,
     RecoverTokens,
-    // -- Gas messages 7
-    UpdateGasPrice,
     // -- Pool manager messages 8 - 18
     RegisterAsset,
     NotifyPool,
@@ -59,7 +57,6 @@ enum MessageCategory {
     Invalid,
     Gateway,
     Root,
-    Gas,
     Pool,
     Investment,
     Other
@@ -82,7 +79,6 @@ library MessageLib {
         (33 << uint8(MessageType.ScheduleUpgrade) * 8) +
         (33 << uint8(MessageType.CancelUpgrade) * 8) +
         (129 << uint8(MessageType.RecoverTokens) * 8) +
-        (25 << uint8(MessageType.UpdateGasPrice) * 8) +
         (37 << uint8(MessageType.RegisterAsset) * 8) + //TODO: modify to 178 when registerAsset feature is merged
         (9 << uint8(MessageType.NotifyPool) * 8) +
         (250 << uint8(MessageType.NotifyShareClass) * 8) +
@@ -132,11 +128,9 @@ library MessageLib {
             return MessageCategory.Gateway;
         } else if (code >= 4 && code <= 6) {
             return MessageCategory.Root;
-        } else if (code == 7) {
-            return MessageCategory.Gas;
-        } else if (code >= 8 && code <= 18) {
+        } else if (code >= 7 && code <= 17) {
             return MessageCategory.Pool;
-        } else if (code >= 19 && code <= 27) {
+        } else if (code >= 18 && code <= 26) {
             return MessageCategory.Investment;
         } else {
             return MessageCategory.Other;
@@ -269,24 +263,6 @@ library MessageLib {
 
     function serialize(RecoverTokens memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(MessageType.RecoverTokens, t.target, t.token, t.to, t.amount);
-    }
-
-    //---------------------------------------
-    //    UpdateGasPrice
-    //---------------------------------------
-
-    struct UpdateGasPrice {
-        uint128 price;
-        uint64 timestamp;
-    }
-
-    function deserializeUpdateGasPrice(bytes memory data) internal pure returns (UpdateGasPrice memory) {
-        require(messageType(data) == MessageType.UpdateGasPrice, UnknownMessageType());
-        return UpdateGasPrice({price: data.toUint128(1), timestamp: data.toUint64(17)});
-    }
-
-    function serialize(UpdateGasPrice memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.UpdateGasPrice, t.price, t.timestamp);
     }
 
     //---------------------------------------

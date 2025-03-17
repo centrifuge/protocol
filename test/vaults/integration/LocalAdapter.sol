@@ -78,9 +78,9 @@ contract LocalAdapter is Auth, IAdapter {
     }
 
     // --- Outgoing ---
-    /// @inheritdoc IMessageSender
+    /// @inheritdoc IAdapter
     /// @dev From LP on Centrifuge (faking other domain) to Centrifuge
-    function send(uint32, bytes calldata message) public {
+    function send(uint32, bytes calldata message, uint256, address) public payable {
         PrecompileLike precompile = PrecompileLike(PRECOMPILE);
         precompile.execute(FAKE_COMMAND_ID, sourceChain, sourceAddress, message);
 
@@ -104,11 +104,6 @@ contract LocalAdapter is Auth, IAdapter {
     /// @inheritdoc IAdapter
     function estimate(uint32, bytes calldata, uint256) external pure returns (uint256) {
         return 0;
-    }
-
-    /// @inheritdoc IAdapter
-    function pay(uint32, bytes calldata, address) public payable {
-        return;
     }
 
     // Added to be ignored in coverage report

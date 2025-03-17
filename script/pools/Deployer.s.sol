@@ -47,7 +47,7 @@ contract Deployer is Script {
 
     function deploy() public {
         root = new Root(delay, address(this));
-        gasService = new GasService(0, 0, 0, 0); // TODO: Configure properly
+        gasService = new GasService(0, 0); // TODO: Configure properly
         gateway = new Gateway(root, gasService);
 
         poolRegistry = new PoolRegistry(address(this));

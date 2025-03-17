@@ -69,10 +69,10 @@ contract PassthroughAdapter is Auth, IAdapter {
     }
 
     /// --- Outgoing ---
-    /// @inheritdoc IMessageSender
+    /// @inheritdoc IAdapter
     /// @notice From other domain to Centrifuge. Just emits an event.
     ///         Just used on EVM domains.
-    function send(uint32, bytes calldata message) public {
+    function send(uint32, bytes calldata message, uint256, address) public payable {
         emit Route(sourceChain, sourceAddress, message);
     }
 
@@ -98,11 +98,6 @@ contract PassthroughAdapter is Auth, IAdapter {
     /// @inheritdoc IAdapter
     function estimate(uint32, bytes calldata, uint256) external pure returns (uint256) {
         return 0;
-    }
-
-    /// @inheritdoc IAdapter
-    function pay(uint32, bytes calldata, address) public payable {
-        return;
     }
 
     // Added to be ignored in coverage report
