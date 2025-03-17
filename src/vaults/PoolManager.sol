@@ -123,8 +123,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         string memory symbol;
         uint8 decimals;
 
-        require(asset.code.length > 0, "PoolManager/invalid-asset-contract");
-
         decimals = _safeGetAssetDecimals(asset, tokenId);
         require(decimals >= MIN_DECIMALS, "PoolManager/too-few-asset-decimals");
         require(decimals <= MAX_DECIMALS, "PoolManager/too-many-asset-decimals");

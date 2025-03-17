@@ -713,7 +713,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
     }
 
     function testRegisterAsset_invalidContract(uint256 tokenId) public {
-        vm.expectRevert("PoolManager/invalid-asset-contract");
+        vm.expectRevert("PoolManager/asset-missing-decimals");
         poolManager.registerAsset(address(0), tokenId, defaultChainId);
     }
 
