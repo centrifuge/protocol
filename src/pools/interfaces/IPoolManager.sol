@@ -166,7 +166,10 @@ interface IPoolManager {
 
     /// @notice Compute the escrow address used for a share class
     /// @return The escrow address
-    function escrow(PoolId poolId, ShareClassId scId, EscrowId escrow_) external returns (address);
+    function escrow(PoolId poolId, ShareClassId scId, EscrowId escrow_) external view returns (address);
+
+    /// @notice Tells which pool is unlocked
+    function unlockedPoolId() external view returns (PoolId);
 }
 
 /// @notice Interface for methods called by the gateway

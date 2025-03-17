@@ -37,7 +37,23 @@ contract PoolRouter is Multicall, IPoolRouter {
             gateway.startBatch();
         }
 
-        super.multicall(data);
+        if (poolManager.unlockedPoolId().isNull()) {
+            super.multicall(data);
+        } else {
+            // Calling from execute will use poolManager as target
+            uint256 totalBytes = data.length;
+            for (uint256 i; i < totalBytes; ++i) {
+                (bool success, bytes memory returnData) = address(poolManager).call(data[i]);
+                if (!success) {
+                    uint256 length = returnData.length;
+                    require(length != 0, CallFailedWithEmptyRevert());
+
+                    assembly ("memory-safe") {
+                        revert(add(32, returnData), length)
+                    }
+                }
+            }
+        }
 
         if (!wasBatching) {
             gateway.topUp{value: msg.value}();
@@ -81,134 +97,6 @@ contract PoolRouter is Multicall, IPoolRouter {
     {
         _pay();
         poolManager.claimRedeem(poolId, scId, assetId, investor);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function notifyPool(uint32 chainId) external payable protected {
-        poolManager.notifyPool(chainId);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function notifyShareClass(uint32 chainId, ShareClassId scId, bytes32 hook) external payable protected {
-        poolManager.notifyShareClass(chainId, scId, hook);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function setPoolMetadata(bytes calldata metadata) external payable protected {
-        poolManager.setPoolMetadata(metadata);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function allowPoolAdmin(address account, bool allow) external payable protected {
-        poolManager.allowPoolAdmin(account, allow);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function allowAsset(ShareClassId scId, AssetId assetId, bool allow) external payable protected {
-        poolManager.allowAsset(scId, assetId, allow);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function addShareClass(string calldata name, string calldata symbol, bytes32 salt, bytes calldata data)
-        external
-        payable
-        protected
-    {
-        poolManager.addShareClass(name, symbol, salt, data);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function approveDeposits(ShareClassId scId, AssetId paymentAssetId, uint128 maxApproval, IERC7726 valuation)
-        external
-        payable
-        protected
-    {
-        poolManager.approveDeposits(scId, paymentAssetId, maxApproval, valuation);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function approveRedeems(ShareClassId scId, AssetId payoutAssetId, uint128 maxApproval) external payable protected {
-        poolManager.approveRedeems(scId, payoutAssetId, maxApproval);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function issueShares(ShareClassId scId, AssetId depositAssetId, D18 navPerShare) external payable protected {
-        poolManager.issueShares(scId, depositAssetId, navPerShare);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function revokeShares(ShareClassId scId, AssetId payoutAssetId, D18 navPerShare, IERC7726 valuation)
-        external
-        payable
-        protected
-    {
-        poolManager.revokeShares(scId, payoutAssetId, navPerShare, valuation);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint24 prefix)
-        external
-        payable
-        protected
-    {
-        poolManager.createHolding(scId, assetId, valuation, prefix);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function increaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount)
-        external
-        payable
-        protected
-    {
-        poolManager.increaseHolding(scId, assetId, valuation, amount);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function decreaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount)
-        external
-        payable
-        protected
-    {
-        poolManager.decreaseHolding(scId, assetId, valuation, amount);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function updateHolding(ShareClassId scId, AssetId assetId) external payable protected {
-        poolManager.updateHolding(scId, assetId);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function updateHoldingValuation(ShareClassId scId, AssetId assetId, IERC7726 valuation)
-        external
-        payable
-        protected
-    {
-        poolManager.updateHoldingValuation(scId, assetId, valuation);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function setHoldingAccountId(ShareClassId scId, AssetId assetId, AccountId accountId) external payable protected {
-        poolManager.setHoldingAccountId(scId, assetId, accountId);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function createAccount(AccountId account, bool isDebitNormal) external payable protected {
-        poolManager.createAccount(account, isDebitNormal);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function setAccountMetadata(AccountId account, bytes calldata metadata) external payable protected {
-        poolManager.setAccountMetadata(account, metadata);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function addDebit(AccountId account, uint128 amount) external payable protected {
-        poolManager.addDebit(account, amount);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function addCredit(AccountId account, uint128 amount) external payable protected {
-        poolManager.addCredit(account, amount);
     }
 
     /// @notice Send native tokens to the gateway for transaction payment if it's not in a multicall.

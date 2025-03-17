@@ -101,11 +101,11 @@ contract TestCases is Deployer, Test {
         scId = multiShareClass.previewNextShareClassId(poolId);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](5), 0);
-        cs[c++] = abi.encodeWithSelector(poolRouter.setPoolMetadata.selector, bytes("Testing pool"));
-        cs[c++] = abi.encodeWithSelector(poolRouter.addShareClass.selector, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
-        cs[c++] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
-        cs[c++] = abi.encodeWithSelector(poolRouter.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
-        cs[c++] = abi.encodeWithSelector(poolRouter.createHolding.selector, scId, USDC_C2, identityValuation, 0x01);
+        cs[c++] = abi.encodeWithSelector(poolManager.setPoolMetadata.selector, bytes("Testing pool"));
+        cs[c++] = abi.encodeWithSelector(poolManager.addShareClass.selector, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
+        cs[c++] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_CV);
+        cs[c++] = abi.encodeWithSelector(poolManager.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
+        cs[c++] = abi.encodeWithSelector(poolManager.createHolding.selector, scId, USDC_C2, identityValuation, 0x01);
         //TODO: CAL update contract here
         assertEq(c, cs.length);
 
@@ -140,9 +140,9 @@ contract TestCases is Deployer, Test {
 
         (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
         cs[c++] = abi.encodeWithSelector(
-            poolRouter.approveDeposits.selector, scId, USDC_C2, APPROVED_INVESTOR_AMOUNT, valuation
+            poolManager.approveDeposits.selector, scId, USDC_C2, APPROVED_INVESTOR_AMOUNT, valuation
         );
-        cs[c++] = abi.encodeWithSelector(poolRouter.issueShares.selector, scId, USDC_C2, NAV_PER_SHARE);
+        cs[c++] = abi.encodeWithSelector(poolManager.issueShares.selector, scId, USDC_C2, NAV_PER_SHARE);
         assertEq(c, cs.length);
 
         vm.prank(FM);
@@ -172,8 +172,8 @@ contract TestCases is Deployer, Test {
         IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
-        cs[c++] = abi.encodeWithSelector(poolRouter.approveRedeems.selector, scId, USDC_C2, APPROVED_SHARE_AMOUNT);
-        cs[c++] = abi.encodeWithSelector(poolRouter.revokeShares.selector, scId, USDC_C2, NAV_PER_SHARE, valuation);
+        cs[c++] = abi.encodeWithSelector(poolManager.approveRedeems.selector, scId, USDC_C2, APPROVED_SHARE_AMOUNT);
+        cs[c++] = abi.encodeWithSelector(poolManager.revokeShares.selector, scId, USDC_C2, NAV_PER_SHARE, valuation);
         assertEq(c, cs.length);
 
         vm.prank(FM);
@@ -202,7 +202,7 @@ contract TestCases is Deployer, Test {
         PoolId poolId = poolRouter.createPool(USD, multiShareClass);
 
         bytes[] memory cs = new bytes[](1);
-        cs[0] = abi.encodeWithSelector(poolRouter.setPoolMetadata.selector, "");
+        cs[0] = abi.encodeWithSelector(poolManager.setPoolMetadata.selector, "");
 
         poolRouter.execute(poolId, cs);
 
@@ -217,7 +217,7 @@ contract TestCases is Deployer, Test {
         PoolId poolId = poolRouter.createPool(USD, multiShareClass);
 
         bytes[] memory cs = new bytes[](1);
-        cs[0] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
+        cs[0] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_CV);
 
         vm.expectRevert(bytes("Gateway/cannot-topup-with-nothing"));
         poolRouter.execute(poolId, cs);
@@ -240,7 +240,7 @@ contract TestCases is Deployer, Test {
         PoolId poolB = poolRouter.createPool(USD, multiShareClass);
 
         bytes[] memory innerCalls = new bytes[](1);
-        innerCalls[0] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
+        innerCalls[0] = abi.encodeWithSelector(poolManager.notifyPool.selector, CHAIN_CV);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
         cs[c++] = abi.encodeWithSelector(poolRouter.execute.selector, poolA, innerCalls);
