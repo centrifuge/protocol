@@ -84,7 +84,7 @@ contract GasService is IGasService, Auth {
     }
 
     /// @inheritdoc IGasService
-    function shouldRefuel(address, bytes calldata) public pure returns (bool success) {
-        success = true;
+    function shouldRefuel(address source, bytes calldata) public pure returns (bool success) {
+        return source != address(0);
     }
 }

@@ -40,7 +40,6 @@ contract PoolRouter is Multicall, IPoolRouter {
         super.multicall(data);
 
         if (!wasBatching) {
-            gateway.setPayableSource(msg.sender);
             gateway.topUp{value: msg.value}();
             gateway.endBatch();
         }
@@ -71,7 +70,6 @@ contract PoolRouter is Multicall, IPoolRouter {
         protected
     {
         _pay();
-        gateway.setPayableSource(msg.sender);
         poolManager.claimDeposit(poolId, scId, assetId, investor);
     }
 
@@ -82,7 +80,6 @@ contract PoolRouter is Multicall, IPoolRouter {
         protected
     {
         _pay();
-        gateway.setPayableSource(msg.sender);
         poolManager.claimRedeem(poolId, scId, assetId, investor);
     }
 
