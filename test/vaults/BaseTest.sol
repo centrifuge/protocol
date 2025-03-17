@@ -6,9 +6,12 @@ import "src/misc/interfaces/IERC20.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {ISafe} from "src/common/interfaces/IGuardian.sol";
+import {Root} from "src/common/Root.sol";
+import {Gateway} from "src/common/Gateway.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 // core contracts
-import {Root} from "src/common/Root.sol";
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
@@ -17,15 +20,14 @@ import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
-import {Gateway} from "src/vaults/gateway/Gateway.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
 import {Deployer} from "script/vaults/Deployer.sol";
-import {MockSafe} from "test/vaults/mocks/MockSafe.sol";
 
 // mocks
 import {MockCentrifugeChain} from "test/vaults/mocks/MockCentrifugeChain.sol";
-import {MockGasService} from "test/vaults/mocks/MockGasService.sol";
-import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
+import {MockGasService} from "test/common/mocks/MockGasService.sol";
+import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
+import {MockSafe} from "test/vaults/mocks/MockSafe.sol";
 
 // test env
 import "forge-std/Test.sol";
@@ -37,7 +39,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
     MockAdapter adapter1;
     MockAdapter adapter2;
     MockAdapter adapter3;
-    address[] testAdapters;
+    IAdapter[] testAdapters;
     ERC20 public erc20;
 
     address self = address(this);
@@ -59,31 +61,31 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         // make yourself owner of the adminSafe
         address[] memory pausers = new address[](1);
         pausers[0] = self;
-        adminSafe = address(new MockSafe(pausers, 1));
+        adminSafe = new MockSafe(pausers, 1);
 
         // deploy core contracts
         deploy(address(this));
 
         // deploy mock adapters
 
-        adapter1 = new MockAdapter(address(gateway));
-        adapter2 = new MockAdapter(address(gateway));
-        adapter3 = new MockAdapter(address(gateway));
+        adapter1 = new MockAdapter(gateway);
+        adapter2 = new MockAdapter(gateway);
+        adapter3 = new MockAdapter(gateway);
 
         adapter1.setReturn("estimate", uint256(1 gwei));
         adapter2.setReturn("estimate", uint256(1.25 gwei));
         adapter3.setReturn("estimate", uint256(1.75 gwei));
 
-        testAdapters.push(address(adapter1));
-        testAdapters.push(address(adapter2));
-        testAdapters.push(address(adapter3));
+        testAdapters.push(adapter1);
+        testAdapters.push(adapter2);
+        testAdapters.push(adapter3);
 
         // wire contracts
-        wire(address(adapter1));
+        wire(adapter1);
         // remove deployer access
         // removeDeployerAccess(address(adapter)); // need auth permissions in tests
 
-        centrifugeChain = new MockCentrifugeChain(testAdapters);
+        centrifugeChain = new MockCentrifugeChain(testAdapters, poolManager);
         mockedGasService = new MockGasService();
         erc20 = _newErc20("X's Dollar", "USDX", 6);
 
@@ -104,14 +106,14 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         vm.label(address(adapter3), "MockAdapter3");
         vm.label(address(erc20), "ERC20");
         vm.label(address(centrifugeChain), "CentrifugeChain");
-        vm.label(address(router), "CentrifugeRouter");
+        vm.label(address(router), "VaultRouter");
         vm.label(address(gasService), "GasService");
         vm.label(address(mockedGasService), "MockGasService");
         vm.label(address(escrow), "Escrow");
         vm.label(address(routerEscrow), "RouterEscrow");
         vm.label(address(guardian), "Guardian");
         vm.label(address(poolManager.trancheFactory()), "TrancheFactory");
-        vm.label(address(poolManager.vaultFactory()), "ERC7540VaultFactory");
+        vm.label(address(vaultFactory), "ERC7540VaultFactory");
 
         // Exclude predeployed contracts from invariant tests by default
         excludeContract(address(root));
@@ -128,7 +130,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         excludeContract(address(routerEscrow));
         excludeContract(address(guardian));
         excludeContract(address(poolManager.trancheFactory()));
-        excludeContract(address(poolManager.vaultFactory()));
+        excludeContract(address(vaultFactory));
     }
 
     // helpers
@@ -149,8 +151,6 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         if (poolManager.getTranche(poolId, trancheId) == address(0)) {
             centrifugeChain.batchAddPoolAllowAsset(poolId, assetId);
             centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, trancheDecimals, hook);
-
-            poolManager.deployTranche(poolId, trancheId);
         }
 
         if (!poolManager.isAllowedAsset(poolId, asset)) {
@@ -159,7 +159,9 @@ contract BaseTest is Deployer, GasSnapshot, Test {
 
         poolManager.updateTranchePrice(poolId, trancheId, assetId, uint128(10 ** 18), uint64(block.timestamp));
 
-        address vaultAddress = poolManager.deployVault(poolId, trancheId, asset);
+        // TODO: Use .update() from poolManager if possible
+        address vaultAddress = poolManager.deployVault(poolId, trancheId, asset, vaultFactory);
+        poolManager.linkVault(poolId, trancheId, asset, vaultAddress);
 
         return vaultAddress;
     }

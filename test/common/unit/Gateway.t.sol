@@ -8,12 +8,13 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {Gateway, IRoot, IGasService} from "src/common/Gateway.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
-import {Gateway} from "src/vaults/gateway/Gateway.sol";
-import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
-import {MockRoot} from "test/vaults/mocks/MockRoot.sol";
-import {MockManager} from "test/vaults/mocks/MockManager.sol";
-import {MockGasService} from "test/vaults/mocks/MockGasService.sol";
+import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
+import {MockRoot} from "test/common/mocks/MockRoot.sol";
+import {MockManager} from "test/common/mocks/MockManager.sol";
+import {MockGasService} from "test/common/mocks/MockGasService.sol";
 
 contract GatewayTest is Test {
     using CastLib for *;
@@ -31,38 +32,36 @@ contract GatewayTest is Test {
     address self;
 
     MockRoot root;
-    MockManager investmentManager;
-    MockManager poolManager;
+    MockManager handler;
     MockGasService gasService;
     MockAdapter adapter1;
     MockAdapter adapter2;
     MockAdapter adapter3;
     MockAdapter adapter4;
-    address[] oneMockAdapter;
-    address[] twoDuplicateMockAdapters;
-    address[] threeMockAdapters;
-    address[] fourMockAdapters;
-    address[] nineMockAdapters;
+    IAdapter[] oneMockAdapter;
+    IAdapter[] twoDuplicateMockAdapters;
+    IAdapter[] threeMockAdapters;
+    IAdapter[] fourMockAdapters;
+    IAdapter[] nineMockAdapters;
     Gateway gateway;
 
     function setUp() public {
         self = address(this);
         root = new MockRoot();
-        investmentManager = new MockManager();
-        poolManager = new MockManager();
+        handler = new MockManager();
         gasService = new MockGasService();
-        gateway = new Gateway(address(root), address(poolManager), address(investmentManager), address(gasService));
-        gateway.file("payers", self, true);
+        gateway = new Gateway(IRoot(address(root)), IGasService(address(gasService)));
+        gateway.file("handler", address(handler));
         gasService.setReturn("shouldRefuel", true);
         vm.deal(address(gateway), INITIAL_BALANCE);
 
-        adapter1 = new MockAdapter(address(gateway));
+        adapter1 = new MockAdapter(gateway);
         vm.label(address(adapter1), "MockAdapter1");
-        adapter2 = new MockAdapter(address(gateway));
+        adapter2 = new MockAdapter(gateway);
         vm.label(address(adapter2), "MockAdapter2");
-        adapter3 = new MockAdapter(address(gateway));
+        adapter3 = new MockAdapter(gateway);
         vm.label(address(adapter3), "MockAdapter3");
-        adapter4 = new MockAdapter(address(gateway));
+        adapter4 = new MockAdapter(gateway);
         vm.label(address(adapter4), "MockAdapter4");
 
         adapter1.setReturn("estimate", FIRST_ADAPTER_ESTIMATE);
@@ -72,29 +71,29 @@ contract GatewayTest is Test {
         gasService.setReturn("message_estimate", BASE_MESSAGE_ESTIMATE);
         gasService.setReturn("proof_estimate", BASE_PROOF_ESTIMATE);
 
-        oneMockAdapter.push(address(adapter1));
+        oneMockAdapter.push(adapter1);
 
-        threeMockAdapters.push(address(adapter1));
-        threeMockAdapters.push(address(adapter2));
-        threeMockAdapters.push(address(adapter3));
+        threeMockAdapters.push(adapter1);
+        threeMockAdapters.push(adapter2);
+        threeMockAdapters.push(adapter3);
 
-        twoDuplicateMockAdapters.push(address(adapter1));
-        twoDuplicateMockAdapters.push(address(adapter1));
+        twoDuplicateMockAdapters.push(adapter1);
+        twoDuplicateMockAdapters.push(adapter1);
 
-        fourMockAdapters.push(address(adapter1));
-        fourMockAdapters.push(address(adapter2));
-        fourMockAdapters.push(address(adapter3));
-        fourMockAdapters.push(address(adapter4));
+        fourMockAdapters.push(adapter1);
+        fourMockAdapters.push(adapter2);
+        fourMockAdapters.push(adapter3);
+        fourMockAdapters.push(adapter4);
 
-        nineMockAdapters.push(address(adapter1));
-        nineMockAdapters.push(address(adapter1));
-        nineMockAdapters.push(address(adapter1));
-        nineMockAdapters.push(address(adapter1));
-        nineMockAdapters.push(address(adapter1));
-        nineMockAdapters.push(address(adapter1));
-        nineMockAdapters.push(address(adapter1));
-        nineMockAdapters.push(address(adapter1));
-        nineMockAdapters.push(address(adapter1));
+        nineMockAdapters.push(adapter1);
+        nineMockAdapters.push(adapter1);
+        nineMockAdapters.push(adapter1);
+        nineMockAdapters.push(adapter1);
+        nineMockAdapters.push(adapter1);
+        nineMockAdapters.push(adapter1);
+        nineMockAdapters.push(adapter1);
+        nineMockAdapters.push(adapter1);
+        nineMockAdapters.push(adapter1);
     }
 
     // --- Administration ---
@@ -103,15 +102,12 @@ contract GatewayTest is Test {
         vm.expectRevert(bytes("Gateway/file-unrecognized-param"));
         gateway.file("random", self);
 
-        assertEq(address(gateway.poolManager()), address(poolManager));
-        assertEq(address(gateway.investmentManager()), address(investmentManager));
+        assertEq(address(gateway.handler()), address(handler));
         assertEq(address(gateway.gasService()), address(gasService));
 
         // success
-        gateway.file("poolManager", self);
-        assertEq(address(gateway.poolManager()), self);
-        gateway.file("investmentManager", self);
-        assertEq(address(gateway.investmentManager()), self);
+        gateway.file("handler", self);
+        assertEq(address(gateway.handler()), self);
         gateway.file("gasService", self);
         assertEq(address(gateway.gasService()), self);
 
@@ -119,14 +115,14 @@ contract GatewayTest is Test {
         gateway.deny(self);
         // auth fail
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.file("poolManager", self);
+        gateway.file("handler", self);
     }
 
     // --- Permissions ---
     function testOnlyAdaptersCanCall() public {
         gateway.file("adapters", threeMockAdapters);
 
-        bytes memory message = hex"A00000000000bce1a4";
+        bytes memory message = MessageLib.NotifyPool(1).serialize();
 
         vm.expectRevert(bytes("Gateway/invalid-adapter"));
         vm.prank(makeAddr("randomUser"));
@@ -137,47 +133,30 @@ contract GatewayTest is Test {
         gateway.handle(CHAIN_ID, message);
     }
 
-    function testOnlyManagersCanCall(uint64 poolId) public {
-        gateway.file("adapters", threeMockAdapters);
-
-        vm.expectRevert(bytes("Gateway/invalid-manager"));
-        gateway.send(CHAIN_ID, MessageLib.NotifyPool(poolId).serialize(), self);
-
-        gateway.file("poolManager", self);
-        gateway.send(CHAIN_ID, MessageLib.NotifyPool(poolId).serialize(), self);
-
-        gateway.file("poolManager", address(poolManager));
-        vm.expectRevert(bytes("Gateway/invalid-manager"));
-        gateway.send(CHAIN_ID, MessageLib.NotifyPool(poolId).serialize(), self);
-
-        gateway.file("investmentManager", self);
-        gateway.send(CHAIN_ID, MessageLib.NotifyPool(poolId).serialize(), self);
-    }
-
     function testFileAdapters() public {
         gateway.file("adapters", threeMockAdapters);
         assertEq(gateway.quorum(), 3);
-        assertEq(gateway.adapters(0), address(adapter1));
-        assertEq(gateway.adapters(1), address(adapter2));
-        assertEq(gateway.adapters(2), address(adapter3));
+        assertEq(address(gateway.adapters(0)), address(adapter1));
+        assertEq(address(gateway.adapters(1)), address(adapter2));
+        assertEq(address(gateway.adapters(2)), address(adapter3));
         assertEq(gateway.activeSessionId(), 0);
 
         gateway.file("adapters", fourMockAdapters);
         assertEq(gateway.quorum(), 4);
-        assertEq(gateway.adapters(0), address(adapter1));
-        assertEq(gateway.adapters(1), address(adapter2));
-        assertEq(gateway.adapters(2), address(adapter3));
-        assertEq(gateway.adapters(3), address(adapter4));
+        assertEq(address(gateway.adapters(0)), address(adapter1));
+        assertEq(address(gateway.adapters(1)), address(adapter2));
+        assertEq(address(gateway.adapters(2)), address(adapter3));
+        assertEq(address(gateway.adapters(3)), address(adapter4));
         assertEq(gateway.activeSessionId(), 1);
 
         gateway.file("adapters", threeMockAdapters);
         assertEq(gateway.quorum(), 3);
-        assertEq(gateway.adapters(0), address(adapter1));
-        assertEq(gateway.adapters(1), address(adapter2));
-        assertEq(gateway.adapters(2), address(adapter3));
+        assertEq(address(gateway.adapters(0)), address(adapter1));
+        assertEq(address(gateway.adapters(1)), address(adapter2));
+        assertEq(address(gateway.adapters(2)), address(adapter3));
         assertEq(gateway.activeSessionId(), 2);
         vm.expectRevert(bytes(""));
-        assertEq(gateway.adapters(3), address(0));
+        assertEq(address(gateway.adapters(3)), address(0));
 
         vm.expectRevert(bytes("Gateway/exceeds-max"));
         gateway.file("adapters", nineMockAdapters);
@@ -199,12 +178,8 @@ contract GatewayTest is Test {
         vm.expectRevert(bytes("Gateway/invalid-adapter"));
         gateway.handle(CHAIN_ID, message);
 
-        vm.expectRevert(bytes("Gateway/invalid-manager"));
-        gateway.send(CHAIN_ID, message, address(this));
-
         vm.expectRevert(bytes("Gateway/not-initialized"));
-        vm.prank(address(investmentManager));
-        gateway.send(CHAIN_ID, message, address(this));
+        gateway.send(CHAIN_ID, message);
     }
 
     function testIncomingAggregatedMessages() public {
@@ -218,28 +193,28 @@ contract GatewayTest is Test {
 
         // Executes after quorum is reached
         _send(adapter1, firstMessage);
-        assertEq(poolManager.received(firstMessage), 0);
+        assertEq(handler.received(firstMessage), 0);
         assertVotes(firstMessage, 1, 0, 0);
 
         _send(adapter2, firstProof);
-        assertEq(poolManager.received(firstMessage), 0);
+        assertEq(handler.received(firstMessage), 0);
         assertVotes(firstMessage, 1, 1, 0);
 
         _send(adapter3, firstProof);
-        assertEq(poolManager.received(firstMessage), 1);
+        assertEq(handler.received(firstMessage), 1);
         assertVotes(firstMessage, 0, 0, 0);
 
         // Resending same message works
         _send(adapter1, firstMessage);
-        assertEq(poolManager.received(firstMessage), 1);
+        assertEq(handler.received(firstMessage), 1);
         assertVotes(firstMessage, 1, 0, 0);
 
         _send(adapter2, firstProof);
-        assertEq(poolManager.received(firstMessage), 1);
+        assertEq(handler.received(firstMessage), 1);
         assertVotes(firstMessage, 1, 1, 0);
 
         _send(adapter3, firstProof);
-        assertEq(poolManager.received(firstMessage), 2);
+        assertEq(handler.received(firstMessage), 2);
         assertVotes(firstMessage, 0, 0, 0);
 
         // Sending another message works
@@ -247,15 +222,15 @@ contract GatewayTest is Test {
         bytes memory secondProof = _formatMessageProof(secondMessage);
 
         _send(adapter1, secondMessage);
-        assertEq(poolManager.received(secondMessage), 0);
+        assertEq(handler.received(secondMessage), 0);
         assertVotes(secondMessage, 1, 0, 0);
 
         _send(adapter2, secondProof);
-        assertEq(poolManager.received(secondMessage), 0);
+        assertEq(handler.received(secondMessage), 0);
         assertVotes(secondMessage, 1, 1, 0);
 
         _send(adapter3, secondProof);
-        assertEq(poolManager.received(secondMessage), 1);
+        assertEq(handler.received(secondMessage), 1);
         assertVotes(secondMessage, 0, 0, 0);
 
         // Swapping order of message vs proofs works
@@ -263,15 +238,15 @@ contract GatewayTest is Test {
         bytes memory thirdProof = _formatMessageProof(thirdMessage);
 
         _send(adapter2, thirdProof);
-        assertEq(poolManager.received(thirdMessage), 0);
+        assertEq(handler.received(thirdMessage), 0);
         assertVotes(thirdMessage, 0, 1, 0);
 
         _send(adapter3, thirdProof);
-        assertEq(poolManager.received(thirdMessage), 0);
+        assertEq(handler.received(thirdMessage), 0);
         assertVotes(thirdMessage, 0, 1, 1);
 
         _send(adapter1, thirdMessage);
-        assertEq(poolManager.received(thirdMessage), 1);
+        assertEq(handler.received(thirdMessage), 1);
         assertVotes(thirdMessage, 0, 0, 0);
     }
 
@@ -282,7 +257,7 @@ contract GatewayTest is Test {
 
         // Executes immediately
         _send(adapter1, message);
-        assertEq(poolManager.received(message), 1);
+        assertEq(handler.received(message), 1);
     }
 
     function testOneFasterPayloadAdapter() public {
@@ -297,27 +272,27 @@ contract GatewayTest is Test {
         // Confirm two messages by payload first
         _send(adapter1, message);
         _send(adapter1, message);
-        assertEq(poolManager.received(message), 0);
+        assertEq(handler.received(message), 0);
         assertVotes(message, 2, 0, 0);
 
         // Submit first proof
         _send(adapter2, proof);
-        assertEq(poolManager.received(message), 0);
+        assertEq(handler.received(message), 0);
         assertVotes(message, 2, 1, 0);
 
         // Submit second proof
         _send(adapter3, proof);
-        assertEq(poolManager.received(message), 1);
+        assertEq(handler.received(message), 1);
         assertVotes(message, 1, 0, 0);
 
         // Submit third proof
         _send(adapter2, proof);
-        assertEq(poolManager.received(message), 1);
+        assertEq(handler.received(message), 1);
         assertVotes(message, 1, 1, 0);
 
         // Submit fourth proof
         _send(adapter3, proof);
-        assertEq(poolManager.received(message), 2);
+        assertEq(handler.received(message), 2);
         assertVotes(message, 0, 0, 0);
     }
 
@@ -329,13 +304,13 @@ contract GatewayTest is Test {
 
         _send(adapter1, message);
         _send(adapter2, proof);
-        assertEq(investmentManager.received(message), 0);
+        assertEq(handler.received(message), 0);
         assertVotes(message, 1, 1, 0);
 
         gateway.file("adapters", threeMockAdapters);
 
         adapter3.execute(proof);
-        assertEq(investmentManager.received(message), 0);
+        assertEq(handler.received(message), 0);
         assertVotes(message, 0, 0, 1);
     }
 
@@ -351,11 +326,8 @@ contract GatewayTest is Test {
         assertEq(adapter1.sent(proof), 0);
         assertEq(adapter2.sent(proof), 0);
         assertEq(adapter3.sent(proof), 0);
-        vm.expectRevert(bytes("Gateway/invalid-manager"));
-        gateway.send(CHAIN_ID, message, address(this));
 
-        vm.prank(address(investmentManager));
-        gateway.send(CHAIN_ID, message, address(this));
+        gateway.send(CHAIN_ID, message);
 
         assertEq(adapter1.sent(message), 1);
         assertEq(adapter2.sent(message), 0);
@@ -368,11 +340,6 @@ contract GatewayTest is Test {
     function testPrepayment() public {
         uint256 topUpAmount = 1 gwei;
 
-        gateway.file("payers", self, false);
-        vm.expectRevert(bytes("Gateway/only-payers-can-top-up"));
-        gateway.topUp{value: topUpAmount}();
-
-        gateway.file("payers", self, true);
         vm.expectRevert(bytes("Gateway/cannot-topup-with-nothing"));
         gateway.topUp{value: 0}();
 
@@ -392,9 +359,10 @@ contract GatewayTest is Test {
         uint256 topUpAmount = 10 wei;
 
         gateway.topUp{value: topUpAmount}();
+        gateway.setPayableSource(self);
+
         vm.expectRevert(bytes("Gateway/not-enough-gas-funds"));
-        vm.prank(address(investmentManager));
-        gateway.send(CHAIN_ID, message, self);
+        gateway.send(CHAIN_ID, message);
 
         assertEq(gasService.calls("shouldRefuel"), 0);
 
@@ -420,14 +388,14 @@ contract GatewayTest is Test {
         (uint256[] memory tranches, uint256 total) = gateway.estimate(CHAIN_ID, message);
         gateway.topUp{value: total}();
 
-        vm.prank(address(investmentManager));
-        gateway.send(CHAIN_ID, message, self);
+        gateway.setPayableSource(self);
+        gateway.send(CHAIN_ID, message);
 
         assertEq(gasService.calls("shouldRefuel"), 0);
 
         for (uint256 i; i < threeMockAdapters.length; i++) {
-            MockAdapter currentAdapter = MockAdapter(threeMockAdapters[i]);
-            uint256[] memory metadata = currentAdapter.callsWithValue("pay");
+            MockAdapter currentAdapter = MockAdapter(address(threeMockAdapters[i]));
+            uint256[] memory metadata = currentAdapter.callsWithValue("send");
             assertEq(metadata.length, 1);
             assertEq(metadata[0], tranches[i]);
 
@@ -452,14 +420,14 @@ contract GatewayTest is Test {
         uint256 topUpAmount = total + extra;
         gateway.topUp{value: topUpAmount}();
 
-        vm.prank(address(investmentManager));
-        gateway.send(CHAIN_ID, message, self);
+        gateway.setPayableSource(self);
+        gateway.send(CHAIN_ID, message);
 
         assertEq(gasService.calls("shouldRefuel"), 0);
 
         for (uint256 i; i < threeMockAdapters.length; i++) {
-            MockAdapter currentAdapter = MockAdapter(threeMockAdapters[i]);
-            uint256[] memory metadata = currentAdapter.callsWithValue("pay");
+            MockAdapter currentAdapter = MockAdapter(address(threeMockAdapters[i]));
+            uint256[] memory metadata = currentAdapter.callsWithValue("send");
             assertEq(metadata.length, 1);
             assertEq(metadata[0], tranches[i]);
 
@@ -482,14 +450,14 @@ contract GatewayTest is Test {
 
         assertEq(_quota(), 0);
 
-        vm.prank(address(investmentManager));
-        gateway.send(CHAIN_ID, message, self);
+        gateway.setPayableSource(self);
+        gateway.send(CHAIN_ID, message);
 
         assertEq(gasService.calls("shouldRefuel"), 1);
 
         for (uint256 i; i < threeMockAdapters.length; i++) {
-            MockAdapter currentAdapter = MockAdapter(threeMockAdapters[i]);
-            uint256[] memory metadata = currentAdapter.callsWithValue("pay");
+            MockAdapter currentAdapter = MockAdapter(address(threeMockAdapters[i]));
+            uint256[] memory metadata = currentAdapter.callsWithValue("send");
             assertEq(metadata.length, 1);
             assertEq(metadata[0], tranches[i]);
 
@@ -514,23 +482,24 @@ contract GatewayTest is Test {
         assertEq(balanceBeforeTx, fundsToCoverTwoAdaptersOnly);
         assertEq(_quota(), 0);
 
-        vm.prank(address(investmentManager));
-        gateway.send(CHAIN_ID, message, self);
+        gateway.setPayableSource(self);
+        gateway.send(CHAIN_ID, message);
 
         assertEq(gasService.calls("shouldRefuel"), 1);
 
-        uint256[] memory r1Metadata = adapter1.callsWithValue("pay");
+        uint256[] memory r1Metadata = adapter1.callsWithValue("send");
         assertEq(r1Metadata.length, 1);
         assertEq(r1Metadata[0], tranches[0]);
         assertEq(adapter1.sent(message), 1);
 
-        uint256[] memory r2Metadata = adapter2.callsWithValue("pay");
+        uint256[] memory r2Metadata = adapter2.callsWithValue("send");
         assertEq(r2Metadata.length, 1);
         assertEq(r2Metadata[0], tranches[1]);
         assertEq(adapter2.sent(proof), 1);
 
-        uint256[] memory r3Metadata = adapter3.callsWithValue("pay");
-        assertEq(r3Metadata.length, 0);
+        uint256[] memory r3Metadata = adapter3.callsWithValue("send");
+        assertEq(r3Metadata.length, 1);
+        assertEq(r3Metadata[0], 0);
         assertEq(adapter3.sent(proof), 1);
 
         assertEq(address(gateway).balance, balanceBeforeTx - fundsToCoverTwoAdaptersOnly);
@@ -547,21 +516,24 @@ contract GatewayTest is Test {
 
         assertEq(_quota(), 0);
 
-        vm.prank(address(investmentManager));
-        gateway.send(CHAIN_ID, message, self);
+        gateway.setPayableSource(self);
+        gateway.send(CHAIN_ID, message);
 
         assertEq(gasService.calls("shouldRefuel"), 1);
 
-        uint256[] memory r1Metadata = adapter1.callsWithValue("pay");
-        assertEq(r1Metadata.length, 0);
+        uint256[] memory r1Metadata = adapter1.callsWithValue("send");
+        assertEq(r1Metadata.length, 1);
+        assertEq(r1Metadata[0], 0);
         assertEq(adapter1.sent(message), 1);
 
-        uint256[] memory r2Metadata = adapter2.callsWithValue("pay");
-        assertEq(r2Metadata.length, 0);
+        uint256[] memory r2Metadata = adapter2.callsWithValue("send");
+        assertEq(r2Metadata.length, 1);
+        assertEq(r2Metadata[0], 0);
         assertEq(adapter2.sent(proof), 1);
 
-        uint256[] memory r3Metadata = adapter3.callsWithValue("pay");
-        assertEq(r3Metadata.length, 0);
+        uint256[] memory r3Metadata = adapter3.callsWithValue("send");
+        assertEq(r3Metadata.length, 1);
+        assertEq(r3Metadata[0], 0);
         assertEq(adapter3.sent(proof), 1);
 
         assertEq(_quota(), 0);
@@ -578,9 +550,10 @@ contract GatewayTest is Test {
 
         gasService.setReturn("shouldRefuel", false);
 
+        gateway.setPayableSource(self);
+
         vm.expectRevert(bytes("Gateway/not-enough-gas-funds"));
-        vm.prank(address(investmentManager));
-        gateway.send(CHAIN_ID, message, self);
+        gateway.send(CHAIN_ID, message);
 
         assertEq(balanceBeforeTx, INITIAL_BALANCE);
         assertEq(_quota(), 0);
@@ -595,10 +568,10 @@ contract GatewayTest is Test {
         // Only send through 2 out of 3 adapters
         adapter2.execute(proof);
         adapter3.execute(proof);
-        assertEq(poolManager.received(message), 0);
+        assertEq(handler.received(message), 0);
 
         vm.expectRevert(bytes("Gateway/message-recovery-not-initiated"));
-        gateway.executeMessageRecovery(address(adapter1), message);
+        gateway.executeMessageRecovery(adapter1, message);
 
         // Initiate recovery
         _send(
@@ -606,12 +579,12 @@ contract GatewayTest is Test {
         );
 
         vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
-        gateway.executeMessageRecovery(address(adapter1), message);
+        gateway.executeMessageRecovery(adapter1, message);
 
         // Execute recovery
         vm.warp(block.timestamp + gateway.RECOVERY_CHALLENGE_PERIOD());
-        gateway.executeMessageRecovery(address(adapter1), message);
-        assertEq(poolManager.received(message), 1);
+        gateway.executeMessageRecovery(adapter1, message);
+        assertEq(handler.received(message), 1);
     }
 
     function testCannotRecoverWithOneAdapter() public {
@@ -636,21 +609,21 @@ contract GatewayTest is Test {
         adapter2.execute(proof);
         _send(adapter1, message);
         _send(adapter2, proof);
-        assertEq(investmentManager.received(message), 0);
+        assertEq(handler.received(message), 0);
 
         vm.expectRevert(bytes("Gateway/message-recovery-not-initiated"));
-        gateway.executeMessageRecovery(address(adapter3), proof);
+        gateway.executeMessageRecovery(adapter3, proof);
 
         // Initiate recovery
         _send(adapter1, MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
 
         vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
-        gateway.executeMessageRecovery(address(adapter3), proof);
+        gateway.executeMessageRecovery(adapter3, proof);
         vm.warp(block.timestamp + gateway.RECOVERY_CHALLENGE_PERIOD());
 
         // Execute recovery
-        gateway.executeMessageRecovery(address(adapter3), proof);
-        assertEq(poolManager.received(message), 1);
+        gateway.executeMessageRecovery(adapter3, proof);
+        assertEq(handler.received(message), 1);
     }
 
     function testCannotRecoverInvalidAdapter() public {
@@ -662,7 +635,7 @@ contract GatewayTest is Test {
         // Only send through 2 out of 3 adapters
         _send(adapter1, message);
         _send(adapter2, proof);
-        assertEq(poolManager.received(message), 0);
+        assertEq(handler.received(message), 0);
 
         // Initiate recovery
         _send(adapter1, MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
@@ -671,7 +644,7 @@ contract GatewayTest is Test {
 
         gateway.file("adapters", oneMockAdapter);
         vm.expectRevert(bytes("Gateway/invalid-adapter"));
-        gateway.executeMessageRecovery(address(adapter3), proof);
+        gateway.executeMessageRecovery(adapter3, proof);
         gateway.file("adapters", threeMockAdapters);
     }
 
@@ -684,21 +657,21 @@ contract GatewayTest is Test {
         // Only send through 2 out of 3 adapters
         _send(adapter1, message);
         _send(adapter2, proof);
-        assertEq(poolManager.received(message), 0);
+        assertEq(handler.received(message), 0);
 
         // Initiate recovery
         _send(adapter1, MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
 
         vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
-        gateway.executeMessageRecovery(address(adapter3), proof);
+        gateway.executeMessageRecovery(adapter3, proof);
 
         // Dispute recovery
         _send(adapter2, MessageLib.DisputeMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
 
         // Check that recovery is not possible anymore
         vm.expectRevert(bytes("Gateway/message-recovery-not-initiated"));
-        gateway.executeMessageRecovery(address(adapter3), proof);
-        assertEq(poolManager.received(message), 0);
+        gateway.executeMessageRecovery(adapter3, proof);
+        assertEq(handler.received(message), 0);
     }
 
     function testRecursiveRecoveryMessageFails() public {
@@ -709,7 +682,7 @@ contract GatewayTest is Test {
 
         _send(adapter2, proof);
         _send(adapter3, proof);
-        assertEq(poolManager.received(message), 0);
+        assertEq(handler.received(message), 0);
 
         _send(
             adapter2, MessageLib.InitiateMessageRecovery(keccak256(message), address(adapter1).toBytes32()).serialize()
@@ -718,8 +691,8 @@ contract GatewayTest is Test {
         vm.warp(block.timestamp + gateway.RECOVERY_CHALLENGE_PERIOD());
 
         vm.expectRevert(bytes("Gateway/no-recursion"));
-        gateway.executeMessageRecovery(address(adapter1), message);
-        assertEq(poolManager.received(message), 0);
+        gateway.executeMessageRecovery(adapter1, message);
+        assertEq(handler.received(message), 0);
     }
 
     function testMessagesCannotBeReplayed(uint8 numAdapters, uint8 numParallelDuplicateMessages_, uint256 entropy)
@@ -732,9 +705,9 @@ contract GatewayTest is Test {
         bytes memory proof = _formatMessageProof(message);
 
         // Setup random set of adapters
-        address[] memory testAdapters = new address[](numAdapters);
+        IAdapter[] memory testAdapters = new IAdapter[](numAdapters);
         for (uint256 i = 0; i < numAdapters; i++) {
-            testAdapters[i] = address(new MockAdapter(address(gateway)));
+            testAdapters[i] = new MockAdapter(gateway);
         }
         gateway.file("adapters", testAdapters);
 
@@ -754,9 +727,9 @@ contract GatewayTest is Test {
 
             // Send the message or proof
             if (randomAdapterId == 0) {
-                _send(MockAdapter(testAdapters[randomAdapterId]), message);
+                _send(testAdapters[randomAdapterId], message);
             } else {
-                _send(MockAdapter(testAdapters[randomAdapterId]), proof);
+                _send(testAdapters[randomAdapterId], proof);
             }
 
             totalSent++;
@@ -765,7 +738,7 @@ contract GatewayTest is Test {
 
         // Check that each message was confirmed exactly numParallelDuplicateMessages times
         for (uint256 j = 0; j < numParallelDuplicateMessages; j++) {
-            assertEq(poolManager.received(message), numParallelDuplicateMessages);
+            assertEq(handler.received(message), numParallelDuplicateMessages);
         }
     }
 
@@ -841,7 +814,7 @@ contract GatewayTest is Test {
     }
 
     /// @dev Use to simulate incoming message to the gateway sent by a adapter.
-    function _send(MockAdapter adapter, bytes memory message) internal {
+    function _send(IAdapter adapter, bytes memory message) internal {
         vm.prank(address(adapter));
         gateway.handle(CHAIN_ID, message);
     }

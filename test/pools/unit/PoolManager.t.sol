@@ -7,8 +7,6 @@ import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {IGateway} from "src/common/interfaces/IGateway.sol";
-
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
 import {AccountId} from "src/pools/types/AccountId.sol";
@@ -32,9 +30,8 @@ contract TestCommon is Test {
     IAccounting immutable accounting = IAccounting(makeAddr("Accounting"));
     IAssetRegistry immutable assetRegistry = IAssetRegistry(makeAddr("AssetRegistry"));
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
-    IGateway immutable gateway = IGateway(makeAddr("Gateway"));
 
-    PoolManager poolManager = new PoolManager(poolRegistry, assetRegistry, accounting, holdings, gateway, address(this));
+    PoolManager poolManager = new PoolManager(poolRegistry, assetRegistry, accounting, holdings, address(this));
 
     function setUp() public {
         vm.mockCall(
@@ -46,10 +43,6 @@ contract TestCommon is Test {
         vm.mockCall(
             address(accounting), abi.encodeWithSelector(accounting.unlock.selector, POOL_A, "TODO"), abi.encode(true)
         );
-
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.setPayableSource.selector, ADMIN), abi.encode());
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.startBatch.selector), abi.encode());
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endBatch.selector), abi.encode());
     }
 }
 

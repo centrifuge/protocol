@@ -5,8 +5,10 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 import "forge-std/Test.sol";
+import {PoolManager} from "../../../src/vaults/PoolManager.sol";
 
 interface AdapterLike {
     function execute(bytes memory _message) external;
@@ -16,12 +18,14 @@ contract MockCentrifugeChain is Test {
     using CastLib for *;
     using MessageLib for *;
 
-    address[] public adapters;
+    IAdapter[] public adapters;
+    PoolManager public poolManager;
 
-    constructor(address[] memory adapters_) {
+    constructor(IAdapter[] memory adapters_, PoolManager poolManager_) {
         for (uint256 i = 0; i < adapters_.length; i++) {
             adapters.push(adapters_[i]);
         }
+        poolManager = poolManager_;
     }
 
     function addAsset(uint128 assetId, address asset) public {
@@ -49,6 +53,38 @@ contract MockCentrifugeChain is Test {
 
     function disallowAsset(uint64 poolId, uint128 assetId) public {
         execute(MessageLib.DisallowAsset({poolId: poolId, scId: bytes16(0), assetId: assetId}).serialize());
+    }
+
+    function unlinkVault(uint64 poolId, bytes16 trancheId, address vault) public {
+        execute(
+            MessageLib.UpdateContract({
+                poolId: poolId,
+                scId: trancheId,
+                target: bytes32(bytes20(address(poolManager))),
+                payload: MessageLib.UpdateContractVaultUpdate({
+                    factory: address(0),
+                    assetId: poolManager.getVaultAssetId(vault),
+                    isLinked: false,
+                    vault: vault
+                }).serialize()
+            }).serialize()
+        );
+    }
+
+    function linkVault(uint64 poolId, bytes16 trancheId, address vault) public {
+        execute(
+            MessageLib.UpdateContract({
+                poolId: poolId,
+                scId: trancheId,
+                target: bytes32(bytes20(address(poolManager))),
+                payload: MessageLib.UpdateContractVaultUpdate({
+                    factory: address(0),
+                    assetId: poolManager.getVaultAssetId(vault),
+                    isLinked: true,
+                    vault: vault
+                }).serialize()
+            }).serialize()
+        );
     }
 
     function addTranche(
@@ -135,10 +171,6 @@ contract MockCentrifugeChain is Test {
                 timestamp: computedAt
             }).serialize()
         );
-    }
-
-    function updateCentrifugeGasPrice(uint128 price, uint64 computedAt) public {
-        execute(MessageLib.UpdateGasPrice({price: price, timestamp: computedAt}).serialize());
     }
 
     function triggerIncreaseRedeemOrder(
@@ -290,7 +322,7 @@ contract MockCentrifugeChain is Test {
     function execute(bytes memory message) public {
         bytes memory proof = MessageLib.MessageProof({hash: keccak256(message)}).serialize();
         for (uint256 i = 0; i < adapters.length; i++) {
-            AdapterLike(adapters[i]).execute(i == 0 ? message : proof);
+            AdapterLike(address(adapters[i])).execute(i == 0 ? message : proof);
         }
     }
 }

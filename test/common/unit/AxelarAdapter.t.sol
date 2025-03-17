@@ -7,7 +7,8 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {Mock} from "test/common/mocks/Mock.sol";
 
-import {AxelarAdapter, IAxelarAdapter} from "src/common/AxelarAdapter.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {AxelarAdapter, IAdapter, IAxelarAdapter, IAxelarExecutable} from "src/common/AxelarAdapter.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 
 contract MockAxelarGateway is Mock {
@@ -25,6 +26,14 @@ contract MockAxelarGateway is Mock {
 }
 
 contract MockAxelarGasService is Mock {
+    function estimateGasFee(string calldata, string calldata, bytes calldata, uint256, bytes calldata /* params */ )
+        external
+        view
+        returns (uint256 gasEstimate)
+    {
+        return values_uint256_return["estimateGasFee"];
+    }
+
     function payNativeGasForContractCall(
         address sender,
         string calldata destinationChain,
@@ -42,13 +51,15 @@ contract MockAxelarGasService is Mock {
 }
 
 contract AxelarAdapterTest is Test {
+    using CastLib for *;
+
+    uint32 constant CENTRIFUGE_CHAIN_ID = 1;
+    string constant AXELAR_CHAIN_ID = "mainnet";
+
     MockAxelarGateway axelarGateway;
     MockAxelarGasService axelarGasService;
     AxelarAdapter adapter;
 
-    uint32 constant CHAIN_ID = 1;
-    string private constant axelarCentrifugeChainId = "centrifuge";
-    string private constant axelarCentrifugeChainAddress = "0x7369626CEF070000000000000000000000000000";
     IMessageHandler constant GATEWAY = IMessageHandler(address(1));
 
     function setUp() public {
@@ -66,91 +77,99 @@ contract AxelarAdapterTest is Test {
     }
 
     function testEstimate(uint256 gasLimit) public {
-        uint256 axelarCost = 10;
-        vm.assume(gasLimit < type(uint256).max - axelarCost);
-
-        adapter.file("axelarCost", axelarCost);
+        vm.assume(gasLimit > 0);
 
         bytes memory payload = "irrelevant";
 
-        uint256 estimation = adapter.estimate(CHAIN_ID, payload, gasLimit);
-        assertEq(estimation, gasLimit + axelarCost);
-    }
+        axelarGasService.setReturn("estimateGasFee", gasLimit - 1);
 
-    function testFiling(uint256 value) public {
-        vm.assume(value != adapter.axelarCost());
-
-        adapter.file("axelarCost", value);
-        assertEq(adapter.axelarCost(), value);
-
-        vm.expectRevert(IAxelarAdapter.FileUnrecognizedParam.selector);
-        adapter.file("random", value);
-
-        vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        adapter.file("axelarCost", value);
-    }
-
-    function testPayment(bytes calldata payload, uint256 value) public {
-        vm.deal(address(this), value);
-        adapter.pay{value: value}(CHAIN_ID, payload, address(this));
-
-        uint256[] memory call = axelarGasService.callsWithValue("payNativeGasForContractCall");
-        assertEq(call.length, 1);
-        assertEq(call[0], value);
-        assertEq(axelarGasService.values_address("sender"), address(adapter));
-        assertEq(axelarGasService.values_string("destinationChain"), adapter.CENTRIFUGE_ID());
-        assertEq(axelarGasService.values_string("destinationAddress"), adapter.CENTRIFUGE_AXELAR_EXECUTABLE());
-        assertEq(axelarGasService.values_bytes("payload"), payload);
-        assertEq(axelarGasService.values_address("refundAddress"), address(this));
+        uint256 estimation = adapter.estimate(CENTRIFUGE_CHAIN_ID, payload, gasLimit);
+        assertEq(estimation, gasLimit - 1);
     }
 
     function testIncomingCalls(
         bytes32 commandId,
-        string calldata sourceChain,
-        string calldata sourceAddress,
+        address validAddress,
+        address invalidAddress,
+        string calldata invalidChain,
         bytes calldata payload,
         address invalidOrigin,
         address relayer
     ) public {
-        vm.assume(keccak256(abi.encodePacked(sourceChain)) != keccak256(abi.encodePacked("centrifuge")));
+        vm.assume(keccak256(abi.encodePacked(invalidAddress)) != keccak256(abi.encodePacked(validAddress)));
+        vm.assume(keccak256(abi.encodePacked(invalidChain)) != keccak256(abi.encodePacked(AXELAR_CHAIN_ID)));
         vm.assume(invalidOrigin != address(axelarGateway));
-        vm.assume(
-            keccak256(abi.encodePacked(sourceAddress)) != keccak256(abi.encodePacked(axelarCentrifugeChainAddress))
-        );
         vm.assume(relayer.code.length == 0);
+        assumeNotZeroAddress(validAddress);
+        assumeNotZeroAddress(invalidAddress);
 
-        vm.mockCall(address(GATEWAY), abi.encodeWithSelector(GATEWAY.handle.selector, CHAIN_ID, payload), abi.encode());
+        vm.mockCall(
+            address(GATEWAY),
+            abi.encodeWithSelector(GATEWAY.handle.selector, CENTRIFUGE_CHAIN_ID, payload),
+            abi.encode()
+        );
 
+        // Correct input, but not yet setup
+        axelarGateway.setReturn("validateContractCall", true);
+        vm.expectRevert(IAxelarExecutable.InvalidAddress.selector);
         vm.prank(address(relayer));
-        vm.expectRevert(IAxelarAdapter.InvalidChain.selector);
-        adapter.execute(commandId, sourceChain, axelarCentrifugeChainAddress, payload);
+        adapter.execute(commandId, AXELAR_CHAIN_ID, validAddress.toString(), payload);
 
+        adapter.file("sources", AXELAR_CHAIN_ID, CENTRIFUGE_CHAIN_ID, validAddress);
+
+        // Incorrect address
         vm.prank(address(relayer));
-        vm.expectRevert(IAxelarAdapter.InvalidAddress.selector);
-        adapter.execute(commandId, axelarCentrifugeChainId, sourceAddress, payload);
+        vm.expectRevert(IAxelarExecutable.InvalidAddress.selector);
+        adapter.execute(commandId, AXELAR_CHAIN_ID, invalidAddress.toString(), payload);
 
+        // Incorrect chain
+        vm.prank(address(relayer));
+        vm.expectRevert(IAxelarExecutable.InvalidAddress.selector);
+        adapter.execute(commandId, invalidChain, validAddress.toString(), payload);
+
+        // Axelar has not approved the payload
         axelarGateway.setReturn("validateContractCall", false);
         vm.prank(address(relayer));
-        vm.expectRevert(IAxelarAdapter.NotApprovedByAxelarGateway.selector);
-        adapter.execute(commandId, axelarCentrifugeChainId, axelarCentrifugeChainAddress, payload);
+        vm.expectRevert(IAxelarExecutable.NotApprovedByGateway.selector);
+        adapter.execute(commandId, AXELAR_CHAIN_ID, validAddress.toString(), payload);
 
+        // Correct
         axelarGateway.setReturn("validateContractCall", true);
         vm.prank(address(relayer));
-        adapter.execute(commandId, axelarCentrifugeChainId, axelarCentrifugeChainAddress, payload);
+        adapter.execute(commandId, AXELAR_CHAIN_ID, validAddress.toString(), payload);
     }
 
-    function testOutgoingCalls(bytes calldata message, address invalidOrigin) public {
+    function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint256 gasLimit, address refund)
+        public
+    {
         vm.assume(invalidOrigin != address(GATEWAY));
 
-        vm.expectRevert(IAxelarAdapter.NotGateway.selector);
-        adapter.send(CHAIN_ID, message);
+        vm.deal(address(this), 0.1 ether);
+        vm.expectRevert(IAdapter.NotGateway.selector);
+        adapter.send{value: 0.1 ether}(CENTRIFUGE_CHAIN_ID, payload, gasLimit, refund);
 
+        vm.deal(address(GATEWAY), 0.1 ether);
         vm.prank(address(GATEWAY));
-        adapter.send(CHAIN_ID, message);
+        vm.expectRevert(IAdapter.UnknownChainId.selector);
+        adapter.send{value: 0.1 ether}(CENTRIFUGE_CHAIN_ID, payload, gasLimit, refund);
 
-        assertEq(axelarGateway.values_string("destinationChain"), axelarCentrifugeChainId);
-        assertEq(axelarGateway.values_string("contractAddress"), adapter.CENTRIFUGE_AXELAR_EXECUTABLE());
-        assertEq(axelarGateway.values_bytes("payload"), message);
+        adapter.file("destinations", CENTRIFUGE_CHAIN_ID, AXELAR_CHAIN_ID, makeAddr("DestinationAdapter"));
+
+        vm.deal(address(this), 0.1 ether);
+        vm.prank(address(GATEWAY));
+        adapter.send{value: 0.1 ether}(CENTRIFUGE_CHAIN_ID, payload, gasLimit, refund);
+
+        uint256[] memory call = axelarGasService.callsWithValue("payNativeGasForContractCall");
+        assertEq(call.length, 1);
+        assertEq(call[0], 0.1 ether);
+        assertEq(axelarGasService.values_address("sender"), address(adapter));
+        assertEq(axelarGasService.values_string("destinationChain"), AXELAR_CHAIN_ID);
+        assertEq(axelarGasService.values_string("destinationAddress"), makeAddr("DestinationAdapter").toString());
+        assertEq(axelarGasService.values_bytes("payload"), payload);
+        assertEq(axelarGasService.values_address("refundAddress"), refund);
+
+        assertEq(axelarGateway.values_string("destinationChain"), AXELAR_CHAIN_ID);
+        assertEq(axelarGateway.values_string("contractAddress"), makeAddr("DestinationAdapter").toString());
+        assertEq(axelarGateway.values_bytes("payload"), payload);
     }
 }

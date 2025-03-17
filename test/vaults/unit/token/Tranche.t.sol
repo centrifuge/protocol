@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import "src/vaults/interfaces/IERC7575.sol";
 import "src/vaults/interfaces/IERC7540.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
-import {MockRoot} from "test/vaults/mocks/MockRoot.sol";
+import {MockRoot} from "test/common/mocks/MockRoot.sol";
 import {MockRestrictionManager} from "test/vaults/mocks/MockRestrictionManager.sol";
 import "forge-std/Test.sol";
 import {GasSnapshot} from "forge-gas-snapshot/GasSnapshot.sol";

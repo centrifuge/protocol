@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {BiasedTargetFunctions} from "./targets/BiasedTargetFunctions.sol";
 
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+
 import {Properties} from "./Properties.sol";
 import {vm} from "@chimera/Hevm.sol";
 
@@ -14,11 +16,11 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BiasedTarg
     // }
 
     function routerAggregator_disputeMessageRecovery(address router, bytes32 messageHash) public {
-        routerAggregator.disputeMessageRecovery(router, messageHash);
+        routerAggregator.disputeMessageRecovery(IAdapter(router), messageHash);
     }
 
     function routerAggregator_executeMessageRecovery(address router, bytes memory message) public {
-        routerAggregator.executeMessageRecovery(router, message);
+        routerAggregator.executeMessageRecovery(IAdapter(router), message);
     }
 
     // @todo: re-enable
@@ -35,7 +37,7 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BiasedTarg
     //     routerAggregator.rely(user);
     // }
 
-    function routerAggregator_send(uint32 chainId, bytes memory message, address source) public {
-        routerAggregator.send(chainId, message, source);
+    function routerAggregator_send(uint32 chainId, bytes memory message) public {
+        routerAggregator.send(chainId, message);
     }
 }

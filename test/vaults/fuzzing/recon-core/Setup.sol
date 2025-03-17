@@ -61,25 +61,27 @@ abstract contract Setup is BaseSetup, SharedStorage {
         centrifugeChain = address(this);
 
         // Dependencies
-        vaultFactory = new ERC7540VaultFactory(address(this));
         trancheFactory = new TrancheFactory(address(this), address(this));
         escrow = new Escrow(address(address(this)));
-        root = new Root(address(escrow), 48 hours, address(this));
+        root = new Root(48 hours, address(this));
         restrictionManager = new RestrictionManager(address(root), address(this));
 
         root.endorse(address(escrow));
 
-        poolManager = new PoolManager(address(escrow), address(vaultFactory), address(trancheFactory));
-        poolManager.file("gateway", address(this));
-
         investmentManager = new InvestmentManager(address(root), address(escrow));
+        vaultFactory = new ERC7540VaultFactory(address(this), address(investmentManager));
+
+        address[] memory vaultFactories = new address[](1);
+        vaultFactories[0] = address(vaultFactory);
+
+        poolManager = new PoolManager(address(escrow), address(trancheFactory), vaultFactories);
+        poolManager.file("gateway", address(this));
 
         investmentManager.file("gateway", address(this));
         investmentManager.file("poolManager", address(poolManager));
         investmentManager.rely(address(poolManager));
         investmentManager.rely(address(vaultFactory));
 
-        poolManager.file("investmentManager", address(investmentManager));
         restrictionManager.rely(address(poolManager));
 
         // Setup Escrow Permissions
