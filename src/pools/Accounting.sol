@@ -44,11 +44,11 @@ contract Accounting is Auth, IAccounting {
     }
 
     /// @inheritdoc IAccounting
-    function unlock(PoolId poolId, bytes32 transactionId) external auth {
+    function unlock(PoolId poolId, bytes32 journalId) external auth {
         require(PoolId.unwrap(_currentPoolId) == 0, AccountingAlreadyUnlocked());
         debited = 0;
         credited = 0;
-        _journalId = transactionId;
+        _journalId = journalId;
         _currentPoolId = poolId;
     }
 
