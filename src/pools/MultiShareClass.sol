@@ -13,7 +13,7 @@ import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 import {IMultiShareClass} from "src/pools/interfaces/IMultiShareClass.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
+import {ShareClassId, newShareClassId} from "src/pools/types/ShareClassId.sol";
 
 struct EpochAmounts {
     /// @dev Total pending asset amount of deposit asset
@@ -539,12 +539,12 @@ contract MultiShareClass is Auth, IMultiShareClass {
 
     /// @inheritdoc IShareClassManager
     function previewNextShareClassId(PoolId poolId) public view returns (ShareClassId scId) {
-        return previewShareClassId(poolId, shareClassCount[poolId] + 1);
+        return newShareClassId(poolId, shareClassCount[poolId] + 1);
     }
 
     /// @inheritdoc IShareClassManager
     function previewShareClassId(PoolId poolId, uint8 index) public pure returns (ShareClassId scId) {
-        return ShareClassId.wrap(bytes16(uint128(PoolId.unwrap(poolId) + index)));
+        return newShareClassId(poolId, index);
     }
 
     /// @inheritdoc IShareClassManager
