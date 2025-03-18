@@ -274,6 +274,12 @@ interface IShareClassManager {
         bytes calldata metadata
     ) external;
 
+    /// @notice Returns the number of share classes for the given pool
+    ///
+    /// @param poolId Identifier of the pool in question
+    /// @return count Number of share classes for the given pool
+    function shareClassCount(PoolId poolId) external view returns (uint32 count);
+
     /// @notice Checks the existence of a share class.
     ///
     /// @param poolId Identifier of the pool
