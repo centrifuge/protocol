@@ -61,6 +61,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     // Canaries
     bool poolCreated;
     bool deposited;
+    bool cancelledRedeemRequest;
 
     // set the initial price that gets used when creating an asset via a pool's shortcut to avoid stack too deep errors
     D18 internal INITIAL_PRICE = d18(1e18); 

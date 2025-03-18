@@ -170,6 +170,8 @@ abstract contract AdminTargets is
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
         poolManager.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
+
+        cancelledRedeemRequest = true;
     }
 
     // === PoolRouter === //

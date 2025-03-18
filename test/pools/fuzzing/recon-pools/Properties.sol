@@ -11,7 +11,12 @@ import {Helpers} from "test/recon/utils/Helpers.sol";
 import {BeforeAfter} from "./BeforeAfter.sol";
 
 abstract contract Properties is BeforeAfter, Asserts {
+    /// === Canaries === ///
+    function canary_cancelledRedeemRequest() public {
+        t(!cancelledRedeemRequest, "successfully cancelled redeem request");
+    }
 
+    /// === Global Properties === ///
     function property_unlockedPoolId_transient_reset() public {
         eq(_after.ghostUnlockedPoolId.raw(), 0, "unlockedPoolId not reset");
     }
