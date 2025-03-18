@@ -7,7 +7,7 @@ import {AssetId} from "src/pools/types/AssetId.sol";
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
 
-import {Helpers} from "test/recon/utils/Helpers.sol";
+import {Helpers} from "test/pools/fuzzing/recon-pools/utils/Helpers.sol";
 import {BeforeAfter} from "./BeforeAfter.sol";
 
 abstract contract Properties is BeforeAfter, Asserts {

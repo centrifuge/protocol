@@ -11,7 +11,7 @@ import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
-// forge test --match-contract CryticToFoundry --match-path test/recon/CryticToFoundry.sol -vv
+// forge test --match-contract CryticToFoundry --match-path test/pools/fuzzing/recon-pools/CryticToFoundry.sol -vv
 contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     function setUp() public {
         setup();

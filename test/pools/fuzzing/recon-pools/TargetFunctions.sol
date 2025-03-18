@@ -260,7 +260,7 @@ abstract contract TargetFunctions is
         uint128 shareAmount,
         uint128 maxApproval,
         D18 navPerShare
-    ) public payable {
+    ) public  {
         (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(
             decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix, depositAmount, maxApproval, navPerShare
         );
@@ -274,7 +274,6 @@ abstract contract TargetFunctions is
             IERC7726(address(identityValuation)) : 
             IERC7726(address(transientValuation)));
         
-        this.gateway_topUp{value: 1 ether}();
         poolRouter_execute_clamped(poolId);
 
         // cancel redemption
@@ -291,7 +290,7 @@ abstract contract TargetFunctions is
         bool isIdentityValuation,
         uint24 prefix,
         D18 newPrice
-    ) public payable {
+    ) public  {
         (PoolId poolId, ShareClassId scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
     
         AssetId assetId = newAssetId(isoCode);
@@ -299,7 +298,6 @@ abstract contract TargetFunctions is
 
         poolRouter_updateHolding(scId, assetId);
 
-        this.gateway_topUp{value: 1 ether}();
         poolRouter_execute_clamped(poolId);
     }
 
@@ -307,7 +305,7 @@ abstract contract TargetFunctions is
     function shortcut_update_holding(
         uint32 isoCode, 
         D18 newPrice
-    ) public payable {
+    ) public  {
         PoolId poolId = newPoolId(poolRegistry.latestId());
         
         ShareClassId nextScId = multiShareClass.previewNextShareClassId(poolId);
@@ -330,12 +328,11 @@ abstract contract TargetFunctions is
         bytes memory data,
         bool isIdentityValuation,
         uint24 prefix
-    ) public payable {
+    ) public  {
         (PoolId poolId, ShareClassId scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
     
         AssetId assetId = newAssetId(isoCode);
         poolRouter_updateHoldingValuation(scId, assetId, isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation)));
-         this.gateway_topUp{value: 1 ether}();
         poolRouter_execute_clamped(poolId);
     }
 
@@ -350,7 +347,7 @@ abstract contract TargetFunctions is
         AssetId assetId,
         bool isIdentityValuation,
         uint24 prefix
-    ) public payable {
+    ) public  {
         poolRouter_addShareClass(name, symbol, salt, data);
 
         IERC7726 valuation = isIdentityValuation ? 
@@ -368,7 +365,7 @@ abstract contract TargetFunctions is
         uint128 maxApproval, 
         bool isIdentityValuation,
         D18 navPerShare
-    ) public payable {
+    ) public  {
         AssetId assetId = newAssetId(isoCode);
 
         IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
@@ -377,7 +374,6 @@ abstract contract TargetFunctions is
 
         poolRouter_approveDeposits(scId, assetId, maxApproval, valuation);
         poolRouter_issueShares(scId, assetId, navPerShare);
-        this.gateway_topUp{value: 1 ether}();
         poolRouter_execute_clamped(poolId);
     }
 
@@ -388,12 +384,11 @@ abstract contract TargetFunctions is
         uint128 maxApproval,
         D18 navPerShare,
         bool isIdentityValuation
-    ) public payable {        
+    ) public  {        
         IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
         
         poolRouter_approveRedeems(scId, isoCode, maxApproval);
         poolRouter_revokeShares(scId, isoCode, navPerShare, valuation);
-        this.gateway_topUp{value: 1 ether}();
         poolRouter_execute_clamped(poolId);
     }
 

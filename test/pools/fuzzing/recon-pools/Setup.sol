@@ -35,7 +35,7 @@ import "src/pools/MessageProcessor.sol";
 import "src/common/Root.sol";
 import "test/common/mocks/MockAdapter.sol";
 import "test/common/mocks/MockGasService.sol";
-import "test/recon/mocks/MockGateway.sol";
+import "test/pools/fuzzing/recon-pools/mocks/MockGateway.sol";
 
 abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     Accounting accounting;
