@@ -131,7 +131,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Incomming methods
+    // Incoming methods
     //----------------------------------------------------------------------------------------------
 
     /// @dev Handle a batch of messages
@@ -140,11 +140,6 @@ contract Gateway is Auth, IGateway, IRecoverable {
             _handle(chainId, message, IAdapter(msg.sender), false);
 
             uint16 messageLength = message.messageLength();
-
-            // TODO: remove this when registerAsset is merged
-            if (message.messageType() == MessageType.RegisterAsset) {
-                return;
-            }
 
             // TODO: optimize with assembly to just shift the pointer in the array
             // TODO: Could we use `calldata` message in the signature? Highly desired to avoid a copy.
