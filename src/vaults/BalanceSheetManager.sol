@@ -155,6 +155,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         bytes32 encoded,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
+        uint128 assetId = poolManager.assetToId(asset);
         Noted storage noted = _notedWithdraw[poolId][scId][receiver][assetId];
 
         if (noted.amount == 0) {
@@ -189,6 +190,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         bytes32 encoded,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
+        uint128 assetId = poolManager.assetToId(asset);
         Noted storage noted = _notedDeposit[poolId][scId][provider][assetId];
 
         if (noted.amount == 0) {
