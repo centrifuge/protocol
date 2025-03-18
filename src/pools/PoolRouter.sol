@@ -65,6 +65,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
         else if (what == "holdings") holdings = IHoldings(data);
         else if (what == "poolRegistry") poolRegistry = IPoolRegistry(data);
         else if (what == "assetRegistry") assetRegistry = IAssetRegistry(data);
+        else if (what == "gateway") gateway = IGateway(data);
         else if (what == "accounting") accounting = IAccounting(data);
         else revert FileUnrecognizedWhat();
 
@@ -111,7 +112,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
         payable
         returns (PoolId poolId)
     {
-        // TODO: add fees
+        // TODO: add fees?
         return poolRegistry.registerPool(admin, currency, shareClassManager);
     }
 
@@ -372,19 +373,17 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
 
     /// @inheritdoc IPoolRouterHandler
     function registerAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals)
-        external payable
+        external payable auth
     {
-        _protected();
-        
+
         assetRegistry.registerAsset(assetId, name, symbol, decimals);
     }
 
     /// @inheritdoc IPoolRouterHandler
     function depositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId, uint128 amount)
-        external payable
+        external payable auth
     {
-        _protected();
-        
+
         address pendingShareClassEscrow = escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS);
         assetRegistry.mint(pendingShareClassEscrow, depositAssetId.raw(), amount);
 
@@ -394,20 +393,18 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
 
     /// @inheritdoc IPoolRouterHandler
     function redeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId, uint128 amount)
-        external payable
+        external payable auth
     {
-        _protected();
-        
+
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
         scm.requestRedeem(poolId, scId, amount, investor, payoutAssetId);
     }
 
     /// @inheritdoc IPoolRouterHandler
     function cancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
-        external payable
+        external payable auth
     {
-        _protected();
-        
+
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
         (uint128 cancelledAssetAmount) = scm.cancelDepositRequest(poolId, scId, investor, depositAssetId);
 
@@ -419,10 +416,9 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
 
     /// @inheritdoc IPoolRouterHandler
     function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
-        external payable
+        external payable auth
     {
-        _protected();
-        
+
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
         uint128 cancelledShareAmount = scm.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
 
@@ -433,14 +429,18 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
     // view / pure methods
     //----------------------------------------------------------------------------------------------
 
+    /// @inheritdoc IPoolRouter
     function escrow(PoolId poolId, ShareClassId scId, EscrowId escrow_) public pure returns (address) {
         return address(bytes20(keccak256(abi.encodePacked("escrow", poolId, scId, escrow_))));
     }
 
+    /// @dev Ensure the method is protected (see `_protected()`) and the pool is unlocked,
+    /// which mean the method must be called though `execute()`
     function _protectedAndUnlocked() internal protected {
         require(!unlockedPoolId.isNull(), IPoolRouter.PoolLocked());
     }
 
+    /// @dev Ensure the method can be used without reentrancy issues
     function _protected() internal protected {}
 
     /// @notice Send native tokens to the gateway for transaction payment if it's not in a multicall.

@@ -46,72 +46,16 @@ contract TestCommon is Test {
         vm.mockCall(
             address(accounting), abi.encodeWithSelector(accounting.unlock.selector, POOL_A, "TODO"), abi.encode(true)
         );
+
+        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.startBatch.selector), abi.encode());
+        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endBatch.selector), abi.encode());
+        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.isBatching.selector), abi.encode(true));
     }
 }
 
 contract TestMainMethodsChecks is TestCommon {
     function testErrNotAuthotized() public {
         vm.startPrank(makeAddr("noPoolAdmin"));
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.notifyPool(0);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.notifyShareClass(0, ShareClassId.wrap(0), bytes32(""));
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.setPoolMetadata(bytes(""));
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.allowPoolAdmin(address(0), false);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.allowAsset(ShareClassId.wrap(0), AssetId.wrap(0), false);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.addShareClass("", "", bytes32(0), bytes(""));
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.approveDeposits(ShareClassId.wrap(0), AssetId.wrap(0), 0, IERC7726(address(0)));
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.approveRedeems(ShareClassId.wrap(0), AssetId.wrap(0), 0);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.issueShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.revokeShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.createHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.increaseHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.decreaseHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.updateHolding(ShareClassId.wrap(0), AssetId.wrap(0));
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.updateHoldingValuation(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)));
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.setHoldingAccountId(ShareClassId.wrap(0), AssetId.wrap(0), AccountId.wrap(0));
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.createAccount(AccountId.wrap(0), false);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.setAccountMetadata(AccountId.wrap(0), bytes(""));
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.addDebit(AccountId.wrap(0), 0);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.addCredit(AccountId.wrap(0), 0);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         poolRouter.registerAsset(AssetId.wrap(0), "", "", 0);

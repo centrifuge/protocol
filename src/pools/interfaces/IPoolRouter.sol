@@ -169,7 +169,7 @@ interface IPoolRouter {
 
     /// @notice Compute the escrow address used for a share class
     /// @return The escrow address
-    function escrow(PoolId poolId, ShareClassId scId, EscrowId escrow_) external returns (address);
+    function escrow(PoolId poolId, ShareClassId scId, EscrowId escrow_) external pure returns (address);
 }
 
 /// @notice Interface for methods called by the gateway

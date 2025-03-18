@@ -95,7 +95,7 @@ contract TestCases is Deployer, Test {
         assertEq(decimals, 6);
 
         vm.prank(FM);
-        poolId = poolRouter.createPool(address(this), USD, multiShareClass);
+        poolId = poolRouter.createPool(FM, USD, multiShareClass);
 
         scId = multiShareClass.previewNextShareClassId(poolId);
 
@@ -198,7 +198,7 @@ contract TestCases is Deployer, Test {
     function testExecuteNoSendNoPay() public {
         vm.startPrank(FM);
 
-        PoolId poolId = poolRouter.createPool(address(this), USD, multiShareClass);
+        PoolId poolId = poolRouter.createPool(FM, USD, multiShareClass);
 
         bytes[] memory cs = new bytes[](1);
         cs[0] = abi.encodeWithSelector(poolRouter.setPoolMetadata.selector, "");
@@ -213,7 +213,7 @@ contract TestCases is Deployer, Test {
     function testExecuteSendNoPay() public {
         vm.startPrank(FM);
 
-        PoolId poolId = poolRouter.createPool(address(this), USD, multiShareClass);
+        PoolId poolId = poolRouter.createPool(FM, USD, multiShareClass);
 
         bytes[] memory cs = new bytes[](1);
         cs[0] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
@@ -235,8 +235,8 @@ contract TestCases is Deployer, Test {
     function testMultipleMulticall() public {
         vm.startPrank(FM);
 
-        PoolId poolA = poolRouter.createPool(address(this), USD, multiShareClass);
-        PoolId poolB = poolRouter.createPool(address(this), USD, multiShareClass);
+        PoolId poolA = poolRouter.createPool(FM, USD, multiShareClass);
+        PoolId poolB = poolRouter.createPool(FM, USD, multiShareClass);
 
         bytes[] memory innerCalls = new bytes[](1);
         innerCalls[0] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
