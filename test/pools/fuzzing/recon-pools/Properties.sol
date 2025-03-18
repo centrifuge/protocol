@@ -50,7 +50,7 @@ abstract contract Properties is BeforeAfter, Asserts {
                     gte(
                         multiShareClass.pendingRedeem(scId, assetId), 
                         pendingUserRedemption, 
-                        "cancelled redemption is greater than requested redemption"
+                        "user redemption is greater than total redemption"
                         );
                 }
             }
