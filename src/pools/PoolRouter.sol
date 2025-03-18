@@ -40,12 +40,6 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
     IMessageProcessor public sender;
     IGateway public gateway;
 
-    /// @dev A requirement for methods that needs to be called through `execute()`
-    modifier poolUnlocked() {
-        require(!unlockedPoolId.isNull(), IPoolRouter.PoolLocked());
-        _;
-    }
-
     constructor(
         IPoolRegistry poolRegistry_,
         IAssetRegistry assetRegistry_,
@@ -443,7 +437,9 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
         return address(bytes20(keccak256(abi.encodePacked("escrow", poolId, scId, escrow_))));
     }
 
-    function _protectedAndUnlocked() internal protected poolUnlocked {}
+    function _protectedAndUnlocked() internal protected {
+        require(!unlockedPoolId.isNull(), IPoolRouter.PoolLocked());
+    }
 
     function _protected() internal protected {}
 
