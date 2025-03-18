@@ -39,7 +39,7 @@ abstract contract Properties is BeforeAfter, Asserts {
             
             // loop through all share classes in the pool
             for (uint32 j = 0; j < shareClassCount; j++) {
-                ShareClassId scId = multiShareClass.indexToScId(poolId, j);
+                ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
                 AssetId assetId = poolRegistry.currency(poolId);
 
                 // loop through all actors

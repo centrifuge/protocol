@@ -22,13 +22,13 @@ abstract contract BeforeAfter is Setup {
     }
 
     function __before() internal {
-        _before.ghostUnlockedPoolId = poolManager.unlockedPoolId();
+        _before.ghostUnlockedPoolId = poolRouter.unlockedPoolId();
         _before.ghostDebited = accounting.debited();
         _before.ghostCredited = accounting.credited();
     }
 
     function __after() internal {
-        _after.ghostUnlockedPoolId = poolManager.unlockedPoolId();
+        _after.ghostUnlockedPoolId = poolRouter.unlockedPoolId();
         _after.ghostDebited = accounting.debited();
         _after.ghostCredited = accounting.credited();
     }

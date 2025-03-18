@@ -11,7 +11,11 @@ import {MockERC20} from "@recon/MockERC20.sol";
 
 // Source
 import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
-import "src/pools/PoolManager.sol";
+import {AccountId} from "src/pools/types/AccountId.sol";
+import {ShareClassId} from "src/pools/types/ShareClassId.sol";
+import {PoolId} from "src/pools/types/PoolId.sol";
+import {D18} from "src/misc/types/D18.sol";
+import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
 import {BeforeAfter} from "../BeforeAfter.sol";
 import {Properties} from "../Properties.sol";
@@ -56,16 +60,6 @@ abstract contract AdminTargets is
         AssetId payoutAssetId = newAssetId(isoCode);
         
         queuedCalls.push(abi.encodeWithSelector(poolRouter.approveRedeems.selector, scId, payoutAssetId, maxApproval));
-    }
-
-    function poolRouter_claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId) public {
-        bytes32 investor = Helpers.addressToBytes32(_getActor());
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.claimDeposit.selector, poolId, scId, assetId, investor));
-    }
-
-    function poolRouter_claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId) public {
-        bytes32 investor = Helpers.addressToBytes32(_getActor());
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.claimRedeem.selector, poolId, scId, assetId, investor));
     }
 
     function poolRouter_createAccount(AccountId account, bool isDebitNormal) public {
@@ -132,44 +126,44 @@ abstract contract AdminTargets is
     // === PoolManager === //
     /// Gateway owner methods: these get called directly because we're not using the gateway in our setup
 
-    function poolManager_registerAsset(uint32 isoCode) public updateGhosts asAdmin {
+    function poolRouter_registerAsset(uint32 isoCode) public updateGhosts asAdmin {
         AssetId assetId_ = newAssetId(isoCode); 
 
         string memory name = MockERC20(_getAsset()).name();
         string memory symbol = MockERC20(_getAsset()).symbol();
         uint8 decimals = MockERC20(_getAsset()).decimals();
 
-        poolManager.registerAsset(assetId_, name, symbol, decimals);
+        poolRouter.registerAsset(assetId_, name, symbol, decimals);
     }  
 
-    function poolManager_depositRequest(PoolId poolId, ShareClassId scId, uint32 isoCode, uint128 amount) public updateGhosts asAdmin {
+    function poolRouter_depositRequest(PoolId poolId, ShareClassId scId, uint32 isoCode, uint128 amount) public updateGhosts asAdmin {
         AssetId depositAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
-        poolManager.depositRequest(poolId, scId, investor, depositAssetId, amount);
+        poolRouter.depositRequest(poolId, scId, investor, depositAssetId, amount);
 
         deposited = true;
     }  
 
-    function poolManager_redeemRequest(PoolId poolId, ShareClassId scId, uint32 isoCode, uint128 amount) public updateGhosts asAdmin {
+    function poolRouter_redeemRequest(PoolId poolId, ShareClassId scId, uint32 isoCode, uint128 amount) public updateGhosts asAdmin {
         AssetId payoutAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
-        poolManager.redeemRequest(poolId, scId, investor, payoutAssetId, amount);
+        poolRouter.redeemRequest(poolId, scId, investor, payoutAssetId, amount);
     }  
 
-    function poolManager_cancelDepositRequest(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asAdmin {
+    function poolRouter_cancelDepositRequest(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asAdmin {
         AssetId depositAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
-        poolManager.cancelDepositRequest(poolId, scId, investor, depositAssetId);
+        poolRouter.cancelDepositRequest(poolId, scId, investor, depositAssetId);
     }
 
-    function poolManager_cancelRedeemRequest(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asAdmin {
+    function poolRouter_cancelRedeemRequest(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asAdmin {
         AssetId payoutAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
-        poolManager.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
+        poolRouter.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
 
         cancelledRedeemRequest = true;
     }

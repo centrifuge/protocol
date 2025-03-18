@@ -22,10 +22,10 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         add_new_asset(18);
 
         //register asset 
-        poolManager_registerAsset(123);
+        poolRouter_registerAsset(123);
 
         // create pool 
-        poolManager_createPool(address(this), 123, multiShareClass);
+        poolRouter_createPool(address(this), 123, multiShareClass);
     }
 
     bytes32 INVESTOR = bytes32("Investor");
@@ -50,10 +50,10 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         add_new_asset(18);
 
         //register asset 
-        poolManager_registerAsset(123);
+        poolRouter_registerAsset(123);
 
         // create pool 
-        PoolId poolId = poolManager_createPool(address(this), 123, multiShareClass);
+        PoolId poolId = poolRouter_createPool(address(this), 123, multiShareClass);
 
         return poolId;
     }
@@ -71,14 +71,14 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         poolRouter_execute_clamped(poolId);
         
         // request deposit
-        poolManager_depositRequest(poolId, scId, 123, INVESTOR_AMOUNT);
+        poolRouter_depositRequest(poolId, scId, 123, INVESTOR_AMOUNT);
         
         poolRouter_approveDeposits(scId, assetId, APPROVED_INVESTOR_AMOUNT, identityValuation);
         poolRouter_issueShares(scId, assetId, NAV_PER_SHARE);
         poolRouter_execute_clamped(poolId);
 
         // claim deposit
-        poolManager_claimDeposit(poolId, scId, 123, INVESTOR);
+        poolRouter_claimDeposit(poolId, scId, 123, INVESTOR);
 
         return (poolId, scId);
     }
@@ -87,7 +87,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         (poolId, scId) = test_request_deposit();
 
         // request redemption
-        poolManager_redeemRequest(poolId, scId, 123, SHARE_AMOUNT);
+        poolRouter_redeemRequest(poolId, scId, 123, SHARE_AMOUNT);
 
         // executed via the PoolRouter
         poolRouter_approveRedeems(scId, 123, uint128(10000000));
@@ -95,7 +95,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         poolRouter_execute_clamped(poolId);
 
         // claim redemption
-        poolManager_claimRedeem_clamped(poolId, scId, 123);
+        poolRouter_claimRedeem_clamped(poolId, scId, 123);
     }
 
     function test_shortcut_create_pool_and_update_holding() public {

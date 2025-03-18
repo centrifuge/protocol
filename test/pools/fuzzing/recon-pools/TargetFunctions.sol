@@ -18,14 +18,11 @@ import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AdminTargets} from "./targets/AdminTargets.sol";
 import {Helpers} from "./utils/Helpers.sol";
 import {ManagerTargets} from "./targets/ManagerTargets.sol";
-import {PoolManagerTargets} from "./targets/PoolManagerTargets.sol";
 import {PoolRouterTargets} from "./targets/PoolRouterTargets.sol";
-
 
 abstract contract TargetFunctions is
     AdminTargets,
     ManagerTargets,
-    PoolManagerTargets,
     PoolRouterTargets
 {
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
@@ -45,10 +42,10 @@ abstract contract TargetFunctions is
     ) public returns (PoolId poolId, ShareClassId scId) {
         // add and register asset
         add_new_asset(decimals);
-        poolManager_registerAsset(isoCode);
+        poolRouter_registerAsset(isoCode);
 
         // defaults to pool admined by the admin actor (address(this))
-        poolId = poolManager_createPool(address(this), isoCode, multiShareClass);
+        poolId = poolRouter_createPool(address(this), isoCode, multiShareClass);
         
         // create holding
         scId = multiShareClass.previewNextShareClassId(poolId);
@@ -78,7 +75,7 @@ abstract contract TargetFunctions is
         );
 
         // request deposit
-        poolManager_depositRequest(poolId, scId, isoCode, amount);
+        poolRouter_depositRequest(poolId, scId, isoCode, amount);
         
         // approve and issue shares as the pool admin
         shortcut_approve_and_issue_shares(
@@ -109,7 +106,7 @@ abstract contract TargetFunctions is
 
         // claim deposit as actor
         bytes32 investor = Helpers.addressToBytes32(_getActor());
-        poolManager_claimDeposit(poolId, scId, isoCode, investor);
+        poolRouter_claimDeposit(poolId, scId, isoCode, investor);
 
         return (poolId, scId);
     }
@@ -134,10 +131,10 @@ abstract contract TargetFunctions is
 
         // claim deposit as actor
         bytes32 investor = Helpers.addressToBytes32(_getActor());
-        poolManager_claimDeposit(poolId, scId, isoCode, investor);
+        poolRouter_claimDeposit(poolId, scId, isoCode, investor);
 
         // cancel deposit
-        poolManager_cancelDepositRequest(poolId, scId, isoCode);
+        poolRouter_cancelDepositRequest(poolId, scId, isoCode);
 
         return (poolId, scId);
     }
@@ -162,10 +159,10 @@ abstract contract TargetFunctions is
 
         // claim deposit as actor
         bytes32 investor = Helpers.addressToBytes32(_getActor());
-        poolManager_claimDeposit(poolId, scId, isoCode, investor);
+        poolRouter_claimDeposit(poolId, scId, isoCode, investor);
 
         // cancel deposit
-        poolManager_cancelDepositRequest(poolId, scId, isoCode);
+        poolRouter_cancelDepositRequest(poolId, scId, isoCode);
 
         return (poolId, scId);
     }
@@ -180,7 +177,7 @@ abstract contract TargetFunctions is
         bool isIdentityValuation
     ) public {
         // request redemption
-        poolManager_redeemRequest(poolId, scId, isoCode, shareAmount);
+        poolRouter_redeemRequest(poolId, scId, isoCode, shareAmount);
         
         // approve and revoke shares as the pool admin
         shortcut_approve_and_revoke_shares(
@@ -195,7 +192,7 @@ abstract contract TargetFunctions is
     ) public {        
         // claim redemption as actor
         bytes32 investor = Helpers.addressToBytes32(_getActor());
-        poolManager_claimRedeem(poolId, scId, isoCode, investor);
+        poolRouter_claimRedeem(poolId, scId, isoCode, investor);
     }
 
 
@@ -227,10 +224,10 @@ abstract contract TargetFunctions is
         
         // claim redemption as actor
         // bytes32 investor = Helpers.addressToBytes32(_getActor());
-        // poolManager_claimRedeem(poolId, scId, isoCode, investor);
+        // poolRouter_claimRedeem(poolId, scId, isoCode, investor);
 
         // cancel redemption
-        poolManager_cancelRedeemRequest(poolId, scId, isoCode);
+        poolRouter_cancelRedeemRequest(poolId, scId, isoCode);
     }
 
     // deposit and redeem in one call
@@ -254,7 +251,7 @@ abstract contract TargetFunctions is
         );
 
         // request redemption
-        poolManager_redeemRequest(poolId, scId, isoCode, shareAmount);
+        poolRouter_redeemRequest(poolId, scId, isoCode, shareAmount);
         
         // approve and revoke shares as the pool admin
         // revokes the shares that were issued in the deposit
@@ -293,7 +290,7 @@ abstract contract TargetFunctions is
         );
 
         // request redemption
-        poolManager_redeemRequest(poolId, scId, isoCode, shareAmount);
+        poolRouter_redeemRequest(poolId, scId, isoCode, shareAmount);
 
         // TODO: this is a hack to avoid revoke more than issued, could maybe just pass in totalIssuance_ here
         poolRouter_approveRedeems(scId, isoCode, maxApproval / 2);
@@ -304,7 +301,7 @@ abstract contract TargetFunctions is
         poolRouter_execute_clamped(poolId);
 
         // cancel redemption
-        poolManager_cancelRedeemRequest(poolId, scId, isoCode);
+        poolRouter_cancelRedeemRequest(poolId, scId, isoCode);
     }
 
     function shortcut_create_pool_and_update_holding(

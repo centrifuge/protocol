@@ -17,7 +17,6 @@ import "src/pools/Accounting.sol";
 import "src/pools/AssetRegistry.sol";
 import "src/common/Gateway.sol";
 import "src/pools/Holdings.sol";
-import "src/pools/PoolManager.sol";
 import "src/pools/PoolRegistry.sol";
 import "src/pools/PoolRouter.sol";
 import "src/pools/MultiShareClass.sol";
@@ -25,9 +24,7 @@ import "src/pools/interfaces/IPoolRegistry.sol";
 import "src/pools/interfaces/IAssetRegistry.sol";
 import "src/pools/interfaces/IAccounting.sol";
 import "src/pools/interfaces/IHoldings.sol";
-import "src/pools/interfaces/IPoolManager.sol";
 import "src/common/interfaces/IMessageSender.sol";
-import "src/common/interfaces/IGasService.sol";
 import "src/common/interfaces/IGateway.sol";
 import "src/misc/TransientValuation.sol";
 import "src/misc/IdentityValuation.sol";
@@ -40,9 +37,7 @@ import "test/pools/fuzzing/recon-pools/mocks/MockGateway.sol";
 abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     Accounting accounting;
     AssetRegistry assetRegistry;
-    // Gateway gateway;
     Holdings holdings;
-    PoolManager poolManager;
     PoolRegistry poolRegistry;
     PoolRouter poolRouter;
     MultiShareClass multiShareClass;
@@ -83,32 +78,26 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         poolRegistry = new PoolRegistry(address(this)); 
 
         holdings = new Holdings(IPoolRegistry(address(poolRegistry)), address(this));
-        poolManager = new PoolManager(IPoolRegistry(address(poolRegistry)), IAssetRegistry(address(assetRegistry)), IAccounting(address(accounting)), IHoldings(address(holdings)), address(this));
-        poolRouter = new PoolRouter(IPoolManager(address(poolManager)), IGateway(address(gateway)));
+        poolRouter = new PoolRouter(IPoolRegistry(address(poolRegistry)), IAssetRegistry(address(assetRegistry)), IAccounting(address(accounting)), IHoldings(address(holdings)), IGateway(address(gateway)), address(this));
         multiShareClass = new MultiShareClass(IPoolRegistry(address(poolRegistry)), address(this));
-        messageProcessor = new MessageProcessor(IMessageSender(address(gateway)), poolManager, address(this));
+        messageProcessor = new MessageProcessor(IMessageSender(address(gateway)), IPoolRouterHandler(address(poolRouter)), address(this));
 
         mockAdapter = new MockAdapter(IMessageHandler(address(gateway)));
 
         transientValuation = new TransientValuation(assetRegistry, address(this));
         identityValuation = new IdentityValuation(assetRegistry, address(this));
 
-        // set addresses on the PoolManager and Gateway
-        poolManager.file("sender", address(messageProcessor));
-        gateway.file("handler", address(messageProcessor));
-        gateway.file("gasService", address(gasService));
-        IAdapter[] memory adapters = new IAdapter[](1);
-        adapters[0] = IAdapter(address(mockAdapter));
-        gateway.file("adapters", adapters);
+        // set addresses on the PoolRouter
+        poolRouter.file("sender", address(messageProcessor));
 
         // set permissions for calling privileged functions
-        poolRegistry.rely(address(poolManager));
-        assetRegistry.rely(address(poolManager));
-        accounting.rely(address(poolManager));
-        holdings.rely(address(poolManager));
-        multiShareClass.rely(address(poolManager));
-        poolManager.rely(address(poolRouter));
-        messageProcessor.rely(address(poolManager));
+        poolRegistry.rely(address(poolRouter));
+        assetRegistry.rely(address(poolRouter));
+        accounting.rely(address(poolRouter));
+        holdings.rely(address(poolRouter));
+        multiShareClass.rely(address(poolRouter));
+        poolRouter.rely(address(poolRouter));
+        messageProcessor.rely(address(poolRouter));
     }
 
     /// === MODIFIERS === ///
