@@ -6,7 +6,7 @@ import {ISafe} from "src/common/interfaces/IGuardian.sol";
 import {Deployer} from "script/vaults/Deployer.sol";
 import {LocalAdapter} from "./LocalAdapter.sol";
 
-// Script to deploy Liquidity Pools with an Axelar adapter.
+// Script to deploy Vaults with an Axelar adapter.
 contract LocalAdapterScript is Deployer {
     function setUp() public {}
 

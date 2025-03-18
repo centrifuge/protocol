@@ -13,17 +13,17 @@ import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {IMessageProcessor} from "src/pools/interfaces/IMessageProcessor.sol";
-import {IPoolManagerHandler} from "src/pools/interfaces/IPoolManager.sol";
+import {IPoolRouterHandler} from "src/pools/interfaces/IPoolRouter.sol";
 
 contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
     using MessageLib for *;
     using BytesLib for bytes;
     using CastLib for *;
 
-    IPoolManagerHandler public immutable manager;
+    IPoolRouterHandler public immutable manager;
     IMessageSender public immutable gateway;
 
-    constructor(IMessageSender sender_, IPoolManagerHandler manager_, address deployer) Auth(deployer) {
+    constructor(IMessageSender sender_, IPoolRouterHandler manager_, address deployer) Auth(deployer) {
         gateway = sender_;
         manager = manager_;
     }

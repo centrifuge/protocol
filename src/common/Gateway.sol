@@ -33,6 +33,15 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     uint256 public transient fuel;
 
+    /// @dev Says if a send() was performed, but it's still pending to finalize the batch
+    bool public transient pendingBatch;
+
+    /// @notice Tells is the gateway is actually configured to create batches
+    bool public transient isBatching;
+
+    /// @notice The payer of the transaction.
+    address public transient payableSource;
+
     IRoot public immutable root;
     IGasService public gasService;
 
@@ -45,9 +54,6 @@ contract Gateway is Auth, IGateway, IRecoverable {
     IAdapter[] public adapters;
 
     /// @inheritdoc IGateway
-    mapping(address payer => bool) public payers;
-
-    /// @inheritdoc IGateway
     mapping(IAdapter adapter => mapping(bytes32 messageHash => uint256 timestamp)) public recoveries;
 
     /// @notice Current batch messages pending to be sent
@@ -55,12 +61,6 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     /// @notice Chains ID with pendign batch messages
     uint32[] public /*transient*/ chainIds;
-
-    /// @notice Tells is the gateway is actually configured to create batches
-    bool public /*transient*/ isBatching;
-
-    /// @notice The payer of the transaction.
-    address public /*transient*/ payableSource;
 
     constructor(IRoot root_, IGasService gasService_) Auth(msg.sender) {
         root = root_;
@@ -119,14 +119,6 @@ contract Gateway is Auth, IGateway, IRecoverable {
         else revert("Gateway/file-unrecognized-param");
 
         emit File(what, instance);
-    }
-
-    /// @inheritdoc IGateway
-    function file(bytes32 what, address payer, bool isAllowed) external auth {
-        if (what == "payers") payers[payer] = isAllowed;
-        else revert("Gateway/file-unrecognized-param");
-
-        emit File(what, payer, isAllowed);
     }
 
     /// @inheritdoc IRecoverable
@@ -270,6 +262,8 @@ contract Gateway is Auth, IGateway, IRecoverable {
     /// @inheritdoc IMessageSender
     function send(uint32 chainId, bytes calldata message) external pauseable auth {
         if (isBatching) {
+            pendingBatch = true;
+
             bytes storage previousMessage = batch[chainId];
             if (previousMessage.length == 0) {
                 chainIds.push(chainId);
@@ -287,8 +281,8 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
         require(adapters.length != 0, "Gateway/not-initialized");
 
-        uint256 messageCost = gasService.estimate(chainId, message);
-        uint256 proofCost = gasService.estimate(chainId, proof);
+        uint256 messageGasLimit = gasService.estimate(chainId, message);
+        uint256 proofGasLimit = gasService.estimate(chainId, proof);
 
         if (fuel != 0) {
             uint256 tank = fuel;
@@ -297,13 +291,15 @@ contract Gateway is Auth, IGateway, IRecoverable {
                 bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
                 bytes memory payload = isPrimaryAdapter ? message : proof;
 
-                uint256 consumed = currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageCost : proofCost);
+                uint256 consumed =
+                    currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit);
 
                 require(consumed <= tank, "Gateway/not-enough-gas-funds");
                 tank -= consumed;
 
-                currentAdapter.pay{value: consumed}(chainId, payload, address(this));
-                currentAdapter.send(chainId, payload);
+                currentAdapter.send{value: consumed}(
+                    chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this)
+                );
             }
             fuel = 0;
         } else if (gasService.shouldRefuel(payableSource, message)) {
@@ -312,13 +308,18 @@ contract Gateway is Auth, IGateway, IRecoverable {
                 bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
                 bytes memory payload = isPrimaryAdapter ? message : proof;
 
-                uint256 consumed = currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageCost : proofCost);
+                uint256 consumed =
+                    currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit);
 
                 if (consumed <= address(this).balance) {
-                    currentAdapter.pay{value: consumed}(chainId, payload, address(this));
+                    currentAdapter.send{value: consumed}(
+                        chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this)
+                    );
+                } else {
+                    currentAdapter.send(
+                        chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this)
+                    );
                 }
-
-                currentAdapter.send(chainId, payload);
             }
         } else {
             revert("Gateway/not-enough-gas-funds");
@@ -329,19 +330,26 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     /// @inheritdoc IGateway
     function topUp() external payable {
-        require(payers[msg.sender], "Gateway/only-payers-can-top-up");
-        require(msg.value != 0, "Gateway/cannot-topup-with-nothing");
-        fuel = msg.value;
+        // We only require the top up if:
+        // - We're not in a multicall.
+        // - Or we're in a multicall, but at least one message is required to be sent
+        if (!isBatching || pendingBatch) {
+            require(msg.value != 0, "Gateway/cannot-topup-with-nothing");
+            fuel = msg.value;
+        }
     }
 
+    /// @inheritdoc IGateway
     function setPayableSource(address source) external {
         payableSource = source;
     }
 
+    /// @inheritdoc IGateway
     function startBatch() external {
         isBatching = true;
     }
 
+    /// @inheritdoc IGateway
     function endBatch() external {
         require(isBatching, NoBatched());
 
@@ -352,7 +360,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
         }
 
         delete chainIds;
-
+        pendingBatch = false;
         isBatching = false;
     }
 
@@ -367,13 +375,13 @@ contract Gateway is Auth, IGateway, IRecoverable {
         returns (uint256[] memory perAdapter, uint256 total)
     {
         bytes memory proof = MessageLib.MessageProof({hash: keccak256(payload)}).serialize();
-        uint256 messageCost = gasService.estimate(chainId, payload);
-        uint256 proofCost = gasService.estimate(chainId, proof);
+        uint256 messageGasLimit = gasService.estimate(chainId, payload);
+        uint256 proofGasLimit = gasService.estimate(chainId, proof);
         perAdapter = new uint256[](adapters.length);
 
         uint256 adaptersCount = adapters.length;
         for (uint256 i; i < adaptersCount; i++) {
-            uint256 centrifugeCost = i == PRIMARY_ADAPTER_ID - 1 ? messageCost : proofCost;
+            uint256 centrifugeCost = i == PRIMARY_ADAPTER_ID - 1 ? messageGasLimit : proofGasLimit;
             bytes memory message = i == PRIMARY_ADAPTER_ID - 1 ? payload : proof;
             uint256 estimated = IAdapter(adapters[i]).estimate(chainId, message, centrifugeCost);
             perAdapter[i] = estimated;

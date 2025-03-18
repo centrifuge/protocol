@@ -16,7 +16,6 @@ contract TestMessageLibCategories is Test {
         assert(MessageCategory.Root == uint8(MessageType.ScheduleUpgrade).category());
         assert(MessageCategory.Root == uint8(MessageType.CancelUpgrade).category());
         assert(MessageCategory.Root == uint8(MessageType.RecoverTokens).category());
-        assert(MessageCategory.Gas == uint8(MessageType.UpdateGasPrice).category());
         assert(MessageCategory.Pool == uint8(MessageType.RegisterAsset).category());
         assert(MessageCategory.Pool == uint8(MessageType.NotifyPool).category());
         assert(MessageCategory.Pool == uint8(MessageType.NotifyShareClass).category());
@@ -106,16 +105,6 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.token, b.token);
         assertEq(a.to, b.to);
         assertEq(a.amount, b.amount);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-    }
-
-    function testUpdateGasPrice() public pure {
-        MessageLib.UpdateGasPrice memory a = MessageLib.UpdateGasPrice({price: 42, timestamp: 0x12345678});
-        MessageLib.UpdateGasPrice memory b = MessageLib.deserializeUpdateGasPrice(a.serialize());
-
-        assertEq(a.price, b.price);
-        assertEq(a.timestamp, b.timestamp);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
     }

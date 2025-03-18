@@ -8,7 +8,7 @@ import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 
 abstract contract Multicall is ReentrancyProtection, IMulticall {
-    function multicall(bytes[] calldata data) public payable protected {
+    function multicall(bytes[] calldata data) public payable virtual protected {
         uint256 totalBytes = data.length;
         for (uint256 i; i < totalBytes; ++i) {
             (bool success, bytes memory returnData) = address(this).delegatecall(data[i]);
