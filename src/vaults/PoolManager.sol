@@ -55,7 +55,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     mapping(uint64 poolId => Pool) internal _pools;
     mapping(address factory => bool) public vaultFactory;
     mapping(address => VaultDetails) internal _vaultDetails;
-    mapping(uint128 assetId => AssetIdKey) public idToAsset_;
+    mapping(uint128 assetId => AssetIdKey) internal _idToAsset;
     mapping(address asset => mapping(uint256 tokenId => uint128 assetId)) public assetToId;
 
     constructor(address escrow_, address trancheFactory_, address[] memory vaultFactories) Auth(msg.sender) {
@@ -140,7 +140,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
             _assetCounter++;
             assetId = uint128(bytes16(abi.encodePacked(uint32(block.chainid), _assetCounter)));
 
-            idToAsset_[assetId] = AssetIdKey(asset, tokenId);
+            _idToAsset[assetId] = AssetIdKey(asset, tokenId);
             assetToId[asset][tokenId] = assetId;
 
             // Give pool manager infinite approval for asset
@@ -225,7 +225,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         TrancheDetails storage tranche_ = _pools[poolId].tranches[trancheId];
         require(tranche_.token != address(0), "PoolManager/tranche-does-not-exist");
 
-        AssetIdKey memory assetIdKey = idToAsset_[assetId];
+        AssetIdKey memory assetIdKey = _idToAsset[assetId];
         require(
             computedAt >= tranche_.prices[assetIdKey.asset][assetIdKey.tokenId].computedAt,
             "PoolManager/cannot-set-older-price"
@@ -313,7 +313,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         address[] memory vaultWards = new address[](0);
 
         // Deploy vault
-        AssetIdKey memory assetIdKey = idToAsset_[assetId];
+        AssetIdKey memory assetIdKey = _idToAsset[assetId];
         address vault = IVaultFactory(factory).newVault(
             poolId, trancheId, assetIdKey.asset, assetIdKey.tokenId, tranche_.token, address(escrow), vaultWards
         );
@@ -341,7 +341,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         require(tranche_.token != address(0), "PoolManager/tranche-does-not-exist");
 
         address manager = IBaseVault(vault).manager();
-        AssetIdKey memory assetIdKey = idToAsset_[assetId];
+        AssetIdKey memory assetIdKey = _idToAsset[assetId];
         IVaultManager(manager).addVault(poolId, trancheId, vault, assetIdKey.asset, assetId);
         _vaultDetails[vault].isLinked = true;
 
@@ -354,7 +354,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         require(tranche_.token != address(0), "PoolManager/tranche-does-not-exist");
 
         address manager = IBaseVault(vault).manager();
-        AssetIdKey memory assetIdKey = idToAsset_[assetId];
+        AssetIdKey memory assetIdKey = _idToAsset[assetId];
         IVaultManager(manager).removeVault(poolId, trancheId, vault, assetIdKey.asset, assetId);
         _vaultDetails[vault].isLinked = false;
 
@@ -379,7 +379,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         view
         returns (uint128 price, uint64 computedAt)
     {
-        AssetIdKey memory assetIdKey = idToAsset_[assetId];
+        AssetIdKey memory assetIdKey = _idToAsset[assetId];
         TranchePrice memory value = _pools[poolId].tranches[trancheId].prices[assetIdKey.asset][assetIdKey.tokenId];
         require(value.computedAt > 0, "PoolManager/unknown-price");
         price = value.price;
@@ -403,7 +403,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
 
     /// @inheritdoc IPoolManager
     function idToAsset(uint128 assetId) public view returns (address asset, uint256 tokenId) {
-        AssetIdKey memory assetIdKey = idToAsset_[assetId];
+        AssetIdKey memory assetIdKey = _idToAsset[assetId];
         return (assetIdKey.asset, assetIdKey.tokenId);
     }
 

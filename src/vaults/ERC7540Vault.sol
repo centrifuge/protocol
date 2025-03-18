@@ -43,7 +43,7 @@ contract ERC7540Vault is Auth, IERC7540Vault {
     address public immutable asset;
     /// @dev NOTE: Should never be used in production in any external contract as there will be old vaults without this
     /// storage. Instead, refer to poolManager.vaultDetails(vault).
-    uint256 public immutable tokenId;
+    uint256 internal immutable tokenId;
 
     /// @inheritdoc IERC7575
     address public immutable share;

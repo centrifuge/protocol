@@ -711,7 +711,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         view
     {
         assertEq(poolManager.assetToId(asset, tokenId), assetId, "Asset to id mismatch");
-        (address asset_, uint256 tokenId_) = poolManager.idToAsset_(assetId);
+        (address asset_, uint256 tokenId_) = poolManager.idToAsset(assetId);
         assertEq(asset_, asset);
         assertEq(tokenId_, tokenId);
         _assertAssetCounterEq(expectedAssetCounter);
