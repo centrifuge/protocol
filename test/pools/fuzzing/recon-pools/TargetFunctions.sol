@@ -336,6 +336,26 @@ abstract contract TargetFunctions is
         poolRouter_execute_clamped(poolId);
     }
 
+    function shortcut_notify_share_class(
+        uint8 decimals,
+        uint32 isoCode,
+        string memory name,
+        string memory symbol,
+        bytes32 salt,
+        bytes memory data,
+        bool isIdentityValuation,
+        uint24 prefix,
+        uint128 depositAmount,
+        uint128 shareAmount,
+        D18 navPerShare
+    ) public  {
+        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix, depositAmount, shareAmount, navPerShare);
+
+        // set chainId and hook to constants because we're mocking Gateway so they're not needed
+        poolRouter_notifyShareClass(0, scId, bytes32("ExampleHookData"));
+        poolRouter_execute_clamped(poolId);
+    }
+
     /// === POOL ADMIN SHORTCUTS === ///
     function shortcut_add_share_class_and_holding(
         PoolId poolId,
