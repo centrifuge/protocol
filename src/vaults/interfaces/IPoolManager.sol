@@ -38,11 +38,13 @@ struct UndeployedTranche {
     address hook;
 }
 
-struct VaultAsset {
+struct VaultDetails {
     /// @dev AssetId of the asset
     uint128 assetId;
     /// @dev Address of the asset
     address asset;
+    /// @dev TokenId of the asset - zero if asset is ERC20, non-zero if asset is ERC6909
+    uint256 tokenId;
     /// @dev Whether this wrapper conforms to the IERC20Wrapper interface
     bool isWrapper;
     /// @dev Whether the vault is linked to a tranche atm
@@ -210,20 +212,12 @@ interface IPoolManager is IRecoverable {
         view
         returns (uint128 price, uint64 computedAt);
 
-    /// @notice Function to get the vault's underlying asset
+    /// @notice Function to get the details of a vault
     /// @dev    Reverts if vault does not exist
     ///
     /// @param vault The address of the vault to be checked for
-    /// @return asset The address of the asset
-    /// @return isWrapper Whether the asset is a wrapper one
-    function vaultToAssetAddress(address vault) external view returns (address asset, bool isWrapper);
-
-    /// @notice Retrieve the underlying assetId of the vault
-    /// @dev    Reverts if vault does not exist
-    ///
-    /// @param vault The address of the vault to be checked for
-    /// @return assetId The uint128 assetId
-    function vaultToAssetId(address vault) external view returns (uint128 assetId);
+    /// @return details The details of the vault including the underlying asset address, token id, asset id
+    function vaultDetails(address vault) external view returns (VaultDetails memory details);
 
     /// @notice Checks whether a given asset-vault pair is eligible for investing into a tranche of a pool
     function isLinked(uint64 poolId, bytes16 trancheId, address asset, address vault) external view returns (bool);

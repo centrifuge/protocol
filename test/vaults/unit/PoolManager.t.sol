@@ -15,7 +15,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
 import {IRestrictionManager} from "src/vaults/interfaces/token/IRestrictionManager.sol";
-import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
+import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBaseVault, IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 
 contract PoolManagerTest is BaseTest {
@@ -494,18 +494,22 @@ contract PoolManagerDeployVaultTest is BaseTest {
     string tokenSymbol;
     bytes16 trancheId;
 
-    function _assertVaultSetup(address vaultAddress, uint128 assetId, address asset, bool isLinked) private view {
+    function _assertVaultSetup(address vaultAddress, uint128 assetId, address asset, uint256 tokenId, bool isLinked)
+        private
+        view
+    {
         address vaultManager = IBaseVault(vaultAddress).manager();
         address tranche_ = poolManager.tranche(poolId, trancheId);
         address vault_ = ITranche(tranche_).vault(asset);
 
         assert(poolManager.isPoolActive(poolId));
 
-        (address asset_, bool isWrapper) = poolManager.vaultToAssetAddress(vaultAddress);
-        assertEq(asset, asset_, "vault asset mismatch");
-        assertEq(isWrapper, false);
-        uint128 assetId_ = poolManager.vaultToAssetId(vaultAddress);
-        assertEq(assetId, assetId_, "vault assetId mismatch");
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddress);
+        assertEq(assetId, vaultDetails.assetId, "vault assetId mismatch");
+        assertEq(asset, vaultDetails.asset, "vault asset mismatch");
+        assertEq(tokenId, vaultDetails.tokenId, "vault asset mismatch");
+        assertEq(false, vaultDetails.isWrapper, "vault isWrapper mismatch");
+        assertEq(isLinked, vaultDetails.isLinked, "vault isLinked mismatch");
 
         if (isLinked) {
             assert(poolManager.isLinked(poolId, trancheId, asset, vaultAddress));
@@ -575,7 +579,7 @@ contract PoolManagerDeployVaultTest is BaseTest {
         internal
         view
     {
-        _assertVaultSetup(vaultAddress, assetId, asset, isLinked);
+        _assertVaultSetup(vaultAddress, assetId, asset, tokenId, isLinked);
         _assertTrancheSetup(vaultAddress, isLinked);
         _assertAllowance(vaultAddress, asset, tokenId);
     }

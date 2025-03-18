@@ -25,7 +25,7 @@ import {
     TrancheDetails,
     TranchePrice,
     UndeployedTranche,
-    VaultAsset,
+    VaultDetails,
     IPoolManager
 } from "src/vaults/interfaces/IPoolManager.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
@@ -53,7 +53,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
 
     mapping(uint64 poolId => Pool) internal _pools;
     mapping(address factory => bool) public vaultFactory;
-    mapping(address => VaultAsset) internal _vaultToAsset;
+    mapping(address => VaultDetails) internal _vaultDetails;
     mapping(uint128 assetId => AssetIdKey) public idToAsset_;
     mapping(address asset => mapping(uint256 tokenId => uint128 assetId)) public assetToId;
 
@@ -284,7 +284,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
 
         // Needed as safeguard against non-validated vaults
         // I.e. we only accept vaults that have been deployed by the pool manager
-        require(_vaultToAsset[vault].asset != address(0), "PoolManager/unknown-vault");
+        require(_vaultDetails[vault].asset != address(0), "PoolManager/unknown-vault");
 
         if (m.isLinked) {
             linkVault(poolId, trancheId, m.assetId, vault);
@@ -315,9 +315,9 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
 
         // Check whether asset is an ERC20 token wrapper
         try IERC20Wrapper(assetIdKey.asset).underlying() returns (address) {
-            _vaultToAsset[vault] = VaultAsset(assetId, assetIdKey.asset, true, false);
+            _vaultDetails[vault] = VaultDetails(assetId, assetIdKey.asset, assetIdKey.tokenId, true, false);
         } catch {
-            _vaultToAsset[vault] = VaultAsset(assetId, assetIdKey.asset, false, false);
+            _vaultDetails[vault] = VaultDetails(assetId, assetIdKey.asset, assetIdKey.tokenId, false, false);
         }
 
         address manager = IBaseVault(vault).manager();
@@ -338,7 +338,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         address manager = IBaseVault(vault).manager();
         AssetIdKey memory assetIdKey = idToAsset_[assetId];
         IVaultManager(manager).addVault(poolId, trancheId, vault, assetIdKey.asset, assetId);
-        _vaultToAsset[vault].isLinked = true;
+        _vaultDetails[vault].isLinked = true;
 
         emit LinkVault(poolId, trancheId, assetIdKey.asset, assetIdKey.tokenId, vault);
     }
@@ -351,7 +351,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         address manager = IBaseVault(vault).manager();
         AssetIdKey memory assetIdKey = idToAsset_[assetId];
         IVaultManager(manager).removeVault(poolId, trancheId, vault, assetIdKey.asset, assetId);
-        _vaultToAsset[vault].isLinked = false;
+        _vaultDetails[vault].isLinked = false;
 
         emit UnlinkVault(poolId, trancheId, assetIdKey.asset, assetIdKey.tokenId, vault);
     }
@@ -382,17 +382,9 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     }
 
     /// @inheritdoc IPoolManager
-    function vaultToAssetAddress(address vault) public view returns (address, bool) {
-        VaultAsset memory _asset = _vaultToAsset[vault];
-        require(_asset.asset != address(0), "PoolManager/unknown-vault");
-        return (_asset.asset, _asset.isWrapper);
-    }
-
-    /// @inheritdoc IPoolManager
-    function vaultToAssetId(address vault) public view returns (uint128) {
-        VaultAsset memory _asset = _vaultToAsset[vault];
-        require(_asset.asset != address(0), "PoolManager/unknown-vault");
-        return _asset.assetId;
+    function vaultDetails(address vault) public view returns (VaultDetails memory details) {
+        details = _vaultDetails[vault];
+        require(details.asset != address(0), "PoolManager/unknown-vault");
     }
 
     /// @inheritdoc IPoolManager
@@ -401,7 +393,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         view
         returns (bool)
     {
-        return _vaultToAsset[vault].isLinked;
+        return _vaultDetails[vault].isLinked;
     }
 
     /// @inheritdoc IPoolManager

@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import "forge-std/Test.sol";
+
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
-import "forge-std/Test.sol";
-import {PoolManager} from "../../../src/vaults/PoolManager.sol";
+import {PoolManager} from "src/vaults/PoolManager.sol";
+import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 
 interface AdapterLike {
     function execute(bytes memory _message) external;
@@ -33,6 +35,8 @@ contract MockCentrifugeChain is Test {
     }
 
     function unlinkVault(uint64 poolId, bytes16 trancheId, address vault) public {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+
         execute(
             MessageLib.UpdateContract({
                 poolId: poolId,
@@ -40,7 +44,7 @@ contract MockCentrifugeChain is Test {
                 target: bytes32(bytes20(address(poolManager))),
                 payload: MessageLib.UpdateContractVaultUpdate({
                     factory: address(0),
-                    assetId: poolManager.vaultToAssetId(vault),
+                    assetId: vaultDetails.assetId,
                     isLinked: false,
                     vault: vault
                 }).serialize()
@@ -49,6 +53,8 @@ contract MockCentrifugeChain is Test {
     }
 
     function linkVault(uint64 poolId, bytes16 trancheId, address vault) public {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+
         execute(
             MessageLib.UpdateContract({
                 poolId: poolId,
@@ -56,7 +62,7 @@ contract MockCentrifugeChain is Test {
                 target: bytes32(bytes20(address(poolManager))),
                 payload: MessageLib.UpdateContractVaultUpdate({
                     factory: address(0),
-                    assetId: poolManager.vaultToAssetId(vault),
+                    assetId: vaultDetails.assetId,
                     isLinked: true,
                     vault: vault
                 }).serialize()
