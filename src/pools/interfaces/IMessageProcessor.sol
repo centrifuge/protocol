@@ -64,13 +64,11 @@ interface IMessageProcessor {
     ) external;
 
     /// @notice Creates and send the message
-    function sendUpdateContractVaultUpdate(
+    function sendUpdateContract(
+        uint32 chainId,
         PoolId poolId,
         ShareClassId scId,
-        AssetId assetId,
         bytes32 target,
-        bytes32 factory,
-        bytes32 vault,
-        bool link
+        bytes calldata payload
     ) external;
 }

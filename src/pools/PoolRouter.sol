@@ -9,6 +9,7 @@ import {Auth} from "src/misc/Auth.sol";
 import {Multicall, IMulticall} from "src/misc/Multicall.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
 
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
@@ -248,14 +249,38 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
     }
 
     /// @inheritdoc IPoolRouter
+    function updateContract(uint32 chainId, ShareClassId scId, bytes32 target, bytes calldata payload) external {
+        _protectedAndUnlocked();
+
+        if (payload.updateContractType() == UpdateContractType.VaultUpdate) {
+            MessageLib.UpdateContractVaultUpdate memory m = MessageLib.deserializeUpdateContractVaultUpdate(payload);
+            updateVault(scId, AssetId.wrap(m.assetId), target, m.factory, m.vault, m.isLinked);
+        }
+        else {
+            sender.sendUpdateContract(chainId, unlockedPoolId, scId, target, payload);
+        }
+    }
+
+    /// @inheritdoc IPoolRouter
     function updateVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 factory, bytes32 vault, bool link)
-        external payable
+        public payable
     {
         _protectedAndUnlocked();
 
         require(holdings.exists(unlockedPoolId, scId, assetId), IHoldings.HoldingNotFound());
 
-        sender.sendUpdateContractVaultUpdate(unlockedPoolId, scId, assetId, target, factory, vault, link);
+        sender.sendUpdateContract(
+            assetId.chainId(),
+            unlockedPoolId,
+            scId,
+            target,
+            MessageLib.UpdateContractVaultUpdate({
+                factory: factory,
+                assetId: assetId.raw(),
+                isLinked: link,
+                vault: vault
+            }).serialize()
+        );
     }
 
     /// @inheritdoc IPoolRouter

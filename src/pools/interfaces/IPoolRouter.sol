@@ -125,15 +125,26 @@ interface IPoolRouter {
         external
         payable;
 
-    /// @notice Update remotely an exiting vault
+    /// @notice Update remotely an exiting vault.
+    /// @param chainId Chain where CV instance lives.
+    /// @param target contract where to execute in CV. Check IUpdateContract interface.
+    /// @param payload content of the to execute.
+    function updateContract(uint32 chainId, ShareClassId scId, bytes32 target, bytes calldata payload)
+        external
+        payable;
+
+    /// @notice Adds a vault in the Vaults side.
+    /// If the vault is not created it will use the factory to build one.
+    /// If the vault already existed, but unlinked, it will link it again.
     /// @param assetId Asset used in the vault.
+    /// @param target contract where to execute in CV. Check IUpdateContract interface.
     /// @param factory Factory address. Check `IVaultFactory` interface.
     /// If the vault is already created, this isn't used.
     /// @param vault Vault address. Check `IBaseVault`.
     /// If the vault is created first time, this should be 0.
     /// @param link decides if the action should link or unlink the vault.
     /// If the vault is created first time, this should be true.
-    function updateVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 factory, bytes32 vault, bool link)
+    function addVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 factory, bytes32 vault, bool link)
         external
         payable;
 
