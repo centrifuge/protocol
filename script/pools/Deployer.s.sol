@@ -17,7 +17,7 @@ import {Holdings} from "src/pools/Holdings.sol";
 import {AssetRegistry} from "src/pools/AssetRegistry.sol";
 import {Accounting} from "src/pools/Accounting.sol";
 import {MessageProcessor} from "src/pools/MessageProcessor.sol";
-import {PoolManager, IPoolManager} from "src/pools/PoolManager.sol";
+import {PoolRouter, IPoolRouter} from "src/pools/PoolRouter.sol";
 import {PoolRouter} from "src/pools/PoolRouter.sol";
 
 contract Deployer is Script {
@@ -34,9 +34,8 @@ contract Deployer is Script {
     Accounting public accounting;
     Holdings public holdings;
     MultiShareClass public multiShareClass;
-    PoolManager public poolManager;
-    MessageProcessor public messageProcessor;
     PoolRouter public poolRouter;
+    MessageProcessor public messageProcessor;
 
     // Utilities
     TransientValuation public transientValuation;
@@ -55,9 +54,8 @@ contract Deployer is Script {
         accounting = new Accounting(address(this));
         holdings = new Holdings(poolRegistry, address(this));
         multiShareClass = new MultiShareClass(poolRegistry, address(this));
-        poolManager = new PoolManager(poolRegistry, assetRegistry, accounting, holdings, address(this));
-        messageProcessor = new MessageProcessor(gateway, poolManager, address(this));
-        poolRouter = new PoolRouter(poolManager, gateway);
+        poolRouter = new PoolRouter(poolRegistry, assetRegistry, accounting, holdings, gateway, address(this));
+        messageProcessor = new MessageProcessor(gateway, poolRouter, address(this));
 
         transientValuation = new TransientValuation(assetRegistry, address(this));
         identityValuation = new IdentityValuation(assetRegistry, address(this));
@@ -68,21 +66,20 @@ contract Deployer is Script {
     }
 
     function _file() private {
-        poolManager.file("sender", address(messageProcessor));
+        poolRouter.file("sender", address(messageProcessor));
         gateway.file("handler", address(messageProcessor));
     }
 
     function _rely() private {
-        poolRegistry.rely(address(poolManager));
-        assetRegistry.rely(address(poolManager));
-        holdings.rely(address(poolManager));
-        accounting.rely(address(poolManager));
-        multiShareClass.rely(address(poolManager));
-        gateway.rely(address(poolManager));
+        poolRegistry.rely(address(poolRouter));
+        assetRegistry.rely(address(poolRouter));
+        holdings.rely(address(poolRouter));
+        accounting.rely(address(poolRouter));
+        multiShareClass.rely(address(poolRouter));
+        gateway.rely(address(poolRouter));
         gateway.rely(address(messageProcessor));
-        poolManager.rely(address(messageProcessor));
-        poolManager.rely(address(poolRouter));
-        messageProcessor.rely(address(poolManager));
+        poolRouter.rely(address(messageProcessor));
+        messageProcessor.rely(address(poolRouter));
         messageProcessor.rely(address(gateway));
     }
 
@@ -98,7 +95,7 @@ contract Deployer is Script {
         multiShareClass.deny(address(this));
         gateway.deny(address(this));
         messageProcessor.deny(address(this));
-        poolManager.deny(address(this));
+        poolRouter.deny(address(this));
 
         transientValuation.deny(address(this));
         identityValuation.deny(address(this));
