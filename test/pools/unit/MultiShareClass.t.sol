@@ -305,7 +305,7 @@ contract MultiShareClassSimpleTest is MultiShareClassBaseTest {
         assert(ShareClassId.unwrap(shareClass.previewNextShareClassId(poolId)) != ShareClassId.unwrap(nextScId));
     }
 
-    function testPreviewShareClassId(uint8 index) public view {
+    function testPreviewShareClassId(uint32 index) public view {
         assertEq(shareClass.previewShareClassId(poolId, index).raw(), bytes16(uint128(poolId.raw() + index)));
     }
 }

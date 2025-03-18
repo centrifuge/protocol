@@ -17,7 +17,7 @@ function raw(ShareClassId scId) pure returns (bytes16) {
     return ShareClassId.unwrap(scId);
 }
 
-function newShareClassId(PoolId poolId, uint8 index) pure returns (ShareClassId scId) {
+function newShareClassId(PoolId poolId, uint32 index) pure returns (ShareClassId scId) {
     return ShareClassId.wrap(bytes16(uint128(PoolId.unwrap(poolId) + index)));
 }
 

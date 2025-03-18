@@ -17,7 +17,7 @@ contract ShareClassIdTest is Test {
         assertEq(shareClassId == shareClassId2, true);
     }
 
-    function testNewShareClassId(uint32 poolId_, uint8 index) public view {
+    function testNewShareClassId(uint32 poolId_, uint32 index) public view {
         PoolId poolId = newPoolId(poolId_);
         ShareClassId scId = newShareClassId(poolId, index);
 

@@ -291,5 +291,5 @@ interface IShareClassManager {
     /// @param poolId Identifier of the pool
     /// @param index The pool-internal index of the share class id
     /// @return scId Identifier of the underlying share class
-    function previewShareClassId(PoolId poolId, uint8 index) external pure returns (ShareClassId scId);
+    function previewShareClassId(PoolId poolId, uint32 index) external pure returns (ShareClassId scId);
 }
