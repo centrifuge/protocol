@@ -176,27 +176,20 @@ interface IPoolRouter {
 interface IPoolRouterHandler {
     /// @notice Tells that an asset was already registered in CV, in order to perform the corresponding register.
     /// @dev The same asset can be re-registered using this. Decimals can not change.
-    function registerAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals)
-        external
-        payable;
+    function registerAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals) external;
 
     /// @notice Perform a deposit that was requested from CV.
     function depositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId, uint128 amount)
-        external
-        payable;
+        external;
 
     /// @notice Perform a redeem that was requested from CV.
     function redeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId, uint128 amount)
-        external
-        payable;
+        external;
 
     /// @notice Perform a deposit cancellation that was requested from CV.
     function cancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
-        external
-        payable;
+        external;
 
     /// @notice Perform a redeem cancellation that was requested from CV.
-    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
-        external
-        payable;
+    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId) external;
 }

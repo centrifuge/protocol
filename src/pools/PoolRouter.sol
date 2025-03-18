@@ -373,7 +373,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
 
     /// @inheritdoc IPoolRouterHandler
     function registerAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals)
-        external payable auth
+        external auth
     {
 
         assetRegistry.registerAsset(assetId, name, symbol, decimals);
@@ -381,7 +381,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
 
     /// @inheritdoc IPoolRouterHandler
     function depositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId, uint128 amount)
-        external payable auth
+        external auth
     {
 
         address pendingShareClassEscrow = escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS);
@@ -393,7 +393,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
 
     /// @inheritdoc IPoolRouterHandler
     function redeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId, uint128 amount)
-        external payable auth
+        external auth
     {
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
@@ -402,7 +402,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
 
     /// @inheritdoc IPoolRouterHandler
     function cancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
-        external payable auth
+        external auth
     {
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
@@ -416,7 +416,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
 
     /// @inheritdoc IPoolRouterHandler
     function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
-        external payable auth
+        external auth
     {
 
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
