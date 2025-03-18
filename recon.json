@@ -529,7 +529,7 @@
     ],
     "separated": true
   },
-  "out/SingleShareClass.sol/SingleShareClass.json": {
+  "out/MultiShareClass.sol/MultiShareClass.json": {
     "functions": [
       {
         "signature": "addShareClass(uint64,string,string,bytes32,bytes)",
