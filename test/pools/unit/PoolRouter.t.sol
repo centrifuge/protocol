@@ -104,7 +104,13 @@ contract TestMainMethodsChecks is TestCommon {
         poolRouter.revokeShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
 
         vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.updateVault(ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), bytes32(0), bytes32(0), false);
+        poolRouter.updateContract(0, ShareClassId.wrap(0), bytes32(0), bytes(""));
+
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
+        poolRouter.deployVault(ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), bytes32(0), bytes32(0));
+
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
+        poolRouter.removeVault(ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), bytes32(0));
 
         vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.createHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
@@ -159,7 +165,7 @@ contract TestNotifyShareClass is TestCommon {
     }
 }
 
-contract TestAllowAsset is TestCommon {
+contract TestDeployVault is TestCommon {
     function testErrHoldingNotFound() public {
         vm.mockCall(
             address(holdings),
@@ -168,9 +174,8 @@ contract TestAllowAsset is TestCommon {
         );
 
         bytes[] memory cs = new bytes[](1);
-        cs[0] = abi.encodeWithSelector(
-            poolRouter.updateVault.selector, SC_A, ASSET_A, bytes32(0), bytes32(0), bytes32(0), false
-        );
+        cs[0] =
+            abi.encodeWithSelector(poolRouter.deployVault.selector, SC_A, ASSET_A, bytes32(0), bytes32(0), bytes32(0));
 
         vm.prank(ADMIN);
         vm.expectRevert(IHoldings.HoldingNotFound.selector);

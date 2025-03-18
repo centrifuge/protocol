@@ -106,13 +106,7 @@ contract TestCases is Deployer, Test {
         cs[c++] = abi.encodeWithSelector(poolRouter.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
         cs[c++] = abi.encodeWithSelector(poolRouter.createHolding.selector, scId, USDC_C2, identityValuation, 0x01);
         cs[c++] = abi.encodeWithSelector(
-            poolRouter.updateVault.selector,
-            scId,
-            USDC_C2,
-            bytes32("target"),
-            bytes32("factory"),
-            bytes32("vault"),
-            true
+            poolRouter.deployVault.selector, scId, USDC_C2, bytes32("target"), bytes32("factory"), bytes32("vault")
         );
         assertEq(c, cs.length);
 

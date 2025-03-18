@@ -133,20 +133,24 @@ interface IPoolRouter {
         external
         payable;
 
-    /// @notice Adds a vault in the Vaults side.
-    /// If the vault is not created it will use the factory to build one.
-    /// If the vault already existed, but unlinked, it will link it again.
+    /// @notice Deploy a vault in the Vaults side.
+    /// If the vault has not been deployer previously it will use the factory to build one.
+    /// If the vault was already deployed, but unlinked, it will link it again.
     /// @param assetId Asset used in the vault.
-    /// @param target contract where to execute in CV. Check IUpdateContract interface.
+    /// @param target contract where to execute this action in CV. Check IUpdateContract interface.
     /// @param factory Factory address. Check `IVaultFactory` interface.
     /// If the vault is already created, this isn't used.
     /// @param vault Vault address. Check `IBaseVault`.
     /// If the vault is created first time, this should be 0.
-    /// @param link decides if the action should link or unlink the vault.
-    /// If the vault is created first time, this should be true.
-    function addVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 factory, bytes32 vault, bool link)
+    function deployVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 factory, bytes32 vault)
         external
         payable;
+
+    /// @notice Removes a vault in the Vaults side. This unlink a previous deployed vault.
+    /// @param assetId Asset used in the vault.
+    /// @param target contract where to execute in CV. Check IUpdateContract interface.
+    /// @param vault Vault address. Check `IBaseVault`.
+    function removeVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 vault) external payable;
 
     /// @notice Create a new holding associated to the asset in a share class.
     /// It will generate and register the different accounts used for holdings.

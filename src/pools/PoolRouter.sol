@@ -26,6 +26,7 @@ import {IPoolRouter, IPoolRouterHandler, EscrowId, AccountType} from "src/pools/
 
 // @inheritdoc IPoolRouter
 contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
+    using MessageLib for *;
     using MathLib for uint256;
     using CastLib for bytes;
     using CastLib for bytes32;
@@ -249,12 +250,17 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
     }
 
     /// @inheritdoc IPoolRouter
-    function updateContract(uint32 chainId, ShareClassId scId, bytes32 target, bytes calldata payload) external {
+    function updateContract(uint32 chainId, ShareClassId scId, bytes32 target, bytes calldata payload) external payable {
         _protectedAndUnlocked();
 
         if (payload.updateContractType() == UpdateContractType.VaultUpdate) {
             MessageLib.UpdateContractVaultUpdate memory m = MessageLib.deserializeUpdateContractVaultUpdate(payload);
-            updateVault(scId, AssetId.wrap(m.assetId), target, m.factory, m.vault, m.isLinked);
+            if (m.isLinked) {
+                deployVault(scId, AssetId.wrap(m.assetId), target, m.factory, m.vault);
+            }
+            else {
+                removeVault(scId, AssetId.wrap(m.assetId), target, m.vault);
+            }
         }
         else {
             sender.sendUpdateContract(chainId, unlockedPoolId, scId, target, payload);
@@ -262,7 +268,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
     }
 
     /// @inheritdoc IPoolRouter
-    function updateVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 factory, bytes32 vault, bool link)
+    function deployVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 factory, bytes32 vault)
         public payable
     {
         _protectedAndUnlocked();
@@ -277,7 +283,29 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
             MessageLib.UpdateContractVaultUpdate({
                 factory: factory,
                 assetId: assetId.raw(),
-                isLinked: link,
+                isLinked: true,
+                vault: vault
+            }).serialize()
+        );
+    }
+
+    /// @inheritdoc IPoolRouter
+    function removeVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 vault)
+        public payable
+    {
+        _protectedAndUnlocked();
+
+        require(holdings.exists(unlockedPoolId, scId, assetId), IHoldings.HoldingNotFound());
+
+        sender.sendUpdateContract(
+            assetId.chainId(),
+            unlockedPoolId,
+            scId,
+            target,
+            MessageLib.UpdateContractVaultUpdate({
+                factory: bytes32(0),
+                assetId: assetId.raw(),
+                isLinked: false,
                 vault: vault
             }).serialize()
         );
