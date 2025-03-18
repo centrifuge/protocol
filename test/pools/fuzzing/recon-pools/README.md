@@ -13,6 +13,10 @@ This allows greater path exploration because the fuzzer would be unlikely to cal
 The `adapter` set on the `Gateway` is set to the address of a `MockAdapter` in the `Setup` contract. This is a simplification to allow the necessary logic but it shouldn't forward calls made to the `execute` function because these should be made directly via the `PoolRouterTargets` contract.
 
 The current setup uses one instance of the 
-`SingleShareClass` if the relationship between pools and Pools is one-to-many, more will need to be added.
+`MultiShareClass` if the relationship between pools and Pools is one-to-many, more will need to be added.
 
-The `Gateway` contract is mocked since we're not actually using it to call the `PoolManager` functions and the extra transferring of gas adds unnecessary complexity to the tester.
+The fuzzing suite assumes the `Gateway` behaves correctly as there isn't much interesting logic in it to test as it just forwards messages received from the vaults and send messages to the vault. 
+
+The test suite was therefore setup so that calls that would normally be made by the `Gateway` to the `PoolManager` are made directly by the fuzzer instead so the fuzzer doesn't have to work around message handling in the `Gateway` which is assumed to be correct. The functions that are exposed to the fuzzer to do this are [here](https://github.com/centrifuge/protocol-v3/blob/442cff7f4a4048b228024740c671a020d4222c10/test/pools/fuzzing/recon-pools/targets/AdminTargets.sol#L132-L175).
+
+The `Gateway` was then mocked [here](https://github.com/centrifuge/protocol-v3/blob/feat/recon-invariants/test/pools/fuzzing/recon-pools/mocks/MockGateway.sol) since it's used in the setup and called by the other contracts to send messages back to the vaults side since the more recent changes to the `Gateway` regarding forwarding gas would require a decent amount of changes to the existing test suite that wouldn't actually add any more interesting state exploration because this is just forwarding messages out to the vaults side. 
