@@ -3,8 +3,9 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
-import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
+import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
@@ -20,6 +21,8 @@ import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 
 contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdateContract {
+    using CastLib for *;
+
     IPerPoolEscrow public immutable escrow;
 
     IGateway public gateway;
@@ -27,8 +30,8 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
     IPoolManager public poolManager;
 
     mapping(uint64 => mapping(bytes16 => mapping(address => bool))) public permission;
-    mapping(uint64 => mapping(bytes16 => mapping(address => mapping(uint128 => Noted)))) public notedWithdraw;
-    mapping(uint64 => mapping(bytes16 => mapping(address => mapping(uint128 => Noted)))) public notedDeposit;
+    mapping(uint64 => mapping(bytes16 => mapping(address => mapping(uint128 => Noted)))) public _notedWithdraw;
+    mapping(uint64 => mapping(bytes16 => mapping(address => mapping(uint128 => Noted)))) public _notedDeposit;
 
     constructor(address escrow_) Auth(msg.sender) {
         escrow = IPerPoolEscrow(escrow_);
@@ -63,7 +66,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         emit Permission(poolId, scId, m.who, m.allowed);
     }
 
-    /// --- Outgoing ---
+    /// --- External ---
     function deposit(
         uint64 poolId,
         bytes16 scId,
@@ -75,29 +78,14 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
         _deposit(
-            poolId, scId, poolManager.assetToId(asset), asset, tokenId, provider, amount, _getPrice(valuation, asset), m
-        );
-    }
-
-    function deposit(
-        uint64 poolId,
-        bytes16 scId,
-        uint128 assetId,
-        address provider,
-        uint128 amount,
-        IERC7726 valuation,
-        Meta calldata m
-    ) external authOrPermission(poolId, scId) {
-        address asset = poolManager.idToAsset(assetId);
-        _deposit(
             poolId,
             scId,
-            assetId,
+            poolManager.assetToId(asset),
             asset,
-            0, // TODO: Fix this when pool manager returns tokenId
+            tokenId,
             provider,
             amount,
-            _getPrice(valuation, asset),
+            _getPrice(valuation, asset, tokenId),
             m
         );
     }
@@ -113,30 +101,14 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
         _withdraw(
-            poolId, scId, poolManager.assetToId(asset), asset, tokenId, receiver, amount, _getPrice(valuation, asset), m
-        );
-    }
-
-    function withdraw(
-        uint64 poolId,
-        bytes16 scId,
-        uint128 assetId,
-        address receiver,
-        uint128 amount,
-        IERC7726 valuation,
-        Meta calldata m
-    ) external authOrPermission(poolId, scId) {
-        address asset = poolManager.idToAsset(assetId);
-
-        _withdraw(
             poolId,
             scId,
-            assetId,
+            poolManager.assetToId(asset),
             asset,
-            0, // TODO: Fix this when pool manager returns tokenId
+            tokenId,
             receiver,
             amount,
-            _getPrice(valuation, asset),
+            _getPrice(valuation, asset, tokenId),
             m
         );
     }
@@ -173,26 +145,24 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         sender.sendJournalEntry(poolId, scId, m.debits, m.credits);
     }
 
-    // --- Incoming ---
     function adaptNotedWithdraw(
         uint64 poolId,
         bytes16 scId,
-        uint128 assetId,
+        address asset,
+        uint256 tokenId,
         address receiver,
         uint128 amount,
         bytes32 encoded,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
-        Noted storage noted = notedWithdraw[poolId][scId][receiver][assetId];
-
-        noted.amount = amount;
-        noted.encoded = encoded;
-        noted.m = m;
+        Noted storage noted = _notedWithdraw[poolId][scId][receiver][assetId];
 
         if (noted.amount == 0) {
-            delete notedWithdraw[poolId][scId][receiver][assetId];
+            delete _notedWithdraw[poolId][scId][receiver][assetId];
         } else {
-            notedWithdraw[poolId][scId][receiver][assetId] = noted;
+            noted.amount = amount;
+            noted.encoded = encoded;
+            noted.m = m;
         }
 
         emit NoteWithdraw(
@@ -212,22 +182,21 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
     function adaptNotedDeposit(
         uint64 poolId,
         bytes16 scId,
-        uint128 assetId,
+        address asset,
+        uint256 tokenId,
         address provider,
         uint128 amount,
         bytes32 encoded,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
-        Noted storage noted = notedDeposit[poolId][scId][provider][assetId];
-
-        noted.amount = amount;
-        noted.encoded = encoded;
-        noted.m = m;
+        Noted storage noted = _notedDeposit[poolId][scId][provider][assetId];
 
         if (noted.amount == 0) {
-            delete notedDeposit[poolId][scId][provider][assetId];
+            delete _notedDeposit[poolId][scId][provider][assetId];
         } else {
-            notedDeposit[poolId][scId][provider][assetId] = noted;
+            noted.amount = amount;
+            noted.encoded = encoded;
+            noted.m = m;
         }
 
         emit NoteDeposit(
@@ -248,7 +217,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         external
     {
         uint128 assetId = poolManager.assetToId(asset);
-        Noted storage noted = notedDeposit[poolId][scId][receiver][assetId];
+        Noted memory noted = _notedDeposit[poolId][scId][receiver][assetId];
 
         require(noted.amount > 0, "BalanceSheetManager/invalid-noted-deposit");
 
@@ -257,58 +226,19 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
             // noted.m.timestamp = block.timestamp;
         }
 
-        D18 pricePerUnit;
-        if (noted.isRawPrice()) {
-            pricePerUnit = noted.asRawPrice();
-        } else {
-            // TODO: Check cast?
-            pricePerUnit = _getPrice(noted.asValuation(), asset);
-        }
-
+        D18 pricePerUnit = _getPrice(noted, asset, tokenId);
         _withdraw(
             poolId, scId, assetId, asset, tokenId, receiver, noted.amount, pricePerUnit, noted.allowance(), noted.m
         );
-    }
 
-    function executeNotedWithdraw(uint64 poolId, bytes16 scId, uint128 assetId, address receiver) external {
-        Noted storage noted = notedDeposit[poolId][scId][receiver][assetId];
-
-        require(noted.amount > 0, "BalanceSheetManager/invalid-noted-deposit");
-
-        if (noted.m.timestamp == 0) {
-            // TODO: Fix timestamp to uint256
-            // noted.m.timestamp = block.timestamp;
-        }
-
-        address asset = poolManager.idToAsset(assetId);
-
-        D18 pricePerUnit;
-        if (noted.isRawPrice()) {
-            pricePerUnit = noted.asRawPrice();
-        } else {
-            // TODO: Check cast?
-            pricePerUnit = _getPrice(noted.asValuation(), asset);
-        }
-
-        _withdraw(
-            poolId,
-            scId,
-            assetId,
-            asset,
-            0, // TODO: Fix this when pool manager returns tokenId
-            receiver,
-            noted.amount,
-            pricePerUnit,
-            noted.allowance(),
-            noted.m
-        );
+        delete _notedWithdraw[poolId][scId][receiver][assetId];
     }
 
     function executeNotedDeposit(uint64 poolId, bytes16 scId, address asset, uint256 tokenId, address provider)
         external
     {
         uint128 assetId = poolManager.assetToId(asset);
-        Noted storage noted = notedDeposit[poolId][scId][provider][assetId];
+        Noted memory noted = _notedDeposit[poolId][scId][provider][assetId];
 
         require(noted.amount > 0, "BalanceSheetManager/invalid-noted-deposit");
 
@@ -317,46 +247,47 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
             // noted.m.timestamp = block.timestamp;
         }
 
-        D18 pricePerUnit;
-        if (noted.isRawPrice()) {
-            pricePerUnit = noted.asRawPrice();
-        } else {
-            // TODO: Check cast?
-            pricePerUnit = _getPrice(noted.asValuation(), asset);
-        }
-
+        D18 pricePerUnit = _getPrice(noted, asset, tokenId);
         _deposit(poolId, scId, assetId, asset, tokenId, provider, noted.amount, pricePerUnit, noted.m);
+
+        delete _notedDeposit[poolId][scId][provider][assetId];
     }
 
-    function executeNotedDeposit(uint64 poolId, bytes16 scId, uint128 assetId, address provider) external {
-        Noted storage noted = notedWithdraw[poolId][scId][provider][assetId];
+    // --- View ---
+    function notedWithdrawAmount(uint64 poolId, bytes16 scId, address asset, uint256 tokenId, address receiver)
+        returns (uint256, bool)
+    {
+        uint128 assetId = poolManager.assetToId(asset);
+        Noted storage noted = _notedWithdraw[poolId][scId][receiver][assetId];
 
-        require(noted.amount > 0, "BalanceSheetManager/invalid-noted-withdraw");
+        return (noted.amount, noted.allowance());
+    }
 
-        if (noted.m.timestamp == 0) {
-            // TODO: Fix timestamp to uint256
-            // noted.m.timestamp = block.timestamp;
-        }
+    function notedDepositAmount(uint64 poolId, bytes16 scId, address asset, uint256 tokenId, address provider)
+        returns (uint256, bool)
+    {
+        uint128 assetId = poolManager.assetToId(asset);
+        Noted storage noted = _notedDeposit[poolId][scId][provider][assetId];
 
-        address asset = poolManager.idToAsset(assetId);
-        D18 pricePerUnit;
-        if (noted.isRawPrice()) {
-            pricePerUnit = noted.asRawPrice();
-        } else {
-            pricePerUnit = _getPrice(noted.asValuation(), asset);
-        }
+        return (noted.amount, noted.allowance());
+    }
 
-        _deposit(
-            poolId,
-            scId,
-            assetId,
-            asset,
-            0, /* TODO: Fix this when pool manager returns tokenId */
-            provider,
-            noted.amount,
-            pricePerUnit,
-            noted.m
-        );
+    function notedWithdrawPrice(uint64 poolId, bytes16 scId, address asset, uint256 tokenId, address receiver)
+        returns (D18)
+    {
+        uint128 assetId = poolManager.assetToId(asset);
+        Noted storage noted = _notedWithdraw[poolId][scId][receiver][assetId];
+
+        return _getPrice(noted, asset, tokenId);
+    }
+
+    function notedDepositPrice(uint64 poolId, bytes16 scId, address asset, uint256 tokenId, address provider)
+        returns (D18)
+    {
+        uint128 assetId = poolManager.assetToId(asset);
+        Noted storage noted = _notedDeposit[poolId][scId][provider][assetId];
+
+        return _getPrice(noted, asset, tokenId);
     }
 
     // --- Internal ---
@@ -424,16 +355,17 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         emit Deposit(poolId, scId, asset, tokenId, provider, amount, pricePerUnit, m.timestamp, m.debits, m.credits);
     }
 
-    function _getPrice(address valuation, address asset) internal view returns (D18) {
-        // TODO: Check cast?
+    function _getPrice(address valuation, address asset, uint256 /* tokenId */ ) internal view returns (D18) {
         return d18(
-            uint128(
-                IERC7726(valuation).getQuote(
-                    1, // TODO: Fix this - e.g. 1 * poolManager.poolDecimals(poolId),
-                    address(0), // TODO: Fix this - e.g. poolManager.poolCurrency(poolId),
-                    asset /* TODO: tokenId compatible */
-                )
-            )
+            IERC7726(valuation).getQuote(1, address(0), asset) // TODO: Fix this - e.g. 1 *
+                // poolManager.poolDecimals(poolId),
+                // TODO: Fix this - e.g. poolManager.poolCurrency(poolId),
+                /* TODO: tokenId compatible */
+                .toUint128()
         );
+    }
+
+    function _getPrice(noted, address asset, uint256 /* tokenId */ ) internal view returns (D18) {
+        D18 pricePerUnit = _getPrice(noted, asset, tokenId);
     }
 }
