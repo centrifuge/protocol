@@ -15,7 +15,6 @@ import {AssetId} from "src/pools/types/AssetId.sol";
 import {AccountId, newAccountId} from "src/pools/types/AccountId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
-import {ITransactionId} from "src/pools/interfaces/ITransactionId.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
@@ -37,7 +36,6 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
     IPoolRegistry public poolRegistry;
     IAssetRegistry public assetRegistry;
     IAccounting public accounting;
-    ITransactionId public transactionId;
     IHoldings public holdings;
     IGateway public gateway;
     IMessageProcessor public sender;
@@ -52,7 +50,6 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
         IPoolRegistry poolRegistry_,
         IAssetRegistry assetRegistry_,
         IAccounting accounting_,
-        ITransactionId transactionId_,
         IHoldings holdings_,
         IGateway gateway_,
         address deployer
@@ -60,7 +57,6 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
         poolRegistry = poolRegistry_;
         assetRegistry = assetRegistry_;
         accounting = accounting_;
-        transactionId = transactionId_;
         gateway = gateway_;
         holdings = holdings_;
     }
@@ -77,7 +73,6 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
         else if (what == "poolRegistry") poolRegistry = IPoolRegistry(data);
         else if (what == "assetRegistry") assetRegistry = IAssetRegistry(data);
         else if (what == "accounting") accounting = IAccounting(data);
-        else if (what == "transactionId") transactionId = ITransactionId(data);
         else revert FileUnrecognizedWhat();
 
         emit File(what, data);
@@ -91,7 +86,7 @@ contract PoolManager is Auth, IPoolManager, IPoolManagerHandler {
         gateway.setPayableSource(admin);
         gateway.startBatch();
 
-        accounting.unlock(poolId, transactionId.generateTransactionId(poolId));
+        accounting.unlock(poolId, poolRegistry.generateJournalId(poolId));
         unlockedPoolId = poolId;
     }
 

@@ -12,7 +12,7 @@ contract Accounting is Auth, IAccounting {
 
     uint128 public transient debited;
     uint128 public transient credited;
-    bytes32 internal transient _transactionId;
+    bytes32 internal transient _journalId;
     PoolId internal transient _currentPoolId;
 
     constructor(address deployer) Auth(deployer) {}
@@ -27,7 +27,7 @@ contract Accounting is Auth, IAccounting {
         acc.totalDebit += value;
         debited += value;
         acc.lastUpdated = uint64(block.timestamp);
-        emit Debit(_currentPoolId, _transactionId, account, value);
+        emit Debit(_currentPoolId, _journalId, account, value);
     }
 
     /// @inheritdoc IAccounting
@@ -40,7 +40,7 @@ contract Accounting is Auth, IAccounting {
         acc.totalCredit += value;
         credited += value;
         acc.lastUpdated = uint64(block.timestamp);
-        emit Credit(_currentPoolId, _transactionId, account, value);
+        emit Credit(_currentPoolId, _journalId, account, value);
     }
 
     /// @inheritdoc IAccounting
@@ -48,7 +48,7 @@ contract Accounting is Auth, IAccounting {
         require(PoolId.unwrap(_currentPoolId) == 0, AccountingAlreadyUnlocked());
         debited = 0;
         credited = 0;
-        _transactionId = transactionId;
+        _journalId = transactionId;
         _currentPoolId = poolId;
     }
 

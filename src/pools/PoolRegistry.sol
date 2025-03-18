@@ -14,6 +14,10 @@ contract PoolRegistry is Auth, IPoolRegistry {
 
     uint32 public latestId;
 
+    mapping(PoolId => uint64) internal _poolJournalIdCounter;
+    /// @inheritdoc IPoolRegistry
+    bytes32 public transient journalId;
+
     mapping(PoolId => bytes) public metadata;
     mapping(PoolId => AssetId) public currency;
     mapping(PoolId => IShareClassManager) public shareClassManager;
@@ -77,6 +81,12 @@ contract PoolRegistry is Auth, IPoolRegistry {
         currency[poolId] = currency_;
 
         emit UpdatedCurrency(poolId, currency_);
+    }
+
+    /// @inheritdoc IPoolRegistry
+    function generateJournalId(PoolId poolId) external auth returns (bytes32) {
+        journalId = bytes32(uint256(uint128(poolId.raw()) << 64 | ++_poolJournalIdCounter[poolId]));
+        return journalId;
     }
 
     function exists(PoolId poolId) public view returns (bool) {
