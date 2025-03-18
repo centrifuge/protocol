@@ -76,7 +76,7 @@ library MessageLib {
         (65 << uint8(MessageType.DisputeMessageRecovery) * 8) +
         (33 << uint8(MessageType.ScheduleUpgrade) * 8) +
         (33 << uint8(MessageType.CancelUpgrade) * 8) +
-        (129 << uint8(MessageType.RecoverTokens) * 8) +
+        (161 << uint8(MessageType.RecoverTokens) * 8) +
         (178 << uint8(MessageType.RegisterAsset) * 8) +
         (9 << uint8(MessageType.NotifyPool) * 8) +
         (250 << uint8(MessageType.NotifyShareClass) * 8) +
@@ -243,6 +243,7 @@ library MessageLib {
     struct RecoverTokens {
         bytes32 target;
         bytes32 token;
+        uint256 tokenId;
         bytes32 to;
         uint256 amount;
     }
@@ -252,13 +253,14 @@ library MessageLib {
         return RecoverTokens({
             target: data.toBytes32(1),
             token: data.toBytes32(33),
-            to: data.toBytes32(65),
-            amount: data.toUint256(97)
+            tokenId: data.toUint256(65),
+            to: data.toBytes32(97),
+            amount: data.toUint256(129)
         });
     }
 
     function serialize(RecoverTokens memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.RecoverTokens, t.target, t.token, t.to, t.amount);
+        return abi.encodePacked(MessageType.RecoverTokens, t.target, t.token, t.tokenId, t.to, t.amount);
     }
 
     //---------------------------------------

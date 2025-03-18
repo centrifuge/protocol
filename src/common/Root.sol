@@ -118,8 +118,8 @@ contract Root is Auth, IRoot {
 
     /// --- Token recovery ---
     /// @inheritdoc IRoot
-    function recoverTokens(address target, address token, address to, uint256 amount) public auth {
-        IRecoverable(target).recoverTokens(token, to, amount);
-        emit RecoverTokens(target, token, to, amount);
+    function recoverTokens(address target, address token, uint256 tokenId, address to, uint256 amount) public auth {
+        IRecoverable(target).recoverTokens(token, tokenId, to, amount);
+        emit RecoverTokens(target, token, tokenId, to, amount);
     }
 }

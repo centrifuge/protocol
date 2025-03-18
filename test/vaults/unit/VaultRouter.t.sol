@@ -50,7 +50,7 @@ contract VaultRouterTest is BaseTest {
         uint256 amount = 100;
         erc20.mint(address(router), amount);
         vm.prank(address(root));
-        router.recoverTokens(address(erc20), address(this), amount);
+        router.recoverTokens(address(erc20), erc20TokenId, address(this), amount);
         assertEq(erc20.balanceOf(address(this)), amount);
     }
 

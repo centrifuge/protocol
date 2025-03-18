@@ -2,19 +2,20 @@
 pragma solidity 0.8.28;
 
 import {IERC20Metadata, IERC20Wrapper} from "src/misc/interfaces/IERC20.sol";
-import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
+import {IERC6909, IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
-import {IBaseVault, IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
+
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 
+import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
+import {IBaseVault, IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {ITrancheFactory} from "src/vaults/interfaces/factories/ITrancheFactory.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
@@ -87,8 +88,12 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     }
 
     /// @inheritdoc IRecoverable
-    function recoverTokens(address token, address to, uint256 amount) external auth {
-        SafeTransferLib.safeTransfer(token, to, amount);
+    function recoverTokens(address token, uint256 tokenId, address to, uint256 amount) external auth {
+        if (tokenId == 0) {
+            SafeTransferLib.safeTransfer(token, to, amount);
+        } else {
+            IERC6909(token).transfer(to, tokenId, amount);
+        }
     }
 
     // --- Outgoing message handling ---

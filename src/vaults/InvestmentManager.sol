@@ -62,9 +62,12 @@ contract InvestmentManager is Auth, IInvestmentManager {
     }
 
     /// @inheritdoc IRecoverable
-    // TODO: Support for ERC6909
-    function recoverTokens(address token, address to, uint256 amount) external auth {
-        SafeTransferLib.safeTransfer(token, to, amount);
+    function recoverTokens(address token, uint256 tokenId, address to, uint256 amount) external auth {
+        if (tokenId == 0) {
+            SafeTransferLib.safeTransfer(token, to, amount);
+        } else {
+            IERC6909(token).transfer(to, tokenId, amount);
+        }
     }
 
     // --- IVaultManager ---

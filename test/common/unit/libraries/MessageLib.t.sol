@@ -94,6 +94,7 @@ contract TestMessageLibIdentities is Test {
         MessageLib.RecoverTokens memory a = MessageLib.RecoverTokens({
             target: bytes32("contract"),
             token: bytes32("token"),
+            tokenId: uint256(987),
             to: bytes32("to"),
             amount: 123
         });
@@ -101,10 +102,11 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.target, b.target);
         assertEq(a.token, b.token);
+        assertEq(a.tokenId, b.tokenId);
         assertEq(a.to, b.to);
         assertEq(a.amount, b.amount);
 
-        assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messageLength(), a.serialize().length, "XXX");
     }
 
     function testRegisterAsset() public pure {

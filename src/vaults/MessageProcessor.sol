@@ -125,7 +125,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
             } else if (kind == MessageType.RecoverTokens) {
                 MessageLib.RecoverTokens memory m = message.deserializeRecoverTokens();
                 root.recoverTokens(
-                    address(bytes20(m.target)), address(bytes20(m.token)), address(bytes20(m.to)), m.amount
+                    address(bytes20(m.target)), address(bytes20(m.token)), m.tokenId, address(bytes20(m.to)), m.amount
                 );
             } else {
                 revert InvalidMessage(uint8(kind));

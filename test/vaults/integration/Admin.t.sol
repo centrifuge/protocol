@@ -244,9 +244,9 @@ contract AdminTest is BaseTest {
         assertEq(asset.balanceOf(address(poolManager)), 100);
         assertEq(asset.balanceOf(address(investmentManager)), 100);
         assertEq(asset.balanceOf(clumsyUser), 0);
-        centrifugeChain.recoverTokens(vault_, asset_, clumsyUser, 100);
-        centrifugeChain.recoverTokens(address(poolManager), asset_, clumsyUser, 100);
-        centrifugeChain.recoverTokens(address(investmentManager), asset_, clumsyUser, 100);
+        centrifugeChain.recoverTokens(vault_, asset_, erc20TokenId, clumsyUser, 100);
+        centrifugeChain.recoverTokens(address(poolManager), asset_, erc20TokenId, clumsyUser, 100);
+        centrifugeChain.recoverTokens(address(investmentManager), asset_, erc20TokenId, clumsyUser, 100);
         assertEq(asset.balanceOf(clumsyUser), 300);
         assertEq(asset.balanceOf(vault_), 0);
         assertEq(asset.balanceOf(address(poolManager)), 0);

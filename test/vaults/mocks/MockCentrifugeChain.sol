@@ -215,11 +215,12 @@ contract MockCentrifugeChain is Test {
         );
     }
 
-    function recoverTokens(address target, address token, address to, uint256 amount) public {
+    function recoverTokens(address target, address token, uint256 tokenId, address to, uint256 amount) public {
         execute(
             MessageLib.RecoverTokens({
                 target: bytes32(bytes20(target)),
                 token: bytes32(bytes20(token)),
+                tokenId: tokenId,
                 to: bytes32(bytes20(to)),
                 amount: amount
             }).serialize()
