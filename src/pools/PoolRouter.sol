@@ -95,24 +95,14 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
 
     /// @inheritdoc IPoolRouter
     function execute(PoolId poolId, bytes[] calldata data) external payable {
-        unlock(poolId, msg.sender);
-
-        multicall(data);
-
-        lock();
-    }
-
-    /// @inheritdoc IPoolRouter
-    function unlock(PoolId poolId, address admin) public auth {
         require(unlockedPoolId.isNull(), IPoolRouter.PoolAlreadyUnlocked());
-        require(poolRegistry.isAdmin(poolId, admin), IPoolRouter.NotAuthorizedAdmin());
+        require(poolRegistry.isAdmin(poolId, msg.sender), IPoolRouter.NotAuthorizedAdmin());
 
         accounting.unlock(poolId, "TODO");
         unlockedPoolId = poolId;
-    }
 
-    /// @inheritdoc IPoolRouter
-    function lock() public auth {
+        multicall(data);
+
         accounting.lock();
         unlockedPoolId = PoolId.wrap(0);
     }

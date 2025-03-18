@@ -196,30 +196,8 @@ contract TestMainMethodsChecks is TestCommon {
     }
 }
 
-contract TestUnlock is TestCommon {
-    function testErrNotAuthoredAdmin() public {
-        vm.mockCall(
-            address(poolRegistry),
-            abi.encodeWithSelector(poolRegistry.isAdmin.selector, PoolId.wrap(1), address(2)),
-            abi.encode(false)
-        );
-
-        vm.expectRevert(IPoolRouter.NotAuthorizedAdmin.selector);
-        poolRouter.unlock(PoolId.wrap(1), address(2));
-    }
-
-    function testErrPoolAlreadyUnlocked() public {
-        poolRouter.unlock(PoolId.wrap(1), ADMIN);
-
-        vm.expectRevert(IPoolRouter.PoolAlreadyUnlocked.selector);
-        poolRouter.unlock(PoolId.wrap(1), ADMIN);
-    }
-}
-
 contract TestNotifyShareClass is TestCommon {
     function testErrShareClassNotFound() public {
-        poolRouter.unlock(POOL_A, ADMIN);
-
         vm.mockCall(
             address(poolRegistry),
             abi.encodeWithSelector(poolRegistry.shareClassManager.selector, POOL_A),
@@ -228,37 +206,45 @@ contract TestNotifyShareClass is TestCommon {
 
         vm.mockCall(address(scm), abi.encodeWithSelector(scm.exists.selector, POOL_A, SC_A), abi.encode(false));
 
+        bytes[] memory cs = new bytes[](1);
+        cs[0] = abi.encodeWithSelector(poolRouter.notifyShareClass.selector, 23, SC_A, bytes32(""));
+
+        vm.prank(ADMIN);
         vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
-        poolRouter.notifyShareClass(23, SC_A, bytes32(""));
+        poolRouter.execute(POOL_A, cs);
     }
 }
 
 contract TestAllowAsset is TestCommon {
     function testErrHoldingNotFound() public {
-        poolRouter.unlock(POOL_A, ADMIN);
-
         vm.mockCall(
             address(holdings),
             abi.encodeWithSelector(holdings.exists.selector, POOL_A, SC_A, ASSET_A),
             abi.encode(false)
         );
 
+        bytes[] memory cs = new bytes[](1);
+        cs[0] = abi.encodeWithSelector(poolRouter.allowAsset.selector, SC_A, ASSET_A, false);
+
+        vm.prank(ADMIN);
         vm.expectRevert(IHoldings.HoldingNotFound.selector);
-        poolRouter.allowAsset(SC_A, ASSET_A, false);
+        poolRouter.execute(POOL_A, cs);
     }
 }
 
 contract TestCreateHolding is TestCommon {
     function testErrAssetNotFound() public {
-        poolRouter.unlock(POOL_A, ADMIN);
-
         vm.mockCall(
             address(assetRegistry),
             abi.encodeWithSelector(assetRegistry.isRegistered.selector, ASSET_A),
             abi.encode(false)
         );
 
+        bytes[] memory cs = new bytes[](1);
+        cs[0] = abi.encodeWithSelector(poolRouter.createHolding.selector, SC_A, ASSET_A, IERC7726(address(1)), 0);
+
+        vm.prank(ADMIN);
         vm.expectRevert(IAssetRegistry.AssetNotFound.selector);
-        poolRouter.createHolding(SC_A, ASSET_A, IERC7726(address(1)), 0);
+        poolRouter.execute(POOL_A, cs);
     }
 }

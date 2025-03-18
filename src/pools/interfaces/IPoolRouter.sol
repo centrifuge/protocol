@@ -59,12 +59,6 @@ interface IPoolRouter {
     /// @notice Main method to unlock the pool and call the rest of the admin methods
     function execute(PoolId poolId, bytes[] calldata data) external payable;
 
-    /// @notice unlock a pool
-    function unlock(PoolId poolId, address admin) external;
-
-    /// @notice lock the unlocked pool
-    function lock() external;
-
     /// @notice Creates a new pool. `msg.sender` will be the admin of the created pool.
     /// @param currency The pool currency. Usually an AssetId identifying by a ISO4217 code.
     /// @param shareClassManager The share class manager used for this pool.
