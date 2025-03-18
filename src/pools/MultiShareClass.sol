@@ -82,11 +82,10 @@ contract MultiShareClass is Auth, IMultiShareClass {
     IPoolRegistry public poolRegistry;
     mapping(bytes32 salt => bool) public salts;
     mapping(PoolId poolId => uint32) public epochId;
-    mapping(PoolId poolId => uint32) public shareClassCount;
+    mapping(PoolId poolId => uint8) public shareClassCount;
     mapping(ShareClassId scId => ShareClassMetrics) public metrics;
     mapping(ShareClassId scId => ShareClassMetadata) public metadata;
     mapping(PoolId poolId => mapping(ShareClassId => bool)) public shareClassIds;
-    mapping(PoolId poolId => mapping(uint32 scIdIndex => ShareClassId)) public indexToScId;
     mapping(ShareClassId scId => mapping(AssetId assetId => EpochPointers)) public epochPointers;
     mapping(ShareClassId scId => mapping(AssetId payoutAssetId => uint128 pending)) public pendingRedeem;
     mapping(ShareClassId scId => mapping(AssetId paymentAssetId => uint128 pending)) public pendingDeposit;
@@ -111,8 +110,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
     function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt, bytes calldata) external auth returns (ShareClassId shareClassId_) {
         shareClassId_ = previewNextShareClassId(poolId);
         
-        uint32 index = ++shareClassCount[poolId];
-        indexToScId[poolId][index] = shareClassId_;
+        uint8 index = ++shareClassCount[poolId];
         shareClassIds[poolId][shareClassId_] = true;
 
         // Initialize epoch with 1 iff first class was added
@@ -541,7 +539,12 @@ contract MultiShareClass is Auth, IMultiShareClass {
 
     /// @inheritdoc IShareClassManager
     function previewNextShareClassId(PoolId poolId) public view returns (ShareClassId scId) {
-        return ShareClassId.wrap(bytes16(uint128(PoolId.unwrap(poolId) + shareClassCount[poolId] + 1)));
+        return previewShareClassId(poolId, shareClassCount[poolId] + 1);
+    }
+
+    /// @inheritdoc IShareClassManager
+    function previewShareClassId(PoolId poolId, uint8 index) public pure returns (ShareClassId scId) {
+        return ShareClassId.wrap(bytes16(uint128(PoolId.unwrap(poolId) + index)));
     }
 
     /// @inheritdoc IShareClassManager
