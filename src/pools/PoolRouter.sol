@@ -256,7 +256,12 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
         if (payload.updateContractType() == UpdateContractType.VaultUpdate) {
             MessageLib.UpdateContractVaultUpdate memory m = MessageLib.deserializeUpdateContractVaultUpdate(payload);
             if (m.isLinked) {
-                deployVault(scId, AssetId.wrap(m.assetId), target, m.factory, m.vault);
+                if (m.factory != bytes32(0) && m.vault == bytes32(0)) {
+                    deployVault(scId, AssetId.wrap(m.assetId), target, m.factory);
+                }
+                else {
+                    addVault(scId, AssetId.wrap(m.assetId), target, m.factory);
+                }
             }
             else {
                 removeVault(scId, AssetId.wrap(m.assetId), target, m.vault);
@@ -268,7 +273,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
     }
 
     /// @inheritdoc IPoolRouter
-    function deployVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 factory, bytes32 vault)
+    function deployVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 factory)
         public payable
     {
         _protectedAndUnlocked();
@@ -284,6 +289,26 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
                 factory: factory,
                 assetId: assetId.raw(),
                 isLinked: true,
+                vault: bytes32(0)
+            }).serialize()
+        );
+    }
+
+    /// @inheritdoc IPoolRouter
+    function addVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 vault)
+        public payable
+    {
+        _protectedAndUnlocked();
+
+        sender.sendUpdateContract(
+            assetId.chainId(),
+            unlockedPoolId,
+            scId,
+            target,
+            MessageLib.UpdateContractVaultUpdate({
+                factory: bytes32(0),
+                assetId: assetId.raw(),
+                isLinked: true,
                 vault: vault
             }).serialize()
         );
@@ -294,8 +319,6 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
         public payable
     {
         _protectedAndUnlocked();
-
-        require(holdings.exists(unlockedPoolId, scId, assetId), IHoldings.HoldingNotFound());
 
         sender.sendUpdateContract(
             assetId.chainId(),

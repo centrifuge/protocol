@@ -106,7 +106,7 @@ contract TestCases is Deployer, Test {
         cs[c++] = abi.encodeWithSelector(poolRouter.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
         cs[c++] = abi.encodeWithSelector(poolRouter.createHolding.selector, scId, USDC_C2, identityValuation, 0x01);
         cs[c++] = abi.encodeWithSelector(
-            poolRouter.deployVault.selector, scId, USDC_C2, bytes32("target"), bytes32("factory"), bytes32("vault")
+            poolRouter.deployVault.selector, scId, USDC_C2, bytes32("target"), bytes32("factory")
         );
         assertEq(c, cs.length);
 
@@ -135,7 +135,7 @@ contract TestCases is Deployer, Test {
         MessageLib.UpdateContractVaultUpdate memory m3 = MessageLib.deserializeUpdateContractVaultUpdate(m2.payload);
         assertEq(m3.assetId, USDC_C2.raw());
         assertEq(m3.factory, bytes32("factory"));
-        assertEq(m3.vault, bytes32("vault"));
+        assertEq(m3.vault, bytes32(0));
         assertEq(m3.isLinked, true);
 
         cv.resetMessages();

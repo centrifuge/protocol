@@ -107,7 +107,10 @@ contract TestMainMethodsChecks is TestCommon {
         poolRouter.updateContract(0, ShareClassId.wrap(0), bytes32(0), bytes(""));
 
         vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.deployVault(ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), bytes32(0), bytes32(0));
+        poolRouter.deployVault(ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), bytes32(0));
+
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
+        poolRouter.addVault(ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), bytes32(0));
 
         vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.removeVault(ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), bytes32(0));
