@@ -189,25 +189,25 @@ abstract contract AdminTargets is
 
     // === MultiShareClass === //
 
-    function singleShareClass_claimDepositUntilEpoch(PoolId poolId, ShareClassId shareClassId_, AssetId depositAssetId, uint32 endEpochId) public updateGhosts asAdmin {
+    function multiShareClass_claimDepositUntilEpoch(PoolId poolId, ShareClassId shareClassId_, AssetId depositAssetId, uint32 endEpochId) public updateGhosts asAdmin {
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
         multiShareClass.claimDepositUntilEpoch(poolId, shareClassId_, investor, depositAssetId, endEpochId);
     }
 
-    function singleShareClass_claimRedeemUntilEpoch(PoolId poolId, ShareClassId shareClassId_, bytes32 investor, AssetId payoutAssetId, uint32 endEpochId) public updateGhosts asAdmin {
+    function multiShareClass_claimRedeemUntilEpoch(PoolId poolId, ShareClassId shareClassId_, bytes32 investor, AssetId payoutAssetId, uint32 endEpochId) public updateGhosts asAdmin {
         multiShareClass.claimRedeemUntilEpoch(poolId, shareClassId_, investor, payoutAssetId, endEpochId);
     }
 
-    function singleShareClass_issueSharesUntilEpoch(PoolId poolId, ShareClassId shareClassId_, AssetId depositAssetId, D18 navPerShare, uint32 endEpochId) public updateGhosts asAdmin {
+    function multiShareClass_issueSharesUntilEpoch(PoolId poolId, ShareClassId shareClassId_, AssetId depositAssetId, D18 navPerShare, uint32 endEpochId) public updateGhosts asAdmin {
         multiShareClass.issueSharesUntilEpoch(poolId, shareClassId_, depositAssetId, navPerShare, endEpochId);
     }
 
-    function singleShareClass_revokeSharesUntilEpoch(PoolId poolId, ShareClassId shareClassId_, AssetId payoutAssetId, D18 navPerShare, IERC7726 valuation, uint32 endEpochId) public updateGhosts asAdmin {
+    function multiShareClass_revokeSharesUntilEpoch(PoolId poolId, ShareClassId shareClassId_, AssetId payoutAssetId, D18 navPerShare, IERC7726 valuation, uint32 endEpochId) public updateGhosts asAdmin {
         multiShareClass.revokeSharesUntilEpoch(poolId, shareClassId_, payoutAssetId, navPerShare, valuation, endEpochId);
     }
 
-    function singleShareClass_updateMetadata(PoolId poolId, ShareClassId shareClassId_, string memory name, string memory symbol, bytes32 salt, bytes memory data) public updateGhosts asActor {
+    function multiShareClass_updateMetadata(PoolId poolId, ShareClassId shareClassId_, string memory name, string memory symbol, bytes32 salt, bytes memory data) public updateGhosts asActor {
         multiShareClass.updateMetadata(PoolId(poolId), ShareClassId(shareClassId_), name, symbol, salt, data);
     }
 }
