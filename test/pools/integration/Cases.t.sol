@@ -15,7 +15,7 @@ import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {AccountId} from "src/pools/types/AccountId.sol";
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
-import {AccountType} from "src/pools/interfaces/IPoolManager.sol";
+import {AccountType} from "src/pools/interfaces/IPoolRouter.sol";
 import {Deployer} from "script/pools/Deployer.s.sol";
 
 import {MockVaults} from "test/pools/mocks/MockVaults.sol";
@@ -77,9 +77,8 @@ contract TestCases is Deployer, Test {
         vm.label(address(accounting), "Accounting");
         vm.label(address(holdings), "Holdings");
         vm.label(address(multiShareClass), "MultiShareClass");
-        vm.label(address(poolManager), "PoolManager");
-        vm.label(address(gateway), "Gateway");
         vm.label(address(poolRouter), "PoolRouter");
+        vm.label(address(gateway), "Gateway");
         vm.label(address(cv), "CV");
 
         // We decide CP is located at CHAIN_CP for messaging
@@ -96,7 +95,7 @@ contract TestCases is Deployer, Test {
         assertEq(decimals, 6);
 
         vm.prank(FM);
-        poolId = poolRouter.createPool(USD, multiShareClass);
+        poolId = poolRouter.createPool(FM, USD, multiShareClass);
 
         scId = multiShareClass.previewNextShareClassId(poolId);
 
@@ -199,7 +198,7 @@ contract TestCases is Deployer, Test {
     function testExecuteNoSendNoPay() public {
         vm.startPrank(FM);
 
-        PoolId poolId = poolRouter.createPool(USD, multiShareClass);
+        PoolId poolId = poolRouter.createPool(FM, USD, multiShareClass);
 
         bytes[] memory cs = new bytes[](1);
         cs[0] = abi.encodeWithSelector(poolRouter.setPoolMetadata.selector, "");
@@ -214,7 +213,7 @@ contract TestCases is Deployer, Test {
     function testExecuteSendNoPay() public {
         vm.startPrank(FM);
 
-        PoolId poolId = poolRouter.createPool(USD, multiShareClass);
+        PoolId poolId = poolRouter.createPool(FM, USD, multiShareClass);
 
         bytes[] memory cs = new bytes[](1);
         cs[0] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
@@ -236,8 +235,8 @@ contract TestCases is Deployer, Test {
     function testMultipleMulticall() public {
         vm.startPrank(FM);
 
-        PoolId poolA = poolRouter.createPool(USD, multiShareClass);
-        PoolId poolB = poolRouter.createPool(USD, multiShareClass);
+        PoolId poolA = poolRouter.createPool(FM, USD, multiShareClass);
+        PoolId poolB = poolRouter.createPool(FM, USD, multiShareClass);
 
         bytes[] memory innerCalls = new bytes[](1);
         innerCalls[0] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
