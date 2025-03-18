@@ -13,11 +13,12 @@ import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
 import {JournalEntry} from "src/common/types/JournalEntry.sol";
+import {Meta, Noted} from "src/common/types/Noted.sol";
 
 import {IMessageProcessor} from "src/vaults/interfaces/IMessageProcessor.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IInvestmentManager} from "src/vaults/interfaces/IInvestmentManager.sol";
-import {Meta, IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
+import {IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
 
 contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
     using MessageLib for *;

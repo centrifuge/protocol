@@ -9,6 +9,12 @@ struct JournalEntry {
     AccountId accountId;
 }
 
+struct Meta {
+    uint256 timestamp;
+    JournalEntry[] debits;
+    JournalEntry[] credits;
+}
+
 library JournalEntryLib {
     /**
      * @dev Packs an array of JournalEntry into a tight bytes array of length (entries.length * 20).

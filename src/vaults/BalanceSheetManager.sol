@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
@@ -12,16 +12,18 @@ import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {Meta, Noted} from "src/common/types/Noted.sol";
+import {JournalEntry} from "src/common/types/JournalEntry.sol";
 
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
-import {Noted, JournalEntry, IBalanceSheetManager, Meta} from "src/vaults/interfaces/IBalanceSheetManager.sol";
+import {IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
 import {IPerPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IMessageProcessor} from "src/vaults/interfaces/IMessageProcessor.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 
 contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdateContract {
-    using CastLib for *;
+    using MathLib for *;
 
     IPerPoolEscrow public immutable escrow;
 
@@ -74,7 +76,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint256 tokenId,
         address provider,
         uint128 amount,
-        IERC7726 valuation,
+        address valuation,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
         _deposit(
@@ -97,7 +99,8 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint256 tokenId,
         address receiver,
         uint128 amount,
-        IERC7726 valuation,
+        address valuation,
+        bool asAllowance,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
         _withdraw(
@@ -109,6 +112,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
             receiver,
             amount,
             _getPrice(valuation, asset, tokenId),
+            asAllowance,
             m
         );
     }
@@ -256,7 +260,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
     }
 
     // --- View ---
-    function notedWithdrawAmount(uint64 poolId, bytes16 scId, address asset, uint256 tokenId, address receiver)
+    function notedWithdrawAmount(uint64 poolId, bytes16 scId, address asset, uint256 tokenId, address receiver)public view
         returns (uint256, bool)
     {
         uint128 assetId = poolManager.assetToId(asset);
@@ -265,7 +269,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         return (noted.amount, noted.allowance());
     }
 
-    function notedDepositAmount(uint64 poolId, bytes16 scId, address asset, uint256 tokenId, address provider)
+    function notedDepositAmount(uint64 poolId, bytes16 scId, address asset, uint256 tokenId, address provider) public view
         returns (uint256, bool)
     {
         uint128 assetId = poolManager.assetToId(asset);
@@ -274,7 +278,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         return (noted.amount, noted.allowance());
     }
 
-    function notedWithdrawPrice(uint64 poolId, bytes16 scId, address asset, uint256 tokenId, address receiver)
+    function notedWithdrawPrice(uint64 poolId, bytes16 scId, address asset, uint256 tokenId, address receiver)public view
         returns (D18)
     {
         uint128 assetId = poolManager.assetToId(asset);
@@ -283,7 +287,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         return _getPrice(noted, asset, tokenId);
     }
 
-    function notedDepositPrice(uint64 poolId, bytes16 scId, address asset, uint256 tokenId, address provider)
+    function notedDepositPrice(uint64 poolId, bytes16 scId, address asset, uint256 tokenId, address provider)public view
         returns (D18)
     {
         uint128 assetId = poolManager.assetToId(asset);
@@ -367,7 +371,13 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         );
     }
 
-    function _getPrice(noted, address asset, uint256 /* tokenId */ ) internal view returns (D18) {
-        D18 pricePerUnit = _getPrice(noted, asset, tokenId);
+    function _getPrice(Noted memory noted, address asset, uint256 tokenId) internal view returns (D18) {
+        if (noted.isRawPrice()) {
+            return noted.asRawPrice();
+        } else if (noted.isValuation()) {
+            return _getPrice(noted.asValuation(), asset, tokenId);
+        } else {
+            // TODO: Throw error here
+        }
     }
 }
