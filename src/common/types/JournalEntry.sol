@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {D18} from "src/misc/types/D18.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
+
 struct JournalEntry {
-    uint128 amount;
-    uint32 accountId;
+    D18 amount;
+    AccountId accountId;
 }
 
 library JournalEntryLib {
