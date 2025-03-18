@@ -3,8 +3,7 @@ pragma solidity 0.8.28;
 
 import {D18, d18} from "src/misc/types/D18.sol";
 
-import {JournalEntry} from "src/common/types/JournalEntry.sol";
-import {Meta, Noted} from "src/common/types/Noted.sol";
+import {JournalEntry, Meta} from "src/common/types/JournalEntry.sol";
 
 interface IBalanceSheetManager {
     // --- Errors ---
@@ -12,30 +11,6 @@ interface IBalanceSheetManager {
     // --- Events ---
     event File(bytes32 indexed what, address data);
     event Permission(uint64 indexed poolId, bytes16 indexed scId, address contractAddr, bool allowed);
-    event NoteWithdraw(
-        uint64 indexed poolId,
-        bytes16 indexed scId,
-        address from,
-        address asset,
-        uint256 tokenId,
-        uint128 amount,
-        bytes32 valuation,
-        uint64 timestamp,
-        JournalEntry[] debits,
-        JournalEntry[] credits
-    );
-    event NoteDeposit(
-        uint64 indexed poolId,
-        bytes16 indexed scId,
-        address from,
-        address asset,
-        uint256 tokenId,
-        uint128 amount,
-        bytes32 valuation,
-        uint64 timestamp,
-        JournalEntry[] debits,
-        JournalEntry[] credits
-    );
     event Withdraw(
         uint64 indexed poolId,
         bytes16 indexed scId,
@@ -71,7 +46,7 @@ interface IBalanceSheetManager {
         uint256 tokenId,
         address provider,
         uint128 amount,
-        D18 pricePerUnit,
+        IERC7726 valuation,
         Meta calldata meta
     ) external;
 
@@ -82,7 +57,8 @@ interface IBalanceSheetManager {
         uint256 tokenId,
         address receiver,
         uint128 amount,
-        D18 pricePerUnit,
+        IERC7726 valuation,
+        bool asAllowance,
         Meta calldata m
     ) external;
 
@@ -91,32 +67,4 @@ interface IBalanceSheetManager {
     function revoke(uint64 poolId, bytes16 scId, address from, uint128 shares) external;
 
     function journalEntry(uint64 poolId, bytes16 scId, Meta calldata m) external;
-
-    function adaptNotedWithdraw(
-        uint64 poolId,
-        bytes16 scId,
-        address asset,
-        uint256 tokenId,
-        address from,
-        uint128 amount,
-        D18 pricePerUnit,
-        Meta calldata m
-    ) external;
-
-    function adaptNotedDeposit(
-        uint64 poolId,
-        bytes16 scId,
-        address asset,
-        uint256 tokenId,
-        address from,
-        uint128 amount,
-        D18 pricePerUnit,
-        Meta calldata m
-    ) external;
-
-    function executeNotedWithdraw(uint64 poolId, bytes16 scId, address asset, uint256 tokenId, address receiver)
-        external;
-
-    function executeNotedDeposit(uint64 poolId, bytes16 scId, address asset, uint256 tokenId, address receiver)
-        external;
 }
