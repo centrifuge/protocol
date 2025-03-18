@@ -151,4 +151,8 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         shortcut_notify_share_class(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), false, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
     }
 
+    function test_shortcut_request_deposit_and_cancel() public {
+        shortcut_request_deposit_and_cancel(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), false, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+    }
+
 }
