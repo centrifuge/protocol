@@ -9,7 +9,10 @@ interface IAccounting {
     event Credit(PoolId indexed poolId, bytes32 indexed transactionId, AccountId indexed account, uint128 value);
     event Debit(PoolId indexed poolId, bytes32 indexed transactionId, AccountId indexed account, uint128 value);
 
+    /// @notice Emitted when a new account is created
     event AccountCreated(PoolId indexed poolId, AccountId indexed account, bool isDebitNormal);
+
+    /// @notice Emitted when metadata is set for an account
     event AccountMetadataSet(PoolId indexed poolId, AccountId indexed account, bytes metadata);
 
     /// @notice Dispatched when the pool is already unlocked.
@@ -69,6 +72,6 @@ interface IAccounting {
     /// @notice Returns the value of an account
     /// @param poolId The pool the account belongs to
     /// @param account The account to get the value of
-    /// @return The value of the account. Will be a negative value for positive balances of credt-normal accounts
+    /// @return The value of the account. Will be a negative value for positive balances of credit-normal accounts
     function accountValue(PoolId poolId, AccountId account) external returns (int128);
 }
