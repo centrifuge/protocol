@@ -5,8 +5,8 @@ import {DelegationToken} from "src/cfg/DelegationToken.sol";
 
 /// @title  Centrifuge Token
 contract CFG is DelegationToken {
-    constructor(string memory name, string memory symbol, uint8 decimals_) DelegationToken(decimals_) {
-        file("name", name);
-        file("symbol", symbol);
+    constructor() DelegationToken(18) {
+        file("name", "Centrifuge");
+        file("symbol", "CFG");
     }
 }
