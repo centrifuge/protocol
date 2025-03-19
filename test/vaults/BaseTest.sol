@@ -81,7 +81,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         testAdapters.push(adapter3);
 
         // wire contracts
-        wire(adapter1);
+        wireVaultAdapter(adapter1, address(this));
         // remove deployer access
         // removeVaultsDeployerAccess(address(adapter)); // need auth permissions in tests
 

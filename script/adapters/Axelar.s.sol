@@ -4,24 +4,29 @@ pragma solidity 0.8.28;
 import {AxelarAdapter} from "src/common/AxelarAdapter.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
-import {VaultsDeployer} from "script/VaultsDeployer.s.sol";
+import {FullDeployer, PoolsDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
 
 // Script to deploy Vaults with an Axelar Adapter.
-contract AxelarScript is VaultsDeployer {
+contract AxelarScript is FullDeployer {
     function setUp() public {}
 
     function run() public {
+        address axelarGateway = address(vm.envAddress("AXELAR_GATEWAY"));
+        address axelarGasService = address(vm.envAddress("AXELAR_GAS_SERVICE"));
+
         vm.startBroadcast();
 
-        deployVaults(ISafe(vm.envAddress("ADMIN")), msg.sender);
+        deployFull(ISafe(vm.envAddress("ADMIN")), msg.sender);
 
-        AxelarAdapter adapter = new AxelarAdapter(
-            vaultGateway, address(vm.envAddress("AXELAR_GATEWAY")), address(vm.envAddress("AXELAR_GAS_SERVICE"))
-        );
-        wire(adapter);
+        AxelarAdapter poolAdapter = new AxelarAdapter(poolGateway, axelarGateway, axelarGasService);
+        // TODO: configure endpoints using adapter.file()
+        wirePoolAdapter(poolAdapter, msg.sender);
 
-        removeVaultsDeployerAccess(msg.sender);
-        adapter.deny(msg.sender);
+        AxelarAdapter vaultAdapter = new AxelarAdapter(vaultGateway, axelarGateway, axelarGasService);
+        // TODO: configure endpoints using adapter.file()
+        wireVaultAdapter(vaultAdapter, msg.sender);
+
+        removeFullDeployerAccess(msg.sender);
 
         vm.stopBroadcast();
     }

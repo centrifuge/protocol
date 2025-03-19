@@ -4,24 +4,29 @@ pragma solidity 0.8.28;
 import {WormholeAdapter} from "src/common/WormholeAdapter.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
-import {VaultsDeployer} from "script/VaultsDeployer.s.sol";
+import {FullDeployer, PoolsDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
 
 // Script to deploy Vaults with an Wormhole Adapter.
-contract WormholeScript is VaultsDeployer {
+contract WormholeScript is FullDeployer {
     function setUp() public {}
 
     function run() public {
+        address relayer = address(vm.envAddress("WORMHOLE_RELAYER"));
+        uint16 localChainId = uint16(vm.envUint("WORMHOLE_LOCAL_CHAIN_ID"));
+
         vm.startBroadcast();
 
-        deployVaults(ISafe(vm.envAddress("ADMIN")), msg.sender);
+        deployFull(ISafe(vm.envAddress("ADMIN")), msg.sender);
 
-        WormholeAdapter adapter = new WormholeAdapter(
-            vaultGateway, address(vm.envAddress("WORMHOLE_RELAYER")), uint16(vm.envUint("WORMHOLE_LOCAL_CHAIN_ID"))
-        );
-        wire(adapter);
+        WormholeAdapter poolAdapter = new WormholeAdapter(poolGateway, relayer, localChainId);
+        // TODO: configure endpoints using adapter.file()
+        wirePoolAdapter(poolAdapter, msg.sender);
 
-        removeVaultsDeployerAccess(msg.sender);
-        adapter.deny(msg.sender);
+        WormholeAdapter vaultAdapter = new WormholeAdapter(poolGateway, relayer, localChainId);
+        // TODO: configure endpoints using adapter.file()
+        wireVaultAdapter(vaultAdapter, msg.sender);
+
+        removeFullDeployerAccess(msg.sender);
 
         vm.stopBroadcast();
     }

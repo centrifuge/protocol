@@ -6,7 +6,6 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {ISafe} from "src/common/Guardian.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {Gateway} from "src/common/Gateway.sol";
-import {CommonDeployer} from "script/CommonDeployer.s.sol";
 
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
 import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
@@ -17,10 +16,12 @@ import {PoolManager} from "src/vaults/PoolManager.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {MessageProcessor} from "src/vaults/MessageProcessor.sol";
+
 import "forge-std/Script.sol";
+import {CommonDeployer} from "script/CommonDeployer.s.sol";
 
 contract VaultsDeployer is CommonDeployer {
-    IAdapter[] adapters;
+    IAdapter[] vaultAdapters;
 
     InvestmentManager public investmentManager;
     PoolManager public poolManager;
@@ -123,10 +124,11 @@ contract VaultsDeployer is CommonDeployer {
         vaultGateway.file("handler", address(vaultMessageProcessor));
     }
 
-    function wire(IAdapter adapter) public {
-        adapters.push(adapter);
-        vaultGateway.file("adapters", adapters);
+    function wireVaultAdapter(IAdapter adapter, address deployer) public {
+        vaultAdapters.push(adapter);
+        vaultGateway.file("adapters", vaultAdapters);
         IAuth(address(adapter)).rely(address(root));
+        IAuth(address(adapter)).deny(deployer);
     }
 
     function removeVaultsDeployerAccess(address deployer) public {

@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "forge-std/Script.sol";
-
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {TransientValuation} from "src/misc/TransientValuation.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 
@@ -10,7 +9,7 @@ import {ISafe} from "src/common/Guardian.sol";
 import {Gateway} from "src/common/Gateway.sol";
 import {Root} from "src/common/Root.sol";
 import {GasService} from "src/common/GasService.sol";
-import {CommonDeployer} from "script/CommonDeployer.s.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
 import {PoolRegistry} from "src/pools/PoolRegistry.sol";
@@ -22,7 +21,12 @@ import {MessageProcessor} from "src/pools/MessageProcessor.sol";
 import {PoolRouter, IPoolRouter} from "src/pools/PoolRouter.sol";
 import {PoolRouter} from "src/pools/PoolRouter.sol";
 
+import "forge-std/Script.sol";
+import {CommonDeployer} from "script/CommonDeployer.s.sol";
+
 contract PoolsDeployer is CommonDeployer {
+    IAdapter[] poolAdapters;
+
     // Main contracts
     Gateway public poolGateway;
     PoolRegistry public poolRegistry;
@@ -80,6 +84,13 @@ contract PoolsDeployer is CommonDeployer {
 
     function _poolsInitialConfig() private {
         assetRegistry.registerAsset(USD, "United States dollar", "USD", 18);
+    }
+
+    function wirePoolAdapter(IAdapter adapter, address deployer) public {
+        poolAdapters.push(adapter);
+        poolGateway.file("adapters", poolAdapters);
+        IAuth(address(adapter)).rely(address(root));
+        IAuth(address(adapter)).deny(deployer);
     }
 
     function removePoolsDeployerAccess(address deployer) public {

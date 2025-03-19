@@ -405,4 +405,9 @@ contract Gateway is Auth, IGateway, IRecoverable {
     function votes(bytes32 messageHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory) {
         return _messages[messageHash].votes;
     }
+
+    /// @inheritdoc IGateway
+    function adapterCount() external view returns (uint256) {
+        return adapters.length;
+    }
 }

@@ -134,6 +134,9 @@ interface IGateway is IMessageHandler, IMessageSender {
     /// @notice Returns the address of the adapter at the given id.
     function adapters(uint256 id) external view returns (IAdapter);
 
+    /// @notice Returns the number of adapters.
+    function adapterCount() external view returns (uint256);
+
     /// @notice Returns the timestamp when the given recovery can be executed.
     function recoveries(IAdapter adapter, bytes32 messageHash) external view returns (uint256 timestamp);
 
