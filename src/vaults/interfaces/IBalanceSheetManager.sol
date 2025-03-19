@@ -46,7 +46,7 @@ interface IBalanceSheetManager {
         uint256 tokenId,
         address provider,
         uint128 amount,
-        address valuation,
+        D18 pricePerUnit,
         Meta calldata meta
     ) external;
 
@@ -57,7 +57,7 @@ interface IBalanceSheetManager {
         uint256 tokenId,
         address receiver,
         uint128 amount,
-        address valuation,
+        D18 pricePerUnit,
         bool asAllowance,
         Meta calldata m
     ) external;

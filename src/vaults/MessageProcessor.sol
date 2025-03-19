@@ -121,9 +121,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
             assetId: assetId,
             who: provider.toBytes32(),
             amount: amount,
-            isRawPrice: true, // @dev CV side determined price already
             pricePerUnit: pricePerUnit,
-            valuation: bytes32(0),
             timestamp: timestamp,
             isIncrease: true,
             asAllowance: false, // @dev never relevant for the CP side
@@ -152,9 +150,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
             assetId: assetId,
             who: receiver.toBytes32(),
             amount: amount,
-            isRawPrice: true, // @dev CV side determined price already
             pricePerUnit: pricePerUnit,
-            valuation: bytes32(0),
             timestamp: timestamp,
             isIncrease: false,
             asAllowance: false, // @dev never relevant for the CP side
@@ -310,15 +306,6 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
             if (kind == MessageType.UpdateHolding) {
                 MessageLib.UpdateHolding memory m = message.deserializeUpdateHolding();
 
-                address valuation;
-                if (m.isRawPrice) {
-                    // TODO: Query pool currency from pool manager
-                    transientValuation.setPrice(address(0), poolManager.idToAsset(m.assetId), m.pricePerUnit);
-                    valuation = address(transientValuation);
-                } else {
-                    valuation = address(bytes20(m.valuation));
-                }
-
                 Meta memory meta = Meta({timestamp: m.timestamp, debits: m.debits, credits: m.credits});
                 if (m.isIncrease) {
                     balanceSheetManager.deposit(
@@ -329,7 +316,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
                         0,
                         address(bytes20(m.who)),
                         m.amount,
-                        valuation,
+                        m.pricePerUnit,
                         meta
                     );
                 } else {
@@ -341,7 +328,8 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
                         0,
                         address(bytes20(m.who)),
                         m.amount,
-                        valuation,
+                        m.pricePerUnit,
+                        m.asAllowance,
                         meta
                     );
                 }

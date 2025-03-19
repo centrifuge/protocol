@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {MessageType, MessageCategory, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {JournalEntry} from "src/common/types/JournalEntry.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
 
 import {D18, d18} from "src/misc/types/D18.sol";
 
@@ -515,7 +516,7 @@ contract TestMessageLibIdentities is Test {
             pricePerUnit: d18(3, 1),
             timestamp: 12345,
             isIncrease: false,
-            execute: true,
+            asAllowance: true,
             debits: debits,
             credits: credits
         });
@@ -530,18 +531,18 @@ contract TestMessageLibIdentities is Test {
         assert(a.pricePerUnit.eq(b.pricePerUnit));
         assertEq(a.timestamp, b.timestamp);
         assertEq(a.isIncrease, b.isIncrease);
-        assertEq(a.execute, b.execute);
+        assertEq(a.asAllowance, b.asAllowance);
         assertEq(a.debits.length, b.debits.length);
         assertEq(a.credits.length, b.credits.length);
 
         for (uint256 i = 0; i < a.credits.length; i++) {
-            assertEq(a.credits[i].accountId, b.credits[i].accountId);
-            assertEq(a.credits[i].amount, b.credits[i].amount);
+            assertEq(a.credits[i].accountId.raw(), b.credits[i].accountId.raw());
+            assertEq(a.credits[i].amount.raw(), b.credits[i].amount.raw());
         }
 
         for (uint256 i = 0; i < a.debits.length; i++) {
-            assertEq(a.debits[i].accountId, b.debits[i].accountId);
-            assertEq(a.debits[i].amount, b.debits[i].amount);
+            assertEq(a.debits[i].accountId.raw(), b.debits[i].accountId.raw());
+            assertEq(a.debits[i].amount.raw(), b.debits[i].amount.raw());
         }
 
         assertEq(a.serialize().messageLength(), a.serialize().length);

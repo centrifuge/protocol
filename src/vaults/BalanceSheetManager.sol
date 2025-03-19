@@ -73,20 +73,10 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint256 tokenId,
         address provider,
         uint128 amount,
-        address valuation,
+        D18 pricePerUnit,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
-        _deposit(
-            poolId,
-            scId,
-            poolManager.assetToId(asset),
-            asset,
-            tokenId,
-            provider,
-            amount,
-            _getPrice(valuation, asset, tokenId),
-            m
-        );
+        _deposit(poolId, scId, poolManager.assetToId(asset), asset, tokenId, provider, amount, pricePerUnit, m);
     }
 
     function withdraw(
@@ -96,21 +86,12 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint256 tokenId,
         address receiver,
         uint128 amount,
-        address valuation,
+        D18 pricePerUnit,
         bool asAllowance,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
         _withdraw(
-            poolId,
-            scId,
-            poolManager.assetToId(asset),
-            asset,
-            tokenId,
-            receiver,
-            amount,
-            _getPrice(valuation, asset, tokenId),
-            asAllowance,
-            m
+            poolId, scId, poolManager.assetToId(asset), asset, tokenId, receiver, amount, pricePerUnit, asAllowance, m
         );
     }
 
@@ -209,15 +190,5 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         );
 
         emit Deposit(poolId, scId, asset, tokenId, provider, amount, pricePerUnit, m.timestamp, m.debits, m.credits);
-    }
-
-    function _getPrice(address valuation, address asset, uint256 /* tokenId */ ) internal returns (D18) {
-        return d18(
-            IERC7726(valuation).getQuote(1, address(0), asset) // TODO: Fix this - e.g. 1 *
-                // poolManager.poolDecimals(poolId),
-                // TODO: Fix this - e.g. poolManager.poolCurrency(poolId),
-                /* TODO: tokenId compatible */
-                .toUint128()
-        );
     }
 }

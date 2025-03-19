@@ -982,9 +982,7 @@ library MessageLib {
         uint128 assetId;
         bytes32 who;
         uint128 amount;
-        bool isRawPrice;
         D18 pricePerUnit;
-        bytes32 valuation;
         uint256 timestamp;
         bool isIncrease; // Signals whether this is an increase or a decrease
         bool asAllowance; // Signals whether the amount is transferred or allowed to who on the BSM
@@ -992,72 +990,41 @@ library MessageLib {
         JournalEntry[] credits;
     }
 
-    function deserializeUpdateHolding(bytes memory data) internal pure returns (UpdateHolding memory) {
-        require(messageType(data) == MessageType.UpdateHolding, UnknownMessageType());
+    function deserializeUpdateHolding(bytes memory data) internal pure returns (UpdateHolding memory h) {
+        require(messageType(data) == MessageType.UpdateHolding, "UnknownMessageType");
 
-        // 2) Read lengths for debits/credits
         uint16 debitsByteLen = data.toUint16(148);
         uint16 creditsByteLen = data.toUint16(150);
+
         uint256 offset = 152;
-
-        // 3) Decode debits array
-        //    Each JournalEntry is 20 bytes, so we expect debitsByteLen to be multiple of 20
-        JournalEntry[] memory debits = data.toJournalEntries(offset, debitsByteLen);
+        h.debits = data.toJournalEntries(offset, debitsByteLen);
         offset += debitsByteLen;
+        h.credits = data.toJournalEntries(offset, creditsByteLen);
 
-        // 4) Decode credits array
-        JournalEntry[] memory credits = data.toJournalEntries(offset, creditsByteLen);
-        // offset += creditsByteLen; // not needed unless further reads
+        // Now assign each field one at a time
+        h.poolId = data.toUint64(1);
+        h.scId = data.toBytes16(9);
+        h.assetId = data.toUint128(25);
+        h.who = data.toBytes32(41);
+        h.amount = data.toUint128(73);
+        h.pricePerUnit = D18.wrap(data.toUint128(89));
+        h.timestamp = data.toUint256(105);
+        h.isIncrease = data.toBool(113);
+        h.asAllowance = data.toBool(114);
 
-        // 5) Fill in the UpdateHolding struct
-        UpdateHolding memory hold;
-        hold.poolId = data.toUint64(1);
-        hold.scId = data.toBytes16(9);
-        hold.assetId = data.toUint128(25);
-        hold.who = data.toBytes32(41);
-        hold.amount = data.toUint128(73);
-
-        hold.isRawPrice = data.toBool(89);
-
-        // If `D18` is effectively `uint128` internally, read 16 bytes at offset 90..105
-        hold.pricePerUnit = D18.wrap(data.toUint128(90));
-
-        hold.valuation = data.toBytes32(106);
-
-        // We read 8 bytes for timestamp at offset 138..145
-        hold.timestamp = data.toUint64(138);
-
-        hold.isIncrease = data.toBool(146);
-        hold.asAllowance = data.toBool(147);
-
-        hold.debits = debits;
-        hold.credits = credits;
-
-        return hold;
+        return h;
     }
 
     function serialize(UpdateHolding memory t) internal pure returns (bytes memory) {
         bytes memory debits = t.debits.encodePacked();
         bytes memory credits = t.credits.encodePacked();
 
-        return abi.encodePacked(
-            MessageType.UpdateHolding,
-            t.poolId,
-            t.scId,
-            t.assetId,
-            t.who,
-            t.amount,
-            t.isRawPrice,
-            t.pricePerUnit,
-            t.valuation,
-            t.timestamp,
-            t.isIncrease,
-            t.asAllowance,
-            uint16(debits.length),
-            uint16(credits.length),
-            debits,
-            credits
-        );
+        bytes memory partial1 = abi.encodePacked(MessageType.UpdateHolding, t.poolId, t.scId, t.assetId, t.who);
+        bytes memory partial2 =
+            abi.encodePacked(partial1, t.amount, t.pricePerUnit, t.timestamp, t.isIncrease, t.asAllowance);
+        bytes memory partial3 = abi.encodePacked(partial2, uint16(debits.length), uint16(credits.length));
+
+        return abi.encodePacked(partial3, debits, credits);
     }
 
     //---------------------------------------
