@@ -114,7 +114,7 @@ library MessageLib {
         (89 << uint8(MessageType.FulfilledCancelDepositRequest) * 8) +
         (89 << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (89 << uint8(MessageType.TriggerRedeemRequest) * 8) +
-        (152 << uint8(MessageType.UpdateHolding) * 8) +
+        (143 << uint8(MessageType.UpdateHolding) * 8) +
         (81 << uint8(MessageType.UpdateShares) * 8) +
         (29 << uint8(MessageType.UpdateJournal) * 8);
 
@@ -993,10 +993,10 @@ library MessageLib {
     function deserializeUpdateHolding(bytes memory data) internal pure returns (UpdateHolding memory h) {
         require(messageType(data) == MessageType.UpdateHolding, "UnknownMessageType");
 
-        uint16 debitsByteLen = data.toUint16(148);
-        uint16 creditsByteLen = data.toUint16(150);
+        uint16 debitsByteLen = data.toUint16(139);
+        uint16 creditsByteLen = data.toUint16(141);
 
-        uint256 offset = 152;
+        uint256 offset = 143;
         h.debits = data.toJournalEntries(offset, debitsByteLen);
         offset += debitsByteLen;
         h.credits = data.toJournalEntries(offset, creditsByteLen);
@@ -1009,8 +1009,8 @@ library MessageLib {
         h.amount = data.toUint128(73);
         h.pricePerUnit = D18.wrap(data.toUint128(89));
         h.timestamp = data.toUint256(105);
-        h.isIncrease = data.toBool(113);
-        h.asAllowance = data.toBool(114);
+        h.isIncrease = data.toBool(137);
+        h.asAllowance = data.toBool(138);
 
         return h;
     }
