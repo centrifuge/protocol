@@ -19,7 +19,7 @@ interface IBalanceSheetManager {
         address receiver,
         uint128 amount,
         D18 pricePerUnit,
-        uint64 timestamp,
+        uint256 timestamp,
         JournalEntry[] debits,
         JournalEntry[] credits
     );
@@ -31,7 +31,7 @@ interface IBalanceSheetManager {
         address provider,
         uint128 amount,
         D18 pricePerUnit,
-        uint64 timestamp,
+        uint256 timestamp,
         JournalEntry[] debits,
         JournalEntry[] credits
     );
@@ -46,7 +46,7 @@ interface IBalanceSheetManager {
         uint256 tokenId,
         address provider,
         uint128 amount,
-        IERC7726 valuation,
+        address valuation,
         Meta calldata meta
     ) external;
 
@@ -57,7 +57,7 @@ interface IBalanceSheetManager {
         uint256 tokenId,
         address receiver,
         uint128 amount,
-        IERC7726 valuation,
+        address valuation,
         bool asAllowance,
         Meta calldata m
     ) external;

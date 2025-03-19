@@ -114,7 +114,7 @@ library MessageLib {
         (89 << uint8(MessageType.FulfilledCancelDepositRequest) * 8) +
         (89 << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (89 << uint8(MessageType.TriggerRedeemRequest) * 8) +
-        (120 << uint8(MessageType.UpdateHolding) * 8) +
+        (152 << uint8(MessageType.UpdateHolding) * 8) +
         (81 << uint8(MessageType.UpdateShares) * 8) +
         (29 << uint8(MessageType.UpdateJournal) * 8);
 
@@ -980,13 +980,14 @@ library MessageLib {
         uint64 poolId;
         bytes16 scId;
         uint128 assetId;
-        bytes32 who; // who provided the funds
+        bytes32 who;
         uint128 amount;
+        bool isRawPrice;
         D18 pricePerUnit;
-        uint64 timestamp;
+        bytes32 valuation;
+        uint256 timestamp;
         bool isIncrease; // Signals whether this is an increase or a decrease
-        bool asAllowance; // Signals whether the amount is transfered or allowed to who on the BSM
-        bool execute; // ONLY relevant for CV side, if false, only note the action
+        bool asAllowance; // Signals whether the amount is transferred or allowed to who on the BSM
         JournalEntry[] debits;
         JournalEntry[] credits;
     }
@@ -994,27 +995,45 @@ library MessageLib {
     function deserializeUpdateHolding(bytes memory data) internal pure returns (UpdateHolding memory) {
         require(messageType(data) == MessageType.UpdateHolding, UnknownMessageType());
 
-        uint16 debitsLength = data.toUint16(116);
-        uint16 creditsLength = data.toUint16(118);
-        uint256 offset = 120;
-        JournalEntry[] memory debits = data.toJournalEntries(offset, debitsLength);
-        offset += debitsLength;
-        JournalEntry[] memory credits = data.toJournalEntries(offset, creditsLength);
+        // 2) Read lengths for debits/credits
+        uint16 debitsByteLen = data.toUint16(148);
+        uint16 creditsByteLen = data.toUint16(150);
+        uint256 offset = 152;
 
-        return UpdateHolding({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            assetId: data.toUint128(25),
-            who: data.toBytes32(41),
-            amount: data.toUint128(73),
-            pricePerUnit: d18(data.toUint128(89)),
-            timestamp: data.toUint64(105),
-            isIncrease: data.toBool(113),
-            asAllowance: data.toBool(114),
-            execute: data.toBool(115),
-            debits: debits,
-            credits: credits
-        });
+        // 3) Decode debits array
+        //    Each JournalEntry is 20 bytes, so we expect debitsByteLen to be multiple of 20
+        JournalEntry[] memory debits = data.toJournalEntries(offset, debitsByteLen);
+        offset += debitsByteLen;
+
+        // 4) Decode credits array
+        JournalEntry[] memory credits = data.toJournalEntries(offset, creditsByteLen);
+        // offset += creditsByteLen; // not needed unless further reads
+
+        // 5) Fill in the UpdateHolding struct
+        UpdateHolding memory hold;
+        hold.poolId = data.toUint64(1);
+        hold.scId = data.toBytes16(9);
+        hold.assetId = data.toUint128(25);
+        hold.who = data.toBytes32(41);
+        hold.amount = data.toUint128(73);
+
+        hold.isRawPrice = data.toBool(89);
+
+        // If `D18` is effectively `uint128` internally, read 16 bytes at offset 90..105
+        hold.pricePerUnit = D18.wrap(data.toUint128(90));
+
+        hold.valuation = data.toBytes32(106);
+
+        // We read 8 bytes for timestamp at offset 138..145
+        hold.timestamp = data.toUint64(138);
+
+        hold.isIncrease = data.toBool(146);
+        hold.asAllowance = data.toBool(147);
+
+        hold.debits = debits;
+        hold.credits = credits;
+
+        return hold;
     }
 
     function serialize(UpdateHolding memory t) internal pure returns (bytes memory) {
@@ -1028,11 +1047,12 @@ library MessageLib {
             t.assetId,
             t.who,
             t.amount,
+            t.isRawPrice,
             t.pricePerUnit,
+            t.valuation,
             t.timestamp,
             t.isIncrease,
             t.asAllowance,
-            t.execute,
             uint16(debits.length),
             uint16(credits.length),
             debits,

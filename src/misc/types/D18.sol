@@ -88,6 +88,10 @@ function eq(D18 a, D18 b) pure returns (bool) {
     return D18.unwrap(a) == D18.unwrap(b);
 }
 
+function raw(D18 d) pure returns (uint128) {
+    return D18.unwrap(d);
+}
+
 using {
     add as +,
     sub as -,
@@ -98,5 +102,6 @@ using {
     mulUint128,
     mulUint256,
     reciprocalMulUint128,
-    reciprocalMulUint256
+    reciprocalMulUint256,
+    raw
 } for D18 global;

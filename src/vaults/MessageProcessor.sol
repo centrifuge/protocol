@@ -5,6 +5,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {D18} from "src/misc/types/D18.sol";
+import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 
 import {MessageCategory, MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
@@ -12,8 +13,7 @@ import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
-import {JournalEntry} from "src/common/types/JournalEntry.sol";
-import {Meta, Noted} from "src/common/types/Noted.sol";
+import {JournalEntry, Meta} from "src/common/types/JournalEntry.sol";
 
 import {IMessageProcessor} from "src/vaults/interfaces/IMessageProcessor.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
@@ -29,6 +29,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
     IPoolManager public immutable poolManager;
     IInvestmentManager public immutable investmentManager;
     IBalanceSheetManager public immutable balanceSheetManager;
+    ITransientValuation public immutable transientValuation;
     IRoot public immutable root;
     IGasService public immutable gasService;
 
@@ -110,7 +111,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         address provider,
         uint128 amount,
         D18 pricePerUnit,
-        uint64 timestamp,
+        uint256 timestamp,
         JournalEntry[] calldata debits,
         JournalEntry[] calldata credits
     ) external auth {
@@ -120,10 +121,12 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
             assetId: assetId,
             who: provider.toBytes32(),
             amount: amount,
+            isRawPrice: true, // @dev CV side determined price already
             pricePerUnit: pricePerUnit,
+            valuation: bytes32(0),
             timestamp: timestamp,
             isIncrease: true,
-            execute: true,
+            asAllowance: false, // @dev never relevant for the CP side
             debits: debits,
             credits: credits
         });
@@ -139,7 +142,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         address receiver,
         uint128 amount,
         D18 pricePerUnit,
-        uint64 timestamp,
+        uint256 timestamp,
         JournalEntry[] calldata debits,
         JournalEntry[] calldata credits
     ) external auth {
@@ -149,10 +152,12 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
             assetId: assetId,
             who: receiver.toBytes32(),
             amount: amount,
+            isRawPrice: true, // @dev CV side determined price already
             pricePerUnit: pricePerUnit,
+            valuation: bytes32(0),
             timestamp: timestamp,
             isIncrease: false,
-            execute: true,
+            asAllowance: false, // @dev never relevant for the CP side
             debits: debits,
             credits: credits
         });
@@ -172,7 +177,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
                 who: receiver.toBytes32(),
                 shares: shares,
                 timestamp: timestamp,
-                isIssue: true
+                isIssuance: true
             }).serialize()
         );
     }
@@ -189,7 +194,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
                 who: provider.toBytes32(),
                 shares: shares,
                 timestamp: timestamp,
-                isIssue: false
+                isIssuance: false
             }).serialize()
         );
     }
@@ -304,27 +309,41 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         } else if (cat == MessageCategory.BalanceSheet) {
             if (kind == MessageType.UpdateHolding) {
                 MessageLib.UpdateHolding memory m = message.deserializeUpdateHolding();
-                Meta memory meta = Meta({timestamp: m.timestamp, debits: m.debits, credits: m.credits});
-                if (m.execute) {
-                    if (m.isIncrease) {
-                        balanceSheetManager.withdraw(
-                            m.poolId, m.scId, m.assetId, address(bytes20(m.who)), m.amount, m.pricePerUnit, meta
-                        );
-                    } else {
-                        balanceSheetManager.deposit(
-                            m.poolId, m.scId, m.assetId, address(bytes20(m.who)), m.amount, m.pricePerUnit, meta
-                        );
-                    }
+
+                address valuation;
+                if (m.isRawPrice) {
+                    // TODO: Query pool currency from pool manager
+                    transientValuation.setPrice(address(0), poolManager.idToAsset(m.assetId), m.pricePerUnit);
+                    valuation = address(transientValuation);
                 } else {
-                    if (m.isIncrease) {
-                        balanceSheetManager.adaptNotedWithdraw(
-                            m.poolId, m.scId, m.assetId, address(bytes20(m.who)), m.amount, m.pricePerUnit, meta
-                        );
-                    } else {
-                        balanceSheetManager.adaptNotedDeposit(
-                            m.poolId, m.scId, m.assetId, address(bytes20(m.who)), m.amount, m.pricePerUnit, meta
-                        );
-                    }
+                    valuation = address(bytes20(m.valuation));
+                }
+
+                Meta memory meta = Meta({timestamp: m.timestamp, debits: m.debits, credits: m.credits});
+                if (m.isIncrease) {
+                    balanceSheetManager.deposit(
+                        // TODO: Fix `tokenId`
+                        m.poolId,
+                        m.scId,
+                        poolManager.idToAsset(m.assetId),
+                        0,
+                        address(bytes20(m.who)),
+                        m.amount,
+                        valuation,
+                        meta
+                    );
+                } else {
+                    balanceSheetManager.withdraw(
+                        // TODO: Fix `tokenId`
+                        m.poolId,
+                        m.scId,
+                        poolManager.idToAsset(m.assetId),
+                        0,
+                        address(bytes20(m.who)),
+                        m.amount,
+                        valuation,
+                        meta
+                    );
                 }
             } else {
                 revert InvalidMessage(uint8(kind));

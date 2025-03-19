@@ -503,8 +503,8 @@ contract TestMessageLibIdentities is Test {
         JournalEntry[] memory debits = new JournalEntry[](0);
 
         JournalEntry[] memory credits = new JournalEntry[](2);
-        credits[0] = JournalEntry({accountId: 1, amount: 2});
-        credits[1] = JournalEntry({accountId: 3, amount: 4});
+        credits[0] = JournalEntry({accountId: AccountId.wrap(1), amount: d18(2)});
+        credits[1] = JournalEntry({accountId: AccountId.wrap(3), amount: d18(4)});
 
         MessageLib.UpdateHolding memory a = MessageLib.UpdateHolding({
             poolId: 1,

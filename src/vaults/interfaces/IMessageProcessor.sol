@@ -33,7 +33,7 @@ interface IMessageProcessor {
         address provider,
         uint128 amount,
         D18 pricePerUnit,
-        uint64 timestamp,
+        uint256 timestamp,
         JournalEntry[] calldata debits,
         JournalEntry[] calldata credits
     ) external;
@@ -46,7 +46,7 @@ interface IMessageProcessor {
         address receiver,
         uint128 amount,
         D18 pricePerUnit,
-        uint64 timestamp,
+        uint256 timestamp,
         JournalEntry[] calldata debits,
         JournalEntry[] calldata credits
     ) external;
@@ -62,7 +62,6 @@ interface IMessageProcessor {
     function sendJournalEntry(
         uint64 poolId,
         bytes16 shareClassId,
-        uint256 timestamp,
         JournalEntry[] calldata debits,
         JournalEntry[] calldata credits
     ) external;

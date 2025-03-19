@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {D18} from "src/misc/types/D18.sol";
+import {D18, d18} from "src/misc/types/D18.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 
 struct JournalEntry {
@@ -30,14 +30,14 @@ library JournalEntryLib {
             uint256 offset = i * 20;
 
             // Store `amount` as 16 bytes (big-endian)
-            uint128 amount = entries[i].amount;
+            uint128 amount = entries[i].amount.raw();
             for (uint256 j = 0; j < 16; j++) {
                 // shift right by 8*(15-j) to get the correct byte
                 packed[offset + j] = bytes1(uint8(amount >> (8 * (15 - j))));
             }
 
             // Store `accountId` as 4 bytes (big-endian)
-            uint32 accountId = entries[i].accountId;
+            uint32 accountId = entries[i].accountId.raw();
             for (uint256 j = 0; j < 4; j++) {
                 packed[offset + 16 + j] = bytes1(uint8(accountId >> (8 * (3 - j))));
             }
@@ -56,6 +56,8 @@ library JournalEntryLib {
         returns (JournalEntry[] memory)
     {
         require(_bytes.length >= _start + _length, "decodeJournalEntries_outOfBounds");
+        require(_length % 20 == 0, "decodeJournalEntries_invalidLength");
+
         uint256 count = _length / 20;
 
         JournalEntry[] memory entries = new JournalEntry[](count);
@@ -75,7 +77,7 @@ library JournalEntryLib {
                 accountId = (accountId << 8) | uint32(uint8(_bytes[offset + 16 + j]));
             }
 
-            entries[i] = JournalEntry({amount: amount, accountId: accountId});
+            entries[i] = JournalEntry({amount: d18(amount), accountId: AccountId.wrap(accountId)});
         }
 
         return entries;

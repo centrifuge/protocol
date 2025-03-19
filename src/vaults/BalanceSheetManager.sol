@@ -73,7 +73,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint256 tokenId,
         address provider,
         uint128 amount,
-        IERC7726 valuation,
+        address valuation,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
         _deposit(
@@ -96,7 +96,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         uint256 tokenId,
         address receiver,
         uint128 amount,
-        IERC7726 valuation,
+        address valuation,
         bool asAllowance,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
@@ -211,7 +211,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         emit Deposit(poolId, scId, asset, tokenId, provider, amount, pricePerUnit, m.timestamp, m.debits, m.credits);
     }
 
-    function _getPrice(address valuation, address asset, uint256 /* tokenId */ ) internal view returns (D18) {
+    function _getPrice(address valuation, address asset, uint256 /* tokenId */ ) internal returns (D18) {
         return d18(
             IERC7726(valuation).getQuote(1, address(0), asset) // TODO: Fix this - e.g. 1 *
                 // poolManager.poolDecimals(poolId),
