@@ -33,6 +33,7 @@ abstract contract Properties is BeforeAfter, Asserts {
         eq(_after.ghostCredited, 0, "credited not reset");
     }
 
+    /// @notice User pending redemption is never greater than the total redemption
     function property_cancelled_redemption_never_greater_than_requested() public {
         address[] memory _actors = _getActors();
 
@@ -61,6 +62,30 @@ abstract contract Properties is BeforeAfter, Asserts {
         }
     }
 
+    /// @notice The total pending asset amount pendingDeposit[..] is always geq than the approved asset amount epochAmounts[..].depositApproved
+    function property_total_pending_and_approved() public {
+        address[] memory _actors = _getActors();
+
+        for (uint256 i = 0; i < createdPools.length; i++) {
+            PoolId poolId = createdPools[i];
+            uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
+
+            for (uint32 j = 0; j < shareClassCount; j++) {
+                ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
+                AssetId assetId = poolRegistry.currency(poolId);
+
+                uint32 epochId = multiShareClass.epochId(poolId);
+                uint128 pendingDeposit = multiShareClass.pendingDeposit(scId, assetId);
+                (uint128 depositPending, uint128 approvedDeposit,,,,,) = multiShareClass.epochAmounts(scId, assetId, epochId);
+
+                gte(pendingDeposit, approvedDeposit, "pending deposit is less than approved deposit");
+                gte(pendingDeposit, depositPending, "pending deposit is less than pending for epoch");
+            }
+        }
+    }
+
+
+    /// Rounding Properties /// 
     function property_MulUint128Rounding(D18 navPerShare, uint128 amount) public {
         // Bound navPerShare up to 1,000,000
         uint128 innerValue = D18.unwrap(navPerShare) % uint128(1e24);
