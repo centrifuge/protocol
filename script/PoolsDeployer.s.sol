@@ -25,10 +25,7 @@ import "forge-std/Script.sol";
 import {CommonDeployer} from "script/CommonDeployer.s.sol";
 
 contract PoolsDeployer is CommonDeployer {
-    IAdapter[] poolAdapters;
-
     // Main contracts
-    Gateway public poolGateway;
     PoolRegistry public poolRegistry;
     AssetRegistry public assetRegistry;
     Accounting public accounting;
@@ -47,14 +44,13 @@ contract PoolsDeployer is CommonDeployer {
     function deployPools(ISafe adminSafe_, address deployer) public {
         super.deployCommon(adminSafe_, deployer);
 
-        poolGateway = new Gateway(root, gasService);
         poolRegistry = new PoolRegistry(deployer);
         assetRegistry = new AssetRegistry(deployer);
         accounting = new Accounting(deployer);
         holdings = new Holdings(poolRegistry, deployer);
         multiShareClass = new MultiShareClass(poolRegistry, deployer);
-        poolRouter = new PoolRouter(poolRegistry, assetRegistry, accounting, holdings, poolGateway, deployer);
-        poolMessageProcessor = new MessageProcessor(poolGateway, poolRouter, deployer);
+        poolRouter = new PoolRouter(poolRegistry, assetRegistry, accounting, holdings, gateway, deployer);
+        poolMessageProcessor = new MessageProcessor(gateway, poolRouter, deployer);
 
         transientValuation = new TransientValuation(assetRegistry, deployer);
         identityValuation = new IdentityValuation(assetRegistry, deployer);
@@ -66,7 +62,7 @@ contract PoolsDeployer is CommonDeployer {
 
     function _poolsFile() private {
         poolRouter.file("sender", address(poolMessageProcessor));
-        poolGateway.file("handler", address(poolMessageProcessor));
+        gateway.file("handler", address(poolMessageProcessor));
     }
 
     function _poolsRely() private {
@@ -75,22 +71,15 @@ contract PoolsDeployer is CommonDeployer {
         holdings.rely(address(poolRouter));
         accounting.rely(address(poolRouter));
         multiShareClass.rely(address(poolRouter));
-        poolGateway.rely(address(poolRouter));
-        poolGateway.rely(address(poolMessageProcessor));
+        gateway.rely(address(poolRouter));
+        gateway.rely(address(poolMessageProcessor));
         poolRouter.rely(address(poolMessageProcessor));
         poolMessageProcessor.rely(address(poolRouter));
-        poolMessageProcessor.rely(address(poolGateway));
+        poolMessageProcessor.rely(address(gateway));
     }
 
     function _poolsInitialConfig() private {
         assetRegistry.registerAsset(USD, "United States dollar", "USD", 18);
-    }
-
-    function wirePoolAdapter(IAdapter adapter, address deployer) public {
-        poolAdapters.push(adapter);
-        poolGateway.file("adapters", poolAdapters);
-        IAuth(address(adapter)).rely(address(root));
-        IAuth(address(adapter)).deny(deployer);
     }
 
     function removePoolsDeployerAccess(address deployer) public {
@@ -101,7 +90,6 @@ contract PoolsDeployer is CommonDeployer {
         accounting.deny(deployer);
         holdings.deny(deployer);
         multiShareClass.deny(deployer);
-        poolGateway.deny(deployer);
         poolMessageProcessor.deny(deployer);
         poolRouter.deny(deployer);
 

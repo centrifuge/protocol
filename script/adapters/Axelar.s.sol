@@ -18,13 +18,8 @@ contract AxelarScript is FullDeployer {
 
         deployFull(ISafe(vm.envAddress("ADMIN")), msg.sender);
 
-        AxelarAdapter poolAdapter = new AxelarAdapter(poolGateway, axelarGateway, axelarGasService);
-        // TODO: configure endpoints using adapter.file()
-        wirePoolAdapter(poolAdapter, msg.sender);
-
-        AxelarAdapter vaultAdapter = new AxelarAdapter(vaultGateway, axelarGateway, axelarGasService);
-        // TODO: configure endpoints using adapter.file()
-        wireVaultAdapter(vaultAdapter, msg.sender);
+        AxelarAdapter adapter = new AxelarAdapter(gateway, axelarGateway, axelarGasService);
+        wire(adapter, msg.sender);
 
         removeFullDeployerAccess(msg.sender);
 

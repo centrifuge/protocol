@@ -48,24 +48,17 @@ contract TestCases is PoolsDeployer, Test {
 
     MockVaults cv;
 
-    function _configMockVaultsAdapter() private {
-        cv = new MockVaults(CHAIN_CV, poolGateway);
+    function _mockStuff() private {
+        cv = new MockVaults(CHAIN_CV, gateway);
+        wire(cv, address(this));
 
-        IAdapter[] memory testAdapters = new IAdapter[](1);
-        testAdapters[0] = cv;
-
-        poolGateway.file("adapters", testAdapters);
-    }
-
-    function _configGasPrice() private {
         gasService.file("messageGasLimit", GAS);
     }
 
     function setUp() public {
         // Deployment
         deployPools(ISafe(address(0)), address(this));
-        _configMockVaultsAdapter();
-        _configGasPrice();
+        _mockStuff();
         removePoolsDeployerAccess(address(this));
 
         // Initialize accounts
@@ -80,7 +73,7 @@ contract TestCases is PoolsDeployer, Test {
         vm.label(address(holdings), "Holdings");
         vm.label(address(multiShareClass), "MultiShareClass");
         vm.label(address(poolRouter), "PoolRouter");
-        vm.label(address(poolGateway), "PoolGateway");
+        vm.label(address(gateway), "Gateway");
         vm.label(address(poolMessageProcessor), "PoolMessageProcessor");
         vm.label(address(cv), "CV");
 

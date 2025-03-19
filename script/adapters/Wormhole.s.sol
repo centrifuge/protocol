@@ -18,13 +18,8 @@ contract WormholeScript is FullDeployer {
 
         deployFull(ISafe(vm.envAddress("ADMIN")), msg.sender);
 
-        WormholeAdapter poolAdapter = new WormholeAdapter(poolGateway, relayer, localChainId);
-        // TODO: configure endpoints using adapter.file()
-        wirePoolAdapter(poolAdapter, msg.sender);
-
-        WormholeAdapter vaultAdapter = new WormholeAdapter(poolGateway, relayer, localChainId);
-        // TODO: configure endpoints using adapter.file()
-        wireVaultAdapter(vaultAdapter, msg.sender);
+        WormholeAdapter adapter = new WormholeAdapter(gateway, relayer, localChainId);
+        wire(adapter, msg.sender);
 
         removeFullDeployerAccess(msg.sender);
 

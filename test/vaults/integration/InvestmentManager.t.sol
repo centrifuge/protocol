@@ -21,7 +21,7 @@ contract InvestmentManagerTest is BaseTest {
     // Deployment
     function testDeployment(address nonWard) public {
         vm.assume(
-            nonWard != address(root) && nonWard != address(vaultGateway) && nonWard != address(poolManager)
+            nonWard != address(root) && nonWard != address(gateway) && nonWard != address(poolManager)
                 && nonWard != address(vaultMessageProcessor) && nonWard != address(this)
         );
 
@@ -30,13 +30,13 @@ contract InvestmentManagerTest is BaseTest {
 
         // values set correctly
         assertEq(address(investmentManager.escrow()), address(escrow));
-        assertEq(address(investmentManager.gateway()), address(vaultGateway));
+        assertEq(address(investmentManager.gateway()), address(gateway));
         assertEq(address(investmentManager.poolManager()), address(poolManager));
-        assertEq(address(vaultGateway.handler()), address(investmentManager.sender()));
+        assertEq(address(gateway.handler()), address(investmentManager.sender()));
 
         // permissions set correctly
         assertEq(investmentManager.wards(address(root)), 1);
-        assertEq(investmentManager.wards(address(vaultGateway)), 1);
+        assertEq(investmentManager.wards(address(gateway)), 1);
         assertEq(investmentManager.wards(address(poolManager)), 1);
         assertEq(investmentManager.wards(address(vaultMessageProcessor)), 1);
         assertEq(investmentManager.wards(nonWard), 0);
@@ -48,7 +48,7 @@ contract InvestmentManagerTest is BaseTest {
         vm.expectRevert(bytes("InvestmentManager/file-unrecognized-param"));
         investmentManager.file("random", self);
 
-        assertEq(address(investmentManager.gateway()), address(vaultGateway));
+        assertEq(address(investmentManager.gateway()), address(gateway));
         assertEq(address(investmentManager.poolManager()), address(poolManager));
         // success
         investmentManager.file("poolManager", randomUser);

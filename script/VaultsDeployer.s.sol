@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {ISafe} from "src/common/Guardian.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {Gateway} from "src/common/Gateway.sol";
 
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
@@ -21,13 +20,10 @@ import "forge-std/Script.sol";
 import {CommonDeployer} from "script/CommonDeployer.s.sol";
 
 contract VaultsDeployer is CommonDeployer {
-    IAdapter[] vaultAdapters;
-
     InvestmentManager public investmentManager;
     PoolManager public poolManager;
     Escrow public escrow;
     Escrow public routerEscrow;
-    Gateway public vaultGateway;
     MessageProcessor public vaultMessageProcessor;
     VaultRouter public router;
     address public vaultFactory;
@@ -50,10 +46,9 @@ contract VaultsDeployer is CommonDeployer {
         vaultFactories[0] = vaultFactory;
 
         poolManager = new PoolManager(address(escrow), trancheFactory, vaultFactories);
-        vaultGateway = new Gateway(root, gasService);
         vaultMessageProcessor =
-            new MessageProcessor(vaultGateway, poolManager, investmentManager, root, gasService, deployer);
-        router = new VaultRouter(address(routerEscrow), address(vaultGateway), address(poolManager));
+            new MessageProcessor(gateway, poolManager, investmentManager, root, gasService, deployer);
+        router = new VaultRouter(address(routerEscrow), address(gateway), address(poolManager));
 
         _vaultsEndorse();
         _vaultsRely();
@@ -82,7 +77,6 @@ contract VaultsDeployer is CommonDeployer {
         router.rely(address(root));
         poolManager.rely(address(root));
         investmentManager.rely(address(root));
-        vaultGateway.rely(address(root));
         escrow.rely(address(root));
         routerEscrow.rely(address(root));
         IAuth(vaultFactory).rely(address(root));
@@ -90,45 +84,34 @@ contract VaultsDeployer is CommonDeployer {
         IAuth(restrictionManager).rely(address(root));
         IAuth(restrictedRedemptions).rely(address(root));
 
-        // Rely on guardian
-        vaultGateway.rely(address(guardian));
-
         // Rely on vaultGateway
-        vaultMessageProcessor.rely(address(vaultGateway));
-        investmentManager.rely(address(vaultGateway));
-        poolManager.rely(address(vaultGateway));
-        gasService.rely(address(vaultGateway));
+        vaultMessageProcessor.rely(address(gateway));
+        investmentManager.rely(address(gateway));
+        poolManager.rely(address(gateway));
 
         // Rely on others
         routerEscrow.rely(address(router));
 
         // Rely on vaultMessageProcessor
-        vaultGateway.rely(address(vaultMessageProcessor));
+        gateway.rely(address(vaultMessageProcessor));
         poolManager.rely(address(vaultMessageProcessor));
         investmentManager.rely(address(vaultMessageProcessor));
         root.rely(address(vaultMessageProcessor));
         gasService.rely(address(vaultMessageProcessor));
 
         // Rely on VaultRouter
-        vaultGateway.rely(address(router));
+        gateway.rely(address(router));
     }
 
     function _vaultsFile() public {
-        poolManager.file("gateway", address(vaultGateway));
+        poolManager.file("gateway", address(gateway));
         poolManager.file("sender", address(vaultMessageProcessor));
 
         investmentManager.file("poolManager", address(poolManager));
-        investmentManager.file("gateway", address(vaultGateway));
+        investmentManager.file("gateway", address(gateway));
         investmentManager.file("sender", address(vaultMessageProcessor));
 
-        vaultGateway.file("handler", address(vaultMessageProcessor));
-    }
-
-    function wireVaultAdapter(IAdapter adapter, address deployer) public {
-        vaultAdapters.push(adapter);
-        vaultGateway.file("adapters", vaultAdapters);
-        IAuth(address(adapter)).rely(address(root));
-        IAuth(address(adapter)).deny(deployer);
+        gateway.file("handler", address(vaultMessageProcessor));
     }
 
     function removeVaultsDeployerAccess(address deployer) public {
@@ -142,7 +125,6 @@ contract VaultsDeployer is CommonDeployer {
         poolManager.deny(deployer);
         escrow.deny(deployer);
         routerEscrow.deny(deployer);
-        vaultGateway.deny(deployer);
         router.deny(deployer);
     }
 }

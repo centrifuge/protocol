@@ -68,9 +68,9 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
         // deploy mock adapters
 
-        adapter1 = new MockAdapter(vaultGateway);
-        adapter2 = new MockAdapter(vaultGateway);
-        adapter3 = new MockAdapter(vaultGateway);
+        adapter1 = new MockAdapter(gateway);
+        adapter2 = new MockAdapter(gateway);
+        adapter3 = new MockAdapter(gateway);
 
         adapter1.setReturn("estimate", uint256(1 gwei));
         adapter2.setReturn("estimate", uint256(1.25 gwei));
@@ -81,7 +81,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         testAdapters.push(adapter3);
 
         // wire contracts
-        wireVaultAdapter(adapter1, address(this));
+        wire(adapter1, address(this));
         // remove deployer access
         // removeVaultsDeployerAccess(address(adapter)); // need auth permissions in tests
 
@@ -89,9 +89,9 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         mockedGasService = new MockGasService();
         erc20 = _newErc20("X's Dollar", "USDX", 6);
 
-        vaultGateway.file("adapters", testAdapters);
-        vaultGateway.file("gasService", address(mockedGasService));
-        vm.deal(address(vaultGateway), GATEWAY_INITIAL_BALACE);
+        gateway.file("adapters", testAdapters);
+        gateway.file("gasService", address(mockedGasService));
+        vm.deal(address(gateway), GATEWAY_INITIAL_BALACE);
 
         mockedGasService.setReturn("estimate", uint256(0.5 gwei));
         mockedGasService.setReturn("shouldRefuel", true);
@@ -100,7 +100,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         vm.label(address(root), "Root");
         vm.label(address(investmentManager), "InvestmentManager");
         vm.label(address(poolManager), "PoolManager");
-        vm.label(address(vaultGateway), "VaultGateway");
+        vm.label(address(gateway), "Gateway");
         vm.label(address(vaultMessageProcessor), "vaultMessageProcessor");
         vm.label(address(adapter1), "MockAdapter1");
         vm.label(address(adapter2), "MockAdapter2");
@@ -120,7 +120,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         excludeContract(address(root));
         excludeContract(address(investmentManager));
         excludeContract(address(poolManager));
-        excludeContract(address(vaultGateway));
+        excludeContract(address(gateway));
         excludeContract(address(erc20));
         excludeContract(address(centrifugeChain));
         excludeContract(address(router));
