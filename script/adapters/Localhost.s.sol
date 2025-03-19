@@ -13,11 +13,10 @@ contract LocalhostAdapterScript is FullDeployer {
         vm.startBroadcast();
 
         deployFull(ISafe(vm.envAddress("ADMIN")), msg.sender);
+        saveDeploymentOutput();
 
         LocalhostAdapter adapter = new LocalhostAdapter(gateway);
         wire(adapter, msg.sender);
-
-        removeFullDeployerAccess(msg.sender);
 
         vm.stopBroadcast();
     }
