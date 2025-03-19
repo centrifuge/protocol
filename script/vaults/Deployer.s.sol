@@ -67,7 +67,7 @@ contract Deployer is Script {
         gateway = new Gateway(root, gasService);
         messageProcessor = new MessageProcessor(gateway, poolManager, investmentManager, root, gasService, deployer);
         router = new VaultRouter(address(routerEscrow), address(gateway), address(poolManager));
-        guardian = new Guardian(adminSafe, root, gateway);
+        guardian = new Guardian(adminSafe, root);
 
         _endorse();
         _rely();

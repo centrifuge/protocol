@@ -62,7 +62,7 @@ contract DeployTest is Test, Deployer {
         accounts[1] = makeAddr("account2");
         accounts[2] = makeAddr("account3");
         adminSafe = new MockSafe(accounts, 1);
-        fakeGuardian = new Guardian(adminSafe, root, gateway);
+        fakeGuardian = new Guardian(adminSafe, root);
 
         removeDeployerAccess(address(adapter), address(this));
 

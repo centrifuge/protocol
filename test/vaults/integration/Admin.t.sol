@@ -281,6 +281,7 @@ contract AdminTest is BaseTest {
         assertEq(root.endorsed(router), false);
     }
 
+    /* TODO: Uncomment when guardian has access again to dispute messages
     function testDisputeRecovery() public {
         MockManager poolManager = new MockManager();
         gateway.file("adapters", testAdapters);
@@ -294,7 +295,7 @@ contract AdminTest is BaseTest {
         assertEq(poolManager.received(message), 0);
 
         // Initiate recovery
-        _send(adapter1, MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
+    _send(adapter1, MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
 
         vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
         gateway.executeMessageRecovery(adapter3, proof);
@@ -312,6 +313,7 @@ contract AdminTest is BaseTest {
         gateway.executeMessageRecovery(adapter3, proof);
         assertEq(poolManager.received(message), 0);
     }
+    */
 
     function _send(MockAdapter adapter, bytes memory message) internal {
         vm.prank(address(adapter));
