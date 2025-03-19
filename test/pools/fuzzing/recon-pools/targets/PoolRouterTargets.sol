@@ -25,16 +25,14 @@ abstract contract PoolRouterTargets is
     /// CLAMPED HANDLERS /// 
     function poolRouter_claimDeposit_clamped(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asActor {
         bytes32 investor = Helpers.addressToBytes32(_getActor());
-        AssetId assetId = newAssetId(isoCode);
 
-        poolRouter.claimDeposit(poolId, scId, assetId, investor);
+        poolRouter_claimDeposit(poolId, scId, isoCode, investor);
     }
 
     function poolRouter_claimRedeem_clamped(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asActor {
         bytes32 investor = Helpers.addressToBytes32(_getActor());
-        AssetId assetId = newAssetId(isoCode);
         
-        poolRouter.claimRedeem(poolId, scId, assetId, investor);
+        poolRouter_claimRedeem(poolId, scId, isoCode, investor);
     }
 
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
