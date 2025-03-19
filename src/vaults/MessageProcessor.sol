@@ -29,7 +29,6 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
     IPoolManager public immutable poolManager;
     IInvestmentManager public immutable investmentManager;
     IBalanceSheetManager public immutable balanceSheetManager;
-    ITransientValuation public immutable transientValuation;
     IRoot public immutable root;
     IGasService public immutable gasService;
 
