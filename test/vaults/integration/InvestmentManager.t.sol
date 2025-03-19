@@ -22,7 +22,7 @@ contract InvestmentManagerTest is BaseTest {
     function testDeployment(address nonWard) public {
         vm.assume(
             nonWard != address(root) && nonWard != address(gateway) && nonWard != address(poolManager)
-                && nonWard != address(vaultMessageProcessor) && nonWard != address(this)
+                && nonWard != address(messageProcessor) && nonWard != address(this)
         );
 
         // redeploying within test to increase coverage
@@ -38,7 +38,7 @@ contract InvestmentManagerTest is BaseTest {
         assertEq(investmentManager.wards(address(root)), 1);
         assertEq(investmentManager.wards(address(gateway)), 1);
         assertEq(investmentManager.wards(address(poolManager)), 1);
-        assertEq(investmentManager.wards(address(vaultMessageProcessor)), 1);
+        assertEq(investmentManager.wards(address(messageProcessor)), 1);
         assertEq(investmentManager.wards(nonWard), 0);
     }
 

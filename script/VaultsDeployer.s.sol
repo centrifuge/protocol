@@ -14,7 +14,6 @@ import {RestrictedRedemptions} from "src/vaults/token/RestrictedRedemptions.sol"
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
-import {MessageProcessor} from "src/vaults/MessageProcessor.sol";
 
 import "forge-std/Script.sol";
 import {CommonDeployer} from "script/CommonDeployer.s.sol";
@@ -24,7 +23,6 @@ contract VaultsDeployer is CommonDeployer {
     PoolManager public poolManager;
     Escrow public escrow;
     Escrow public routerEscrow;
-    MessageProcessor public vaultMessageProcessor;
     VaultRouter public router;
     address public vaultFactory;
     address public restrictionManager;
@@ -46,8 +44,6 @@ contract VaultsDeployer is CommonDeployer {
         vaultFactories[0] = vaultFactory;
 
         poolManager = new PoolManager(address(escrow), trancheFactory, vaultFactories);
-        vaultMessageProcessor =
-            new MessageProcessor(gateway, poolManager, investmentManager, root, gasService, deployer);
         router = new VaultRouter(address(routerEscrow), address(gateway), address(poolManager));
 
         _vaultsEndorse();
@@ -68,10 +64,10 @@ contract VaultsDeployer is CommonDeployer {
         IAuth(investmentManager).rely(address(poolManager));
         IAuth(restrictionManager).rely(address(poolManager));
         IAuth(restrictedRedemptions).rely(address(poolManager));
-        vaultMessageProcessor.rely(address(poolManager));
+        messageProcessor.rely(address(poolManager));
 
         // Rely on InvestmentManager
-        vaultMessageProcessor.rely(address(investmentManager));
+        messageProcessor.rely(address(investmentManager));
 
         // Rely on Root
         router.rely(address(root));
@@ -85,7 +81,6 @@ contract VaultsDeployer is CommonDeployer {
         IAuth(restrictedRedemptions).rely(address(root));
 
         // Rely on vaultGateway
-        vaultMessageProcessor.rely(address(gateway));
         investmentManager.rely(address(gateway));
         poolManager.rely(address(gateway));
 
@@ -93,25 +88,23 @@ contract VaultsDeployer is CommonDeployer {
         routerEscrow.rely(address(router));
 
         // Rely on vaultMessageProcessor
-        gateway.rely(address(vaultMessageProcessor));
-        poolManager.rely(address(vaultMessageProcessor));
-        investmentManager.rely(address(vaultMessageProcessor));
-        root.rely(address(vaultMessageProcessor));
-        gasService.rely(address(vaultMessageProcessor));
+        poolManager.rely(address(messageProcessor));
+        investmentManager.rely(address(messageProcessor));
 
         // Rely on VaultRouter
         gateway.rely(address(router));
     }
 
     function _vaultsFile() public {
+        messageProcessor.file("poolManager", address(poolManager));
+        messageProcessor.file("investmentManager", address(investmentManager));
+
         poolManager.file("gateway", address(gateway));
-        poolManager.file("sender", address(vaultMessageProcessor));
+        poolManager.file("sender", address(messageProcessor));
 
         investmentManager.file("poolManager", address(poolManager));
         investmentManager.file("gateway", address(gateway));
-        investmentManager.file("sender", address(vaultMessageProcessor));
-
-        gateway.file("handler", address(vaultMessageProcessor));
+        investmentManager.file("sender", address(messageProcessor));
     }
 
     function removeVaultsDeployerAccess(address deployer) public {

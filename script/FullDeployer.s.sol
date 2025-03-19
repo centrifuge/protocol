@@ -11,8 +11,6 @@ contract FullDeployer is PoolsDeployer, VaultsDeployer {
     function deployFull(ISafe adminSafe_, address deployer) public {
         super.deployPools(adminSafe_, deployer);
         super.deployVaults(adminSafe_, deployer);
-
-        // TODO: link CP and CV MessageProcessors with the managers
     }
 
     function removeFullDeployerAccess(address deployer) public {

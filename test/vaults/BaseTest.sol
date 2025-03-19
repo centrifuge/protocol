@@ -105,7 +105,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         vm.label(address(investmentManager), "InvestmentManager");
         vm.label(address(poolManager), "PoolManager");
         vm.label(address(gateway), "Gateway");
-        vm.label(address(vaultMessageProcessor), "vaultMessageProcessor");
+        vm.label(address(messageProcessor), "messageProcessor");
         vm.label(address(adapter1), "MockAdapter1");
         vm.label(address(adapter2), "MockAdapter2");
         vm.label(address(adapter3), "MockAdapter3");

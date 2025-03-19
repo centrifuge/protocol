@@ -74,7 +74,7 @@ contract TestCases is PoolsDeployer, Test {
         vm.label(address(multiShareClass), "MultiShareClass");
         vm.label(address(poolRouter), "PoolRouter");
         vm.label(address(gateway), "Gateway");
-        vm.label(address(poolMessageProcessor), "PoolMessageProcessor");
+        vm.label(address(messageProcessor), "messageProcessor");
         vm.label(address(cv), "CV");
 
         // We decide CP is located at CHAIN_CP for messaging

@@ -17,7 +17,6 @@ import {MultiShareClass} from "src/pools/MultiShareClass.sol";
 import {Holdings} from "src/pools/Holdings.sol";
 import {AssetRegistry} from "src/pools/AssetRegistry.sol";
 import {Accounting} from "src/pools/Accounting.sol";
-import {MessageProcessor} from "src/pools/MessageProcessor.sol";
 import {PoolRouter, IPoolRouter} from "src/pools/PoolRouter.sol";
 import {PoolRouter} from "src/pools/PoolRouter.sol";
 
@@ -32,7 +31,6 @@ contract PoolsDeployer is CommonDeployer {
     Holdings public holdings;
     MultiShareClass public multiShareClass;
     PoolRouter public poolRouter;
-    MessageProcessor public poolMessageProcessor;
 
     // Utilities
     TransientValuation public transientValuation;
@@ -50,19 +48,13 @@ contract PoolsDeployer is CommonDeployer {
         holdings = new Holdings(poolRegistry, deployer);
         multiShareClass = new MultiShareClass(poolRegistry, deployer);
         poolRouter = new PoolRouter(poolRegistry, assetRegistry, accounting, holdings, gateway, deployer);
-        poolMessageProcessor = new MessageProcessor(gateway, poolRouter, deployer);
 
         transientValuation = new TransientValuation(assetRegistry, deployer);
         identityValuation = new IdentityValuation(assetRegistry, deployer);
 
-        _poolsFile();
         _poolsRely();
+        _poolsFile();
         _poolsInitialConfig();
-    }
-
-    function _poolsFile() private {
-        poolRouter.file("sender", address(poolMessageProcessor));
-        gateway.file("handler", address(poolMessageProcessor));
     }
 
     function _poolsRely() private {
@@ -72,10 +64,13 @@ contract PoolsDeployer is CommonDeployer {
         accounting.rely(address(poolRouter));
         multiShareClass.rely(address(poolRouter));
         gateway.rely(address(poolRouter));
-        gateway.rely(address(poolMessageProcessor));
-        poolRouter.rely(address(poolMessageProcessor));
-        poolMessageProcessor.rely(address(poolRouter));
-        poolMessageProcessor.rely(address(gateway));
+        poolRouter.rely(address(messageProcessor));
+        messageProcessor.rely(address(poolRouter));
+    }
+
+    function _poolsFile() private {
+        messageProcessor.file("poolRouter", address(poolRouter));
+        poolRouter.file("sender", address(messageProcessor));
     }
 
     function _poolsInitialConfig() private {
@@ -90,7 +85,6 @@ contract PoolsDeployer is CommonDeployer {
         accounting.deny(deployer);
         holdings.deny(deployer);
         multiShareClass.deny(deployer);
-        poolMessageProcessor.deny(deployer);
         poolRouter.deny(deployer);
 
         transientValuation.deny(deployer);
