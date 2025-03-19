@@ -31,10 +31,10 @@ contract VaultRouterTest is BaseTest {
 
     function testInitialization() public {
         // redeploying within test to increase coverage
-        new VaultRouter(address(routerEscrow), address(gateway), address(poolManager));
+        new VaultRouter(address(routerEscrow), address(vaultGateway), address(poolManager));
 
         assertEq(address(router.escrow()), address(routerEscrow));
-        assertEq(address(router.gateway()), address(gateway));
+        assertEq(address(router.gateway()), address(vaultGateway));
         assertEq(address(router.poolManager()), address(poolManager));
     }
 
@@ -462,7 +462,7 @@ contract VaultRouterTest is BaseTest {
     function testEstimate() public view {
         bytes memory message = "IRRELEVANT";
         uint256 estimated = router.estimate(CHAIN_ID, message);
-        (, uint256 gatewayEstimated) = gateway.estimate(CHAIN_ID, message);
+        (, uint256 gatewayEstimated) = vaultGateway.estimate(CHAIN_ID, message);
         assertEq(estimated, gatewayEstimated);
     }
 
@@ -497,6 +497,6 @@ contract VaultRouterTest is BaseTest {
     }
 
     function estimateGas() internal view returns (uint256 total) {
-        (, total) = gateway.estimate(CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
+        (, total) = vaultGateway.estimate(CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
     }
 }

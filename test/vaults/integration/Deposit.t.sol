@@ -154,13 +154,13 @@ contract DepositTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128));
         vm.assume(amount % 2 == 0);
 
-        (, uint256 gasToBePaid) = gateway.estimate(CHAIN_ID, "PAYLOAD_IS_IRRELEVANT");
+        (, uint256 gasToBePaid) = vaultGateway.estimate(CHAIN_ID, "PAYLOAD_IS_IRRELEVANT");
 
-        assertEq(address(gateway).balance, GATEWAY_INITIAL_BALACE);
+        assertEq(address(vaultGateway).balance, GATEWAY_INITIAL_BALACE);
 
         _testDepositMint(amount, false);
 
-        assertEq(address(gateway).balance, GATEWAY_INITIAL_BALACE - gasToBePaid);
+        assertEq(address(vaultGateway).balance, GATEWAY_INITIAL_BALACE - gasToBePaid);
     }
 
     function testPartialDepositExecutions(uint64 poolId, bytes16 trancheId, uint128 assetId) public {

@@ -22,7 +22,7 @@ contract AdminTest is BaseTest {
 
         // permissions set correctly
         assertEq(root.wards(address(guardian)), 1);
-        assertEq(gateway.wards(address(guardian)), 1);
+        assertEq(vaultGateway.wards(address(guardian)), 1);
     }
 
     //------ pause tests ------//
@@ -317,7 +317,7 @@ contract AdminTest is BaseTest {
 
     function _send(MockAdapter adapter, bytes memory message) internal {
         vm.prank(address(adapter));
-        gateway.handle(CHAIN_ID, message);
+        vaultGateway.handle(CHAIN_ID, message);
     }
 
     function _formatMessageProof(bytes memory message) internal pure returns (bytes memory) {

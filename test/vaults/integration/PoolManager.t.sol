@@ -17,7 +17,7 @@ contract PoolManagerTest is BaseTest {
 
     // Deployment
     function testDeployment(address nonWard) public {
-        vm.assume(nonWard != address(root) && nonWard != address(gateway) && nonWard != address(this));
+        vm.assume(nonWard != address(root) && nonWard != address(vaultGateway) && nonWard != address(this));
 
         address[] memory vaultFactories = new address[](1);
         vaultFactories[0] = address(vaultFactory);
@@ -26,14 +26,14 @@ contract PoolManagerTest is BaseTest {
         new PoolManager(address(escrow), trancheFactory, vaultFactories);
 
         // values set correctly
-        assertEq(address(poolManager.gateway()), address(gateway));
+        assertEq(address(poolManager.gateway()), address(vaultGateway));
         assertEq(address(poolManager.escrow()), address(escrow));
-        assertEq(address(gateway.handler()), address(poolManager.sender()));
+        assertEq(address(vaultGateway.handler()), address(poolManager.sender()));
         assertEq(address(investmentManager.poolManager()), address(poolManager));
 
         // permissions set correctly
         assertEq(poolManager.wards(address(root)), 1);
-        assertEq(poolManager.wards(address(gateway)), 1);
+        assertEq(poolManager.wards(address(vaultGateway)), 1);
         assertEq(escrow.wards(address(poolManager)), 1);
         assertEq(poolManager.wards(nonWard), 0);
     }

@@ -16,11 +16,12 @@ contract WormholeScript is VaultsDeployer {
         deployVaults(ISafe(vm.envAddress("ADMIN")), msg.sender);
 
         WormholeAdapter adapter = new WormholeAdapter(
-            gateway, address(vm.envAddress("WORMHOLE_RELAYER")), uint16(vm.envUint("WORMHOLE_LOCAL_CHAIN_ID"))
+            vaultGateway, address(vm.envAddress("WORMHOLE_RELAYER")), uint16(vm.envUint("WORMHOLE_LOCAL_CHAIN_ID"))
         );
         wire(adapter);
 
-        removeDeployerAccess(address(adapter), msg.sender);
+        removeVaultsDeployerAccess(msg.sender);
+        adapter.deny(msg.sender);
 
         vm.stopBroadcast();
     }

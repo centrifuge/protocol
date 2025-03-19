@@ -49,12 +49,12 @@ contract TestCases is PoolsDeployer, Test {
     MockVaults cv;
 
     function _configMockVaultsAdapter() private {
-        cv = new MockVaults(CHAIN_CV, gateway);
+        cv = new MockVaults(CHAIN_CV, poolGateway);
 
         IAdapter[] memory testAdapters = new IAdapter[](1);
         testAdapters[0] = cv;
 
-        gateway.file("adapters", testAdapters);
+        poolGateway.file("adapters", testAdapters);
     }
 
     function _configGasPrice() private {
@@ -62,11 +62,13 @@ contract TestCases is PoolsDeployer, Test {
     }
 
     function setUp() public {
+        // Deployment
         deployPools(ISafe(address(0)), address(this));
         _configMockVaultsAdapter();
         _configGasPrice();
-        removeDeployerAccess(address(this));
+        removePoolsDeployerAccess(address(this));
 
+        // Initialize accounts
         vm.deal(FM, 1 ether);
 
         // Label contracts & actors (for debugging)
@@ -78,7 +80,8 @@ contract TestCases is PoolsDeployer, Test {
         vm.label(address(holdings), "Holdings");
         vm.label(address(multiShareClass), "MultiShareClass");
         vm.label(address(poolRouter), "PoolRouter");
-        vm.label(address(gateway), "Gateway");
+        vm.label(address(poolGateway), "PoolGateway");
+        vm.label(address(poolMessageProcessor), "PoolMessageProcessor");
         vm.label(address(cv), "CV");
 
         // We decide CP is located at CHAIN_CP for messaging

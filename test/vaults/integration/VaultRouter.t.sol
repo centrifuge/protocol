@@ -71,7 +71,7 @@ contract VaultRouterTest is BaseTest {
             snapEnd();
         }
 
-        assertEq(address(gateway).balance, GATEWAY_INITIAL_BALACE + GAS_BUFFER);
+        assertEq(address(vaultGateway).balance, GATEWAY_INITIAL_BALACE + GAS_BUFFER);
         for (uint8 i; i < testAdapters.length; i++) {
             MockAdapter adapter = MockAdapter(address(testAdapters[i]));
             uint256[] memory payCalls = adapter.callsWithValue("send");
@@ -771,6 +771,6 @@ contract VaultRouterTest is BaseTest {
     }
 
     function estimateGas() internal view returns (uint256 total) {
-        (, total) = gateway.estimate(CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
+        (, total) = vaultGateway.estimate(CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
     }
 }
