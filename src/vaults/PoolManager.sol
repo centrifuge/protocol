@@ -31,6 +31,7 @@ import {
 } from "src/vaults/interfaces/IPoolManager.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IMessageProcessor} from "src/vaults/interfaces/IMessageProcessor.sol";
+import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 
 /// @title  Pool Manager
 /// @notice This contract manages which pools & tranches exist,
@@ -177,11 +178,8 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         require(isPoolActive(poolId), "PoolManager/invalid-pool");
         require(tranche(poolId, trancheId) == address(0), "PoolManager/tranche-already-exists");
 
-        // Hook can be address zero if the tranche_ token is fully permissionless and has no custom logic
-        require(
-            hook == address(0) || IHook(hook).supportsInterface(type(IHook).interfaceId) == true,
-            "PoolManager/invalid-hook"
-        );
+        // Hook can be address zero if the tranche_token is fully permissionless and has no custom logic
+        require(hook == address(0) || _isValidHook(hook), "PoolManager/invalid-hook");
 
         address[] memory trancheWards = new address[](1);
         trancheWards[0] = address(this);
@@ -420,5 +418,12 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         require(success && data.length >= 32, "PoolManager/asset-missing-decimals");
 
         return abi.decode(data, (uint8));
+    }
+
+    function _isValidHook(address hook) internal view returns (bool) {
+        (bool success, bytes memory data) =
+            hook.staticcall(abi.encodeWithSelector(IERC165.supportsInterface.selector, type(IHook).interfaceId));
+
+        return success && data.length == 32 && abi.decode(data, (bool));
     }
 }
