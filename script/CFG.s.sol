@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import {CFG} from "src/cfg/CFG.sol";
 import "forge-std/Script.sol";
@@ -11,8 +11,14 @@ contract CFGScript is Script {
     function run() public {
         vm.startBroadcast();
 
+        uint256 initialMint = 100; // TODO
+        address mintDestination = address(1); // TODO
+        address initialOwner = 0x423420Ae467df6e90291fd0252c0A8a637C1e03f; // TODO
+
         CFG cfg = new CFG();
-        cfg.rely(0x423420Ae467df6e90291fd0252c0A8a637C1e03f);
+        cfg.rely(initialOwner);
+        cfg.mint(mintDestination, initialMint);
+        // cfg.deny(address(this)); // TODO
 
         vm.stopBroadcast();
     }

@@ -68,6 +68,18 @@ contract DelegationToken is ERC20, IDelegationToken {
         _moveDelegateVotes(delegatee[from], delegatee[to], value);
     }
 
+    /// @dev Adds voting power when tokens are minted.
+    function mint(address to, uint256 value) public override(ERC20) {
+        super.mint(to, value);
+        _moveDelegateVotes(address(0), delegatee[to], value);
+    }
+
+    /// @dev Removes voting power when tokens are burned.
+    function burn(address from, uint256 value) public override(ERC20) {
+        super.burn(from, value);
+        _moveDelegateVotes(delegatee[from], address(0), value);
+    }
+
     /// @dev Moves delegated votes from one delegate to another.
     function _moveDelegateVotes(address from, address to, uint256 amount) internal {
         if (from != to && amount > 0) {
