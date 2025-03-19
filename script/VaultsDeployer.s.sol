@@ -3,9 +3,7 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {Root} from "src/common/Root.sol";
-import {GasService} from "src/common/GasService.sol";
-import {Guardian, ISafe} from "src/common/Guardian.sol";
+import {ISafe} from "src/common/Guardian.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {Gateway} from "src/common/Gateway.sol";
 import {CommonDeployer} from "script/CommonDeployer.s.sol";

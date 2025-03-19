@@ -16,7 +16,7 @@ import {PoolId} from "src/pools/types/PoolId.sol";
 import {AccountId} from "src/pools/types/AccountId.sol";
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AccountType} from "src/pools/interfaces/IPoolRouter.sol";
-import {PoolsDeployer} from "script/PoolsDeployer.s.sol";
+import {PoolsDeployer, ISafe} from "script/PoolsDeployer.s.sol";
 
 import {MockVaults} from "test/pools/mocks/MockVaults.sol";
 
@@ -62,10 +62,10 @@ contract TestCases is PoolsDeployer, Test {
     }
 
     function setUp() public {
-        deploy();
+        deployPools(ISafe(address(0)), address(this));
         _configMockVaultsAdapter();
         _configGasPrice();
-        removeDeployerAccess();
+        removeDeployerAccess(address(this));
 
         vm.deal(FM, 1 ether);
 

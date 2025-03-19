@@ -9,6 +9,8 @@ import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 import {Gateway} from "src/common/Gateway.sol";
 import {Root} from "src/common/Root.sol";
 import {GasService} from "src/common/GasService.sol";
+import {CommonDeployer} from "script/CommonDeployer.s.sol";
+import {ISafe} from "src/common/Guardian.sol";
 
 import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
 import {PoolRegistry} from "src/pools/PoolRegistry.sol";
@@ -20,15 +22,9 @@ import {MessageProcessor} from "src/pools/MessageProcessor.sol";
 import {PoolRouter, IPoolRouter} from "src/pools/PoolRouter.sol";
 import {PoolRouter} from "src/pools/PoolRouter.sol";
 
-contract PoolsDeployer is Script {
-    uint256 internal constant delay = 48 hours;
-
-    // Common contracts
-    Root public root;
-    GasService public gasService;
+contract PoolsDeployer is CommonDeployer {
+    // Main contracts
     Gateway public gateway;
-
-    // Pools contracts
     PoolRegistry public poolRegistry;
     AssetRegistry public assetRegistry;
     Accounting public accounting;
@@ -44,21 +40,20 @@ contract PoolsDeployer is Script {
     // Data
     AssetId immutable USD = newAssetId(840);
 
-    function deploy() public {
-        root = new Root(delay, address(this));
-        gasService = new GasService(0, 0); // TODO: Configure properly
+    function deployPools(ISafe adminSafe_, address deployer) public {
+        super.deployCommon(adminSafe_, deployer);
+
         gateway = new Gateway(root, gasService);
+        poolRegistry = new PoolRegistry(deployer);
+        assetRegistry = new AssetRegistry(deployer);
+        accounting = new Accounting(deployer);
+        holdings = new Holdings(poolRegistry, deployer);
+        multiShareClass = new MultiShareClass(poolRegistry, deployer);
+        poolRouter = new PoolRouter(poolRegistry, assetRegistry, accounting, holdings, gateway, deployer);
+        messageProcessor = new MessageProcessor(gateway, poolRouter, deployer);
 
-        poolRegistry = new PoolRegistry(address(this));
-        assetRegistry = new AssetRegistry(address(this));
-        accounting = new Accounting(address(this));
-        holdings = new Holdings(poolRegistry, address(this));
-        multiShareClass = new MultiShareClass(poolRegistry, address(this));
-        poolRouter = new PoolRouter(poolRegistry, assetRegistry, accounting, holdings, gateway, address(this));
-        messageProcessor = new MessageProcessor(gateway, poolRouter, address(this));
-
-        transientValuation = new TransientValuation(assetRegistry, address(this));
-        identityValuation = new IdentityValuation(assetRegistry, address(this));
+        transientValuation = new TransientValuation(assetRegistry, deployer);
+        identityValuation = new IdentityValuation(assetRegistry, deployer);
 
         _file();
         _rely();
@@ -87,17 +82,19 @@ contract PoolsDeployer is Script {
         assetRegistry.registerAsset(USD, "United States dollar", "USD", 18);
     }
 
-    function removeDeployerAccess() public {
-        poolRegistry.deny(address(this));
-        assetRegistry.deny(address(this));
-        accounting.deny(address(this));
-        holdings.deny(address(this));
-        multiShareClass.deny(address(this));
-        gateway.deny(address(this));
-        messageProcessor.deny(address(this));
-        poolRouter.deny(address(this));
+    function removeDeployerAccess(address deployer) public {
+        super.removeCommonDeployerAccess(deployer);
 
-        transientValuation.deny(address(this));
-        identityValuation.deny(address(this));
+        poolRegistry.deny(deployer);
+        assetRegistry.deny(deployer);
+        accounting.deny(deployer);
+        holdings.deny(deployer);
+        multiShareClass.deny(deployer);
+        gateway.deny(deployer);
+        messageProcessor.deny(deployer);
+        poolRouter.deny(deployer);
+
+        transientValuation.deny(deployer);
+        identityValuation.deny(deployer);
     }
 }
