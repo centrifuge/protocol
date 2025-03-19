@@ -8,7 +8,7 @@ import {GasService} from "src/common/GasService.sol";
 import {Guardian, ISafe} from "src/common/Guardian.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {Gateway} from "src/common/Gateway.sol";
-import {CommonDeployer} from "script/common/Common.s.sol";
+import {CommonDeployer} from "script/CommonDeployer.s.sol";
 
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
 import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";

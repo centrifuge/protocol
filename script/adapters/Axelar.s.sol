@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {WormholeAdapter} from "src/common/WormholeAdapter.sol";
+import {AxelarAdapter} from "src/common/AxelarAdapter.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
-import {VaultsDeployer} from "script/vaults/Deployer.s.sol";
+import {VaultsDeployer} from "script/VaultsDeployer.s.sol";
 
-// Script to deploy Vaults with an Wormhole Adapter.
-contract WormholeScript is VaultsDeployer {
+// Script to deploy Vaults with an Axelar Adapter.
+contract AxelarScript is VaultsDeployer {
     function setUp() public {}
 
     function run() public {
@@ -15,8 +15,8 @@ contract WormholeScript is VaultsDeployer {
 
         deployVaults(ISafe(vm.envAddress("ADMIN")), msg.sender);
 
-        WormholeAdapter adapter = new WormholeAdapter(
-            gateway, address(vm.envAddress("WORMHOLE_RELAYER")), uint16(vm.envUint("WORMHOLE_LOCAL_CHAIN_ID"))
+        AxelarAdapter adapter = new AxelarAdapter(
+            gateway, address(vm.envAddress("AXELAR_GATEWAY")), address(vm.envAddress("AXELAR_GAS_SERVICE"))
         );
         wire(adapter);
 

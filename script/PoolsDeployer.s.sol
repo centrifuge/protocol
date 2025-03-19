@@ -20,7 +20,7 @@ import {MessageProcessor} from "src/pools/MessageProcessor.sol";
 import {PoolRouter, IPoolRouter} from "src/pools/PoolRouter.sol";
 import {PoolRouter} from "src/pools/PoolRouter.sol";
 
-contract Deployer is Script {
+contract PoolsDeployer is Script {
     uint256 internal constant delay = 48 hours;
 
     // Common contracts

@@ -16,11 +16,11 @@ import {PoolId} from "src/pools/types/PoolId.sol";
 import {AccountId} from "src/pools/types/AccountId.sol";
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AccountType} from "src/pools/interfaces/IPoolRouter.sol";
-import {Deployer} from "script/pools/Deployer.s.sol";
+import {PoolsDeployer} from "script/PoolsDeployer.s.sol";
 
 import {MockVaults} from "test/pools/mocks/MockVaults.sol";
 
-contract TestCases is Deployer, Test {
+contract TestCases is PoolsDeployer, Test {
     using CastLib for string;
     using CastLib for bytes32;
 
