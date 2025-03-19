@@ -319,11 +319,11 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         );
 
         // Check whether asset is an ERC20 token wrapper
-        try IERC20Wrapper(assetIdKey.asset).underlying() returns (address) {
-            _vaultDetails[vault] = VaultDetails(assetId, assetIdKey.asset, assetIdKey.tokenId, true, false);
-        } catch {
-            _vaultDetails[vault] = VaultDetails(assetId, assetIdKey.asset, assetIdKey.tokenId, false, false);
-        }
+        (bool success, bytes memory data) =
+            assetIdKey.asset.staticcall(abi.encodeWithSelector(IERC20Wrapper.underlying.selector));
+        // On success, the returned 20 byte address is padded to 32 bytes
+        bool isWrappedERC20 = success && data.length == 32;
+        _vaultDetails[vault] = VaultDetails(assetId, assetIdKey.asset, assetIdKey.tokenId, isWrappedERC20, false);
 
         address manager = IBaseVault(vault).manager();
         // NOTE - Reverting the three actions below is not easy. We SHOULD do that if we phase-out a manager
