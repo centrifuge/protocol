@@ -85,6 +85,32 @@ abstract contract Properties is BeforeAfter, Asserts {
         }
     }
 
+    /// @dev The total pending redeem amount pendingRedeem[..] is always geq the sum of pending user redeem amounts redeemRequest[..]
+    function property_total_pending_redeem_geq_sum_pending_user_redeem() public {
+        address[] memory _actors = _getActors();
+
+        for (uint256 i = 0; i < createdPools.length; i++) {
+            PoolId poolId = createdPools[i];
+            uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
+
+            for (uint32 j = 0; j < shareClassCount; j++) {
+                ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
+                AssetId assetId = poolRegistry.currency(poolId);
+
+                uint32 epochId = multiShareClass.epochId(poolId);
+                uint128 pendingRedeem = multiShareClass.pendingRedeem(scId, assetId);
+
+                uint128 totalPendingUserRedeem = 0;
+                for (uint256 k = 0; k < _actors.length; k++) {
+                    address actor = _actors[k];
+                    (uint128 pendingUserRedeem,) = multiShareClass.redeemRequest(scId, assetId, Helpers.addressToBytes32(actor));
+                    totalPendingUserRedeem += pendingUserRedeem;
+                }
+
+                gte(pendingRedeem, totalPendingUserRedeem, "pending redeem is < total pending user redeems");
+            }
+        }
+    }
     /// Stateless Properties ///
 
     /// @dev Property: The sum of eligible user payoutShareAmount for an epoch is <= the number of issued shares epochAmounts[..].depositShares
@@ -98,6 +124,12 @@ abstract contract Properties is BeforeAfter, Asserts {
             PoolId poolId = createdPools[i];
             uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
             
+            // check that the epoch has ended, if not, skip
+            // we know an epoch has ended if the epochId changed after an operation which we cache in the before/after structs
+            if (_before.ghostEpochId[poolId] == _after.ghostEpochId[poolId]) {
+                continue;
+            }
+
             // loop over all share classes in the pool
             uint128 totalPayoutShareAmount = 0;
             uint128 totalPayoutAssetAmount = 0;
@@ -105,7 +137,8 @@ abstract contract Properties is BeforeAfter, Asserts {
                 ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
                 AssetId assetId = poolRegistry.currency(poolId);
 
-                uint32 epochId = multiShareClass.epochId(poolId);
+                // check the previous epochId since the current epoch is still ongoing
+                uint32 epochId = multiShareClass.epochId(poolId) - 1;
                 (,, uint128 depositPoolApproved, uint128 depositSharesIssued,,,) = multiShareClass.epochAmounts(scId, assetId, epochId);
 
                 // loop over all actors
