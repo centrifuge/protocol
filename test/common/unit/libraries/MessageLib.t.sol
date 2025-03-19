@@ -501,7 +501,10 @@ contract TestMessageLibIdentities is Test {
     }
 
     function testUpdateHolding() public pure {
-        JournalEntry[] memory debits = new JournalEntry[](0);
+        JournalEntry[] memory debits = new JournalEntry[](3);
+        debits[0] = JournalEntry({accountId: AccountId.wrap(9), amount: d18(1)});
+        debits[1] = JournalEntry({accountId: AccountId.wrap(8), amount: d18(2)});
+        debits[2] = JournalEntry({accountId: AccountId.wrap(7), amount: d18(3)});
 
         JournalEntry[] memory credits = new JournalEntry[](2);
         credits[0] = JournalEntry({accountId: AccountId.wrap(1), amount: d18(2)});
@@ -566,5 +569,42 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.shares, b.shares);
         assertEq(a.timestamp, b.timestamp);
         assertEq(a.isIssuance, b.isIssuance);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+    }
+
+    function testUpdateJournal() public pure {
+        JournalEntry[] memory debits = new JournalEntry[](3);
+        debits[0] = JournalEntry({accountId: AccountId.wrap(9), amount: d18(1)});
+        debits[1] = JournalEntry({accountId: AccountId.wrap(8), amount: d18(2)});
+        debits[2] = JournalEntry({accountId: AccountId.wrap(7), amount: d18(3)});
+
+        JournalEntry[] memory credits = new JournalEntry[](2);
+        credits[0] = JournalEntry({accountId: AccountId.wrap(1), amount: d18(2)});
+        credits[1] = JournalEntry({accountId: AccountId.wrap(3), amount: d18(4)});
+
+        MessageLib.UpdateJournal memory a = MessageLib.UpdateJournal({
+            poolId: 1,
+            scId: bytes16("sc"),
+            debits: debits,
+            credits: credits
+        });
+
+        MessageLib.UpdateJournal memory b = MessageLib.deserializeUpdateJournal(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+
+        for (uint256 i = 0; i < a.credits.length; i++) {
+            assertEq(a.credits[i].accountId.raw(), b.credits[i].accountId.raw());
+            assertEq(a.credits[i].amount.raw(), b.credits[i].amount.raw());
+        }
+
+        for (uint256 i = 0; i < a.debits.length; i++) {
+            assertEq(a.debits[i].accountId.raw(), b.debits[i].accountId.raw());
+            assertEq(a.debits[i].amount.raw(), b.debits[i].amount.raw());
+        }
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
     }
 }

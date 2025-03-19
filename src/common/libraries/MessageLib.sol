@@ -115,7 +115,7 @@ library MessageLib {
         (89 << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (89 << uint8(MessageType.TriggerRedeemRequest) * 8) +
         (143 << uint8(MessageType.UpdateHolding) * 8) +
-        (81 << uint8(MessageType.UpdateShares) * 8) +
+        (106 << uint8(MessageType.UpdateShares) * 8) +
         (29 << uint8(MessageType.UpdateJournal) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
@@ -137,8 +137,13 @@ library MessageLib {
         } else if (kind == uint8(MessageType.UpdateContract)) {
             length += message.toUint16(length - 2); //payloadLength
         } else if (kind == uint8(MessageType.UpdateHolding)) {
-            length += message.toUint16(length - 2); // credits length
-            length += message.toUint16(length - 4); //debits length
+            uint16 lengthCredits = message.toUint16(length - 2); // credits length
+            uint16 lengthDebits = message.toUint16(length - 4); //debits length
+            length += lengthCredits + lengthDebits;
+        } else if (kind == uint8(MessageType.UpdateJournal)) {
+            uint16 lengthCredits = message.toUint16(length - 2); // credits length
+            uint16 lengthDebits = message.toUint16(length - 4); //debits length
+            length += lengthCredits + lengthDebits;
         }
     }
 
