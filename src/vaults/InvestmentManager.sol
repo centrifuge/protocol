@@ -14,19 +14,19 @@ import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-import {IInvestmentManagerGatewayActions} from "src/common/interfaces/IGatewayActions.sol";
+import {IInvestmentManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
+import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IInvestmentManager, InvestmentState} from "src/vaults/interfaces/IInvestmentManager.sol";
 import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
-import {IMessageProcessor} from "src/vaults/interfaces/IMessageProcessor.sol";
 
 /// @title  Investment Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
-contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewayActions {
+contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewayHandler {
     using MessageLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;
@@ -39,7 +39,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
     address public immutable escrow;
 
     IGateway public gateway;
-    IMessageProcessor public sender;
+    IVaultMessageSender public sender;
     IPoolManager public poolManager;
 
     mapping(uint64 poolId => mapping(bytes16 trancheId => mapping(uint128 assetId => address vault))) public vault;
@@ -56,7 +56,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
     /// @inheritdoc IInvestmentManager
     function file(bytes32 what, address data) external auth {
         if (what == "gateway") gateway = IGateway(data);
-        else if (what == "sender") sender = IMessageProcessor(data);
+        else if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "poolManager") poolManager = IPoolManager(data);
         else revert("InvestmentManager/file-unrecognized-param");
         emit File(what, data);
@@ -233,7 +233,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         );
     }
 
-    /// @inheritdoc IInvestmentManagerGatewayActions
+    /// @inheritdoc IInvestmentManagerGatewayHandler
     function fulfillDepositRequest(
         uint64 poolId,
         bytes16 trancheId,
@@ -259,7 +259,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         IERC7540Vault(vault_).onDepositClaimable(user, assets, shares);
     }
 
-    /// @inheritdoc IInvestmentManagerGatewayActions
+    /// @inheritdoc IInvestmentManagerGatewayHandler
     function fulfillRedeemRequest(
         uint64 poolId,
         bytes16 trancheId,
@@ -288,7 +288,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         IERC7540Vault(vault_).onRedeemClaimable(user, assets, shares);
     }
 
-    /// @inheritdoc IInvestmentManagerGatewayActions
+    /// @inheritdoc IInvestmentManagerGatewayHandler
     function fulfillCancelDepositRequest(
         uint64 poolId,
         bytes16 trancheId,
@@ -311,7 +311,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         IERC7540Vault(vault_).onCancelDepositClaimable(user, assets);
     }
 
-    /// @inheritdoc IInvestmentManagerGatewayActions
+    /// @inheritdoc IInvestmentManagerGatewayHandler
     function fulfillCancelRedeemRequest(uint64 poolId, bytes16 trancheId, address user, uint128 assetId, uint128 shares)
         public
         auth
@@ -328,7 +328,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         IERC7540Vault(vault_).onCancelRedeemClaimable(user, shares);
     }
 
-    /// @inheritdoc IInvestmentManagerGatewayActions
+    /// @inheritdoc IInvestmentManagerGatewayHandler
     function triggerRedeemRequest(uint64 poolId, bytes16 trancheId, address user, uint128 assetId, uint128 shares)
         public
         auth

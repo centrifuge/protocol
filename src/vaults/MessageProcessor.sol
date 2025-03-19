@@ -11,27 +11,26 @@ import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
-import {IInvestmentManagerGatewayActions} from "src/common/interfaces/IGatewayActions.sol";
+import {
+    IInvestmentManagerGatewayHandler, IPoolManagerGatewayHandler
+} from "src/common/interfaces/IGatewayHandlers.sol";
+import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
-import {IMessageProcessor} from "src/vaults/interfaces/IMessageProcessor.sol";
-import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
-import {IInvestmentManager} from "src/vaults/interfaces/IInvestmentManager.sol";
-
-contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
+contract MessageProcessor is Auth, IVaultMessageSender, IMessageHandler {
     using MessageLib for *;
     using BytesLib for bytes;
     using CastLib for *;
 
     IMessageSender public immutable gateway;
-    IPoolManager public immutable poolManager;
-    IInvestmentManagerGatewayActions public immutable investmentManager;
+    IPoolManagerGatewayHandler public immutable poolManager;
+    IInvestmentManagerGatewayHandler public immutable investmentManager;
     IRoot public immutable root;
     IGasService public immutable gasService;
 
     constructor(
         IMessageSender sender_,
-        IPoolManager poolManager_,
-        IInvestmentManagerGatewayActions investmentManager_,
+        IPoolManagerGatewayHandler poolManager_,
+        IInvestmentManagerGatewayHandler investmentManager_,
         IRoot root_,
         IGasService gasService_,
         address deployer
@@ -43,7 +42,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         gasService = gasService_;
     }
 
-    /// @inheritdoc IMessageProcessor
+    /// @inheritdoc IVaultMessageSender
     function sendTransferShares(uint32 chainId, uint64 poolId, bytes16 scId, bytes32 recipient, uint128 amount)
         external
         auth
@@ -54,7 +53,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         );
     }
 
-    /// @inheritdoc IMessageProcessor
+    /// @inheritdoc IVaultMessageSender
     function sendDepositRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId, uint128 amount)
         external
         auth
@@ -66,7 +65,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         );
     }
 
-    /// @inheritdoc IMessageProcessor
+    /// @inheritdoc IVaultMessageSender
     function sendRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId, uint128 amount)
         external
         auth
@@ -78,7 +77,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         );
     }
 
-    /// @inheritdoc IMessageProcessor
+    /// @inheritdoc IVaultMessageSender
     function sendCancelDepositRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId) external auth {
         gateway.send(
             uint32(poolId >> 32),
@@ -87,7 +86,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         );
     }
 
-    /// @inheritdoc IMessageProcessor
+    /// @inheritdoc IVaultMessageSender
     function sendCancelRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId) external auth {
         gateway.send(
             uint32(poolId >> 32),
@@ -96,7 +95,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         );
     }
 
-    /// @inheritdoc IMessageProcessor
+    /// @inheritdoc IVaultMessageSender
     function sendRegisterAsset(
         uint32 chainId,
         uint128 assetId,

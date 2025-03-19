@@ -6,11 +6,11 @@ import {AssetId} from "src/pools/types/AssetId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
 
 /// -----------------------------------------------------
-///  CP Actions
+///  CP Handlers
 /// -----------------------------------------------------
 
-/// @notice Interface for pool router methods called by the gateway
-interface IPoolRouterGatewayActions {
+/// @notice Interface for CP methods called by the gateway
+interface IPoolRouterGatewayHandler {
     /// @notice Tells that an asset was already registered in CV, in order to perform the corresponding register.
     /// @dev The same asset can be re-registered using this. Decimals can not change.
     function registerAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals) external;
@@ -32,12 +32,65 @@ interface IPoolRouterGatewayActions {
 }
 
 /// -----------------------------------------------------
-///  CV Actions
+///  CV Handlers
 /// -----------------------------------------------------
 
-interface IPoolManagerGatewayActions {}
+/// @notice Interface for CV methods related to pools called by the gateway
+interface IPoolManagerGatewayHandler {
+    /// @notice    New pool details from an existing Centrifuge pool are added.
+    /// @dev       The function can only be executed by the gateway contract.
+    function addPool(uint64 poolId) external;
 
-interface IInvestmentManagerGatewayActions {
+    /// @notice     New tranche details from an existing Centrifuge pool are added.
+    /// @dev        The function can only be executed by the gateway contract.
+    function addTranche(
+        uint64 poolId,
+        bytes16 trancheId,
+        string memory tokenName,
+        string memory tokenSymbol,
+        uint8 decimals,
+        bytes32 salt,
+        address hook
+    ) external returns (address);
+
+    /// @notice   Updates the tokenName and tokenSymbol of a tranche token
+    /// @dev      The function can only be executed by the gateway contract.
+    function updateTrancheMetadata(uint64 poolId, bytes16 trancheId, string memory tokenName, string memory tokenSymbol)
+        external;
+
+    /// @notice  Updates the price of a tranche token
+    /// @dev     The function can only be executed by the gateway contract.
+    function updateTranchePrice(uint64 poolId, bytes16 trancheId, uint128 assetId, uint128 price, uint64 computedAt)
+        external;
+
+    /// @notice Updates the hook of a tranche token
+    /// @param  poolId The centrifuge pool id
+    /// @param  trancheId The tranche id
+    /// @param  hook The new hook addres
+    function updateTrancheHook(uint64 poolId, bytes16 trancheId, address hook) external;
+
+    /// @notice Updates the restrictions on a tranche token for a specific user
+    /// @param  poolId The centrifuge pool id
+    /// @param  trancheId The tranche id
+    /// @param  update The restriction update in the form of a bytes array indicating
+    ///                the restriction to be updated, the user to be updated, and a validUntil timestamp.
+    function updateRestriction(uint64 poolId, bytes16 trancheId, bytes memory update) external;
+
+    /// @notice Mints tranche tokens to a recipient
+    /// @dev    The function can only be executed internally or by the gateway contract.
+    function handleTransferTrancheTokens(uint64 poolId, bytes16 trancheId, address destinationAddress, uint128 amount)
+        external;
+
+    /// @notice Updates the target address. Generic update function from CP to CV
+    /// @param  poolId The centrifuge pool id
+    /// @param  trancheId The tranche id
+    /// @param  target The target address to be called
+    /// @param  update The payload to be processed by the target address
+    function updateContract(uint64 poolId, bytes16 trancheId, address target, bytes memory update) external;
+}
+
+/// @notice Interface for CV methods related to investment called by the gateway
+interface IInvestmentManagerGatewayHandler {
     /// @notice Fulfills pending deposit requests after successful epoch execution on CP.
     ///         The amount of shares that can be claimed by the user is minted and moved to the escrow contract.
     ///         The MaxMint bookkeeping value is updated.

@@ -4,8 +4,6 @@ pragma solidity 0.8.28;
 import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
-import {IPoolRouterGatewayActions} from "src/common/interfaces/IGatewayActions.sol";
-
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
 import {AccountId} from "src/pools/types/AccountId.sol";

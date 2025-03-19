@@ -8,27 +8,27 @@ import {Auth} from "src/misc/Auth.sol";
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
-import {IPoolRouterGatewayActions} from "src/common/interfaces/IGatewayActions.sol";
+import {IPoolRouterGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
+import {IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
-import {IMessageProcessor} from "src/pools/interfaces/IMessageProcessor.sol";
 
-contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
+contract MessageProcessor is Auth, IPoolMessageSender, IMessageHandler {
     using MessageLib for *;
     using BytesLib for bytes;
     using CastLib for *;
 
-    IPoolRouterGatewayActions public immutable poolRouter;
+    IPoolRouterGatewayHandler public immutable poolRouter;
     IMessageSender public immutable gateway;
 
-    constructor(IMessageSender sender_, IPoolRouterGatewayActions manager_, address deployer) Auth(deployer) {
+    constructor(IMessageSender sender_, IPoolRouterGatewayHandler manager_, address deployer) Auth(deployer) {
         gateway = sender_;
         poolRouter = manager_;
     }
 
-    /// @inheritdoc IMessageProcessor
+    /// @inheritdoc IPoolMessageSender
     function sendNotifyPool(uint32 chainId, PoolId poolId) external auth {
         // In case we want to optimize for the same network:
         //if chainId == uint32(block.chainId) {
@@ -39,7 +39,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         //}
     }
 
-    /// @inheritdoc IMessageProcessor
+    /// @inheritdoc IPoolMessageSender
     function sendNotifyShareClass(
         uint32 chainId,
         PoolId poolId,
@@ -64,7 +64,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         );
     }
 
-    /// @inheritdoc IMessageProcessor
+    /// @inheritdoc IPoolMessageSender
     function sendFulfilledDepositRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -86,7 +86,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         );
     }
 
-    /// @inheritdoc IMessageProcessor
+    /// @inheritdoc IPoolMessageSender
     function sendFulfilledRedeemRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -108,7 +108,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         );
     }
 
-    /// @inheritdoc IMessageProcessor
+    /// @inheritdoc IPoolMessageSender
     function sendFulfilledCancelDepositRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -128,7 +128,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         );
     }
 
-    /// @inheritdoc IMessageProcessor
+    /// @inheritdoc IPoolMessageSender
     function sendFulfilledCancelRedeemRequest(
         PoolId poolId,
         ShareClassId scId,
