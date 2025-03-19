@@ -187,7 +187,7 @@ contract DeployTest is Test, Deployer {
         assertEq(erc20.balanceOf(self), 0);
 
         // trigger executed collectInvest
-        uint128 _assetId = poolManager.assetToId(address(erc20)); // retrieve assetId
+        uint128 _assetId = poolManager.assetToId(address(erc20), 0); // retrieve assetId
 
         Tranche trancheToken = Tranche(address(vault.share()));
         uint128 shares = (
@@ -229,7 +229,7 @@ contract DeployTest is Test, Deployer {
 
         // redeem
         Tranche trancheToken = Tranche(address(vault.share()));
-        uint128 _assetId = poolManager.assetToId(address(erc20)); // retrieve assetId
+        uint128 _assetId = poolManager.assetToId(address(erc20), 0); // retrieve assetId
         uint128 assets = (
             amount.mulDiv(price, 10 ** (18 - erc20.decimals() + trancheToken.decimals()), MathLib.Rounding.Down)
         ).toUint128();
@@ -273,11 +273,10 @@ contract DeployTest is Test, Deployer {
         poolManager.addTranche(
             poolId, trancheId, tokenName, tokenSymbol, decimals, keccak256(abi.encodePacked(poolId, trancheId)), hook
         );
-        poolManager.addAsset(1, address(erc20));
-        poolManager.allowAsset(poolId, 1);
-        poolManager.updateTranchePrice(poolId, trancheId, 1, uint128(10 ** 18), uint64(block.timestamp));
-        address vault = poolManager.deployVault(poolId, trancheId, address(erc20), address(vaultFactory));
-        poolManager.linkVault(poolId, trancheId, poolManager.idToAsset(1), vault);
+        uint128 assetId = poolManager.registerAsset(address(erc20), 0, 0);
+        poolManager.updateTranchePrice(poolId, trancheId, assetId, uint128(10 ** 18), uint64(block.timestamp));
+        address vault = poolManager.deployVault(poolId, trancheId, assetId, address(vaultFactory));
+        poolManager.linkVault(poolId, trancheId, assetId, vault);
         vm.stopPrank();
 
         return vault;

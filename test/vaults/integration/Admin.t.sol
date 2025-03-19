@@ -52,7 +52,6 @@ contract AdminTest is BaseTest {
         string memory tokenName,
         string memory tokenSymbol,
         uint8 decimals,
-        uint128 assetId,
         address recipient,
         uint128 amount
     ) public {
@@ -63,7 +62,6 @@ contract AdminTest is BaseTest {
         string memory tokenName,
         string memory tokenSymbol,
         uint8 decimals,
-        uint128 assetId,
         bytes32, /*sender*/
         address recipient,
         uint128 amount
@@ -75,7 +73,6 @@ contract AdminTest is BaseTest {
         string memory tokenName,
         string memory tokenSymbol,
         uint8 decimals,
-        uint128 assetId,
         bytes32, /*sender*/
         address recipient,
         uint128 amount
@@ -232,7 +229,8 @@ contract AdminTest is BaseTest {
     function testRecoverTokens() public {
         deploySimpleVault();
         address clumsyUser = vm.addr(0x1234);
-        address vault_ = investmentManager.vault(5, bytes16(bytes("1")), defaultAssetId);
+        address vault_ =
+            investmentManager.vault(5, bytes16(bytes("1")), poolManager.assetToId(address(erc20), erc20TokenId));
         ERC7540Vault vault = ERC7540Vault(vault_);
         address asset_ = vault.asset();
         ERC20 asset = ERC20(asset_);
@@ -246,9 +244,9 @@ contract AdminTest is BaseTest {
         assertEq(asset.balanceOf(address(poolManager)), 100);
         assertEq(asset.balanceOf(address(investmentManager)), 100);
         assertEq(asset.balanceOf(clumsyUser), 0);
-        centrifugeChain.recoverTokens(vault_, asset_, clumsyUser, 100);
-        centrifugeChain.recoverTokens(address(poolManager), asset_, clumsyUser, 100);
-        centrifugeChain.recoverTokens(address(investmentManager), asset_, clumsyUser, 100);
+        centrifugeChain.recoverTokens(vault_, asset_, erc20TokenId, clumsyUser, 100);
+        centrifugeChain.recoverTokens(address(poolManager), asset_, erc20TokenId, clumsyUser, 100);
+        centrifugeChain.recoverTokens(address(investmentManager), asset_, erc20TokenId, clumsyUser, 100);
         assertEq(asset.balanceOf(clumsyUser), 300);
         assertEq(asset.balanceOf(vault_), 0);
         assertEq(asset.balanceOf(address(poolManager)), 0);

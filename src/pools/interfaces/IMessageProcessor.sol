@@ -23,9 +23,6 @@ interface IMessageProcessor {
     ) external;
 
     /// @notice Creates and send the message
-    function sendNotifyAllowedAsset(PoolId poolId, ShareClassId scId, AssetId assetId, bool isAllowed) external;
-
-    /// @notice Creates and send the message
     function sendFulfilledDepositRequest(
         PoolId poolId,
         ShareClassId scId,

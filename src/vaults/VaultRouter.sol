@@ -7,13 +7,14 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC20, IERC20Permit, IERC20Wrapper} from "src/misc/interfaces/IERC20.sol";
+import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 
 import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
 import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
-import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
+import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 
@@ -62,8 +63,12 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
     }
 
     /// @inheritdoc IRecoverable
-    function recoverTokens(address token, address to, uint256 amount) external auth {
-        SafeTransferLib.safeTransfer(token, to, amount);
+    function recoverTokens(address token, uint256 tokenId, address to, uint256 amount) external auth {
+        if (tokenId == 0) {
+            SafeTransferLib.safeTransfer(token, to, amount);
+        } else {
+            IERC6909(token).transfer(to, tokenId, amount);
+        }
     }
 
     // --- Enable interactions with the vault ---
@@ -84,9 +89,9 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
     {
         require(owner == msg.sender || owner == address(this), "VaultRouter/invalid-owner");
 
-        (address asset,) = poolManager.getVaultAsset(vault);
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
         if (owner == address(this)) {
-            _approveMax(asset, vault);
+            _approveMax(vaultDetails.asset, vaultDetails.tokenId, vault);
         }
 
         _pay();
@@ -102,8 +107,14 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
         require(owner == msg.sender || owner == address(this), "VaultRouter/invalid-owner");
 
         lockedRequests[controller][vault] += amount;
-        (address asset,) = poolManager.getVaultAsset(vault);
-        SafeTransferLib.safeTransferFrom(asset, owner, address(escrow), amount);
+
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+
+        if (vaultDetails.tokenId == 0) {
+            SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(escrow), amount);
+        } else {
+            IERC6909(vaultDetails.asset).transferFrom(owner, address(escrow), vaultDetails.tokenId, amount);
+        }
 
         emit LockDepositRequest(vault, controller, owner, msg.sender, amount);
     }
@@ -112,10 +123,14 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
     function enableLockDepositRequest(address vault, uint256 amount) external payable protected {
         enable(vault);
 
-        (address asset, bool isWrapper) = poolManager.getVaultAsset(vault);
-        uint256 assetBalance = IERC20(asset).balanceOf(msg.sender);
-        if (isWrapper && assetBalance < amount) {
-            wrap(asset, amount, address(this), msg.sender);
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+
+        uint256 assetBalance;
+        if (vaultDetails.tokenId == 0) assetBalance = IERC20(vaultDetails.asset).balanceOf(msg.sender);
+        else assetBalance = IERC6909(vaultDetails.asset).balanceOf(msg.sender, vaultDetails.tokenId);
+
+        if (vaultDetails.isWrapper && assetBalance < amount) {
+            wrap(vaultDetails.asset, amount, address(this), msg.sender);
             lockDepositRequest(vault, amount, msg.sender, address(this));
         } else {
             lockDepositRequest(vault, amount, msg.sender, msg.sender);
@@ -128,9 +143,14 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
         require(lockedRequest != 0, "VaultRouter/no-locked-balance");
         lockedRequests[msg.sender][vault] = 0;
 
-        (address asset,) = poolManager.getVaultAsset(vault);
-        escrow.approveMax(asset, address(this));
-        SafeTransferLib.safeTransferFrom(asset, address(escrow), receiver, lockedRequest);
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+        escrow.approveMax(vaultDetails.asset, vaultDetails.tokenId, address(this));
+
+        if (vaultDetails.tokenId == 0) {
+            SafeTransferLib.safeTransferFrom(vaultDetails.asset, address(escrow), receiver, lockedRequest);
+        } else {
+            IERC6909(vaultDetails.asset).transferFrom(address(escrow), receiver, vaultDetails.tokenId, lockedRequest);
+        }
 
         emit UnlockDepositRequest(vault, msg.sender, receiver);
     }
@@ -141,13 +161,19 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
         require(lockedRequest != 0, "VaultRouter/no-locked-request");
         lockedRequests[controller][vault] = 0;
 
-        (address asset,) = poolManager.getVaultAsset(vault);
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
 
-        escrow.approveMax(asset, address(this));
-        SafeTransferLib.safeTransferFrom(asset, address(escrow), address(this), lockedRequest);
+        escrow.approveMax(vaultDetails.asset, vaultDetails.tokenId, address(this));
+        if (vaultDetails.tokenId == 0) {
+            SafeTransferLib.safeTransferFrom(vaultDetails.asset, address(escrow), address(this), lockedRequest);
+        } else {
+            IERC6909(vaultDetails.asset).transferFrom(
+                address(escrow), address(this), vaultDetails.tokenId, lockedRequest
+            );
+        }
 
         _pay();
-        _approveMax(asset, vault);
+        _approveMax(vaultDetails.asset, vaultDetails.tokenId, vault);
         IERC7540Vault(vault).requestDeposit(lockedRequest, controller, address(this));
         emit ExecuteLockedDepositRequest(vault, controller, msg.sender);
     }
@@ -192,11 +218,11 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
         _canClaim(vault, receiver, controller);
         uint256 maxWithdraw = IERC7540Vault(vault).maxWithdraw(controller);
 
-        (address asset, bool isWrapper) = poolManager.getVaultAsset(vault);
-        if (isWrapper && controller != msg.sender) {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+        if (vaultDetails.isWrapper && controller != msg.sender) {
             // Auto-unwrap if permissionlessly claiming for another controller
             IERC7540Vault(vault).withdraw(maxWithdraw, address(this), controller);
-            unwrap(asset, maxWithdraw, receiver);
+            unwrap(vaultDetails.asset, maxWithdraw, receiver);
         } else {
             IERC7540Vault(vault).withdraw(maxWithdraw, receiver, controller);
         }
@@ -222,7 +248,7 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
         protected
     {
         SafeTransferLib.safeTransferFrom(IERC7540Vault(vault).share(), msg.sender, address(this), amount);
-        _approveMax(IERC7540Vault(vault).share(), address(poolManager));
+        _approveMax(IERC7540Vault(vault).share(), 0, address(poolManager));
         _pay();
         IPoolManager(poolManager).transferTrancheTokens(
             IERC7540Vault(vault).poolId(), IERC7540Vault(vault).trancheId(), chainId, recipient, amount
@@ -257,7 +283,7 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
         require(amount != 0, "VaultRouter/zero-balance");
         SafeTransferLib.safeTransferFrom(underlying, owner, address(this), amount);
 
-        _approveMax(underlying, wrapper);
+        _approveMax(underlying, 0, wrapper);
         require(IERC20Wrapper(wrapper).depositFor(receiver, amount), "VaultRouter/wrap-failed");
     }
 
@@ -271,7 +297,7 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
     // --- View Methods ---
     /// @inheritdoc IVaultRouter
     function getVault(uint64 poolId, bytes16 trancheId, address asset) external view returns (address) {
-        return ITranche(IPoolManager(poolManager).getTranche(poolId, trancheId)).vault(asset);
+        return ITranche(IPoolManager(poolManager).tranche(poolId, trancheId)).vault(asset);
     }
 
     /// @inheritdoc IVaultRouter
@@ -289,11 +315,13 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
         return IERC7540Vault(vault).isOperator(controller, address(this));
     }
 
-    /// @notice Gives the max approval to `to` to spend the given `asset` if not already approved.
+    /// @notice Gives the max approval to `to` for spending the given `asset` if not already approved.
     /// @dev    Assumes that `type(uint256).max` is large enough to never have to increase the allowance again.
-    function _approveMax(address token, address spender) internal {
-        if (IERC20(token).allowance(address(this), spender) == 0) {
-            SafeTransferLib.safeApprove(token, spender, type(uint256).max);
+    function _approveMax(address asset, uint256 tokenId, address spender) internal {
+        if (tokenId == 0 && IERC20(asset).allowance(address(this), spender) == 0) {
+            SafeTransferLib.safeApprove(asset, spender, type(uint256).max);
+        } else if (tokenId != 0 && IERC6909(asset).allowance(address(this), spender, tokenId) == 0) {
+            IERC6909(asset).approve(spender, tokenId, type(uint256).max);
         }
     }
 

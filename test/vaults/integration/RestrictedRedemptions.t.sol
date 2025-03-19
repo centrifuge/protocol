@@ -11,15 +11,14 @@ contract RedeemTest is BaseTest {
     function testRestrictedRedemptions(uint256 amount) public {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
-        address vault_ = deployVault(
-            5, 6, restrictedRedemptions, "name", "symbol", bytes16(bytes("1")), defaultAssetId, address(erc20)
-        );
+        (address vault_, uint128 assetId) =
+            deployVault(5, 6, restrictedRedemptions, "name", "symbol", bytes16(bytes("1")), address(erc20), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
         RestrictedRedemptions hook = RestrictedRedemptions(restrictedRedemptions);
         ITranche tranche = ITranche(address(vault.share()));
 
         centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), defaultAssetId, defaultPrice, uint64(block.timestamp)
+            vault.poolId(), vault.trancheId(), assetId, defaultPrice, uint64(block.timestamp)
         );
 
         // Anyone can deposit
@@ -34,12 +33,7 @@ contract RedeemTest is BaseTest {
         vm.stopPrank();
 
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId(),
-            vault.trancheId(),
-            bytes32(bytes20(investor)),
-            defaultAssetId,
-            uint128(amount),
-            uint128(amount)
+            vault.poolId(), vault.trancheId(), bytes32(bytes20(investor)), assetId, uint128(amount), uint128(amount)
         );
 
         vm.prank(investor);
@@ -61,14 +55,10 @@ contract RedeemTest is BaseTest {
 
         vm.prank(investor);
         vault.requestRedeem(amount / 2, investor, investor);
+        uint128 fulfillment = uint128(amount / 2);
 
         centrifugeChain.isFulfilledRedeemRequest(
-            vault.poolId(),
-            vault.trancheId(),
-            bytes32(bytes20(investor)),
-            defaultAssetId,
-            uint128(amount / 2),
-            uint128(amount / 2)
+            vault.poolId(), vault.trancheId(), bytes32(bytes20(investor)), assetId, fulfillment, fulfillment
         );
 
         vm.prank(investor);

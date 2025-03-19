@@ -7,13 +7,15 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
+import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 
-import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
+import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IInvestmentManager, InvestmentState} from "src/vaults/interfaces/IInvestmentManager.sol";
 import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
@@ -60,8 +62,12 @@ contract InvestmentManager is Auth, IInvestmentManager {
     }
 
     /// @inheritdoc IRecoverable
-    function recoverTokens(address token, address to, uint256 amount) external auth {
-        SafeTransferLib.safeTransfer(token, to, amount);
+    function recoverTokens(address token, uint256 tokenId, address to, uint256 amount) external auth {
+        if (tokenId == 0) {
+            SafeTransferLib.safeTransfer(token, to, amount);
+        } else {
+            IERC6909(token).transfer(to, tokenId, amount);
+        }
     }
 
     // --- IVaultManager ---
@@ -129,10 +135,11 @@ contract InvestmentManager is Auth, IInvestmentManager {
         require(state.pendingCancelDepositRequest != true, "InvestmentManager/cancellation-is-pending");
 
         state.pendingDepositRequest = state.pendingDepositRequest + _assets;
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
         gateway.setPayableSource(source);
         sender.sendDepositRequest(
-            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), poolManager.assetToId(asset), _assets
+            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId, _assets
         );
 
         return true;
@@ -176,10 +183,11 @@ contract InvestmentManager is Auth, IInvestmentManager {
         require(state.pendingCancelRedeemRequest != true || triggered, "InvestmentManager/cancellation-is-pending");
 
         state.pendingRedeemRequest = state.pendingRedeemRequest + shares;
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
         gateway.setPayableSource(source);
         sender.sendRedeemRequest(
-            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), poolManager.assetToId(vault_.asset()), shares
+            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId, shares
         );
 
         return true;
@@ -194,9 +202,11 @@ contract InvestmentManager is Auth, IInvestmentManager {
         require(state.pendingCancelDepositRequest != true, "InvestmentManager/cancellation-is-pending");
         state.pendingCancelDepositRequest = true;
 
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
+
         gateway.setPayableSource(source);
         sender.sendCancelDepositRequest(
-            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), poolManager.assetToId(vault_.asset())
+            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId
         );
     }
 
@@ -214,9 +224,11 @@ contract InvestmentManager is Auth, IInvestmentManager {
         require(state.pendingCancelRedeemRequest != true, "InvestmentManager/cancellation-is-pending");
         state.pendingCancelRedeemRequest = true;
 
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
+
         gateway.setPayableSource(source);
         sender.sendCancelRedeemRequest(
-            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), poolManager.assetToId(vault_.asset())
+            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId
         );
     }
 
@@ -351,7 +363,8 @@ contract InvestmentManager is Auth, IInvestmentManager {
             );
         }
 
-        emit TriggerRedeemRequest(poolId, trancheId, user, poolManager.idToAsset(assetId), shares);
+        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
+        emit TriggerRedeemRequest(poolId, trancheId, user, asset, tokenId, shares);
         IERC7540Vault(vault_).onRedeemRequest(user, user, shares);
     }
 
@@ -359,14 +372,16 @@ contract InvestmentManager is Auth, IInvestmentManager {
     /// @inheritdoc IInvestmentManager
     function convertToShares(address vaultAddr, uint256 _assets) public view returns (uint256 shares) {
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
-        (uint128 latestPrice,) = poolManager.getTranchePrice(vault_.poolId(), vault_.trancheId(), vault_.asset());
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
+        (uint128 latestPrice,) = poolManager.tranchePrice(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
         shares = uint256(_calculateShares(_assets.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down));
     }
 
     /// @inheritdoc IInvestmentManager
     function convertToAssets(address vaultAddr, uint256 _shares) public view returns (uint256 assets) {
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
-        (uint128 latestPrice,) = poolManager.getTranchePrice(vault_.poolId(), vault_.trancheId(), vault_.asset());
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
+        (uint128 latestPrice,) = poolManager.tranchePrice(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
         assets = uint256(_calculateAssets(_shares.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down));
     }
 
@@ -433,7 +448,8 @@ contract InvestmentManager is Auth, IInvestmentManager {
     /// @inheritdoc IInvestmentManager
     function priceLastUpdated(address vaultAddr) public view returns (uint64 lastUpdated) {
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
-        (, lastUpdated) = poolManager.getTranchePrice(vault_.poolId(), vault_.trancheId(), vault_.asset());
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
+        (, lastUpdated) = poolManager.tranchePrice(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
     }
 
     // --- Vault claim functions ---
@@ -531,7 +547,16 @@ contract InvestmentManager is Auth, IInvestmentManager {
 
         require(assetsUp <= state.maxWithdraw, "InvestmentManager/exceeds-redeem-limits");
         state.maxWithdraw = state.maxWithdraw > assetsUp ? state.maxWithdraw - assetsUp : 0;
-        if (assetsDown > 0) SafeTransferLib.safeTransferFrom(vault_.asset(), address(escrow), receiver, assetsDown);
+
+        if (assetsDown > 0) {
+            VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
+
+            if (vaultDetails.tokenId == 0) {
+                SafeTransferLib.safeTransferFrom(vaultDetails.asset, address(escrow), receiver, assetsDown);
+            } else {
+                IERC6909(vaultDetails.asset).transferFrom(address(escrow), receiver, vaultDetails.tokenId, assetsDown);
+            }
+        }
     }
 
     /// @inheritdoc IInvestmentManager
@@ -556,7 +581,13 @@ contract InvestmentManager is Auth, IInvestmentManager {
         );
 
         if (assets > 0) {
-            SafeTransferLib.safeTransferFrom(IERC7540Vault(vaultAddr).asset(), address(escrow), receiver, assets);
+            VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
+
+            if (vaultDetails.tokenId == 0) {
+                SafeTransferLib.safeTransferFrom(vaultDetails.asset, address(escrow), receiver, assets);
+            } else {
+                IERC6909(vaultDetails.asset).transferFrom(address(escrow), receiver, vaultDetails.tokenId, assets);
+            }
         }
     }
 
@@ -653,7 +684,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
     }
 
     /// @inheritdoc IInvestmentManager
-    function vaultByAddress(uint64 poolId, bytes16 trancheId, address asset) public view returns (address) {
-        return vault[poolId][trancheId][poolManager.assetToId(asset)];
+    function vaultByAssetId(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (address) {
+        return vault[poolId][trancheId][assetId];
     }
 }

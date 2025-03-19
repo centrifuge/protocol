@@ -95,6 +95,21 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         );
     }
 
+    /// @inheritdoc IMessageProcessor
+    function sendRegisterAsset(
+        uint32 chainId,
+        uint128 assetId,
+        string memory name,
+        string memory symbol,
+        uint8 decimals
+    ) external auth {
+        gateway.send(
+            chainId,
+            MessageLib.RegisterAsset({assetId: assetId, name: name, symbol: symbol.toBytes32(), decimals: decimals})
+                .serialize()
+        );
+    }
+
     /// @inheritdoc IMessageHandler
     function handle(uint32, /* chainId */ bytes memory message) external auth {
         MessageCategory cat = message.messageCode().category();
@@ -110,28 +125,19 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
             } else if (kind == MessageType.RecoverTokens) {
                 MessageLib.RecoverTokens memory m = message.deserializeRecoverTokens();
                 root.recoverTokens(
-                    address(bytes20(m.target)), address(bytes20(m.token)), address(bytes20(m.to)), m.amount
+                    address(bytes20(m.target)), address(bytes20(m.token)), m.tokenId, address(bytes20(m.to)), m.amount
                 );
             } else {
                 revert InvalidMessage(uint8(kind));
             }
         } else if (cat == MessageCategory.Pool) {
-            if (kind == MessageType.RegisterAsset) {
-                // TODO: This must be removed
-                poolManager.addAsset(message.toUint128(1), message.toAddress(17));
-            } else if (kind == MessageType.NotifyPool) {
+            if (kind == MessageType.NotifyPool) {
                 poolManager.addPool(MessageLib.deserializeNotifyPool(message).poolId);
             } else if (kind == MessageType.NotifyShareClass) {
                 MessageLib.NotifyShareClass memory m = MessageLib.deserializeNotifyShareClass(message);
                 poolManager.addTranche(
                     m.poolId, m.scId, m.name, m.symbol.toString(), m.decimals, m.salt, address(bytes20(m.hook))
                 );
-            } else if (kind == MessageType.AllowAsset) {
-                MessageLib.AllowAsset memory m = MessageLib.deserializeAllowAsset(message);
-                poolManager.allowAsset(m.poolId, /* m.scId, */ m.assetId); // TODO: use scId
-            } else if (kind == MessageType.DisallowAsset) {
-                MessageLib.DisallowAsset memory m = MessageLib.deserializeDisallowAsset(message);
-                poolManager.disallowAsset(m.poolId, /* m.scId, */ m.assetId); // TODO: use scId
             } else if (kind == MessageType.UpdateShareClassPrice) {
                 MessageLib.UpdateShareClassPrice memory m = MessageLib.deserializeUpdateShareClassPrice(message);
                 poolManager.updateTranchePrice(m.poolId, m.scId, m.assetId, m.price, m.timestamp);

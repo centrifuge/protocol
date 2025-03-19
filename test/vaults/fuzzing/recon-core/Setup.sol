@@ -40,7 +40,7 @@ abstract contract Setup is BaseSetup, SharedStorage {
 
     bytes16 trancheId;
     uint64 poolId;
-    uint64 currencyId;
+    uint128 assetId;
 
     // MOCKS
     address centrifugeChain;
