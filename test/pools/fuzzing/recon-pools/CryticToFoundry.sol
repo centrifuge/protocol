@@ -4,12 +4,14 @@ pragma solidity ^0.8.0;
 import {FoundryAsserts} from "@chimera/FoundryAsserts.sol";
 
 import {Test, console2} from "forge-std/Test.sol";
-import {TargetFunctions} from "./TargetFunctions.sol";
 
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
+
+import {TargetFunctions} from "./TargetFunctions.sol";
+import {Helpers} from "test/pools/fuzzing/recon-pools/utils/Helpers.sol";
 
 // forge test --match-contract CryticToFoundry --match-path test/pools/fuzzing/recon-pools/CryticToFoundry.sol -vv
 contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
@@ -78,7 +80,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         poolRouter_execute_clamped(poolId);
 
         // claim deposit
-        poolRouter_claimDeposit(poolId, scId, 123, INVESTOR);
+        poolRouter_claimDeposit(poolId, scId, 123);
 
         return (poolId, scId);
     }
@@ -95,7 +97,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         poolRouter_execute_clamped(poolId);
 
         // claim redemption
-        poolRouter_claimRedeem_clamped(poolId, scId, 123);
+        poolRouter_claimRedeem(poolId, scId, 123);
     }
 
     function test_shortcut_create_pool_and_update_holding() public {
@@ -153,6 +155,12 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     function test_shortcut_request_deposit_and_cancel() public {
         shortcut_request_deposit_and_cancel(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), false, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+    }
+
+    function test_calling_claimDeposit_directly() public {
+        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+
+        multiShareClass.claimDeposit(poolId, scId, Helpers.addressToBytes32(address(this)), assetId);
     }
 
 }

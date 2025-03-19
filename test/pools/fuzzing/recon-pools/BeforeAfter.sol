@@ -15,6 +15,7 @@ abstract contract BeforeAfter is Setup {
         PoolId ghostUnlockedPoolId;
         uint128 ghostDebited;
         uint128 ghostCredited;
+        mapping(PoolId poolId => uint32) ghostEpochId;
     }
 
     Vars internal _before;
@@ -39,11 +40,21 @@ abstract contract BeforeAfter is Setup {
         _before.ghostUnlockedPoolId = poolRouter.unlockedPoolId();
         _before.ghostDebited = accounting.debited();
         _before.ghostCredited = accounting.credited();
+        
+        for (uint256 i = 0; i < createdPools.length; i++) {
+            PoolId poolId = createdPools[i];
+            _before.ghostEpochId[poolId] = multiShareClass.epochId(poolId);
+        }
     }
 
     function __after() internal {
         _after.ghostUnlockedPoolId = poolRouter.unlockedPoolId();
         _after.ghostDebited = accounting.debited();
         _after.ghostCredited = accounting.credited();
+        
+        for (uint256 i = 0; i < createdPools.length; i++) {
+            PoolId poolId = createdPools[i];
+            _after.ghostEpochId[poolId] = multiShareClass.epochId(poolId);
+        }
     }
 }

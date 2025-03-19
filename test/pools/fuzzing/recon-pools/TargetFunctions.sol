@@ -105,8 +105,7 @@ abstract contract TargetFunctions is
         );
 
         // claim deposit as actor
-        bytes32 investor = Helpers.addressToBytes32(_getActor());
-        poolRouter_claimDeposit(poolId, scId, isoCode, investor);
+        poolRouter_claimDeposit(poolId, scId, isoCode);
 
         return (poolId, scId);
     }
@@ -130,8 +129,7 @@ abstract contract TargetFunctions is
         );
 
         // claim deposit as actor
-        bytes32 investor = Helpers.addressToBytes32(_getActor());
-        poolRouter_claimDeposit(poolId, scId, isoCode, investor);
+        poolRouter_claimDeposit(poolId, scId, isoCode);
 
         // cancel deposit
         poolRouter_cancelDepositRequest(poolId, scId, isoCode);
@@ -158,8 +156,7 @@ abstract contract TargetFunctions is
         );
 
         // claim deposit as actor
-        bytes32 investor = Helpers.addressToBytes32(_getActor());
-        poolRouter_claimDeposit(poolId, scId, isoCode, investor);
+        poolRouter_claimDeposit(poolId, scId, isoCode);
 
         // cancel deposit
         poolRouter_cancelDepositRequest(poolId, scId, isoCode);
@@ -191,8 +188,7 @@ abstract contract TargetFunctions is
         uint32 isoCode
     ) public {        
         // claim redemption as actor
-        bytes32 investor = Helpers.addressToBytes32(_getActor());
-        poolRouter_claimRedeem(poolId, scId, isoCode, investor);
+        poolRouter_claimRedeem(poolId, scId, isoCode);
     }
 
 
@@ -208,7 +204,7 @@ abstract contract TargetFunctions is
         shortcut_redeem(poolId, scId, shareAmount, isoCode, maxApproval, navPerShare, isIdentityValuation);
         
         // claim redemption as actor
-        shortcut_claim_redemption(poolId, scId, isoCode); 
+        poolRouter_claimRedeem(poolId, scId, isoCode); 
     }
 
     function shortcut_redeem_and_cancel(
@@ -261,7 +257,7 @@ abstract contract TargetFunctions is
         
 
         // claim redemption as actor
-        shortcut_claim_redemption(poolId, scId, isoCode);
+        poolRouter_claimRedeem(poolId, scId, isoCode);
     }
 
     function _getMultiShareClassMetrics(ShareClassId scId) internal view returns (uint128 totalIssuance) {

@@ -62,6 +62,11 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     D18 internal INITIAL_PRICE = d18(1e18); 
 
     event LogString(string);
+
+    modifier stateless {
+        revert("stateless");
+        _;
+    }
     
     /// === Setup === ///
     /// This contains all calls to be performed in the tester constructor, both for Echidna and Foundry
@@ -98,6 +103,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         multiShareClass.rely(address(poolRouter));
         poolRouter.rely(address(poolRouter));
         messageProcessor.rely(address(poolRouter));
+        multiShareClass.rely(address(this));
     }
 
     /// === MODIFIERS === ///
