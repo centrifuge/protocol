@@ -87,9 +87,10 @@ abstract contract Properties is BeforeAfter, Asserts {
 
     /// Stateless Properties ///
 
-    /// @dev Property: The sum of eligible user payoutShareAmount for an epoch is <= the number of issued shares epochAmounts[..].depositSharesIssued
+    /// @dev Property: The sum of eligible user payoutShareAmount for an epoch is <= the number of issued shares epochAmounts[..].depositShares
+    /// @dev Property: The sum of eligible user payoutAssetAmount for an epoch is <= the number of issued asset amount epochAmounts[..].depositPool
     /// @dev Stateless because of the calls to claimDeposit which would make story difficult to read
-    function property_eligible_user_payoutShareAmount_leq_issued_shares() public stateless {
+    function property_eligible_user_payout_amount_leq_issued_amount() public stateless {
         address[] memory _actors = _getActors();
 
         // loop over all created pools
@@ -99,28 +100,35 @@ abstract contract Properties is BeforeAfter, Asserts {
             
             // loop over all share classes in the pool
             uint128 totalPayoutShareAmount = 0;
+            uint128 totalPayoutAssetAmount = 0;
             for (uint32 j = 0; j < shareClassCount; j++) {
                 ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
                 AssetId assetId = poolRegistry.currency(poolId);
 
                 uint32 epochId = multiShareClass.epochId(poolId);
-                (,,, uint128 depositSharesIssued,,,) = multiShareClass.epochAmounts(scId, assetId, epochId);
+                (,, uint128 depositPoolApproved, uint128 depositSharesIssued,,,) = multiShareClass.epochAmounts(scId, assetId, epochId);
 
                 // loop over all actors
                 for (uint256 k = 0; k < _actors.length; k++) {
                     address actor = _actors[k];
                     
                     // we claim via multiShareClass directly here because PoolRouter doesn't return the payoutShareAmount
-                    (uint128 payoutShareAmount,) = multiShareClass.claimDeposit(poolId, scId, Helpers.addressToBytes32(actor), assetId);
+                    (uint128 payoutShareAmount, uint128 payoutAssetAmount) = multiShareClass.claimDeposit(poolId, scId, Helpers.addressToBytes32(actor), assetId);
                     totalPayoutShareAmount += payoutShareAmount;
+                    totalPayoutAssetAmount += payoutAssetAmount;
                 }
 
                 // check that the totalPayoutShareAmount is less than or equal to the depositSharesIssued
                 lte(totalPayoutShareAmount, depositSharesIssued, "totalPayoutShareAmount is greater than issued shares");
+                // check that the totalPayoutAssetAmount is less than or equal to the depositPoolApproved
+                lte(totalPayoutAssetAmount, depositPoolApproved, "totalPayoutAssetAmount is greater than depositPoolApproved");
 
-                uint128 difference = depositSharesIssued - totalPayoutShareAmount;
+                uint128 differenceShares = depositSharesIssued - totalPayoutShareAmount;
+                uint128 differenceAsset = depositPoolApproved - totalPayoutAssetAmount;
                 // check that the totalPayoutShareAmount is no more than 1 wei less than the depositSharesIssued
-                lte(difference, 1, "depositSharesIssued - totalPayoutShareAmount difference is greater than 1");
+                lte(differenceShares, 1, "depositSharesIssued - totalPayoutShareAmount difference is greater than 1");
+                // check that the totalPayoutAssetAmount is no more than 1 wei less than the depositAssetAmount
+                lte(differenceAsset, 1, "depositAssetAmount - totalPayoutAssetAmount difference is greater than 1");
             }
         }
             
