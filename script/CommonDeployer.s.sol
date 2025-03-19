@@ -114,7 +114,7 @@ contract CommonDeployer is Script {
         vm.writeFile(path, deploymentOutput);
     }
 
-    function _toAsciiString(address x) internal view returns (string memory) {
+    function _toAsciiString(address x) internal pure returns (string memory) {
         bytes memory s = new bytes(40);
         for (uint256 i = 0; i < 20; i++) {
             bytes1 b = bytes1(uint8(uint256(uint160(x)) / (2 ** (8 * (19 - i)))));
