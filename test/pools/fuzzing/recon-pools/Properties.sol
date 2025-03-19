@@ -86,6 +86,7 @@ abstract contract Properties is BeforeAfter, Asserts {
     }
 
     /// @dev The total pending redeem amount pendingRedeem[..] is always geq the sum of pending user redeem amounts redeemRequest[..]
+    /// @dev The total pending redeem amount pendingRedeem[..] is always geq than the approved redeem amount epochAmounts[..].redeemRevokedShares
     function property_total_pending_redeem_geq_sum_pending_user_redeem() public {
         address[] memory _actors = _getActors();
 
@@ -97,7 +98,9 @@ abstract contract Properties is BeforeAfter, Asserts {
                 ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
                 AssetId assetId = poolRegistry.currency(poolId);
 
+                uint32 epochId = multiShareClass.epochId(poolId);
                 uint128 pendingRedeem = multiShareClass.pendingRedeem(scId, assetId);
+                (,,,,, uint128 redeemApproved,) = multiShareClass.epochAmounts(scId, assetId, epochId);
 
                 uint128 totalPendingUserRedeem = 0;
                 for (uint256 k = 0; k < _actors.length; k++) {
@@ -106,7 +109,10 @@ abstract contract Properties is BeforeAfter, Asserts {
                     totalPendingUserRedeem += pendingUserRedeem;
                 }
 
+                // check that the pending redeem is >= the total pending user redeem
                 gte(pendingRedeem, totalPendingUserRedeem, "pending redeem is < total pending user redeems");
+                // check that the pending redeem is >= the approved redeem
+                gte(pendingRedeem, redeemApproved, "pending redeem is < approved redeem");
             }
         }
     }
