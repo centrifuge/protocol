@@ -2,17 +2,19 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
+import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
+import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {EIP712Lib} from "src/misc/libraries/EIP712Lib.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {SignatureLib} from "src/misc/libraries/SignatureLib.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
+
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IInvestmentManager} from "src/vaults/interfaces/IInvestmentManager.sol";
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/vaults/interfaces/IERC7575.sol";
-import "src/misc/interfaces/IERC20.sol";
 
 /// @title  ERC7540Vault
 /// @notice Asynchronous Tokenized Vault standard implementation for Centrifuge pools
@@ -39,6 +41,9 @@ contract ERC7540Vault is Auth, IERC7540Vault {
 
     /// @inheritdoc IERC7575
     address public immutable asset;
+    /// @dev NOTE: Should never be used in production in any external contract as there will be old vaults without this
+    /// storage. Instead, refer to poolManager.vaultDetails(vault).
+    uint256 internal immutable tokenId;
 
     /// @inheritdoc IERC7575
     address public immutable share;
@@ -61,12 +66,19 @@ contract ERC7540Vault is Auth, IERC7540Vault {
     // --- Events ---
     event File(bytes32 indexed what, address data);
 
-    constructor(uint64 poolId_, bytes16 trancheId_, address asset_, address share_, address root_, address manager_)
-        Auth(msg.sender)
-    {
+    constructor(
+        uint64 poolId_,
+        bytes16 trancheId_,
+        address asset_,
+        uint256 tokenId_,
+        address share_,
+        address root_,
+        address manager_
+    ) Auth(msg.sender) {
         poolId = poolId_;
         trancheId = trancheId_;
         asset = asset_;
+        tokenId = tokenId_;
         share = share_;
         _shareDecimals = IERC20Metadata(share).decimals();
         root = IRoot(root_);
@@ -86,21 +98,34 @@ contract ERC7540Vault is Auth, IERC7540Vault {
     }
 
     /// @inheritdoc IRecoverable
-    function recoverTokens(address token, address to, uint256 amount) external auth {
-        SafeTransferLib.safeTransfer(token, to, amount);
+    function recoverTokens(address token, uint256 tokenId_, address to, uint256 amount) external auth {
+        if (tokenId_ == 0) {
+            SafeTransferLib.safeTransfer(token, to, amount);
+        } else {
+            IERC6909(token).transfer(to, tokenId_, amount);
+        }
     }
 
     // --- ERC-7540 methods ---
     /// @inheritdoc IERC7540Deposit
     function requestDeposit(uint256 assets, address controller, address owner) external returns (uint256) {
         require(owner == msg.sender || isOperator[owner][msg.sender], "ERC7540Vault/invalid-owner");
-        require(IERC20(asset).balanceOf(owner) >= assets, "ERC7540Vault/insufficient-balance");
+        require(
+            tokenId == 0 && IERC20(asset).balanceOf(owner) >= assets
+                || tokenId > 0 && IERC6909(asset).balanceOf(owner, tokenId) >= assets,
+            "ERC7540Vault/insufficient-balance"
+        );
 
         require(
             manager.requestDeposit(address(this), assets, controller, owner, msg.sender),
             "ERC7540Vault/request-deposit-failed"
         );
-        SafeTransferLib.safeTransferFrom(asset, owner, manager.escrow(), assets);
+
+        if (tokenId == 0) {
+            SafeTransferLib.safeTransferFrom(asset, owner, manager.escrow(), assets);
+        } else {
+            IERC6909(asset).transferFrom(owner, manager.escrow(), tokenId, assets);
+        }
 
         emit DepositRequest(controller, owner, REQUEST_ID, msg.sender, assets);
         return REQUEST_ID;

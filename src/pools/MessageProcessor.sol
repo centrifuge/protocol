@@ -65,15 +65,6 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
     }
 
     /// @inheritdoc IMessageProcessor
-    function sendNotifyAllowedAsset(PoolId poolId, ShareClassId scId, AssetId assetId, bool isAllowed) external auth {
-        bytes memory message = isAllowed
-            ? MessageLib.AllowAsset({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw()}).serialize()
-            : MessageLib.DisallowAsset({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw()}).serialize();
-
-        gateway.send(assetId.chainId(), message);
-    }
-
-    /// @inheritdoc IMessageProcessor
     function sendFulfilledDepositRequest(
         PoolId poolId,
         ShareClassId scId,

@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
+import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {ArrayLib} from "src/misc/libraries/ArrayLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
@@ -122,16 +123,18 @@ contract Gateway is Auth, IGateway, IRecoverable {
     }
 
     /// @inheritdoc IRecoverable
-    function recoverTokens(address token, address receiver, uint256 amount) external auth {
+    function recoverTokens(address token, uint256 tokenId, address receiver, uint256 amount) external auth {
         if (token == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)) {
             SafeTransferLib.safeTransferETH(receiver, amount);
-        } else {
+        } else if (tokenId == 0) {
             SafeTransferLib.safeTransfer(token, receiver, amount);
+        } else {
+            IERC6909(token).transfer(receiver, tokenId, amount);
         }
     }
 
     //----------------------------------------------------------------------------------------------
-    // Incomming methods
+    // Incoming methods
     //----------------------------------------------------------------------------------------------
 
     /// @dev Handle a batch of messages
@@ -140,11 +143,6 @@ contract Gateway is Auth, IGateway, IRecoverable {
             _handle(chainId, message, IAdapter(msg.sender), false);
 
             uint16 messageLength = message.messageLength();
-
-            // TODO: remove this when registerAsset is merged
-            if (message.messageType() == MessageType.RegisterAsset) {
-                return;
-            }
 
             // TODO: optimize with assembly to just shift the pointer in the array
             // TODO: Could we use `calldata` message in the signature? Highly desired to avoid a copy.

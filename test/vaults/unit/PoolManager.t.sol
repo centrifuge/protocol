@@ -1,17 +1,74 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
+import {MockHook} from "test/vaults/mocks/MockHook.sol";
+import "test/vaults/BaseTest.sol";
+
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
-import "test/vaults/BaseTest.sol";
 import {IRestrictionManager} from "src/vaults/interfaces/token/IRestrictionManager.sol";
-import {MockHook} from "test/vaults/mocks/MockHook.sol";
+import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
+import {IBaseVault, IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
+import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 
-contract PoolManagerTest is BaseTest {
+contract PoolManagerTestHelper is BaseTest {
+    uint64 poolId;
+    uint8 decimals;
+    string tokenName;
+    string tokenSymbol;
+    bytes16 trancheId;
+    address assetErc20;
+    uint128 assetIdErc20;
+
+    // helpers
+    function hasDuplicates(bytes16[4] calldata array) internal pure returns (bool) {
+        uint256 length = array.length;
+        for (uint256 i = 0; i < length; i++) {
+            for (uint256 j = i + 1; j < length; j++) {
+                if (array[i] == array[j]) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    function setUpPoolAndTranche(
+        uint64 poolId_,
+        uint8 decimals_,
+        string memory tokenName_,
+        string memory tokenSymbol_,
+        bytes16 trancheId_
+    ) public {
+        decimals_ = uint8(bound(decimals_, 2, 18));
+        vm.assume(bytes(tokenName_).length <= 128);
+        vm.assume(bytes(tokenSymbol_).length <= 32);
+
+        poolId = poolId_;
+        decimals = decimals_;
+        tokenName = tokenName;
+        tokenSymbol = tokenSymbol_;
+        trancheId = trancheId_;
+
+        centrifugeChain.addPool(poolId);
+        centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, address(new MockHook()));
+    }
+
+    function registerAssetErc20() public {
+        assetErc20 = address(_newErc20(tokenName, tokenSymbol, decimals));
+        assetIdErc20 = poolManager.registerAsset(assetErc20, 0, defaultChainId);
+    }
+}
+
+contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
     using MessageLib for *;
     using CastLib for *;
 
@@ -40,10 +97,20 @@ contract PoolManagerTest is BaseTest {
 
     function testFile() public {
         address newGateway = makeAddr("newGateway");
+        vm.expectEmit();
+        emit IPoolManager.File("gateway", newGateway);
         poolManager.file("gateway", newGateway);
         assertEq(address(poolManager.gateway()), newGateway);
 
+        address newSender = makeAddr("newSender");
+        vm.expectEmit();
+        emit IPoolManager.File("sender", newSender);
+        poolManager.file("sender", newSender);
+        assertEq(address(poolManager.sender()), newSender);
+
         address newTrancheFactory = makeAddr("newTrancheFactory");
+        vm.expectEmit();
+        emit IPoolManager.File("trancheFactory", newTrancheFactory);
         poolManager.file("trancheFactory", newTrancheFactory);
         assertEq(address(poolManager.trancheFactory()), newTrancheFactory);
 
@@ -53,9 +120,45 @@ contract PoolManagerTest is BaseTest {
         assertEq(poolManager.vaultFactory(newVaultFactory), true);
         assertEq(poolManager.vaultFactory(vaultFactory), true);
 
+        vm.expectEmit();
+        emit IPoolManager.File("vaultFactory", newVaultFactory, false);
+        poolManager.file("vaultFactory", newVaultFactory, false);
+        assertEq(poolManager.vaultFactory(newVaultFactory), false);
+
         address newEscrow = makeAddr("newEscrow");
         vm.expectRevert("PoolManager/file-unrecognized-param");
         poolManager.file("escrow", newEscrow);
+
+        vm.expectRevert("PoolManager/file-unrecognized-param");
+        poolManager.file("escrow", newEscrow, true);
+    }
+
+    function testRecoverTokensERC20(uint256 amount) public {
+        vm.assume(amount > 0);
+
+        address asset = address(erc20);
+        address to = makeAddr("to");
+        erc20.mint(address(poolManager), amount);
+
+        assertEq(erc20.balanceOf(to), 0);
+        poolManager.recoverTokens(asset, 0, to, amount);
+        assertEq(erc20.balanceOf(address(poolManager)), 0);
+        assertEq(erc20.balanceOf(to), amount);
+    }
+
+    function testRecoverTokensERC6909(uint256 amount, uint8 tokenId) public {
+        vm.assume(amount > 0);
+        tokenId = uint8(bound(tokenId, 2, 18));
+
+        MockERC6909 erc6909 = new MockERC6909();
+        address asset = address(erc6909);
+        address to = makeAddr("to");
+        erc6909.mint(address(poolManager), tokenId, amount);
+
+        assertEq(erc6909.balanceOf(to, tokenId), 0);
+        poolManager.recoverTokens(asset, tokenId, to, amount);
+        assertEq(erc6909.balanceOf(address(poolManager), tokenId), 0);
+        assertEq(erc6909.balanceOf(to, tokenId), amount);
     }
 
     function testAddPool(uint64 poolId) public {
@@ -97,8 +200,11 @@ contract PoolManagerTest is BaseTest {
         vm.expectRevert(bytes("PoolManager/too-many-tranche-token-decimals"));
         centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, 19, hook);
 
+        vm.expectRevert(bytes("PoolManager/invalid-hook"));
+        centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, salt, address(1));
+
         centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, salt, hook);
-        Tranche tranche = Tranche(poolManager.getTranche(poolId, trancheId));
+        Tranche tranche = Tranche(poolManager.tranche(poolId, trancheId));
         assertEq(tokenName, tranche.name());
         assertEq(tokenSymbol, tranche.symbol());
         assertEq(decimals, tranche.decimals());
@@ -126,105 +232,18 @@ contract PoolManagerTest is BaseTest {
 
         for (uint256 i = 0; i < trancheIds.length; i++) {
             centrifugeChain.addTranche(poolId, trancheIds[i], tokenName, tokenSymbol, decimals, hook);
-            Tranche tranche = Tranche(poolManager.getTranche(poolId, trancheIds[i]));
+            Tranche tranche = Tranche(poolManager.tranche(poolId, trancheIds[i]));
             assertEq(tokenName, tranche.name());
             assertEq(tokenSymbol, tranche.symbol());
             assertEq(decimals, tranche.decimals());
         }
     }
 
-    function testAddAsset(uint128 assetId) public {
-        uint128 badCurrency = 2;
-        vm.assume(assetId > 0);
-        vm.assume(assetId != badCurrency);
-        ERC20 erc20_invalid_too_few = _newErc20("X's Dollar", "USDX", 0);
-        ERC20 erc20_invalid_too_many = _newErc20("X's Dollar", "USDX", 42);
-
-        vm.expectRevert(bytes("PoolManager/too-few-asset-decimals"));
-        centrifugeChain.addAsset(assetId, address(erc20_invalid_too_few));
-
-        vm.expectRevert(bytes("PoolManager/too-many-asset-decimals"));
-        centrifugeChain.addAsset(assetId, address(erc20_invalid_too_many));
-
-        vm.expectRevert(bytes("PoolManager/asset-id-has-to-be-greater-than-0"));
-        centrifugeChain.addAsset(0, address(erc20));
-
-        centrifugeChain.addAsset(assetId, address(erc20));
-
-        // Verify we can't override the same asset id another address
-        vm.expectRevert(bytes("PoolManager/asset-id-in-use"));
-        centrifugeChain.addAsset(assetId, makeAddr("randomCurrency"));
-
-        // Verify we can't add a asset address that already exists associated with a different aset id
-        vm.expectRevert(bytes("PoolManager/asset-address-in-use"));
-        centrifugeChain.addAsset(badCurrency, address(erc20));
-
-        assertEq(poolManager.idToAsset(assetId), address(erc20));
-    }
-
-    // TODO: Fix later with register asset and updateContract
-    /*
-    function testDeployVault(
-        uint64 poolId,
-        uint8 decimals,
-        string memory tokenName,
-        string memory tokenSymbol,
-        bytes16 trancheId,
-        uint128 assetId
-    ) public {
-        decimals = uint8(bound(decimals, 2, 18));
-        vm.assume(assetId > 0);
-        vm.assume(bytes(tokenName).length <= 128);
-        vm.assume(bytes(tokenSymbol).length <= 32);
-
-        address hook = address(new MockHook());
-
-        centrifugeChain.addPool(poolId); // add pool
-        centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook); // add tranche
-        centrifugeChain.addAsset(assetId, address(erc20));
-
-        address tranche_ = poolManager.getTranche(poolId, trancheId);
-
-        vm.expectRevert(bytes("PoolManager/asset-not-supported"));
-        poolManager.deployVault(poolId, trancheId, address(erc20));
-        centrifugeChain.allowAsset(poolId, assetId);
-
-        address vaultAddress = poolManager.deployVault(poolId, trancheId, address(erc20));
-        address vault_ = poolManager.getVault(poolId, trancheId, address(erc20));
-
-        vm.expectRevert(bytes("PoolManager/vault-already-deployed"));
-        poolManager.deployVault(poolId, trancheId, address(erc20));
-
-        // make sure the pool was added to the tranche struct
-        assertEq(vaultAddress, vault_);
-
-        // check vault state
-        ERC7540Vault vault = ERC7540Vault(vault_);
-        Tranche tranche = Tranche(tranche_);
-        assertEq(address(vault.manager()), address(investmentManager));
-        assertEq(vault.asset(), address(erc20));
-        assertEq(vault.poolId(), poolId);
-        assertEq(vault.trancheId(), trancheId);
-        assertEq(address(vault.share()), tranche_);
-        assertTrue(vault.wards(address(investmentManager)) == 1);
-        assertTrue(vault.wards(address(this)) == 0);
-        assertTrue(investmentManager.wards(vaultAddress) == 1);
-
-        // assertEq(tranche.name(), tokenName);
-        // assertEq(tranche.symbol(), tokenSymbol);
-        assertEq(tranche.decimals(), decimals);
-
-        assertTrue(tranche.wards(address(poolManager)) == 1);
-        assertTrue(tranche.wards(vault_) == 1);
-        assertTrue(tranche.wards(address(this)) == 0);
-    }
-    */
-
     function testTransferTrancheTokensToCentrifuge(uint128 amount) public {
         vm.assume(amount > 0);
         uint64 validUntil = uint64(block.timestamp + 7 days);
         bytes32 centChainAddress = makeAddr("centChainAddress").toBytes32();
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
 
@@ -254,7 +273,7 @@ contract PoolManagerTest is BaseTest {
         vm.assume(amount > 0);
         uint64 validUntil = uint64(block.timestamp + 7 days);
         address destinationAddress = makeAddr("destinationAddress");
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
@@ -278,7 +297,7 @@ contract PoolManagerTest is BaseTest {
         address destinationAddress = makeAddr("destinationAddress");
         vm.assume(amount > 0);
 
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
 
@@ -309,7 +328,7 @@ contract PoolManagerTest is BaseTest {
 
     function testUpdateMember(uint64 validUntil) public {
         validUntil = uint64(bound(validUntil, block.timestamp, type(uint64).max));
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
 
@@ -332,7 +351,7 @@ contract PoolManagerTest is BaseTest {
     }
 
     function testFreezeAndUnfreeze() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
@@ -367,7 +386,7 @@ contract PoolManagerTest is BaseTest {
     }
 
     function testUpdateTrancheMetadata() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
@@ -395,7 +414,7 @@ contract PoolManagerTest is BaseTest {
     }
 
     function testUpdateTrancheHook() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
@@ -420,7 +439,7 @@ contract PoolManagerTest is BaseTest {
     }
 
     function testUpdateRestriction() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
@@ -446,38 +465,9 @@ contract PoolManagerTest is BaseTest {
         poolManager.updateRestriction(poolId, trancheId, update);
     }
 
-    function testAllowAsset() public {
-        uint128 assetId = defaultAssetId;
-        uint64 poolId = 1;
-
-        centrifugeChain.addAsset(assetId, address(erc20));
-        centrifugeChain.addPool(poolId);
-
-        centrifugeChain.allowAsset(poolId, assetId);
-        assertTrue(poolManager.isAllowedAsset(poolId, address(erc20)));
-
-        centrifugeChain.disallowAsset(poolId, assetId);
-        assertEq(poolManager.isAllowedAsset(poolId, address(erc20)), false);
-
-        uint128 randomCurrency = 100;
-
-        vm.expectRevert(bytes("PoolManager/unknown-asset"));
-        centrifugeChain.allowAsset(poolId, randomCurrency);
-
-        vm.expectRevert(bytes("PoolManager/invalid-pool"));
-        centrifugeChain.allowAsset(poolId + 1, randomCurrency);
-
-        vm.expectRevert(bytes("PoolManager/unknown-asset"));
-        centrifugeChain.disallowAsset(poolId, randomCurrency);
-
-        vm.expectRevert(bytes("PoolManager/invalid-pool"));
-        centrifugeChain.disallowAsset(poolId + 1, randomCurrency);
-    }
-
     function testUpdateTranchePriceWorks(
         uint64 poolId,
         uint8 decimals,
-        uint128 assetId,
         string memory tokenName,
         string memory tokenSymbol,
         bytes16 trancheId,
@@ -486,8 +476,8 @@ contract PoolManagerTest is BaseTest {
         decimals = uint8(bound(decimals, 2, 18));
         vm.assume(poolId > 0);
         vm.assume(trancheId > 0);
-        vm.assume(assetId > 0);
         centrifugeChain.addPool(poolId);
+        uint128 assetId = poolManager.registerAsset(address(erc20), 0, defaultChainId);
 
         address hook = address(new MockHook());
 
@@ -495,8 +485,9 @@ contract PoolManagerTest is BaseTest {
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, price, uint64(block.timestamp));
 
         centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook);
-        centrifugeChain.addAsset(assetId, address(erc20));
-        centrifugeChain.allowAsset(poolId, assetId);
+
+        vm.expectRevert("PoolManager/unknown-price");
+        poolManager.tranchePrice(poolId, trancheId, assetId);
 
         // Allows us to go back in time later
         vm.warp(block.timestamp + 1 days);
@@ -506,7 +497,7 @@ contract PoolManagerTest is BaseTest {
         poolManager.updateTranchePrice(poolId, trancheId, assetId, price, uint64(block.timestamp));
 
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, price, uint64(block.timestamp));
-        (uint256 latestPrice, uint64 priceComputedAt) = poolManager.getTranchePrice(poolId, trancheId, address(erc20));
+        (uint256 latestPrice, uint64 priceComputedAt) = poolManager.tranchePrice(poolId, trancheId, assetId);
         assertEq(latestPrice, price);
         assertEq(priceComputedAt, block.timestamp);
 
@@ -514,40 +505,37 @@ contract PoolManagerTest is BaseTest {
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, price, uint64(block.timestamp - 1));
     }
 
-    // TODO: Fix
-    /*
     function testVaultMigration() public {
-        address oldVault_ = deploySimpleVault();
+        (address oldVault_, uint128 assetId) = deploySimpleVault();
 
         ERC7540Vault oldVault = ERC7540Vault(oldVault_);
         uint64 poolId = oldVault.poolId();
         bytes16 trancheId = oldVault.trancheId();
         address asset = address(oldVault.asset());
 
-        ERC7540VaultFactory newVaultFactory = new ERC7540VaultFactory(address(root));
+        ERC7540VaultFactory newVaultFactory = new ERC7540VaultFactory(address(root), address(investmentManager));
 
         // rewire factory contracts
         newVaultFactory.rely(address(poolManager));
         investmentManager.rely(address(newVaultFactory));
-        poolManager.file("vaultFactory", address(newVaultFactory));
+        poolManager.file("vaultFactory", address(newVaultFactory), true);
 
         // Remove old vault
-        poolManager.removeVault(poolId, trancheId, asset);
-        vm.expectRevert(bytes("PoolManager/unknown-vault"));
-        poolManager.getVault(poolId, trancheId, asset);
+        address vaultManager = IBaseVault(oldVault_).manager();
+        IVaultManager(vaultManager).removeVault(poolId, trancheId, oldVault_, asset, assetId);
+        assertEq(Tranche(poolManager.tranche(poolId, trancheId)).vault(asset), address(0));
 
         // Deploy new vault
-        address newVault = poolManager.deployVault(poolId, trancheId, asset);
-        assertEq(poolManager.getVault(poolId, trancheId, asset), newVault);
+        address newVault = poolManager.deployVault(poolId, trancheId, assetId, address(newVaultFactory));
+        assert(oldVault_ != newVault);
     }
-    */
 
     function testPoolManagerCannotTransferTrancheTokensOnAccountRestrictions(uint128 amount) public {
         uint64 validUntil = uint64(block.timestamp + 7 days);
         address destinationAddress = makeAddr("destinationAddress");
         vm.assume(amount > 0);
 
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
         tranche.approve(address(poolManager), amount);
@@ -581,16 +569,468 @@ contract PoolManagerTest is BaseTest {
         assertEq(tranche.balanceOf(address(escrow)), 0);
     }
 
-    // helpers
-    function hasDuplicates(bytes16[4] calldata array) internal pure returns (bool) {
-        uint256 length = array.length;
-        for (uint256 i = 0; i < length; i++) {
-            for (uint256 j = i + 1; j < length; j++) {
-                if (array[i] == array[j]) {
-                    return true;
-                }
-            }
+    function testLinkVaultInvalidTranche(uint64 poolId, bytes16 trancheId) public {
+        vm.expectRevert("PoolManager/tranche-does-not-exist");
+        poolManager.linkVault(poolId, trancheId, defaultAssetId, address(0));
+    }
+
+    function testUnlinkVaultInvalidTranche(uint64 poolId, bytes16 trancheId) public {
+        vm.expectRevert("PoolManager/tranche-does-not-exist");
+        poolManager.unlinkVault(poolId, trancheId, defaultAssetId, address(0));
+    }
+}
+
+contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
+    using MessageLib for *;
+    using CastLib for *;
+    using BytesLib for *;
+
+    function _assertVaultSetup(address vaultAddress, uint128 assetId, address asset, uint256 tokenId, bool isLinked)
+        private
+        view
+    {
+        address vaultManager = IBaseVault(vaultAddress).manager();
+        address tranche_ = poolManager.tranche(poolId, trancheId);
+        address vault_ = ITranche(tranche_).vault(asset);
+
+        assert(poolManager.isPoolActive(poolId));
+
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddress);
+        assertEq(assetId, vaultDetails.assetId, "vault assetId mismatch");
+        assertEq(asset, vaultDetails.asset, "vault asset mismatch");
+        assertEq(tokenId, vaultDetails.tokenId, "vault asset mismatch");
+        assertEq(false, vaultDetails.isWrapper, "vault isWrapper mismatch");
+        assertEq(isLinked, vaultDetails.isLinked, "vault isLinked mismatch");
+
+        if (isLinked) {
+            assert(poolManager.isLinked(poolId, trancheId, asset, vaultAddress));
+
+            // check vault state
+            assertEq(vaultAddress, vault_, "vault address mismatch");
+            ERC7540Vault vault = ERC7540Vault(vault_);
+            assertEq(address(vault.manager()), address(investmentManager), "investment manager mismatch");
+            assertEq(vault.asset(), asset, "asset mismatch");
+            assertEq(vault.poolId(), poolId, "poolId mismatch");
+            assertEq(vault.trancheId(), trancheId, "trancheId mismatch");
+            assertEq(address(vault.share()), tranche_, "tranche mismatch");
+
+            assertEq(vault.wards(address(investmentManager)), 1);
+            assertEq(vault.wards(address(this)), 0);
+            assertEq(investmentManager.wards(vaultAddress), 1);
+        } else {
+            assert(!poolManager.isLinked(poolId, trancheId, asset, vaultAddress));
+            // Check Tranche permissions
+            assertEq(Tranche(tranche_).wards(vaultManager), 1);
+
+            // Check missing link
+            assertEq(vault_, address(0), "Tranche link to vault requires linkVault");
+            assertEq(investmentManager.wards(vaultAddress), 0, "Vault auth on investmentManager set up in linkVault");
         }
-        return false;
+    }
+
+    function _assertTrancheSetup(address vaultAddress, bool isLinked) private view {
+        address tranche_ = poolManager.tranche(poolId, trancheId);
+        Tranche tranche = Tranche(tranche_);
+
+        assertEq(tranche.wards(address(poolManager)), 1);
+        assertEq(tranche.wards(address(this)), 0);
+
+        assertEq(tranche.name(), tokenName, "tranche name mismatch");
+        assertEq(tranche.symbol(), tokenSymbol, "tranche symbol mismatch");
+        assertEq(tranche.decimals(), decimals, "tranche decimals mismatch");
+
+        if (isLinked) {
+            assertEq(tranche.wards(vaultAddress), 1);
+        } else {
+            assertEq(tranche.wards(vaultAddress), 0, "Vault auth on Tranche set up in linkVault");
+        }
+    }
+
+    function _assertAllowance(address vaultAddress, address asset, uint256 tokenId) private view {
+        address vaultManager = IBaseVault(vaultAddress).manager();
+        address escrow_ = address(poolManager.escrow());
+        address tranche_ = poolManager.tranche(poolId, trancheId);
+
+        assertEq(
+            IERC20(tranche_).allowance(escrow_, vaultManager), type(uint256).max, "Tranche token allowance missing"
+        );
+
+        if (tokenId == 0) {
+            assertEq(IERC20(asset).allowance(escrow_, vaultManager), type(uint256).max, "ERC20 Asset allowance missing");
+        } else {
+            assertEq(
+                IERC6909(asset).allowance(escrow_, vaultManager, tokenId),
+                type(uint256).max,
+                "ERC6909 Asset allowance missing"
+            );
+        }
+    }
+
+    function _assertDeployedVault(address vaultAddress, uint128 assetId, address asset, uint256 tokenId, bool isLinked)
+        internal
+        view
+    {
+        _assertVaultSetup(vaultAddress, assetId, asset, tokenId, isLinked);
+        _assertTrancheSetup(vaultAddress, isLinked);
+        _assertAllowance(vaultAddress, asset, tokenId);
+    }
+
+    function testDeployVaultWithoutLinkERC20(
+        uint64 poolId_,
+        uint8 decimals_,
+        string memory tokenName_,
+        string memory tokenSymbol_,
+        bytes16 trancheId_
+    ) public {
+        setUpPoolAndTranche(poolId_, decimals_, tokenName_, tokenSymbol_, trancheId_);
+
+        address asset = address(erc20);
+
+        // Check event except for vault address which cannot be known
+        (uint128 assetId) = poolManager.registerAsset(asset, erc20TokenId, defaultChainId);
+        vm.expectEmit(true, true, true, false);
+        emit IPoolManager.DeployVault(poolId, trancheId, asset, erc20TokenId, vaultFactory, address(0));
+        address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, vaultFactory);
+
+        _assertDeployedVault(vaultAddress, assetId, asset, erc20TokenId, false);
+    }
+
+    function testDeployVaultWithLinkERC20(
+        uint64 poolId_,
+        uint8 decimals_,
+        string memory tokenName_,
+        string memory tokenSymbol_,
+        bytes16 trancheId_
+    ) public {
+        setUpPoolAndTranche(poolId_, decimals_, tokenName_, tokenSymbol_, trancheId_);
+
+        address asset = address(erc20);
+
+        (uint128 assetId) = poolManager.registerAsset(asset, erc20TokenId, defaultChainId);
+        address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, vaultFactory);
+
+        vm.expectEmit(true, true, true, false);
+        emit IPoolManager.LinkVault(poolId, trancheId, asset, erc20TokenId, vaultAddress);
+        poolManager.linkVault(poolId, trancheId, assetId, vaultAddress);
+
+        _assertDeployedVault(vaultAddress, assetId, asset, erc20TokenId, true);
+    }
+
+    function testDeployVaultWithoutLinkERC6909(
+        uint64 poolId_,
+        uint8 decimals_,
+        string memory tokenName_,
+        string memory tokenSymbol_,
+        bytes16 trancheId_
+    ) public {
+        setUpPoolAndTranche(poolId_, decimals_, tokenName_, tokenSymbol_, trancheId_);
+
+        uint256 tokenId = decimals;
+        address asset = address(new MockERC6909());
+
+        // Check event except for vault address which cannot be known
+        (uint128 assetId) = poolManager.registerAsset(asset, tokenId, defaultChainId);
+        vm.expectEmit(true, true, true, false);
+        emit IPoolManager.DeployVault(poolId, trancheId, asset, tokenId, vaultFactory, address(0));
+        address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, vaultFactory);
+
+        _assertDeployedVault(vaultAddress, assetId, asset, tokenId, false);
+    }
+
+    function testDeployVaultWithLinkERC6909(
+        uint64 poolId_,
+        uint8 decimals_,
+        string memory tokenName_,
+        string memory tokenSymbol_,
+        bytes16 trancheId_
+    ) public {
+        setUpPoolAndTranche(poolId_, decimals_, tokenName_, tokenSymbol_, trancheId_);
+
+        uint256 tokenId = decimals;
+        address asset = address(new MockERC6909());
+
+        (uint128 assetId) = poolManager.registerAsset(asset, tokenId, defaultChainId);
+        address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, vaultFactory);
+
+        vm.expectEmit(true, true, true, false);
+        emit IPoolManager.LinkVault(poolId, trancheId, asset, tokenId, vaultAddress);
+        poolManager.linkVault(poolId, trancheId, assetId, vaultAddress);
+
+        _assertDeployedVault(vaultAddress, assetId, asset, tokenId, true);
+    }
+
+    function testDeploVaultInvalidTranche(uint64 poolId, bytes16 trancheId) public {
+        vm.expectRevert("PoolManager/tranche-does-not-exist");
+        poolManager.deployVault(poolId, trancheId, defaultAssetId, vaultFactory);
+    }
+
+    function testDeploVaultInvalidVaultFactory(
+        uint64 poolId_,
+        uint8 decimals_,
+        string memory tokenName_,
+        string memory tokenSymbol_,
+        bytes16 trancheId_
+    ) public {
+        setUpPoolAndTranche(poolId_, decimals_, tokenName_, tokenSymbol_, trancheId_);
+
+        vm.expectRevert("PoolManager/invalid-factory");
+        poolManager.deployVault(poolId, trancheId, defaultAssetId, address(0));
+    }
+}
+
+contract PoolManagerRegisterAssetTest is BaseTest {
+    using MessageLib for *;
+    using CastLib for *;
+    using BytesLib for *;
+
+    uint32 constant STORAGE_INDEX_ASSET_COUNTER = 3;
+    uint256 constant STORAGE_OFFSET_ASSET_COUNTER = 20;
+
+    function _assertAssetCounterEq(uint32 expected) internal view {
+        bytes32 slotData = vm.load(address(poolManager), bytes32(uint256(STORAGE_INDEX_ASSET_COUNTER)));
+
+        // Extract `_assetCounter` at offset 20 bytes (rightmost 4 bytes)
+        uint32 assetCounter = uint32(uint256(slotData >> (STORAGE_OFFSET_ASSET_COUNTER * 8)));
+        assertEq(assetCounter, expected, "Asset counter does not match expected value");
+    }
+
+    function _assertAssetRegistered(address asset, uint128 assetId, uint256 tokenId, uint32 expectedAssetCounter)
+        internal
+        view
+    {
+        assertEq(poolManager.assetToId(asset, tokenId), assetId, "Asset to id mismatch");
+        (address asset_, uint256 tokenId_) = poolManager.idToAsset(assetId);
+        assertEq(asset_, asset);
+        assertEq(tokenId_, tokenId);
+        _assertAssetCounterEq(expectedAssetCounter);
+    }
+
+    function testRegisterSingleAssetERC20() public {
+        address asset = address(erc20);
+        bytes memory message = MessageLib.RegisterAsset({
+            assetId: defaultAssetId,
+            name: erc20.name(),
+            symbol: erc20.symbol().toBytes32(),
+            decimals: erc20.decimals()
+        }).serialize();
+
+        vm.expectEmit();
+        emit IPoolManager.RegisterAsset(defaultAssetId, asset, 0, erc20.name(), erc20.symbol(), erc20.decimals());
+        vm.expectEmit(false, false, false, false);
+        emit IGateway.SendMessage(message);
+        uint128 assetId = poolManager.registerAsset(asset, 0, defaultChainId);
+
+        assertEq(assetId, defaultAssetId);
+        assertEq(erc20.allowance(address(poolManager.escrow()), address(poolManager)), type(uint256).max);
+        _assertAssetRegistered(asset, assetId, 0, 1);
+    }
+
+    function testRegisterMultipleAssetsERC20(string calldata name, string calldata symbol, uint8 decimals) public {
+        decimals = uint8(bound(decimals, 2, 18));
+
+        ERC20 assetA = erc20;
+        ERC20 assetB = _newErc20(name, symbol, decimals);
+
+        uint128 assetIdA = poolManager.registerAsset(address(assetA), 0, defaultChainId);
+        _assertAssetRegistered(address(assetA), assetIdA, 0, 1);
+
+        uint128 assetIdB = poolManager.registerAsset(address(assetB), 0, defaultChainId);
+        _assertAssetRegistered(address(assetB), assetIdB, 0, 2);
+
+        assert(assetIdA != assetIdB);
+    }
+
+    function testRegisterSingleAssetERC20_emptyNameSymbol() public {
+        ERC20 asset = _newErc20("", "", 10);
+        poolManager.registerAsset(address(asset), 0, defaultChainId);
+        _assertAssetRegistered(address(asset), defaultAssetId, 0, 1);
+    }
+
+    function testRegisterSingleAssetERC6909(uint8 decimals) public {
+        uint256 tokenId = uint256(bound(decimals, 2, 18));
+        MockERC6909 erc6909 = new MockERC6909();
+        address asset = address(erc6909);
+
+        bytes memory message = MessageLib.RegisterAsset({
+            assetId: defaultAssetId,
+            name: erc6909.name(tokenId),
+            symbol: erc6909.symbol(tokenId).toBytes32(),
+            decimals: erc6909.decimals(tokenId)
+        }).serialize();
+
+        vm.expectEmit();
+        emit IPoolManager.RegisterAsset(
+            defaultAssetId, asset, tokenId, erc6909.name(tokenId), erc6909.symbol(tokenId), erc6909.decimals(tokenId)
+        );
+        vm.expectEmit(false, false, false, false);
+        emit IGateway.SendMessage(message);
+        uint128 assetId = poolManager.registerAsset(asset, tokenId, defaultChainId);
+
+        assertEq(assetId, defaultAssetId);
+        assertEq(erc6909.allowance(address(poolManager.escrow()), address(poolManager), tokenId), type(uint256).max);
+        _assertAssetRegistered(asset, assetId, tokenId, 1);
+    }
+
+    function testRegisterMultipleAssetsERC6909(uint8 decimals) public {
+        MockERC6909 erc6909 = new MockERC6909();
+        uint256 tokenIdA = uint256(bound(decimals, 3, 18));
+        uint256 tokenIdB = uint256(bound(decimals, 2, tokenIdA - 1));
+
+        uint128 assetIdA = poolManager.registerAsset(address(erc6909), tokenIdA, defaultChainId);
+        _assertAssetRegistered(address(erc6909), assetIdA, tokenIdA, 1);
+
+        uint128 assetIdB = poolManager.registerAsset(address(erc6909), tokenIdB, defaultChainId);
+        _assertAssetRegistered(address(erc6909), assetIdB, tokenIdB, 2);
+
+        assert(assetIdA != assetIdB);
+    }
+
+    function testRegisterAssetTwice() public {
+        vm.expectEmit();
+        emit IPoolManager.RegisterAsset(
+            defaultAssetId, address(erc20), 0, erc20.name(), erc20.symbol(), erc20.decimals()
+        );
+        vm.expectEmit(false, false, false, false);
+        emit IGateway.SendMessage(bytes(""));
+        emit IGateway.SendMessage(bytes(""));
+        poolManager.registerAsset(address(erc20), 0, defaultChainId);
+        poolManager.registerAsset(address(erc20), 0, defaultChainId + 1);
+    }
+
+    function testRegisterAsset_decimalsMissing() public {
+        address asset = address(new MockERC6909());
+        vm.expectRevert("PoolManager/asset-missing-decimals");
+        poolManager.registerAsset(asset, 0, defaultChainId);
+    }
+
+    function testRegisterAsset_invalidContract(uint256 tokenId) public {
+        vm.expectRevert("PoolManager/asset-missing-decimals");
+        poolManager.registerAsset(address(0), tokenId, defaultChainId);
+    }
+
+    function testRegisterAssetERC20_decimalDeficit() public {
+        ERC20 asset = _newErc20("", "", 1);
+        vm.expectRevert("PoolManager/too-few-asset-decimals");
+        poolManager.registerAsset(address(asset), 0, defaultChainId);
+    }
+
+    function testRegisterAssetERC20_decimalExcess() public {
+        ERC20 asset = _newErc20("", "", 19);
+        vm.expectRevert("PoolManager/too-many-asset-decimals");
+        poolManager.registerAsset(address(asset), 0, defaultChainId);
+    }
+
+    function testRegisterAssetERC6909_decimalDeficit() public {
+        MockERC6909 asset = new MockERC6909();
+        vm.expectRevert("PoolManager/too-few-asset-decimals");
+        poolManager.registerAsset(address(asset), 1, defaultChainId);
+    }
+
+    function testRegisterAssetERC6909_decimalExcess() public {
+        MockERC6909 asset = new MockERC6909();
+        vm.expectRevert("PoolManager/too-many-asset-decimals");
+        poolManager.registerAsset(address(asset), 19, defaultChainId);
+    }
+}
+
+contract UpdateContractMock is IUpdateContract {
+    IUpdateContract immutable poolManager;
+
+    constructor(address poolManager_) {
+        poolManager = IUpdateContract(poolManager_);
+    }
+
+    function update(uint64 poolId, bytes16 trancheId, bytes calldata payload) public {
+        poolManager.update(poolId, trancheId, payload);
+    }
+}
+
+contract PoolManagerUpdateContract is BaseTest, PoolManagerTestHelper {
+    using MessageLib for *;
+
+    function testUpdateContractTargetThis(
+        uint64 poolId_,
+        uint8 decimals_,
+        string memory tokenName_,
+        string memory tokenSymbol_,
+        bytes16 trancheId_
+    ) public {
+        setUpPoolAndTranche(poolId_, decimals_, tokenName_, tokenSymbol_, trancheId_);
+        registerAssetErc20();
+        bytes memory vaultUpdate = _serializedUpdateContractNewVault(vaultFactory);
+
+        vm.expectEmit();
+        emit IPoolManager.UpdateContract(poolId, trancheId, address(poolManager), vaultUpdate);
+        poolManager.updateContract(poolId, trancheId, address(poolManager), vaultUpdate);
+    }
+
+    function testUpdateContractTargetUpdateContractMock(
+        uint64 poolId_,
+        uint8 decimals_,
+        string memory tokenName_,
+        string memory tokenSymbol_,
+        bytes16 trancheId_
+    ) public {
+        setUpPoolAndTranche(poolId_, decimals_, tokenName_, tokenSymbol_, trancheId_);
+        registerAssetErc20();
+        bytes memory vaultUpdate = _serializedUpdateContractNewVault(vaultFactory);
+        UpdateContractMock mock = new UpdateContractMock(address(poolManager));
+        IAuth(address(poolManager)).rely(address(mock));
+
+        vm.expectEmit();
+        emit IPoolManager.UpdateContract(poolId, trancheId, address(mock), vaultUpdate);
+        poolManager.updateContract(poolId, trancheId, address(mock), vaultUpdate);
+    }
+
+    function testUpdateContractInvalidVaultFactory(
+        uint64 poolId_,
+        uint8 decimals_,
+        string memory tokenName_,
+        string memory tokenSymbol_,
+        bytes16 trancheId_
+    ) public {
+        setUpPoolAndTranche(poolId_, decimals_, tokenName_, tokenSymbol_, trancheId_);
+        registerAssetErc20();
+        bytes memory vaultUpdate = _serializedUpdateContractNewVault(address(1));
+
+        vm.expectRevert("PoolManager/invalid-factory");
+        poolManager.updateContract(poolId, trancheId, address(poolManager), vaultUpdate);
+    }
+
+    function testUpdateContractUnknownVault(
+        uint64 poolId_,
+        uint8 decimals_,
+        string memory tokenName_,
+        string memory tokenSymbol_,
+        bytes16 trancheId_
+    ) public {
+        setUpPoolAndTranche(poolId_, decimals_, tokenName_, tokenSymbol_, trancheId_);
+        registerAssetErc20();
+        bytes memory vaultUpdate = MessageLib.UpdateContractVaultUpdate({
+            factory: bytes32(bytes20(vaultFactory)),
+            assetId: assetIdErc20,
+            isLinked: true,
+            vault: bytes32("1")
+        }).serialize();
+
+        vm.expectRevert("PoolManager/unknown-vault");
+        poolManager.updateContract(poolId, trancheId, address(poolManager), vaultUpdate);
+    }
+
+    function testUpdateContractInvalidTranche(uint64 poolId) public {
+        centrifugeChain.addPool(poolId);
+        bytes memory vaultUpdate = _serializedUpdateContractNewVault(vaultFactory);
+
+        vm.expectRevert("PoolManager/tranche-does-not-exist");
+        poolManager.updateContract(poolId, trancheId, address(poolManager), vaultUpdate);
+    }
+
+    function _serializedUpdateContractNewVault(address vaultFactory_) internal view returns (bytes memory payload) {
+        return MessageLib.UpdateContractVaultUpdate({
+            factory: bytes32(bytes20(vaultFactory_)),
+            assetId: assetIdErc20,
+            isLinked: true,
+            vault: bytes32(0)
+        }).serialize();
     }
 }

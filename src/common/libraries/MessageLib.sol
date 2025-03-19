@@ -15,19 +15,17 @@ enum MessageType {
     ScheduleUpgrade,
     CancelUpgrade,
     RecoverTokens,
-    // -- Pool manager messages 8 - 18
+    // -- Pool manager messages 7 - 15
     RegisterAsset,
     NotifyPool,
     NotifyShareClass,
-    AllowAsset,
-    DisallowAsset,
     UpdateShareClassPrice,
     UpdateShareClassMetadata,
     UpdateShareClassHook,
     TransferShares,
     UpdateRestriction,
     UpdateContract,
-    // -- Investment manager messages 19 - 27
+    // -- Investment manager messages 16 - 24
     DepositRequest,
     RedeemRequest,
     FulfilledDepositRequest,
@@ -78,12 +76,10 @@ library MessageLib {
         (65 << uint8(MessageType.DisputeMessageRecovery) * 8) +
         (33 << uint8(MessageType.ScheduleUpgrade) * 8) +
         (33 << uint8(MessageType.CancelUpgrade) * 8) +
-        (129 << uint8(MessageType.RecoverTokens) * 8) +
-        (37 << uint8(MessageType.RegisterAsset) * 8) + //TODO: modify to 178 when registerAsset feature is merged
+        (161 << uint8(MessageType.RecoverTokens) * 8) +
+        (178 << uint8(MessageType.RegisterAsset) * 8) +
         (9 << uint8(MessageType.NotifyPool) * 8) +
         (250 << uint8(MessageType.NotifyShareClass) * 8) +
-        (41 << uint8(MessageType.AllowAsset) * 8) +
-        (41 << uint8(MessageType.DisallowAsset) * 8) +
         (65 << uint8(MessageType.UpdateShareClassPrice) * 8) +
         (185 << uint8(MessageType.UpdateShareClassMetadata) * 8) +
         (57 << uint8(MessageType.UpdateShareClassHook) * 8) +
@@ -128,9 +124,9 @@ library MessageLib {
             return MessageCategory.Gateway;
         } else if (code >= 4 && code <= 6) {
             return MessageCategory.Root;
-        } else if (code >= 7 && code <= 17) {
+        } else if (code >= 7 && code <= 15) {
             return MessageCategory.Pool;
-        } else if (code >= 18 && code <= 26) {
+        } else if (code >= 16 && code <= 24) {
             return MessageCategory.Investment;
         } else {
             return MessageCategory.Other;
@@ -247,6 +243,7 @@ library MessageLib {
     struct RecoverTokens {
         bytes32 target;
         bytes32 token;
+        uint256 tokenId;
         bytes32 to;
         uint256 amount;
     }
@@ -256,13 +253,14 @@ library MessageLib {
         return RecoverTokens({
             target: data.toBytes32(1),
             token: data.toBytes32(33),
-            to: data.toBytes32(65),
-            amount: data.toUint256(97)
+            tokenId: data.toUint256(65),
+            to: data.toBytes32(97),
+            amount: data.toUint256(129)
         });
     }
 
     function serialize(RecoverTokens memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.RecoverTokens, t.target, t.token, t.to, t.amount);
+        return abi.encodePacked(MessageType.RecoverTokens, t.target, t.token, t.tokenId, t.to, t.amount);
     }
 
     //---------------------------------------
@@ -347,44 +345,6 @@ library MessageLib {
             t.salt,
             t.hook
         );
-    }
-
-    //---------------------------------------
-    //    AllowAsset
-    //---------------------------------------
-
-    struct AllowAsset {
-        uint64 poolId;
-        bytes16 scId;
-        uint128 assetId;
-    }
-
-    function deserializeAllowAsset(bytes memory data) internal pure returns (AllowAsset memory) {
-        require(messageType(data) == MessageType.AllowAsset, UnknownMessageType());
-        return AllowAsset({poolId: data.toUint64(1), scId: data.toBytes16(9), assetId: data.toUint128(25)});
-    }
-
-    function serialize(AllowAsset memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.AllowAsset, t.poolId, t.scId, t.assetId);
-    }
-
-    //---------------------------------------
-    //    DisallowAsset
-    //---------------------------------------
-
-    struct DisallowAsset {
-        uint64 poolId;
-        bytes16 scId;
-        uint128 assetId;
-    }
-
-    function deserializeDisallowAsset(bytes memory data) internal pure returns (DisallowAsset memory) {
-        require(messageType(data) == MessageType.DisallowAsset, UnknownMessageType());
-        return DisallowAsset({poolId: data.toUint64(1), scId: data.toBytes16(9), assetId: data.toUint128(25)});
-    }
-
-    function serialize(DisallowAsset memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.DisallowAsset, t.poolId, t.scId, t.assetId);
     }
 
     //---------------------------------------
