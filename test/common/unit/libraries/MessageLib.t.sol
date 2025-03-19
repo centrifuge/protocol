@@ -547,4 +547,24 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
     }
+
+    function testUpdateShares() public pure {
+        MessageLib.UpdateShares memory a = MessageLib.UpdateShares({
+            poolId: 1,
+            scId: bytes16("sc"),
+            who: bytes32("alice"),
+            shares: 100,
+            timestamp: 12345,
+            isIssuance: true
+        });
+
+        MessageLib.UpdateShares memory b = MessageLib.deserializeUpdateShares(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.who, b.who);
+        assertEq(a.shares, b.shares);
+        assertEq(a.timestamp, b.timestamp);
+        assertEq(a.isIssuance, b.isIssuance);
+    }
 }
