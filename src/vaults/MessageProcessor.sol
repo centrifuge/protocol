@@ -11,6 +11,7 @@ import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
+import {IInvestmentManagerGatewayActions} from "src/common/interfaces/IGatewayActions.sol";
 
 import {IMessageProcessor} from "src/vaults/interfaces/IMessageProcessor.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
@@ -23,14 +24,14 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
 
     IMessageSender public immutable gateway;
     IPoolManager public immutable poolManager;
-    IInvestmentManager public immutable investmentManager;
+    IInvestmentManagerGatewayActions public immutable investmentManager;
     IRoot public immutable root;
     IGasService public immutable gasService;
 
     constructor(
         IMessageSender sender_,
         IPoolManager poolManager_,
-        IInvestmentManager investmentManager_,
+        IInvestmentManagerGatewayActions investmentManager_,
         IRoot root_,
         IGasService gasService_,
         address deployer

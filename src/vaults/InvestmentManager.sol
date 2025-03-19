@@ -8,10 +8,12 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IInvestmentManagerGatewayActions} from "src/common/interfaces/IGatewayActions.sol";
 
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IInvestmentManager, InvestmentState} from "src/vaults/interfaces/IInvestmentManager.sol";
@@ -23,7 +25,7 @@ import {IMessageProcessor} from "src/vaults/interfaces/IMessageProcessor.sol";
 /// @title  Investment Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
-contract InvestmentManager is Auth, IInvestmentManager {
+contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewayActions {
     using MessageLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;
@@ -220,7 +222,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
         );
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IInvestmentManagerGatewayActions
     function fulfillDepositRequest(
         uint64 poolId,
         bytes16 trancheId,
@@ -246,7 +248,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
         IERC7540Vault(vault_).onDepositClaimable(user, assets, shares);
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IInvestmentManagerGatewayActions
     function fulfillRedeemRequest(
         uint64 poolId,
         bytes16 trancheId,
@@ -275,7 +277,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
         IERC7540Vault(vault_).onRedeemClaimable(user, assets, shares);
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IInvestmentManagerGatewayActions
     function fulfillCancelDepositRequest(
         uint64 poolId,
         bytes16 trancheId,
@@ -298,7 +300,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
         IERC7540Vault(vault_).onCancelDepositClaimable(user, assets);
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IInvestmentManagerGatewayActions
     function fulfillCancelRedeemRequest(uint64 poolId, bytes16 trancheId, address user, uint128 assetId, uint128 shares)
         public
         auth
@@ -315,7 +317,7 @@ contract InvestmentManager is Auth, IInvestmentManager {
         IERC7540Vault(vault_).onCancelRedeemClaimable(user, shares);
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IInvestmentManagerGatewayActions
     function triggerRedeemRequest(uint64 poolId, bytes16 trancheId, address user, uint128 assetId, uint128 shares)
         public
         auth

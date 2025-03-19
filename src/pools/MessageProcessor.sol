@@ -8,24 +8,24 @@ import {Auth} from "src/misc/Auth.sol";
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
+import {IPoolRouterGatewayActions} from "src/common/interfaces/IGatewayActions.sol";
 
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {IMessageProcessor} from "src/pools/interfaces/IMessageProcessor.sol";
-import {IPoolRouterHandler} from "src/pools/interfaces/IPoolRouter.sol";
 
 contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
     using MessageLib for *;
     using BytesLib for bytes;
     using CastLib for *;
 
-    IPoolRouterHandler public immutable manager;
+    IPoolRouterGatewayActions public immutable poolRouter;
     IMessageSender public immutable gateway;
 
-    constructor(IMessageSender sender_, IPoolRouterHandler manager_, address deployer) Auth(deployer) {
+    constructor(IMessageSender sender_, IPoolRouterGatewayActions manager_, address deployer) Auth(deployer) {
         gateway = sender_;
-        manager = manager_;
+        poolRouter = manager_;
     }
 
     /// @inheritdoc IMessageProcessor
@@ -163,25 +163,25 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
 
         if (kind == MessageType.RegisterAsset) {
             MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
-            manager.registerAsset(AssetId.wrap(m.assetId), m.name, m.symbol.toString(), m.decimals);
+            poolRouter.registerAsset(AssetId.wrap(m.assetId), m.name, m.symbol.toString(), m.decimals);
         } else if (kind == MessageType.DepositRequest) {
             MessageLib.DepositRequest memory m = message.deserializeDepositRequest();
-            manager.depositRequest(
+            poolRouter.depositRequest(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId), m.amount
             );
         } else if (kind == MessageType.RedeemRequest) {
             MessageLib.RedeemRequest memory m = message.deserializeRedeemRequest();
-            manager.redeemRequest(
+            poolRouter.redeemRequest(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId), m.amount
             );
         } else if (kind == MessageType.CancelDepositRequest) {
             MessageLib.CancelDepositRequest memory m = message.deserializeCancelDepositRequest();
-            manager.cancelDepositRequest(
+            poolRouter.cancelDepositRequest(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId)
             );
         } else if (kind == MessageType.CancelRedeemRequest) {
             MessageLib.CancelRedeemRequest memory m = message.deserializeCancelRedeemRequest();
-            manager.cancelRedeemRequest(
+            poolRouter.cancelRedeemRequest(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId)
             );
         } else {
