@@ -3,11 +3,11 @@ pragma solidity 0.8.28;
 
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
-import {Deployer} from "script/vaults/Deployer.s.sol";
+import {VaultsDeployer} from "script/vaults/Deployer.s.sol";
 import {LocalAdapter} from "./LocalAdapter.sol";
 
 // Script to deploy Vaults with an Axelar adapter.
-contract LocalAdapterScript is Deployer {
+contract LocalAdapterScript is VaultsDeployer {
     function setUp() public {}
 
     function run() public {
@@ -15,9 +15,9 @@ contract LocalAdapterScript is Deployer {
 
         // NOTE: 0x361c43cd5Fd700923Aae9dED678851a201839fc6 is the H160 of Keyring::Admin in the Centrifuge Chain
         // repository
-        adminSafe = ISafe(address(0x361c43cd5Fd700923Aae9dED678851a201839fc6));
 
-        deploy(msg.sender);
+        deployVaults(ISafe(address(0x361c43cd5Fd700923Aae9dED678851a201839fc6)), msg.sender);
+
         LocalAdapter adapter = new LocalAdapter();
         wire(adapter);
 

@@ -107,7 +107,7 @@ contract AdminTest is BaseTest {
         address spell = vm.addr(1);
         vm.prank(address(adminSafe));
         guardian.scheduleRely(spell);
-        vm.warp(block.timestamp + delay + 1 hours);
+        vm.warp(block.timestamp + DELAY + 1 hours);
         root.executeScheduledRely(spell);
         assertEq(root.wards(spell), 1);
     }
@@ -116,7 +116,7 @@ contract AdminTest is BaseTest {
         address spell = vm.addr(1);
         vm.prank(address(adminSafe));
         guardian.scheduleRely(spell);
-        vm.warp(block.timestamp + delay - 1 hours);
+        vm.warp(block.timestamp + DELAY - 1 hours);
         vm.expectRevert(IRoot.TargetNotReady.selector);
         root.executeScheduledRely(spell);
     }
@@ -132,11 +132,11 @@ contract AdminTest is BaseTest {
         address spell = vm.addr(1);
         vm.prank(address(adminSafe));
         guardian.scheduleRely(spell);
-        assertEq(root.schedule(spell), block.timestamp + delay);
+        assertEq(root.schedule(spell), block.timestamp + DELAY);
         vm.prank(address(adminSafe));
         guardian.cancelRely(spell);
         assertEq(root.schedule(spell), 0);
-        vm.warp(block.timestamp + delay + 1 hours);
+        vm.warp(block.timestamp + DELAY + 1 hours);
         vm.expectRevert(IRoot.TargetNotScheduled.selector);
         root.executeScheduledRely(spell);
     }
@@ -170,7 +170,7 @@ contract AdminTest is BaseTest {
     function testIncomingScheduleUpgradeMessage() public {
         address spell = vm.addr(1);
         centrifugeChain.incomingScheduleUpgrade(spell);
-        vm.warp(block.timestamp + delay + 1 hours);
+        vm.warp(block.timestamp + DELAY + 1 hours);
         root.executeScheduledRely(spell);
         assertEq(root.wards(spell), 1);
     }
@@ -178,19 +178,19 @@ contract AdminTest is BaseTest {
     function testIncomingCancelUpgradeMessage() public {
         address spell = vm.addr(1);
         centrifugeChain.incomingScheduleUpgrade(spell);
-        assertEq(root.schedule(spell), block.timestamp + delay);
+        assertEq(root.schedule(spell), block.timestamp + DELAY);
         centrifugeChain.incomingCancelUpgrade(spell);
         assertEq(root.schedule(spell), 0);
-        vm.warp(block.timestamp + delay + 1 hours);
+        vm.warp(block.timestamp + DELAY + 1 hours);
         vm.expectRevert(IRoot.TargetNotScheduled.selector);
         root.executeScheduledRely(spell);
     }
 
-    //------ Updating delay tests ------///
+    //------ Updating DELAY tests ------///
     function testUpdatingDelayWorks() public {
         vm.prank(address(adminSafe));
         guardian.scheduleRely(address(this));
-        vm.warp(block.timestamp + delay + 1 hours);
+        vm.warp(block.timestamp + DELAY + 1 hours);
         root.executeScheduledRely(address(this));
     }
 
@@ -217,7 +217,7 @@ contract AdminTest is BaseTest {
     function testRelyDenyContract() public {
         vm.prank(address(adminSafe));
         guardian.scheduleRely(address(this));
-        vm.warp(block.timestamp + delay + 1 hours);
+        vm.warp(block.timestamp + DELAY + 1 hours);
         root.executeScheduledRely(address(this));
 
         assertEq(investmentManager.wards(address(this)), 1);

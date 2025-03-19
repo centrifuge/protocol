@@ -21,7 +21,7 @@ import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
-import {Deployer} from "script/vaults/Deployer.s.sol";
+import {VaultsDeployer} from "script/vaults/Deployer.s.sol";
 
 // mocks
 import {MockCentrifugeChain} from "test/vaults/mocks/MockCentrifugeChain.sol";
@@ -33,7 +33,7 @@ import {MockSafe} from "test/vaults/mocks/MockSafe.sol";
 import "forge-std/Test.sol";
 import {GasSnapshot} from "forge-gas-snapshot/GasSnapshot.sol";
 
-contract BaseTest is Deployer, GasSnapshot, Test {
+contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     MockCentrifugeChain centrifugeChain;
     MockGasService mockedGasService;
     MockAdapter adapter1;
@@ -61,10 +61,10 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         // make yourself owner of the adminSafe
         address[] memory pausers = new address[](1);
         pausers[0] = self;
-        adminSafe = new MockSafe(pausers, 1);
+        ISafe adminSafe = new MockSafe(pausers, 1);
 
         // deploy core contracts
-        deploy(address(this));
+        deployVaults(adminSafe, address(this));
 
         // deploy mock adapters
 

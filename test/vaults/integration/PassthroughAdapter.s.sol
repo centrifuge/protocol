@@ -3,18 +3,17 @@ pragma solidity 0.8.28;
 
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
-import {Deployer} from "script/vaults/Deployer.s.sol";
+import {VaultsDeployer} from "script/vaults/Deployer.s.sol";
 import {PassthroughAdapter} from "./PassthroughAdapter.sol";
 
-contract PassthroughAdapterScript is Deployer {
+contract PassthroughAdapterScript is VaultsDeployer {
     function setUp() public {}
 
     function run() public {
         vm.startBroadcast();
 
-        adminSafe = ISafe(vm.envAddress("ADMIN"));
+        deployVaults(ISafe(vm.envAddress("ADMIN")), msg.sender);
 
-        deploy(msg.sender);
         PassthroughAdapter router = new PassthroughAdapter();
         wire(router);
 

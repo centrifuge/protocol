@@ -38,7 +38,7 @@ interface HookLike {
     function updateMember(address user, uint64 validUntil) external;
 }
 
-contract DeployTest is Test, Deployer {
+contract DeployTest is Test, VaultsDeployer {
     using MathLib for uint256;
     using MessageLib for *;
 
@@ -52,16 +52,17 @@ contract DeployTest is Test, Deployer {
 
     function setUp() public {
         self = address(this);
-        deploy(self);
-        adapter = new PermissionlessAdapter(address(gateway));
-        wire(adapter);
 
         // overwrite deployed guardian with a new mock safe guardian
         accounts = new address[](3);
         accounts[0] = makeAddr("account1");
         accounts[1] = makeAddr("account2");
         accounts[2] = makeAddr("account3");
-        adminSafe = new MockSafe(accounts, 1);
+        deployVaults(new MockSafe(accounts, 1), self);
+
+        adapter = new PermissionlessAdapter(address(gateway));
+        wire(adapter);
+
         fakeGuardian = new Guardian(adminSafe, root);
 
         removeDeployerAccess(address(adapter), address(this));

@@ -4,18 +4,17 @@ pragma solidity 0.8.28;
 import {AxelarAdapter} from "src/common/AxelarAdapter.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
-import {Deployer} from "script/vaults/Deployer.s.sol";
+import {VaultsDeployer} from "script/vaults/Deployer.s.sol";
 
 // Script to deploy Vaults with an Axelar Adapter.
-contract AxelarScript is Deployer {
+contract AxelarScript is VaultsDeployer {
     function setUp() public {}
 
     function run() public {
         vm.startBroadcast();
 
-        adminSafe = ISafe(vm.envAddress("ADMIN"));
+        deployVaults(ISafe(vm.envAddress("ADMIN")), msg.sender);
 
-        deploy(msg.sender);
         AxelarAdapter adapter = new AxelarAdapter(
             gateway, address(vm.envAddress("AXELAR_GATEWAY")), address(vm.envAddress("AXELAR_GAS_SERVICE"))
         );
