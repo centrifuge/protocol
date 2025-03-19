@@ -97,7 +97,6 @@ abstract contract Properties is BeforeAfter, Asserts {
                 ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
                 AssetId assetId = poolRegistry.currency(poolId);
 
-                uint32 epochId = multiShareClass.epochId(poolId);
                 uint128 pendingRedeem = multiShareClass.pendingRedeem(scId, assetId);
 
                 uint128 totalPendingUserRedeem = 0;
