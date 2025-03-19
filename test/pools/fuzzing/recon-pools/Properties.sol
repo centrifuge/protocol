@@ -16,6 +16,7 @@ abstract contract Properties is BeforeAfter, Asserts {
     using MathLib for D18;
 
     /// === Canaries === ///
+    /// @dev Canary: Checks that the redeem request was successfully cancelled because coverage report seems off
     function canary_cancelledRedeemRequest() public {
         t(!cancelledRedeemRequest, "successfully cancelled redeem request");
     }
@@ -33,7 +34,7 @@ abstract contract Properties is BeforeAfter, Asserts {
         eq(_after.ghostCredited, 0, "credited not reset");
     }
 
-    /// @notice User pending redemption is never greater than the total redemption
+    /// @dev User pending redemption is never greater than the total redemption
     function property_cancelled_redemption_never_greater_than_requested() public {
         address[] memory _actors = _getActors();
 
@@ -62,7 +63,7 @@ abstract contract Properties is BeforeAfter, Asserts {
         }
     }
 
-    /// @notice The total pending asset amount pendingDeposit[..] is always geq than the approved asset amount epochAmounts[..].depositApproved
+    /// @dev The total pending asset amount pendingDeposit[..] is always geq than the approved asset amount epochAmounts[..].depositApproved
     function property_total_pending_and_approved() public {
         address[] memory _actors = _getActors();
 
@@ -84,8 +85,9 @@ abstract contract Properties is BeforeAfter, Asserts {
         }
     }
 
-
     /// Rounding Properties /// 
+    /// @dev Property: Checks that rounding error is within acceptable bounds (1000 wei)
+    /// @dev Simulates the operation in the MultiShareClass::_revokeEpochShares function
     function property_MulUint128Rounding(D18 navPerShare, uint128 amount) public {
         // Bound navPerShare up to 1,000,000
         uint128 innerValue = D18.unwrap(navPerShare) % uint128(1e24);
@@ -116,6 +118,8 @@ abstract contract Properties is BeforeAfter, Asserts {
         // }
     }
 
+    /// @dev Property: Checks that rounding error is within acceptable bounds (1e6 wei) for very small numbers
+    /// @dev Simulates the operation in the MultiShareClass::_revokeEpochShares function
     function property_MulUint128EdgeCases(D18 navPerShare, uint128 amount) public {
         // Test with very small numbers
         amount = uint128(amount % 1000);  // Small amounts

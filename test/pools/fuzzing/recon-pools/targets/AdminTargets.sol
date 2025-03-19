@@ -17,7 +17,7 @@ import {PoolId} from "src/pools/types/PoolId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
-import {BeforeAfter} from "../BeforeAfter.sol";
+import {BeforeAfter, OpType} from "../BeforeAfter.sol";
 import {Properties} from "../Properties.sol";
 import {Helpers} from "../utils/Helpers.sol";
 
@@ -136,6 +136,7 @@ abstract contract AdminTargets is
         poolRouter.registerAsset(assetId_, name, symbol, decimals);
     }  
 
+    /// @dev Property: after successfully calling requestDeposit for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     function poolRouter_depositRequest(PoolId poolId, ShareClassId scId, uint32 isoCode, uint128 amount) public updateGhosts asAdmin {
         AssetId depositAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
@@ -143,7 +144,11 @@ abstract contract AdminTargets is
         poolRouter.depositRequest(poolId, scId, investor, depositAssetId, amount);
 
         deposited = true;
-    }  
+
+        (, uint32 lastUpdate) = multiShareClass.depositRequest(scId, depositAssetId, investor);
+        uint32 epochId = multiShareClass.epochId(poolId);
+
+        eq(lastUpdate, epochId, "lastUpdate is not equal to epochId");    }  
 
     function poolRouter_redeemRequest(PoolId poolId, ShareClassId scId, uint32 isoCode, uint128 amount) public updateGhosts asAdmin {
         AssetId payoutAssetId = newAssetId(isoCode);
@@ -152,11 +157,18 @@ abstract contract AdminTargets is
         poolRouter.redeemRequest(poolId, scId, investor, payoutAssetId, amount);
     }  
 
+    /// @dev Property: after successfully calling cancelDepositRequest for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
+    /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
     function poolRouter_cancelDepositRequest(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asAdmin {
         AssetId depositAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
         poolRouter.cancelDepositRequest(poolId, scId, investor, depositAssetId);
+
+        (, uint32 lastUpdate) = multiShareClass.depositRequest(scId, depositAssetId, investor);
+        uint32 epochId = multiShareClass.epochId(poolId);
+
+        eq(lastUpdate, epochId, "lastUpdate is not equal to epochId");
     }
 
     function poolRouter_cancelRedeemRequest(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asAdmin {

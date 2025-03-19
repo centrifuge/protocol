@@ -13,7 +13,7 @@ import "src/pools/PoolRouter.sol";
 import "src/misc/interfaces/IERC7726.sol";
 
 import {Helpers} from "test/pools/fuzzing/recon-pools/utils/Helpers.sol";
-import {BeforeAfter} from "../BeforeAfter.sol";
+import {BeforeAfter, OpType} from "../BeforeAfter.sol";
 import {Properties} from "../Properties.sol";
 
 abstract contract PoolRouterTargets is
@@ -22,18 +22,6 @@ abstract contract PoolRouterTargets is
 {
 
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
-    /// CLAMPED HANDLERS /// 
-    function poolRouter_claimDeposit_clamped(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asActor {
-        bytes32 investor = Helpers.addressToBytes32(_getActor());
-
-        poolRouter_claimDeposit(poolId, scId, isoCode, investor);
-    }
-
-    function poolRouter_claimRedeem_clamped(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asActor {
-        bytes32 investor = Helpers.addressToBytes32(_getActor());
-        
-        poolRouter_claimRedeem(poolId, scId, isoCode, investor);
-    }
 
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
     
@@ -48,14 +36,24 @@ abstract contract PoolRouterTargets is
         return poolId;
     }
 
-    function poolRouter_claimDeposit(PoolId poolId, ShareClassId scId, uint32 isoCode, bytes32 investor) public updateGhosts asActor {
+    /// @dev Property: after successfully calling claimDeposit for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
+    /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
+    function poolRouter_claimDeposit(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asActor {
         AssetId assetId = newAssetId(isoCode);
+        bytes32 investor = Helpers.addressToBytes32(_getActor());
         
         poolRouter.claimDeposit(poolId, scId, assetId, investor);
+
+        (, uint32 lastUpdate) = multiShareClass.depositRequest(scId, assetId, investor);
+        uint32 epochId = multiShareClass.epochId(poolId);
+
+        eq(lastUpdate, epochId, "lastUpdate is not equal to epochId");
     }
 
-    function poolRouter_claimRedeem(PoolId poolId, ShareClassId scId, uint32 isoCode, bytes32 investor) public updateGhosts asActor {
+    /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
+    function poolRouter_claimRedeem(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asActor {
         AssetId assetId = newAssetId(isoCode);
+        bytes32 investor = Helpers.addressToBytes32(_getActor());
         
         poolRouter.claimRedeem(poolId, scId, assetId, investor);
     }

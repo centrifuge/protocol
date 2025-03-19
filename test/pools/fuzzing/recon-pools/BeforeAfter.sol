@@ -4,6 +4,11 @@ pragma solidity ^0.8.0;
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {Setup} from "./Setup.sol";
 
+enum OpType {
+    GENERIC,
+    DEPOSIT
+}
+
 // ghost variables for tracking state variable values before and after function calls
 abstract contract BeforeAfter is Setup {
     struct Vars {
@@ -14,8 +19,17 @@ abstract contract BeforeAfter is Setup {
 
     Vars internal _before;
     Vars internal _after;
+    OpType internal currentOperation;
 
-    modifier updateGhosts {
+    modifier updateGhosts() {
+        currentOperation = OpType.GENERIC;
+        __before();
+        _;
+        __after();
+    }
+
+    modifier updateGhostsWithType(OpType op) {
+        currentOperation = op;
         __before();
         _;
         __after();
