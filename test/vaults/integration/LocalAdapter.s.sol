@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
-import {Deployer} from "script/vaults/Deployer.sol";
+import {Deployer} from "script/vaults/Deployer.s.sol";
 import {LocalAdapter} from "./LocalAdapter.sol";
 
 // Script to deploy Vaults with an Axelar adapter.

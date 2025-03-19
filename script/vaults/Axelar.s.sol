@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {AxelarAdapter} from "src/common/AxelarAdapter.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
-import {Deployer} from "script/vaults/Deployer.sol";
+import {Deployer} from "script/vaults/Deployer.s.sol";
 
 // Script to deploy Vaults with an Axelar Adapter.
 contract AxelarScript is Deployer {

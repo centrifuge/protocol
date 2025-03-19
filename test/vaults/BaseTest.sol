@@ -21,7 +21,7 @@ import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
-import {Deployer} from "script/vaults/Deployer.sol";
+import {Deployer} from "script/vaults/Deployer.s.sol";
 
 // mocks
 import {MockCentrifugeChain} from "test/vaults/mocks/MockCentrifugeChain.sol";

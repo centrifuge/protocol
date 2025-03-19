@@ -21,7 +21,7 @@ import {PermissionlessAdapter} from "test/vaults/mocks/PermissionlessAdapter.sol
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
 
 import {AxelarScript} from "script/vaults/Axelar.s.sol";
-import "script/vaults/Deployer.sol";
+import "script/vaults/Deployer.s.sol";
 
 import "forge-std/Test.sol";
 import {MockAdapter} from "test/common/mocks/MockAdapter.sol";

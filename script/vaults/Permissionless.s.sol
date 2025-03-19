@@ -5,7 +5,7 @@ import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
 import {PermissionlessAdapter} from "test/vaults/mocks/PermissionlessAdapter.sol";
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
-import {Deployer} from "script/vaults/Deployer.sol";
+import {Deployer} from "script/vaults/Deployer.s.sol";
 
 // Script to deploy Vaults with a permissionless adapter for testing.
 contract PermissionlessScript is Deployer {
