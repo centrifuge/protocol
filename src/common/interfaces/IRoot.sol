@@ -7,10 +7,11 @@ interface IRecoverable {
     /// @notice Used to recover any ERC-20 token.
     /// @dev    This method is called only by authorized entities
     /// @param  token It could be 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
-    ///         to recover locked native ETH or any ERC20 compatible token.
+    ///         to recover locked native ETH or token compatible with ERC20 or ERC6909.
+    /// @param  tokenId The token id, i.e. non-zero if the underlying token is ERC6909 and else zero.
     /// @param  to Receiver of the funds
     /// @param  amount Amount to send to the receiver.
-    function recoverTokens(address token, address to, uint256 amount) external;
+    function recoverTokens(address token, uint256 tokenId, address to, uint256 amount) external;
 }
 
 interface IRoot {
@@ -22,7 +23,9 @@ interface IRoot {
     event CancelRely(address indexed target);
     event RelyContract(address indexed target, address indexed user);
     event DenyContract(address indexed target, address indexed user);
-    event RecoverTokens(address indexed target, address indexed token, address indexed to, uint256 amount);
+    event RecoverTokens(
+        address indexed target, address indexed token, uint256 tokenId, address indexed to, uint256 amount
+    );
     event Endorse(address indexed user);
     event Veto(address indexed user);
 
@@ -88,5 +91,5 @@ interface IRoot {
 
     /// --- Token Recovery ---
     /// @notice Allows Governance to recover tokens sent to the wrong contract by mistake
-    function recoverTokens(address target, address token, address to, uint256 amount) external;
+    function recoverTokens(address target, address token, uint256 tokenId, address to, uint256 amount) external;
 }

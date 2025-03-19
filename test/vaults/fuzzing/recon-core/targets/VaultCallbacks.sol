@@ -61,9 +61,7 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
             }
         }
 
-        investmentManager.fulfillDepositRequest(
-            poolId, trancheId, actor, currencyId, currencyPayout, trancheTokenPayout
-        );
+        investmentManager.fulfillDepositRequest(poolId, trancheId, actor, assetId, currencyPayout, trancheTokenPayout);
 
         // E-2 | Global-1
         sumOfFullfilledDeposits[address(trancheToken)] += trancheTokenPayout;
@@ -122,7 +120,7 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
         // /// @audit We mint payout here which has to be paid by the borrowers
         // // END TODO test_invariant_erc7540_10_w_recon
 
-        investmentManager.fulfillRedeemRequest(poolId, trancheId, actor, currencyId, currencyPayout, trancheTokenPayout);
+        investmentManager.fulfillRedeemRequest(poolId, trancheId, actor, assetId, currencyPayout, trancheTokenPayout);
 
         sumOfClaimedRequests[address(trancheToken)] += trancheTokenPayout;
 
@@ -181,9 +179,7 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
         // Need to cap remainingInvestOrder by the shares?
 
         // TODO: Would they set the order to a higher value?
-        investmentManager.fulfillCancelDepositRequest(
-            poolId, trancheId, actor, currencyId, currencyPayout, currencyPayout
-        );
+        investmentManager.fulfillCancelDepositRequest(poolId, trancheId, actor, assetId, currencyPayout, currencyPayout);
         /// @audit Reduced by: currencyPayout
 
         cancelDepositCurrencyPayout[address(token)] += currencyPayout;
@@ -234,7 +230,7 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
             }
         }
 
-        investmentManager.fulfillCancelRedeemRequest(poolId, trancheId, actor, currencyId, trancheTokenPayout);
+        investmentManager.fulfillCancelRedeemRequest(poolId, trancheId, actor, assetId, trancheTokenPayout);
         /// @audit trancheTokenPayout
 
         cancelRedeemTrancheTokenPayout[address(trancheToken)] += trancheTokenPayout;
@@ -247,7 +243,7 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
     // function investmentManager_triggerRedeemRequest(uint128 trancheTokenAmount) public {
     //     uint256 balB4 = trancheToken.balanceOf(actor);
 
-    //     investmentManager.triggerRedeemRequest(poolId, trancheId, actor, currencyId, trancheTokenAmount);
+    //     investmentManager.triggerRedeemRequest(poolId, trancheId, actor, assetId, trancheTokenAmount);
 
     //     uint256 balAfter = trancheToken.balanceOf(actor);
 

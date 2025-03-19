@@ -39,7 +39,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testGetVault() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -50,12 +50,12 @@ contract VaultRouterTest is BaseTest {
         uint256 amount = 100;
         erc20.mint(address(router), amount);
         vm.prank(address(root));
-        router.recoverTokens(address(erc20), address(this), amount);
+        router.recoverTokens(address(erc20), erc20TokenId, address(this), amount);
         assertEq(erc20.balanceOf(address(this)), amount);
     }
 
     function testRequestDeposit() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         vm.label(vault_, "vault");
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint256 amount = 100 * 10 ** 18;
@@ -79,7 +79,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testLockDepositRequests() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         vm.label(vault_, "vault");
 
         uint256 amount = 100 * 10 ** 18;
@@ -97,7 +97,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testUnlockDepositRequests() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         vm.label(vault_, "vault");
 
         uint256 amount = 100 * 10 ** 18;
@@ -117,7 +117,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testCancelDepositRequest() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         vm.label(vault_, "vault");
         ERC7540Vault vault = ERC7540Vault(vault_);
 
@@ -150,7 +150,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testClaimCancelDepositRequest() public {
-        address vault_ = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleVault();
         vm.label(vault_, "vault");
         ERC7540Vault vault = ERC7540Vault(vault_);
 
@@ -169,7 +169,7 @@ contract VaultRouterTest is BaseTest {
         assertEq(vault.pendingCancelDepositRequest(0, self), true);
         assertEq(erc20.balanceOf(address(escrow)), amount);
         centrifugeChain.isFulfilledCancelDepositRequest(
-            vault.poolId(), vault.trancheId(), self.toBytes32(), defaultAssetId, uint128(amount)
+            vault.poolId(), vault.trancheId(), self.toBytes32(), assetId, uint128(amount)
         );
         assertEq(vault.claimableCancelDepositRequest(0, self), amount);
 
@@ -188,7 +188,7 @@ contract VaultRouterTest is BaseTest {
 
     function testRequestRedeem() external {
         // Deposit first
-        address vault_ = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleVault();
         vm.label(vault_, "vault");
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint256 amount = 100 * 10 ** 18;
@@ -200,7 +200,7 @@ contract VaultRouterTest is BaseTest {
         router.requestDeposit{value: gas}(vault_, amount, self, self);
         IERC20 share = IERC20(address(vault.share()));
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), defaultAssetId, uint128(amount), uint128(amount)
+            vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), assetId, uint128(amount), uint128(amount)
         );
         vault.deposit(amount, self, self);
         assertEq(share.balanceOf(address(self)), amount);
@@ -220,7 +220,7 @@ contract VaultRouterTest is BaseTest {
 
     function testCancelRedeemRequest() public {
         // Deposit first
-        address vault_ = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleVault();
         vm.label(vault_, "vault");
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint256 amount = 100 * 10 ** 18;
@@ -232,7 +232,7 @@ contract VaultRouterTest is BaseTest {
         router.requestDeposit{value: gas}(vault_, amount, self, self);
         IERC20 share = IERC20(address(vault.share()));
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), defaultAssetId, uint128(amount), uint128(amount)
+            vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), assetId, uint128(amount), uint128(amount)
         );
         vault.deposit(amount, self, self);
         assertEq(share.balanceOf(address(self)), amount);
@@ -256,7 +256,7 @@ contract VaultRouterTest is BaseTest {
 
     function testClaimCancelRedeemRequest() public {
         // Deposit first
-        address vault_ = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleVault();
         vm.label(vault_, "vault");
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint256 amount = 100 * 10 ** 18;
@@ -268,7 +268,7 @@ contract VaultRouterTest is BaseTest {
         router.requestDeposit{value: gas}(vault_, amount, self, self);
         IERC20 share = IERC20(address(vault.share()));
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), defaultAssetId, uint128(amount), uint128(amount)
+            vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), assetId, uint128(amount), uint128(amount)
         );
         vault.deposit(amount, self, self);
         assertEq(share.balanceOf(address(self)), amount);
@@ -283,7 +283,7 @@ contract VaultRouterTest is BaseTest {
         assertEq(vault.pendingCancelRedeemRequest(0, self), true);
 
         centrifugeChain.isFulfilledCancelRedeemRequest(
-            vault.poolId(), vault.trancheId(), self.toBytes32(), defaultAssetId, uint128(amount)
+            vault.poolId(), vault.trancheId(), self.toBytes32(), assetId, uint128(amount)
         );
 
         address sender = makeAddr("maliciousUser");
@@ -296,7 +296,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testPermit() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         vm.label(vault_, "vault");
 
         bytes32 PERMIT_TYPEHASH =
@@ -326,7 +326,7 @@ contract VaultRouterTest is BaseTest {
 
     /// forge-config: default.isolate = true
     function testTranferTrancheTokensToAddressDestination() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         vm.label(vault_, "vault");
         ERC7540Vault vault = ERC7540Vault(vault_);
         ERC20 share = ERC20(IERC7540Vault(vault_).share());
@@ -358,7 +358,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testTranferTrancheTokensToBytes32Destination() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         vm.label(vault_, "vault");
         ERC7540Vault vault = ERC7540Vault(vault_);
         ERC20 share = ERC20(IERC7540Vault(vault_).share());
@@ -394,7 +394,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testEnableAndDisable() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         vm.label(vault_, "vault");
 
         assertFalse(ERC7540Vault(vault_).isOperator(self, address(router)));
@@ -468,7 +468,7 @@ contract VaultRouterTest is BaseTest {
 
     function testIfUserIsPermittedToExecuteRequests() public {
         uint256 amount = 100 * 10 ** 18;
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         vm.label(vault_, "vault");
         ERC7540Vault vault = ERC7540Vault(vault_);
 

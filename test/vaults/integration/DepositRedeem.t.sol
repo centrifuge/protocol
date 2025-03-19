@@ -4,15 +4,13 @@ pragma solidity 0.8.28;
 import "test/vaults/BaseTest.sol";
 
 contract DepositRedeem is BaseTest {
-    function testPartialDepositAndRedeemExecutions(uint64 poolId, bytes16 trancheId, uint128 assetId) public {
-        vm.assume(assetId > 0);
-
+    function testPartialDepositAndRedeemExecutions(uint64 poolId, bytes16 trancheId) public {
         uint8 TRANCHE_TOKEN_DECIMALS = 18; // Like DAI
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        address vault_ =
-            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, assetId, address(asset));
+        (address vault_, uint128 assetId) =
+            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
 
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
@@ -34,7 +32,7 @@ contract DepositRedeem is BaseTest {
         vault.requestDeposit(investmentAmount, self, self);
 
         // first trigger executed collectInvest of the first 50% at a price of 1.4
-        uint128 _assetId = poolManager.assetToId(address(asset)); // retrieve assetId
+        uint128 _assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
         uint128 assets = 50000000; // 50 * 10**6
         uint128 firstTranchePayout = 35714285714285714285; // 50 * 10**18 / 1.4, rounded down
         centrifugeChain.isFulfilledDepositRequest(
@@ -65,7 +63,7 @@ contract DepositRedeem is BaseTest {
     function partialRedeem(uint64 poolId, bytes16 trancheId, ERC7540Vault vault, ERC20 asset) public {
         ITranche tranche = ITranche(address(vault.share()));
 
-        uint128 assetId = poolManager.assetToId(address(asset));
+        uint128 assetId = poolManager.assetToId(address(asset), erc20TokenId);
         uint256 totalTranches = tranche.balanceOf(self);
         uint256 redeemAmount = 50000000000000000000;
         assertTrue(redeemAmount <= totalTranches);

@@ -34,7 +34,7 @@ contract VaultRouterTest is BaseTest {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
         amount = uint128(bound(amount, 4, MAX_UINT128));
 
-        address vault_ = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -71,23 +71,27 @@ contract VaultRouterTest is BaseTest {
             snapEnd();
         }
 
-        assertEq(address(gateway).balance, GATEWAY_INITIAL_BALACE + GAS_BUFFER);
+        // Subtract registerAsset gas from deployment
+        assertEq(
+            address(gateway).balance, GATEWAY_INITIAL_BALANCE + GAS_BUFFER - estimateGas(), "Gateway balance mismatch"
+        );
         for (uint8 i; i < testAdapters.length; i++) {
             MockAdapter adapter = MockAdapter(address(testAdapters[i]));
             uint256[] memory payCalls = adapter.callsWithValue("send");
-            assertEq(payCalls.length, 1);
+            // Messages: registerAsset and requestDeposit
+            assertEq(payCalls.length, 2);
             assertEq(
                 payCalls[0],
                 adapter.estimate(
                     CHAIN_ID,
                     PAYLOAD_FOR_GAS_ESTIMATION,
                     mockedGasService.estimate(CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION)
-                )
+                ),
+                "payload gas mismatch"
             );
         }
 
         // trigger - deposit order fulfillment
-        uint128 assetId = poolManager.assetToId(address(erc20));
         (uint128 tranchePayout) = fulfillDepositRequest(vault, assetId, amount, self);
 
         assertEq(vault.maxMint(self), tranchePayout);
@@ -109,7 +113,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testEnableDisableVaults() public {
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -140,7 +144,7 @@ contract VaultRouterTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128));
         vm.assume(amount % 2 == 0);
 
-        address vault_ = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -159,7 +163,6 @@ contract VaultRouterTest is BaseTest {
         router.executeLockedDepositRequest{value: fuel}(vault_, address(this));
         vm.stopPrank();
 
-        uint128 assetId = poolManager.assetToId(address(erc20));
         (uint128 tranchePayout) = fulfillDepositRequest(vault, assetId, amount, self);
 
         assertEq(vault.maxMint(self), tranchePayout);
@@ -190,7 +193,7 @@ contract VaultRouterTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128));
 
         // deposit
-        address vault_ = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
         erc20.mint(self, amount);
@@ -207,7 +210,6 @@ contract VaultRouterTest is BaseTest {
         uint256 fuel = estimateGas();
         router.requestDeposit{value: fuel}(vault_, amount, self, self);
 
-        uint128 assetId = poolManager.assetToId(address(erc20));
         (uint128 tranchePayout) = fulfillDepositRequest(vault, assetId, amount, self);
         ITranche tranche = ITranche(address(vault.share()));
         router.claimDeposit(vault_, self, self);
@@ -253,8 +255,8 @@ contract VaultRouterTest is BaseTest {
         router.requestDeposit{value: fuel}(address(vault2), amount2, self, self);
 
         // trigger - deposit order fulfillment
-        uint128 assetId1 = poolManager.assetToId(address(erc20X));
-        uint128 assetId2 = poolManager.assetToId(address(erc20Y));
+        uint128 assetId1 = poolManager.assetToId(address(erc20X), erc20TokenId);
+        uint128 assetId2 = poolManager.assetToId(address(erc20Y), erc20TokenId);
         (uint128 tranchePayout1) = fulfillDepositRequest(vault1, assetId1, amount1, self);
         (uint128 tranchePayout2) = fulfillDepositRequest(vault2, assetId2, amount2, self);
 
@@ -293,8 +295,8 @@ contract VaultRouterTest is BaseTest {
         router.requestDeposit{value: fuel}(address(vault1), amount1, self, self);
         router.requestDeposit{value: fuel}(address(vault2), amount2, self, self);
 
-        uint128 assetId1 = poolManager.assetToId(address(erc20X));
-        uint128 assetId2 = poolManager.assetToId(address(erc20Y));
+        uint128 assetId1 = poolManager.assetToId(address(erc20X), erc20TokenId);
+        uint128 assetId2 = poolManager.assetToId(address(erc20Y), erc20TokenId);
         (uint128 tranchePayout1) = fulfillDepositRequest(vault1, assetId1, amount1, self);
         (uint128 tranchePayout2) = fulfillDepositRequest(vault2, assetId2, amount2, self);
         router.claimDeposit(address(vault1), self, self);
@@ -337,7 +339,7 @@ contract VaultRouterTest is BaseTest {
     function _testMulticallingApproveVaultAndExecuteLockedDepositRequest(uint256 amount, bool snap) internal {
         amount = uint128(bound(amount, 4, MAX_UINT128));
 
-        address vault_ = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -359,7 +361,6 @@ contract VaultRouterTest is BaseTest {
         calls[0] = abi.encodeWithSelector(router.executeLockedDepositRequest.selector, vault_, self, fuel);
         router.multicall{value: fuel}(calls);
 
-        uint128 assetId = poolManager.assetToId(address(erc20));
         (uint128 tranchePayout) = fulfillDepositRequest(vault, assetId, amount, self);
 
         assertEq(vault.maxMint(self), tranchePayout);
@@ -373,7 +374,7 @@ contract VaultRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         // deposit
-        address vault_ = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
         erc20.mint(self, amount);
@@ -384,7 +385,6 @@ contract VaultRouterTest is BaseTest {
         uint256 fuel = estimateGas();
         router.requestDeposit{value: fuel}(vault_, amount, self, self);
 
-        uint128 assetId = poolManager.assetToId(address(erc20));
         (uint128 tranchePayout) = fulfillDepositRequest(vault, assetId, amount, self);
         ITranche tranche = ITranche(address(vault.share()));
         tranche.approve(address(router), tranchePayout);
@@ -420,8 +420,8 @@ contract VaultRouterTest is BaseTest {
         router.multicall{value: gas * calls.length}(calls);
 
         // trigger - deposit order fulfillment
-        uint128 assetId1 = poolManager.assetToId(address(erc20X));
-        uint128 assetId2 = poolManager.assetToId(address(erc20Y));
+        uint128 assetId1 = poolManager.assetToId(address(erc20X), erc20TokenId);
+        uint128 assetId2 = poolManager.assetToId(address(erc20Y), erc20TokenId);
         (uint128 tranchePayout1) = fulfillDepositRequest(vault1, assetId1, amount1, self);
         (uint128 tranchePayout2) = fulfillDepositRequest(vault2, assetId2, amount2, self);
 
@@ -440,9 +440,8 @@ contract VaultRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        address vault_ = deployVault(
-            5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), defaultAssetId, address(wrapper)
-        );
+        (address vault_, uint128 assetId) =
+            deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -463,7 +462,6 @@ contract VaultRouterTest is BaseTest {
         calls[2] = abi.encodeWithSelector(router.executeLockedDepositRequest.selector, vault_, investor, fuel);
         router.multicall{value: fuel}(calls);
 
-        uint128 assetId = poolManager.assetToId(address(wrapper));
         (uint128 tranchePayout) = fulfillDepositRequest(vault, assetId, amount, investor);
 
         assertEq(vault.maxMint(investor), tranchePayout);
@@ -477,9 +475,8 @@ contract VaultRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        address vault_ = deployVault(
-            5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), defaultAssetId, address(wrapper)
-        );
+        (address vault_,) =
+            deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -507,9 +504,8 @@ contract VaultRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        address vault_ = deployVault(
-            5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), defaultAssetId, address(wrapper)
-        );
+        (address vault_,) =
+            deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -534,9 +530,8 @@ contract VaultRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        address vault_ = deployVault(
-            5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), defaultAssetId, address(wrapper)
-        );
+        (address vault_, uint128 assetId) =
+            deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -554,7 +549,6 @@ contract VaultRouterTest is BaseTest {
         uint256 fuel = estimateGas();
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
         router.executeLockedDepositRequest{value: fuel}(vault_, investor);
-        uint128 assetId = poolManager.assetToId(address(wrapper));
         (uint128 tranchePayout) = fulfillDepositRequest(vault, assetId, amount, investor);
 
         ITranche tranche = ITranche(address(vault.share()));
@@ -591,9 +585,8 @@ contract VaultRouterTest is BaseTest {
         address routerEscrowAddress = address(routerEscrow);
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        address vault_ = deployVault(
-            5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), defaultAssetId, address(wrapper)
-        );
+        (address vault_,) =
+            deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
         vm.label(vault_, "vault");
 
         erc20.mint(self, underlyingAmount);
@@ -666,7 +659,7 @@ contract VaultRouterTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128));
         vm.assume(amount % 2 == 0);
 
-        address vault_ = deploySimpleVault();
+        (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -729,10 +722,10 @@ contract VaultRouterTest is BaseTest {
         erc20Y = _newErc20("Y's Dollar", "USDY", 6);
         vm.label(address(erc20X), "erc20X");
         vm.label(address(erc20Y), "erc20Y");
-        address vault1_ =
-            deployVault(5, 6, restrictionManager, "name1", "symbol1", bytes16(bytes("1")), 1, address(erc20X));
-        address vault2_ =
-            deployVault(4, 6, restrictionManager, "name2", "symbol2", bytes16(bytes("2")), 2, address(erc20Y));
+        (address vault1_,) =
+            deployVault(5, 6, restrictionManager, "name1", "symbol1", bytes16(bytes("1")), address(erc20X), 0, 0);
+        (address vault2_,) =
+            deployVault(4, 6, restrictionManager, "name2", "symbol2", bytes16(bytes("2")), address(erc20Y), 0, 0);
         vault1 = ERC7540Vault(vault1_);
         vault2 = ERC7540Vault(vault2_);
         vm.label(vault1_, "vault1");
@@ -753,9 +746,8 @@ contract VaultRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         MockReentrantERC20Wrapper1 wrapper = new MockReentrantERC20Wrapper1(address(erc20), address(router));
-        address vault_ = deployVault(
-            5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), defaultAssetId, address(wrapper)
-        );
+        (address vault_,) =
+            deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
         vm.label(vault_, "vault");
 
         address investor = makeAddr("investor");
