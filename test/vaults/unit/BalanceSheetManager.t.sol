@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import "test/vaults/BaseTest.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {d18} from "src/misc/types/D18.sol";
 
 import {Meta, JournalEntry} from "src/common/types/JournalEntry.sol";
@@ -13,6 +14,7 @@ import {BalanceSheetManager} from "src/vaults/BalanceSheetManager.sol";
 
 contract BalanceSheetManagerTest is BaseTest {
     using MessageLib for *;
+    using CastLib for *;
 
     uint128 defaultAmount;
 
@@ -20,6 +22,28 @@ contract BalanceSheetManagerTest is BaseTest {
         super.setUp();
         defaultAmount = 100;
         poolManager.registerAsset(address(erc20), erc20TokenId, defaultChainId);
+        poolManager.addPool(defaultPoolId);
+        poolManager.addTranche(
+            defaultPoolId,
+            defaultShareClassId,
+            "testShareClass",
+            "tsc",
+            defaultDecimals,
+            bytes32(""),
+            restrictionManager
+        );
+        poolManager.updateRestriction(
+            defaultPoolId,
+            defaultShareClassId,
+            MessageLib.UpdateRestrictionMember({user: address(this).toBytes32(), validUntil: MAX_UINT64}).serialize()
+        );
+        // In order for allowances to work during issuance, the balanceSheetManager must be allowed to transfer
+        poolManager.updateRestriction(
+            defaultPoolId,
+            defaultShareClassId,
+            MessageLib.UpdateRestrictionMember({user: address(balanceSheetManager).toBytes32(), validUntil: MAX_UINT64})
+                .serialize()
+        );
     }
 
     function _defaultMeta() internal returns (Meta memory) {
@@ -261,7 +285,31 @@ contract BalanceSheetManagerTest is BaseTest {
         assertEq(erc20.balanceOf(address(this)), defaultAmount);
     }
 
-    function testIssue() public {}
+    function testIssue() public {
+        vm.prank(randomUser);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        balanceSheetManager.issue(defaultPoolId, defaultShareClassId, address(this), defaultAmount, false);
+
+        IERC20 token = IERC20(poolManager.tranche(defaultPoolId, defaultShareClassId));
+        assertEq(token.balanceOf(address(this)), 0);
+
+        balanceSheetManager.issue(defaultPoolId, defaultShareClassId, address(this), defaultAmount, false);
+
+        assertEq(token.balanceOf(address(this)), defaultAmount);
+    }
+
+    function testIssueAsAllowance() public {
+        vm.prank(randomUser);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        balanceSheetManager.issue(defaultPoolId, defaultShareClassId, address(this), defaultAmount, true);
+
+        IERC20 token = IERC20(poolManager.tranche(defaultPoolId, defaultShareClassId));
+        assertEq(token.balanceOf(address(this)), 0);
+
+        balanceSheetManager.issue(defaultPoolId, defaultShareClassId, address(this), defaultAmount, true);
+
+        token.transferFrom(address(balanceSheetManager), address(this), defaultAmount);
+        assertEq(token.balanceOf(address(this)), defaultAmount);    }
 
     function testRevoke() public {}
 

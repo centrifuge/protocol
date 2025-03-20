@@ -53,6 +53,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     address randomUser = makeAddr("randomUser");
 
     uint128 constant MAX_UINT128 = type(uint128).max;
+    uint64 constant MAX_UINT64 = type(uint64).max;
     uint256 constant GATEWAY_INITIAL_BALANCE = 10 ether;
 
     // default values
