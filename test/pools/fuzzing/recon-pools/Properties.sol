@@ -57,6 +57,7 @@ abstract contract Properties is BeforeAfter, Asserts {
             }
         }
     }
+    
     /// @dev Property: User pending redemption is never greater than the total redemption
     function property_cancelled_redemption_never_greater_than_requested() public {
         address[] memory _actors = _getActors();

@@ -158,6 +158,7 @@ abstract contract AdminTargets is
     }  
 
     /// @dev Property: after successfully calling cancelDepositRequest for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
+    /// @dev Property: after successfully calling cancelDepositRequest for an investor, their depositRequest[..].pending is zero
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
     function poolRouter_cancelDepositRequest(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asAdmin {
         AssetId depositAssetId = newAssetId(isoCode);
@@ -165,10 +166,11 @@ abstract contract AdminTargets is
 
         poolRouter.cancelDepositRequest(poolId, scId, investor, depositAssetId);
 
-        (, uint32 lastUpdate) = multiShareClass.depositRequest(scId, depositAssetId, investor);
+        (uint128 pending, uint32 lastUpdate) = multiShareClass.depositRequest(scId, depositAssetId, investor);
         uint32 epochId = multiShareClass.epochId(poolId);
 
-        eq(lastUpdate, epochId, "lastUpdate is not equal to epochId");
+        eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId");
+        eq(pending, 0, "pending is not zero");
     }
 
     function poolRouter_cancelRedeemRequest(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asAdmin {
