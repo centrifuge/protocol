@@ -128,7 +128,10 @@ contract BalanceSheetManager is
     }
 
     /// @inheritdoc IBalanceSheetManager
-    function updateValue(uint64 poolId, bytes16 scId, uint128 assetId, D18 pricePerUnit, uint256 timestamp) external auth {
+    function updateValue(uint64 poolId, bytes16 scId, uint128 assetId, D18 pricePerUnit, uint256 timestamp)
+        external
+        auth
+    {
         sender.sendUpdateHoldingValue(poolId, scId, assetId, pricePerUnit, timestamp);
     }
 
