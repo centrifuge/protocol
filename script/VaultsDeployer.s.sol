@@ -74,6 +74,7 @@ contract VaultsDeployer is CommonDeployer {
 
         // Rely on BalanceSheetManager
         messageProcessor.rely(address(balanceSheetManager));
+        escrow.rely(address(balanceSheetManager));
 
         // Rely on Root
         vaultRouter.rely(address(root));

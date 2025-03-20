@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import "test/vaults/BaseTest.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IERC20} from "src/misc/interfaces/IERC20.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {d18} from "src/misc/types/D18.sol";
 
 import {Meta, JournalEntry} from "src/common/types/JournalEntry.sol";
@@ -19,6 +19,7 @@ contract BalanceSheetManagerTest is BaseTest {
     function setUp() public override {
         super.setUp();
         defaultAmount = 100;
+        poolManager.registerAsset(address(erc20), erc20TokenId, defaultChainId);
     }
 
     function _defaultMeta() internal returns (Meta memory) {
@@ -127,6 +128,25 @@ contract BalanceSheetManagerTest is BaseTest {
             d18(100, 5),
             _defaultMeta()
         );
+
+        balanceSheetManager.update(
+            defaultPoolId,
+            defaultShareClassId,
+            MessageLib.UpdateContractPermission({who: randomUser, allowed: false}).serialize()
+        );
+
+        vm.prank(randomUser);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        balanceSheetManager.deposit(
+            defaultPoolId,
+            defaultShareClassId,
+            address(erc20),
+            erc20TokenId,
+            address(this),
+            defaultAmount,
+            d18(100, 5),
+            _defaultMeta()
+        );
     }
 
     // --- IBalanceSheetManager ---
@@ -145,7 +165,7 @@ contract BalanceSheetManagerTest is BaseTest {
             _defaultMeta()
         );
 
-        vm.expectRevert(IERC20.InsufficientBalance.selector);
+        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
         balanceSheetManager.deposit(
             defaultPoolId,
             defaultShareClassId,
