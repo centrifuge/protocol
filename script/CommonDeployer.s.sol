@@ -29,8 +29,6 @@ contract CommonDeployer is Script {
     Gateway public gateway;
     MessageProcessor public messageProcessor;
 
-    uint16 public cchainId;
-
     constructor() {
         // If no salt is provided, a pseudo-random salt is generated,
         // thus effectively making the deployment non-deterministic
@@ -43,8 +41,6 @@ contract CommonDeployer is Script {
         if (address(root) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
-
-        cchainId = centrifugeChainId;
 
         root = new Root(DELAY, deployer);
 
