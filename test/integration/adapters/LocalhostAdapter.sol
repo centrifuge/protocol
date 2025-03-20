@@ -16,8 +16,8 @@ contract LocalhostAdapter is Auth, IAdapter {
     }
 
     /// @inheritdoc IAdapter
-    function send(uint32 centrifugeId, bytes calldata payload, uint256, address) external payable {
-        gateway.handle(centrifugeId, payload);
+    function send(uint32 destinationChainId, bytes calldata payload, uint256, address) external payable {
+        gateway.handle(destinationChainId, payload);
     }
 
     /// @inheritdoc IAdapter
