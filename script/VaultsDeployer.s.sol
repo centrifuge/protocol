@@ -30,7 +30,7 @@ contract VaultsDeployer is CommonDeployer {
     address public trancheFactory;
 
     function deployVaults(ISafe adminSafe_, address deployer) public {
-        super.deployCommon(adminSafe_, deployer);
+        deployCommon(adminSafe_, deployer);
 
         escrow = new Escrow{salt: SALT}(deployer);
         routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow2"))}(deployer);
@@ -108,7 +108,7 @@ contract VaultsDeployer is CommonDeployer {
     }
 
     function removeVaultsDeployerAccess(address deployer) public {
-        super.removeCommonDeployerAccess(deployer);
+        removeCommonDeployerAccess(deployer);
 
         IAuth(vaultFactory).deny(deployer);
         IAuth(trancheFactory).deny(deployer);

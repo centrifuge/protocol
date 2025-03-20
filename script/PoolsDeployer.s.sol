@@ -40,7 +40,7 @@ contract PoolsDeployer is CommonDeployer {
     AssetId immutable USD = newAssetId(840);
 
     function deployPools(ISafe adminSafe_, address deployer) public {
-        super.deployCommon(adminSafe_, deployer);
+        deployCommon(adminSafe_, deployer);
 
         poolRegistry = new PoolRegistry(deployer);
         assetRegistry = new AssetRegistry(deployer);
@@ -78,7 +78,7 @@ contract PoolsDeployer is CommonDeployer {
     }
 
     function removePoolsDeployerAccess(address deployer) public {
-        super.removeCommonDeployerAccess(deployer);
+        removeCommonDeployerAccess(deployer);
 
         poolRegistry.deny(deployer);
         assetRegistry.deny(deployer);
