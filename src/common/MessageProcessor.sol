@@ -51,13 +51,13 @@ contract MessageProcessor is Auth, IMessageProcessor {
     uint16 public centrifugeChainId;
 
     constructor(
-        uint16 centridugeChainId_,
+        uint16 centrifugeChainId_,
         IMessageSender gateway_,
         IRoot root_,
         IGasService gasService_,
         address deployer
     ) Auth(deployer) {
-        centrifugeChainId = centridugeChainId_;
+        centrifugeChainId = centrifugeChainId_;
         gateway = gateway_;
         root = root_;
         gasService = gasService_;
