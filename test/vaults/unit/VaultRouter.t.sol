@@ -33,9 +33,9 @@ contract VaultRouterTest is BaseTest {
         // redeploying within test to increase coverage
         new VaultRouter(address(routerEscrow), address(gateway), address(poolManager));
 
-        assertEq(address(router.escrow()), address(routerEscrow));
-        assertEq(address(router.gateway()), address(gateway));
-        assertEq(address(router.poolManager()), address(poolManager));
+        assertEq(address(vaultRouter.escrow()), address(routerEscrow));
+        assertEq(address(vaultRouter.gateway()), address(gateway));
+        assertEq(address(vaultRouter.poolManager()), address(poolManager));
     }
 
     function testGetVault() public {
@@ -43,14 +43,14 @@ contract VaultRouterTest is BaseTest {
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
-        assertEq(router.getVault(vault.poolId(), vault.trancheId(), address(erc20)), vault_);
+        assertEq(vaultRouter.getVault(vault.poolId(), vault.trancheId(), address(erc20)), vault_);
     }
 
     function testRecoverTokens() public {
         uint256 amount = 100;
-        erc20.mint(address(router), amount);
+        erc20.mint(address(vaultRouter), amount);
         vm.prank(address(root));
-        router.recoverTokens(address(erc20), erc20TokenId, address(this), amount);
+        vaultRouter.recoverTokens(address(erc20), erc20TokenId, address(this), amount);
         assertEq(erc20.balanceOf(address(this)), amount);
     }
 
@@ -65,16 +65,16 @@ contract VaultRouterTest is BaseTest {
         uint256 gas = estimateGas();
 
         vm.expectRevert("ERC7540Vault/invalid-owner");
-        router.requestDeposit{value: gas}(vault_, amount, self, self);
-        router.enable(vault_);
+        vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
+        vaultRouter.enable(vault_);
 
         vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        router.requestDeposit{value: 0}(vault_, amount, self, self);
+        vaultRouter.requestDeposit{value: 0}(vault_, amount, self, self);
 
         vm.expectRevert("Gateway/not-enough-gas-funds");
-        router.requestDeposit{value: gas - 1}(vault_, amount, self, self);
+        vaultRouter.requestDeposit{value: gas - 1}(vault_, amount, self, self);
 
-        router.requestDeposit{value: gas}(vault_, amount, self, self);
+        vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
         assertEq(erc20.balanceOf(address(escrow)), amount);
     }
 
@@ -86,12 +86,12 @@ contract VaultRouterTest is BaseTest {
         assertEq(erc20.balanceOf(address(routerEscrow)), 0);
 
         erc20.mint(self, amount);
-        erc20.approve(address(router), amount);
+        erc20.approve(address(vaultRouter), amount);
 
         vm.expectRevert("PoolManager/unknown-vault");
-        router.lockDepositRequest(makeAddr("maliciousVault"), amount, self, self);
+        vaultRouter.lockDepositRequest(makeAddr("maliciousVault"), amount, self, self);
 
-        router.lockDepositRequest(vault_, amount, self, self);
+        vaultRouter.lockDepositRequest(vault_, amount, self, self);
 
         assertEq(erc20.balanceOf(address(routerEscrow)), amount);
     }
@@ -103,15 +103,15 @@ contract VaultRouterTest is BaseTest {
         uint256 amount = 100 * 10 ** 18;
 
         erc20.mint(self, amount);
-        erc20.approve(address(router), amount);
+        erc20.approve(address(vaultRouter), amount);
 
         vm.expectRevert(bytes("VaultRouter/no-locked-balance"));
-        router.unlockDepositRequest(vault_, self);
+        vaultRouter.unlockDepositRequest(vault_, self);
 
-        router.lockDepositRequest(vault_, amount, self, self);
+        vaultRouter.lockDepositRequest(vault_, amount, self, self);
         assertEq(erc20.balanceOf(address(routerEscrow)), amount);
         assertEq(erc20.balanceOf(self), 0);
-        router.unlockDepositRequest(vault_, self);
+        vaultRouter.unlockDepositRequest(vault_, self);
         assertEq(erc20.balanceOf(address(routerEscrow)), 0);
         assertEq(erc20.balanceOf(self), amount);
     }
@@ -125,10 +125,10 @@ contract VaultRouterTest is BaseTest {
         assertEq(erc20.balanceOf(address(routerEscrow)), 0);
 
         erc20.mint(self, amount);
-        erc20.approve(address(router), amount);
+        erc20.approve(address(vaultRouter), amount);
 
-        router.enable(vault_);
-        router.lockDepositRequest(vault_, amount, self, self);
+        vaultRouter.enable(vault_);
+        vaultRouter.lockDepositRequest(vault_, amount, self, self);
         assertEq(erc20.balanceOf(address(routerEscrow)), amount);
         assertEq(vault.pendingCancelDepositRequest(0, self), false);
 
@@ -136,16 +136,16 @@ contract VaultRouterTest is BaseTest {
         vm.deal(address(this), 10 ether);
 
         vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        router.cancelDepositRequest{value: 0}(vault_);
+        vaultRouter.cancelDepositRequest{value: 0}(vault_);
 
         vm.expectRevert("InvestmentManager/no-pending-deposit-request");
-        router.cancelDepositRequest{value: fuel}(vault_);
+        vaultRouter.cancelDepositRequest{value: fuel}(vault_);
 
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
-        router.executeLockedDepositRequest{value: fuel}(vault_, self);
+        vaultRouter.executeLockedDepositRequest{value: fuel}(vault_, self);
         assertEq(vault.pendingDepositRequest(0, self), amount);
 
-        router.cancelDepositRequest{value: fuel}(vault_);
+        vaultRouter.cancelDepositRequest{value: fuel}(vault_);
         assertTrue(vault.pendingCancelDepositRequest(0, self));
     }
 
@@ -161,11 +161,11 @@ contract VaultRouterTest is BaseTest {
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
 
         uint256 gas = estimateGas() + GAS_BUFFER;
-        router.enable(vault_);
-        router.requestDeposit{value: gas}(vault_, amount, self, self);
+        vaultRouter.enable(vault_);
+        vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
         assertEq(erc20.balanceOf(address(escrow)), amount);
 
-        router.cancelDepositRequest{value: gas}(vault_);
+        vaultRouter.cancelDepositRequest{value: gas}(vault_);
         assertEq(vault.pendingCancelDepositRequest(0, self), true);
         assertEq(erc20.balanceOf(address(escrow)), amount);
         centrifugeChain.isFulfilledCancelDepositRequest(
@@ -176,12 +176,12 @@ contract VaultRouterTest is BaseTest {
         address nonMember = makeAddr("nonMember");
         vm.prank(nonMember);
         vm.expectRevert("VaultRouter/invalid-sender");
-        router.claimCancelDepositRequest(vault_, nonMember, self);
+        vaultRouter.claimCancelDepositRequest(vault_, nonMember, self);
 
         vm.expectRevert("InvestmentManager/transfer-not-allowed");
-        router.claimCancelDepositRequest(vault_, nonMember, self);
+        vaultRouter.claimCancelDepositRequest(vault_, nonMember, self);
 
-        router.claimCancelDepositRequest(vault_, self, self);
+        vaultRouter.claimCancelDepositRequest(vault_, self, self);
         assertEq(erc20.balanceOf(address(escrow)), 0);
         assertEq(erc20.balanceOf(self), amount);
     }
@@ -196,8 +196,8 @@ contract VaultRouterTest is BaseTest {
         erc20.approve(address(vault_), amount);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
         uint256 gas = estimateGas();
-        router.enable(vault_);
-        router.requestDeposit{value: gas}(vault_, amount, self, self);
+        vaultRouter.enable(vault_);
+        vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
         IERC20 share = IERC20(address(vault.share()));
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), assetId, uint128(amount), uint128(amount)
@@ -206,15 +206,15 @@ contract VaultRouterTest is BaseTest {
         assertEq(share.balanceOf(address(self)), amount);
 
         // Then redeem
-        share.approve(address(router), amount);
+        share.approve(address(vaultRouter), amount);
 
         vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        router.requestRedeem{value: 0}(vault_, amount, self, self);
+        vaultRouter.requestRedeem{value: 0}(vault_, amount, self, self);
 
         vm.expectRevert("Gateway/not-enough-gas-funds");
-        router.requestRedeem{value: gas - 1}(vault_, amount, self, self);
+        vaultRouter.requestRedeem{value: gas - 1}(vault_, amount, self, self);
 
-        router.requestRedeem{value: gas}(vault_, amount, self, self);
+        vaultRouter.requestRedeem{value: gas}(vault_, amount, self, self);
         assertEq(share.balanceOf(address(self)), 0);
     }
 
@@ -228,8 +228,8 @@ contract VaultRouterTest is BaseTest {
         erc20.approve(address(vault_), amount);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
         uint256 gas = estimateGas();
-        router.enable(vault_);
-        router.requestDeposit{value: gas}(vault_, amount, self, self);
+        vaultRouter.enable(vault_);
+        vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
         IERC20 share = IERC20(address(vault.share()));
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), assetId, uint128(amount), uint128(amount)
@@ -238,19 +238,19 @@ contract VaultRouterTest is BaseTest {
         assertEq(share.balanceOf(address(self)), amount);
 
         // Then redeem
-        share.approve(address(router), amount);
-        router.requestRedeem{value: gas}(vault_, amount, self, self);
+        share.approve(address(vaultRouter), amount);
+        vaultRouter.requestRedeem{value: gas}(vault_, amount, self, self);
         assertEq(share.balanceOf(address(self)), 0);
 
         vm.deal(address(this), 10 ether);
 
         vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        router.cancelRedeemRequest{value: 0}(vault_);
+        vaultRouter.cancelRedeemRequest{value: 0}(vault_);
 
         vm.expectRevert("Gateway/not-enough-gas-funds");
-        router.cancelRedeemRequest{value: gas - 1}(vault_);
+        vaultRouter.cancelRedeemRequest{value: gas - 1}(vault_);
 
-        router.cancelRedeemRequest{value: gas}(vault_);
+        vaultRouter.cancelRedeemRequest{value: gas}(vault_);
         assertEq(vault.pendingCancelRedeemRequest(0, self), true);
     }
 
@@ -264,8 +264,8 @@ contract VaultRouterTest is BaseTest {
         erc20.approve(address(vault_), amount);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
         uint256 gas = estimateGas() + GAS_BUFFER;
-        router.enable(vault_);
-        router.requestDeposit{value: gas}(vault_, amount, self, self);
+        vaultRouter.enable(vault_);
+        vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
         IERC20 share = IERC20(address(vault.share()));
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), assetId, uint128(amount), uint128(amount)
@@ -275,11 +275,11 @@ contract VaultRouterTest is BaseTest {
 
         // Then redeem
         share.approve(vault_, amount);
-        share.approve(address(router), amount);
-        router.requestRedeem{value: gas}(vault_, amount, self, self);
+        share.approve(address(vaultRouter), amount);
+        vaultRouter.requestRedeem{value: gas}(vault_, amount, self, self);
         assertEq(share.balanceOf(address(self)), 0);
 
-        router.cancelRedeemRequest{value: gas}(vault_);
+        vaultRouter.cancelRedeemRequest{value: gas}(vault_);
         assertEq(vault.pendingCancelRedeemRequest(0, self), true);
 
         centrifugeChain.isFulfilledCancelRedeemRequest(
@@ -289,9 +289,9 @@ contract VaultRouterTest is BaseTest {
         address sender = makeAddr("maliciousUser");
         vm.prank(sender);
         vm.expectRevert("VaultRouter/invalid-sender");
-        router.claimCancelRedeemRequest(vault_, sender, self);
+        vaultRouter.claimCancelRedeemRequest(vault_, sender, self);
 
-        router.claimCancelRedeemRequest(vault_, self, self);
+        vaultRouter.claimCancelRedeemRequest(vault_, self, self);
         assertEq(share.balanceOf(address(self)), amount);
     }
 
@@ -304,7 +304,7 @@ contract VaultRouterTest is BaseTest {
         uint256 privateKey = 0xBEEF;
         address owner = vm.addr(privateKey);
         vm.label(owner, "owner");
-        vm.label(address(router), "spender");
+        vm.label(address(vaultRouter), "spender");
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(
             privateKey,
@@ -312,15 +312,15 @@ contract VaultRouterTest is BaseTest {
                 abi.encodePacked(
                     "\x19\x01",
                     erc20.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, owner, address(router), 1e18, 0, block.timestamp))
+                    keccak256(abi.encode(PERMIT_TYPEHASH, owner, address(vaultRouter), 1e18, 0, block.timestamp))
                 )
             )
         );
 
         vm.prank(owner);
-        router.permit(address(erc20), address(router), 1e18, block.timestamp, v, r, s);
+        vaultRouter.permit(address(erc20), address(vaultRouter), 1e18, block.timestamp, v, r, s);
 
-        assertEq(erc20.allowance(owner, address(router)), 1e18);
+        assertEq(erc20.allowance(owner, address(vaultRouter)), 1e18);
         assertEq(erc20.nonces(owner), 1);
     }
 
@@ -341,19 +341,21 @@ contract VaultRouterTest is BaseTest {
         vm.prank(address(root));
         share.mint(self, 100 * 10 ** 18);
 
-        share.approve(address(router), amount);
+        share.approve(address(vaultRouter), amount);
         uint256 fuel = estimateGas();
 
         vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        router.transferTrancheTokens{value: 0}(vault_, destinationChainId, destinationAddress, uint128(amount));
+        vaultRouter.transferTrancheTokens{value: 0}(vault_, destinationChainId, destinationAddress, uint128(amount));
 
         vm.expectRevert("Gateway/not-enough-gas-funds");
-        router.transferTrancheTokens{value: fuel - 1}(vault_, destinationChainId, destinationAddress, uint128(amount));
+        vaultRouter.transferTrancheTokens{value: fuel - 1}(
+            vault_, destinationChainId, destinationAddress, uint128(amount)
+        );
 
         snapStart("VaultRouter_transferTrancheTokens");
-        router.transferTrancheTokens{value: fuel}(vault_, destinationChainId, destinationAddress, uint128(amount));
+        vaultRouter.transferTrancheTokens{value: fuel}(vault_, destinationChainId, destinationAddress, uint128(amount));
         snapEnd();
-        assertEq(share.balanceOf(address(router)), 0);
+        assertEq(share.balanceOf(address(vaultRouter)), 0);
         assertEq(share.balanceOf(address(this)), 0);
     }
 
@@ -369,27 +371,29 @@ contract VaultRouterTest is BaseTest {
         bytes32 destinationAddressAsBytes32 = destinationAddress.toBytes32();
 
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), address(this), type(uint64).max);
-        // centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), address(router), type(uint64).max);
+        // centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), address(vaultRouter), type(uint64).max);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), destinationAddress, type(uint64).max);
 
         vm.prank(address(root));
         share.mint(self, 100 * 10 ** 18);
 
-        share.approve(address(router), amount);
+        share.approve(address(vaultRouter), amount);
         uint256 fuel = estimateGas();
 
         vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        router.transferTrancheTokens{value: 0}(vault_, destinationChainId, destinationAddressAsBytes32, uint128(amount));
+        vaultRouter.transferTrancheTokens{value: 0}(
+            vault_, destinationChainId, destinationAddressAsBytes32, uint128(amount)
+        );
 
         vm.expectRevert("Gateway/not-enough-gas-funds");
-        router.transferTrancheTokens{value: fuel - 1}(
+        vaultRouter.transferTrancheTokens{value: fuel - 1}(
             vault_, destinationChainId, destinationAddressAsBytes32, uint128(amount)
         );
 
-        router.transferTrancheTokens{value: fuel}(
+        vaultRouter.transferTrancheTokens{value: fuel}(
             vault_, destinationChainId, destinationAddressAsBytes32, uint128(amount)
         );
-        assertEq(share.balanceOf(address(router)), 0);
+        assertEq(share.balanceOf(address(vaultRouter)), 0);
         assertEq(share.balanceOf(address(this)), 0);
     }
 
@@ -397,14 +401,14 @@ contract VaultRouterTest is BaseTest {
         (address vault_,) = deploySimpleVault();
         vm.label(vault_, "vault");
 
-        assertFalse(ERC7540Vault(vault_).isOperator(self, address(router)));
-        assertEq(router.isEnabled(vault_, self), false);
-        router.enable(vault_);
-        assertTrue(ERC7540Vault(vault_).isOperator(self, address(router)));
-        assertEq(router.isEnabled(vault_, self), true);
-        router.disable(vault_);
-        assertFalse(ERC7540Vault(vault_).isOperator(self, address(router)));
-        assertEq(router.isEnabled(vault_, self), false);
+        assertFalse(ERC7540Vault(vault_).isOperator(self, address(vaultRouter)));
+        assertEq(vaultRouter.isEnabled(vault_, self), false);
+        vaultRouter.enable(vault_);
+        assertTrue(ERC7540Vault(vault_).isOperator(self, address(vaultRouter)));
+        assertEq(vaultRouter.isEnabled(vault_, self), true);
+        vaultRouter.disable(vault_);
+        assertFalse(ERC7540Vault(vault_).isOperator(self, address(vaultRouter)));
+        assertEq(vaultRouter.isEnabled(vault_, self), false);
     }
 
     function testWrap() public {
@@ -414,26 +418,26 @@ contract VaultRouterTest is BaseTest {
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
 
         vm.expectRevert(bytes("VaultRouter/invalid-owner"));
-        router.wrap(address(wrapper), amount, receiver, makeAddr("ownerIsNeitherCallerNorRouter"));
+        vaultRouter.wrap(address(wrapper), amount, receiver, makeAddr("ownerIsNeitherCallerNorRouter"));
 
         vm.expectRevert(bytes("VaultRouter/zero-balance"));
-        router.wrap(address(wrapper), amount, receiver, self);
+        vaultRouter.wrap(address(wrapper), amount, receiver, self);
 
         erc20.mint(self, balance);
-        erc20.approve(address(router), amount);
+        erc20.approve(address(vaultRouter), amount);
         wrapper.setFail("depositFor", true);
         vm.expectRevert(bytes("VaultRouter/wrap-failed"));
-        router.wrap(address(wrapper), amount, receiver, self);
+        vaultRouter.wrap(address(wrapper), amount, receiver, self);
 
         wrapper.setFail("depositFor", false);
-        router.wrap(address(wrapper), amount, receiver, self);
+        vaultRouter.wrap(address(wrapper), amount, receiver, self);
         assertEq(wrapper.balanceOf(receiver), balance);
         assertEq(erc20.balanceOf(self), 0);
 
-        erc20.mint(address(router), balance);
-        router.wrap(address(wrapper), amount, receiver, address(router));
+        erc20.mint(address(vaultRouter), balance);
+        vaultRouter.wrap(address(wrapper), amount, receiver, address(vaultRouter));
         assertEq(wrapper.balanceOf(receiver), 200 * 10 ** 18);
-        assertEq(erc20.balanceOf(address(router)), 0);
+        assertEq(erc20.balanceOf(address(vaultRouter)), 0);
     }
 
     function testUnwrap() public {
@@ -441,27 +445,27 @@ contract VaultRouterTest is BaseTest {
         uint256 balance = 100 * 10 ** 18;
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
         erc20.mint(self, balance);
-        erc20.approve(address(router), amount);
+        erc20.approve(address(vaultRouter), amount);
 
         vm.expectRevert(bytes("VaultRouter/zero-balance"));
-        router.unwrap(address(wrapper), amount, self);
+        vaultRouter.unwrap(address(wrapper), amount, self);
 
-        router.wrap(address(wrapper), amount, address(router), self);
+        vaultRouter.wrap(address(wrapper), amount, address(vaultRouter), self);
         wrapper.setFail("withdrawTo", true);
         vm.expectRevert(bytes("VaultRouter/unwrap-failed"));
-        router.unwrap(address(wrapper), amount, self);
+        vaultRouter.unwrap(address(wrapper), amount, self);
         wrapper.setFail("withdrawTo", false);
 
-        assertEq(wrapper.balanceOf(address(router)), balance);
+        assertEq(wrapper.balanceOf(address(vaultRouter)), balance);
         assertEq(erc20.balanceOf(self), 0);
-        router.unwrap(address(wrapper), amount, self);
-        assertEq(wrapper.balanceOf(address(router)), 0);
+        vaultRouter.unwrap(address(wrapper), amount, self);
+        assertEq(wrapper.balanceOf(address(vaultRouter)), 0);
         assertEq(erc20.balanceOf(self), balance);
     }
 
     function testEstimate() public view {
         bytes memory message = "IRRELEVANT";
-        uint256 estimated = router.estimate(CHAIN_ID, message);
+        uint256 estimated = vaultRouter.estimate(CHAIN_ID, message);
         (, uint256 gatewayEstimated) = gateway.estimate(CHAIN_ID, message);
         assertEq(estimated, gatewayEstimated);
     }
@@ -474,24 +478,24 @@ contract VaultRouterTest is BaseTest {
 
         vm.deal(self, 1 ether);
         erc20.mint(self, amount);
-        erc20.approve(address(router), amount);
+        erc20.approve(address(vaultRouter), amount);
 
-        bool canUserExecute = router.hasPermissions(vault_, self);
+        bool canUserExecute = vaultRouter.hasPermissions(vault_, self);
         assertFalse(canUserExecute);
 
-        router.lockDepositRequest(vault_, amount, self, self);
+        vaultRouter.lockDepositRequest(vault_, amount, self, self);
         assertEq(erc20.balanceOf(address(routerEscrow)), amount);
 
-        uint256 gasLimit = router.estimate(CHAIN_ID, "irrelevant_payload");
+        uint256 gasLimit = vaultRouter.estimate(CHAIN_ID, "irrelevant_payload");
 
         vm.expectRevert(bytes("InvestmentManager/transfer-not-allowed"));
-        router.executeLockedDepositRequest{value: gasLimit}(vault_, self);
+        vaultRouter.executeLockedDepositRequest{value: gasLimit}(vault_, self);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
 
-        canUserExecute = router.hasPermissions(vault_, self);
+        canUserExecute = vaultRouter.hasPermissions(vault_, self);
         assertTrue(canUserExecute);
 
-        router.executeLockedDepositRequest{value: gasLimit}(vault_, self);
+        vaultRouter.executeLockedDepositRequest{value: gasLimit}(vault_, self);
         assertEq(erc20.balanceOf(address(routerEscrow)), 0);
         assertEq(erc20.balanceOf(address(escrow)), amount);
     }
