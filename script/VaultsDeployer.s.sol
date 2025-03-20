@@ -110,6 +110,7 @@ contract VaultsDeployer is CommonDeployer {
 
         poolManager.file("gateway", address(gateway));
         poolManager.file("sender", address(messageProcessor));
+        poolManager.file("balanceSheetManager", address(balanceSheetManager));
 
         investmentManager.file("poolManager", address(poolManager));
         investmentManager.file("gateway", address(gateway));

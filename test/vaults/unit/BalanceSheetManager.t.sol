@@ -151,7 +151,6 @@ contract BalanceSheetManagerTest is BaseTest {
 
     // --- IBalanceSheetManager ---
     function testDeposit() public {
-        // fail: not auth
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheetManager.deposit(
@@ -193,7 +192,74 @@ contract BalanceSheetManagerTest is BaseTest {
         assertEq(erc20.balanceOf(address(this)), 0);
     }
 
-    function testWithdraw() public {}
+    function testWithdraw() public {
+        testDeposit();
+
+        vm.prank(randomUser);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        balanceSheetManager.withdraw(
+            defaultPoolId,
+            defaultShareClassId,
+            address(erc20),
+            erc20TokenId,
+            address(this),
+            defaultAmount,
+            d18(100, 5),
+            false,
+            _defaultMeta()
+        );
+
+        assertEq(erc20.balanceOf(address(this)), 0);
+
+        balanceSheetManager.withdraw(
+            defaultPoolId,
+            defaultShareClassId,
+            address(erc20),
+            erc20TokenId,
+            address(this),
+            defaultAmount,
+            d18(100, 5),
+            false,
+            _defaultMeta()
+        );
+
+        assertEq(erc20.balanceOf(address(this)), defaultAmount);
+    }
+
+    function testWithdrawWithAllowance() public {
+        testDeposit();
+
+        vm.prank(randomUser);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        balanceSheetManager.withdraw(
+            defaultPoolId,
+            defaultShareClassId,
+            address(erc20),
+            erc20TokenId,
+            address(this),
+            defaultAmount,
+            d18(100, 5),
+            true,
+            _defaultMeta()
+        );
+
+        assertEq(erc20.balanceOf(address(this)), 0);
+
+        balanceSheetManager.withdraw(
+            defaultPoolId,
+            defaultShareClassId,
+            address(erc20),
+            erc20TokenId,
+            address(this),
+            defaultAmount,
+            d18(100, 5),
+            true,
+            _defaultMeta()
+        );
+
+        erc20.transferFrom(address(balanceSheetManager), address(this), defaultAmount);
+        assertEq(erc20.balanceOf(address(this)), defaultAmount);
+    }
 
     function testIssue() public {}
 

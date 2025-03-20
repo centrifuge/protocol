@@ -51,6 +51,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     IGateway public gateway;
     IVaultMessageSender public sender;
     ITrancheFactory public trancheFactory;
+    address public balanceSheetManager;
 
     uint32 internal _assetCounter;
 
@@ -77,6 +78,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         if (what == "gateway") gateway = IGateway(data);
         else if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "trancheFactory") trancheFactory = ITrancheFactory(data);
+        else if (what == "balanceSheetManager") balanceSheetManager = data;
         else revert("PoolManager/file-unrecognized-param");
         emit File(what, data);
     }
@@ -150,6 +152,10 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
             // in the escrow to transfer to the user on transfer
             escrow.approveMax(asset, tokenId, address(this));
 
+            // Give balance sheet manager infinite approval for asset
+            // in the escrow to transfer to the user on transfer
+            escrow.approveMax(asset, tokenId, balanceSheetManager);
+
             emit RegisterAsset(assetId, asset, tokenId, name, symbol, decimals);
         }
 
@@ -183,10 +189,10 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         // Hook can be address zero if the tranche_token is fully permissionless and has no custom logic
         require(hook == address(0) || _isValidHook(hook), "PoolManager/invalid-hook");
 
-        address[] memory trancheWards = new address[](1);
+        address[] memory trancheWards = new address[](2);
         trancheWards[0] = address(this);
-        // TODO: Fix this
-        // trnacheWards[1] = address(balanceSheetManager);
+        // BalanceSheetManager needs this in order to mint shares
+        trancheWards[1] = address(balanceSheetManager);
 
         address token = trancheFactory.newTranche(name, symbol, decimals, salt, trancheWards);
 
