@@ -7,7 +7,7 @@ import {ISafe} from "src/common/interfaces/IGuardian.sol";
 import {FullDeployer, PoolsDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
 
 // Script to deploy CP and CP with an Wormhole Adapter.
-contract WormholeScript is FullDeployer {
+contract WormholeDeployer is FullDeployer {
     function run() public {
         address relayer = address(vm.envAddress("WORMHOLE_RELAYER"));
         uint16 localChainId = uint16(vm.envUint("WORMHOLE_LOCAL_CHAIN_ID"));
