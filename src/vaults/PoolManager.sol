@@ -15,6 +15,7 @@ import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IPoolManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {newAssetId} from "src/pools/types/AssetId.sol";
 
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 import {IBaseVault, IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
@@ -140,7 +141,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         assetId = assetToId[asset][tokenId];
         if (assetId == 0) {
             _assetCounter++;
-            assetId = uint128(bytes16(abi.encodePacked(uint32(block.chainid), _assetCounter)));
+            assetId = newAssetId(sender.centrifugeChainId(), _assetCounter).raw();
 
             _idToAsset[assetId] = AssetIdKey(asset, tokenId);
             assetToId[asset][tokenId] = assetId;

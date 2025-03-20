@@ -29,8 +29,8 @@ contract VaultsDeployer is CommonDeployer {
     address public restrictedRedemptions;
     address public trancheFactory;
 
-    function deployVaults(ISafe adminSafe_, address deployer) public {
-        deployCommon(adminSafe_, deployer);
+    function deployVaults(uint16 centrifugeChainId, ISafe adminSafe_, address deployer) public {
+        deployCommon(centrifugeChainId, adminSafe_, deployer);
 
         escrow = new Escrow{salt: SALT}(deployer);
         routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow2"))}(deployer);

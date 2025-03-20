@@ -48,7 +48,16 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IPoolManagerGatewayHandler public poolManager;
     IInvestmentManagerGatewayHandler public investmentManager;
 
-    constructor(IMessageSender gateway_, IRoot root_, IGasService gasService_, address deployer) Auth(deployer) {
+    uint16 public centrifugeChainId;
+
+    constructor(
+        uint16 centridugeChainId_,
+        IMessageSender gateway_,
+        IRoot root_,
+        IGasService gasService_,
+        address deployer
+    ) Auth(deployer) {
+        centrifugeChainId = centridugeChainId_;
         gateway = gateway_;
         root = root_;
         gasService = gasService_;
@@ -67,7 +76,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     /// @inheritdoc IPoolMessageSender
     function sendNotifyPool(uint32 chainId, PoolId poolId) external auth {
         // In case we want to optimize for the same network:
-        //if chainId == uint32(block.chainId) {
+        //if chainId == centrifugeChainId {
         //    cv.poolManager.notifyPool(poolId);
         //}
         //else {

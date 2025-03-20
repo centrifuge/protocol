@@ -7,12 +7,12 @@ using MathLib for uint256;
 
 type PoolId is uint64;
 
-function chainId(PoolId poolId) pure returns (uint32) {
-    return uint32(PoolId.unwrap(poolId) >> 32);
+function chainId(PoolId poolId) pure returns (uint16) {
+    return uint16(PoolId.unwrap(poolId) >> 48);
 }
 
-function newPoolId(uint32 localPoolId) view returns (PoolId) {
-    return PoolId.wrap((uint64(block.chainid.toUint32()) << 32) | uint64(localPoolId));
+function newPoolId(uint16 centrifugeChainId, uint48 localPoolId) pure returns (PoolId) {
+    return PoolId.wrap((uint64(centrifugeChainId) << 48) | uint64(localPoolId));
 }
 
 function isNull(PoolId poolId) pure returns (bool) {

@@ -29,6 +29,8 @@ contract CommonDeployer is Script {
     Gateway public gateway;
     MessageProcessor public messageProcessor;
 
+    uint16 public cchainId;
+
     constructor() {
         // If no salt is provided, a pseudo-random salt is generated,
         // thus effectively making the deployment non-deterministic
@@ -37,10 +39,12 @@ contract CommonDeployer is Script {
         );
     }
 
-    function deployCommon(ISafe adminSafe_, address deployer) public {
+    function deployCommon(uint16 centrifugeChainId, ISafe adminSafe_, address deployer) public {
         if (address(root) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
+
+        cchainId = centrifugeChainId;
 
         root = new Root(DELAY, deployer);
 
@@ -52,7 +56,7 @@ contract CommonDeployer is Script {
 
         gasService = new GasService(messageGasLimit, proofGasLimit);
         gateway = new Gateway(root, gasService);
-        messageProcessor = new MessageProcessor(gateway, root, gasService, deployer);
+        messageProcessor = new MessageProcessor(centrifugeChainId, gateway, root, gasService, deployer);
 
         _commonRegister();
         _commonRely();

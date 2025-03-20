@@ -10,9 +10,11 @@ import {LocalhostAdapter} from "test/integration/adapters/LocalhostAdapter.sol";
 // Script to deploy CP and CP with an Localhost Adapter.
 contract LocalhostDeployer is FullDeployer {
     function run() public {
+        uint16 centrifugeChainId = uint16(vm.envUint("CENTRIFUGE_CHAIN_ID"));
+
         vm.startBroadcast();
 
-        deployFull(ISafe(vm.envAddress("ADMIN")), msg.sender);
+        deployFull(centrifugeChainId, ISafe(vm.envAddress("ADMIN")), msg.sender);
         saveDeploymentOutput();
 
         LocalhostAdapter adapter = new LocalhostAdapter(gateway);

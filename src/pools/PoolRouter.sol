@@ -114,7 +114,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         returns (PoolId poolId)
     {
         // TODO: add fees?
-        return poolRegistry.registerPool(admin, currency, shareClassManager);
+        return poolRegistry.registerPool(admin, sender.centrifugeChainId(), currency, shareClassManager);
     }
 
     /// @inheritdoc IPoolRouter

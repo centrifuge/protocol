@@ -18,11 +18,11 @@ function raw(AssetId assetId) pure returns (uint128) {
 }
 
 function chainId(AssetId assetId) pure returns (uint32) {
-    return uint32(AssetId.unwrap(assetId) >> 32);
+    return uint16(AssetId.unwrap(assetId) >> 112);
 }
 
-function newAssetId(uint32 chainId_, uint32 counter) pure returns (AssetId) {
-    return AssetId.wrap((uint64(chainId_) << 32) + counter);
+function newAssetId(uint16 centrifugeChainId, uint32 counter) pure returns (AssetId) {
+    return AssetId.wrap((uint128(centrifugeChainId) << 112) + counter);
 }
 
 function newAssetId(uint32 isoCode) pure returns (AssetId) {

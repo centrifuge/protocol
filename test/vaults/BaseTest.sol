@@ -10,6 +10,7 @@ import {ISafe} from "src/common/interfaces/IGuardian.sol";
 import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {newAssetId} from "src/pools/types/AssetId.sol";
 
 // core contracts
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
@@ -53,9 +54,9 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     uint256 constant GATEWAY_INITIAL_BALANCE = 10 ether;
 
     // default values
-    uint32 public defaultChainId = 1;
+    uint16 public defaultChainId = 1;
     uint256 public erc20TokenId = 0;
-    uint128 public defaultAssetId = uint128(bytes16(abi.encodePacked(uint32(defaultChainId), uint32(1))));
+    uint128 public defaultAssetId = newAssetId(defaultChainId, 1).raw();
     uint128 public defaultPrice = 1 * 10 ** 18;
     uint8 public defaultDecimals = 8;
 
@@ -68,7 +69,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         ISafe adminSafe = new MockSafe(pausers, 1);
 
         // deploy core contracts
-        deployVaults(adminSafe, address(this));
+        deployVaults(defaultChainId, adminSafe, address(this));
 
         // deploy mock adapters
 
