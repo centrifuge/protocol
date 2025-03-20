@@ -8,7 +8,7 @@ import {FullDeployer, PoolsDeployer, VaultsDeployer} from "script/FullDeployer.s
 import {LocalhostAdapter} from "test/integration/adapters/LocalhostAdapter.sol";
 
 // Script to deploy CP and CP with an Localhost Adapter.
-contract LocalhostAdapterScript is FullDeployer {
+contract LocalhostDeployer is FullDeployer {
     function run() public {
         vm.startBroadcast();
 

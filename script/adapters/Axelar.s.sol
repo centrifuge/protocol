@@ -7,7 +7,7 @@ import {ISafe} from "src/common/interfaces/IGuardian.sol";
 import {FullDeployer, PoolsDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
 
 // Script to deploy CP and CP with an AxelarScript Adapter.
-contract AxelarScript is FullDeployer {
+contract AxelarDeployer is FullDeployer {
     function run() public {
         address axelarGateway = address(vm.envAddress("AXELAR_GATEWAY"));
         address axelarGasService = address(vm.envAddress("AXELAR_GAS_SERVICE"));
