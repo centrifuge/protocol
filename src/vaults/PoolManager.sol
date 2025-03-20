@@ -106,19 +106,22 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         uint32 destinationId,
         bytes32 recipient,
         uint128 amount
-    ) external {
+    ) external auth {
         ITranche tranche_ = ITranche(tranche(poolId, trancheId));
         require(address(tranche_) != address(0), "PoolManager/unknown-token");
         tranche_.burn(msg.sender, amount);
 
-        gateway.setPayableSource(msg.sender);
         sender.sendTransferShares(destinationId, poolId, trancheId, recipient, amount);
 
         emit TransferTrancheTokens(poolId, trancheId, msg.sender, destinationId, recipient, amount);
     }
 
     // @inheritdoc IPoolManagerGatewayHandler
-    function registerAsset(address asset, uint256 tokenId, uint32 destChainId) external returns (uint128 assetId) {
+    function registerAsset(address asset, uint256 tokenId, uint32 destChainId)
+        external
+        auth
+        returns (uint128 assetId)
+    {
         string memory name;
         string memory symbol;
         uint8 decimals;
@@ -152,7 +155,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
             emit RegisterAsset(assetId, asset, tokenId, name, symbol, decimals);
         }
 
-        gateway.setPayableSource(msg.sender);
         sender.sendRegisterAsset(destChainId, assetId, name, symbol, decimals);
     }
 
