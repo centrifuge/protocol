@@ -303,6 +303,32 @@ abstract contract Properties is BeforeAfter, Asserts {
         }
     }
 
+    /// @dev Property: A user cannot mutate their pending redeem amount pendingRedeem[...] if the pendingRedeem[..].lastUpdate is <= the latest redeem approval pointer epochPointers[..].latestRedeemApproval
+    function property_user_cannot_mutate_pending_redeem() public stateless {
+        address[] memory _actors = _getActors();
+
+        for (uint256 i = 0; i < createdPools.length; i++) {
+            PoolId poolId = createdPools[i];
+            uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
+
+            for (uint32 j = 0; j < shareClassCount; j++) {
+                ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
+                AssetId assetId = poolRegistry.currency(poolId);
+
+                // loop over all actors
+                for (uint256 k = 0; k < _actors.length; k++) {
+                    bytes32 actor = Helpers.addressToBytes32(_actors[k]);
+                    // precondition: pending has changed 
+                    if (_before.ghostRedeemRequest[scId][assetId][actor].pending == _after.ghostRedeemRequest[scId][assetId][actor].pending) {
+                        continue;
+                    }
+
+                    // check that the lastUpdate was > the latest redeem approval pointer
+                    gt(_before.ghostRedeemRequest[scId][assetId][actor].lastUpdate, _before.ghostLatestRedeemApproval, "lastUpdate is > latest redeem approval");
+                }
+            }
+        }
+    }
     /// Rounding Properties /// 
 
     /// @dev Property: Checks that rounding error is within acceptable bounds (1000 wei)
