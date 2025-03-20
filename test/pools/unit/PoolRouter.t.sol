@@ -44,9 +44,7 @@ contract TestCommon is Test {
         );
 
         vm.mockCall(
-            address(accounting),
-            abi.encodeWithSelector(accounting.generateJournalId.selector, POOL_A),
-            abi.encode(1)
+            address(accounting), abi.encodeWithSelector(accounting.generateJournalId.selector, POOL_A), abi.encode(1)
         );
 
         vm.mockCall(
