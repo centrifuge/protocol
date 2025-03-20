@@ -74,7 +74,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
     // Deployment
     function testDeployment(address nonWard) public {
-        vm.assume(nonWard != address(root) && nonWard != address(gateway) && nonWard != address(this));
+        vm.assume(nonWard != address(root) && nonWard != address(vaultRouter) && nonWard != address(this));
 
         address[] memory vaultFactories = new address[](1);
         vaultFactories[0] = address(vaultFactory);
@@ -83,25 +83,19 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         new PoolManager(address(escrow), trancheFactory, vaultFactories);
 
         // values set correctly
-        assertEq(address(poolManager.gateway()), address(gateway));
         assertEq(address(poolManager.escrow()), address(escrow));
-        assertEq(address(gateway.handler()), address(poolManager.sender()));
         assertEq(address(investmentManager.poolManager()), address(poolManager));
+        assertEq(address(gateway.handler()), address(poolManager.sender()));
 
         // permissions set correctly
         assertEq(poolManager.wards(address(root)), 1);
         assertEq(poolManager.wards(address(gateway)), 1);
+        assertEq(poolManager.wards(address(vaultRouter)), 1);
         assertEq(escrow.wards(address(poolManager)), 1);
         assertEq(poolManager.wards(nonWard), 0);
     }
 
     function testFile() public {
-        address newGateway = makeAddr("newGateway");
-        vm.expectEmit();
-        emit IPoolManager.File("gateway", newGateway);
-        poolManager.file("gateway", newGateway);
-        assertEq(address(poolManager.gateway()), newGateway);
-
         address newSender = makeAddr("newSender");
         vm.expectEmit();
         emit IPoolManager.File("sender", newSender);
@@ -131,6 +125,14 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         vm.expectRevert("PoolManager/file-unrecognized-param");
         poolManager.file("escrow", newEscrow, true);
+
+        vm.prank(makeAddr("unauthorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.file("", address(0));
+
+        vm.prank(makeAddr("unauthorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.file("", address(0), true);
     }
 
     function testRecoverTokensERC20(uint256 amount) public {
@@ -159,6 +161,12 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.recoverTokens(asset, tokenId, to, amount);
         assertEq(erc6909.balanceOf(address(poolManager), tokenId), 0);
         assertEq(erc6909.balanceOf(to, tokenId), amount);
+    }
+
+    function testRecoverTokensUnauthorized() public {
+        vm.prank(makeAddr("unauthorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.recoverTokens(address(0), 0, address(0), 0);
     }
 
     function testAddPool(uint64 poolId) public {
@@ -267,6 +275,12 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         // Finally, verify the connector called `adapter.send`
         bytes memory message = MessageLib.TransferShares(poolId, trancheId, centChainAddress, amount).serialize();
         assertEq(adapter1.sent(message), 1);
+    }
+
+    function testTransferTrancheTokensUnauthorized() public {
+        vm.prank(makeAddr("unauthorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.transferTrancheTokens(0, bytes16(0), 0, 0, 0);
     }
 
     function testTransferTrancheTokensFromCentrifuge(uint128 amount) public {
@@ -578,6 +592,18 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         vm.expectRevert("PoolManager/tranche-does-not-exist");
         poolManager.unlinkVault(poolId, trancheId, defaultAssetId, address(0));
     }
+
+    function testLinkVaultUnauthorized(uint64 poolId, bytes16 trancheId) public {
+        vm.prank(makeAddr("unauthorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.linkVault(poolId, trancheId, defaultAssetId, address(0));
+    }
+
+    function testUnlinkVaultUnauthorized(uint64 poolId, bytes16 trancheId) public {
+        vm.prank(makeAddr("unauthorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.unlinkVault(poolId, trancheId, defaultAssetId, address(0));
+    }
 }
 
 contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
@@ -776,6 +802,12 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         vm.expectRevert("PoolManager/invalid-factory");
         poolManager.deployVault(poolId, trancheId, defaultAssetId, address(0));
     }
+
+    function testDeployVaultUnauthorized() public {
+        vm.prank(makeAddr("unauthorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.deployVault(0, bytes16(0), 0, address(0));
+    }
 }
 
 contract PoolManagerRegisterAssetTest is BaseTest {
@@ -931,6 +963,12 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         vm.expectRevert("PoolManager/too-many-asset-decimals");
         poolManager.registerAsset(address(asset), 19, defaultChainId);
     }
+
+    function testRegisterAsset_unauthorized() public {
+        vm.prank(makeAddr("unauthorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.registerAsset(address(0), 0, 0);
+    }
 }
 
 contract UpdateContractMock is IUpdateContract {
@@ -1023,6 +1061,18 @@ contract PoolManagerUpdateContract is BaseTest, PoolManagerTestHelper {
 
         vm.expectRevert("PoolManager/tranche-does-not-exist");
         poolManager.updateContract(poolId, trancheId, address(poolManager), vaultUpdate);
+    }
+
+    function testUpdateContractUnauthorized() public {
+        vm.prank(makeAddr("unauthorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.updateContract(0, bytes16(0), address(0), bytes(""));
+    }
+
+    function testUpdateUnauthorized() public {
+        vm.prank(makeAddr("unauthorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolManager.update(0, bytes16(0), bytes(""));
     }
 
     function _serializedUpdateContractNewVault(address vaultFactory_) internal view returns (bytes memory payload) {

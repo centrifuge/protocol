@@ -52,9 +52,21 @@ contract PoolsDeployer is CommonDeployer {
         transientValuation = new TransientValuation(assetRegistry, deployer);
         identityValuation = new IdentityValuation(assetRegistry, deployer);
 
+        _poolsRegister();
         _poolsRely();
         _poolsFile();
         _poolsInitialConfig();
+    }
+
+    function _poolsRegister() private {
+        register("poolRegistry", address(poolRegistry));
+        register("assetRegistry", address(assetRegistry));
+        register("accounting", address(accounting));
+        register("holdings", address(holdings));
+        register("multiShareClass", address(multiShareClass));
+        register("poolRouter", address(poolRouter));
+        register("transientValuation", address(transientValuation));
+        register("identityValuation", address(identityValuation));
     }
 
     function _poolsRely() private {
