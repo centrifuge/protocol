@@ -116,12 +116,14 @@ abstract contract Properties is BeforeAfter, Asserts {
             }
         }
     }
+
+
     /// Stateless Properties ///
 
     /// @dev Property: The sum of eligible user payoutShareAmount for an epoch is <= the number of issued shares epochAmounts[..].depositShares
     /// @dev Property: The sum of eligible user payoutAssetAmount for an epoch is <= the number of issued asset amount epochAmounts[..].depositPool
     /// @dev Stateless because of the calls to claimDeposit which would make story difficult to read
-    function property_eligible_user_payout_amount_leq_issued_amount() public stateless {
+    function property_eligible_user_deposit_amount_leq_deposit_issued_amount() public stateless {
         address[] memory _actors = _getActors();
 
         // loop over all created pools
@@ -172,6 +174,49 @@ abstract contract Properties is BeforeAfter, Asserts {
             
     }
 
+    /// @dev Property: The sum of eligible user claim payout asset amounts for an epoch is <= the approved asset amount epochAmounts[..].redeemApproved
+    /// @dev Property: The sum of eligible user claim payment share amounts for an epoch is <= than the revoked share amount epochAmounts[..].redeemAssets
+    /// @dev This doesn't sum over previous epochs because it can be assumed that it'll be called by the fuzzer for each current epoch
+    function property_eligible_user_redemption_amount_leq_approved_asset_redemption_amount() public stateless {
+        address[] memory _actors = _getActors();
+
+        // loop over all created pools
+        for (uint256 i = 0; i < createdPools.length; i++) {
+            PoolId poolId = createdPools[i];
+            uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
+            // loop over all share classes in the pool
+            for (uint32 j = 0; j < shareClassCount; j++) {
+                ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
+                AssetId assetId = poolRegistry.currency(poolId);
+
+                uint32 epochId = multiShareClass.epochId(poolId);
+                (,,,,, uint128 redeemApprovedShares, uint128 redeemAssets) = multiShareClass.epochAmounts(scId, assetId, epochId);
+
+                // sum eligible user claim payoutAssetAmount for the epoch
+                uint128 totalPayoutAssetAmount = 0;
+                uint128 totalPaymentShareAmount = 0;
+                for (uint256 k = 0; k < _actors.length; k++) {
+                    address actor = _actors[k];
+                    // we claim via multiShareClass directly here because PoolRouter doesn't return the payoutAssetAmount
+                    (uint128 payoutAssetAmount, uint128 paymentShareAmount) = multiShareClass.claimRedeem(poolId, scId, Helpers.addressToBytes32(actor), assetId);
+                    totalPayoutAssetAmount += payoutAssetAmount;
+                    totalPaymentShareAmount += paymentShareAmount;
+                }
+
+                // check that the totalPayoutAssetAmount is less than or equal to the redeemApproved
+                lte(totalPayoutAssetAmount, redeemAssets, "total payout asset amount is > redeem assets");
+                // check that the totalPaymentShareAmount is less than or equal to the redeemApproved
+                lte(totalPaymentShareAmount, redeemApprovedShares, "total payment share amount is > redeem shares revoked");
+
+                uint128 differenceAsset = redeemAssets - totalPayoutAssetAmount;
+                uint128 differenceShare = redeemApprovedShares - totalPaymentShareAmount;
+                // check that the totalPayoutAssetAmount is no more than 1 wei less than the redeemAssets
+                lte(differenceAsset, 1, "redeemAssets - totalPayoutAssetAmount difference is greater than 1");
+                // check that the totalPaymentShareAmount is no more than 1 wei less than the redeemApproved
+                lte(differenceShare, 1, "redeemApprovedShares - totalPaymentShareAmount difference is greater than 1");
+            }
+        }
+    }
     /// Rounding Properties /// 
     /// @dev Property: Checks that rounding error is within acceptable bounds (1000 wei)
     /// @dev Simulates the operation in the MultiShareClass::_revokeEpochShares function
