@@ -309,9 +309,26 @@ contract BalanceSheetManagerTest is BaseTest {
         balanceSheetManager.issue(defaultPoolId, defaultShareClassId, address(this), defaultAmount, true);
 
         token.transferFrom(address(balanceSheetManager), address(this), defaultAmount);
-        assertEq(token.balanceOf(address(this)), defaultAmount);    }
+        assertEq(token.balanceOf(address(this)), defaultAmount);
+    }
 
-    function testRevoke() public {}
+    function testRevoke() public {
+        testIssue();
+        IERC20 token = IERC20(poolManager.tranche(defaultPoolId, defaultShareClassId));
+        assertEq(token.balanceOf(address(this)), defaultAmount);
+
+        vm.prank(randomUser);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        balanceSheetManager.revoke(defaultPoolId, defaultShareClassId, address(this), defaultAmount);
+
+        vm.expectRevert(IERC20.InsufficientAllowance.selector);
+        balanceSheetManager.revoke(defaultPoolId, defaultShareClassId, address(this), defaultAmount);
+
+        token.approve(address(balanceSheetManager), defaultAmount);
+        balanceSheetManager.revoke(defaultPoolId, defaultShareClassId, address(this), defaultAmount);
+
+        assertEq(token.balanceOf(address(this)), 0);
+    }
 
     function testUpdateJournal() public {}
 
