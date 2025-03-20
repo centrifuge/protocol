@@ -3,7 +3,9 @@ pragma solidity 0.8.28;
 pragma abicoder v2;
 
 import "src/misc/interfaces/IERC20.sol";
+import {IERC6909Fungible} from "src/misc/interfaces/IERC6909.sol";
 import {ERC20} from "src/misc/ERC20.sol";
+import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
@@ -43,6 +45,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     MockAdapter adapter3;
     IAdapter[] testAdapters;
     ERC20 public erc20;
+    IERC6909Fungible public erc6909;
 
     address self = address(this);
     address investor = makeAddr("investor");
@@ -55,9 +58,12 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     // default values
     uint32 public defaultChainId = 1;
     uint256 public erc20TokenId = 0;
+    uint256 public defaultErc6909TokenId = 16;
     uint128 public defaultAssetId = uint128(bytes16(abi.encodePacked(uint32(defaultChainId), uint32(1))));
     uint128 public defaultPrice = 1 * 10 ** 18;
     uint8 public defaultDecimals = 8;
+    uint32 public defaultPoolId = 5;
+    bytes16 public defaultShareClassId = bytes16(bytes("1"));
 
     function setUp() public virtual {
         vm.chainId(defaultChainId);
@@ -92,6 +98,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         centrifugeChain = new MockCentrifugeChain(testAdapters, poolManager);
         mockedGasService = new MockGasService();
         erc20 = _newErc20("X's Dollar", "USDX", 6);
+        erc6909 = new MockERC6909();
 
         gateway.file("adapters", testAdapters);
         gateway.file("gasService", address(mockedGasService));
@@ -111,6 +118,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         vm.label(address(adapter2), "MockAdapter2");
         vm.label(address(adapter3), "MockAdapter3");
         vm.label(address(erc20), "ERC20");
+        vm.label(address(erc6909), "ERC6909");
         vm.label(address(centrifugeChain), "CentrifugeChain");
         vm.label(address(vaultRouter), "VaultRouter");
         vm.label(address(gasService), "GasService");
@@ -128,6 +136,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         excludeContract(address(poolManager));
         excludeContract(address(gateway));
         excludeContract(address(erc20));
+        excludeContract(address(erc6909));
         excludeContract(address(centrifugeChain));
         excludeContract(address(vaultRouter));
         excludeContract(address(adapter1));

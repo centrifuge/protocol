@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
@@ -45,7 +46,7 @@ contract BalanceSheetManager is
 
     /// @dev Check if the msg.sender has permissions
     modifier authOrPermission(uint64 poolId, bytes16 scId) {
-        require(wards[msg.sender] == 1 || permission[poolId][scId][msg.sender], "NotAuthorized");
+        require(wards[msg.sender] == 1 || permission[poolId][scId][msg.sender], IAuth.NotAuthorized());
         _;
     }
 
