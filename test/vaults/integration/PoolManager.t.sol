@@ -74,7 +74,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
     // Deployment
     function testDeployment(address nonWard) public {
-        vm.assume(nonWard != address(root) && nonWard != address(gateway) && nonWard != address(this));
+        vm.assume(nonWard != address(root) && nonWard != address(vaultRouter) && nonWard != address(this));
 
         address[] memory vaultFactories = new address[](1);
         vaultFactories[0] = address(vaultFactory);
@@ -83,25 +83,17 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         new PoolManager(address(escrow), trancheFactory, vaultFactories);
 
         // values set correctly
-        assertEq(address(poolManager.gateway()), address(gateway));
         assertEq(address(poolManager.escrow()), address(escrow));
-        assertEq(address(gateway.handler()), address(poolManager.sender()));
         assertEq(address(investmentManager.poolManager()), address(poolManager));
 
         // permissions set correctly
         assertEq(poolManager.wards(address(root)), 1);
-        assertEq(poolManager.wards(address(gateway)), 1);
+        assertEq(poolManager.wards(address(vaultRouter)), 1);
         assertEq(escrow.wards(address(poolManager)), 1);
         assertEq(poolManager.wards(nonWard), 0);
     }
 
     function testFile() public {
-        address newGateway = makeAddr("newGateway");
-        vm.expectEmit();
-        emit IPoolManager.File("gateway", newGateway);
-        poolManager.file("gateway", newGateway);
-        assertEq(address(poolManager.gateway()), newGateway);
-
         address newSender = makeAddr("newSender");
         vm.expectEmit();
         emit IPoolManager.File("sender", newSender);

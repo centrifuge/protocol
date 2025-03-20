@@ -48,7 +48,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
     IEscrow public immutable escrow;
 
-    IGateway public gateway;
     IVaultMessageSender public sender;
     ITrancheFactory public trancheFactory;
 
@@ -73,8 +72,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     // --- Administration ---
     /// @inheritdoc IPoolManager
     function file(bytes32 what, address data) external auth {
-        if (what == "gateway") gateway = IGateway(data);
-        else if (what == "sender") sender = IVaultMessageSender(data);
+        if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "trancheFactory") trancheFactory = ITrancheFactory(data);
         else revert("PoolManager/file-unrecognized-param");
         emit File(what, data);

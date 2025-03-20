@@ -95,7 +95,6 @@ contract VaultsDeployer is CommonDeployer {
 
         // Rely on vaultGateway
         investmentManager.rely(address(gateway));
-        poolManager.rely(address(gateway));
 
         // Rely on others
         routerEscrow.rely(address(vaultRouter));
@@ -113,7 +112,6 @@ contract VaultsDeployer is CommonDeployer {
         messageProcessor.file("poolManager", address(poolManager));
         messageProcessor.file("investmentManager", address(investmentManager));
 
-        poolManager.file("gateway", address(gateway));
         poolManager.file("sender", address(messageProcessor));
 
         investmentManager.file("poolManager", address(poolManager));
