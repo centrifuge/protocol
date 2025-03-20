@@ -226,7 +226,7 @@ interface IBalanceSheetManagerGatewayHandler {
         Meta calldata m
     ) external;
 
-    function issue(uint64 poolId, bytes16 scId, address to, uint128 shares, bool asAllowance) external;
+    function triggerIssueShares(uint64 poolId, bytes16 scId, address to, uint128 shares, bool asAllowance) external;
 
-    function revoke(uint64 poolId, bytes16 scId, address from, uint128 shares) external;
+    function triggerRevokeShares(uint64 poolId, bytes16 scId, address from, uint128 shares) external;
 }

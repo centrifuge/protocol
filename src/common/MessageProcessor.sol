@@ -265,7 +265,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
             pricePerUnit: pricePerUnit,
             timestamp: timestamp,
             isIncrease: true,
-            asAllowance: false, // @dev never relevant for the CP side
             debits: debits,
             credits: credits
         });
@@ -294,7 +293,30 @@ contract MessageProcessor is Auth, IMessageProcessor {
             pricePerUnit: pricePerUnit,
             timestamp: timestamp,
             isIncrease: false,
-            asAllowance: false, // @dev never relevant for the CP side
+            debits: debits,
+            credits: credits
+        });
+
+        gateway.send(uint32(poolId >> 32), data.serialize());
+    }
+
+    /// @inheritdoc IVaultMessageSender
+    function sendUpdateHoldingValue(uint64 poolId, bytes16 scId, uint128 assetId, D18 pricePerUnit, uint256 timestamp)
+        external
+        auth
+    {
+        JournalEntry[] memory debits = new JournalEntry[](0);
+        JournalEntry[] memory credits = new JournalEntry[](0);
+
+        MessageLib.UpdateHolding memory data = MessageLib.UpdateHolding({
+            poolId: poolId,
+            scId: scId,
+            assetId: assetId,
+            who: bytes32(0),
+            amount: 0,
+            pricePerUnit: pricePerUnit,
+            timestamp: timestamp,
+            isIncrease: false,
             debits: debits,
             credits: credits
         });
@@ -468,10 +490,10 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (cat == MessageCategory.BalanceSheet) {
             // TODO: Change into different message type - TriggerUpdateHolding & TriggerUpdateShares & ApproveDeposit &
             // ApproveRedeem & RevokeShares & IssueShares
-            if (kind == MessageType.UpdateHolding) {
-                MessageLib.UpdateHolding memory m = message.deserializeUpdateHolding();
+            if (kind == MessageType.TriggerUpdateHolding) {
+                MessageLib.TriggerUpdateHolding memory m = message.deserializeTriggerUpdateHolding();
 
-                Meta memory meta = Meta({timestamp: m.timestamp, debits: m.debits, credits: m.credits});
+                Meta memory meta = Meta({timestamp: 0, debits: m.debits, credits: m.credits});
                 if (m.isIncrease) {
                     balanceSheetManager.deposit(
                         m.poolId, m.scId, m.assetId, address(bytes20(m.who)), m.amount, m.pricePerUnit, meta
@@ -487,6 +509,13 @@ contract MessageProcessor is Auth, IMessageProcessor {
                         m.asAllowance,
                         meta
                     );
+                }
+            } else if (kind == MessageType.TriggerUpdateShares) {
+                MessageLib.TriggerUpdateShares memory m = message.deserializeTriggerUpdateShares();
+                if (m.isIssuance) {
+                    balanceSheetManager.triggerIssueShares(m.poolId, m.scId, address(bytes20(m.who)), m.shares, m.asAllowance);
+                } else {
+                    balanceSheetManager.triggerRevokeShares(m.poolId, m.scId, address(bytes20(m.who)), m.shares);
                 }
             } else {
                 revert InvalidMessage(uint8(kind));

@@ -119,6 +119,9 @@ interface IVaultMessageSender {
         JournalEntry[] calldata credits
     ) external;
 
+    function sendUpdateHoldingValue(uint64 poolId, bytes16 scId, uint128 assetId, D18 pricePerUnit, uint256 timestamp)
+        external;
+
     /// @notice Creates and send the message
     function sendIssueShares(uint64 poolId, bytes16 shareClassId, address receiver, uint128 shares, uint256 timestamp)
         external;

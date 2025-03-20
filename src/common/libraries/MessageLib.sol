@@ -108,11 +108,11 @@ library MessageLib {
         (89 << uint8(MessageType.FulfilledCancelDepositRequest) * 8) +
         (89 << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (89 << uint8(MessageType.TriggerRedeemRequest) * 8) +
-        (143 << uint8(MessageType.UpdateHolding) * 8) +
+        (142 << uint8(MessageType.UpdateHolding) * 8) +
         (106 << uint8(MessageType.UpdateShares) * 8) +
         (29 << uint8(MessageType.UpdateJournal) * 8) +
         (111 << uint8(MessageType.TriggerUpdateHolding) * 8) +
-        (74 << uint8(MessageType.TriggerUpdateShares) * 8);
+        (75 << uint8(MessageType.TriggerUpdateShares) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -929,7 +929,6 @@ library MessageLib {
         D18 pricePerUnit;
         uint256 timestamp;
         bool isIncrease; // Signals whether this is an increase or a decrease
-        bool asAllowance; // Signals whether the amount is transferred or allowed to who on the BSM
         JournalEntry[] debits;
         JournalEntry[] credits;
     }
@@ -937,10 +936,10 @@ library MessageLib {
     function deserializeUpdateHolding(bytes memory data) internal pure returns (UpdateHolding memory h) {
         require(messageType(data) == MessageType.UpdateHolding, "UnknownMessageType");
 
-        uint16 debitsByteLen = data.toUint16(139);
-        uint16 creditsByteLen = data.toUint16(141);
+        uint16 debitsByteLen = data.toUint16(138);
+        uint16 creditsByteLen = data.toUint16(140);
 
-        uint256 offset = 143;
+        uint256 offset = 142;
         h.debits = data.toJournalEntries(offset, debitsByteLen);
         offset += debitsByteLen;
         h.credits = data.toJournalEntries(offset, creditsByteLen);
@@ -954,8 +953,6 @@ library MessageLib {
         h.pricePerUnit = D18.wrap(data.toUint128(89));
         h.timestamp = data.toUint256(105);
         h.isIncrease = data.toBool(137);
-        h.asAllowance = data.toBool(138);
-
         return h;
     }
 
@@ -964,8 +961,7 @@ library MessageLib {
         bytes memory credits = t.credits.encodePacked();
 
         bytes memory partial1 = abi.encodePacked(MessageType.UpdateHolding, t.poolId, t.scId, t.assetId, t.who);
-        bytes memory partial2 =
-            abi.encodePacked(partial1, t.amount, t.pricePerUnit, t.timestamp, t.isIncrease, t.asAllowance);
+        bytes memory partial2 = abi.encodePacked(partial1, t.amount, t.pricePerUnit, t.timestamp, t.isIncrease);
         bytes memory partial3 = abi.encodePacked(partial2, uint16(debits.length), uint16(credits.length));
 
         return abi.encodePacked(partial3, debits, credits);
@@ -1096,6 +1092,7 @@ library MessageLib {
         bytes32 who;
         uint128 shares;
         bool isIssuance;
+        bool asAllowance;
     }
 
     function deserializeTriggerUpdateShares(bytes memory data) internal pure returns (TriggerUpdateShares memory) {
@@ -1106,11 +1103,14 @@ library MessageLib {
             scId: data.toBytes16(9),
             who: data.toBytes32(25),
             shares: data.toUint128(57),
-            isIssuance: data.toBool(73)
+            isIssuance: data.toBool(73),
+            asAllowance: data.toBool(74)
         });
     }
 
     function serialize(TriggerUpdateShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.TriggerUpdateShares, t.poolId, t.scId, t.who, t.shares, t.isIssuance);
+        return abi.encodePacked(
+            MessageType.TriggerUpdateShares, t.poolId, t.scId, t.who, t.shares, t.isIssuance, t.asAllowance
+        );
     }
 }

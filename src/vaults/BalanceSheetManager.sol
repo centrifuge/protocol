@@ -14,6 +14,7 @@ import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {JournalEntry, Meta} from "src/common/types/JournalEntry.sol";
 import {IVaultMessageSender} from "../common/interfaces/IGatewaySenders.sol";
+import {IBalanceSheetManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
@@ -21,7 +22,13 @@ import {IPerPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 
-contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdateContract {
+contract BalanceSheetManager is
+    Auth,
+    IRecoverable,
+    IBalanceSheetManager,
+    IBalanceSheetManagerGatewayHandler,
+    IUpdateContract
+{
     using MathLib for *;
 
     IPerPoolEscrow public immutable escrow;
@@ -118,10 +125,63 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         );
     }
 
+    /// --- External ---
+    function deposit(
+        uint64 poolId,
+        bytes16 scId,
+        uint128 assetId,
+        address provider,
+        uint128 amount,
+        D18 pricePerUnit,
+        Meta calldata m
+    ) external auth {
+        (address asset, uint256 tokenId) = poolManager.checkedIdToAsset(assetId);
+
+        _deposit(poolId, scId, assetId, asset, tokenId, provider, amount, pricePerUnit, m);
+    }
+
+    function withdraw(
+        uint64 poolId,
+        bytes16 scId,
+        uint128 assetId,
+        address receiver,
+        uint128 amount,
+        D18 pricePerUnit,
+        bool asAllowance,
+        Meta calldata m
+    ) external auth {
+        (address asset, uint256 tokenId) = poolManager.checkedIdToAsset(assetId);
+        _withdraw(poolId, scId, assetId, asset, tokenId, receiver, amount, pricePerUnit, asAllowance, m);
+    }
+
     function issue(uint64 poolId, bytes16 scId, address to, uint128 shares, bool asAllowance)
         external
         authOrPermission(poolId, scId)
     {
+        _issue(poolId, scId, to, shares, asAllowance);
+    }
+
+    function triggerIssueShares(uint64 poolId, bytes16 scId, address to, uint128 shares, bool asAllowance) external auth {
+        _issue(poolId, scId, to, shares, asAllowance);
+    }
+
+    function revoke(uint64 poolId, bytes16 scId, address from, uint128 shares)
+        external
+        authOrPermission(poolId, scId)
+    {
+        _revoke(poolId, scId, from, shares);
+    }
+
+    function triggerRevokeShares(uint64 poolId, bytes16 scId, address from, uint128 shares) external auth {
+        _revoke(poolId, scId, from, shares);
+    }
+
+    function journalEntry(uint64 poolId, bytes16 scId, Meta calldata m) external authOrPermission(poolId, scId) {
+        sender.sendJournalEntry(poolId, scId, m.debits, m.credits);
+    }
+
+    // --- Internal ---
+    function _issue(uint64 poolId, bytes16 scId, address to, uint128 shares, bool asAllowance) internal {
         address token = poolManager.checkedTranche(poolId, scId);
 
         if (asAllowance) {
@@ -135,10 +195,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         emit IssueShares(poolId, scId, to, shares);
     }
 
-    function revoke(uint64 poolId, bytes16 scId, address from, uint128 shares)
-        external
-        authOrPermission(poolId, scId)
-    {
+    function _revoke(uint64 poolId, bytes16 scId, address from, uint128 shares) internal {
         address token = poolManager.checkedTranche(poolId, scId);
         ITranche(token).burn(address(from), shares);
 
@@ -146,11 +203,6 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         emit RevokeShares(poolId, scId, from, shares);
     }
 
-    function journalEntry(uint64 poolId, bytes16 scId, Meta calldata m) external authOrPermission(poolId, scId) {
-        sender.sendJournalEntry(poolId, scId, m.debits, m.credits);
-    }
-
-    // --- Internal ---
     function _withdraw(
         uint64 poolId,
         bytes16 scId,
