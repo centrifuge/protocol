@@ -3,9 +3,9 @@ pragma solidity 0.8.28;
 
 import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
-import {PoolId} from "src/pools/types/PoolId.sol";
-import {AssetId} from "src/pools/types/AssetId.sol";
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 interface IShareClassManager {
     /// Events
@@ -85,7 +85,7 @@ interface IShareClassManager {
         uint128 claimedAssetAmount
     );
     event UpdatedNav(PoolId indexed poolId, ShareClassId indexed scId, uint128 newAmount);
-    event AddedShareClass(PoolId indexed poolId, ShareClassId indexed scId);
+    event AddedShareClass(PoolId indexed poolId, ShareClassId indexed scId, uint32 indexed index);
 
     /// Errors
     error PoolMissing();
@@ -229,11 +229,11 @@ interface IShareClassManager {
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
-    /// @return navPerShare Total value of assets of the pool and share class per share
     /// @return issuance Total issuance of the share class
+    /// @return navPerShare Total value of assets of the pool and share class per share
     function updateShareClassNav(PoolId poolId, ShareClassId scId)
         external
-        returns (D18 navPerShare, uint128 issuance);
+        returns (uint128 issuance, D18 navPerShare);
 
     /// @notice Generic update function for a pool.
     ///
@@ -274,20 +274,28 @@ interface IShareClassManager {
         bytes calldata metadata
     ) external;
 
-    /// @notice Returns the current NAV of a share class of a pool per share as well as the issuance.
+    /// @notice Returns the number of share classes for the given pool
     ///
-    /// @param poolId Identifier of the pool
-    /// @param scId Identifier of the share class
-    /// @return navPerShare Total value of assets of the pool and share class per share
-    /// @return issuance Total issuance of the share class
-    function shareClassNavPerShare(PoolId poolId, ShareClassId scId)
-        external
-        view
-        returns (D18 navPerShare, uint128 issuance);
+    /// @param poolId Identifier of the pool in question
+    /// @return count Number of share classes for the given pool
+    function shareClassCount(PoolId poolId) external view returns (uint32 count);
 
     /// @notice Checks the existence of a share class.
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     function exists(PoolId poolId, ShareClassId scId) external view returns (bool);
+
+    /// @notice Determines the next share class id for the given pool.
+    ///
+    /// @param poolId Identifier of the pool
+    /// @return scId Identifier of the next share class
+    function previewNextShareClassId(PoolId poolId) external view returns (ShareClassId scId);
+
+    /// @notice Determines the share class id for the given pool and index.
+    ///
+    /// @param poolId Identifier of the pool
+    /// @param index The pool-internal index of the share class id
+    /// @return scId Identifier of the underlying share class
+    function previewShareClassId(PoolId poolId, uint32 index) external pure returns (ShareClassId scId);
 }

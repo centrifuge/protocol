@@ -61,11 +61,6 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
             t(hasReverted, "LP-2 Must Revert");
         }
 
-        if (!poolManager.isAllowedAsset(poolId, address(token))) {
-            // TODO: Ensure this works via actor switch
-            t(hasReverted, "LP-3 Must Revert");
-        }
-
         // After Balances and Checks
         uint256 balanceAfter = token.balanceOf(actor);
         uint256 balanceOfEscrowAfter = token.balanceOf(address(escrow));

@@ -4,8 +4,10 @@ pragma solidity ^0.8.0;
 import {BaseSetup} from "@chimera/BaseSetup.sol";
 import {Asserts} from "@chimera/Asserts.sol";
 
-import "src/vaults/gateway/Gateway.sol";
-import {MockAdapter} from "test/vaults/mocks/MockAdapter.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import "src/common/Gateway.sol";
+
+import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
 
 // What happens if we add more adapters later?
 
@@ -30,7 +32,7 @@ abstract contract Setup is BaseSetup, Asserts {
 
     uint256 RECON_ADAPTERS = 2;
 
-    address[] adapters;
+    IAdapter[] adapters;
 
     // todo: create some sort of a function that is usable
     bytes[] messages;
@@ -56,11 +58,11 @@ abstract contract Setup is BaseSetup, Asserts {
     }
 
     function setup() internal virtual override {
-        routerAggregator = new Gateway(address(0), address(0), address(0), address(0));
+        routerAggregator = new Gateway(IRoot(address(0)), IGasService(address(0)));
 
         // Given config, add adapters
         for (uint256 i = 0; i < RECON_ADAPTERS; i++) {
-            adapters.push(address(new MockAdapter(address(routerAggregator))));
+            adapters.push(new MockAdapter(routerAggregator));
         }
 
         routerAggregator.file("adapters", adapters);

@@ -17,11 +17,12 @@ contract InstantDepositVault is BaseVault {
         uint64 poolId_,
         bytes16 trancheId_,
         address asset_,
+        uint256 tokenId_,
         address share_,
         address root_,
         address manager_,
         address instantManager_
-    ) BaseVault(poolId_, trancheId_, asset_, share_, root_, manager_) {
+    ) BaseVault(poolId_, trancheId_, asset_, tokenId_, share_, root_, manager_) {
         instantManager = IInstantManager(instantManager_);
     }
 

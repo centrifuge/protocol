@@ -23,7 +23,7 @@ contract FactoryTest is Test {
             polygonFork = vm.createFork(vm.rpcUrl("polygon-mainnet"));
         }
 
-        root = address(new Root(address(new Escrow(address(this))), 48 hours, address(this)));
+        root = address(new Root(48 hours, address(this)));
     }
 
     function testTrancheFactoryIsDeterministicAcrossChains(uint64 poolId, bytes16 trancheId) public {
@@ -33,7 +33,7 @@ contract FactoryTest is Test {
             BaseTest testSetup1 = new BaseTest{salt: keccak256(abi.encode(vm.envString("DEPLOYMENT_SALT")))}();
             testSetup1.setUp();
             testSetup1.deployVault(
-                poolId, 18, testSetup1.restrictionManager(), "", "", trancheId, 1, address(testSetup1.erc20())
+                poolId, 18, testSetup1.restrictionManager(), "", "", trancheId, address(testSetup1.erc20()), 0, 0
             );
             address tranche1 = PoolManagerLike(address(testSetup1.poolManager())).getTranche(poolId, trancheId);
             address root1 = address(testSetup1.root());
@@ -42,7 +42,7 @@ contract FactoryTest is Test {
             BaseTest testSetup2 = new BaseTest{salt: keccak256(abi.encode(vm.envString("DEPLOYMENT_SALT")))}();
             testSetup2.setUp();
             testSetup2.deployVault(
-                poolId, 18, testSetup2.restrictionManager(), "", "", trancheId, 1, address(testSetup2.erc20())
+                poolId, 18, testSetup2.restrictionManager(), "", "", trancheId, address(testSetup2.erc20()), 0, 0
             );
             address tranche2 = PoolManagerLike(address(testSetup2.poolManager())).getTranche(poolId, trancheId);
             address root2 = address(testSetup2.root());

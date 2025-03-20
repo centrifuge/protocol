@@ -5,10 +5,10 @@ import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {Auth} from "src/misc/Auth.sol";
 
-import {PoolId} from "src/pools/types/PoolId.sol";
-import {AssetId} from "src/pools/types/AssetId.sol";
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
-import {AccountId} from "src/pools/types/AccountId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
 import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 

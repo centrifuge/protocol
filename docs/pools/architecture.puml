@@ -59,8 +59,8 @@ interface IShareClassManager {
     + updateMetadata(poolId, shareClassId, name, symbol, data)
 }
 
-class SingleShareClass<wards = PoolManager> <<(C, lightskyblue)>>{ }
-SingleShareClass -down|> IShareClassManager
+class MultiShareClass<wards = PoolManager> <<(C, lightskyblue)>>{ }
+MultiShareClass -down|> IShareClassManager
 
 class Accounting<wards = PoolManager> {
     + createAccount(poolId, account, isDebitNormal)

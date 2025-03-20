@@ -2,9 +2,11 @@
 pragma solidity 0.8.28;
 
 import "test/vaults/BaseTest.sol";
-import {InstantDepositVault} from "src/vaults/InstantDepositVault.sol";
+
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+
+import {InstantDepositVault} from "src/vaults/InstantDepositVault.sol";
 import {IInstantManager} from "src/vaults/interfaces/IInstantManager.sol";
 
 contract DepositTest is BaseTest {
@@ -18,11 +20,11 @@ contract DepositTest is BaseTest {
         uint128 price = 2 * 10 ** 18;
 
         // Deploy async vault to ensure pool is set up
-        address asyncVault_ = deploySimpleVault();
+        (address asyncVault_, uint128 assetId) = deploySimpleVault();
         ERC7540Vault asyncVault = ERC7540Vault(asyncVault_);
         ITranche tranche = ITranche(address(asyncVault.share()));
         centrifugeChain.updateTranchePrice(
-            asyncVault.poolId(), asyncVault.trancheId(), defaultAssetId, price, uint64(block.timestamp)
+            asyncVault.poolId(), asyncVault.trancheId(), assetId, price, uint64(block.timestamp)
         );
 
         erc20.mint(self, amount);
@@ -33,6 +35,7 @@ contract DepositTest is BaseTest {
             asyncVault.poolId(),
             asyncVault.trancheId(),
             asyncVault.asset(),
+            erc20TokenId,
             asyncVault.share(),
             address(root),
             address(investmentManager),
@@ -61,18 +64,11 @@ contract DepositTest is BaseTest {
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max); // add user as member
         assertEq(vault.isPermissioned(self), true);
 
-        // Will fail - investment asset not allowed
-        centrifugeChain.disallowAsset(vault.poolId(), defaultAssetId);
-        vm.expectRevert(IInstantManager.AssetNotAllowed.selector);
         vault.deposit(amount, self);
-
         assertEq(tranche.balanceOf(self), 0);
         assertEq(erc20.balanceOf(self), amount);
 
-        // Success
-        centrifugeChain.allowAsset(vault.poolId(), defaultAssetId);
         vault.deposit(amount, self);
-
         assertEq(erc20.balanceOf(self), 0);
         assertEq(tranche.balanceOf(self), amount / 2);
 

@@ -9,19 +9,18 @@ import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
 
-import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
-import {PoolId} from "src/pools/types/PoolId.sol";
-import {AccountId} from "src/pools/types/AccountId.sol";
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
-import {AccountType} from "src/pools/interfaces/IPoolManager.sol";
-import {previewShareClassId} from "src/pools/SingleShareClass.sol";
-
-import {Deployer} from "script/pools/Deployer.s.sol";
+import {PoolsDeployer, ISafe} from "script/PoolsDeployer.s.sol";
+import {AccountType} from "src/pools/interfaces/IPoolRouter.sol";
 
 import {MockVaults} from "test/pools/mocks/MockVaults.sol";
 
-contract TestCases is Deployer, Test {
+contract TestCases is PoolsDeployer, Test {
     using CastLib for string;
     using CastLib for bytes32;
 
@@ -45,17 +44,25 @@ contract TestCases is Deployer, Test {
     uint128 constant APPROVED_SHARE_AMOUNT = SHARE_AMOUNT / 5;
     D18 immutable NAV_PER_SHARE = d18(2, 1);
 
+    uint64 constant GAS = 100 wei;
+
     MockVaults cv;
 
-    function setUp() public {
-        deploy();
-
-        // Adapting the CV mock
+    function _mockStuff() private {
         cv = new MockVaults(CHAIN_CV, gateway);
-        gateway.file("adapter", address(cv));
-        gateway.rely(address(cv));
+        wire(cv, address(this));
 
-        removeDeployerAccess();
+        gasService.file("messageGasLimit", GAS);
+    }
+
+    function setUp() public {
+        // Deployment
+        deployPools(ISafe(address(0)), address(this));
+        _mockStuff();
+        removePoolsDeployerAccess(address(this));
+
+        // Initialize accounts
+        vm.deal(FM, 1 ether);
 
         // Label contracts & actors (for debugging)
         vm.label(address(transientValuation), "TransientValuation");
@@ -64,10 +71,10 @@ contract TestCases is Deployer, Test {
         vm.label(address(assetRegistry), "AssetRegistry");
         vm.label(address(accounting), "Accounting");
         vm.label(address(holdings), "Holdings");
-        vm.label(address(singleShareClass), "SingleShareClass");
-        vm.label(address(poolManager), "PoolManager");
-        vm.label(address(gateway), "Gateway");
+        vm.label(address(multiShareClass), "MultiShareClass");
         vm.label(address(poolRouter), "PoolRouter");
+        vm.label(address(gateway), "Gateway");
+        vm.label(address(messageProcessor), "MessageProcessor");
         vm.label(address(cv), "CV");
 
         // We decide CP is located at CHAIN_CP for messaging
@@ -84,9 +91,9 @@ contract TestCases is Deployer, Test {
         assertEq(decimals, 6);
 
         vm.prank(FM);
-        poolId = poolRouter.createPool(USD, singleShareClass);
+        poolId = poolRouter.createPool(FM, USD, multiShareClass);
 
-        scId = previewShareClassId(poolId);
+        scId = multiShareClass.previewNextShareClassId(poolId);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](5), 0);
         cs[c++] = abi.encodeWithSelector(poolRouter.setPoolMetadata.selector, bytes("Testing pool"));
@@ -98,10 +105,10 @@ contract TestCases is Deployer, Test {
         assertEq(c, cs.length);
 
         vm.prank(FM);
-        poolRouter.execute(poolId, cs);
+        poolRouter.execute{value: GAS}(poolId, cs);
 
         assertEq(poolRegistry.metadata(poolId), "Testing pool");
-        assertEq(singleShareClass.exists(poolId, scId), true);
+        assertEq(multiShareClass.exists(poolId, scId), true);
 
         MessageLib.NotifyPool memory m0 = MessageLib.deserializeNotifyPool(cv.lastMessages(0));
         assertEq(m0.poolId, poolId.raw());
@@ -137,7 +144,8 @@ contract TestCases is Deployer, Test {
         poolRouter.execute(poolId, cs);
 
         vm.prank(ANY);
-        poolRouter.claimDeposit(poolId, scId, USDC_C2, INVESTOR);
+        vm.deal(ANY, GAS);
+        poolRouter.claimDeposit{value: GAS}(poolId, scId, USDC_C2, INVESTOR);
 
         MessageLib.FulfilledDepositRequest memory m0 = MessageLib.deserializeFulfilledDepositRequest(cv.lastMessages(0));
         assertEq(m0.poolId, poolId.raw());
@@ -167,7 +175,8 @@ contract TestCases is Deployer, Test {
         poolRouter.execute(poolId, cs);
 
         vm.prank(ANY);
-        poolRouter.claimRedeem(poolId, scId, USDC_C2, INVESTOR);
+        vm.deal(ANY, GAS);
+        poolRouter.claimRedeem{value: GAS}(poolId, scId, USDC_C2, INVESTOR);
 
         MessageLib.FulfilledRedeemRequest memory m0 = MessageLib.deserializeFulfilledRedeemRequest(cv.lastMessages(0));
         assertEq(m0.poolId, poolId.raw());
@@ -179,5 +188,60 @@ contract TestCases is Deployer, Test {
             NAV_PER_SHARE.mulUint128(uint128(valuation.getQuote(APPROVED_SHARE_AMOUNT, USD.addr(), USDC_C2.addr())))
         );
         assertEq(m0.shareAmount, APPROVED_SHARE_AMOUNT);
+    }
+
+    /// forge-config: default.isolate = true
+    function testExecuteNoSendNoPay() public {
+        vm.startPrank(FM);
+
+        PoolId poolId = poolRouter.createPool(FM, USD, multiShareClass);
+
+        bytes[] memory cs = new bytes[](1);
+        cs[0] = abi.encodeWithSelector(poolRouter.setPoolMetadata.selector, "");
+
+        poolRouter.execute(poolId, cs);
+
+        // Check no messages were sent as intended
+        assertEq(cv.messageCount(), 0);
+    }
+
+    /// forge-config: default.isolate = true
+    function testExecuteSendNoPay() public {
+        vm.startPrank(FM);
+
+        PoolId poolId = poolRouter.createPool(FM, USD, multiShareClass);
+
+        bytes[] memory cs = new bytes[](1);
+        cs[0] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
+
+        vm.expectRevert(bytes("Gateway/cannot-topup-with-nothing"));
+        poolRouter.execute(poolId, cs);
+    }
+
+    /// Test the following:
+    /// - multicall()
+    ///   - execute(poolA)
+    ///      - notifyPool()
+    ///   - execute(poolB)
+    ///      - notifyPool()
+    ///
+    /// will pay only for one message. The batch sent is [NotifyPool, NotifyPool].
+    ///
+    /// forge-config: default.isolate = true
+    function testMultipleMulticall() public {
+        vm.startPrank(FM);
+
+        PoolId poolA = poolRouter.createPool(FM, USD, multiShareClass);
+        PoolId poolB = poolRouter.createPool(FM, USD, multiShareClass);
+
+        bytes[] memory innerCalls = new bytes[](1);
+        innerCalls[0] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
+
+        (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
+        cs[c++] = abi.encodeWithSelector(poolRouter.execute.selector, poolA, innerCalls);
+        cs[c++] = abi.encodeWithSelector(poolRouter.execute.selector, poolB, innerCalls);
+        assertEq(c, cs.length);
+
+        poolRouter.multicall{value: GAS}(cs);
     }
 }

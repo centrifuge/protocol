@@ -11,82 +11,38 @@ contract GasServiceTest is Test {
     using MessageLib for *;
     using BytesLib for bytes;
 
-    uint64 constant MESSAGE_COST = 40000000000000000;
-    uint64 constant PROOF_COST = 20000000000000000;
-    uint128 constant GAS_PRICE = 2500000000000000000;
-    uint256 constant TOKEN_PRICE = 178947400000000;
+    uint64 constant MESSAGE_GAS_LIMIT = 40000000000000000;
+    uint64 constant PROOF_GAS_LIMIT = 20000000000000000;
     uint32 constant CHAIN_ID = 1;
 
     GasService service;
 
     function setUp() public {
-        service = new GasService(MESSAGE_COST, PROOF_COST, GAS_PRICE, TOKEN_PRICE);
+        service = new GasService(MESSAGE_GAS_LIMIT, PROOF_GAS_LIMIT);
     }
 
     function testDeployment() public {
-        service = new GasService(MESSAGE_COST, PROOF_COST, GAS_PRICE, TOKEN_PRICE);
+        service = new GasService(MESSAGE_GAS_LIMIT, PROOF_GAS_LIMIT);
         assertEq(service.wards(address(this)), 1);
-        assertEq(service.messageCost(), MESSAGE_COST);
-        assertEq(service.proofCost(), PROOF_COST);
-        assertEq(service.gasPrice(), GAS_PRICE);
-        assertEq(service.tokenPrice(), TOKEN_PRICE);
-        assertEq(service.lastUpdatedAt(), block.timestamp);
+        assertEq(service.messageGasLimit(), MESSAGE_GAS_LIMIT);
+        assertEq(service.proofGasLimit(), PROOF_GAS_LIMIT);
     }
 
-    function testFilings(uint64 messageCost, uint64 proofCost, bytes32 what) public {
-        vm.assume(what != "messageCost");
-        vm.assume(what != "proofCost");
+    function testFilings(uint64 messageGasLimit, uint64 proofGasLimit, bytes32 what) public {
+        vm.assume(what != "messageGasLimit");
+        vm.assume(what != "proofGasLimit");
 
-        service.file("messageCost", messageCost);
-        service.file("proofCost", proofCost);
-        assertEq(service.messageCost(), messageCost);
-        assertEq(service.proofCost(), proofCost);
+        service.file("messageGasLimit", messageGasLimit);
+        service.file("proofGasLimit", proofGasLimit);
+        assertEq(service.messageGasLimit(), messageGasLimit);
+        assertEq(service.proofGasLimit(), proofGasLimit);
 
         vm.expectRevert(IGasService.FileUnrecognizedParam.selector);
-        service.file(what, messageCost);
+        service.file(what, messageGasLimit);
 
         vm.prank(makeAddr("unauthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        service.file("messageCost", messageCost);
-    }
-
-    function testUpdateGasPrice(uint128 value) public {
-        vm.assume(value != 0);
-        vm.assume(value != GAS_PRICE);
-
-        uint64 pastDate = uint64(service.lastUpdatedAt() - 1);
-        uint64 futureDate = uint64(service.lastUpdatedAt() + 1);
-
-        uint64 lastUpdateAt = uint64(service.lastUpdatedAt());
-
-        vm.expectRevert(IGasService.PriceCannotBeZero.selector);
-        service.updateGasPrice(0, futureDate);
-        assertEq(lastUpdateAt, service.lastUpdatedAt());
-
-        vm.expectRevert(IGasService.AlreadySetPrice.selector);
-        service.updateGasPrice(GAS_PRICE, futureDate);
-        assertEq(lastUpdateAt, service.lastUpdatedAt());
-
-        vm.expectRevert(IGasService.OutdatedPrice.selector);
-        service.updateGasPrice(value, pastDate);
-        assertEq(service.gasPrice(), GAS_PRICE);
-
-        service.updateGasPrice(value, futureDate);
-        assertEq(service.gasPrice(), value);
-        assertEq(service.lastUpdatedAt(), futureDate);
-
-        vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        service.updateGasPrice(value, futureDate);
-    }
-
-    function testUpdateTokenPrice(uint256 value) public {
-        service.updateTokenPrice(value);
-        assertEq(service.tokenPrice(), value);
-
-        vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        service.updateTokenPrice(value);
+        service.file("messageGasLimit", messageGasLimit);
     }
 
     function testEstimateFunction(bytes calldata message) public view {
@@ -94,10 +50,10 @@ contract GasServiceTest is Test {
         vm.assume(message.toUint8(0) != uint8(MessageType.MessageProof) && message.toUint8(0) <= 28);
         bytes memory proof = MessageLib.MessageProof(keccak256(message)).serialize();
 
-        uint256 messageCost = service.estimate(CHAIN_ID, message);
-        uint256 proofCost = service.estimate(CHAIN_ID, proof);
+        uint256 messageGasLimit = service.estimate(CHAIN_ID, message);
+        uint256 proofGasLimit = service.estimate(CHAIN_ID, proof);
 
-        assertEq(messageCost, 17894740000000);
-        assertEq(proofCost, 8947370000000);
+        assertEq(messageGasLimit, MESSAGE_GAS_LIMIT);
+        assertEq(proofGasLimit, PROOF_GAS_LIMIT);
     }
 }

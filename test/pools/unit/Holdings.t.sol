@@ -6,10 +6,10 @@ import "forge-std/Test.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
-import {PoolId} from "src/pools/types/PoolId.sol";
-import {AssetId} from "src/pools/types/AssetId.sol";
-import {AccountId} from "src/pools/types/AccountId.sol";
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {Holdings} from "src/pools/Holdings.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IHoldings} from "src/pools/interfaces/IHoldings.sol";

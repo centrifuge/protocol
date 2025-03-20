@@ -7,11 +7,11 @@ solc_version = "0.8.28"
 evm_version = "cancun"
 
 optimizer = true
-optimizer_runs = 500
+optimizer_runs = 90
 verbosity = 3
 
 ffi = true
-fs_permissions = [{ access = "read-write", path = ".forge-snapshots/"}, { access = "read", path = "./deployments"}]
+fs_permissions = [{ access = "read-write", path = ".forge-snapshots/"}, { access = "read-write", path = "./deployments"}]
 
 # False-alarm warnings
 ignored_warnings_from = [
@@ -37,6 +37,18 @@ runs           = 100
 depth          = 1000
 call_override  = false
 fail_on_revert = false
+
+[profile.ci-coverage]
+verbosity = 2
+
+[profile.ci-coverage.coverage]
+ignore = [
+  "test/vaults/fuzzing/**/*.sol",
+]
+
+[profile.ci-coverage.fuzz]
+runs = 512 # 2x of default
+max_test_rejects = 65_536 # default value
 
 [profile.smt.model_checker]
   engine = "chc" # constrained Horn clauses
@@ -82,9 +94,9 @@ fail_on_revert = false
     #Check if https://github.com/foundry-rs/foundry/issues/9088 is fixed to remove the following:
     "src/misc/ReentrancyProtection.sol", #Because transient keyword
     "src/pools/Accounting.sol", #Because transient keyword
-    "src/pools/PoolManager.sol", #Because transient keyword
-    "src/pools/SingleShareClass.sol", #Because transient keyword
-    "src/vaults/gateway/Gateway.sol", #Because transient keyword
+    "src/pools/PoolRouter.sol", #Because transient keyword
+    "src/pools/MultiShareClass.sol", #Because transient keyword
+    "src/common/Gateway.sol", #Because transient keyword
   ]
 
 [rpc_endpoints]

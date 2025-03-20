@@ -1,21 +1,23 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
+import {Auth} from "src/misc/Auth.sol";
+
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 
-import {AssetId} from "src/pools/types/AssetId.sol";
-import {PoolId} from "src/pools/types/PoolId.sol";
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 import "forge-std/Test.sol";
 
-contract MockVaults is Test, IAdapter {
+contract MockVaults is Test, Auth, IAdapter {
     using MessageLib for *;
     using CastLib for string;
     using BytesLib for bytes;
@@ -26,7 +28,7 @@ contract MockVaults is Test, IAdapter {
     uint32[] public lastChainDestinations;
     bytes[] public lastMessages;
 
-    constructor(uint32 chainId, IMessageHandler handler_) {
+    constructor(uint32 chainId, IMessageHandler handler_) Auth(msg.sender) {
         handler = handler_;
         sourceChainId = chainId;
     }
@@ -73,7 +75,7 @@ contract MockVaults is Test, IAdapter {
         );
     }
 
-    function send(uint32 chainId, bytes memory data) external {
+    function send(uint32 chainId, bytes memory data, uint256, address) external payable {
         lastChainDestinations.push(chainId);
 
         while (data.length > 0) {
@@ -86,12 +88,16 @@ contract MockVaults is Test, IAdapter {
         }
     }
 
-    function estimate(uint32 chainId, bytes calldata payload, uint256 baseCost) external view returns (uint256) {}
-
-    function pay(uint32 chainId, bytes calldata payload, address refund) external payable {}
+    function estimate(uint32, bytes calldata, uint256 baseCost) external pure returns (uint256) {
+        return baseCost;
+    }
 
     function resetMessages() external {
         delete lastChainDestinations;
         delete lastMessages;
+    }
+
+    function messageCount() external view returns (uint256) {
+        return lastMessages.length;
     }
 }

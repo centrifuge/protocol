@@ -3,6 +3,9 @@ pragma solidity 0.8.28;
 
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {D18, d18} from "src/misc/types/D18.sol";
+
+import {JournalEntry, JournalEntryLib} from "src/common/types/JournalEntry.sol";
 
 enum MessageType {
     /// @dev Placeholder for null message type
@@ -15,20 +18,17 @@ enum MessageType {
     ScheduleUpgrade,
     CancelUpgrade,
     RecoverTokens,
-    // -- Gas messages 7
-    UpdateGasPrice,
-    // -- Pool manager messages 8 - 17
+    // -- Pool manager messages 7 - 15
     RegisterAsset,
     NotifyPool,
     NotifyShareClass,
-    AllowAsset,
-    DisallowAsset,
     UpdateShareClassPrice,
     UpdateShareClassMetadata,
     UpdateShareClassHook,
     TransferShares,
     UpdateRestriction,
-    // -- Investment manager messages 18 - 26
+    UpdateContract,
+    // -- Investment manager messages 16 - 24
     DepositRequest,
     RedeemRequest,
     FulfilledDepositRequest,
@@ -37,7 +37,13 @@ enum MessageType {
     CancelRedeemRequest,
     FulfilledCancelDepositRequest,
     FulfilledCancelRedeemRequest,
-    TriggerRedeemRequest
+    TriggerRedeemRequest,
+    // -- BalanceSheetManager messages 25 - 27
+    UpdateHolding,
+    UpdateShares,
+    UpdateJournal,
+    TriggerUpdateHolding,
+    TriggerUpdateShares
 }
 
 enum UpdateRestrictionType {
@@ -48,20 +54,29 @@ enum UpdateRestrictionType {
     Unfreeze
 }
 
+enum UpdateContractType {
+    /// @dev Placeholder for null update restriction type
+    Invalid,
+    VaultUpdate,
+    Permission
+}
+
 enum MessageCategory {
     Invalid,
     Gateway,
     Root,
-    Gas,
     Pool,
     Investment,
+    BalanceSheet,
     Other
 }
 
 library MessageLib {
     using MessageLib for bytes;
     using BytesLib for bytes;
+    using JournalEntryLib for bytes;
     using CastLib for *;
+    using JournalEntryLib for JournalEntry[];
 
     error UnknownMessageType();
 
@@ -74,18 +89,16 @@ library MessageLib {
         (65 << uint8(MessageType.DisputeMessageRecovery) * 8) +
         (33 << uint8(MessageType.ScheduleUpgrade) * 8) +
         (33 << uint8(MessageType.CancelUpgrade) * 8) +
-        (129 << uint8(MessageType.RecoverTokens) * 8) +
-        (25 << uint8(MessageType.UpdateGasPrice) * 8) +
-        (37 << uint8(MessageType.RegisterAsset) * 8) + //TODO: modify to 178 when registerAsset feature is merged
+        (161 << uint8(MessageType.RecoverTokens) * 8) +
+        (178 << uint8(MessageType.RegisterAsset) * 8) +
         (9 << uint8(MessageType.NotifyPool) * 8) +
         (250 << uint8(MessageType.NotifyShareClass) * 8) +
-        (41 << uint8(MessageType.AllowAsset) * 8) +
-        (41 << uint8(MessageType.DisallowAsset) * 8) +
         (65 << uint8(MessageType.UpdateShareClassPrice) * 8) +
         (185 << uint8(MessageType.UpdateShareClassMetadata) * 8) +
         (57 << uint8(MessageType.UpdateShareClassHook) * 8) +
         (73 << uint8(MessageType.TransferShares) * 8) +
         (27 << uint8(MessageType.UpdateRestriction) * 8) +
+        (59 << uint8(MessageType.UpdateContract) * 8) +
         (89 << uint8(MessageType.DepositRequest) * 8) +
         (89 << uint8(MessageType.RedeemRequest) * 8) +
         (105 << uint8(MessageType.FulfilledDepositRequest) * 8) +
@@ -94,7 +107,12 @@ library MessageLib {
         (73 << uint8(MessageType.CancelRedeemRequest) * 8) +
         (89 << uint8(MessageType.FulfilledCancelDepositRequest) * 8) +
         (89 << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
-        (89 << uint8(MessageType.TriggerRedeemRequest) * 8);
+        (89 << uint8(MessageType.TriggerRedeemRequest) * 8) +
+        (142 << uint8(MessageType.UpdateHolding) * 8) +
+        (106 << uint8(MessageType.UpdateShares) * 8) +
+        (29 << uint8(MessageType.UpdateJournal) * 8) +
+        (111 << uint8(MessageType.TriggerUpdateHolding) * 8) +
+        (75 << uint8(MessageType.TriggerUpdateShares) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -112,6 +130,15 @@ library MessageLib {
 
         if (kind == uint8(MessageType.UpdateRestriction)) {
             length += message.toUint16(length - 2); //payloadLength
+        } else if (kind == uint8(MessageType.UpdateContract)) {
+            length += message.toUint16(length - 2); //payloadLength
+        } else if (
+            kind == uint8(MessageType.UpdateHolding) || kind == uint8(MessageType.TriggerUpdateHolding)
+                || kind == uint8(MessageType.UpdateJournal)
+        ) {
+            uint16 lengthCredits = message.toUint16(length - 2); // credits length
+            uint16 lengthDebits = message.toUint16(length - 4); //debits length
+            length += lengthCredits + lengthDebits;
         }
     }
 
@@ -122,12 +149,12 @@ library MessageLib {
             return MessageCategory.Gateway;
         } else if (code >= 4 && code <= 6) {
             return MessageCategory.Root;
-        } else if (code == 7) {
-            return MessageCategory.Gas;
-        } else if (code >= 8 && code <= 17) {
+        } else if (code >= 7 && code <= 15) {
             return MessageCategory.Pool;
-        } else if (code >= 18 && code <= 26) {
+        } else if (code >= 16 && code <= 24) {
             return MessageCategory.Investment;
+        } else if (code >= 25 && code <= 29) {
+            return MessageCategory.BalanceSheet;
         } else {
             return MessageCategory.Other;
         }
@@ -135,6 +162,10 @@ library MessageLib {
 
     function updateRestrictionType(bytes memory message) internal pure returns (UpdateRestrictionType) {
         return UpdateRestrictionType(message.toUint8(0));
+    }
+
+    function updateContractType(bytes memory message) internal pure returns (UpdateContractType) {
+        return UpdateContractType(message.toUint8(0));
     }
 
     //---------------------------------------
@@ -239,6 +270,7 @@ library MessageLib {
     struct RecoverTokens {
         bytes32 target;
         bytes32 token;
+        uint256 tokenId;
         bytes32 to;
         uint256 amount;
     }
@@ -248,31 +280,14 @@ library MessageLib {
         return RecoverTokens({
             target: data.toBytes32(1),
             token: data.toBytes32(33),
-            to: data.toBytes32(65),
-            amount: data.toUint256(97)
+            tokenId: data.toUint256(65),
+            to: data.toBytes32(97),
+            amount: data.toUint256(129)
         });
     }
 
     function serialize(RecoverTokens memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.RecoverTokens, t.target, t.token, t.to, t.amount);
-    }
-
-    //---------------------------------------
-    //    UpdateGasPrice
-    //---------------------------------------
-
-    struct UpdateGasPrice {
-        uint128 price;
-        uint64 timestamp;
-    }
-
-    function deserializeUpdateGasPrice(bytes memory data) internal pure returns (UpdateGasPrice memory) {
-        require(messageType(data) == MessageType.UpdateGasPrice, UnknownMessageType());
-        return UpdateGasPrice({price: data.toUint128(1), timestamp: data.toUint64(17)});
-    }
-
-    function serialize(UpdateGasPrice memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.UpdateGasPrice, t.price, t.timestamp);
+        return abi.encodePacked(MessageType.RecoverTokens, t.target, t.token, t.tokenId, t.to, t.amount);
     }
 
     //---------------------------------------
@@ -357,44 +372,6 @@ library MessageLib {
             t.salt,
             t.hook
         );
-    }
-
-    //---------------------------------------
-    //    AllowAsset
-    //---------------------------------------
-
-    struct AllowAsset {
-        uint64 poolId;
-        bytes16 scId;
-        uint128 assetId;
-    }
-
-    function deserializeAllowAsset(bytes memory data) internal pure returns (AllowAsset memory) {
-        require(messageType(data) == MessageType.AllowAsset, UnknownMessageType());
-        return AllowAsset({poolId: data.toUint64(1), scId: data.toBytes16(9), assetId: data.toUint128(25)});
-    }
-
-    function serialize(AllowAsset memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.AllowAsset, t.poolId, t.scId, t.assetId);
-    }
-
-    //---------------------------------------
-    //    DisallowAsset
-    //---------------------------------------
-
-    struct DisallowAsset {
-        uint64 poolId;
-        bytes16 scId;
-        uint128 assetId;
-    }
-
-    function deserializeDisallowAsset(bytes memory data) internal pure returns (DisallowAsset memory) {
-        require(messageType(data) == MessageType.DisallowAsset, UnknownMessageType());
-        return DisallowAsset({poolId: data.toUint64(1), scId: data.toBytes16(9), assetId: data.toUint128(25)});
-    }
-
-    function serialize(DisallowAsset memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.DisallowAsset, t.poolId, t.scId, t.assetId);
     }
 
     //---------------------------------------
@@ -589,6 +566,87 @@ library MessageLib {
 
     function serialize(UpdateRestrictionUnfreeze memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(UpdateRestrictionType.Unfreeze, t.user);
+    }
+
+    //---------------------------------------
+    //    UpdateContract
+    //---------------------------------------
+
+    struct UpdateContract {
+        uint64 poolId;
+        bytes16 scId;
+        bytes32 target;
+        bytes payload;
+    }
+
+    function deserializeUpdateContract(bytes memory data) internal pure returns (UpdateContract memory) {
+        require(messageType(data) == MessageType.UpdateContract, UnknownMessageType());
+        uint16 payloadLength = data.toUint16(57);
+        return UpdateContract({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            target: data.toBytes32(25),
+            payload: data.slice(59, payloadLength)
+        });
+    }
+
+    function serialize(UpdateContract memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(
+            MessageType.UpdateContract, t.poolId, t.scId, t.target, uint16(t.payload.length), t.payload
+        );
+    }
+
+    //---------------------------------------
+    //   UpdateContract.VaultUpdate (submsg)
+    //---------------------------------------
+
+    struct UpdateContractVaultUpdate {
+        address factory;
+        uint128 assetId;
+        bool isLinked;
+        address vault;
+    }
+
+    function deserializeUpdateContractVaultUpdate(bytes memory data)
+        internal
+        pure
+        returns (UpdateContractVaultUpdate memory)
+    {
+        require(updateContractType(data) == UpdateContractType.VaultUpdate, UnknownMessageType());
+
+        return UpdateContractVaultUpdate({
+            factory: data.toAddress(1),
+            assetId: data.toUint128(21),
+            isLinked: data.toBool(37),
+            vault: data.toAddress(38)
+        });
+    }
+
+    function serialize(UpdateContractVaultUpdate memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(UpdateContractType.VaultUpdate, t.factory, t.assetId, t.isLinked, t.vault);
+    }
+
+    //---------------------------------------
+    //   UpdateContract.Permission (submsg)
+    //---------------------------------------
+
+    struct UpdateContractPermission {
+        address who;
+        bool allowed;
+    }
+
+    function deserializeUpdateContractPermission(bytes memory data)
+        internal
+        pure
+        returns (UpdateContractPermission memory)
+    {
+        require(updateContractType(data) == UpdateContractType.Permission, UnknownMessageType());
+
+        return UpdateContractPermission({who: data.toAddress(1), allowed: data.toBool(21)});
+    }
+
+    function serialize(UpdateContractPermission memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(UpdateContractType.Permission, t.who, t.allowed);
     }
 
     //---------------------------------------
@@ -856,5 +914,203 @@ library MessageLib {
 
     function serialize(TriggerRedeemRequest memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(MessageType.TriggerRedeemRequest, t.poolId, t.scId, t.investor, t.assetId, t.shares);
+    }
+
+    //---------------------------------------
+    //    UpdateHolding
+    //---------------------------------------
+
+    struct UpdateHolding {
+        uint64 poolId;
+        bytes16 scId;
+        uint128 assetId;
+        bytes32 who;
+        uint128 amount;
+        D18 pricePerUnit;
+        uint256 timestamp;
+        bool isIncrease; // Signals whether this is an increase or a decrease
+        JournalEntry[] debits;
+        JournalEntry[] credits;
+    }
+
+    function deserializeUpdateHolding(bytes memory data) internal pure returns (UpdateHolding memory h) {
+        require(messageType(data) == MessageType.UpdateHolding, "UnknownMessageType");
+
+        uint16 debitsByteLen = data.toUint16(138);
+        uint16 creditsByteLen = data.toUint16(140);
+
+        uint256 offset = 142;
+        h.debits = data.toJournalEntries(offset, debitsByteLen);
+        offset += debitsByteLen;
+        h.credits = data.toJournalEntries(offset, creditsByteLen);
+
+        // Now assign each field one at a time
+        h.poolId = data.toUint64(1);
+        h.scId = data.toBytes16(9);
+        h.assetId = data.toUint128(25);
+        h.who = data.toBytes32(41);
+        h.amount = data.toUint128(73);
+        h.pricePerUnit = D18.wrap(data.toUint128(89));
+        h.timestamp = data.toUint256(105);
+        h.isIncrease = data.toBool(137);
+        return h;
+    }
+
+    function serialize(UpdateHolding memory t) internal pure returns (bytes memory) {
+        bytes memory debits = t.debits.encodePacked();
+        bytes memory credits = t.credits.encodePacked();
+
+        bytes memory partial1 = abi.encodePacked(MessageType.UpdateHolding, t.poolId, t.scId, t.assetId, t.who);
+        bytes memory partial2 = abi.encodePacked(partial1, t.amount, t.pricePerUnit, t.timestamp, t.isIncrease);
+        bytes memory partial3 = abi.encodePacked(partial2, uint16(debits.length), uint16(credits.length));
+
+        return abi.encodePacked(partial3, debits, credits);
+    }
+
+    //---------------------------------------
+    //    UpdateShares
+    //---------------------------------------
+
+    struct UpdateShares {
+        uint64 poolId;
+        bytes16 scId;
+        bytes32 who;
+        uint128 shares;
+        uint256 timestamp;
+        bool isIssuance;
+    }
+
+    function deserializeUpdateShares(bytes memory data) internal pure returns (UpdateShares memory) {
+        require(messageType(data) == MessageType.UpdateShares, UnknownMessageType());
+
+        return UpdateShares({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            who: data.toBytes32(25),
+            shares: data.toUint128(57),
+            timestamp: data.toUint256(73),
+            isIssuance: data.toBool(105)
+        });
+    }
+
+    function serialize(UpdateShares memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.UpdateShares, t.poolId, t.scId, t.who, t.shares, t.timestamp, t.isIssuance);
+    }
+
+    //---------------------------------------
+    //    UpdateJournal
+    //---------------------------------------
+
+    struct UpdateJournal {
+        uint64 poolId;
+        bytes16 scId;
+        JournalEntry[] debits;
+        JournalEntry[] credits;
+    }
+
+    function deserializeUpdateJournal(bytes memory data) internal pure returns (UpdateJournal memory) {
+        require(messageType(data) == MessageType.UpdateJournal, UnknownMessageType());
+
+        uint16 debitsLength = data.toUint16(25);
+        uint16 creditsLength = data.toUint16(27);
+        uint256 offset = 29;
+        JournalEntry[] memory debits = data.toJournalEntries(offset, debitsLength);
+        offset += debitsLength;
+        JournalEntry[] memory credits = data.toJournalEntries(offset, creditsLength);
+
+        return UpdateJournal({poolId: data.toUint64(1), scId: data.toBytes16(9), debits: debits, credits: credits});
+    }
+
+    function serialize(UpdateJournal memory t) internal pure returns (bytes memory) {
+        bytes memory debits = t.debits.encodePacked();
+        bytes memory credits = t.credits.encodePacked();
+
+        return abi.encodePacked(
+            MessageType.UpdateJournal, t.poolId, t.scId, uint16(debits.length), uint16(credits.length), debits, credits
+        );
+    }
+
+    //---------------------------------------
+    //    TriggerUpdateHolding
+    //---------------------------------------
+
+    struct TriggerUpdateHolding {
+        uint64 poolId;
+        bytes16 scId;
+        uint128 assetId;
+        bytes32 who;
+        uint128 amount;
+        D18 pricePerUnit;
+        bool isIncrease; // Signals whether this is an increase or a decrease
+        bool asAllowance; // Signals whether the amount is transferred or allowed to who on the BSM
+        JournalEntry[] debits;
+        JournalEntry[] credits;
+    }
+
+    function deserializeTriggerUpdateHolding(bytes memory data) internal pure returns (TriggerUpdateHolding memory h) {
+        require(messageType(data) == MessageType.TriggerUpdateHolding, "UnknownMessageType");
+
+        uint16 debitsByteLen = data.toUint16(107);
+        uint16 creditsByteLen = data.toUint16(109);
+
+        uint256 offset = 111;
+        h.debits = data.toJournalEntries(offset, debitsByteLen);
+        offset += debitsByteLen;
+        h.credits = data.toJournalEntries(offset, creditsByteLen);
+
+        // Now assign each field one at a time
+        h.poolId = data.toUint64(1);
+        h.scId = data.toBytes16(9);
+        h.assetId = data.toUint128(25);
+        h.who = data.toBytes32(41);
+        h.amount = data.toUint128(73);
+        h.pricePerUnit = D18.wrap(data.toUint128(89));
+        h.isIncrease = data.toBool(105);
+        h.asAllowance = data.toBool(106);
+
+        return h;
+    }
+
+    function serialize(TriggerUpdateHolding memory t) internal pure returns (bytes memory) {
+        bytes memory debits = t.debits.encodePacked();
+        bytes memory credits = t.credits.encodePacked();
+
+        bytes memory partial1 = abi.encodePacked(MessageType.TriggerUpdateHolding, t.poolId, t.scId, t.assetId, t.who);
+        bytes memory partial2 = abi.encodePacked(partial1, t.amount, t.pricePerUnit, t.isIncrease, t.asAllowance);
+        bytes memory partial3 = abi.encodePacked(partial2, uint16(debits.length), uint16(credits.length));
+
+        return abi.encodePacked(partial3, debits, credits);
+    }
+
+    //---------------------------------------
+    //    TriggerUpdateShares
+    //---------------------------------------
+
+    struct TriggerUpdateShares {
+        uint64 poolId;
+        bytes16 scId;
+        bytes32 who;
+        uint128 shares;
+        bool isIssuance;
+        bool asAllowance;
+    }
+
+    function deserializeTriggerUpdateShares(bytes memory data) internal pure returns (TriggerUpdateShares memory) {
+        require(messageType(data) == MessageType.TriggerUpdateShares, UnknownMessageType());
+
+        return TriggerUpdateShares({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            who: data.toBytes32(25),
+            shares: data.toUint128(57),
+            isIssuance: data.toBool(73),
+            asAllowance: data.toBool(74)
+        });
+    }
+
+    function serialize(TriggerUpdateShares memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(
+            MessageType.TriggerUpdateShares, t.poolId, t.scId, t.who, t.shares, t.isIssuance, t.asAllowance
+        );
     }
 }

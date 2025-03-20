@@ -1,17 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {EIP712Lib} from "src/misc/libraries/EIP712Lib.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
-import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
+import {IRoot} from "src/common/interfaces/IRoot.sol";
+
+import {Auth} from "src/misc/Auth.sol";
+import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
+import {EIP712Lib} from "src/misc/libraries/EIP712Lib.sol";
+import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {SignatureLib} from "src/misc/libraries/SignatureLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+
+import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IInvestmentManager} from "src/vaults/interfaces/IInvestmentManager.sol";
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/vaults/interfaces/IERC7575.sol";
-import "src/misc/interfaces/IERC20.sol";
 
 abstract contract BaseVault is Auth, IBaseVault {
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
@@ -27,6 +30,9 @@ abstract contract BaseVault is Auth, IBaseVault {
 
     /// @inheritdoc IERC7575
     address public immutable asset;
+    /// @dev NOTE: Should never be used in production in any external contract as there will be old vaults without this
+    /// storage. Instead, refer to poolManager.vaultDetails(vault).
+    uint256 internal immutable tokenId;
 
     /// @inheritdoc IERC7575
     address public immutable share;
@@ -49,12 +55,19 @@ abstract contract BaseVault is Auth, IBaseVault {
     // --- Events ---
     event File(bytes32 indexed what, address data);
 
-    constructor(uint64 poolId_, bytes16 trancheId_, address asset_, address share_, address root_, address manager_)
-        Auth(msg.sender)
-    {
+    constructor(
+        uint64 poolId_,
+        bytes16 trancheId_,
+        address asset_,
+        uint256 tokenId_,
+        address share_,
+        address root_,
+        address manager_
+    ) Auth(msg.sender) {
         poolId = poolId_;
         trancheId = trancheId_;
         asset = asset_;
+        tokenId = tokenId_;
         share = share_;
         _shareDecimals = IERC20Metadata(share).decimals();
         root = IRoot(root_);
@@ -74,8 +87,12 @@ abstract contract BaseVault is Auth, IBaseVault {
     }
 
     /// @inheritdoc IRecoverable
-    function recoverTokens(address token, address to, uint256 amount) external auth {
-        SafeTransferLib.safeTransfer(token, to, amount);
+    function recoverTokens(address token, uint256 tokenId_, address to, uint256 amount) external auth {
+        if (tokenId_ == 0) {
+            SafeTransferLib.safeTransfer(token, to, amount);
+        } else {
+            IERC6909(token).transfer(to, tokenId_, amount);
+        }
     }
 
     // --- ERC-7540 methods ---

@@ -38,11 +38,13 @@ abstract contract SharedStorage {
     // Currency ID = Currency Length
     // Pool ID = Pool Length
     // Tranche ID = Tranche Length . toId
-    uint64 CURRENCY_ID = 1;
+    uint64 ASSET_ID_COUNTER = 1;
     uint64 POOL_ID = 1;
     uint16 TRANCHE_COUNTER = 1;
     // Hash of index + salt, but we use number to be able to cycle
     bytes16 TRANCHE_ID = bytes16(bytes32(uint256(TRANCHE_COUNTER)));
+    uint32 DEFAULT_DESTINATION_CHAIN = 1;
+    uint128 ASSET_ID = uint128(bytes16(abi.encodePacked(DEFAULT_DESTINATION_CHAIN, uint32(1))));
 
     // NOTE: TODO
     // ** INCOMPLETE - Deployment, Setup and Cycling of Assets, Tranches, Pools and Vaults **/
@@ -50,8 +52,8 @@ abstract contract SharedStorage {
     // Make Currency
     ERC20[] allTokens;
     /// TODO: Consider dropping
-    mapping(address => uint128) tokenToCurrencyId;
-    mapping(uint128 => address) currencyIdToToken;
+    mapping(address => uint128) assetAddressToAssetId;
+    mapping(uint128 => address) assetIdToAssetAddress;
 
     // TODO: Consider refactoring to a address of Currency or Tranche to get the rest of the details
     address[] trancheTokens; // TODO: Tranche to ID

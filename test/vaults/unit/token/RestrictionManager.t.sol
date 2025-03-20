@@ -2,11 +2,11 @@
 pragma solidity 0.8.28;
 
 import {Tranche} from "src/vaults/token/Tranche.sol";
-import {MockRoot} from "test/vaults/mocks/MockRoot.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 import "forge-std/Test.sol";
+import {MockRoot} from "test/common/mocks/MockRoot.sol";
 
 contract RestrictionManagerTest is Test {
     MockRoot root;

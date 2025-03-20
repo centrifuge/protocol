@@ -34,6 +34,7 @@ The deployment of these tranches and the management of investments is controlled
 - [**Gateway**](https://github.com/centrifuge/protocol-v3/blob/main/src/vaults/gateway/Gateway.sol): Multi-Message Aggregation (MMA) implementation, receiving messages from managers, sending these messages as full payload to 1 adapter and a proof to n-1 adapters, and verifying incoming payloads and proofs and sending back to managers.
 - [**Adapters**](https://github.com/centrifuge/protocol-v3/tree/main/src/vaults/gateway/adapters): Adapter implementations for messaging layers.
 
+
 ## Developing
 #### Getting started
 ```sh
