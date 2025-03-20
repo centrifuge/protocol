@@ -264,6 +264,12 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
         transferTrancheTokens(vault, chainId, recipient.toBytes32(), amount);
     }
 
+    // --- Register Asset ---
+    function registerAsset(address asset, uint256 tokenId, uint32 chainId) public payable {
+        _pay();
+        IPoolManager(poolManager).registerAsset(asset, tokenId, chainId);
+    }
+
     // --- ERC20 permits ---
     /// @inheritdoc IVaultRouter
     function permit(address asset, address spender, uint256 assets, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
