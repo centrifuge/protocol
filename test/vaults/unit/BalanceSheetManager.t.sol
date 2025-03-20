@@ -17,11 +17,12 @@ contract BalanceSheetManagerTest is BaseTest {
     using CastLib for *;
 
     uint128 defaultAmount;
+    uint128 assetId;
 
     function setUp() public override {
         super.setUp();
         defaultAmount = 100;
-        poolManager.registerAsset(address(erc20), erc20TokenId, defaultChainId);
+        assetId = poolManager.registerAsset(address(erc20), erc20TokenId, defaultChainId);
         poolManager.addPool(defaultPoolId);
         poolManager.addTranche(
             defaultPoolId,
@@ -330,7 +331,21 @@ contract BalanceSheetManagerTest is BaseTest {
         assertEq(token.balanceOf(address(this)), 0);
     }
 
-    function testUpdateJournal() public {}
+    function testUpdateJournal() public {
+        Meta memory meta = _defaultMeta();
 
-    function testUpdateValue() public {}
+        vm.prank(randomUser);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        balanceSheetManager.journalEntry(defaultPoolId, defaultShareClassId, meta);
+
+        balanceSheetManager.journalEntry(defaultPoolId, defaultShareClassId, meta);
+    }
+
+    function testUpdateValue() public {
+        vm.prank(randomUser);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        balanceSheetManager.updateValue(defaultPoolId, defaultShareClassId, assetId, d18(1, 3), block.timestamp);
+
+        balanceSheetManager.updateValue(defaultPoolId, defaultShareClassId, assetId, d18(1, 3), block.timestamp);
+    }
 }
