@@ -36,6 +36,32 @@ abstract contract Properties is BeforeAfter, Asserts {
         eq(_after.ghostCredited, 0, "credited not reset");
     }
 
+    /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
+    /// @dev Implemented as a global property since approveDeposits is only callable by execute it makes checking this via induction difficult
+    function property_total_pending_deposit_geq_sum_pending_user_deposit() public {
+        address[] memory _actors = _getActors();
+
+        for (uint256 i = 0; i < createdPools.length; i++) { 
+            PoolId poolId = createdPools[i];
+            uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
+
+            for (uint32 j = 0; j < shareClassCount; j++) {
+                ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
+                AssetId assetId = poolRegistry.currency(poolId);
+
+                uint128 totalPendingDeposit = multiShareClass.pendingDeposit(scId, assetId);
+                uint128 totalPendingUserDeposit = 0;
+                for (uint256 k = 0; k < _actors.length; k++) {
+                    address actor = _actors[k];
+                    (uint128 pendingUserDeposit,) = multiShareClass.depositRequest(scId, assetId, Helpers.addressToBytes32(actor));
+                    totalPendingUserDeposit += pendingUserDeposit;
+                }
+
+                gte(totalPendingDeposit, totalPendingUserDeposit, "total pending deposit is less than sum of pending user deposit amounts");
+            }
+        }
+    }
+
     /// @dev Property: The total pending asset amount pendingDeposit[..] is always >= the approved asset amount epochAmounts[..].depositApproved
     function property_pending_deposit_geq_approved_deposit() public {
         address[] memory _actors = _getActors();
@@ -57,7 +83,7 @@ abstract contract Properties is BeforeAfter, Asserts {
             }
         }
     }
-    
+
     /// @dev Property: User pending redemption is never greater than the total redemption
     function property_cancelled_redemption_never_greater_than_requested() public {
         address[] memory _actors = _getActors();
