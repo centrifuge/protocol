@@ -23,7 +23,7 @@ contract VaultsDeployer is CommonDeployer {
     PoolManager public poolManager;
     Escrow public escrow;
     Escrow public routerEscrow;
-    VaultRouter public router;
+    VaultRouter public vaultRouter;
     address public vaultFactory;
     address public restrictionManager;
     address public restrictedRedemptions;
@@ -44,15 +44,15 @@ contract VaultsDeployer is CommonDeployer {
         vaultFactories[0] = vaultFactory;
 
         poolManager = new PoolManager(address(escrow), trancheFactory, vaultFactories);
-        router = new VaultRouter(address(routerEscrow), address(gateway), address(poolManager));
+        vaultRouter = new VaultRouter(address(routerEscrow), address(gateway), address(poolManager));
 
-        _vaultRegister();
+        _vaultsRegister();
         _vaultsEndorse();
         _vaultsRely();
         _vaultsFile();
     }
 
-    function _vaultRegister() private {
+    function _vaultsRegister() private {
         register("escrow", address(escrow));
         register("routerEscrow", address(routerEscrow));
         register("restrictionManager", address(restrictionManager));
@@ -61,11 +61,11 @@ contract VaultsDeployer is CommonDeployer {
         register("investmentManager", address(investmentManager));
         register("vaultFactory", address(vaultFactory));
         register("poolManager", address(poolManager));
-        register("router", address(router));
+        register("vaultRouter", address(vaultRouter));
     }
 
     function _vaultsEndorse() private {
-        root.endorse(address(router));
+        root.endorse(address(vaultRouter));
         root.endorse(address(escrow));
     }
 
@@ -83,7 +83,7 @@ contract VaultsDeployer is CommonDeployer {
         messageProcessor.rely(address(investmentManager));
 
         // Rely on Root
-        router.rely(address(root));
+        vaultRouter.rely(address(root));
         poolManager.rely(address(root));
         investmentManager.rely(address(root));
         escrow.rely(address(root));
@@ -98,14 +98,14 @@ contract VaultsDeployer is CommonDeployer {
         poolManager.rely(address(gateway));
 
         // Rely on others
-        routerEscrow.rely(address(router));
+        routerEscrow.rely(address(vaultRouter));
 
         // Rely on vaultMessageProcessor
         poolManager.rely(address(messageProcessor));
         investmentManager.rely(address(messageProcessor));
 
         // Rely on VaultRouter
-        gateway.rely(address(router));
+        gateway.rely(address(vaultRouter));
     }
 
     function _vaultsFile() public {
@@ -131,6 +131,6 @@ contract VaultsDeployer is CommonDeployer {
         poolManager.deny(deployer);
         escrow.deny(deployer);
         routerEscrow.deny(deployer);
-        router.deny(deployer);
+        vaultRouter.deny(deployer);
     }
 }

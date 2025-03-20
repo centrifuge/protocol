@@ -17,7 +17,8 @@ contract CommonDeployer is Script {
     bytes32 immutable SALT;
     uint256 constant BASE_MSG_COST = 20000000000000000; // in Weight
 
-    string deploymentOutput = "{\n";
+    string deploymentOutput;
+    uint256 registeredContracts = 0;
 
     IAdapter[] adapters;
 
@@ -59,6 +60,8 @@ contract CommonDeployer is Script {
     }
 
     function _commonRegister() private {
+        deploymentOutput = '{\n  "contracts": {\n';
+
         register("root", address(root));
         register("adminSafe", address(adminSafe));
         register("guardian", address(guardian));
@@ -100,21 +103,24 @@ contract CommonDeployer is Script {
     }
 
     function register(string memory name, address target) public {
-        deploymentOutput =
-            string(abi.encodePacked(deploymentOutput, '  "', name, '": "0x', _toAsciiString(target), '",\n'));
+        deploymentOutput = (registeredContracts == 0)
+            ? string(abi.encodePacked(deploymentOutput, '    "', name, '": "0x', _toString(target), '"'))
+            : string(abi.encodePacked(deploymentOutput, ',\n    "', name, '": "0x', _toString(target), '"'));
+
+        registeredContracts += 1;
     }
 
     function saveDeploymentOutput() public {
         string memory path = string(
             abi.encodePacked(
-                "./deployments/latest/", _uint2str(block.chainid), "_", _uint2str(block.timestamp), ".json"
+                "./deployments/latest/", _toString(block.chainid), "_", _toString(block.timestamp), ".json"
             )
         );
-        deploymentOutput = string(abi.encodePacked(deploymentOutput, "}\n"));
+        deploymentOutput = string(abi.encodePacked(deploymentOutput, "  }\n}\n"));
         vm.writeFile(path, deploymentOutput);
     }
 
-    function _toAsciiString(address x) internal pure returns (string memory) {
+    function _toString(address x) internal pure returns (string memory) {
         bytes memory s = new bytes(40);
         for (uint256 i = 0; i < 20; i++) {
             bytes1 b = bytes1(uint8(uint256(uint160(x)) / (2 ** (8 * (19 - i)))));
@@ -131,7 +137,7 @@ contract CommonDeployer is Script {
         else return bytes1(uint8(b) + 0x57);
     }
 
-    function _uint2str(uint256 _i) internal pure returns (string memory _uintAsString) {
+    function _toString(uint256 _i) internal pure returns (string memory _uintAsString) {
         if (_i == 0) {
             return "0";
         }
