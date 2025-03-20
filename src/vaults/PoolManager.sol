@@ -13,6 +13,8 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {IPoolManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
+import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 import {IBaseVault, IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
@@ -30,13 +32,12 @@ import {
     IPoolManager
 } from "src/vaults/interfaces/IPoolManager.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
-import {IMessageProcessor} from "src/vaults/interfaces/IMessageProcessor.sol";
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 
 /// @title  Pool Manager
 /// @notice This contract manages which pools & tranches exist,
 ///         as well as managing allowed pool currencies, and incoming and outgoing transfers.
-contract PoolManager is Auth, IPoolManager, IUpdateContract {
+contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGatewayHandler {
     using MessageLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;
@@ -48,7 +49,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     IEscrow public immutable escrow;
 
     IGateway public gateway;
-    IMessageProcessor public sender;
+    IVaultMessageSender public sender;
     ITrancheFactory public trancheFactory;
 
     uint32 internal _assetCounter;
@@ -73,7 +74,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
     /// @inheritdoc IPoolManager
     function file(bytes32 what, address data) external auth {
         if (what == "gateway") gateway = IGateway(data);
-        else if (what == "sender") sender = IMessageProcessor(data);
+        else if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "trancheFactory") trancheFactory = ITrancheFactory(data);
         else revert("PoolManager/file-unrecognized-param");
         emit File(what, data);
@@ -116,7 +117,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         emit TransferTrancheTokens(poolId, trancheId, msg.sender, destinationId, recipient, amount);
     }
 
-    // @inheritdoc IPoolManager
+    // @inheritdoc IPoolManagerGatewayHandler
     function registerAsset(address asset, uint256 tokenId, uint32 destChainId) external returns (uint128 assetId) {
         string memory name;
         string memory symbol;
@@ -155,7 +156,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         sender.sendRegisterAsset(destChainId, assetId, name, symbol, decimals);
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc IPoolManagerGatewayHandler
     function addPool(uint64 poolId) public auth {
         Pool storage pool = _pools[poolId];
         require(pool.createdAt == 0, "PoolManager/pool-already-added");
@@ -163,7 +164,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         emit AddPool(poolId);
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc IPoolManagerGatewayHandler
     function addTranche(
         uint64 poolId,
         bytes16 trancheId,
@@ -197,7 +198,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         return token;
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc IPoolManagerGatewayHandler
     function updateTrancheMetadata(uint64 poolId, bytes16 trancheId, string memory name, string memory symbol)
         public
         auth
@@ -215,7 +216,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         tranche_.file("symbol", symbol);
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc IPoolManagerGatewayHandler
     function updateTranchePrice(uint64 poolId, bytes16 trancheId, uint128 assetId, uint128 price, uint64 computedAt)
         public
         auth
@@ -233,7 +234,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         emit PriceUpdate(poolId, trancheId, assetIdKey.asset, assetIdKey.tokenId, price, computedAt);
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc IPoolManagerGatewayHandler
     function updateRestriction(uint64 poolId, bytes16 trancheId, bytes memory update_) public auth {
         ITranche tranche_ = ITranche(tranche(poolId, trancheId));
         require(address(tranche_) != address(0), "PoolManager/unknown-token");
@@ -242,7 +243,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         IHook(hook).updateRestriction(address(tranche_), update_);
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc IPoolManagerGatewayHandler
     function updateContract(uint64 poolId, bytes16 trancheId, address target, bytes memory update_) public auth {
         if (target == address(this)) {
             update(poolId, trancheId, update_);
@@ -253,7 +254,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         emit UpdateContract(poolId, trancheId, target, update_);
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc IPoolManagerGatewayHandler
     function updateTrancheHook(uint64 poolId, bytes16 trancheId, address hook) public auth {
         ITranche tranche_ = ITranche(tranche(poolId, trancheId));
         require(address(tranche_) != address(0), "PoolManager/unknown-token");
@@ -261,7 +262,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract {
         tranche_.file("hook", hook);
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc IPoolManagerGatewayHandler
     function handleTransferTrancheTokens(uint64 poolId, bytes16 trancheId, address destinationAddress, uint128 amount)
         public
         auth

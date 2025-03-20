@@ -9,6 +9,8 @@ import {Auth} from "src/misc/Auth.sol";
 import {Multicall, IMulticall} from "src/misc/Multicall.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {IPoolRouterGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
+import {IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
@@ -20,11 +22,10 @@ import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 import {IMultiShareClass} from "src/pools/interfaces/IMultiShareClass.sol";
 import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
-import {IMessageProcessor} from "src/pools/interfaces/IMessageProcessor.sol";
-import {IPoolRouter, IPoolRouterHandler, EscrowId, AccountType} from "src/pools/interfaces/IPoolRouter.sol";
+import {IPoolRouter, EscrowId, AccountType} from "src/pools/interfaces/IPoolRouter.sol";
 
 // @inheritdoc IPoolRouter
-contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
+contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     using MathLib for uint256;
     using CastLib for bytes;
     using CastLib for bytes32;
@@ -37,7 +38,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
     IAssetRegistry public assetRegistry;
     IAccounting public accounting;
     IHoldings public holdings;
-    IMessageProcessor public sender;
+    IPoolMessageSender public sender;
     IGateway public gateway;
 
     constructor(
@@ -61,7 +62,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
 
     /// @inheritdoc IPoolRouter
     function file(bytes32 what, address data) external auth {
-        if (what == "sender") sender = IMessageProcessor(data);
+        if (what == "sender") sender = IPoolMessageSender(data);
         else if (what == "holdings") holdings = IHoldings(data);
         else if (what == "poolRegistry") poolRegistry = IPoolRegistry(data);
         else if (what == "assetRegistry") assetRegistry = IAssetRegistry(data);
@@ -371,7 +372,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
     // Gateway owner methods
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IPoolRouterHandler
+    /// @inheritdoc IPoolRouterGatewayHandler
     function registerAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals)
         external auth
     {
@@ -379,7 +380,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
         assetRegistry.registerAsset(assetId, name, symbol, decimals);
     }
 
-    /// @inheritdoc IPoolRouterHandler
+    /// @inheritdoc IPoolRouterGatewayHandler
     function depositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId, uint128 amount)
         external auth
     {
@@ -391,7 +392,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
         scm.requestDeposit(poolId, scId, amount, investor, depositAssetId);
     }
 
-    /// @inheritdoc IPoolRouterHandler
+    /// @inheritdoc IPoolRouterGatewayHandler
     function redeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId, uint128 amount)
         external auth
     {
@@ -400,7 +401,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
         scm.requestRedeem(poolId, scId, amount, investor, payoutAssetId);
     }
 
-    /// @inheritdoc IPoolRouterHandler
+    /// @inheritdoc IPoolRouterGatewayHandler
     function cancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
         external auth
     {
@@ -414,7 +415,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
         sender.sendFulfilledCancelDepositRequest(poolId, scId, depositAssetId, investor, cancelledAssetAmount);
     }
 
-    /// @inheritdoc IPoolRouterHandler
+    /// @inheritdoc IPoolRouterGatewayHandler
     function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
         external auth
     {

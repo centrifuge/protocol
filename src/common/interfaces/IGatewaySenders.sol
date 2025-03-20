@@ -6,7 +6,7 @@ import {AssetId} from "src/pools/types/AssetId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
 
 /// @notice Interface for dispatch-only gateway
-interface IMessageProcessor {
+interface IPoolMessageSender {
     /// @notice Creates and send the message
     function sendNotifyPool(uint32 chainId, PoolId poolId) external;
 
@@ -58,5 +58,35 @@ interface IMessageProcessor {
         AssetId assetId,
         bytes32 investor,
         uint128 cancelledShares
+    ) external;
+}
+
+/// @notice Interface for dispatch-only gateway
+interface IVaultMessageSender {
+    /// @notice Creates and send the message
+    function sendTransferShares(uint32 chainId, uint64 poolId, bytes16 scId, bytes32 recipient, uint128 amount)
+        external;
+
+    /// @notice Creates and send the message
+    function sendDepositRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId, uint128 amount)
+        external;
+
+    /// @notice Creates and send the message
+    function sendRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId, uint128 amount)
+        external;
+
+    /// @notice Creates and send the message
+    function sendCancelDepositRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId) external;
+
+    /// @notice Creates and send the message
+    function sendCancelRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId) external;
+
+    /// @notice Creates and send the message
+    function sendRegisterAsset(
+        uint32 chainId,
+        uint128 assetId,
+        string memory name,
+        string memory symbol,
+        uint8 decimals
     ) external;
 }
