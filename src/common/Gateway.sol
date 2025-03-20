@@ -58,10 +58,10 @@ contract Gateway is Auth, IGateway, IRecoverable {
     mapping(IAdapter adapter => mapping(bytes32 messageHash => uint256 timestamp)) public recoveries;
 
     /// @notice Current batch messages pending to be sent
-    mapping(uint32 chainId => bytes) public /*transient*/ batch;
+    mapping(uint16 chainId => bytes) public /*transient*/ batch;
 
     /// @notice Chains ID with pendign batch messages
-    uint32[] public /*transient*/ chainIds;
+    uint16[] public /*transient*/ chainIds;
 
     constructor(IRoot root_, IGasService gasService_) Auth(msg.sender) {
         root = root_;
@@ -138,7 +138,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
     //----------------------------------------------------------------------------------------------
 
     /// @dev Handle a batch of messages
-    function handle(uint32 chainId, bytes memory message) external pauseable {
+    function handle(uint16 chainId, bytes memory message) external pauseable {
         while (message.length > 0) {
             _handle(chainId, message, IAdapter(msg.sender), false);
 
@@ -151,7 +151,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
     }
 
     /// @dev Handle an isolated message
-    function _handle(uint32 chainId, bytes memory payload, IAdapter adapter_, bool isRecovery) internal {
+    function _handle(uint16 chainId, bytes memory payload, IAdapter adapter_, bool isRecovery) internal {
         Adapter memory adapter = _activeAdapters[adapter_];
         require(adapter.id != 0, "Gateway/invalid-adapter");
 
@@ -258,7 +258,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IMessageSender
-    function send(uint32 chainId, bytes calldata message) external pauseable auth {
+    function send(uint16 chainId, bytes calldata message) external pauseable auth {
         if (isBatching) {
             pendingBatch = true;
 
@@ -274,7 +274,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
         }
     }
 
-    function _send(uint32 chainId, bytes memory message) private {
+    function _send(uint16 chainId, bytes memory message) private {
         bytes memory proof = MessageLib.MessageProof({hash: keccak256(message)}).serialize();
 
         require(adapters.length != 0, "Gateway/not-initialized");
@@ -352,7 +352,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
         require(isBatching, NoBatched());
 
         for (uint256 i; i < chainIds.length; i++) {
-            uint32 chainId = chainIds[i];
+            uint16 chainId = chainIds[i];
             _send(chainId, batch[chainId]);
             delete batch[chainId];
         }
@@ -367,7 +367,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IGateway
-    function estimate(uint32 chainId, bytes calldata payload)
+    function estimate(uint16 chainId, bytes calldata payload)
         external
         view
         returns (uint256[] memory perAdapter, uint256 total)

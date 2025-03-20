@@ -23,12 +23,12 @@ contract MockVaults is Test, Auth, IAdapter {
     using BytesLib for bytes;
 
     IMessageHandler public handler;
-    uint32 public sourceChainId;
+    uint16 public sourceChainId;
 
     uint32[] public lastChainDestinations;
     bytes[] public lastMessages;
 
-    constructor(uint32 chainId, IMessageHandler handler_) Auth(msg.sender) {
+    constructor(uint16 chainId, IMessageHandler handler_) Auth(msg.sender) {
         handler = handler_;
         sourceChainId = chainId;
     }
@@ -75,7 +75,7 @@ contract MockVaults is Test, Auth, IAdapter {
         );
     }
 
-    function send(uint32 chainId, bytes memory data, uint256, address) external payable {
+    function send(uint16 chainId, bytes memory data, uint256, address) external payable {
         lastChainDestinations.push(chainId);
 
         while (data.length > 0) {
@@ -88,7 +88,7 @@ contract MockVaults is Test, Auth, IAdapter {
         }
     }
 
-    function estimate(uint32, bytes calldata, uint256 baseCost) external pure returns (uint256) {
+    function estimate(uint16, bytes calldata, uint256 baseCost) external pure returns (uint256) {
         return baseCost;
     }
 

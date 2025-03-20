@@ -11,7 +11,7 @@ contract DepositTest is BaseTest {
     using MessageLib for *;
     using CastLib for *;
 
-    uint32 constant CHAIN_ID = 1;
+    uint16 constant CHAIN_ID = 1;
 
     /// forge-config: default.isolate = true
     function testDepositMint() public {

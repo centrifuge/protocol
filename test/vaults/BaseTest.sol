@@ -149,7 +149,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         bytes16 trancheId,
         address asset,
         uint256 assetTokenId,
-        uint32 destinationChain
+        uint16 destinationChain
     ) public returns (address vaultAddress, uint128 assetId) {
         if (poolManager.assetToId(asset, assetTokenId) == 0) {
             assetId = poolManager.registerAsset(asset, assetTokenId, destinationChain);

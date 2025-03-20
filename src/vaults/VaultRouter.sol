@@ -242,7 +242,7 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
 
     // --- Transfer ---
     /// @inheritdoc IVaultRouter
-    function transferTrancheTokens(address vault, uint32 chainId, bytes32 recipient, uint128 amount)
+    function transferTrancheTokens(address vault, uint16 chainId, bytes32 recipient, uint128 amount)
         public
         payable
         protected
@@ -256,7 +256,7 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
     }
 
     /// @inheritdoc IVaultRouter
-    function transferTrancheTokens(address vault, uint32 chainId, address recipient, uint128 amount)
+    function transferTrancheTokens(address vault, uint16 chainId, address recipient, uint128 amount)
         external
         payable
         protected
@@ -265,7 +265,7 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
     }
 
     // --- Register Asset ---
-    function registerAsset(address asset, uint256 tokenId, uint32 chainId) public payable {
+    function registerAsset(address asset, uint256 tokenId, uint16 chainId) public payable {
         _pay();
         IPoolManager(poolManager).registerAsset(asset, tokenId, chainId);
     }
@@ -307,7 +307,7 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
     }
 
     /// @inheritdoc IVaultRouter
-    function estimate(uint32 chainId, bytes calldata payload) external view returns (uint256 amount) {
+    function estimate(uint16 chainId, bytes calldata payload) external view returns (uint256 amount) {
         (, amount) = IGateway(gateway).estimate(chainId, payload);
     }
 

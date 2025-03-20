@@ -22,13 +22,13 @@ contract MockAdapter is Auth, Mock, IAdapter {
         gateway.handle(1, _message);
     }
 
-    function send(uint32, bytes calldata message, uint256, address) public payable {
+    function send(uint16, bytes calldata message, uint256, address) public payable {
         callWithValue("send", msg.value);
         values_bytes["send"] = message;
         sent[message]++;
     }
 
-    function estimate(uint32, bytes calldata, uint256 baseCost) public view returns (uint256 estimation) {
+    function estimate(uint16, bytes calldata, uint256 baseCost) public view returns (uint256 estimation) {
         estimation = values_uint256_return["estimate"] + baseCost;
     }
 

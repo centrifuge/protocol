@@ -17,7 +17,7 @@ function raw(AssetId assetId) pure returns (uint128) {
     return AssetId.unwrap(assetId);
 }
 
-function chainId(AssetId assetId) pure returns (uint32) {
+function chainId(AssetId assetId) pure returns (uint16) {
     return uint16(AssetId.unwrap(assetId) >> 112);
 }
 

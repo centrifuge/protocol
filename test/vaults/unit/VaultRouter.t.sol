@@ -28,7 +28,7 @@ contract ERC20WrapperFake {
 contract VaultRouterTest is BaseTest {
     using CastLib for *;
 
-    uint32 constant CHAIN_ID = 1;
+    uint16 constant CHAIN_ID = 1;
     uint256 constant GAS_BUFFER = 10 gwei;
     /// @dev Payload is not taken into account during gas estimation
     bytes constant PAYLOAD_FOR_GAS_ESTIMATION = "irrelevant_value";
@@ -336,7 +336,7 @@ contract VaultRouterTest is BaseTest {
         ERC20 share = ERC20(IERC7540Vault(vault_).share());
 
         uint256 amount = 100 * 10 ** 18;
-        uint32 destinationChainId = 2;
+        uint16 destinationChainId = 2;
         address destinationAddress = makeAddr("destinationAddress");
 
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), address(this), type(uint64).max);
@@ -370,7 +370,7 @@ contract VaultRouterTest is BaseTest {
         ERC20 share = ERC20(IERC7540Vault(vault_).share());
 
         uint256 amount = 100 * 10 ** 18;
-        uint32 destinationChainId = 2;
+        uint16 destinationChainId = 2;
         address destinationAddress = makeAddr("destinationAddress");
         bytes32 destinationAddressAsBytes32 = destinationAddress.toBytes32();
 
@@ -403,7 +403,7 @@ contract VaultRouterTest is BaseTest {
 
     function testRegisterAssetERC20() public {
         address asset = address(erc20);
-        uint32 destinationChainId = 2;
+        uint16 destinationChainId = 2;
         uint256 fuel = estimateGas();
 
         vm.expectRevert("Gateway/cannot-topup-with-nothing");
@@ -421,7 +421,7 @@ contract VaultRouterTest is BaseTest {
         MockERC6909 erc6909 = new MockERC6909();
         address asset = address(erc6909);
         uint256 tokenId = 18;
-        uint32 destinationChainId = 2;
+        uint16 destinationChainId = 2;
         uint256 fuel = estimateGas();
 
         vm.expectRevert("Gateway/cannot-topup-with-nothing");

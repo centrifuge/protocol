@@ -21,7 +21,7 @@ contract GatewayTest is Test {
     using CastLib for *;
     using MessageLib for *;
 
-    uint32 constant CHAIN_ID = 23;
+    uint16 constant CHAIN_ID = 23;
     uint256 constant INITIAL_BALANCE = 1 ether;
 
     uint256 constant FIRST_ADAPTER_ESTIMATE = 1.5 gwei;

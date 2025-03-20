@@ -147,14 +147,14 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IPoolRouter
-    function notifyPool(uint32 chainId) external payable {
+    function notifyPool(uint16 chainId) external payable {
         _protectedAndUnlocked();
 
         sender.sendNotifyPool(chainId, unlockedPoolId);
     }
 
     /// @inheritdoc IPoolRouter
-    function notifyShareClass(uint32 chainId, ShareClassId scId, bytes32 hook) external payable {
+    function notifyShareClass(uint16 chainId, ShareClassId scId, bytes32 hook) external payable {
         _protectedAndUnlocked();
 
         IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);

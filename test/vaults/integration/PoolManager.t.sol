@@ -328,14 +328,12 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
         vm.expectRevert(bytes("PoolManager/unknown-token"));
-        poolManager.transferTrancheTokens(
-            poolId + 1, trancheId, uint32(block.chainid), destinationAddress.toBytes32(), amount
-        );
+        poolManager.transferTrancheTokens(poolId + 1, trancheId, defaultChainId, destinationAddress.toBytes32(), amount);
 
         // Approve and transfer amount from this address to destinationAddress
         tranche.approve(address(poolManager), amount);
         poolManager.transferTrancheTokens(
-            vault.poolId(), vault.trancheId(), uint32(block.chainid), destinationAddress.toBytes32(), amount
+            vault.poolId(), vault.trancheId(), defaultChainId, destinationAddress.toBytes32(), amount
         );
         assertEq(tranche.balanceOf(address(this)), 0);
     }
@@ -571,15 +569,11 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assertFalse(tranche.checkTransferRestriction(address(this), destinationAddress, 0));
 
         vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
-        poolManager.transferTrancheTokens(
-            poolId, trancheId, uint32(block.chainid), destinationAddress.toBytes32(), amount
-        );
+        poolManager.transferTrancheTokens(poolId, trancheId, defaultChainId, destinationAddress.toBytes32(), amount);
         assertEq(tranche.balanceOf(address(this)), amount);
 
         centrifugeChain.unfreeze(poolId, trancheId, address(this));
-        poolManager.transferTrancheTokens(
-            poolId, trancheId, uint32(block.chainid), destinationAddress.toBytes32(), amount
-        );
+        poolManager.transferTrancheTokens(poolId, trancheId, defaultChainId, destinationAddress.toBytes32(), amount);
         assertEq(tranche.balanceOf(address(escrow)), 0);
     }
 
