@@ -116,7 +116,7 @@ contract CommonDeployer is Script {
                 "./deployments/latest/", _toString(block.chainid), "_", _toString(block.timestamp), ".json"
             )
         );
-        deploymentOutput = string(abi.encodePacked(deploymentOutput, "  }\n}\n"));
+        deploymentOutput = string(abi.encodePacked(deploymentOutput, "\n  }\n}\n"));
         vm.writeFile(path, deploymentOutput);
     }
 
