@@ -16,12 +16,14 @@ abstract contract Properties is BeforeAfter, Asserts {
     using MathLib for D18;
 
     /// === Canaries === ///
+
     /// @dev Canary: Checks that the redeem request was successfully cancelled because coverage report seems off
     function canary_cancelledRedeemRequest() public {
         t(!cancelledRedeemRequest, "successfully cancelled redeem request");
     }
 
     /// === Global Properties === ///
+
     function property_unlockedPoolId_transient_reset() public {
         eq(_after.ghostUnlockedPoolId.raw(), 0, "unlockedPoolId not reset");
     }
@@ -34,7 +36,7 @@ abstract contract Properties is BeforeAfter, Asserts {
         eq(_after.ghostCredited, 0, "credited not reset");
     }
 
-    /// @dev User pending redemption is never greater than the total redemption
+    /// @dev Property: User pending redemption is never greater than the total redemption
     function property_cancelled_redemption_never_greater_than_requested() public {
         address[] memory _actors = _getActors();
 
@@ -63,7 +65,7 @@ abstract contract Properties is BeforeAfter, Asserts {
         }
     }
 
-    /// @dev The total pending asset amount pendingDeposit[..] is always geq than the approved asset amount epochAmounts[..].depositApproved
+    /// @dev Property: The total pending asset amount pendingDeposit[..] is always geq than the approved asset amount epochAmounts[..].depositApproved
     function property_total_pending_and_approved() public {
         address[] memory _actors = _getActors();
 
@@ -85,8 +87,8 @@ abstract contract Properties is BeforeAfter, Asserts {
         }
     }
 
-    /// @dev The total pending redeem amount pendingRedeem[..] is always geq the sum of pending user redeem amounts redeemRequest[..]
-    /// @dev The total pending redeem amount pendingRedeem[..] is always geq than the approved redeem amount epochAmounts[..].redeemRevokedShares
+    /// @dev Property: The total pending redeem amount pendingRedeem[..] is always geq the sum of pending user redeem amounts redeemRequest[..]
+    /// @dev Property: The total pending redeem amount pendingRedeem[..] is always geq than the approved redeem amount epochAmounts[..].redeemRevokedShares
     function property_total_pending_redeem_geq_sum_pending_user_redeem() public {
         address[] memory _actors = _getActors();
 
@@ -117,6 +119,27 @@ abstract contract Properties is BeforeAfter, Asserts {
         }
     }
 
+    /// @dev Property: The current pool epochId is always strictly greater than any latest pointer of epochPointers[...]
+    function property_epochId_strictly_greater_than_any_latest_pointer() public {
+        for (uint256 i = 0; i < createdPools.length; i++) {
+            PoolId poolId = createdPools[i];
+            uint32 epochId = multiShareClass.epochId(poolId);
+
+            uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
+            for (uint32 j = 0; j < shareClassCount; j++) {
+                ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
+                AssetId assetId = poolRegistry.currency(poolId);
+
+                (uint32 latestDepositApproval, uint32 latestRedeemApproval, uint32 latestIssuance, uint32 latestRevocation) = multiShareClass.epochPointers(scId, assetId);
+                
+                gt(epochId, latestDepositApproval, "epochId is not strictly greater than latest deposit approval");
+                gt(epochId, latestRedeemApproval, "epochId is not strictly greater than latest redeem approval");
+                gt(epochId, latestIssuance, "epochId is not strictly greater than latest issuance");
+                gt(epochId, latestRevocation, "epochId is not strictly greater than latest revocation");
+            }
+            
+        }
+    }
 
     /// Stateless Properties ///
 
@@ -217,7 +240,9 @@ abstract contract Properties is BeforeAfter, Asserts {
             }
         }
     }
+
     /// Rounding Properties /// 
+
     /// @dev Property: Checks that rounding error is within acceptable bounds (1000 wei)
     /// @dev Simulates the operation in the MultiShareClass::_revokeEpochShares function
     function property_MulUint128Rounding(D18 navPerShare, uint128 amount) public {
