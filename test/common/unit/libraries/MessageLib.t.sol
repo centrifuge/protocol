@@ -571,4 +571,73 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
     }
+
+    function testTriggerUpdateHolding() public pure {
+        JournalEntry[] memory debits = new JournalEntry[](3);
+        debits[0] = JournalEntry({accountId: AccountId.wrap(9), amount: d18(1)});
+        debits[1] = JournalEntry({accountId: AccountId.wrap(8), amount: d18(2)});
+        debits[2] = JournalEntry({accountId: AccountId.wrap(7), amount: d18(3)});
+
+        JournalEntry[] memory credits = new JournalEntry[](2);
+        credits[0] = JournalEntry({accountId: AccountId.wrap(1), amount: d18(2)});
+        credits[1] = JournalEntry({accountId: AccountId.wrap(3), amount: d18(4)});
+
+        MessageLib.TriggerUpdateHolding memory a = MessageLib.TriggerUpdateHolding({
+            poolId: 1,
+            scId: bytes16("sc"),
+            assetId: 5,
+            who: bytes32("alice"),
+            amount: 100,
+            pricePerUnit: d18(3, 1),
+            isIncrease: false,
+            asAllowance: true,
+            debits: debits,
+            credits: credits
+        });
+
+        MessageLib.TriggerUpdateHolding memory b = MessageLib.deserializeTriggerUpdateHolding(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.assetId, b.assetId);
+        assertEq(a.who, b.who);
+        assertEq(a.amount, b.amount);
+        assert(a.pricePerUnit.eq(b.pricePerUnit));
+        assertEq(a.isIncrease, b.isIncrease);
+        assertEq(a.asAllowance, b.asAllowance);
+        assertEq(a.debits.length, b.debits.length);
+        assertEq(a.credits.length, b.credits.length);
+
+        for (uint256 i = 0; i < a.credits.length; i++) {
+            assertEq(a.credits[i].accountId.raw(), b.credits[i].accountId.raw());
+            assertEq(a.credits[i].amount.raw(), b.credits[i].amount.raw());
+        }
+
+        for (uint256 i = 0; i < a.debits.length; i++) {
+            assertEq(a.debits[i].accountId.raw(), b.debits[i].accountId.raw());
+            assertEq(a.debits[i].amount.raw(), b.debits[i].amount.raw());
+        }
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+    }
+
+    function testTriggerUpdateShares() public pure {
+        MessageLib.TriggerUpdateShares memory a = MessageLib.TriggerUpdateShares({
+            poolId: 1,
+            scId: bytes16("sc"),
+            who: bytes32("alice"),
+            shares: 100,
+            isIssuance: true
+        });
+
+        MessageLib.TriggerUpdateShares memory b = MessageLib.deserializeTriggerUpdateShares(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.who, b.who);
+        assertEq(a.shares, b.shares);
+        assertEq(a.isIssuance, b.isIssuance);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+    }
 }
