@@ -51,11 +51,17 @@ abstract contract PoolRouterTargets is
     }
 
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
+    /// @dev Property: After successfully calling claimRedeem for an investor, their redeemRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     function poolRouter_claimRedeem(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asActor {
         AssetId assetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
         
         poolRouter.claimRedeem(poolId, scId, assetId, investor);
+
+        (, uint32 lastUpdate) = multiShareClass.redeemRequest(scId, assetId, investor);
+        uint32 epochId = multiShareClass.epochId(poolId);
+
+        eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId");
     }
 
     /// === EXECUTION FUNCTIONS === ///

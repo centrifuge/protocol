@@ -150,11 +150,17 @@ abstract contract AdminTargets is
 
         eq(lastUpdate, epochId, "lastUpdate is not equal to epochId");    }  
 
+    /// @dev Property: After successfully calling redeemRequest for an investor, their redeemRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     function poolRouter_redeemRequest(PoolId poolId, ShareClassId scId, uint32 isoCode, uint128 amount) public updateGhosts asAdmin {
         AssetId payoutAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
         poolRouter.redeemRequest(poolId, scId, investor, payoutAssetId, amount);
+
+        (, uint32 lastUpdate) = multiShareClass.redeemRequest(scId, payoutAssetId, investor);
+        uint32 epochId = multiShareClass.epochId(poolId);
+
+        eq(lastUpdate, epochId, "lastUpdate is not equal to epochId after redeemRequest");
     }  
 
     /// @dev Property: after successfully calling cancelDepositRequest for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
@@ -173,6 +179,7 @@ abstract contract AdminTargets is
         eq(pending, 0, "pending is not zero");
     }
 
+    /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     function poolRouter_cancelRedeemRequest(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asAdmin {
         AssetId payoutAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
@@ -180,6 +187,11 @@ abstract contract AdminTargets is
         poolRouter.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
 
         cancelledRedeemRequest = true;
+
+        (, uint32 lastUpdate) = multiShareClass.redeemRequest(scId, payoutAssetId, investor);
+        uint32 epochId = multiShareClass.epochId(poolId);
+
+        eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId");
     }
 
     // === PoolRouter === //
