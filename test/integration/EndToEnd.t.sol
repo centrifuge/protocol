@@ -12,7 +12,7 @@ import {PoolRouter} from "src/pools/PoolRouter.sol";
 
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
 
-import {FullDeployer} from "script/FullDeployer.s.sol";
+import {FullDeployer, PoolsDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
 
 import {LocalAdapter} from "test/integration/adapters/LocalAdapter.sol";
 
@@ -30,73 +30,62 @@ contract TestEndToEnd is Test {
     FullDeployer deployA = new FullDeployer();
     FullDeployer deployB = new FullDeployer();
 
-    /*
-    function deployChain(address safeAdmin, FullDeployer deploy) public {
+    function _deployChain(ISafe safeAdmin, FullDeployer deploy) public returns (LocalAdapter adapter) {
         deploy.deployFull(safeAdmin);
 
-        LocalAdapter adapterA = new LocalAdapter(deploy.gateway(), address(deploy));
-        deploy.wire(adapterA);
+        adapter = new LocalAdapter(deploy.gateway(), address(deploy));
+        deploy.wire(adapter);
 
-        // Configure as deployer of chain A
+        // Configure here as deployer
         vm.startPrank(address(deploy));
-        adapterA.file("gateway", adapterB);
         deploy.gasService().file("messageGasLimit", GAS);
         vm.stopPrank();
+
+        deploy.removeFullDeployerAccess();
     }
-    */
 
     function setUp() public {
-        deployA.deployFull(safeAdminA);
-        deployB.deployFull(safeAdminB);
+        LocalAdapter adapterA = _deployChain(safeAdminA, deployA);
+        LocalAdapter adapterB = _deployChain(safeAdminB, deployB);
 
         // We connect both deploys through the adapters
-        LocalAdapter adapterA = new LocalAdapter(deployA.gateway(), address(deployA));
-        deployA.wire(adapterA);
-        LocalAdapter adapterB = new LocalAdapter(deployB.gateway(), address(deployB));
-        deployB.wire(adapterB);
-
-        // Configure as deployer of chain A
-        vm.startPrank(address(deployA));
         adapterA.setEndpoint(adapterB);
-        deployA.gasService().file("messageGasLimit", GAS);
-        vm.stopPrank();
-
-        // Configure as deployer of chain B
-        vm.startPrank(address(deployB));
         adapterB.setEndpoint(adapterA);
-        deployB.gasService().file("messageGasLimit", GAS);
-        vm.stopPrank();
-
-        deployA.removeFullDeployerAccess();
-        deployB.removeFullDeployerAccess();
 
         // Initialize accounts
         vm.deal(FM, 1 ether);
 
-        // ChainId should never be used, instead the configured chainId
+        // We not use the VM chain
         vm.chainId(0xDEAD);
+
+        // Label contracts (for debugging)
+        vm.label(address(deployA.poolRouter()), "CP.PoolRouter");
+        // ...
     }
 
-    function _getRouters(bool sameChain) public returns (PoolRouter cp, VaultRouter cv) {
-        cp = deployA.poolRouter();
-        vm.label(address(cp), "CP");
+    function _getDeploys(bool sameChain) public returns (PoolsDeployer cp, VaultsDeployer cv) {
+        cp = deployA;
+        cv = (sameChain) ? deployA : deployB;
 
-        cv = (sameChain) ? deployA.vaultRouter() : deployB.vaultRouter();
-        vm.label(address(cv), "CV");
+        // Label contracts (for debugging)
+        vm.label(address(cv.vaultRouter()), "CV.VaultRouter");
+        // ...
     }
 
     /// forge-config: default.isolate = true
     function testConfigurePool(bool sameChain) public {
-        (PoolRouter cp, VaultRouter cv) = _getRouters(sameChain);
+        (PoolsDeployer cp, VaultsDeployer cv) = _getDeploys(sameChain);
 
-        vm.prank(FM);
-        PoolId poolId = cp.createPool(FM, deployA.USD(), deployA.multiShareClass());
+        vm.startPrank(FM);
+
+        PoolId poolId = cp.poolRouter().createPool(FM, deployA.USD(), deployA.multiShareClass());
 
         (bytes[] memory c, uint256 i) = (new bytes[](1), 0);
         c[i++] = abi.encodeWithSelector(PoolRouter.notifyPool.selector, CHAIN_B);
         assertEq(i, c.length);
 
-        vm.prank(FM);
-        cp.execute{value: GAS}(poolId, c);
+        cp.poolRouter().execute{value: GAS}(poolId, c);
+
+        //assetEq(cv.poolManager().pools(poolId.raw()).createdAt, block.number);
     }
 }
