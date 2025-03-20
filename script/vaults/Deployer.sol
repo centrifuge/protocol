@@ -99,10 +99,14 @@ contract Deployer is Script {
         // Rely on InvestmentManager
         messageProcessor.rely(address(investmentManager));
 
+        // Rely on BalanceSheetManager
+        messageProcessor.rely(address(balanceSheetManager));
+
         // Rely on Root
         router.rely(address(root));
         poolManager.rely(address(root));
         investmentManager.rely(address(root));
+        balanceSheetManager.rely(address(root));
         gateway.rely(address(root));
         gasService.rely(address(root));
         escrow.rely(address(root));
@@ -129,6 +133,7 @@ contract Deployer is Script {
         gateway.rely(address(messageProcessor));
         poolManager.rely(address(messageProcessor));
         investmentManager.rely(address(messageProcessor));
+        balanceSheetManager.rely(address(messageProcessor));
         root.rely(address(messageProcessor));
         gasService.rely(address(messageProcessor));
     }
@@ -140,6 +145,11 @@ contract Deployer is Script {
         investmentManager.file("poolManager", address(poolManager));
         investmentManager.file("gateway", address(gateway));
         investmentManager.file("sender", address(messageProcessor));
+
+        balanceSheetManager.file("poolManager", address(poolManager));
+        balanceSheetManager.file("gateway", address(gateway));
+        balanceSheetManager.file("sender", address(messageProcessor));
+
 
         gateway.file("payers", address(router), true);
         gateway.file("handler", address(messageProcessor));

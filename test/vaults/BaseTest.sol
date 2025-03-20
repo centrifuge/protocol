@@ -100,6 +100,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         vm.label(address(root), "Root");
         vm.label(address(investmentManager), "InvestmentManager");
         vm.label(address(poolManager), "PoolManager");
+        vm.label(address(balanceSheetManager), "BalanceSheetManager");
         vm.label(address(gateway), "Gateway");
         vm.label(address(adapter1), "MockAdapter1");
         vm.label(address(adapter2), "MockAdapter2");
@@ -118,6 +119,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         // Exclude predeployed contracts from invariant tests by default
         excludeContract(address(root));
         excludeContract(address(investmentManager));
+        excludeContract(address(balanceSheetManager));
         excludeContract(address(poolManager));
         excludeContract(address(gateway));
         excludeContract(address(erc20));
