@@ -30,7 +30,7 @@ contract DepositTest is BaseTest {
 
         uint128 price = 2 * 10 ** 18;
 
-        (address vault_, uint128 assetId) = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
@@ -166,8 +166,9 @@ contract DepositTest is BaseTest {
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        (address vault_, uint128 assetId) =
-            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
+        (address vault_, uint128 assetId) = deployVault(
+            true, poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0
+        );
         ERC7540Vault vault = ERC7540Vault(vault_);
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
 
@@ -208,7 +209,7 @@ contract DepositTest is BaseTest {
     //     tokenAmount = bound(tokenAmount, 1 * 10 ** 6, type(uint128).max / 10 ** 12);
 
     //     //Deploy a pool
-    //     ERC7540Vault vault = ERC7540Vault(deploySimpleVault());
+    //     ERC7540Vault vault = ERC7540Vault(deploySimpleAsyncVault());
     //     ITranche tranche = ITranche(address(vault.share()));
 
     //     root.relyContract(address(tranche), self);
@@ -268,7 +269,7 @@ contract DepositTest is BaseTest {
     //     tokenAmount = bound(tokenAmount, 1 * 10 ** 6, type(uint128).max / 10 ** 12);
 
     //     //Deploy a pool
-    //     ERC7540Vault vault = ERC7540Vault(deploySimpleVault());
+    //     ERC7540Vault vault = ERC7540Vault(deploySimpleAsyncVault());
     //     ITranche tranche = ITranche(address(vault.share()));
 
     //     root.relyContract(address(tranche), self);
@@ -316,7 +317,7 @@ contract DepositTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (address vault_, uint128 assetId) = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
         address receiver = makeAddr("receiver");
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
@@ -368,7 +369,7 @@ contract DepositTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (address vault_, uint128 assetId) = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
         address receiver = makeAddr("receiver");
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
@@ -424,8 +425,9 @@ contract DepositTest is BaseTest {
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        (address vault_, uint128 assetId) =
-            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
+        (address vault_, uint128 assetId) = deployVault(
+            true, poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0
+        );
         ERC7540Vault vault = ERC7540Vault(vault_);
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
 
@@ -489,7 +491,7 @@ contract DepositTest is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", 18);
         (address vault_, uint128 assetId) =
-            deployVault(poolId, 6, restrictionManager, "", "", trancheId, address(asset), 0, 0);
+            deployVault(true, poolId, 6, restrictionManager, "", "", trancheId, address(asset), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         centrifugeChain.updateTranchePrice(
@@ -560,8 +562,9 @@ contract DepositTest is BaseTest {
         uint8 TRANCHE_TOKEN_DECIMALS = 18; // Like DAI
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        (address vault_, uint128 assetId) =
-            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
+        (address vault_, uint128 assetId) = deployVault(
+            true, poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0
+        );
         ERC7540Vault vault = ERC7540Vault(vault_);
 
         // price = (100*10**18) /  (99 * 10**18) = 101.010101 * 10**18
@@ -600,8 +603,9 @@ contract DepositTest is BaseTest {
         uint8 TRANCHE_TOKEN_DECIMALS = 6; // Like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        (address vault_, uint128 assetId) =
-            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
+        (address vault_, uint128 assetId) = deployVault(
+            true, poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0
+        );
         ERC7540Vault vault = ERC7540Vault(vault_);
 
         // price = (100*10**18) /  (99 * 10**18) = 101.010101 * 10**18
@@ -638,7 +642,7 @@ contract DepositTest is BaseTest {
         amount = uint128(bound(amount, 2, MAX_UINT128));
 
         uint128 price = 2 * 10 ** 18;
-        (address vault_, uint128 assetId) = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
@@ -732,7 +736,7 @@ contract DepositTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128));
         vm.assume(amount % 2 == 0);
 
-        (address vault_, uint128 assetId) = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
 

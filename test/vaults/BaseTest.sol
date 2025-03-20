@@ -128,7 +128,8 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         vm.label(address(routerEscrow), "RouterEscrow");
         vm.label(address(guardian), "Guardian");
         vm.label(address(poolManager.trancheFactory()), "TrancheFactory");
-        vm.label(address(vaultFactory), "ERC7540VaultFactory");
+        vm.label(address(asyncVaultFactory), "ERC7540VaultFactory");
+        vm.label(address(syncVaultFactory), "SyncVaultFactory");
 
         // Exclude predeployed contracts from invariant tests by default
         excludeContract(address(root));
@@ -147,11 +148,13 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         excludeContract(address(routerEscrow));
         excludeContract(address(guardian));
         excludeContract(address(poolManager.trancheFactory()));
-        excludeContract(address(vaultFactory));
+        excludeContract(address(asyncVaultFactory));
+        excludeContract(address(syncVaultFactory));
     }
 
     // helpers
     function deployVault(
+        bool isAsync,
         uint64 poolId,
         uint8 trancheDecimals,
         address hook,
@@ -177,7 +180,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
         // Trigger new vault deployment via UpdateContract
         bytes memory vaultUpdate = MessageLib.UpdateContractVaultUpdate({
-            factory: vaultFactory,
+            factory: isAsync ? asyncVaultFactory : syncVaultFactory,
             assetId: assetId,
             isLinked: true,
             vault: address(0)
@@ -187,6 +190,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     }
 
     function deployVault(
+        bool isAsync,
         uint64 poolId,
         uint8 decimals,
         string memory tokenName,
@@ -194,6 +198,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         bytes16 trancheId
     ) public returns (address vaultAddress, uint128 assetId) {
         return deployVault(
+            isAsync,
             poolId,
             decimals,
             restrictionManager,
@@ -206,8 +211,9 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         );
     }
 
-    function deploySimpleVault() public returns (address vaultAddress, uint128 assetId) {
+    function deploySimpleAsyncVault() public returns (address vaultAddress, uint128 assetId) {
         return deployVault(
+            true,
             5,
             6,
             restrictionManager,

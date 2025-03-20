@@ -3,18 +3,20 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 
-import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
+import {InstantDepositVault} from "src/vaults/InstantDepositVault.sol";
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 
-/// @title  ERC7540 Vault Factory
+/// @title  Sync Vault Factory
 /// @dev    Utility for deploying new vault contracts
-contract ERC7540VaultFactory is Auth, IVaultFactory {
+contract SyncVaultFactory is Auth, IVaultFactory {
     address public immutable root;
     address public immutable investmentManager;
+    address public immutable instantManager;
 
-    constructor(address _root, address _investmentManager) Auth(msg.sender) {
+    constructor(address _root, address _investmentManager, address _instantManager) Auth(msg.sender) {
         root = _root;
         investmentManager = _investmentManager;
+        instantManager = _instantManager;
     }
 
     /// @inheritdoc IVaultFactory
@@ -27,10 +29,13 @@ contract ERC7540VaultFactory is Auth, IVaultFactory {
         address, /* escrow */
         address[] calldata wards_
     ) public auth returns (address) {
-        ERC7540Vault vault = new ERC7540Vault(poolId, trancheId, asset, tokenId, tranche, root, investmentManager);
+        InstantDepositVault vault =
+            new InstantDepositVault(poolId, trancheId, asset, tokenId, tranche, root, investmentManager, instantManager);
 
         vault.rely(root);
         vault.rely(investmentManager);
+        vault.rely(instantManager);
+
         uint256 wardsCount = wards_.length;
         for (uint256 i; i < wardsCount; i++) {
             vault.rely(wards_[i]);

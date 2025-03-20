@@ -10,6 +10,7 @@ import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
 import {BalanceSheetManager} from "src/vaults/BalanceSheetManager.sol";
 import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
 import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
+import {SyncVaultFactory} from "src/vaults/factories/SyncVaultFactory.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
 import {RestrictedRedemptions} from "src/vaults/token/RestrictedRedemptions.sol";
 import {InstantManager} from "src/vaults/InstantManager.sol";
@@ -28,7 +29,8 @@ contract VaultsDeployer is CommonDeployer {
     Escrow public escrow;
     Escrow public routerEscrow;
     VaultRouter public vaultRouter;
-    address public vaultFactory;
+    address public asyncVaultFactory;
+    address public syncVaultFactory;
     address public restrictionManager;
     address public restrictedRedemptions;
     address public trancheFactory;
@@ -43,10 +45,13 @@ contract VaultsDeployer is CommonDeployer {
         trancheFactory = address(new TrancheFactory{salt: SALT}(address(root), deployer));
         investmentManager = new InvestmentManager(address(root), address(escrow));
         instantManager = new InstantManager(address(escrow));
-        vaultFactory = address(new ERC7540VaultFactory(address(root), address(investmentManager)));
+        asyncVaultFactory = address(new ERC7540VaultFactory(address(root), address(investmentManager)));
+        syncVaultFactory =
+            address(new SyncVaultFactory(address(root), address(investmentManager), address(instantManager)));
 
         address[] memory vaultFactories = new address[](1);
-        vaultFactories[0] = vaultFactory;
+        vaultFactories[0] = asyncVaultFactory;
+        vaultFactories[1] = syncVaultFactory;
 
         poolManager = new PoolManager(address(escrow), trancheFactory, vaultFactories);
         balanceSheetManager = new BalanceSheetManager(address(escrow));
@@ -65,7 +70,8 @@ contract VaultsDeployer is CommonDeployer {
         register("restrictedRedemptions", address(restrictedRedemptions));
         register("trancheFactory", address(trancheFactory));
         register("investmentManager", address(investmentManager));
-        register("vaultFactory", address(vaultFactory));
+        register("asyncVaultFactory", address(asyncVaultFactory));
+        register("syncVaultFactory", address(syncVaultFactory));
         register("poolManager", address(poolManager));
         register("vaultRouter", address(vaultRouter));
     }
@@ -78,7 +84,8 @@ contract VaultsDeployer is CommonDeployer {
     function _vaultsRely() private {
         // Rely on PoolManager
         escrow.rely(address(poolManager));
-        IAuth(vaultFactory).rely(address(poolManager));
+        IAuth(asyncVaultFactory).rely(address(poolManager));
+        IAuth(syncVaultFactory).rely(address(poolManager));
         IAuth(trancheFactory).rely(address(poolManager));
         IAuth(investmentManager).rely(address(poolManager));
         IAuth(restrictionManager).rely(address(poolManager));
@@ -100,7 +107,8 @@ contract VaultsDeployer is CommonDeployer {
         balanceSheetManager.rely(address(root));
         escrow.rely(address(root));
         routerEscrow.rely(address(root));
-        IAuth(vaultFactory).rely(address(root));
+        IAuth(asyncVaultFactory).rely(address(root));
+        IAuth(syncVaultFactory).rely(address(root));
         IAuth(trancheFactory).rely(address(root));
         IAuth(restrictionManager).rely(address(root));
         IAuth(restrictedRedemptions).rely(address(root));
@@ -113,7 +121,7 @@ contract VaultsDeployer is CommonDeployer {
 
         // Rely on others
         routerEscrow.rely(address(vaultRouter));
-        instantManager.rely(address(vaultFactory));
+        instantManager.rely(address(syncVaultFactory));
 
         // Rely on vaultMessageProcessor
         poolManager.rely(address(messageProcessor));
@@ -147,7 +155,8 @@ contract VaultsDeployer is CommonDeployer {
     function removeVaultsDeployerAccess(address deployer) public {
         removeCommonDeployerAccess(deployer);
 
-        IAuth(vaultFactory).deny(deployer);
+        IAuth(asyncVaultFactory).deny(deployer);
+        IAuth(syncVaultFactory).deny(deployer);
         IAuth(trancheFactory).deny(deployer);
         IAuth(restrictionManager).deny(deployer);
         IAuth(restrictedRedemptions).deny(deployer);

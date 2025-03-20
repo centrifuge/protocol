@@ -34,7 +34,7 @@ contract VaultRouterTest is BaseTest {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
         amount = uint128(bound(amount, 4, MAX_UINT128));
 
-        (address vault_, uint128 assetId) = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -113,7 +113,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testEnableDisableVaults() public {
-        (address vault_,) = deploySimpleVault();
+        (address vault_,) = deploySimpleAsyncVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -144,7 +144,7 @@ contract VaultRouterTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128));
         vm.assume(amount % 2 == 0);
 
-        (address vault_, uint128 assetId) = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -193,7 +193,7 @@ contract VaultRouterTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128));
 
         // deposit
-        (address vault_, uint128 assetId) = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
         erc20.mint(self, amount);
@@ -339,7 +339,7 @@ contract VaultRouterTest is BaseTest {
     function _testMulticallingApproveVaultAndExecuteLockedDepositRequest(uint256 amount, bool snap) internal {
         amount = uint128(bound(amount, 4, MAX_UINT128));
 
-        (address vault_, uint128 assetId) = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -374,7 +374,7 @@ contract VaultRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         // deposit
-        (address vault_, uint128 assetId) = deploySimpleVault();
+        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
         erc20.mint(self, amount);
@@ -441,7 +441,7 @@ contract VaultRouterTest is BaseTest {
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
         (address vault_, uint128 assetId) =
-            deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
+            deployVault(true, 5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -478,7 +478,7 @@ contract VaultRouterTest is BaseTest {
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
         (address vault_,) =
-            deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
+            deployVault(true, 5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -508,7 +508,7 @@ contract VaultRouterTest is BaseTest {
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
         (address vault_,) =
-            deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
+            deployVault(true, 5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -534,7 +534,7 @@ contract VaultRouterTest is BaseTest {
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
         (address vault_, uint128 assetId) =
-            deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
+            deployVault(true, 5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -589,7 +589,7 @@ contract VaultRouterTest is BaseTest {
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
         (address vault_,) =
-            deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
+            deployVault(true, 5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
         vm.label(vault_, "vault");
 
         erc20.mint(self, underlyingAmount);
@@ -662,7 +662,7 @@ contract VaultRouterTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128));
         vm.assume(amount % 2 == 0);
 
-        (address vault_,) = deploySimpleVault();
+        (address vault_,) = deploySimpleAsyncVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -726,9 +726,9 @@ contract VaultRouterTest is BaseTest {
         vm.label(address(erc20X), "erc20X");
         vm.label(address(erc20Y), "erc20Y");
         (address vault1_,) =
-            deployVault(5, 6, restrictionManager, "name1", "symbol1", bytes16(bytes("1")), address(erc20X), 0, 0);
+            deployVault(true, 5, 6, restrictionManager, "name1", "symbol1", bytes16(bytes("1")), address(erc20X), 0, 0);
         (address vault2_,) =
-            deployVault(4, 6, restrictionManager, "name2", "symbol2", bytes16(bytes("2")), address(erc20Y), 0, 0);
+            deployVault(true, 4, 6, restrictionManager, "name2", "symbol2", bytes16(bytes("2")), address(erc20Y), 0, 0);
         vault1 = ERC7540Vault(vault1_);
         vault2 = ERC7540Vault(vault2_);
         vm.label(vault1_, "vault1");
@@ -750,7 +750,7 @@ contract VaultRouterTest is BaseTest {
 
         MockReentrantERC20Wrapper1 wrapper = new MockReentrantERC20Wrapper1(address(erc20), address(vaultRouter));
         (address vault_,) =
-            deployVault(5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
+            deployVault(true, 5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0);
         vm.label(vault_, "vault");
 
         address investor = makeAddr("investor");

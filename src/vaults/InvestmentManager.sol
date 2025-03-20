@@ -40,6 +40,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
     IVaultMessageSender public sender;
     IPoolManager public poolManager;
 
+    // TODO: Support multiple sync vaults
     mapping(uint64 poolId => mapping(bytes16 trancheId => mapping(uint128 assetId => address vault))) public vault;
 
     /// @inheritdoc IInvestmentManager
@@ -76,6 +77,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         override
         auth
     {
+        // TODO: Switch all occurences to BaseVault?
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
         address token = vault_.share();
 
