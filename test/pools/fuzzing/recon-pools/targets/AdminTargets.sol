@@ -182,13 +182,14 @@ abstract contract AdminTargets is
 
     // === PoolRouter === //
 
-    function poolRouter_execute(PoolId poolId, bytes[] memory data) public payable updateGhosts asAdmin {
+    function poolRouter_execute(PoolId poolId, bytes[] memory data) public payable updateGhostsWithType(OpType.BATCH) asAdmin {
         poolRouter.execute{value: msg.value}(poolId, data);
     }
 
-    function poolRouter_execute_clamped(PoolId poolId) public payable updateGhosts asAdmin {
+    /// @dev Makes a call directly to the unclamped handler so doesn't include asAdmin modifier or else would cause errors with foundry testing
+    function poolRouter_execute_clamped(PoolId poolId) public payable {
         // TODO: clamp poolId here to one of the created pools
-        poolRouter.execute{value: msg.value}(poolId, queuedCalls);
+        this.poolRouter_execute{value: msg.value}(poolId, queuedCalls);
 
         queuedCalls = new bytes[](0);
     }

@@ -10,7 +10,7 @@ import {D18, d18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 
 import {Helpers} from "test/pools/fuzzing/recon-pools/utils/Helpers.sol";
-import {BeforeAfter} from "./BeforeAfter.sol";
+import {BeforeAfter, OpType} from "./BeforeAfter.sol";
 
 abstract contract Properties is BeforeAfter, Asserts {
     using MathLib for D18;
@@ -138,6 +138,20 @@ abstract contract Properties is BeforeAfter, Asserts {
                 gt(epochId, latestRevocation, "epochId is not strictly greater than latest revocation");
             }
             
+        }
+    }
+
+    /// @dev Property: The epoch of a pool epochId[poolId] can increase at most by one within the same transaction (i.e. multicall/execute) independent of the number of approvals
+    function property_epochId_can_increase_by_one_within_same_transaction() public {
+        // precondition: there must've been a batch operation (call to execute/multicall)
+        if(currentOperation == OpType.BATCH) {
+            for (uint256 i = 0; i < createdPools.length; i++) {
+                PoolId poolId = createdPools[i];
+
+                uint32 epochIdDifference = _after.ghostEpochId[poolId] - _before.ghostEpochId[poolId];
+                // check that the epochId increased by at most 1
+                lte(epochIdDifference, 1, "epochId increased by more than 1");
+            }
         }
     }
 

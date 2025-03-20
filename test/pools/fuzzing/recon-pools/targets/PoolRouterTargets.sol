@@ -59,13 +59,15 @@ abstract contract PoolRouterTargets is
     }
 
     /// === EXECUTION FUNCTIONS === ///
-    /// Multicall is publicly exposed without access protections so can be called by anyone
-    function poolRouter_multicall(bytes[] memory data) public payable updateGhosts asActor {
+
+    /// @dev Multicall is publicly exposed without access protections so can be called by anyone
+    function poolRouter_multicall(bytes[] memory data) public payable updateGhostsWithType(OpType.BATCH) asActor {
         poolRouter.multicall{value: msg.value}(data);
     }
 
-    function poolRouter_multicall_clamped() public payable updateGhosts asActor {
-        poolRouter.multicall{value: msg.value}(queuedCalls);
+    /// @dev Makes a call directly to the unclamped handler so doesn't include asActor modifier or else would cause errors with foundry testing
+    function poolRouter_multicall_clamped() public payable {
+        this.poolRouter_multicall{value: msg.value}(queuedCalls);
 
         queuedCalls = new bytes[](0);
     }

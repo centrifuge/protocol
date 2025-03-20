@@ -6,7 +6,8 @@ import {Setup} from "./Setup.sol";
 
 enum OpType {
     GENERIC,
-    DEPOSIT
+    DEPOSIT,
+    BATCH // batch operations that make multiple calls in one transaction
 }
 
 // ghost variables for tracking state variable values before and after function calls
