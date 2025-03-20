@@ -51,10 +51,4 @@ interface IPoolRegistry {
 
     /// @notice checks the existence of a pool
     function exists(PoolId poolId) external view returns (bool);
-
-    /// @notice gets the current journal id
-    function journalId() external returns (bytes32);
-
-    /// @notice generates a new journal id for the given pool
-    function generateJournalId(PoolId poolId) external returns (bytes32);
 }

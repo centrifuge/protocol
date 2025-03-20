@@ -180,23 +180,4 @@ contract PoolRegistryTest is Test {
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);
         assertEq(registry.exists(nonExistingPool), false);
     }
-
-    function testJournalId() public {
-        vm.prank(makeAddr("randomUser"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.generateJournalId(POOL_A);
-
-        bytes32 txId = registry.generateJournalId(POOL_A);
-        bytes32 expected = bytes32(uint256(33 << 64) | 1);
-        assertEq(txId, expected);
-        assertEq(registry.journalId(), expected);
-
-        bytes32 txId2 = registry.generateJournalId(POOL_A);
-        bytes32 expected2 = bytes32(uint256(33 << 64) | 2);
-        assertEq(txId2, expected2);
-        assertEq(registry.journalId(), expected2);
-
-        registry.generateJournalId(POOL_B);
-        assertEq(registry.journalId(), bytes32(uint256(44 << 64) | 1));
-    }
 }

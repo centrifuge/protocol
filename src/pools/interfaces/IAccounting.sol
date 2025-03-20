@@ -6,8 +6,12 @@ import {PoolId} from "src/pools/types/PoolId.sol";
 
 interface IAccounting {
     /// @notice Emitted when a an entry is done
-    event Credit(PoolId indexed poolId, bytes32 indexed transactionId, AccountId indexed account, uint128 value);
-    event Debit(PoolId indexed poolId, bytes32 indexed transactionId, AccountId indexed account, uint128 value);
+    event Credit(PoolId indexed poolId, uint256 indexed journalId, AccountId indexed account, uint128 value);
+    event Debit(PoolId indexed poolId, uint256 indexed journalId, AccountId indexed account, uint128 value);
+
+    /// @notice Emitted at the beginning and end of a journal entry
+    event StartJournalId(PoolId indexed poolId, uint256 journalId);
+    event EndJournalId(PoolId indexed poolId, uint256 journalId);
 
     /// @notice Emitted when a new account is created
     event AccountCreated(PoolId indexed poolId, AccountId indexed account, bool isDebitNormal);
@@ -51,8 +55,8 @@ interface IAccounting {
 
     /// @notice Sets the pool ID and transaction ID for the coming transaction.
     /// @param poolId The pool to unlock
-    /// @param transactionId The id to use for this set of debits/credits
-    function unlock(PoolId poolId, bytes32 transactionId) external;
+    /// @param journalId The id to use for this set of debits/credits
+    function unlock(PoolId poolId, uint256 journalId) external;
 
     /// @notice Closes the transaction and checks if the entries are balanced.
     function lock() external;
@@ -74,4 +78,10 @@ interface IAccounting {
     /// @param account The account to get the value of
     /// @return The value of the account. Will be a negative value for positive balances of credit-normal accounts
     function accountValue(PoolId poolId, AccountId account) external returns (int128);
+
+    /// @notice generates a new journal id for the given pool
+    function generateJournalId(PoolId poolId) external returns (uint256);
+
+    /// @notice gets the current journal id
+    function journalId() external returns (uint256);
 }

@@ -17,8 +17,8 @@ enum AccountType {
     GAIN
 }
 
-PoolId constant POOL_A = PoolId.wrap(1);
-PoolId constant POOL_B = PoolId.wrap(2);
+PoolId constant POOL_A = PoolId.wrap(33);
+PoolId constant POOL_B = PoolId.wrap(44);
 
 contract AccountingTest is Test {
     AccountId immutable CASH_ACCOUNT = newAccountId(1, uint8(AccountType.ASSET));
@@ -41,14 +41,14 @@ contract AccountingTest is Test {
     }
 
     function testDebitsAndCredits() public {
-        accounting.unlock(POOL_A, bytes32("1"));
+        accounting.unlock(POOL_A, 1);
 
         vm.expectEmit();
-        emit IAccounting.Debit(POOL_A, bytes32("1"), CASH_ACCOUNT, 500);
+        emit IAccounting.Debit(POOL_A, 1, CASH_ACCOUNT, 500);
         accounting.addDebit(CASH_ACCOUNT, 500);
 
         vm.expectEmit();
-        emit IAccounting.Credit(POOL_A, bytes32("1"), EQUITY_ACCOUNT, 500);
+        emit IAccounting.Credit(POOL_A, 1, EQUITY_ACCOUNT, 500);
         accounting.addCredit(EQUITY_ACCOUNT, 500);
 
         accounting.addDebit(BOND1_INVESTMENT_ACCOUNT, 245);
@@ -66,12 +66,12 @@ contract AccountingTest is Test {
         accounting.createAccount(POOL_B, CASH_ACCOUNT, true);
         accounting.createAccount(POOL_B, EQUITY_ACCOUNT, false);
 
-        accounting.unlock(POOL_A, bytes32("1"));
+        accounting.unlock(POOL_A, 1);
         accounting.addDebit(CASH_ACCOUNT, 500);
         accounting.addCredit(EQUITY_ACCOUNT, 500);
         accounting.lock();
 
-        accounting.unlock(POOL_B, bytes32("2"));
+        accounting.unlock(POOL_B, 2);
         accounting.addDebit(CASH_ACCOUNT, 120);
         accounting.addCredit(EQUITY_ACCOUNT, 120);
         accounting.lock();
@@ -86,7 +86,7 @@ contract AccountingTest is Test {
         vm.assume(v != 5);
         vm.assume(v < type(uint128).max - 250);
 
-        accounting.unlock(POOL_A, bytes32("1"));
+        accounting.unlock(POOL_A, 1);
         accounting.addDebit(CASH_ACCOUNT, 500);
         accounting.addCredit(EQUITY_ACCOUNT, 500);
         accounting.addDebit(BOND1_INVESTMENT_ACCOUNT, 245);
@@ -98,10 +98,10 @@ contract AccountingTest is Test {
     }
 
     function testDoubleUnlock() public {
-        accounting.unlock(POOL_A, bytes32("1"));
+        accounting.unlock(POOL_A, 1);
 
         vm.expectRevert(IAccounting.AccountingAlreadyUnlocked.selector);
-        accounting.unlock(POOL_B, bytes32("1"));
+        accounting.unlock(POOL_B, 1);
     }
 
     function testUpdateEntryWithoutUnlocking() public {
@@ -116,9 +116,9 @@ contract AccountingTest is Test {
         address unauthorized = makeAddr("unauthorized");
         vm.prank(unauthorized);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        accounting.unlock(POOL_A, bytes32("1"));
+        accounting.unlock(POOL_A, 1);
 
-        accounting.unlock(POOL_A, bytes32("1"));
+        accounting.unlock(POOL_A, 1);
 
         vm.startPrank(unauthorized);
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -138,7 +138,7 @@ contract AccountingTest is Test {
     }
 
     function testErrWhenNonExistentAccount() public {
-        accounting.unlock(POOL_A, bytes32("1"));
+        accounting.unlock(POOL_A, 1);
         vm.expectRevert(IAccounting.AccountDoesNotExist.selector);
         accounting.addDebit(NON_INITIALIZED_ACCOUNT, 500);
 
@@ -167,5 +167,24 @@ contract AccountingTest is Test {
     function testCreatingExistingAccount() public {
         vm.expectRevert(IAccounting.AccountExists.selector);
         accounting.createAccount(POOL_A, CASH_ACCOUNT, true);
+    }
+
+    function testJournalId() public {
+        vm.prank(makeAddr("randomUser"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        accounting.generateJournalId(POOL_A);
+
+        uint256 txId = accounting.generateJournalId(POOL_A);
+        uint256 expected = (33 << 64) | 1;
+        assertEq(txId, expected);
+        assertEq(accounting.journalId(), expected);
+
+        uint256 txId2 = accounting.generateJournalId(POOL_A);
+        uint256 expected2 = (33 << 64) | 2;
+        assertEq(txId2, expected2);
+        assertEq(accounting.journalId(), expected2);
+
+        accounting.generateJournalId(POOL_B);
+        assertEq(accounting.journalId(), (44 << 64) | 1);
     }
 }
