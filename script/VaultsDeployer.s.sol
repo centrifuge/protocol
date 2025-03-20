@@ -106,6 +106,7 @@ contract VaultsDeployer is CommonDeployer {
 
         // Rely on VaultRouter
         gateway.rely(address(vaultRouter));
+        poolManager.rely(address(vaultRouter));
     }
 
     function _vaultsFile() public {
