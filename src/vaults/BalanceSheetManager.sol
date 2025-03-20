@@ -77,6 +77,7 @@ contract BalanceSheetManager is
     }
 
     /// --- External ---
+    /// @inheritdoc IBalanceSheetManager
     function deposit(
         uint64 poolId,
         bytes16 scId,
@@ -100,6 +101,7 @@ contract BalanceSheetManager is
         );
     }
 
+    /// @inheritdoc IBalanceSheetManager
     function withdraw(
         uint64 poolId,
         bytes16 scId,
@@ -125,7 +127,34 @@ contract BalanceSheetManager is
         );
     }
 
-    /// --- External ---
+    /// @inheritdoc IBalanceSheetManager
+    function updateValue(uint64 poolId, bytes16 scId, uint128 assetId, D18 pricePerUnit, uint256 timestamp) external auth {
+        sender.sendUpdateHoldingValue(poolId, scId, assetId, pricePerUnit, timestamp);
+    }
+
+    /// @inheritdoc IBalanceSheetManager
+    function revoke(uint64 poolId, bytes16 scId, address from, uint128 shares)
+        external
+        authOrPermission(poolId, scId)
+    {
+        _revoke(poolId, scId, from, shares);
+    }
+
+    /// @inheritdoc IBalanceSheetManager
+    function issue(uint64 poolId, bytes16 scId, address to, uint128 shares, bool asAllowance)
+        external
+        authOrPermission(poolId, scId)
+    {
+        _issue(poolId, scId, to, shares, asAllowance);
+    }
+
+    /// @inheritdoc IBalanceSheetManager
+    function journalEntry(uint64 poolId, bytes16 scId, Meta calldata m) external authOrPermission(poolId, scId) {
+        sender.sendJournalEntry(poolId, scId, m.debits, m.credits);
+    }
+
+    /// --- IBalanceSheetManagerHandler ---
+    /// @inheritdoc IBalanceSheetManagerGatewayHandler
     function deposit(
         uint64 poolId,
         bytes16 scId,
@@ -140,6 +169,7 @@ contract BalanceSheetManager is
         _deposit(poolId, scId, assetId, asset, tokenId, provider, amount, pricePerUnit, m);
     }
 
+    /// @inheritdoc IBalanceSheetManagerGatewayHandler
     function withdraw(
         uint64 poolId,
         bytes16 scId,
@@ -154,30 +184,17 @@ contract BalanceSheetManager is
         _withdraw(poolId, scId, assetId, asset, tokenId, receiver, amount, pricePerUnit, asAllowance, m);
     }
 
-    function issue(uint64 poolId, bytes16 scId, address to, uint128 shares, bool asAllowance)
+    /// @inheritdoc IBalanceSheetManagerGatewayHandler
+    function triggerIssueShares(uint64 poolId, bytes16 scId, address to, uint128 shares, bool asAllowance)
         external
-        authOrPermission(poolId, scId)
+        auth
     {
         _issue(poolId, scId, to, shares, asAllowance);
     }
 
-    function triggerIssueShares(uint64 poolId, bytes16 scId, address to, uint128 shares, bool asAllowance) external auth {
-        _issue(poolId, scId, to, shares, asAllowance);
-    }
-
-    function revoke(uint64 poolId, bytes16 scId, address from, uint128 shares)
-        external
-        authOrPermission(poolId, scId)
-    {
-        _revoke(poolId, scId, from, shares);
-    }
-
+    /// @inheritdoc IBalanceSheetManagerGatewayHandler
     function triggerRevokeShares(uint64 poolId, bytes16 scId, address from, uint128 shares) external auth {
         _revoke(poolId, scId, from, shares);
-    }
-
-    function journalEntry(uint64 poolId, bytes16 scId, Meta calldata m) external authOrPermission(poolId, scId) {
-        sender.sendJournalEntry(poolId, scId, m.debits, m.credits);
     }
 
     // --- Internal ---

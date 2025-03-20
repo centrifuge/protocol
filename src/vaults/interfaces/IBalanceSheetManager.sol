@@ -62,6 +62,8 @@ interface IBalanceSheetManager {
         Meta calldata m
     ) external;
 
+    function updateValue(uint64 poolId, bytes16 scId, uint128 assetId, D18 pricePerUnit, uint256 timestamp) external;
+
     function issue(uint64 poolId, bytes16 scId, address to, uint128 shares, bool asAllowance) external;
 
     function revoke(uint64 poolId, bytes16 scId, address from, uint128 shares) external;

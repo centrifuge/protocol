@@ -513,7 +513,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
             } else if (kind == MessageType.TriggerUpdateShares) {
                 MessageLib.TriggerUpdateShares memory m = message.deserializeTriggerUpdateShares();
                 if (m.isIssuance) {
-                    balanceSheetManager.triggerIssueShares(m.poolId, m.scId, address(bytes20(m.who)), m.shares, m.asAllowance);
+                    balanceSheetManager.triggerIssueShares(
+                        m.poolId, m.scId, address(bytes20(m.who)), m.shares, m.asAllowance
+                    );
                 } else {
                     balanceSheetManager.triggerRevokeShares(m.poolId, m.scId, address(bytes20(m.who)), m.shares);
                 }
