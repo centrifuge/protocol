@@ -37,12 +37,12 @@ contract CommonDeployer is Script {
         );
     }
 
-    function deployCommon(ISafe adminSafe_, address deployer) public {
+    function deployCommon(ISafe adminSafe_) public {
         if (address(root) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
 
-        root = new Root(DELAY, deployer);
+        root = new Root(DELAY, address(this));
 
         adminSafe = adminSafe_;
         guardian = new Guardian(adminSafe, root);
@@ -52,7 +52,7 @@ contract CommonDeployer is Script {
 
         gasService = new GasService(messageGasLimit, proofGasLimit);
         gateway = new Gateway(root, gasService);
-        messageProcessor = new MessageProcessor(gateway, root, gasService, deployer);
+        messageProcessor = new MessageProcessor(gateway, root, gasService, address(this));
 
         _commonRegister();
         _commonRely();
@@ -84,22 +84,22 @@ contract CommonDeployer is Script {
         gateway.file("handler", address(messageProcessor));
     }
 
-    function wire(IAdapter adapter, address deployer) public {
+    function wire(IAdapter adapter) public {
         adapters.push(adapter);
         gateway.file("adapters", adapters);
         IAuth(address(adapter)).rely(address(root));
-        IAuth(address(adapter)).deny(deployer);
+        IAuth(address(adapter)).deny(address(this));
     }
 
-    function removeCommonDeployerAccess(address deployer) public {
-        if (root.wards(deployer) == 0) {
+    function removeCommonDeployerAccess() public {
+        if (root.wards(address(this)) == 0) {
             return; // Already access removed. Make this method idempotent.
         }
 
-        root.deny(deployer);
-        gasService.deny(deployer);
-        gateway.deny(deployer);
-        messageProcessor.deny(deployer);
+        root.deny(address(this));
+        gasService.deny(address(this));
+        gateway.deny(address(this));
+        messageProcessor.deny(address(this));
     }
 
     function register(string memory name, address target) public {

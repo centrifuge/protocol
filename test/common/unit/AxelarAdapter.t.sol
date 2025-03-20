@@ -65,7 +65,7 @@ contract AxelarAdapterTest is Test {
     function setUp() public {
         axelarGateway = new MockAxelarGateway();
         axelarGasService = new MockAxelarGasService();
-        adapter = new AxelarAdapter(GATEWAY, address(axelarGateway), address(axelarGasService));
+        adapter = new AxelarAdapter(GATEWAY, address(axelarGateway), address(axelarGasService), address(this));
     }
 
     function testDeploy() public view {

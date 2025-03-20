@@ -12,11 +12,11 @@ contract LocalhostDeployer is FullDeployer {
     function run() public {
         vm.startBroadcast();
 
-        deployFull(ISafe(vm.envAddress("ADMIN")), msg.sender);
+        deployFull(ISafe(vm.envAddress("ADMIN")));
         saveDeploymentOutput();
 
-        LocalhostAdapter adapter = new LocalhostAdapter(gateway);
-        wire(adapter, msg.sender);
+        LocalhostAdapter adapter = new LocalhostAdapter(gateway, address(this));
+        wire(adapter);
 
         vm.stopBroadcast();
     }

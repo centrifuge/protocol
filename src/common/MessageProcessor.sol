@@ -253,7 +253,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     }
 
     /// @inheritdoc IMessageHandler
-    function handle(uint32, /* chainId */ bytes memory message) external auth {
+    function handle(uint32, /* chainId */ bytes calldata message) external auth {
         MessageCategory cat = message.messageCode().category();
         MessageType kind = message.messageType();
 
