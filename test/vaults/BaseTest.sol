@@ -111,7 +111,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         vm.label(address(adapter3), "MockAdapter3");
         vm.label(address(erc20), "ERC20");
         vm.label(address(centrifugeChain), "CentrifugeChain");
-        vm.label(address(router), "VaultRouter");
+        vm.label(address(vaultRouter), "VaultRouter");
         vm.label(address(gasService), "GasService");
         vm.label(address(mockedGasService), "MockGasService");
         vm.label(address(escrow), "Escrow");
@@ -127,7 +127,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         excludeContract(address(gateway));
         excludeContract(address(erc20));
         excludeContract(address(centrifugeChain));
-        excludeContract(address(router));
+        excludeContract(address(vaultRouter));
         excludeContract(address(adapter1));
         excludeContract(address(adapter2));
         excludeContract(address(adapter3));
