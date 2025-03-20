@@ -1,0 +1,27 @@
+{
+  "contracts": {
+    "root": "0x50ec158cac61036254c954ed4558188fd6c85a2c",
+    "adminSafe": "0x423420ae467df6e90291fd0252c0a8a637c1e03f",
+    "guardian": "0x930e9990f184ce3d492db88c8e59472459dff582",
+    "gasService": "0xd19ab1d0638730aa7525caf80016acd3740353d2",
+    "gateway": "0xd5ebd89e48eb02eb795e72c225ccd6a221d7f03d",
+    "messageProcessor": "0x20ea2c12f8ca4e6781042b80e86d19204071bef6",
+    "poolRegistry": "0xecea4123aae2597dbd43f23dc9d62e112ac70329",
+    "assetRegistry": "0x5aa1808cd7cba594220d00cdd2a66d5b2015108b",
+    "accounting": "0x4f7f1960dad37025ce6e88986b483f1f93b76cc9",
+    "holdings": "0x8603b21aa184dc99f0e8a2c0a88cadfe8fe75bbb",
+    "multiShareClass": "0xa87b0260fe284c1846bdad12562070ad836ca0c2",
+    "poolRouter": "0x55af856988b6a0b5c1c4ae4c7ce0a462bad6aa34",
+    "transientValuation": "0x69f60392eeb55d880d6db2c2fc8a3c38c098569f",
+    "identityValuation": "0xfd179e945deb477adb6c925337051acf4d4b62a8",
+    "escrow": "0x493aafcb69aa6c983063999a33e98069a9c8584a",
+    "routerEscrow": "0xf02e944020beb9f61e8ae5ae3f3080449b4e2629",
+    "restrictionManager": "0xfb842a203c7373b0838a4f77a7c6ba0824688be1",
+    "restrictedRedemptions": "0x8a09882bd6644e58927c0464f0da8184f8d6f6da",
+    "trancheFactory": "0xcdc5511a590125b8fd978c57d663c3d69b47529b",
+    "investmentManager": "0xdb8b3a51c733d6ec9acb9876e38839136e44352d",
+    "vaultFactory": "0x981e9809f417230677f646d96e71fb5aea1f87f3",
+    "poolManager": "0xa0936a3ceb5a1884c82e24ab4895971fba2ba198",
+    "vaultRouter": "0x6c112998326ca2e63aa3a74fc69a1425c32144e6"
+  }
+}

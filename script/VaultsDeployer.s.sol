@@ -46,9 +46,22 @@ contract VaultsDeployer is CommonDeployer {
         poolManager = new PoolManager(address(escrow), trancheFactory, vaultFactories);
         vaultRouter = new VaultRouter(address(routerEscrow), address(gateway), address(poolManager));
 
+        _vaultsRegister();
         _vaultsEndorse();
         _vaultsRely();
         _vaultsFile();
+    }
+
+    function _vaultsRegister() private {
+        register("escrow", address(escrow));
+        register("routerEscrow", address(routerEscrow));
+        register("restrictionManager", address(restrictionManager));
+        register("restrictedRedemptions", address(restrictedRedemptions));
+        register("trancheFactory", address(trancheFactory));
+        register("investmentManager", address(investmentManager));
+        register("vaultFactory", address(vaultFactory));
+        register("poolManager", address(poolManager));
+        register("vaultRouter", address(vaultRouter));
     }
 
     function _vaultsEndorse() private {
