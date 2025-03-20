@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
+import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 
 import {ERC20} from "src/misc/ERC20.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
@@ -51,7 +52,6 @@ contract GatewayTest is Test {
         handler = new MockManager();
         gasService = new MockGasService();
         gateway = new Gateway(IRoot(address(root)), IGasService(address(gasService)));
-        gateway.file("payers", self, true);
         gateway.file("handler", address(handler));
         gasService.setReturn("shouldRefuel", true);
         vm.deal(address(gateway), INITIAL_BALANCE);
@@ -341,11 +341,6 @@ contract GatewayTest is Test {
     function testPrepayment() public {
         uint256 topUpAmount = 1 gwei;
 
-        gateway.file("payers", self, false);
-        vm.expectRevert(bytes("Gateway/only-payers-can-top-up"));
-        gateway.topUp{value: topUpAmount}();
-
-        gateway.file("payers", self, true);
         vm.expectRevert(bytes("Gateway/cannot-topup-with-nothing"));
         gateway.topUp{value: 0}();
 
@@ -401,7 +396,7 @@ contract GatewayTest is Test {
 
         for (uint256 i; i < threeMockAdapters.length; i++) {
             MockAdapter currentAdapter = MockAdapter(address(threeMockAdapters[i]));
-            uint256[] memory metadata = currentAdapter.callsWithValue("pay");
+            uint256[] memory metadata = currentAdapter.callsWithValue("send");
             assertEq(metadata.length, 1);
             assertEq(metadata[0], tranches[i]);
 
@@ -433,7 +428,7 @@ contract GatewayTest is Test {
 
         for (uint256 i; i < threeMockAdapters.length; i++) {
             MockAdapter currentAdapter = MockAdapter(address(threeMockAdapters[i]));
-            uint256[] memory metadata = currentAdapter.callsWithValue("pay");
+            uint256[] memory metadata = currentAdapter.callsWithValue("send");
             assertEq(metadata.length, 1);
             assertEq(metadata[0], tranches[i]);
 
@@ -463,7 +458,7 @@ contract GatewayTest is Test {
 
         for (uint256 i; i < threeMockAdapters.length; i++) {
             MockAdapter currentAdapter = MockAdapter(address(threeMockAdapters[i]));
-            uint256[] memory metadata = currentAdapter.callsWithValue("pay");
+            uint256[] memory metadata = currentAdapter.callsWithValue("send");
             assertEq(metadata.length, 1);
             assertEq(metadata[0], tranches[i]);
 
@@ -493,18 +488,19 @@ contract GatewayTest is Test {
 
         assertEq(gasService.calls("shouldRefuel"), 1);
 
-        uint256[] memory r1Metadata = adapter1.callsWithValue("pay");
+        uint256[] memory r1Metadata = adapter1.callsWithValue("send");
         assertEq(r1Metadata.length, 1);
         assertEq(r1Metadata[0], tranches[0]);
         assertEq(adapter1.sent(message), 1);
 
-        uint256[] memory r2Metadata = adapter2.callsWithValue("pay");
+        uint256[] memory r2Metadata = adapter2.callsWithValue("send");
         assertEq(r2Metadata.length, 1);
         assertEq(r2Metadata[0], tranches[1]);
         assertEq(adapter2.sent(proof), 1);
 
-        uint256[] memory r3Metadata = adapter3.callsWithValue("pay");
-        assertEq(r3Metadata.length, 0);
+        uint256[] memory r3Metadata = adapter3.callsWithValue("send");
+        assertEq(r3Metadata.length, 1);
+        assertEq(r3Metadata[0], 0);
         assertEq(adapter3.sent(proof), 1);
 
         assertEq(address(gateway).balance, balanceBeforeTx - fundsToCoverTwoAdaptersOnly);
@@ -526,16 +522,19 @@ contract GatewayTest is Test {
 
         assertEq(gasService.calls("shouldRefuel"), 1);
 
-        uint256[] memory r1Metadata = adapter1.callsWithValue("pay");
-        assertEq(r1Metadata.length, 0);
+        uint256[] memory r1Metadata = adapter1.callsWithValue("send");
+        assertEq(r1Metadata.length, 1);
+        assertEq(r1Metadata[0], 0);
         assertEq(adapter1.sent(message), 1);
 
-        uint256[] memory r2Metadata = adapter2.callsWithValue("pay");
-        assertEq(r2Metadata.length, 0);
+        uint256[] memory r2Metadata = adapter2.callsWithValue("send");
+        assertEq(r2Metadata.length, 1);
+        assertEq(r2Metadata[0], 0);
         assertEq(adapter2.sent(proof), 1);
 
-        uint256[] memory r3Metadata = adapter3.callsWithValue("pay");
-        assertEq(r3Metadata.length, 0);
+        uint256[] memory r3Metadata = adapter3.callsWithValue("send");
+        assertEq(r3Metadata.length, 1);
+        assertEq(r3Metadata[0], 0);
         assertEq(adapter3.sent(proof), 1);
 
         assertEq(_quota(), 0);
@@ -744,7 +743,7 @@ contract GatewayTest is Test {
         }
     }
 
-    function testRecoverTokens() public {
+    function testRecoverTokensETH() public {
         address ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
         address receiver = makeAddr("receiver");
 
@@ -753,21 +752,40 @@ contract GatewayTest is Test {
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(makeAddr("UnauthorizedCaller"));
-        gateway.recoverTokens(ETH, receiver, INITIAL_BALANCE);
+        gateway.recoverTokens(ETH, 0, receiver, INITIAL_BALANCE);
 
-        gateway.recoverTokens(ETH, receiver, INITIAL_BALANCE);
+        gateway.recoverTokens(ETH, 0, receiver, INITIAL_BALANCE);
         assertEq(address(gateway).balance, 0);
         assertEq(receiver.balance, INITIAL_BALANCE);
+    }
 
-        uint256 amount = 200 gwei;
+    function testRecoverTokensERC20(uint256 amount) public {
+        vm.assume(amount > 0);
+        address receiver = makeAddr("receiver");
         ERC20 token = new ERC20(18);
+
         token.mint(address(gateway), amount);
         assertEq(token.balanceOf(address(gateway)), amount);
         assertEq(token.balanceOf(receiver), 0);
 
-        gateway.recoverTokens(address(token), receiver, amount);
+        gateway.recoverTokens(address(token), 0, receiver, amount);
         assertEq(token.balanceOf(address(gateway)), 0);
         assertEq(token.balanceOf(receiver), amount);
+    }
+
+    function testRecoverTokensERC6909(uint256 amount, uint8 tokenId) public {
+        vm.assume(amount > 0);
+        tokenId = uint8(bound(tokenId, 2, 18));
+        address receiver = makeAddr("receiver");
+        MockERC6909 token = new MockERC6909();
+
+        token.mint(address(gateway), tokenId, amount);
+        assertEq(token.balanceOf(address(gateway), tokenId), amount);
+        assertEq(token.balanceOf(receiver, tokenId), 0);
+
+        gateway.recoverTokens(address(token), tokenId, receiver, amount);
+        assertEq(token.balanceOf(address(gateway), tokenId), 0);
+        assertEq(token.balanceOf(receiver, tokenId), amount);
     }
 
     function testEstimate() public {

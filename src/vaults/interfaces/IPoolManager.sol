@@ -15,9 +15,9 @@ struct TrancheDetails {
     /// @dev Each tranche can have multiple vaults deployed,
     ///      multiple vaults can be linked to the same asset.
     ///      A vault in this storage DOES NOT mean the vault can be used
-    mapping(address asset => address[]) vaults;
+    mapping(address asset => mapping(uint256 tokenId => address[])) vaults;
     /// @dev Each tranche has a price per asset
-    mapping(address asset => TranchePrice) prices;
+    mapping(address asset => mapping(uint256 tokenId => TranchePrice)) prices;
 }
 
 struct TranchePrice {
@@ -38,30 +38,55 @@ struct UndeployedTranche {
     address hook;
 }
 
-struct VaultAsset {
+struct VaultDetails {
+    /// @dev AssetId of the asset
+    uint128 assetId;
     /// @dev Address of the asset
     address asset;
+    /// @dev TokenId of the asset - zero if asset is ERC20, non-zero if asset is ERC6909
+    uint256 tokenId;
     /// @dev Whether this wrapper conforms to the IERC20Wrapper interface
     bool isWrapper;
     /// @dev Whether the vault is linked to a tranche atm
     bool isLinked;
 }
 
+struct AssetIdKey {
+    /// @dev The address of the asset
+    address asset;
+    /// @dev The ERC6909 token id or 0, if the underlying asset is an ERC20
+    uint256 tokenId;
+}
+
 interface IPoolManager is IRecoverable {
     event File(bytes32 indexed what, address data);
+    event RegisterAsset(
+        uint128 indexed assetId,
+        address indexed asset,
+        uint256 indexed tokenId,
+        string name,
+        string symbol,
+        uint8 decimals
+    );
     event File(bytes32 indexed what, address factory, bool status);
-    event AddAsset(uint128 indexed assetId, address indexed asset);
     event AddPool(uint64 indexed poolId);
-    event AllowAsset(uint64 indexed poolId, address indexed asset);
-    event DisallowAsset(uint64 indexed poolId, address indexed asset);
     event AddTranche(uint64 indexed poolId, bytes16 indexed trancheId, address token);
     event DeployVault(
-        uint64 indexed poolId, bytes16 indexed trancheId, address indexed asset, address factory, address vault
+        uint64 indexed poolId,
+        bytes16 indexed trancheId,
+        address indexed asset,
+        uint256 tokenId,
+        address factory,
+        address vault
     );
     event PriceUpdate(
-        uint64 indexed poolId, bytes16 indexed trancheId, address indexed asset, uint256 price, uint64 computedAt
+        uint64 indexed poolId,
+        bytes16 indexed trancheId,
+        address indexed asset,
+        uint256 tokenId,
+        uint256 price,
+        uint64 computedAt
     );
-    event TransferAssets(address indexed asset, address indexed sender, bytes32 indexed recipient, uint128 amount);
     event TransferTrancheTokens(
         uint64 indexed poolId,
         bytes16 indexed trancheId,
@@ -72,17 +97,39 @@ interface IPoolManager is IRecoverable {
     );
     event UpdateContract(uint64 indexed poolId, bytes16 indexed trancheId, address target, bytes payload);
     event LinkVault(
-        uint64 indexed poolId, bytes16 indexed trancheId, uint128 indexed assetId, address asset, address vault
+        uint64 indexed poolId, bytes16 indexed trancheId, address indexed asset, uint256 tokenId, address vault
     );
     event UnlinkVault(
-        uint64 indexed poolId, bytes16 indexed trancheId, uint128 indexed assetId, address asset, address vault
+        uint64 indexed poolId, bytes16 indexed trancheId, address indexed asset, uint256 tokenId, address vault
     );
 
-    /// @notice returns the asset address associated with a given asset id
-    function idToAsset(uint128 assetId) external view returns (address asset);
+    /// @notice Returns the asset address and tokenId associated with a given asset id.
+    ///
+    /// @param assetId The underlying internal uint128 assetId.
+    /// @return asset The address of the asset linked to the given asset id.
+    /// @return tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
+    function idToAsset(uint128 assetId) external view returns (address asset, uint256 tokenId);
 
-    /// @notice returns the asset id associated with a given address
-    function assetToId(address) external view returns (uint128 assetId);
+    /// @notice Returns assetId given the asset address and tokenId.
+    ///
+    /// @param asset The address of the asset linked to the given asset id.
+    /// @param tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
+    /// @return assetId The underlying internal uint128 assetId.
+    function assetToId(address asset, uint256 tokenId) external view returns (uint128 assetId);
+
+    /// @notice Returns the asset address and tokenId associated with a given asset id. Ensures asset exists.
+    ///
+    /// @param assetId The underlying internal uint128 assetId.
+    /// @return asset The address of the asset linked to the given asset id.
+    /// @return tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
+    function checkedIdToAsset(uint128 assetId) external view returns (address asset, uint256 tokenId);
+
+    /// @notice Returns assetId given the asset address and tokenId. Ensures asset exists.
+    ///
+    /// @param asset The address of the asset linked to the given asset id.
+    /// @param tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
+    /// @return assetId The underlying internal uint128 assetId.
+    function checkedAssetToId(address asset, uint256 tokenId) external view returns (uint128 assetId);
 
     /// @notice Updates a contract parameter
     /// @param what Accepts a bytes32 representation of 'gateway', 'investmentManager', 'trancheFactory',
@@ -108,107 +155,43 @@ interface IPoolManager is IRecoverable {
         uint128 amount
     ) external;
 
-    /// @notice    New pool details from an existing Centrifuge pool are added.
-    /// @dev       The function can only be executed by the gateway contract.
-    function addPool(uint64 poolId) external;
+    /// @notice     Registers an ERC-20 or ERC-6909 asset in another chain.
+    /// @dev        `decimals()` MUST return a `uint8` value between 2 and 18.
+    ///             `name()` and `symbol()` MAY return no values.
+    function registerAsset(address asset, uint256 tokenId, uint32 destinationChain)
+        external
+        returns (uint128 assetId);
 
-    /// @notice     Centrifuge pools can support multiple currencies for investing. this function adds
-    ///             a new supported asset to the pool details.
-    ///             Adding new currencies allow the creation of new vaults for the underlying Centrifuge pool.
-    /// @dev        The function can only be executed by the gateway contract.
-    function allowAsset(uint64 poolId, uint128 assetId) external;
+    function deployVault(uint64 poolId, bytes16 trancheId, uint128 assetId, address factory)
+        external
+        returns (address);
 
-    /// @notice    Centrifuge pools can support multiple currencies for investing. this function removes
-    ///            a supported asset from the pool details.
-    /// @dev       The function can only be executed by the gateway contract.
-    function disallowAsset(uint64 poolId, uint128 assetId) external;
+    function linkVault(uint64 poolId, bytes16 trancheId, uint128 assetId, address vault) external;
 
-    /// @notice     New tranche details from an existing Centrifuge pool are added.
-    /// @dev        The function can only be executed by the gateway contract.
-    function addTranche(
-        uint64 poolId,
-        bytes16 trancheId,
-        string memory tokenName,
-        string memory tokenSymbol,
-        uint8 decimals,
-        bytes32 salt,
-        address hook
-    ) external returns (address);
-
-    /// @notice   Updates the tokenName and tokenSymbol of a tranche token
-    /// @dev      The function can only be executed by the gateway contract.
-    function updateTrancheMetadata(uint64 poolId, bytes16 trancheId, string memory tokenName, string memory tokenSymbol)
-        external;
-
-    /// @notice  Updates the price of a tranche token
-    /// @dev     The function can only be executed by the gateway contract.
-    function updateTranchePrice(uint64 poolId, bytes16 trancheId, uint128 assetId, uint128 price, uint64 computedAt)
-        external;
-
-    /// @notice Updates the restrictions on a tranche token for a specific user
-    /// @param  poolId The centrifuge pool id
-    /// @param  trancheId The tranche id
-    /// @param  update The restriction update in the form of a bytes array indicating
-    ///                the restriction to be updated, the user to be updated, and a validUntil timestamp.
-    function updateRestriction(uint64 poolId, bytes16 trancheId, bytes memory update) external;
-
-    /// @notice Updates the target address. Generic update function from CP to CV
-    /// @param  poolId The centrifuge pool id
-    /// @param  trancheId The tranche id
-    /// @param  target The target address to be called
-    /// @param  update The payload to be processed by the target address
-    function updateContract(uint64 poolId, bytes16 trancheId, address target, bytes memory update) external;
-
-    /// @notice Updates the hook of a tranche token
-    /// @param  poolId The centrifuge pool id
-    /// @param  trancheId The tranche id
-    /// @param  hook The new hook addres
-    function updateTrancheHook(uint64 poolId, bytes16 trancheId, address hook) external;
-
-    /// @notice A global chain agnostic asset index is maintained on Centrifuge. This function maps
-    ///         a asset from the Centrifuge index to its corresponding address on the evm chain.
-    ///         The chain agnostic asset id has to be used to pass asset information to the Centrifuge.
-    /// @dev    This function can only be executed by the gateway contract.
-    function addAsset(uint128 assetId, address asset) external;
-
-    function deployVault(uint64 poolId, bytes16 trancheId, address asset, address factory) external returns (address);
-
-    function linkVault(uint64 poolId, bytes16 trancheId, address asset, address vault) external;
-
-    function unlinkVault(uint64 poolId, bytes16 trancheId, address asset, address vault) external;
-
-    /// @notice Mints tranche tokens to a recipient
-    /// @dev    The function can only be executed internally or by the gateway contract.
-    function handleTransferTrancheTokens(uint64 poolId, bytes16 trancheId, address destinationAddress, uint128 amount)
-        external;
+    function unlinkVault(uint64 poolId, bytes16 trancheId, uint128 assetId, address vault) external;
 
     /// @notice Returns whether the given pool id is active
     function isPoolActive(uint64 poolId) external view returns (bool);
 
     /// @notice Returns the tranche token for a given pool and tranche id
-    function getTranche(uint64 poolId, bytes16 trancheId) external view returns (address);
+    function tranche(uint64 poolId, bytes16 trancheId) external view returns (address);
 
-    /// @notice Retuns the latest tranche token price for a given pool, tranche id, and asset id
-    function getTranchePrice(uint64 poolId, bytes16 trancheId, address asset)
+    /// @notice Returns the tranche token for a given pool and tranche id. Ensures tranche exists
+    function checkedTranche(uint64 poolId, bytes16 trancheId) external view returns (address);
+
+    /// @notice Retuns the latest tranche token price for a given pool, tranche id, and asset
+    function tranchePrice(uint64 poolId, bytes16 trancheId, uint128 assetId)
         external
         view
         returns (uint128 price, uint64 computedAt);
 
-    /// @notice Function to get the vault's underlying asset
-    /// @dev    Function vaultToAsset which is a state variable getter could be used
-    ///         but in that case each caller MUST make sure they handle the case
-    ///         where a 0 address is returned. Using this method, that handling is done
-    ///         on the behalf the caller.
-    function getVaultAsset(address vault) external view returns (address asset, bool isWrapper);
-
-    /// @notice Function to get the vault's underlying assetId
-    /// @dev    Function getVaultAssetId handles non-existing vault errors and provides the underlying assetId of a
-    /// vault
-    function getVaultAssetId(address vault) external view returns (uint128);
+    /// @notice Function to get the details of a vault
+    /// @dev    Reverts if vault does not exist
+    ///
+    /// @param vault The address of the vault to be checked for
+    /// @return details The details of the vault including the underlying asset address, token id, asset id
+    function vaultDetails(address vault) external view returns (VaultDetails memory details);
 
     /// @notice Checks whether a given asset-vault pair is eligible for investing into a tranche of a pool
     function isLinked(uint64 poolId, bytes16 trancheId, address asset, address vault) external view returns (bool);
-
-    // TODO: TEMP for
-    function isAllowedAsset(uint64 poolId, address asset) external view returns (bool);
 }

@@ -14,42 +14,184 @@ import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
 import {JournalEntry, Meta} from "src/common/types/JournalEntry.sol";
+import {
+    IInvestmentManagerGatewayHandler,
+    IPoolManagerGatewayHandler,
+    IPoolRouterGatewayHandler,
+    IBalanceSheetManagerGatewayHandler
+} from "src/common/interfaces/IGatewayHandlers.sol";
+import {IVaultMessageSender, IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
-import {IMessageProcessor} from "src/vaults/interfaces/IMessageProcessor.sol";
-import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
-import {IInvestmentManager} from "src/vaults/interfaces/IInvestmentManager.sol";
-import {IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 
-contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
+interface IMessageProcessor is IVaultMessageSender, IPoolMessageSender, IMessageHandler {
+    /// @notice Emitted when a call to `file()` was performed.
+    event File(bytes32 indexed what, address addr);
+
+    /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
+    error FileUnrecognizedParam();
+
+    /// @notice Updates a contract parameter.
+    /// @param what Name of the parameter to update.
+    /// Accepts a `bytes32` representation of 'poolRegistry' string value.
+    /// @param data New value given to the `what` parameter
+    function file(bytes32 what, address data) external;
+}
+
+contract MessageProcessor is Auth, IMessageProcessor {
     using MessageLib for *;
     using BytesLib for bytes;
     using CastLib for *;
 
     IMessageSender public immutable gateway;
-    IPoolManager public immutable poolManager;
-    IInvestmentManager public immutable investmentManager;
-    IBalanceSheetManager public immutable balanceSheetManager;
     IRoot public immutable root;
     IGasService public immutable gasService;
 
-    constructor(
-        IMessageSender sender_,
-        IPoolManager poolManager_,
-        IInvestmentManager investmentManager_,
-        IBalanceSheetManager balanceSheetManager_,
-        IRoot root_,
-        IGasService gasService_,
-        address deployer
-    ) Auth(deployer) {
-        gateway = sender_;
-        poolManager = poolManager_;
-        investmentManager = investmentManager_;
-        balanceSheetManager = balanceSheetManager_;
+    IPoolRouterGatewayHandler public poolRouter;
+    IPoolManagerGatewayHandler public poolManager;
+    IInvestmentManagerGatewayHandler public investmentManager;
+    IBalanceSheetManagerGatewayHandler public balanceSheetManager;
+
+    constructor(IMessageSender gateway_, IRoot root_, IGasService gasService_, address deployer) Auth(deployer) {
+        gateway = gateway_;
         root = root_;
         gasService = gasService_;
     }
 
     /// @inheritdoc IMessageProcessor
+    function file(bytes32 what, address data) external auth {
+        if (what == "poolRouter") poolRouter = IPoolRouterGatewayHandler(data);
+        else if (what == "poolManager") poolManager = IPoolManagerGatewayHandler(data);
+        else if (what == "investmentManager") investmentManager = IInvestmentManagerGatewayHandler(data);
+        else if (what == "balanceSheetManager") balanceSheetManager = IBalanceSheetManagerGatewayHandler(data);
+        else revert FileUnrecognizedParam();
+
+        emit File(what, data);
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendNotifyPool(uint32 chainId, PoolId poolId) external auth {
+        // In case we want to optimize for the same network:
+        //if chainId == uint32(block.chainId) {
+        //    cv.poolManager.notifyPool(poolId);
+        //}
+        //else {
+        gateway.send(chainId, MessageLib.NotifyPool({poolId: poolId.raw()}).serialize());
+        //}
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendNotifyShareClass(
+        uint32 chainId,
+        PoolId poolId,
+        ShareClassId scId,
+        string memory name,
+        string memory symbol,
+        uint8 decimals,
+        bytes32 salt,
+        bytes32 hook
+    ) external auth {
+        gateway.send(
+            chainId,
+            MessageLib.NotifyShareClass({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                name: name,
+                symbol: symbol.toBytes32(),
+                decimals: decimals,
+                salt: salt,
+                hook: hook
+            }).serialize()
+        );
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendFulfilledDepositRequest(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 investor,
+        uint128 assetAmount,
+        uint128 shareAmount
+    ) external auth {
+        gateway.send(
+            assetId.chainId(),
+            MessageLib.FulfilledDepositRequest({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                investor: investor,
+                assetId: assetId.raw(),
+                assetAmount: assetAmount,
+                shareAmount: shareAmount
+            }).serialize()
+        );
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendFulfilledRedeemRequest(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 investor,
+        uint128 assetAmount,
+        uint128 shareAmount
+    ) external auth {
+        gateway.send(
+            assetId.chainId(),
+            MessageLib.FulfilledRedeemRequest({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                investor: investor,
+                assetId: assetId.raw(),
+                assetAmount: assetAmount,
+                shareAmount: shareAmount
+            }).serialize()
+        );
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendFulfilledCancelDepositRequest(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 investor,
+        uint128 cancelledAmount
+    ) external auth {
+        gateway.send(
+            assetId.chainId(),
+            MessageLib.FulfilledCancelDepositRequest({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                investor: investor,
+                assetId: assetId.raw(),
+                cancelledAmount: cancelledAmount
+            }).serialize()
+        );
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendFulfilledCancelRedeemRequest(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 investor,
+        uint128 cancelledShares
+    ) external auth {
+        gateway.send(
+            assetId.chainId(),
+            MessageLib.FulfilledCancelRedeemRequest({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                investor: investor,
+                assetId: assetId.raw(),
+                cancelledShares: cancelledShares
+            }).serialize()
+        );
+    }
+
+    /// @inheritdoc IVaultMessageSender
     function sendTransferShares(uint32 chainId, uint64 poolId, bytes16 scId, bytes32 recipient, uint128 amount)
         external
         auth
@@ -60,7 +202,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         );
     }
 
-    /// @inheritdoc IMessageProcessor
+    /// @inheritdoc IVaultMessageSender
     function sendDepositRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId, uint128 amount)
         external
         auth
@@ -72,7 +214,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         );
     }
 
-    /// @inheritdoc IMessageProcessor
+    /// @inheritdoc IVaultMessageSender
     function sendRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId, uint128 amount)
         external
         auth
@@ -84,7 +226,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         );
     }
 
-    /// @inheritdoc IMessageProcessor
+    /// @inheritdoc IVaultMessageSender
     function sendCancelDepositRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId) external auth {
         gateway.send(
             uint32(poolId >> 32),
@@ -93,7 +235,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         );
     }
 
-    /// @inheritdoc IMessageProcessor
+    /// @inheritdoc IVaultMessageSender
     function sendCancelRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId) external auth {
         gateway.send(
             uint32(poolId >> 32),
@@ -102,7 +244,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         );
     }
 
-    /// @inheritdoc IMessageProcessor
+    /// @inheritdoc IVaultMessageSender
     function sendIncreaseHolding(
         uint64 poolId,
         bytes16 scId,
@@ -131,7 +273,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         gateway.send(uint32(poolId >> 32), data.serialize());
     }
 
-    /// @inheritdoc IMessageProcessor
+    /// @inheritdoc IVaultMessageSender
     function sendDecreaseHolding(
         uint64 poolId,
         bytes16 scId,
@@ -160,7 +302,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         gateway.send(uint32(poolId >> 32), data.serialize());
     }
 
-    /// @notice Creates and send the message
+    /// @inheritdoc IVaultMessageSender
     function sendIssueShares(uint64 poolId, bytes16 scId, address receiver, uint128 shares, uint256 timestamp)
         external
     {
@@ -177,7 +319,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         );
     }
 
-    /// @notice Creates and send the message
+    /// @inheritdoc IVaultMessageSender
     function sendRevokeShares(uint64 poolId, bytes16 scId, address provider, uint128 shares, uint256 timestamp)
         external
     {
@@ -194,7 +336,7 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         );
     }
 
-    /// @notice Creates and send the message
+    /// @inheritdoc IVaultMessageSender
     function sendJournalEntry(
         uint64 poolId,
         bytes16 scId,
@@ -204,6 +346,21 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
         gateway.send(
             uint32(poolId >> 32),
             MessageLib.UpdateJournal({poolId: poolId, scId: scId, debits: debits, credits: credits}).serialize()
+        );
+    }
+
+    /// @inheritdoc IVaultMessageSender
+    function sendRegisterAsset(
+        uint32 chainId,
+        uint128 assetId,
+        string memory name,
+        string memory symbol,
+        uint8 decimals
+    ) external auth {
+        gateway.send(
+            chainId,
+            MessageLib.RegisterAsset({assetId: assetId, name: name, symbol: symbol.toBytes32(), decimals: decimals})
+                .serialize()
         );
     }
 
@@ -222,22 +379,15 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
             } else if (kind == MessageType.RecoverTokens) {
                 MessageLib.RecoverTokens memory m = message.deserializeRecoverTokens();
                 root.recoverTokens(
-                    address(bytes20(m.target)), address(bytes20(m.token)), address(bytes20(m.to)), m.amount
+                    address(bytes20(m.target)), address(bytes20(m.token)), m.tokenId, address(bytes20(m.to)), m.amount
                 );
-            } else {
-                revert InvalidMessage(uint8(kind));
-            }
-        } else if (cat == MessageCategory.Gas) {
-            if (kind == MessageType.UpdateGasPrice) {
-                MessageLib.UpdateGasPrice memory m = message.deserializeUpdateGasPrice();
-                gasService.updateGasPrice(m.price, m.timestamp);
             } else {
                 revert InvalidMessage(uint8(kind));
             }
         } else if (cat == MessageCategory.Pool) {
             if (kind == MessageType.RegisterAsset) {
-                // TODO: This must be removed
-                poolManager.addAsset(message.toUint128(1), message.toAddress(17));
+                MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
+                poolRouter.registerAsset(AssetId.wrap(m.assetId), m.name, m.symbol.toString(), m.decimals);
             } else if (kind == MessageType.NotifyPool) {
                 poolManager.addPool(MessageLib.deserializeNotifyPool(message).poolId);
             } else if (kind == MessageType.NotifyShareClass) {
@@ -245,12 +395,6 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
                 poolManager.addTranche(
                     m.poolId, m.scId, m.name, m.symbol.toString(), m.decimals, m.salt, address(bytes20(m.hook))
                 );
-            } else if (kind == MessageType.AllowAsset) {
-                MessageLib.AllowAsset memory m = MessageLib.deserializeAllowAsset(message);
-                poolManager.allowAsset(m.poolId, /* m.scId, */ m.assetId); // TODO: use scId
-            } else if (kind == MessageType.DisallowAsset) {
-                MessageLib.DisallowAsset memory m = MessageLib.deserializeDisallowAsset(message);
-                poolManager.disallowAsset(m.poolId, /* m.scId, */ m.assetId); // TODO: use scId
             } else if (kind == MessageType.UpdateShareClassPrice) {
                 MessageLib.UpdateShareClassPrice memory m = MessageLib.deserializeUpdateShareClassPrice(message);
                 poolManager.updateTranchePrice(m.poolId, m.scId, m.assetId, m.price, m.timestamp);
@@ -273,7 +417,27 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
                 revert InvalidMessage(uint8(kind));
             }
         } else if (cat == MessageCategory.Investment) {
-            if (kind == MessageType.FulfilledDepositRequest) {
+            if (kind == MessageType.DepositRequest) {
+                MessageLib.DepositRequest memory m = message.deserializeDepositRequest();
+                poolRouter.depositRequest(
+                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId), m.amount
+                );
+            } else if (kind == MessageType.RedeemRequest) {
+                MessageLib.RedeemRequest memory m = message.deserializeRedeemRequest();
+                poolRouter.redeemRequest(
+                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId), m.amount
+                );
+            } else if (kind == MessageType.CancelDepositRequest) {
+                MessageLib.CancelDepositRequest memory m = message.deserializeCancelDepositRequest();
+                poolRouter.cancelDepositRequest(
+                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId)
+                );
+            } else if (kind == MessageType.CancelRedeemRequest) {
+                MessageLib.CancelRedeemRequest memory m = message.deserializeCancelRedeemRequest();
+                poolRouter.cancelRedeemRequest(
+                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId)
+                );
+            } else if (kind == MessageType.FulfilledDepositRequest) {
                 MessageLib.FulfilledDepositRequest memory m = message.deserializeFulfilledDepositRequest();
                 investmentManager.fulfillDepositRequest(
                     m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.assetAmount, m.shareAmount
@@ -302,29 +466,21 @@ contract MessageProcessor is Auth, IMessageProcessor, IMessageHandler {
                 revert InvalidMessage(uint8(kind));
             }
         } else if (cat == MessageCategory.BalanceSheet) {
+            // TODO: Change into different message type - TriggerUpdateHolding & TriggerUpdateShares & ApproveDeposit &
+            // ApproveRedeem & RevokeShares & IssueShares
             if (kind == MessageType.UpdateHolding) {
                 MessageLib.UpdateHolding memory m = message.deserializeUpdateHolding();
 
                 Meta memory meta = Meta({timestamp: m.timestamp, debits: m.debits, credits: m.credits});
                 if (m.isIncrease) {
                     balanceSheetManager.deposit(
-                        // TODO: Fix `tokenId`
-                        m.poolId,
-                        m.scId,
-                        poolManager.idToAsset(m.assetId),
-                        0,
-                        address(bytes20(m.who)),
-                        m.amount,
-                        m.pricePerUnit,
-                        meta
+                        m.poolId, m.scId, m.assetId, address(bytes20(m.who)), m.amount, m.pricePerUnit, meta
                     );
                 } else {
                     balanceSheetManager.withdraw(
-                        // TODO: Fix `tokenId`
                         m.poolId,
                         m.scId,
-                        poolManager.idToAsset(m.assetId),
-                        0,
+                        m.assetId,
                         address(bytes20(m.who)),
                         m.amount,
                         m.pricePerUnit,

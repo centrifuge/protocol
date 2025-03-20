@@ -52,7 +52,7 @@ abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
     /**
      * router2.execute(
      *         abi.encodePacked(
-     *             uint8(MessagesLib.Call.InitiateMessageRecovery), keccak256(message), address(router1).toBytes32()
+     *             uint8(MessageLib.Call.InitiateMessageRecovery), keccak256(message), address(router1).toBytes32()
      *         )
      *     );
      */

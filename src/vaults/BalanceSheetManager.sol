@@ -13,11 +13,11 @@ import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {JournalEntry, Meta} from "src/common/types/JournalEntry.sol";
+import {IVaultMessageSender} from "../common/interfaces/IGatewaySenders.sol";
 
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
 import {IPerPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
-import {IMessageProcessor} from "src/vaults/interfaces/IMessageProcessor.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 
@@ -27,7 +27,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
     IPerPoolEscrow public immutable escrow;
 
     IGateway public gateway;
-    IMessageProcessor public sender;
+    IVaultMessageSender public sender;
     IPoolManager public poolManager;
 
     mapping(uint64 => mapping(bytes16 => mapping(address => bool))) public permission;
@@ -46,14 +46,18 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
     function file(bytes32 what, address data) external auth {
         if (what == "gateway") gateway = IGateway(data);
         else if (what == "poolManager") poolManager = IPoolManager(data);
-        else if (what == "sender") sender = IMessageProcessor(data);
+        else if (what == "sender") sender = IVaultMessageSender(data);
         else revert("BalanceSheetManager/file-unrecognized-param");
         emit File(what, data);
     }
 
     /// @inheritdoc IRecoverable
-    function recoverTokens(address token, address to, uint256 amount) external auth {
-        SafeTransferLib.safeTransfer(token, to, amount);
+    function recoverTokens(address token, uint256 tokenId, address to, uint256 amount) external auth {
+        if (tokenId == 0) {
+            SafeTransferLib.safeTransfer(token, to, amount);
+        } else {
+            IERC6909(token).transfer(to, tokenId, amount);
+        }
     }
 
     /// --- IUpdateContract Implementation ---
@@ -76,7 +80,17 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         D18 pricePerUnit,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
-        _deposit(poolId, scId, poolManager.assetToId(asset), asset, tokenId, provider, amount, pricePerUnit, m);
+        _deposit(
+            poolId,
+            scId,
+            poolManager.checkedAssetToId(asset, tokenId),
+            asset,
+            tokenId,
+            provider,
+            amount,
+            pricePerUnit,
+            m
+        );
     }
 
     function withdraw(
@@ -91,7 +105,16 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
         _withdraw(
-            poolId, scId, poolManager.assetToId(asset), asset, tokenId, receiver, amount, pricePerUnit, asAllowance, m
+            poolId,
+            scId,
+            poolManager.checkedAssetToId(asset, tokenId),
+            asset,
+            tokenId,
+            receiver,
+            amount,
+            pricePerUnit,
+            asAllowance,
+            m
         );
     }
 
@@ -99,7 +122,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         external
         authOrPermission(poolId, scId)
     {
-        address token = poolManager.getTranche(poolId, scId);
+        address token = poolManager.checkedTranche(poolId, scId);
 
         if (asAllowance) {
             ITranche(token).mint(address(this), shares);
@@ -116,7 +139,7 @@ contract BalanceSheetManager is Auth, IRecoverable, IBalanceSheetManager, IUpdat
         external
         authOrPermission(poolId, scId)
     {
-        address token = poolManager.getTranche(poolId, scId);
+        address token = poolManager.checkedTranche(poolId, scId);
         ITranche(token).burn(address(from), shares);
 
         sender.sendRevokeShares(poolId, scId, from, shares, block.timestamp);

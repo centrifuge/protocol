@@ -5,7 +5,6 @@ import "test/vaults/BaseTest.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {BalanceSheetManager} from "src/vaults/BalanceSheetManager.sol";
 
-
 contract BalanceSheetManagerTest is BaseTest {
     // Deployment
     function testDeployment(address nonWard) public {

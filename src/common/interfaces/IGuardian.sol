@@ -26,8 +26,4 @@ interface IGuardian {
     /// @notice Cancel a scheduled rely
     /// @dev callable by safe only
     function cancelRely(address target) external;
-
-    /// @notice Dispute an gateway message recovery
-    /// @dev callable by safe only
-    function disputeMessageRecovery(IAdapter adapter, bytes32 messageHash) external;
 }

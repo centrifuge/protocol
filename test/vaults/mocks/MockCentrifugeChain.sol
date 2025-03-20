@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import "forge-std/Test.sol";
+
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
-import "forge-std/Test.sol";
-import {PoolManager} from "../../../src/vaults/PoolManager.sol";
+import {PoolManager} from "src/vaults/PoolManager.sol";
+import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 
 interface AdapterLike {
     function execute(bytes memory _message) external;
@@ -28,34 +30,13 @@ contract MockCentrifugeChain is Test {
         poolManager = poolManager_;
     }
 
-    function addAsset(uint128 assetId, address asset) public {
-        // TODO: remove me when registerAsset feature is added
-        bytes memory _message = abi.encodePacked(uint8(MessageType.RegisterAsset), assetId, asset);
-        execute(_message);
-    }
-
     function addPool(uint64 poolId) public {
         execute(MessageLib.NotifyPool({poolId: poolId}).serialize());
     }
 
-    function batchAddPoolAllowAsset(uint64 poolId, uint128 assetId) public {
-        bytes memory _addPool = MessageLib.NotifyPool({poolId: poolId}).serialize();
-        bytes memory _allowAsset =
-            MessageLib.AllowAsset({poolId: poolId, scId: bytes16(0), assetId: assetId}).serialize();
-
-        bytes memory _message = abi.encodePacked(_addPool, _allowAsset);
-        execute(_message);
-    }
-
-    function allowAsset(uint64 poolId, uint128 assetId) public {
-        execute(MessageLib.AllowAsset({poolId: poolId, scId: bytes16(0), assetId: assetId}).serialize());
-    }
-
-    function disallowAsset(uint64 poolId, uint128 assetId) public {
-        execute(MessageLib.DisallowAsset({poolId: poolId, scId: bytes16(0), assetId: assetId}).serialize());
-    }
-
     function unlinkVault(uint64 poolId, bytes16 trancheId, address vault) public {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+
         execute(
             MessageLib.UpdateContract({
                 poolId: poolId,
@@ -63,7 +44,7 @@ contract MockCentrifugeChain is Test {
                 target: bytes32(bytes20(address(poolManager))),
                 payload: MessageLib.UpdateContractVaultUpdate({
                     factory: address(0),
-                    assetId: poolManager.getVaultAssetId(vault),
+                    assetId: vaultDetails.assetId,
                     isLinked: false,
                     vault: vault
                 }).serialize()
@@ -72,6 +53,8 @@ contract MockCentrifugeChain is Test {
     }
 
     function linkVault(uint64 poolId, bytes16 trancheId, address vault) public {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+
         execute(
             MessageLib.UpdateContract({
                 poolId: poolId,
@@ -79,7 +62,7 @@ contract MockCentrifugeChain is Test {
                 target: bytes32(bytes20(address(poolManager))),
                 payload: MessageLib.UpdateContractVaultUpdate({
                     factory: address(0),
-                    assetId: poolManager.getVaultAssetId(vault),
+                    assetId: vaultDetails.assetId,
                     isLinked: true,
                     vault: vault
                 }).serialize()
@@ -173,10 +156,6 @@ contract MockCentrifugeChain is Test {
         );
     }
 
-    function updateCentrifugeGasPrice(uint128 price, uint64 computedAt) public {
-        execute(MessageLib.UpdateGasPrice({price: price, timestamp: computedAt}).serialize());
-    }
-
     function triggerIncreaseRedeemOrder(
         uint64 poolId,
         bytes16 trancheId,
@@ -236,11 +215,12 @@ contract MockCentrifugeChain is Test {
         );
     }
 
-    function recoverTokens(address target, address token, address to, uint256 amount) public {
+    function recoverTokens(address target, address token, uint256 tokenId, address to, uint256 amount) public {
         execute(
             MessageLib.RecoverTokens({
                 target: bytes32(bytes20(target)),
                 token: bytes32(bytes20(token)),
+                tokenId: tokenId,
                 to: bytes32(bytes20(to)),
                 amount: amount
             }).serialize()

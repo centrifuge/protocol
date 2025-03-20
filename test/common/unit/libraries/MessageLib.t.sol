@@ -20,12 +20,9 @@ contract TestMessageLibCategories is Test {
         assert(MessageCategory.Root == uint8(MessageType.ScheduleUpgrade).category());
         assert(MessageCategory.Root == uint8(MessageType.CancelUpgrade).category());
         assert(MessageCategory.Root == uint8(MessageType.RecoverTokens).category());
-        assert(MessageCategory.Gas == uint8(MessageType.UpdateGasPrice).category());
         assert(MessageCategory.Pool == uint8(MessageType.RegisterAsset).category());
         assert(MessageCategory.Pool == uint8(MessageType.NotifyPool).category());
         assert(MessageCategory.Pool == uint8(MessageType.NotifyShareClass).category());
-        assert(MessageCategory.Pool == uint8(MessageType.AllowAsset).category());
-        assert(MessageCategory.Pool == uint8(MessageType.DisallowAsset).category());
         assert(MessageCategory.Pool == uint8(MessageType.UpdateShareClassPrice).category());
         assert(MessageCategory.Pool == uint8(MessageType.UpdateShareClassMetadata).category());
         assert(MessageCategory.Pool == uint8(MessageType.UpdateShareClassHook).category());
@@ -41,6 +38,8 @@ contract TestMessageLibCategories is Test {
         assert(MessageCategory.Investment == uint8(MessageType.FulfilledCancelDepositRequest).category());
         assert(MessageCategory.Investment == uint8(MessageType.FulfilledCancelRedeemRequest).category());
         assert(MessageCategory.BalanceSheet == uint8(MessageType.UpdateHolding).category());
+        assert(MessageCategory.BalanceSheet == uint8(MessageType.UpdateShares).category());
+        assert(MessageCategory.BalanceSheet == uint8(MessageType.UpdateJournal).category());
     }
 }
 
@@ -102,6 +101,7 @@ contract TestMessageLibIdentities is Test {
         MessageLib.RecoverTokens memory a = MessageLib.RecoverTokens({
             target: bytes32("contract"),
             token: bytes32("token"),
+            tokenId: uint256(987),
             to: bytes32("to"),
             amount: 123
         });
@@ -109,20 +109,11 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.target, b.target);
         assertEq(a.token, b.token);
+        assertEq(a.tokenId, b.tokenId);
         assertEq(a.to, b.to);
         assertEq(a.amount, b.amount);
 
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-    }
-
-    function testUpdateGasPrice() public pure {
-        MessageLib.UpdateGasPrice memory a = MessageLib.UpdateGasPrice({price: 42, timestamp: 0x12345678});
-        MessageLib.UpdateGasPrice memory b = MessageLib.deserializeUpdateGasPrice(a.serialize());
-
-        assertEq(a.price, b.price);
-        assertEq(a.timestamp, b.timestamp);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messageLength(), a.serialize().length, "XXX");
     }
 
     function testRegisterAsset() public pure {
@@ -134,8 +125,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.symbol, b.symbol);
         assertEq(a.decimals, b.decimals);
 
-        //TODO: modify to 'a.serialize().length' when registerAsset feature is merged
-        assertEq(a.serialize().messageLength(), 37);
+        assertEq(a.serialize().messageLength(), 178);
     }
 
     function testNotifyPool() public pure {
@@ -166,28 +156,6 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.decimals, b.decimals);
         assertEq(a.salt, b.salt);
         assertEq(a.hook, b.hook);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-    }
-
-    function testAllowAsset() public pure {
-        MessageLib.AllowAsset memory a = MessageLib.AllowAsset({poolId: 1, scId: bytes16("sc"), assetId: 5});
-        MessageLib.AllowAsset memory b = MessageLib.deserializeAllowAsset(a.serialize());
-
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.assetId, b.assetId);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-    }
-
-    function testDisallowAsset() public pure {
-        MessageLib.DisallowAsset memory a = MessageLib.DisallowAsset({poolId: 1, scId: bytes16("sc"), assetId: 5});
-        MessageLib.DisallowAsset memory b = MessageLib.deserializeDisallowAsset(a.serialize());
-
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.assetId, b.assetId);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
     }
@@ -583,12 +551,8 @@ contract TestMessageLibIdentities is Test {
         credits[0] = JournalEntry({accountId: AccountId.wrap(1), amount: d18(2)});
         credits[1] = JournalEntry({accountId: AccountId.wrap(3), amount: d18(4)});
 
-        MessageLib.UpdateJournal memory a = MessageLib.UpdateJournal({
-            poolId: 1,
-            scId: bytes16("sc"),
-            debits: debits,
-            credits: credits
-        });
+        MessageLib.UpdateJournal memory a =
+            MessageLib.UpdateJournal({poolId: 1, scId: bytes16("sc"), debits: debits, credits: credits});
 
         MessageLib.UpdateJournal memory b = MessageLib.deserializeUpdateJournal(a.serialize());
 

@@ -4,15 +4,13 @@ pragma solidity 0.8.28;
 import "test/vaults/BaseTest.sol";
 
 contract AssetShareConversionTest is BaseTest {
-    function testAssetShareConversion(uint64 poolId, bytes16 trancheId, uint128 assetId) public {
-        vm.assume(assetId > 0);
-
+    function testAssetShareConversion(uint64 poolId, bytes16 trancheId) public {
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
         uint8 TRANCHE_TOKEN_DECIMALS = 18; // Like DAI
 
         ERC20 asset = _newErc20("Asset", "A", INVESTMENT_CURRENCY_DECIMALS);
-        address vault_ =
-            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, assetId, address(asset));
+        (address vault_, uint128 assetId) =
+            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
 
@@ -30,7 +28,7 @@ contract AssetShareConversionTest is BaseTest {
         vault.requestDeposit(investmentAmount, self, self);
 
         // trigger executed collectInvest at a price of 1.0
-        uint128 _assetId = poolManager.assetToId(address(asset)); // retrieve assetId
+        uint128 _assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
         uint128 shares = 100000000000000000000; // 100 * 10**18
         centrifugeChain.isFulfilledDepositRequest(
             poolId, trancheId, bytes32(bytes20(self)), _assetId, uint128(investmentAmount), shares
@@ -56,15 +54,13 @@ contract AssetShareConversionTest is BaseTest {
         assertEq(vault.pricePerShare(), 1.2e6);
     }
 
-    function testAssetShareConversionWithInverseDecimals(uint64 poolId, bytes16 trancheId, uint128 assetId) public {
-        vm.assume(assetId > 0);
-
+    function testAssetShareConversionWithInverseDecimals(uint64 poolId, bytes16 trancheId) public {
         uint8 INVESTMENT_CURRENCY_DECIMALS = 18; // 18, like DAI
         uint8 TRANCHE_TOKEN_DECIMALS = 6; // Like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        address vault_ =
-            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, assetId, address(asset));
+        (address vault_, uint128 assetId) =
+            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1000000, uint64(block.timestamp));
@@ -77,7 +73,7 @@ contract AssetShareConversionTest is BaseTest {
         vault.requestDeposit(investmentAmount, self, self);
 
         // trigger executed collectInvest at a price of 1.0
-        uint128 _assetId = poolManager.assetToId(address(asset)); // retrieve assetId
+        uint128 _assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
         uint128 shares = 100000000; // 100 * 10**6
         centrifugeChain.isFulfilledDepositRequest(
             poolId, trancheId, bytes32(bytes20(self)), _assetId, uint128(investmentAmount), shares
@@ -103,15 +99,13 @@ contract AssetShareConversionTest is BaseTest {
         assertEq(vault.pricePerShare(), 1.2e18);
     }
 
-    function testPriceWorksAfterUnlinkVault(uint64 poolId, bytes16 trancheId, uint128 assetId) public {
-        vm.assume(assetId > 0);
-
+    function testPriceWorksAfterRemovingVault(uint64 poolId, bytes16 trancheId) public {
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
         uint8 TRANCHE_TOKEN_DECIMALS = 18; // Like DAI
 
         ERC20 asset = _newErc20("Asset", "A", INVESTMENT_CURRENCY_DECIMALS);
-        address vault_ =
-            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, assetId, address(asset));
+        (address vault_, uint128 assetId) =
+            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche(address(ERC7540Vault(vault_).share()));
 
@@ -121,7 +115,7 @@ contract AssetShareConversionTest is BaseTest {
         assertEq(vault.priceLastUpdated(), uint64(block.timestamp));
         assertEq(vault.pricePerShare(), 1.2e6);
 
-        poolManager.unlinkVault(poolId, trancheId, address(vault.asset()), address(vault));
+        poolManager.unlinkVault(poolId, trancheId, assetId, address(vault));
 
         assertEq(vault.priceLastUpdated(), uint64(block.timestamp));
         assertEq(vault.pricePerShare(), 1.2e6);

@@ -45,7 +45,7 @@ bytes32 constant SC_SECOND_SALT = bytes32("AnotherExampleSalt");
 
 uint32 constant STORAGE_INDEX_EPOCH_ID = 3;
 uint32 constant STORAGE_INDEX_METRICS = 5;
-uint32 constant STORAGE_INDEX_EPOCH_POINTERS = 9;
+uint32 constant STORAGE_INDEX_EPOCH_POINTERS = 8;
 
 contract PoolRegistryMock {
     function currency(PoolId) external pure returns (AssetId) {
@@ -215,7 +215,6 @@ contract MultiShareClassSimpleTest is MultiShareClassBaseTest {
         assertEq(shareClass.epochId(poolId), 1);
         assertEq(shareClass.shareClassCount(poolId), 1);
         assert(shareClass.shareClassIds(poolId, scId));
-        assertEq(ShareClassId.unwrap(shareClass.indexToScId(poolId, SC_ID_INDEX)), ShareClassId.unwrap(scId));
 
         assertEq(shareClass.wards(address(this)), 1);
         assertEq(shareClass.wards(address(shareClass.poolRegistry())), 0);
@@ -300,11 +299,14 @@ contract MultiShareClassSimpleTest is MultiShareClassBaseTest {
         shareClass.addShareClass(poolId, name, symbol, salt, bytes(""));
 
         assertEq(shareClass.shareClassCount(poolId), 2);
-        assertEq(ShareClassId.unwrap(shareClass.indexToScId(poolId, 2)), ShareClassId.unwrap(nextScId));
         assert(shareClass.shareClassIds(poolId, nextScId));
         assertEq(shareClass.epochId(poolId), mockEpochId, "epochId must not be re-initialized");
 
         assert(ShareClassId.unwrap(shareClass.previewNextShareClassId(poolId)) != ShareClassId.unwrap(nextScId));
+    }
+
+    function testPreviewShareClassId(uint32 index) public view {
+        assertEq(shareClass.previewShareClassId(poolId, index).raw(), bytes16(uint128(poolId.raw() + index)));
     }
 }
 

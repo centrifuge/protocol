@@ -47,7 +47,6 @@ interface IGateway is IMessageHandler, IMessageSender {
     event ExecuteMessageRecovery(bytes message, IAdapter adapter);
     event File(bytes32 indexed what, IAdapter[] adapters);
     event File(bytes32 indexed what, address addr);
-    event File(bytes32 indexed what, address caller, bool isAllowed);
     event ReceiveNativeTokens(address indexed sender, uint256 amount);
 
     // --- Administration ---
@@ -62,14 +61,6 @@ interface IGateway is IMessageHandler, IMessageSender {
     /// @param  what The name of the variable to be updated.
     /// @param  data New address.
     function file(bytes32 what, address data) external;
-
-    /// @notice Used to update a mapping ( state variables ) on very rare occasions.
-    /// @dev    Manages who is allowed to call `this.topUp`
-    ///
-    /// @param what The name of the variable to be updated - `payers`
-    /// @param caller Address of the payer allowed to top-up
-    /// @param isAllower Whether the `caller` is allowed to top-up or not
-    function file(bytes32 what, address caller, bool isAllower) external;
 
     /// @notice Set the payable source of the message.
     /// @param  source Used to determine whether it is eligible for TX cost payment.
@@ -99,7 +90,7 @@ interface IGateway is IMessageHandler, IMessageSender {
     /// @notice Prepays for the TX cost for sending through the adapters
     ///         and Centrifuge Chain
     /// @dev    It can be called only through endorsed contracts.
-    ///         Currently being called from Centrifuge Router only.
+    ///         Currently being called from Vault Router only.
     ///         In order to prepay, the method MUST be called with `msg.value`.
     ///         Called is assumed to have called IGateway.estimate before calling this.
     function topUp() external payable;
@@ -140,15 +131,15 @@ interface IGateway is IMessageHandler, IMessageSender {
         view
         returns (uint256[] memory perAdapter, uint256 total);
 
-    /// @notice Used to check current state of the `caller` and whether they are allowed to call
-    ///         `this.topUp` or not.
-    /// @param  caller Address to check
-    /// @return isAllowed Whether the `caller` `isAllowed to call `this.topUp()`
-    function payers(address caller) external view returns (bool isAllowed);
-
     /// @notice Returns the address of the adapter at the given id.
     function adapters(uint256 id) external view returns (IAdapter);
 
+    /// @notice Returns the number of adapters.
+    function adapterCount() external view returns (uint256);
+
     /// @notice Returns the timestamp when the given recovery can be executed.
     function recoveries(IAdapter adapter, bytes32 messageHash) external view returns (uint256 timestamp);
+
+    /// @notice Returns the current gateway batching level.
+    function isBatching() external view returns (bool);
 }

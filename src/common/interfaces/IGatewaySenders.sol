@@ -1,12 +1,71 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {JournalEntry} from "src/common/types/JournalEntry.sol";
-
 import {D18} from "src/misc/types/D18.sol";
 
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {JournalEntry} from "src/common/types/JournalEntry.sol";
+
 /// @notice Interface for dispatch-only gateway
-interface IMessageProcessor {
+interface IPoolMessageSender {
+    /// @notice Creates and send the message
+    function sendNotifyPool(uint32 chainId, PoolId poolId) external;
+
+    /// @notice Creates and send the message
+    function sendNotifyShareClass(
+        uint32 chainId,
+        PoolId poolId,
+        ShareClassId scId,
+        string memory name,
+        string memory symbol,
+        uint8 decimals,
+        bytes32 salt,
+        bytes32 hook
+    ) external;
+
+    /// @notice Creates and send the message
+    function sendFulfilledDepositRequest(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 investor,
+        uint128 assetAmount,
+        uint128 shareAmount
+    ) external;
+
+    /// @notice Creates and send the message
+    function sendFulfilledRedeemRequest(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 investor,
+        uint128 assetAmount,
+        uint128 shareAmount
+    ) external;
+
+    /// @notice Creates and send the message
+    function sendFulfilledCancelDepositRequest(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 investor,
+        uint128 cancelledAmount
+    ) external;
+
+    /// @notice Creates and send the message
+    function sendFulfilledCancelRedeemRequest(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 investor,
+        uint128 cancelledShares
+    ) external;
+}
+
+/// @notice Interface for dispatch-only gateway
+interface IVaultMessageSender {
     /// @notice Creates and send the message
     function sendTransferShares(uint32 chainId, uint64 poolId, bytes16 scId, bytes32 recipient, uint128 amount)
         external;
@@ -24,6 +83,15 @@ interface IMessageProcessor {
 
     /// @notice Creates and send the message
     function sendCancelRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId) external;
+
+    /// @notice Creates and send the message
+    function sendRegisterAsset(
+        uint32 chainId,
+        uint128 assetId,
+        string memory name,
+        string memory symbol,
+        uint8 decimals
+    ) external;
 
     /// @notice Creates and send the message
     function sendIncreaseHolding(
