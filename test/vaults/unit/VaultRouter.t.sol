@@ -329,7 +329,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     /// forge-config: default.isolate = true
-    function testTranferTrancheTokensToAddressDestination() public {
+    function testTransferTrancheTokensToAddressDestination() public {
         (address vault_,) = deploySimpleVault();
         vm.label(vault_, "vault");
         ERC7540Vault vault = ERC7540Vault(vault_);
@@ -363,7 +363,7 @@ contract VaultRouterTest is BaseTest {
         assertEq(share.balanceOf(address(this)), 0);
     }
 
-    function testTranferTrancheTokensToBytes32Destination() public {
+    function testTransferTrancheTokensToBytes32Destination() public {
         (address vault_,) = deploySimpleVault();
         vm.label(vault_, "vault");
         ERC7540Vault vault = ERC7540Vault(vault_);
