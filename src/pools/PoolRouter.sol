@@ -16,14 +16,16 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {JournalEntry} from "src/common/types/JournalEntry.sol";
 
 import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 import {IMultiShareClass} from "src/pools/interfaces/IMultiShareClass.sol";
-import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
+import {IHoldings, Holding} from "src/pools/interfaces/IHoldings.sol";
 import {IPoolRouter, EscrowId, AccountType} from "src/pools/interfaces/IPoolRouter.sol";
+import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 
 // @inheritdoc IPoolRouter
 contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
@@ -41,6 +43,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     IHoldings public holdings;
     IPoolMessageSender public sender;
     IGateway public gateway;
+    ITransientValuation immutable transientValuation;
 
     constructor(
         IPoolRegistry poolRegistry_,
@@ -48,6 +51,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         IAccounting accounting_,
         IHoldings holdings_,
         IGateway gateway_,
+        ITransientValuation transientValuation_,
         address deployer
     ) Auth(deployer) {
         poolRegistry = poolRegistry_;
@@ -55,6 +59,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         accounting = accounting_;
         holdings = holdings_;
         gateway = gateway_;
+        transientValuation = transientValuation_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -259,25 +264,29 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     }
 
     /// @inheritdoc IPoolRouter
-    function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint24 prefix)
+    function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, bool isLiability, uint24 prefix)
         external payable
     {
         _protectedAndUnlocked();
 
         require(assetRegistry.isRegistered(assetId), IAssetRegistry.AssetNotFound());
 
-        AccountId[] memory accounts = new AccountId[](4);
+        AccountId[] memory accounts = new AccountId[](6);
         accounts[0] = newAccountId(prefix, uint8(AccountType.ASSET));
         accounts[1] = newAccountId(prefix, uint8(AccountType.EQUITY));
         accounts[2] = newAccountId(prefix, uint8(AccountType.LOSS));
         accounts[3] = newAccountId(prefix, uint8(AccountType.GAIN));
+        accounts[4] = newAccountId(prefix, uint8(AccountType.EXPENSE));
+        accounts[5] = newAccountId(prefix, uint8(AccountType.LIABILITY));
 
         createAccount(accounts[0], true);
         createAccount(accounts[1], false);
         createAccount(accounts[2], false);
         createAccount(accounts[3], false);
+        createAccount(accounts[4], true);
+        createAccount(accounts[5], false);
 
-        holdings.create(unlockedPoolId, scId, assetId, valuation, accounts);
+        holdings.create(unlockedPoolId, scId, assetId, valuation, isLiability, accounts);
     }
 
     /// @inheritdoc IPoolRouter
@@ -425,6 +434,52 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         uint128 cancelledShareAmount = scm.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
 
         sender.sendFulfilledCancelRedeemRequest(poolId, scId, payoutAssetId, investor, cancelledShareAmount);
+    }
+
+    /// @inheritdoc IPoolRouterGatewayHandler
+    function updateHoldingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount, D18 pricePerUnit, bool isIncrease, JournalEntry[] memory debits, JournalEntry[] memory credits)
+        external auth
+    {
+        address poolCurrency = poolRegistry.currency(poolId).addr();
+        transientValuation.setPrice(assetId.addr(), poolCurrency, pricePerUnit);
+        uint128 valueChange = transientValuation.getQuote(amount, assetId.addr(), poolCurrency).toUint128();
+
+        (uint128 debited, uint128 credited) = updateJournal(debits, credits);
+        uint128 debitValueLeft = valueChange - debited;
+        uint128 creditValueLeft = valueChange - credited;
+
+        _updateHoldingWithPartialDebitsAndCredits(poolId, scId, assetId, amount, isIncrease, debitValueLeft, creditValueLeft);
+    }
+
+    /// @inheritdoc IPoolRouterGatewayHandler
+    function updateJournal(JournalEntry[] memory debits, JournalEntry[] memory credits) public auth returns (uint128 debited, uint128 credited) {
+        uint128 debited;
+        uint128 credited;
+        for (uint256 i; i < debits.length; i++) {
+            accounting.addDebit(debits[i].accountId, debits[i].amount.raw());
+            debited += debits[i].amount.raw();
+        }
+
+        for (uint256 i; i < credits.length; i++) {
+            accounting.addCredit(credits[i].accountId, credits[i].amount.raw());
+            credited += credits[i].amount.raw();
+        }
+    }
+
+    function _updateHoldingWithPartialDebitsAndCredits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount, bool isIncrease, uint128 debitValue, uint128 creditValue) internal {
+        bool isLiability = holdings.isLiability(poolId, scId, assetId);
+        AccountType debitAccountType = isLiability ? AccountType.EXPENSE : AccountType.ASSET;
+        AccountType creditAccountType = isLiability ? AccountType.LIABILITY : AccountType.EQUITY;
+
+        if (isIncrease) {
+            holdings.increase(poolId, scId, assetId, transientValuation, amount);
+            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), debitValue);
+            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), creditValue);
+        } else {
+            holdings.decrease(unlockedPoolId, scId, assetId, transientValuation, amount);
+            accounting.addDebit(holdings.accountId(unlockedPoolId, scId, assetId, uint8(creditAccountType)), debitValue);
+            accounting.addCredit(holdings.accountId(unlockedPoolId, scId, assetId, uint8(debitAccountType)), creditValue);
+        }
     }
 
     //----------------------------------------------------------------------------------------------

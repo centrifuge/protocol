@@ -519,6 +519,20 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 } else {
                     balanceSheetManager.triggerRevokeShares(m.poolId, m.scId, address(bytes20(m.who)), m.shares);
                 }
+            } 
+            if (kind == MessageType.UpdateHolding) {
+                MessageLib.UpdateHolding memory m = message.deserializeUpdateHolding();
+
+                poolRouter.updateHoldingAmount(
+                    PoolId.wrap(m.poolId),
+                    ShareClassId.wrap(m.scId),
+                    AssetId.wrap(m.assetId),
+                    m.amount,
+                    m.pricePerUnit,
+                    m.isIncrease,
+                    m.debits,
+                    m.credits
+                );
             } else {
                 revert InvalidMessage(uint8(kind));
             }

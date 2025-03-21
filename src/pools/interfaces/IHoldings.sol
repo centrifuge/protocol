@@ -8,12 +8,20 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
+
+struct Holding {
+    uint128 assetAmount;
+    uint128 assetAmountValue;
+    IERC7726 valuation; // Used for existance
+    bool isLiability;
+}
+
 interface IHoldings {
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 indexed what, address addr);
 
     /// @notice Emitted when a holding is created
-    event Created(PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, IERC7726 valuation);
+    event Created(PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, IERC7726 valuation, bool isLiability);
 
     /// @notice Emitted when a holding is increased
     event Increased(
@@ -66,7 +74,7 @@ interface IHoldings {
     function file(bytes32 what, address data) external;
 
     /// @notice Creates a new holding in a pool using a valuation
-    function create(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation, AccountId[] memory accounts)
+    function create(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation, bool isLiability, AccountId[] memory accounts)
         external;
 
     /// @notice Increments the amount of a holding and updates the value for that increment.
@@ -100,6 +108,9 @@ interface IHoldings {
     /// @notice Returns the valuation method used for this holding.
     function valuation(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (IERC7726);
 
+    /// @notice Returns if the holding is a liability
+    function isLiability(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool);
+    
     /// @notice Returns an account id for an specific kind
     function accountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind)
         external

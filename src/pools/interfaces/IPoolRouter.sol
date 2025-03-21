@@ -29,7 +29,11 @@ enum AccountType {
     /// @notice Credit normal account for tracking losses
     LOSS,
     /// @notice Credit normal account for tracking profits
-    GAIN
+    GAIN,
+    /// @notice Debit normal account for tracking expenses
+    EXPENSE,
+    /// @notice Credit normal account for tracking liabilities
+    LIABILITY
 }
 
 /// @notice Interface with all methods available in the system used by actors
@@ -132,8 +136,9 @@ interface IPoolRouter {
     /// @notice Create a new holding associated to the asset in a share class.
     /// It will generate and register the different accounts used for holdings.
     /// @param valuation Used to transform between payment assets and pool currency
+    /// @param isLiability Determines if the holding is a liability or not
     /// @param prefix Account prefix used for generating the account ids
-    function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint24 prefix) external payable;
+    function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, bool isLiability, uint24 prefix) external payable;
 
     /// @notice Increase the amount of a holding.
     /// @param valuation Used to transform between payment assets and pool currency

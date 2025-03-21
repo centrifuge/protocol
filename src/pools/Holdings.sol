@@ -9,17 +9,11 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
-import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
+import {IHoldings, Holding} from "src/pools/interfaces/IHoldings.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 
 contract Holdings is Auth, IHoldings {
     using MathLib for uint256; // toInt128()
-
-    struct Holding {
-        uint128 assetAmount;
-        uint128 assetAmountValue;
-        IERC7726 valuation; // Used for existance
-    }
 
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => Holding))) public holding;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => mapping(uint8 kind => AccountId)))) public accountId;
@@ -39,21 +33,21 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @inheritdoc IHoldings
-    function create(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation_, AccountId[] memory accounts)
+    function create(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation_, bool isLiability_, AccountId[] memory accounts)
         external
         auth
     {
         require(!scId.isNull(), WrongShareClassId());
         require(address(valuation_) != address(0), WrongValuation());
 
-        holding[poolId][scId][assetId] = Holding(0, 0, valuation_);
+        holding[poolId][scId][assetId] = Holding(0, 0, valuation_, isLiability_);
 
         for (uint256 i; i < accounts.length; i++) {
             AccountId accountId_ = accounts[i];
             accountId[poolId][scId][assetId][accountId_.kind()] = accountId_;
         }
 
-        emit Created(poolId, scId, assetId, valuation_);
+        emit Created(poolId, scId, assetId, valuation_, isLiability_);
     }
 
     /// @inheritdoc IHoldings
@@ -156,6 +150,14 @@ contract Holdings is Auth, IHoldings {
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
         return holding_.valuation;
+    }
+
+    /// @inheritdoc IHoldings
+    function isLiability(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool) {
+        Holding storage holding_ = holding[poolId][scId][assetId];
+        require(address(holding_.valuation) != address(0), HoldingNotFound());
+
+        return holding_.isLiability;
     }
 
     function exists(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool) {
