@@ -100,7 +100,7 @@ contract TestCases is PoolsDeployer, Test {
         cs[c++] = abi.encodeWithSelector(poolRouter.addShareClass.selector, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
         cs[c++] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
         cs[c++] = abi.encodeWithSelector(poolRouter.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
-        cs[c++] = abi.encodeWithSelector(poolRouter.createHolding.selector, scId, USDC_C2, identityValuation, 0x01);
+        cs[c++] = abi.encodeWithSelector(poolRouter.createHolding.selector, scId, USDC_C2, identityValuation, false, 0x01);
         //TODO: CAL update contract here
         assertEq(c, cs.length);
 
