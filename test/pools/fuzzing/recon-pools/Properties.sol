@@ -203,6 +203,28 @@ abstract contract Properties is BeforeAfter, Asserts {
         }
     }
 
+    /// @dev Property: After FM performs approveDeposits and revokeShares with non-zero navPerShare, the total issuance totalIssuance[..] is increased
+    /// @dev WIP, this may not be possible to prove because these calls are made via execute which makes determining the before and after state difficult
+    // function property_total_issuance_increased_after_approve_deposits_and_revoke_shares() public {
+        
+    //     bool hasApprovedDeposits = false;
+    //     bool hasRevokedShares = false;
+    //     for(uint256 i = 0; i < queuedOps.length; i++) {
+    //         QueuedOp queuedOp = queuedOps[i];
+    //         if(queuedOp.op == Op.APPROVE_DEPOSITS) {
+    //             hasApprovedDeposits = true;
+    //         }
+
+    //         // there has to have been an approveDeposits call before a revokeShares call
+    //         if(queuedOp.op == Op.REVOKE_SHARES && hasApprovedDeposits) {
+    //             hasRevokedShares = true;
+    //         }
+    //     }
+
+    //     // if(hasApprovedDeposits && hasRevokedShares) {
+    //     //     multiShareClass.metrics(scId);
+    //     // }
+    // }
     /// Stateless Properties ///
 
     /// @dev Property: The sum of eligible user payoutShareAmount for an epoch is <= the number of issued shares epochAmounts[..].depositShares
@@ -329,6 +351,7 @@ abstract contract Properties is BeforeAfter, Asserts {
             }
         }
     }
+
     /// Rounding Properties /// 
 
     /// @dev Property: Checks that rounding error is within acceptable bounds (1000 wei)

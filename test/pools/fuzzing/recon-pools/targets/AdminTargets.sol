@@ -54,12 +54,16 @@ abstract contract AdminTargets is
 
     function poolRouter_approveDeposits(ShareClassId scId, AssetId paymentAssetId, uint128 maxApproval, IERC7726 valuation) public {
         queuedCalls.push(abi.encodeWithSelector(poolRouter.approveDeposits.selector, scId, paymentAssetId, maxApproval, valuation));
+
+        queuedOps.push({op: Op.APPROVE_DEPOSITS, scId: scId});
     }
 
     function poolRouter_approveRedeems(ShareClassId scId, uint32 isoCode, uint128 maxApproval) public {
         AssetId payoutAssetId = newAssetId(isoCode);
         
         queuedCalls.push(abi.encodeWithSelector(poolRouter.approveRedeems.selector, scId, payoutAssetId, maxApproval));
+
+        queuedOps.push({op: Op.APPROVE_REDEEMS, scId: scId});
     }
 
     function poolRouter_createAccount(AccountId account, bool isDebitNormal) public {
@@ -94,6 +98,10 @@ abstract contract AdminTargets is
         AssetId payoutAssetId = newAssetId(isoCode);
 
         queuedCalls.push(abi.encodeWithSelector(poolRouter.revokeShares.selector, scId, payoutAssetId, navPerShare, valuation));
+
+        if(navPerShare > 0) {
+            queuedOps.push({op: Op.REVOKE_SHARES, scId: scId});
+        }
     }
 
     function poolRouter_setAccountMetadata(AccountId account, bytes memory metadata) public {
@@ -170,7 +178,11 @@ abstract contract AdminTargets is
         AssetId depositAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
-        poolRouter.cancelDepositRequest(poolId, scId, investor, depositAssetId);
+        try poolRouter.cancelDepositRequest(poolId, scId, investor, depositAssetId) {
+        } catch (bytes memory reason) {
+            bool arithmeticRevert = Utils.checkError(reason, Panic.arithmeticPanic);
+            assertTrue(!arithmeticRevert, "cancelDepositRequest reverts with arithmetic panic");
+        }
 
         (uint128 pending, uint32 lastUpdate) = multiShareClass.depositRequest(scId, depositAssetId, investor);
         uint32 epochId = multiShareClass.epochId(poolId);
@@ -187,7 +199,11 @@ abstract contract AdminTargets is
 
         poolRouter.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
 
-        cancelledRedeemRequest = true;
+        try poolRouter.cancelRedeemRequest(poolId, scId, investor, payoutAssetId) {
+        } catch (bytes memory reason) {
+            bool arithmeticRevert = Utils.checkError(reason, Panic.arithmeticPanic);
+            assertTrue(!arithmeticRevert, "cancelRedeemRequest reverts with arithmetic panic");
+        }
 
         (uint128 pending, uint32 lastUpdate) = multiShareClass.redeemRequest(scId, payoutAssetId, investor);
         uint32 epochId = multiShareClass.epochId(poolId);
@@ -208,6 +224,7 @@ abstract contract AdminTargets is
         this.poolRouter_execute{value: msg.value}(poolId, queuedCalls);
 
         queuedCalls = new bytes[](0);
+        queuedOps = new QueuedOp[](0);
     }
 
     // === MultiShareClass === //

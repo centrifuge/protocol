@@ -35,6 +35,17 @@ import "test/common/mocks/MockGasService.sol";
 import "test/pools/fuzzing/recon-pools/mocks/MockGateway.sol";
 
 abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
+    enum Op {
+        APPROVE_DEPOSITS,
+        APPROVE_REDEEMS,
+        REVOKE_SHARES
+    }
+
+    struct QueuedOp {
+        Op op;
+        ShareClassId scId;
+    }
+
     Accounting accounting;
     AssetRegistry assetRegistry;
     Holdings holdings;
@@ -52,7 +63,8 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
 
     bytes[] internal queuedCalls; // used for storing calls to PoolRouter to be executed in a single transaction
     PoolId[] internal createdPools;
-
+    QueuedOp[] internal queuedOps;
+    
     // Canaries
     bool poolCreated;
     bool deposited;
