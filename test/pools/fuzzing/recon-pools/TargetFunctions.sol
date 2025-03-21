@@ -110,7 +110,7 @@ abstract contract TargetFunctions is
         return (poolId, scId);
     }
 
-    function shortcut_deposit_and_cancel(
+    function shortcut_deposit_claim_and_cancel(
         uint8 decimals,
         uint32 isoCode,
         string memory name,
@@ -130,6 +130,30 @@ abstract contract TargetFunctions is
 
         // claim deposit as actor
         poolRouter_claimDeposit(poolId, scId, isoCode);
+
+        // cancel deposit
+        poolRouter_cancelDepositRequest(poolId, scId, isoCode);
+
+        return (poolId, scId);
+    }
+
+     function shortcut_deposit_and_cancel(
+        uint8 decimals,
+        uint32 isoCode,
+        string memory name,
+        string memory symbol,
+        bytes32 salt,
+        bytes memory data,
+        bool isIdentityValuation,
+        uint24 prefix,
+        uint128 amount,
+        uint128 maxApproval,
+        D18 navPerShare
+    ) public returns (PoolId poolId, ShareClassId scId) {
+        (poolId, scId) = shortcut_deposit(
+            decimals, isoCode, name, symbol, salt, data, 
+            isIdentityValuation, prefix, amount, maxApproval, navPerShare
+        );
 
         // cancel deposit
         poolRouter_cancelDepositRequest(poolId, scId, isoCode);

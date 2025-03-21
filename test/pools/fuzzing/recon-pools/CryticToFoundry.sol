@@ -125,7 +125,11 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         poolRouter_execute_clamped(poolId);
     }
 
-    function test_shortcut_deposit_and_cancel() public {
+    function test_shortcut_deposit_claim_and_cancel() public {
+        shortcut_deposit_claim_and_cancel(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+    }
+
+    function test_deposit_and_cancel() public {
         shortcut_deposit_and_cancel(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
     }
 
