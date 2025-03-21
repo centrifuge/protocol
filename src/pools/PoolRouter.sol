@@ -444,7 +444,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         transientValuation.setPrice(assetId.addr(), poolCurrency, pricePerUnit);
         uint128 valueChange = transientValuation.getQuote(amount, assetId.addr(), poolCurrency).toUint128();
 
-        (uint128 debited, uint128 credited) = updateJournal(debits, credits);
+        (uint128 debited, uint128 credited) = updateJournal(poolId, scId, debits, credits);
         uint128 debitValueLeft = valueChange - debited;
         uint128 creditValueLeft = valueChange - credited;
 
@@ -452,9 +452,8 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     }
 
     /// @inheritdoc IPoolRouterGatewayHandler
-    function updateJournal(JournalEntry[] memory debits, JournalEntry[] memory credits) public auth returns (uint128 debited, uint128 credited) {
-        uint128 debited;
-        uint128 credited;
+    function updateJournal(PoolId poolId, ShareClassId scId, JournalEntry[] memory debits, JournalEntry[] memory credits) public auth returns (uint128 debited, uint128 credited) {
+        // TODO: Open accouning for the pool somewhere?
         for (uint256 i; i < debits.length; i++) {
             accounting.addDebit(debits[i].accountId, debits[i].amount.raw());
             debited += debits[i].amount.raw();
