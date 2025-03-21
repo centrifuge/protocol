@@ -42,11 +42,10 @@ contract PoolsDeployer is CommonDeployer {
     function deployPools(ISafe adminSafe_, address deployer) public {
         deployCommon(adminSafe_, deployer);
 
-        transientValuation = new TransientValuation(assetRegistry, deployer);
-        identityValuation = new IdentityValuation(assetRegistry, deployer);
-
         poolRegistry = new PoolRegistry(deployer);
         assetRegistry = new AssetRegistry(deployer);
+        transientValuation = new TransientValuation(assetRegistry, deployer);
+        identityValuation = new IdentityValuation(assetRegistry, deployer);
         accounting = new Accounting(deployer);
         holdings = new Holdings(poolRegistry, deployer);
         multiShareClass = new MultiShareClass(poolRegistry, deployer);
