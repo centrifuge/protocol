@@ -54,16 +54,12 @@ abstract contract AdminTargets is
 
     function poolRouter_approveDeposits(ShareClassId scId, AssetId paymentAssetId, uint128 maxApproval, IERC7726 valuation) public {
         queuedCalls.push(abi.encodeWithSelector(poolRouter.approveDeposits.selector, scId, paymentAssetId, maxApproval, valuation));
-
-        queuedOps.push({op: Op.APPROVE_DEPOSITS, scId: scId});
     }
 
     function poolRouter_approveRedeems(ShareClassId scId, uint32 isoCode, uint128 maxApproval) public {
         AssetId payoutAssetId = newAssetId(isoCode);
         
         queuedCalls.push(abi.encodeWithSelector(poolRouter.approveRedeems.selector, scId, payoutAssetId, maxApproval));
-
-        queuedOps.push({op: Op.APPROVE_REDEEMS, scId: scId});
     }
 
     function poolRouter_createAccount(AccountId account, bool isDebitNormal) public {
@@ -98,10 +94,6 @@ abstract contract AdminTargets is
         AssetId payoutAssetId = newAssetId(isoCode);
 
         queuedCalls.push(abi.encodeWithSelector(poolRouter.revokeShares.selector, scId, payoutAssetId, navPerShare, valuation));
-
-        if(navPerShare > 0) {
-            queuedOps.push({op: Op.REVOKE_SHARES, scId: scId});
-        }
     }
 
     function poolRouter_setAccountMetadata(AccountId account, bytes memory metadata) public {
@@ -145,25 +137,36 @@ abstract contract AdminTargets is
     }  
 
     /// @dev Property: after successfully calling requestDeposit for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
+    /// @dev Property: _updateDepositRequest should never revert due to underflow
     function poolRouter_depositRequest(PoolId poolId, ShareClassId scId, uint32 isoCode, uint128 amount) public updateGhosts asAdmin {
         AssetId depositAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
-        poolRouter.depositRequest(poolId, scId, investor, depositAssetId, amount);
-
-        deposited = true;
+        try poolRouter.depositRequest(poolId, scId, investor, depositAssetId, amount) {
+            deposited = true;
+        } catch (bytes memory reason) {
+            bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
+            t(!arithmeticRevert, "depositRequest reverts with arithmetic panic");
+        }
 
         (, uint32 lastUpdate) = multiShareClass.depositRequest(scId, depositAssetId, investor);
+        
         uint32 epochId = multiShareClass.epochId(poolId);
 
-        eq(lastUpdate, epochId, "lastUpdate is not equal to epochId");    }  
+        eq(lastUpdate, epochId, "lastUpdate is not equal to epochId");    
+    }  
 
     /// @dev Property: After successfully calling redeemRequest for an investor, their redeemRequest[..].lastUpdate equals the current epoch id epochId[poolId]
+    /// @dev Property: _updateRedeemRequest should never revert due to underflow
     function poolRouter_redeemRequest(PoolId poolId, ShareClassId scId, uint32 isoCode, uint128 amount) public updateGhosts asAdmin {
         AssetId payoutAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
-        poolRouter.redeemRequest(poolId, scId, investor, payoutAssetId, amount);
+        try poolRouter.redeemRequest(poolId, scId, investor, payoutAssetId, amount) {
+        } catch (bytes memory reason) {
+            bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
+            t(!arithmeticRevert, "redeemRequest reverts with arithmetic panic");
+        }
 
         (, uint32 lastUpdate) = multiShareClass.redeemRequest(scId, payoutAssetId, investor);
         uint32 epochId = multiShareClass.epochId(poolId);
@@ -175,14 +178,15 @@ abstract contract AdminTargets is
     /// @dev Property: after successfully calling cancelDepositRequest for an investor, their depositRequest[..].pending is zero
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
     /// @dev Property: cancelDepositRequest absolute value should never be higher than pendingDeposit (would result in underflow revert)
+    /// @dev Property: _updateDepositRequest should never revert due to underflow
     function poolRouter_cancelDepositRequest(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asAdmin {
         AssetId depositAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
         try poolRouter.cancelDepositRequest(poolId, scId, investor, depositAssetId) {
         } catch (bytes memory reason) {
-            bool arithmeticRevert = Utils.checkError(reason, Panic.arithmeticPanic);
-            assertTrue(!arithmeticRevert, "cancelDepositRequest reverts with arithmetic panic");
+            bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
+            t(!arithmeticRevert, "cancelDepositRequest reverts with arithmetic panic");
         }
 
         (uint128 pending, uint32 lastUpdate) = multiShareClass.depositRequest(scId, depositAssetId, investor);
@@ -203,8 +207,8 @@ abstract contract AdminTargets is
 
         try poolRouter.cancelRedeemRequest(poolId, scId, investor, payoutAssetId) {
         } catch (bytes memory reason) {
-            bool arithmeticRevert = Utils.checkError(reason, Panic.arithmeticPanic);
-            assertTrue(!arithmeticRevert, "cancelRedeemRequest reverts with arithmetic panic");
+            bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
+            t(!arithmeticRevert, "cancelRedeemRequest reverts with arithmetic panic");
         }
 
         (uint128 pending, uint32 lastUpdate) = multiShareClass.redeemRequest(scId, payoutAssetId, investor);
@@ -226,7 +230,6 @@ abstract contract AdminTargets is
         this.poolRouter_execute{value: msg.value}(poolId, queuedCalls);
 
         queuedCalls = new bytes[](0);
-        queuedOps = new QueuedOp[](0);
     }
 
     // === MultiShareClass === //

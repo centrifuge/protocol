@@ -63,7 +63,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
 
     bytes[] internal queuedCalls; // used for storing calls to PoolRouter to be executed in a single transaction
     PoolId[] internal createdPools;
-    QueuedOp[] internal queuedOps;
+    // QueuedOp[] internal queuedOps;
     
     // Canaries
     bool poolCreated;
