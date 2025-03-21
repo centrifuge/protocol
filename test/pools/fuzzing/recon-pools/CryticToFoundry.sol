@@ -129,18 +129,20 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         shortcut_deposit_and_cancel(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
     }
 
-    function test_shortcut_redeem_and_cancel() public {
-        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
-
-        shortcut_redeem_and_cancel(poolId, scId, SHARE_AMOUNT, 123, 50000000, NAV_PER_SHARE, true);
-    }
-
     function test_shortcut_deposit_redeem_and_claim() public {
         shortcut_deposit_redeem_and_claim(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
     }
 
     function test_shortcut_deposit_cancel_redemption() public {
         shortcut_deposit_cancel_redemption(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+    }
+
+    function test_cancel_redeem_request() public {
+        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
+
+        poolRouter_redeemRequest(poolId, scId, 123, SHARE_AMOUNT);
+
+        poolRouter_cancelRedeemRequest(poolId, scId, 123);
     }
 
     function test_shortcut_update_holding() public {

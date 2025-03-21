@@ -207,25 +207,6 @@ abstract contract TargetFunctions is
         poolRouter_claimRedeem(poolId, scId, isoCode); 
     }
 
-    function shortcut_redeem_and_cancel(
-        PoolId poolId,
-        ShareClassId scId,
-        uint128 shareAmount,
-        uint32 isoCode,
-        uint128 maxApproval,
-        D18 navPerShare,
-        bool isIdentityValuation
-    ) public {
-        shortcut_redeem(poolId, scId, shareAmount, isoCode, maxApproval, navPerShare, isIdentityValuation);
-        
-        // claim redemption as actor
-        // bytes32 investor = Helpers.addressToBytes32(_getActor());
-        // poolRouter_claimRedeem(poolId, scId, isoCode, investor);
-
-        // cancel redemption
-        poolRouter_cancelRedeemRequest(poolId, scId, isoCode);
-    }
-
     // deposit and redeem in one call
     // NOTE: this reimplements logic in the shortcut_deposit_and_claim function but is necessary to avoid stack too deep errors
     function shortcut_deposit_redeem_and_claim(
@@ -287,14 +268,6 @@ abstract contract TargetFunctions is
 
         // request redemption
         poolRouter_redeemRequest(poolId, scId, isoCode, shareAmount);
-
-        // TODO: this is a hack to avoid revoke more than issued, could maybe just pass in totalIssuance_ here
-        poolRouter_approveRedeems(scId, isoCode, maxApproval / 2);
-        poolRouter_revokeShares(scId, isoCode, navPerShare, isIdentityValuation ? 
-            IERC7726(address(identityValuation)) : 
-            IERC7726(address(transientValuation)));
-        
-        poolRouter_execute_clamped(poolId);
 
         // cancel redemption
         poolRouter_cancelRedeemRequest(poolId, scId, isoCode);
