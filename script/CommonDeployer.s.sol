@@ -37,7 +37,7 @@ contract CommonDeployer is Script {
         );
     }
 
-    function deployCommon(ISafe adminSafe_, address deployer) public {
+    function deployCommon(uint16 centrifugeChainId, ISafe adminSafe_, address deployer) public {
         if (address(root) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
@@ -52,7 +52,7 @@ contract CommonDeployer is Script {
 
         gasService = new GasService(messageGasLimit, proofGasLimit);
         gateway = new Gateway(root, gasService);
-        messageProcessor = new MessageProcessor(gateway, root, gasService, deployer);
+        messageProcessor = new MessageProcessor(centrifugeChainId, gateway, root, gasService, deployer);
 
         _commonRegister();
         _commonRely();

@@ -24,8 +24,8 @@ contract TestCases is PoolsDeployer, Test {
     using CastLib for string;
     using CastLib for bytes32;
 
-    uint32 constant CHAIN_CP = 5;
-    uint32 constant CHAIN_CV = 6;
+    uint16 constant CHAIN_CP = 5;
+    uint16 constant CHAIN_CV = 6;
 
     string constant SC_NAME = "ExampleName";
     string constant SC_SYMBOL = "ExampleSymbol";
@@ -57,7 +57,7 @@ contract TestCases is PoolsDeployer, Test {
 
     function setUp() public {
         // Deployment
-        deployPools(ISafe(address(0)), address(this));
+        deployPools(CHAIN_CP, ISafe(address(0)), address(this));
         _mockStuff();
         removePoolsDeployerAccess(address(this));
 
@@ -77,8 +77,8 @@ contract TestCases is PoolsDeployer, Test {
         vm.label(address(messageProcessor), "MessageProcessor");
         vm.label(address(cv), "CV");
 
-        // We decide CP is located at CHAIN_CP for messaging
-        vm.chainId(CHAIN_CP);
+        // We should not use the ChainID
+        vm.chainId(0xDEAD);
     }
 
     /// forge-config: default.isolate = true

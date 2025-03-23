@@ -5,14 +5,18 @@ import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
 
+interface ICentrifugeChainId {
+    function centrifugeChainId() external view returns (uint16);
+}
+
 /// @notice Interface for dispatch-only gateway
-interface IPoolMessageSender {
+interface IPoolMessageSender is ICentrifugeChainId {
     /// @notice Creates and send the message
-    function sendNotifyPool(uint32 chainId, PoolId poolId) external;
+    function sendNotifyPool(uint16 chainId, PoolId poolId) external;
 
     /// @notice Creates and send the message
     function sendNotifyShareClass(
-        uint32 chainId,
+        uint16 chainId,
         PoolId poolId,
         ShareClassId scId,
         string memory name,
@@ -62,9 +66,9 @@ interface IPoolMessageSender {
 }
 
 /// @notice Interface for dispatch-only gateway
-interface IVaultMessageSender {
+interface IVaultMessageSender is ICentrifugeChainId {
     /// @notice Creates and send the message
-    function sendTransferShares(uint32 chainId, uint64 poolId, bytes16 scId, bytes32 recipient, uint128 amount)
+    function sendTransferShares(uint16 chainId, uint64 poolId, bytes16 scId, bytes32 recipient, uint128 amount)
         external;
 
     /// @notice Creates and send the message
@@ -83,7 +87,7 @@ interface IVaultMessageSender {
 
     /// @notice Creates and send the message
     function sendRegisterAsset(
-        uint32 chainId,
+        uint16 chainId,
         uint128 assetId,
         string memory name,
         string memory symbol,

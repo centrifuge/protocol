@@ -43,7 +43,7 @@ abstract contract SharedStorage {
     uint16 TRANCHE_COUNTER = 1;
     // Hash of index + salt, but we use number to be able to cycle
     bytes16 TRANCHE_ID = bytes16(bytes32(uint256(TRANCHE_COUNTER)));
-    uint32 DEFAULT_DESTINATION_CHAIN = 1;
+    uint16 DEFAULT_DESTINATION_CHAIN = 1;
     uint128 ASSET_ID = uint128(bytes16(abi.encodePacked(DEFAULT_DESTINATION_CHAIN, uint32(1))));
 
     // NOTE: TODO

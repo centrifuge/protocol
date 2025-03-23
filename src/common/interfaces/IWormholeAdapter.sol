@@ -112,7 +112,7 @@ interface IWormholeReceiver {
 }
 
 struct WormholeSource {
-    uint32 centrifugeId;
+    uint16 centrifugeChainId;
     address addr;
 }
 
@@ -122,13 +122,13 @@ struct WormholeDestination {
 }
 
 interface IWormholeAdapter is IAdapter, IWormholeReceiver {
-    event File(bytes32 indexed what, uint16 wormholeId, uint32 centrifugeId, address source);
-    event File(bytes32 indexed what, uint32 centrifugeId, uint16 wormholeId, address destination);
+    event FileSource(bytes32 indexed what, uint16 wormholeId, uint16 centrifugeChainId, address source);
+    event FileDestination(bytes32 indexed what, uint16 centrifugeChainId, uint16 wormholeId, address destination);
 
     error FileUnrecognizedParam();
     error NotWormholeRelayer();
     error InvalidSource();
 
-    function file(bytes32 what, uint16 wormholeId, uint32 centrifugeId, address source) external;
-    function file(bytes32 what, uint32 centrifugeId, uint16 wormholeId, address destination) external;
+    function fileSource(bytes32 what, uint16 wormholeId, uint16 centrifugeChainId, address source) external;
+    function fileDestination(bytes32 what, uint16 centrifugeChainId, uint16 wormholeId, address destination) external;
 }
