@@ -6,6 +6,7 @@ import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
 import {BaseVault} from "src/vaults/BaseVault.sol";
+import {AsyncRedeemVault} from "src/vaults/AsyncRedeemVault.sol";
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 
@@ -19,7 +20,7 @@ import "src/vaults/interfaces/IERC7575.sol";
 ///         deposit and redeem orders are submitted to the pools to be included in the execution of the following epoch.
 ///         After execution users can use the deposit, mint, redeem and withdraw functions to get their shares
 ///         and/or assets from the pools.
-contract ERC7540Vault is BaseVault, IERC7540Vault {
+contract ERC7540Vault is AsyncRedeemVault, IERC7540Vault {
     constructor(
         uint64 poolId_,
         bytes16 trancheId_,
@@ -28,7 +29,7 @@ contract ERC7540Vault is BaseVault, IERC7540Vault {
         address share_,
         address root_,
         address manager_
-    ) BaseVault(poolId_, trancheId_, asset_, tokenId_, share_, root_, manager_) {}
+    ) AsyncRedeemVault(poolId_, trancheId_, asset_, tokenId_, share_, root_, manager_) {}
 
     // --- ERC-7540 methods ---
     /// @inheritdoc IERC7540Deposit
