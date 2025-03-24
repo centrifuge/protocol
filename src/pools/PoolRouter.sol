@@ -440,20 +440,27 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     function updateHoldingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount, D18 pricePerUnit, bool isIncrease, JournalEntry[] memory debits, JournalEntry[] memory credits)
         external auth
     {
+        accounting.unlock(poolId, "TODO");
         address poolCurrency = poolRegistry.currency(poolId).addr();
         transientValuation.setPrice(assetId.addr(), poolCurrency, pricePerUnit);
         uint128 valueChange = transientValuation.getQuote(amount, assetId.addr(), poolCurrency).toUint128();
 
-        (uint128 debited, uint128 credited) = updateJournal(poolId, debits, credits);
+        (uint128 debited, uint128 credited) = _updateJournal(debits, credits);
         uint128 debitValueLeft = valueChange - debited;
         uint128 creditValueLeft = valueChange - credited;
 
         _updateHoldingWithPartialDebitsAndCredits(poolId, scId, assetId, amount, isIncrease, debitValueLeft, creditValueLeft);
+        accounting.lock();
     }
 
     /// @inheritdoc IPoolRouterGatewayHandler
-    function updateJournal(PoolId /*poolId*/, JournalEntry[] memory debits, JournalEntry[] memory credits) public auth returns (uint128 debited, uint128 credited) {
-        // TODO: Open accouning for the pool somewhere?
+    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external auth {
+        accounting.unlock(poolId, "TODO");
+        _updateJournal(debits, credits);
+        accounting.lock();
+    }
+
+    function _updateJournal(JournalEntry[] memory debits, JournalEntry[] memory credits) internal returns (uint128 debited, uint128 credited) {
         for (uint256 i; i < debits.length; i++) {
             accounting.addDebit(debits[i].accountId, debits[i].amount.raw());
             debited += debits[i].amount.raw();
