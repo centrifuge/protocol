@@ -254,21 +254,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     function updateContract(uint16 chainId, ShareClassId scId, bytes32 target, bytes calldata payload) external payable {
         _protectedAndUnlocked();
 
-        if (payload.updateContractType() == UpdateContractType.VaultUpdate) {
-            MessageLib.UpdateContractVaultUpdate memory m = MessageLib.deserializeUpdateContractVaultUpdate(payload);
-            if (m.kind == uint8(VaultUpdateKind.DeployAndLink)) {
-                deployVault(scId, AssetId.wrap(m.assetId), target, m.vaultOrFactory);
-            } else if (m.kind == uint8(VaultUpdateKind.Link)) {
-                addVault(scId, AssetId.wrap(m.assetId), target, m.vaultOrFactory);
-            } else if (m.kind == uint8(VaultUpdateKind.Unlink)) {
-                removeVault(scId, AssetId.wrap(m.assetId), target, m.vaultOrFactory);
-            } else {
-                revert UpdateContractMalformed();
-            }
-        }
-        else {
-            sender.sendUpdateContract(chainId, unlockedPoolId, scId, target, payload);
-        }
+        sender.sendUpdateContract(chainId, unlockedPoolId, scId, target, payload);
     }
 
     /// @inheritdoc IPoolRouter

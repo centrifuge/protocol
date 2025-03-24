@@ -188,26 +188,6 @@ contract TestDeployVault is TestCommon {
     }
 }
 
-contract TestUpdateContract is TestCommon {
-    using MessageLib for *;
-
-    function testErrUpdateContractMalformed() public {
-        bytes memory payload = MessageLib.UpdateContractVaultUpdate({
-            vaultOrFactory: bytes32("factory"),
-            assetId: ASSET_A.raw(),
-            kind: 3
-        }) // Unknown kind, see VaultUpdateKind
-            .serialize();
-
-        bytes[] memory cs = new bytes[](1);
-        cs[0] = abi.encodeWithSelector(poolRouter.updateContract.selector, CHAIN_A, SC_A, bytes32("target"), payload);
-
-        vm.prank(ADMIN);
-        vm.expectRevert(IPoolRouter.UpdateContractMalformed.selector);
-        poolRouter.execute(POOL_A, cs);
-    }
-}
-
 contract TestCreateHolding is TestCommon {
     function testErrAssetNotFound() public {
         vm.mockCall(
