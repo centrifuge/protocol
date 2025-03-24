@@ -4,16 +4,19 @@ pragma solidity 0.8.28;
 import {D18, d18} from "src/misc/types/D18.sol";
 
 import {JournalEntry, Meta} from "src/common/types/JournalEntry.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 
 interface IBalanceSheetManager {
     // --- Errors ---
 
     // --- Events ---
     event File(bytes32 indexed what, address data);
-    event Permission(uint64 indexed poolId, bytes16 indexed scId, address contractAddr, bool allowed);
+    event Permission(PoolId indexed poolId, ShareClassId indexed scId, address contractAddr, bool allowed);
     event Withdraw(
-        uint64 indexed poolId,
-        bytes16 indexed scId,
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
         address asset,
         uint256 tokenId,
         address receiver,
@@ -24,8 +27,8 @@ interface IBalanceSheetManager {
         JournalEntry[] credits
     );
     event Deposit(
-        uint64 indexed poolId,
-        bytes16 indexed scId,
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
         address asset,
         uint256 tokenId,
         address provider,
@@ -35,13 +38,13 @@ interface IBalanceSheetManager {
         JournalEntry[] debits,
         JournalEntry[] credits
     );
-    event IssueShares(uint64 indexed poolId, bytes16 indexed scId, address to, uint128 shares);
-    event RevokeShares(uint64 indexed poolId, bytes16 indexed scId, address from, uint128 shares);
+    event IssueShares(PoolId indexed poolId, ShareClassId indexed scId, address to, uint128 shares);
+    event RevokeShares(PoolId indexed poolId, ShareClassId indexed scId, address from, uint128 shares);
 
     // Overloaded increase
     function deposit(
-        uint64 poolId,
-        bytes16 scId,
+        PoolId poolId,
+        ShareClassId scId,
         address asset,
         uint256 tokenId,
         address provider,
@@ -51,8 +54,8 @@ interface IBalanceSheetManager {
     ) external;
 
     function withdraw(
-        uint64 poolId,
-        bytes16 scId,
+        PoolId poolId,
+        ShareClassId scId,
         address asset,
         uint256 tokenId,
         address receiver,
@@ -62,11 +65,18 @@ interface IBalanceSheetManager {
         Meta calldata m
     ) external;
 
-    function updateValue(uint64 poolId, bytes16 scId, uint128 assetId, D18 pricePerUnit, uint256 timestamp) external;
+    function updateValue(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        D18 pricePerUnit,
+        uint256 timestamp
+    ) external;
 
-    function issue(uint64 poolId, bytes16 scId, address to, uint128 shares, bool asAllowance) external;
+    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares, bool asAllowance) external;
 
-    function revoke(uint64 poolId, bytes16 scId, address from, uint128 shares) external;
+    function revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) external;
 
-    function journalEntry(uint64 poolId, bytes16 scId, Meta calldata m) external;
+    function journalEntry(PoolId poolId, ShareClassId scId, Meta calldata m) external;
 }

@@ -246,9 +246,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
     /// @inheritdoc IVaultMessageSender
     function sendIncreaseHolding(
-        uint64 poolId,
-        bytes16 scId,
-        uint128 assetId,
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
         address provider,
         uint128 amount,
         D18 pricePerUnit,
@@ -257,9 +257,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
         JournalEntry[] calldata credits
     ) external auth {
         MessageLib.UpdateHolding memory data = MessageLib.UpdateHolding({
-            poolId: poolId,
-            scId: scId,
-            assetId: assetId,
+            poolId: poolId.raw(),
+            scId: scId.raw(),
+            assetId: assetId.raw(),
             who: provider.toBytes32(),
             amount: amount,
             pricePerUnit: pricePerUnit,
@@ -269,14 +269,14 @@ contract MessageProcessor is Auth, IMessageProcessor {
             credits: credits
         });
 
-        gateway.send(uint32(poolId >> 32), data.serialize());
+        gateway.send(poolId.chainId(), data.serialize());
     }
 
     /// @inheritdoc IVaultMessageSender
     function sendDecreaseHolding(
-        uint64 poolId,
-        bytes16 scId,
-        uint128 assetId,
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
         address receiver,
         uint128 amount,
         D18 pricePerUnit,
@@ -285,9 +285,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
         JournalEntry[] calldata credits
     ) external auth {
         MessageLib.UpdateHolding memory data = MessageLib.UpdateHolding({
-            poolId: poolId,
-            scId: scId,
-            assetId: assetId,
+            poolId: poolId.raw(),
+            scId: scId.raw(),
+            assetId: assetId.raw(),
             who: receiver.toBytes32(),
             amount: amount,
             pricePerUnit: pricePerUnit,
@@ -297,21 +297,24 @@ contract MessageProcessor is Auth, IMessageProcessor {
             credits: credits
         });
 
-        gateway.send(uint32(poolId >> 32), data.serialize());
+        gateway.send(poolId.chainId(), data.serialize());
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendUpdateHoldingValue(uint64 poolId, bytes16 scId, uint128 assetId, D18 pricePerUnit, uint256 timestamp)
-        external
-        auth
-    {
+    function sendUpdateHoldingValue(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        D18 pricePerUnit,
+        uint256 timestamp
+    ) external auth {
         JournalEntry[] memory debits = new JournalEntry[](0);
         JournalEntry[] memory credits = new JournalEntry[](0);
 
         MessageLib.UpdateHolding memory data = MessageLib.UpdateHolding({
-            poolId: poolId,
-            scId: scId,
-            assetId: assetId,
+            poolId: poolId.raw(),
+            scId: scId.raw(),
+            assetId: assetId.raw(),
             who: bytes32(0),
             amount: 0,
             pricePerUnit: pricePerUnit,
@@ -321,18 +324,18 @@ contract MessageProcessor is Auth, IMessageProcessor {
             credits: credits
         });
 
-        gateway.send(uint32(poolId >> 32), data.serialize());
+        gateway.send(poolId.chainId(), data.serialize());
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendIssueShares(uint64 poolId, bytes16 scId, address receiver, uint128 shares, uint256 timestamp)
+    function sendIssueShares(PoolId poolId, ShareClassId scId, address receiver, uint128 shares, uint256 timestamp)
         external
     {
         gateway.send(
-            uint32(poolId >> 32),
+            poolId.chainId(),
             MessageLib.UpdateShares({
-                poolId: poolId,
-                scId: scId,
+                poolId: poolId.raw(),
+                scId: scId.raw(),
                 who: receiver.toBytes32(),
                 shares: shares,
                 timestamp: timestamp,
@@ -342,14 +345,14 @@ contract MessageProcessor is Auth, IMessageProcessor {
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendRevokeShares(uint64 poolId, bytes16 scId, address provider, uint128 shares, uint256 timestamp)
+    function sendRevokeShares(PoolId poolId, ShareClassId scId, address provider, uint128 shares, uint256 timestamp)
         external
     {
         gateway.send(
-            uint32(poolId >> 32),
+            poolId.chainId(),
             MessageLib.UpdateShares({
-                poolId: poolId,
-                scId: scId,
+                poolId: poolId.raw(),
+                scId: scId.raw(),
                 who: provider.toBytes32(),
                 shares: shares,
                 timestamp: timestamp,
@@ -360,14 +363,14 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
     /// @inheritdoc IVaultMessageSender
     function sendJournalEntry(
-        uint64 poolId,
-        bytes16 scId,
+        PoolId poolId,
+        ShareClassId scId,
         JournalEntry[] calldata debits,
         JournalEntry[] calldata credits
     ) external {
         gateway.send(
-            uint32(poolId >> 32),
-            MessageLib.UpdateJournal({poolId: poolId, scId: scId, debits: debits, credits: credits}).serialize()
+            poolId.chainId(),
+            MessageLib.UpdateJournal({poolId: poolId.raw(), scId: scId.raw(), debits: debits, credits: credits}).serialize()
         );
     }
 
@@ -496,13 +499,19 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 Meta memory meta = Meta({timestamp: 0, debits: m.debits, credits: m.credits});
                 if (m.isIncrease) {
                     balanceSheetManager.deposit(
-                        m.poolId, m.scId, m.assetId, address(bytes20(m.who)), m.amount, m.pricePerUnit, meta
+                        PoolId.wrap(m.poolId),
+                        ShareClassId.wrap(m.scId),
+                        AssetId.wrap(m.assetId),
+                        address(bytes20(m.who)),
+                        m.amount,
+                        m.pricePerUnit,
+                        meta
                     );
                 } else {
                     balanceSheetManager.withdraw(
-                        m.poolId,
-                        m.scId,
-                        m.assetId,
+                        PoolId.wrap(m.poolId),
+                        ShareClassId.wrap(m.scId),
+                        AssetId.wrap(m.assetId),
                         address(bytes20(m.who)),
                         m.amount,
                         m.pricePerUnit,
@@ -514,10 +523,16 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 MessageLib.TriggerUpdateShares memory m = message.deserializeTriggerUpdateShares();
                 if (m.isIssuance) {
                     balanceSheetManager.triggerIssueShares(
-                        m.poolId, m.scId, address(bytes20(m.who)), m.shares, m.asAllowance
+                        PoolId.wrap(m.poolId),
+                        ShareClassId.wrap(m.scId),
+                        address(bytes20(m.who)),
+                        m.shares,
+                        m.asAllowance
                     );
                 } else {
-                    balanceSheetManager.triggerRevokeShares(m.poolId, m.scId, address(bytes20(m.who)), m.shares);
+                    balanceSheetManager.triggerRevokeShares(
+                        PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), address(bytes20(m.who)), m.shares
+                    );
                 }
             } else {
                 revert InvalidMessage(uint8(kind));

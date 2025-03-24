@@ -206,9 +206,9 @@ interface IInvestmentManagerGatewayHandler {
 /// @notice Interface for CV methods related to epoch called by the gateway
 interface IBalanceSheetManagerGatewayHandler {
     function deposit(
-        uint64 poolId,
-        bytes16 scId,
-        uint128 assetId,
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
         address provider,
         uint128 amount,
         D18 pricePerUnit,
@@ -216,9 +216,9 @@ interface IBalanceSheetManagerGatewayHandler {
     ) external;
 
     function withdraw(
-        uint64 poolId,
-        bytes16 scId,
-        uint128 assetId,
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
         address receiver,
         uint128 amount,
         D18 pricePerUnit,
@@ -226,7 +226,8 @@ interface IBalanceSheetManagerGatewayHandler {
         Meta calldata m
     ) external;
 
-    function triggerIssueShares(uint64 poolId, bytes16 scId, address to, uint128 shares, bool asAllowance) external;
+    function triggerIssueShares(PoolId poolId, ShareClassId scId, address to, uint128 shares, bool asAllowance)
+        external;
 
-    function triggerRevokeShares(uint64 poolId, bytes16 scId, address from, uint128 shares) external;
+    function triggerRevokeShares(PoolId poolId, ShareClassId scId, address from, uint128 shares) external;
 }
