@@ -38,8 +38,17 @@ interface IBalanceSheetManager {
         JournalEntry[] debits,
         JournalEntry[] credits
     );
-    event IssueShares(PoolId indexed poolId, ShareClassId indexed scId, address to, uint128 shares);
-    event RevokeShares(PoolId indexed poolId, ShareClassId indexed scId, address from, uint128 shares);
+    event Issue(PoolId indexed poolId, ShareClassId indexed scId, address to, uint128 shares);
+    event Revoke(PoolId indexed poolId, ShareClassId indexed scId, address from, uint128 shares);
+    event UpdateEntry(PoolId indexed poolId, ShareClassId indexed scId, JournalEntry[] debits, JournalEntry[] credits);
+    event UpdateValue(
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
+        address asset,
+        uint256 tokenId,
+        D18 pricePerUnit,
+        uint256 timestamp
+    );
 
     // Overloaded increase
     function deposit(
@@ -65,14 +74,7 @@ interface IBalanceSheetManager {
         Meta calldata m
     ) external;
 
-    function updateValue(
-        PoolId poolId,
-        ShareClassId scId,
-        address asset,
-        uint256 tokenId,
-        D18 pricePerUnit,
-        uint256 timestamp
-    ) external;
+    function updateValue(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, D18 pricePerUnit) external;
 
     function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares, bool asAllowance) external;
 

@@ -370,7 +370,8 @@ contract MessageProcessor is Auth, IMessageProcessor {
     ) external {
         gateway.send(
             poolId.chainId(),
-            MessageLib.UpdateJournal({poolId: poolId.raw(), scId: scId.raw(), debits: debits, credits: credits}).serialize()
+            MessageLib.UpdateJournal({poolId: poolId.raw(), scId: scId.raw(), debits: debits, credits: credits})
+                .serialize()
         );
     }
 
@@ -496,7 +497,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             if (kind == MessageType.TriggerUpdateHolding) {
                 MessageLib.TriggerUpdateHolding memory m = message.deserializeTriggerUpdateHolding();
 
-                Meta memory meta = Meta({timestamp: 0, debits: m.debits, credits: m.credits});
+                Meta memory meta = Meta({debits: m.debits, credits: m.credits});
                 if (m.isIncrease) {
                     balanceSheetManager.deposit(
                         PoolId.wrap(m.poolId),

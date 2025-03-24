@@ -10,7 +10,6 @@ struct JournalEntry {
 }
 
 struct Meta {
-    uint256 timestamp;
     JournalEntry[] debits;
     JournalEntry[] credits;
 }

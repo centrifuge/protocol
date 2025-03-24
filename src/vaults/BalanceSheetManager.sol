@@ -135,16 +135,13 @@ contract BalanceSheetManager is
     }
 
     /// @inheritdoc IBalanceSheetManager
-    function updateValue(
-        PoolId poolId,
-        ShareClassId scId,
-        address asset,
-        uint256 tokenId,
-        D18 pricePerUnit,
-        uint256 timestamp
-    ) external auth {
+    function updateValue(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, D18 pricePerUnit)
+        external
+        auth
+    {
         uint128 assetId = poolManager.checkedAssetToId(asset, tokenId);
-        sender.sendUpdateHoldingValue(poolId, scId, AssetId.wrap(assetId), pricePerUnit, timestamp);
+        sender.sendUpdateHoldingValue(poolId, scId, AssetId.wrap(assetId), pricePerUnit, block.timestamp);
+        emit UpdateValue(poolId, scId, asset, tokenId, pricePerUnit, block.timestamp);
     }
 
     /// @inheritdoc IBalanceSheetManager
@@ -166,6 +163,7 @@ contract BalanceSheetManager is
     /// @inheritdoc IBalanceSheetManager
     function journalEntry(PoolId poolId, ShareClassId scId, Meta calldata m) external authOrPermission(poolId, scId) {
         sender.sendJournalEntry(poolId, scId, m.debits, m.credits);
+        emit UpdateEntry(poolId, scId, m.debits, m.credits);
     }
 
     /// --- IBalanceSheetManagerHandler ---
@@ -224,7 +222,7 @@ contract BalanceSheetManager is
         }
 
         sender.sendIssueShares(poolId, scId, to, shares, block.timestamp);
-        emit IssueShares(poolId, scId, to, shares);
+        emit Issue(poolId, scId, to, shares);
     }
 
     function _revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) internal {
@@ -232,7 +230,7 @@ contract BalanceSheetManager is
         ITranche(token).burn(address(from), shares);
 
         sender.sendRevokeShares(poolId, scId, from, shares, block.timestamp);
-        emit RevokeShares(poolId, scId, from, shares);
+        emit Revoke(poolId, scId, from, shares);
     }
 
     function _withdraw(
@@ -266,10 +264,12 @@ contract BalanceSheetManager is
         }
 
         sender.sendDecreaseHolding(
-            poolId, scId, assetId, receiver, amount, pricePerUnit, m.timestamp, m.debits, m.credits
+            poolId, scId, assetId, receiver, amount, pricePerUnit, block.timestamp, m.debits, m.credits
         );
 
-        emit Withdraw(poolId, scId, asset, tokenId, receiver, amount, pricePerUnit, m.timestamp, m.debits, m.credits);
+        emit Withdraw(
+            poolId, scId, asset, tokenId, receiver, amount, pricePerUnit, block.timestamp, m.debits, m.credits
+        );
     }
 
     function _deposit(
@@ -293,9 +293,9 @@ contract BalanceSheetManager is
 
         escrow.deposit(asset, tokenId, poolId.raw(), scId.raw(), amount);
         sender.sendIncreaseHolding(
-            poolId, scId, assetId, provider, amount, pricePerUnit, m.timestamp, m.debits, m.credits
+            poolId, scId, assetId, provider, amount, pricePerUnit, block.timestamp, m.debits, m.credits
         );
 
-        emit Deposit(poolId, scId, asset, tokenId, provider, amount, pricePerUnit, m.timestamp, m.debits, m.credits);
+        emit Deposit(poolId, scId, asset, tokenId, provider, amount, pricePerUnit, block.timestamp, m.debits, m.credits);
     }
 }
