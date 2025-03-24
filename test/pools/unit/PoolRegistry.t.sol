@@ -21,6 +21,8 @@ contract PoolRegistryTest is Test {
     uint16 constant CENTRIFUGE_CHAIN_ID = 23;
     AssetId constant USD = AssetId.wrap(840);
     ShareClassId constant SC_A = ShareClassId.wrap(bytes16("sc"));
+    PoolId constant POOL_A = PoolId.wrap(33);
+    PoolId constant POOL_B = PoolId.wrap(44);
 
     IShareClassManager shareClassManager = IShareClassManager(makeAddr("shareClassManager"));
 
