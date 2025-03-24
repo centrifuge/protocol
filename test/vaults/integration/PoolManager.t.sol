@@ -64,7 +64,7 @@ contract PoolManagerTestHelper is BaseTest {
 
     function registerAssetErc20() public {
         assetErc20 = address(_newErc20(tokenName, tokenSymbol, decimals));
-        assetIdErc20 = poolManager.registerAsset(assetErc20, 0, defaultChainId);
+        assetIdErc20 = poolManager.registerAsset(assetErc20, 0, OTHER_CHAIN_ID);
     }
 }
 
@@ -328,12 +328,12 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
         vm.expectRevert(bytes("PoolManager/unknown-token"));
-        poolManager.transferTrancheTokens(poolId + 1, trancheId, defaultChainId, destinationAddress.toBytes32(), amount);
+        poolManager.transferTrancheTokens(poolId + 1, trancheId, OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount);
 
         // Approve and transfer amount from this address to destinationAddress
         tranche.approve(address(poolManager), amount);
         poolManager.transferTrancheTokens(
-            vault.poolId(), vault.trancheId(), defaultChainId, destinationAddress.toBytes32(), amount
+            vault.poolId(), vault.trancheId(), OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount
         );
         assertEq(tranche.balanceOf(address(this)), 0);
     }
@@ -489,7 +489,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         vm.assume(poolId > 0);
         vm.assume(trancheId > 0);
         centrifugeChain.addPool(poolId);
-        uint128 assetId = poolManager.registerAsset(address(erc20), 0, defaultChainId);
+        uint128 assetId = poolManager.registerAsset(address(erc20), 0, OTHER_CHAIN_ID);
 
         address hook = address(new MockHook());
 
@@ -569,11 +569,11 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assertFalse(tranche.checkTransferRestriction(address(this), destinationAddress, 0));
 
         vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
-        poolManager.transferTrancheTokens(poolId, trancheId, defaultChainId, destinationAddress.toBytes32(), amount);
+        poolManager.transferTrancheTokens(poolId, trancheId, OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount);
         assertEq(tranche.balanceOf(address(this)), amount);
 
         centrifugeChain.unfreeze(poolId, trancheId, address(this));
-        poolManager.transferTrancheTokens(poolId, trancheId, defaultChainId, destinationAddress.toBytes32(), amount);
+        poolManager.transferTrancheTokens(poolId, trancheId, OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount);
         assertEq(tranche.balanceOf(address(escrow)), 0);
     }
 
@@ -707,7 +707,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         address asset = address(erc20);
 
         // Check event except for vault address which cannot be known
-        (uint128 assetId) = poolManager.registerAsset(asset, erc20TokenId, defaultChainId);
+        (uint128 assetId) = poolManager.registerAsset(asset, erc20TokenId, OTHER_CHAIN_ID);
         vm.expectEmit(true, true, true, false);
         emit IPoolManager.DeployVault(poolId, trancheId, asset, erc20TokenId, vaultFactory, address(0));
         address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, vaultFactory);
@@ -726,7 +726,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
 
         address asset = address(erc20);
 
-        (uint128 assetId) = poolManager.registerAsset(asset, erc20TokenId, defaultChainId);
+        (uint128 assetId) = poolManager.registerAsset(asset, erc20TokenId, OTHER_CHAIN_ID);
         address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, vaultFactory);
 
         vm.expectEmit(true, true, true, false);
@@ -749,7 +749,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         address asset = address(new MockERC6909());
 
         // Check event except for vault address which cannot be known
-        (uint128 assetId) = poolManager.registerAsset(asset, tokenId, defaultChainId);
+        (uint128 assetId) = poolManager.registerAsset(asset, tokenId, OTHER_CHAIN_ID);
         vm.expectEmit(true, true, true, false);
         emit IPoolManager.DeployVault(poolId, trancheId, asset, tokenId, vaultFactory, address(0));
         address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, vaultFactory);
@@ -769,7 +769,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         uint256 tokenId = decimals;
         address asset = address(new MockERC6909());
 
-        (uint128 assetId) = poolManager.registerAsset(asset, tokenId, defaultChainId);
+        (uint128 assetId) = poolManager.registerAsset(asset, tokenId, OTHER_CHAIN_ID);
         address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, vaultFactory);
 
         vm.expectEmit(true, true, true, false);
@@ -844,7 +844,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         emit IPoolManager.RegisterAsset(defaultAssetId, asset, 0, erc20.name(), erc20.symbol(), erc20.decimals());
         vm.expectEmit(false, false, false, false);
         emit IGateway.SendMessage(message);
-        uint128 assetId = poolManager.registerAsset(asset, 0, defaultChainId);
+        uint128 assetId = poolManager.registerAsset(asset, 0, OTHER_CHAIN_ID);
 
         assertEq(assetId, defaultAssetId);
         assertEq(erc20.allowance(address(poolManager.escrow()), address(poolManager)), type(uint256).max);
@@ -857,10 +857,10 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         ERC20 assetA = erc20;
         ERC20 assetB = _newErc20(name, symbol, decimals);
 
-        uint128 assetIdA = poolManager.registerAsset(address(assetA), 0, defaultChainId);
+        uint128 assetIdA = poolManager.registerAsset(address(assetA), 0, OTHER_CHAIN_ID);
         _assertAssetRegistered(address(assetA), assetIdA, 0, 1);
 
-        uint128 assetIdB = poolManager.registerAsset(address(assetB), 0, defaultChainId);
+        uint128 assetIdB = poolManager.registerAsset(address(assetB), 0, OTHER_CHAIN_ID);
         _assertAssetRegistered(address(assetB), assetIdB, 0, 2);
 
         assert(assetIdA != assetIdB);
@@ -868,7 +868,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
 
     function testRegisterSingleAssetERC20_emptyNameSymbol() public {
         ERC20 asset = _newErc20("", "", 10);
-        poolManager.registerAsset(address(asset), 0, defaultChainId);
+        poolManager.registerAsset(address(asset), 0, OTHER_CHAIN_ID);
         _assertAssetRegistered(address(asset), defaultAssetId, 0, 1);
     }
 
@@ -890,7 +890,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         );
         vm.expectEmit(false, false, false, false);
         emit IGateway.SendMessage(message);
-        uint128 assetId = poolManager.registerAsset(asset, tokenId, defaultChainId);
+        uint128 assetId = poolManager.registerAsset(asset, tokenId, OTHER_CHAIN_ID);
 
         assertEq(assetId, defaultAssetId);
         assertEq(erc6909.allowance(address(poolManager.escrow()), address(poolManager), tokenId), type(uint256).max);
@@ -902,10 +902,10 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         uint256 tokenIdA = uint256(bound(decimals, 3, 18));
         uint256 tokenIdB = uint256(bound(decimals, 2, tokenIdA - 1));
 
-        uint128 assetIdA = poolManager.registerAsset(address(erc6909), tokenIdA, defaultChainId);
+        uint128 assetIdA = poolManager.registerAsset(address(erc6909), tokenIdA, OTHER_CHAIN_ID);
         _assertAssetRegistered(address(erc6909), assetIdA, tokenIdA, 1);
 
-        uint128 assetIdB = poolManager.registerAsset(address(erc6909), tokenIdB, defaultChainId);
+        uint128 assetIdB = poolManager.registerAsset(address(erc6909), tokenIdB, OTHER_CHAIN_ID);
         _assertAssetRegistered(address(erc6909), assetIdB, tokenIdB, 2);
 
         assert(assetIdA != assetIdB);
@@ -919,43 +919,43 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         vm.expectEmit(false, false, false, false);
         emit IGateway.SendMessage(bytes(""));
         emit IGateway.SendMessage(bytes(""));
-        poolManager.registerAsset(address(erc20), 0, defaultChainId);
-        poolManager.registerAsset(address(erc20), 0, defaultChainId + 1);
+        poolManager.registerAsset(address(erc20), 0, OTHER_CHAIN_ID);
+        poolManager.registerAsset(address(erc20), 0, OTHER_CHAIN_ID + 1);
     }
 
     function testRegisterAsset_decimalsMissing() public {
         address asset = address(new MockERC6909());
         vm.expectRevert("PoolManager/asset-missing-decimals");
-        poolManager.registerAsset(asset, 0, defaultChainId);
+        poolManager.registerAsset(asset, 0, OTHER_CHAIN_ID);
     }
 
     function testRegisterAsset_invalidContract(uint256 tokenId) public {
         vm.expectRevert("PoolManager/asset-missing-decimals");
-        poolManager.registerAsset(address(0), tokenId, defaultChainId);
+        poolManager.registerAsset(address(0), tokenId, OTHER_CHAIN_ID);
     }
 
     function testRegisterAssetERC20_decimalDeficit() public {
         ERC20 asset = _newErc20("", "", 1);
         vm.expectRevert("PoolManager/too-few-asset-decimals");
-        poolManager.registerAsset(address(asset), 0, defaultChainId);
+        poolManager.registerAsset(address(asset), 0, OTHER_CHAIN_ID);
     }
 
     function testRegisterAssetERC20_decimalExcess() public {
         ERC20 asset = _newErc20("", "", 19);
         vm.expectRevert("PoolManager/too-many-asset-decimals");
-        poolManager.registerAsset(address(asset), 0, defaultChainId);
+        poolManager.registerAsset(address(asset), 0, OTHER_CHAIN_ID);
     }
 
     function testRegisterAssetERC6909_decimalDeficit() public {
         MockERC6909 asset = new MockERC6909();
         vm.expectRevert("PoolManager/too-few-asset-decimals");
-        poolManager.registerAsset(address(asset), 1, defaultChainId);
+        poolManager.registerAsset(address(asset), 1, OTHER_CHAIN_ID);
     }
 
     function testRegisterAssetERC6909_decimalExcess() public {
         MockERC6909 asset = new MockERC6909();
         vm.expectRevert("PoolManager/too-many-asset-decimals");
-        poolManager.registerAsset(address(asset), 19, defaultChainId);
+        poolManager.registerAsset(address(asset), 19, OTHER_CHAIN_ID);
     }
 
     function testRegisterAsset_unauthorized() public {

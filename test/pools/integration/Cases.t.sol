@@ -77,7 +77,7 @@ contract TestCases is PoolsDeployer, Test {
         vm.label(address(messageProcessor), "MessageProcessor");
         vm.label(address(cv), "CV");
 
-        // We should not use the ChainID
+        // We should not use the block ChainID
         vm.chainId(0xDEAD);
     }
 
