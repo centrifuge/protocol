@@ -5,10 +5,11 @@ import {FoundryAsserts} from "@chimera/FoundryAsserts.sol";
 
 import {Test, console2} from "forge-std/Test.sol";
 
-import {PoolId} from "src/pools/types/PoolId.sol";
+import {PoolId, raw, newPoolId} from "src/pools/types/PoolId.sol";
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
+import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
 import {TargetFunctions} from "./TargetFunctions.sol";
 import {Helpers} from "test/pools/fuzzing/recon-pools/utils/Helpers.sol";
@@ -47,6 +48,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     ShareClassId scId;
     AssetId assetId;
 
+    /// Unit Tests 
     function _createPool() internal returns (PoolId) {
         // deploy new asset
         add_new_asset(18);
@@ -167,6 +169,76 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
 
         multiShareClass.claimDeposit(poolId, scId, Helpers.addressToBytes32(address(this)), assetId);
+    }
+
+    /// Reproducers 
+    
+    // forge test --match-test test_poolRouter_depositRequest_0 -vvv 
+    function test_poolRouter_depositRequest_0() public {
+
+        (PoolId poolId, ShareClassId scId) = shortcut_create_pool_and_update_holding(1,1,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,d18(1));
+
+        // downcasting to uint32 
+        uint32 unsafePoolId;
+        assembly {
+            unsafePoolId := 4294967297
+        }
+        
+        poolRouter_depositRequest(newPoolId(unsafePoolId), scId, 0,0);
+
+        // looks like this reverts because 4294967297 overflows the uint32 type 
+        // shouldn't this make the handler revert though, this wouldn't even be callable with an overflowing input
+        // poolRouter_depositRequest(4294967297,hex"4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c",0,0);
+        // poolRouter.depositRequest(newPoolId(4294967297), scId, Helpers.addressToBytes32(_getActor()), newAssetId(123), 0);
+    }
+
+    // forge test --match-test test_property_credited_transient_reset_0 -vvv 
+    function test_property_credited_transient_reset_0() public {
+
+        shortcut_deposit(1,1,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,1,1,d18(1));
+
+        property_credited_transient_reset();
+
+    }
+
+    // forge test --match-test test_shortcut_request_deposit_and_cancel_1 -vvv 
+    function test_shortcut_request_deposit_and_cancel_1() public {
+
+        shortcut_request_deposit_and_cancel(1,2,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,305086230337229670000892808,1,d18(7526125501742048274453118150));
+
+    }
+
+    // forge test --match-test test_property_epochId_strictly_greater_than_any_latest_pointer_2 -vvv 
+    function test_property_epochId_strictly_greater_than_any_latest_pointer_2() public {
+
+        shortcut_deposit(1,4294967295,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,1,1,d18(1));
+
+        shortcut_create_pool_and_update_holding(0,4294967295,hex"4e554c",hex"4e554c",hex"4e554d",hex"",false,0,d18(1));
+
+        property_epochId_strictly_greater_than_any_latest_pointer();
+
+    }
+
+    // forge test --match-test test_property_total_pending_deposit_geq_sum_pending_user_deposit_3 -vvv 
+    function test_property_total_pending_deposit_geq_sum_pending_user_deposit_3() public {
+
+        shortcut_deposit(10,4294967295,hex"4e554c",hex"4e554c",hex"4e554c",hex"38",false,667689,2146661205180694826475217943988191265,43767649,d18(5020341717619307870061350833496066976));
+
+        shortcut_create_pool_and_update_holding(2,4294967295,hex"4e554c",hex"4e554c",hex"4e554d",hex"4e554d",false,112146,d18(519738));
+
+        property_total_pending_deposit_geq_sum_pending_user_deposit();
+
+    }
+
+    // forge test --match-test test_property_total_pending_and_approved_4 -vvv 
+    function test_property_total_pending_and_approved_4() public {
+
+        shortcut_deposit(1,4294967295,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,1,1,d18(1));
+
+        shortcut_create_pool_and_update_holding(0,4294967295,hex"4e554c",hex"4e554c",hex"4e554d",hex"",false,0,d18(1));
+
+        property_total_pending_and_approved();
+
     }
 
 }
