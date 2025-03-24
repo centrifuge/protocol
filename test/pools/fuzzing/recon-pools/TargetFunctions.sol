@@ -39,7 +39,7 @@ abstract contract TargetFunctions is
         bytes memory data,
         bool isIdentityValuation,
         uint24 prefix
-    ) public returns (PoolId poolId, ShareClassId scId) {
+    ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
         // add and register asset
         add_new_asset(decimals);
         poolRouter_registerAsset(isoCode);
@@ -67,7 +67,7 @@ abstract contract TargetFunctions is
         uint128 amount,
         uint128 maxApproval,
         D18 navPerShare
-    ) public returns (PoolId poolId, ShareClassId scId) {
+    ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
         (poolId, scId) = shortcut_create_pool_and_holding(
             decimals, isoCode, 
             name, symbol, salt, data, 
@@ -98,7 +98,7 @@ abstract contract TargetFunctions is
         uint128 amount,
         uint128 maxApproval,
         D18 navPerShare
-    ) public returns (PoolId poolId, ShareClassId scId) {
+    ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
         (poolId, scId) = shortcut_deposit(
             decimals, isoCode, name, symbol, salt, data, 
             isIdentityValuation, prefix, amount, maxApproval, navPerShare
@@ -122,7 +122,7 @@ abstract contract TargetFunctions is
         uint128 amount,
         uint128 maxApproval,
         D18 navPerShare
-    ) public returns (PoolId poolId, ShareClassId scId) {
+    ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
         (poolId, scId) = shortcut_deposit(
             decimals, isoCode, name, symbol, salt, data, 
             isIdentityValuation, prefix, amount, maxApproval, navPerShare
@@ -137,7 +137,7 @@ abstract contract TargetFunctions is
         return (poolId, scId);
     }
 
-     function shortcut_deposit_and_cancel(
+    function shortcut_deposit_and_cancel(
         uint8 decimals,
         uint32 isoCode,
         string memory name,
@@ -149,7 +149,7 @@ abstract contract TargetFunctions is
         uint128 amount,
         uint128 maxApproval,
         D18 navPerShare
-    ) public returns (PoolId poolId, ShareClassId scId) {
+    ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
         (poolId, scId) = shortcut_deposit(
             decimals, isoCode, name, symbol, salt, data, 
             isIdentityValuation, prefix, amount, maxApproval, navPerShare
@@ -173,7 +173,7 @@ abstract contract TargetFunctions is
         uint128 amount,
         uint128 maxApproval,
         D18 navPerShare
-    ) public returns (PoolId poolId, ShareClassId scId) {
+    ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
         (poolId, scId) = shortcut_deposit(
             decimals, isoCode, name, symbol, salt, data, 
             isIdentityValuation, prefix, amount, maxApproval, navPerShare
@@ -196,7 +196,7 @@ abstract contract TargetFunctions is
         uint128 maxApproval,
         D18 navPerShare,
         bool isIdentityValuation
-    ) public {
+    ) public clearQueuedCalls {
         // request redemption
         poolRouter_redeemRequest(poolId, scId, isoCode, shareAmount);
         
@@ -210,7 +210,7 @@ abstract contract TargetFunctions is
         PoolId poolId,
         ShareClassId scId,
         uint32 isoCode
-    ) public {        
+    ) public clearQueuedCalls {        
         // claim redemption as actor
         poolRouter_claimRedeem(poolId, scId, isoCode);
     }
@@ -224,7 +224,7 @@ abstract contract TargetFunctions is
         uint128 maxApproval,
         D18 navPerShare,
         bool isIdentityValuation
-    ) public {
+    ) public clearQueuedCalls {
         shortcut_redeem(poolId, scId, shareAmount, isoCode, maxApproval, navPerShare, isIdentityValuation);
         
         // claim redemption as actor
@@ -246,7 +246,7 @@ abstract contract TargetFunctions is
         uint128 shareAmount,
         uint128 maxApproval,
         D18 navPerShare
-    ) public {
+    ) public clearQueuedCalls {
         (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(
             decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix, depositAmount, maxApproval, navPerShare
         );
@@ -285,7 +285,7 @@ abstract contract TargetFunctions is
         uint128 shareAmount,
         uint128 maxApproval,
         D18 navPerShare
-    ) public  {
+    ) public clearQueuedCalls  {
         (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(
             decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix, depositAmount, maxApproval, navPerShare
         );
@@ -307,7 +307,7 @@ abstract contract TargetFunctions is
         bool isIdentityValuation,
         uint24 prefix,
         D18 newPrice
-    ) public returns (PoolId poolId, ShareClassId scId) {
+    ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
         (PoolId poolId, ShareClassId scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
     
         AssetId assetId = newAssetId(isoCode);
@@ -322,7 +322,7 @@ abstract contract TargetFunctions is
     function shortcut_update_holding(
         uint32 isoCode, 
         D18 newPrice
-    ) public  {
+    ) public clearQueuedCalls  {
         PoolId poolId = newPoolId(poolRegistry.latestId());
         
         ShareClassId nextScId = multiShareClass.previewNextShareClassId(poolId);
@@ -345,8 +345,8 @@ abstract contract TargetFunctions is
         bytes memory data,
         bool isIdentityValuation,
         uint24 prefix
-    ) public  {
-        (PoolId poolId, ShareClassId scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
+    ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
+        (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
     
         AssetId assetId = newAssetId(isoCode);
         poolRouter_updateHoldingValuation(scId, assetId, isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation)));
@@ -365,7 +365,7 @@ abstract contract TargetFunctions is
         uint128 depositAmount,
         uint128 shareAmount,
         D18 navPerShare
-    ) public  {
+    ) public clearQueuedCalls  {
         (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix, depositAmount, shareAmount, navPerShare);
 
         // set chainId and hook to constants because we're mocking Gateway so they're not needed
@@ -374,6 +374,8 @@ abstract contract TargetFunctions is
     }
 
     /// === POOL ADMIN SHORTCUTS === ///
+    /// @dev these don't have the clearQueuedCalls modifier because they just add to the queue and execute so don't make debugging difficult
+    
     function shortcut_add_share_class_and_holding(
         PoolId poolId,
         string memory name,

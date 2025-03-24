@@ -79,6 +79,11 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         revert("stateless");
         _;
     }
+
+    modifier clearQueuedCalls {
+        queuedCalls = new bytes[](0);
+        _;
+    }
     
     /// === Setup === ///
     /// This contains all calls to be performed in the tester constructor, both for Echidna and Foundry
