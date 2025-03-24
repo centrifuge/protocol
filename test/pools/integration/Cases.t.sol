@@ -252,8 +252,10 @@ contract TestCases is PoolsDeployer, Test {
 
         AccountId extraAccountId = newAccountId(123, uint8(AccountType.ASSET));
 
-        vm.prank(address(poolRouter));
-        accounting.createAccount(poolId, extraAccountId, true);
+        (bytes[] memory cs, uint256 c) = (new bytes[](1), 0);
+        cs[c++] = abi.encodeWithSelector(poolRouter.createAccount.selector, extraAccountId, true);
+        vm.prank(FM);
+        poolRouter.execute(poolId, cs);
 
         (JournalEntry[] memory debits, uint256 i) = (new JournalEntry[](3), 0);
         debits[i++] = JournalEntry(D18.wrap(1000), holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.ASSET)));
