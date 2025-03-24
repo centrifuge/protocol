@@ -24,7 +24,7 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     IAxelarGasService public immutable axelarGasService;
 
     mapping(string axelarId => AxelarSource) public sources;
-    mapping(uint32 centrifugeId => AxelarDestination) public destinations;
+    mapping(uint16 centrifugeChainId => AxelarDestination) public destinations;
 
     constructor(IMessageHandler gateway_, address axelarGateway_, address axelarGasService_, address deployer)
         Auth(deployer)
@@ -36,17 +36,20 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
 
     // --- Administrative ---
     /// @inheritdoc IAxelarAdapter
-    function file(bytes32 what, string calldata axelarId, uint32 centrifugeId, address source) external auth {
-        if (what == "sources") sources[axelarId] = AxelarSource(centrifugeId, source);
+    function file(bytes32 what, string calldata axelarId, uint16 centrifugeChainId, address source) external auth {
+        if (what == "sources") sources[axelarId] = AxelarSource(centrifugeChainId, source);
         else revert FileUnrecognizedParam();
-        emit File(what, axelarId, centrifugeId, source);
+        emit File(what, axelarId, centrifugeChainId, source);
     }
 
     /// @inheritdoc IAxelarAdapter
-    function file(bytes32 what, uint32 centrifugeId, string calldata axelarId, address destination) external auth {
-        if (what == "destinations") destinations[centrifugeId] = AxelarDestination(axelarId, destination);
+    function file(bytes32 what, uint16 centrifugeChainId, string calldata axelarId, address destination)
+        external
+        auth
+    {
+        if (what == "destinations") destinations[centrifugeChainId] = AxelarDestination(axelarId, destination);
         else revert FileUnrecognizedParam();
-        emit File(what, centrifugeId, axelarId, destination);
+        emit File(what, centrifugeChainId, axelarId, destination);
     }
 
     // --- Incoming ---
@@ -65,17 +68,17 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
             NotApprovedByGateway()
         );
 
-        gateway.handle(source.centrifugeId, payload);
+        gateway.handle(source.centrifugeChainId, payload);
     }
 
     // --- Outgoing ---
     /// @inheritdoc IAdapter
-    function send(uint32 centrifugeId, bytes calldata payload, uint256, /* gasLimit */ address refund)
+    function send(uint16 centrifugeChainId, bytes calldata payload, uint256, /* gasLimit */ address refund)
         external
         payable
     {
         require(msg.sender == address(gateway), NotGateway());
-        AxelarDestination memory destination = destinations[centrifugeId];
+        AxelarDestination memory destination = destinations[centrifugeChainId];
         require(bytes(destination.axelarId).length != 0, UnknownChainId());
 
         string memory destinationAddress = destination.addr.toString();
@@ -87,8 +90,12 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     }
 
     /// @inheritdoc IAdapter
-    function estimate(uint32 centrifugeId, bytes calldata payload, uint256 gasLimit) public view returns (uint256) {
-        AxelarDestination memory destination = destinations[centrifugeId];
+    function estimate(uint16 centrifugeChainId, bytes calldata payload, uint256 gasLimit)
+        public
+        view
+        returns (uint256)
+    {
+        AxelarDestination memory destination = destinations[centrifugeChainId];
         return axelarGasService.estimateGasFee(
             destination.axelarId, destination.addr.toString(), payload, gasLimit, bytes("")
         );

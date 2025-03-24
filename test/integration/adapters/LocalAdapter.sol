@@ -20,17 +20,17 @@ contract LocalAdapter is Auth, IAdapter, IMessageHandler {
     }
 
     /// @inheritdoc IMessageHandler
-    function handle(uint32 chainId, bytes calldata message) external {
+    function handle(uint16 chainId, bytes calldata message) external {
         gateway.handle(chainId, message);
     }
 
     /// @inheritdoc IAdapter
-    function send(uint32 destinationChainId, bytes calldata payload, uint256, address) external payable {
+    function send(uint16 destinationChainId, bytes calldata payload, uint256, address) external payable {
         endpoint.handle(destinationChainId, payload);
     }
 
     /// @inheritdoc IAdapter
-    function estimate(uint32, bytes calldata, uint256 gasLimit) public pure returns (uint256 nativePriceQuote) {
+    function estimate(uint16, bytes calldata, uint256 gasLimit) public pure returns (uint256 nativePriceQuote) {
         return gasLimit;
     }
 }

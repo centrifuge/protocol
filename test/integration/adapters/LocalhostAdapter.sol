@@ -15,12 +15,12 @@ contract LocalhostAdapter is Auth, IAdapter {
     }
 
     /// @inheritdoc IAdapter
-    function send(uint32 destinationChainId, bytes calldata payload, uint256, address) external payable {
+    function send(uint16 destinationChainId, bytes calldata payload, uint256, address) external payable {
         gateway.handle(destinationChainId, payload);
     }
 
     /// @inheritdoc IAdapter
-    function estimate(uint32, bytes calldata, uint256 gasLimit) public pure returns (uint256 nativePriceQuote) {
+    function estimate(uint16, bytes calldata, uint256 gasLimit) public pure returns (uint256 nativePriceQuote) {
         return gasLimit;
     }
 }

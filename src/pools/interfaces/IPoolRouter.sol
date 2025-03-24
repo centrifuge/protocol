@@ -76,12 +76,12 @@ interface IPoolRouter {
 
     /// @notice Notify to a CV instance that a new pool is available
     /// @param chainId Chain where CV instance lives
-    function notifyPool(uint32 chainId) external payable;
+    function notifyPool(uint16 chainId) external payable;
 
     /// @notice Notify to a CV instance that a new share class is available
     /// @param chainId Chain where CV instance lives
     /// @param hook The hook address of the share class
-    function notifyShareClass(uint32 chainId, ShareClassId scId, bytes32 hook) external payable;
+    function notifyShareClass(uint16 chainId, ShareClassId scId, bytes32 hook) external payable;
 
     /// @notice Attach custom data to a pool
     function setPoolMetadata(bytes calldata metadata) external payable;

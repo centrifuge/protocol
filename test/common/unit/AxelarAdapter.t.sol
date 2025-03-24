@@ -53,7 +53,7 @@ contract MockAxelarGasService is Mock {
 contract AxelarAdapterTest is Test {
     using CastLib for *;
 
-    uint32 constant CENTRIFUGE_CHAIN_ID = 1;
+    uint16 constant CENTRIFUGE_CHAIN_ID = 1;
     string constant AXELAR_CHAIN_ID = "mainnet";
 
     MockAxelarGateway axelarGateway;

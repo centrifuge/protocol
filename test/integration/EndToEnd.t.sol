@@ -21,8 +21,8 @@ contract TestEndToEnd is Test {
     ISafe immutable safeAdminA = ISafe(makeAddr("SafeAdminA"));
     ISafe immutable safeAdminB = ISafe(makeAddr("SafeAdminB"));
 
-    uint32 constant CHAIN_A = 5;
-    uint32 constant CHAIN_B = 6;
+    uint16 constant CHAIN_A = 5;
+    uint16 constant CHAIN_B = 6;
     uint64 constant GAS = 100 wei;
 
     address immutable FM = makeAddr("FM");
@@ -30,8 +30,8 @@ contract TestEndToEnd is Test {
     FullDeployer deployA = new FullDeployer();
     FullDeployer deployB = new FullDeployer();
 
-    function _deployChain(ISafe safeAdmin, FullDeployer deploy) public returns (LocalAdapter adapter) {
-        deploy.deployFull(safeAdmin);
+    function _deployChain(uint16 chainId, ISafe safeAdmin, FullDeployer deploy) public returns (LocalAdapter adapter) {
+        deploy.deployFull(chainId, safeAdmin);
 
         adapter = new LocalAdapter(deploy.gateway(), address(deploy));
         deploy.wire(adapter);
@@ -45,8 +45,8 @@ contract TestEndToEnd is Test {
     }
 
     function setUp() public {
-        LocalAdapter adapterA = _deployChain(safeAdminA, deployA);
-        LocalAdapter adapterB = _deployChain(safeAdminB, deployB);
+        LocalAdapter adapterA = _deployChain(CHAIN_A, safeAdminA, deployA);
+        LocalAdapter adapterB = _deployChain(CHAIN_B, safeAdminB, deployB);
 
         // We connect both deploys through the adapters
         adapterA.setEndpoint(adapterB);
@@ -75,13 +75,14 @@ contract TestEndToEnd is Test {
     /// forge-config: default.isolate = true
     function testConfigurePool(bool sameChain) public {
         (PoolsDeployer cp, VaultsDeployer cv) = _getDeploys(sameChain);
+        uint16 cvChainId = cv.messageProcessor().centrifugeChainId();
 
         vm.startPrank(FM);
 
         PoolId poolId = cp.poolRouter().createPool(FM, deployA.USD(), deployA.multiShareClass());
 
         (bytes[] memory c, uint256 i) = (new bytes[](1), 0);
-        c[i++] = abi.encodeWithSelector(PoolRouter.notifyPool.selector, CHAIN_B);
+        c[i++] = abi.encodeWithSelector(PoolRouter.notifyPool.selector, cvChainId);
         assertEq(i, c.length);
 
         cp.poolRouter().execute{value: GAS}(poolId, c);

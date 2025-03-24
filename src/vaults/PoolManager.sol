@@ -15,6 +15,7 @@ import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IPoolManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {newAssetId} from "src/pools/types/AssetId.sol";
 
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 import {IBaseVault, IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
@@ -48,7 +49,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
     IEscrow public immutable escrow;
 
-    IGateway public gateway;
     IVaultMessageSender public sender;
     ITrancheFactory public trancheFactory;
 
@@ -73,8 +73,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     // --- Administration ---
     /// @inheritdoc IPoolManager
     function file(bytes32 what, address data) external auth {
-        if (what == "gateway") gateway = IGateway(data);
-        else if (what == "sender") sender = IVaultMessageSender(data);
+        if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "trancheFactory") trancheFactory = ITrancheFactory(data);
         else revert("PoolManager/file-unrecognized-param");
         emit File(what, data);
@@ -103,22 +102,25 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     function transferTrancheTokens(
         uint64 poolId,
         bytes16 trancheId,
-        uint32 destinationId,
+        uint16 destinationId,
         bytes32 recipient,
         uint128 amount
-    ) external {
+    ) external auth {
         ITranche tranche_ = ITranche(tranche(poolId, trancheId));
         require(address(tranche_) != address(0), "PoolManager/unknown-token");
         tranche_.burn(msg.sender, amount);
 
-        gateway.setPayableSource(msg.sender);
         sender.sendTransferShares(destinationId, poolId, trancheId, recipient, amount);
 
         emit TransferTrancheTokens(poolId, trancheId, msg.sender, destinationId, recipient, amount);
     }
 
     // @inheritdoc IPoolManagerGatewayHandler
-    function registerAsset(address asset, uint256 tokenId, uint32 destChainId) external returns (uint128 assetId) {
+    function registerAsset(address asset, uint256 tokenId, uint16 destChainId)
+        external
+        auth
+        returns (uint128 assetId)
+    {
         string memory name;
         string memory symbol;
         uint8 decimals;
@@ -140,7 +142,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         assetId = assetToId[asset][tokenId];
         if (assetId == 0) {
             _assetCounter++;
-            assetId = uint128(bytes16(abi.encodePacked(uint32(block.chainid), _assetCounter)));
+            assetId = newAssetId(sender.centrifugeChainId(), _assetCounter).raw();
 
             _idToAsset[assetId] = AssetIdKey(asset, tokenId);
             assetToId[asset][tokenId] = assetId;
@@ -152,7 +154,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
             emit RegisterAsset(assetId, asset, tokenId, name, symbol, decimals);
         }
 
-        gateway.setPayableSource(msg.sender);
         sender.sendRegisterAsset(destChainId, assetId, name, symbol, decimals);
     }
 

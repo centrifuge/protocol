@@ -29,8 +29,8 @@ contract VaultsDeployer is CommonDeployer {
     address public restrictedRedemptions;
     address public trancheFactory;
 
-    function deployVaults(ISafe adminSafe_) public {
-        deployCommon(adminSafe_);
+    function deployVaults(uint16 chainId, ISafe adminSafe_) public {
+        deployCommon(chainId, adminSafe_);
 
         escrow = new Escrow{salt: SALT}(address(this));
         routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow2"))}(address(this));
@@ -107,13 +107,13 @@ contract VaultsDeployer is CommonDeployer {
 
         // Rely on VaultRouter
         gateway.rely(address(vaultRouter));
+        poolManager.rely(address(vaultRouter));
     }
 
     function _vaultsFile() public {
         messageProcessor.file("poolManager", address(poolManager));
         messageProcessor.file("investmentManager", address(investmentManager));
 
-        poolManager.file("gateway", address(gateway));
         poolManager.file("sender", address(messageProcessor));
 
         investmentManager.file("poolManager", address(poolManager));
