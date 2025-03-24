@@ -17,11 +17,6 @@ abstract contract Properties is BeforeAfter, Asserts {
 
     /// === Canaries === ///
 
-    /// @dev Canary: Checks that the redeem request was successfully cancelled because coverage report seems off
-    function canary_cancelledRedeemRequest() public {
-        t(!cancelledRedeemRequest, "successfully cancelled redeem request");
-    }
-
     /// === Global Properties === ///
 
     function property_unlockedPoolId_transient_reset() public {
