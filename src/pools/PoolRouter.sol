@@ -96,7 +96,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         require(unlockedPoolId.isNull(), IPoolRouter.PoolAlreadyUnlocked());
         require(poolRegistry.isAdmin(poolId, msg.sender), IPoolRouter.NotAuthorizedAdmin());
 
-        accounting.unlock(poolId, "TODO");
+        accounting.unlock(poolId, accounting.generateJournalId(poolId));
         unlockedPoolId = poolId;
 
         multicall(data);
