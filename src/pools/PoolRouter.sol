@@ -460,32 +460,16 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         accounting.lock();
     }
 
-    function _updateJournal(JournalEntry[] memory debits, JournalEntry[] memory credits) internal returns (uint128 debited, uint128 credited) {
-        for (uint256 i; i < debits.length; i++) {
-            accounting.addDebit(debits[i].accountId, debits[i].amount.raw());
-            debited += debits[i].amount.raw();
-        }
-
-        for (uint256 i; i < credits.length; i++) {
-            accounting.addCredit(credits[i].accountId, credits[i].amount.raw());
-            credited += credits[i].amount.raw();
-        }
+    /// @inheritdoc IPoolRouterGatewayHandler
+    function increaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external auth {
+        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
+        scm.increaseShareClassIssuance(poolId, scId, amount);
     }
 
-    function _updateHoldingWithPartialDebitsAndCredits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount, bool isIncrease, uint128 debitValue, uint128 creditValue) internal {
-        bool isLiability = holdings.isLiability(poolId, scId, assetId);
-        AccountType debitAccountType = isLiability ? AccountType.EXPENSE : AccountType.ASSET;
-        AccountType creditAccountType = isLiability ? AccountType.LIABILITY : AccountType.EQUITY;
-
-        if (isIncrease) {
-            holdings.increase(poolId, scId, assetId, transientValuation, amount);
-            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), debitValue);
-            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), creditValue);
-        } else {
-            holdings.decrease(poolId, scId, assetId, transientValuation, amount);
-            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), debitValue);
-            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), creditValue);
-        }
+    /// @inheritdoc IPoolRouterGatewayHandler
+    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external auth {
+        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
+        scm.decreaseShareClassIssuance(poolId, scId, amount);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -510,6 +494,36 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     function _pay() internal {
         if (!gateway.isBatching()) {
             gateway.topUp{value: msg.value}();
+        }
+    }
+
+    /// @notice Update the journal with the given debits and credits. Can be unequal.
+    function _updateJournal(JournalEntry[] memory debits, JournalEntry[] memory credits) internal returns (uint128 debited, uint128 credited) {
+        for (uint256 i; i < debits.length; i++) {
+            accounting.addDebit(debits[i].accountId, debits[i].amount.raw());
+            debited += debits[i].amount.raw();
+        }
+
+        for (uint256 i; i < credits.length; i++) {
+            accounting.addCredit(credits[i].accountId, credits[i].amount.raw());
+            credited += credits[i].amount.raw();
+        }
+    }
+
+    /// @notice Update a holding while debiting and/or crediting only a portion of the value change.
+    function _updateHoldingWithPartialDebitsAndCredits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount, bool isIncrease, uint128 debitValue, uint128 creditValue) internal {
+        bool isLiability = holdings.isLiability(poolId, scId, assetId);
+        AccountType debitAccountType = isLiability ? AccountType.EXPENSE : AccountType.ASSET;
+        AccountType creditAccountType = isLiability ? AccountType.LIABILITY : AccountType.EQUITY;
+
+        if (isIncrease) {
+            holdings.increase(poolId, scId, assetId, transientValuation, amount);
+            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), debitValue);
+            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), creditValue);
+        } else {
+            holdings.decrease(poolId, scId, assetId, transientValuation, amount);
+            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), debitValue);
+            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), creditValue);
         }
     }
 }

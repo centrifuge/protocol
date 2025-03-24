@@ -298,4 +298,18 @@ contract TestCases is PoolsDeployer, Test {
         assertEq(accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EXPENSE))), -int128(12 * decimalDiff));
         assertEq(accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EQUITY))), int128(382 * decimalDiff));        
     }
+
+    function testCalUpdateShares() public {
+        (PoolId poolId, ShareClassId scId) = testPoolCreation();
+        
+        cv.updateShares(poolId, scId, 100, true);
+
+        (uint128 totalIssuance,) = multiShareClass.metrics(scId);
+        assertEq(totalIssuance, 100);
+
+        cv.updateShares(poolId, scId, 45, false);
+
+        (uint128 totalIssuance2,) = multiShareClass.metrics(scId);
+        assertEq(totalIssuance2, 55);
+    }
 }

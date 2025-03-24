@@ -120,6 +120,20 @@ contract MockVaults is Test, Auth, IAdapter {
         );
     }
 
+    function updateShares(PoolId poolId, ShareClassId scId, uint128 amount, bool isIssuance) public {
+        handler.handle(
+            sourceChainId,
+            MessageLib.UpdateShares({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                who: bytes32(0),
+                shares: amount,
+                timestamp: 0,
+                isIssuance: isIssuance
+            }).serialize()
+        );
+    }
+
     function estimate(uint32, bytes calldata, uint256 baseCost) external pure returns (uint256) {
         return baseCost;
     }
