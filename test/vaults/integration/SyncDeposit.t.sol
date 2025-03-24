@@ -9,7 +9,7 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
-import {ISyncInvestmentManager} from "src/vaults/interfaces/ISyncInvestmentManager.sol";
+import {ISyncDepositAsyncRedeemManager} from "src/vaults/interfaces/investments/ISyncDepositAsyncRedeemManager.sol";
 
 contract DepositTest is BaseTest {
     using CastLib for *;

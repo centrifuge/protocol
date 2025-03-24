@@ -18,7 +18,12 @@ import {IInvestmentManagerGatewayHandler} from "src/common/interfaces/IGatewayHa
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
-import {IInvestmentManager, InvestmentState} from "src/vaults/interfaces/IInvestmentManager.sol";
+import {IAsyncInvestmentManager, InvestmentState} from "src/vaults/interfaces/investments/IAsyncInvestmentManager.sol";
+import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
+import {IAsyncDepositManager} from "src/vaults/interfaces/investments/IAsyncDepositManager.sol";
+import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
+import {IRedeemManager} from "src/vaults/interfaces/investments/IRedeemManager.sol";
+import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
@@ -27,7 +32,7 @@ import {PriceConversionLib} from "src/vaults/libraries/PriceConversionLib.sol";
 /// @title  Investment Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
-contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewayHandler {
+contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerGatewayHandler {
     using MessageLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;
@@ -40,10 +45,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
     IVaultMessageSender public sender;
     IPoolManager public poolManager;
 
-    // TODO: Support multiple sync vaults
     mapping(uint64 poolId => mapping(bytes16 trancheId => mapping(uint128 assetId => address vault))) public vault;
-
-    /// @inheritdoc IInvestmentManager
     mapping(address vault => mapping(address investor => InvestmentState)) public investments;
 
     constructor(address root_, address escrow_) Auth(msg.sender) {
@@ -51,8 +53,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         escrow = escrow_;
     }
 
-    // --- Administration ---
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IBaseInvestmentManager
     function file(bytes32 what, address data) external auth {
         if (what == "gateway") gateway = IGateway(data);
         else if (what == "sender") sender = IVaultMessageSender(data);
@@ -74,7 +75,6 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
     /// @inheritdoc IVaultManager
     function addVault(uint64 poolId, bytes16 trancheId, address vaultAddr, address asset_, uint128 assetId)
         public
-        override
         auth
     {
         // TODO: Switch all occurences to BaseVault?
@@ -94,7 +94,6 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
     /// @inheritdoc IVaultManager
     function removeVault(uint64 poolId, bytes16 trancheId, address vaultAddr, address asset_, uint128 assetId)
         public
-        override
         auth
     {
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
@@ -110,8 +109,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         deny(vaultAddr);
     }
 
-    // --- Outgoing message handling ---
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IAsyncDepositManager
     function requestDeposit(address vaultAddr, uint256 assets, address controller, address, /* owner */ address source)
         public
         auth
@@ -146,7 +144,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         return true;
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IAsyncRedeemManager
     function requestRedeem(address vaultAddr, uint256 shares, address controller, address owner, address source)
         public
         auth
@@ -194,7 +192,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         return true;
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IAsyncDepositManager
     function cancelDepositRequest(address vaultAddr, address controller, address source) public auth {
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
 
@@ -211,7 +209,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         );
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IAsyncRedeemManager
     function cancelRedeemRequest(address vaultAddr, address controller, address source) public auth {
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
         uint256 approximateTranchesPayout = pendingRedeemRequest(vaultAddr, controller);
@@ -372,7 +370,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
     }
 
     // --- View functions ---
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IBaseInvestmentManager
     function convertToShares(address vaultAddr, uint256 _assets) public view returns (uint256 shares) {
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
@@ -382,7 +380,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         );
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IBaseInvestmentManager
     function convertToAssets(address vaultAddr, uint256 _shares) public view returns (uint256 assets) {
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
@@ -392,7 +390,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         );
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IDepositManager
     function maxDeposit(address vaultAddr, address user) public view returns (uint256 assets) {
         if (!_canTransfer(vaultAddr, address(escrow), user, 0)) return 0;
         assets = uint256(_maxDeposit(vaultAddr, user));
@@ -403,19 +401,19 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         assets = PriceConversionLib.calculateAssets(state.maxMint, vaultAddr, state.depositPrice, MathLib.Rounding.Down);
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IDepositManager
     function maxMint(address vaultAddr, address user) public view returns (uint256 shares) {
         if (!_canTransfer(vaultAddr, address(escrow), user, 0)) return 0;
         shares = uint256(investments[vaultAddr][user].maxMint);
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IRedeemManager
     function maxWithdraw(address vaultAddr, address user) public view returns (uint256 assets) {
         if (!_canTransfer(vaultAddr, user, address(0), 0)) return 0;
         assets = uint256(investments[vaultAddr][user].maxWithdraw);
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IRedeemManager
     function maxRedeem(address vaultAddr, address user) public view returns (uint256 shares) {
         if (!_canTransfer(vaultAddr, user, address(0), 0)) return 0;
         InvestmentState memory state = investments[vaultAddr][user];
@@ -424,45 +422,44 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         );
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IAsyncDepositManager
     function pendingDepositRequest(address vaultAddr, address user) public view returns (uint256 assets) {
         assets = uint256(investments[vaultAddr][user].pendingDepositRequest);
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IAsyncRedeemManager
     function pendingRedeemRequest(address vaultAddr, address user) public view returns (uint256 shares) {
         shares = uint256(investments[vaultAddr][user].pendingRedeemRequest);
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IAsyncDepositManager
     function pendingCancelDepositRequest(address vaultAddr, address user) public view returns (bool isPending) {
         isPending = investments[vaultAddr][user].pendingCancelDepositRequest;
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IAsyncRedeemManager
     function pendingCancelRedeemRequest(address vaultAddr, address user) public view returns (bool isPending) {
         isPending = investments[vaultAddr][user].pendingCancelRedeemRequest;
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IAsyncDepositManager
     function claimableCancelDepositRequest(address vaultAddr, address user) public view returns (uint256 assets) {
         assets = investments[vaultAddr][user].claimableCancelDepositRequest;
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IAsyncRedeemManager
     function claimableCancelRedeemRequest(address vaultAddr, address user) public view returns (uint256 shares) {
         shares = investments[vaultAddr][user].claimableCancelRedeemRequest;
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IBaseInvestmentManager
     function priceLastUpdated(address vaultAddr) public view returns (uint64 lastUpdated) {
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
         (, lastUpdated) = poolManager.tranchePrice(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
     }
 
-    // --- Vault claim functions ---
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IDepositManager
     function deposit(address vaultAddr, uint256 assets, address receiver, address controller)
         public
         auth
@@ -479,7 +476,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         shares = uint256(sharesDown);
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IDepositManager
     function mint(address vaultAddr, uint256 shares, address receiver, address controller)
         public
         auth
@@ -509,7 +506,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         }
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IRedeemManager
     function redeem(address vaultAddr, uint256 shares, address receiver, address controller)
         public
         auth
@@ -526,7 +523,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         assets = uint256(assetsDown);
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IRedeemManager
     function withdraw(address vaultAddr, uint256 assets, address receiver, address controller)
         public
         auth
@@ -574,7 +571,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         }
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IAsyncDepositManager
     function claimCancelDepositRequest(address vaultAddr, address receiver, address controller)
         public
         auth
@@ -606,7 +603,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         }
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IAsyncRedeemManager
     function claimCancelRedeemRequest(address vaultAddr, address receiver, address controller)
         public
         auth
@@ -631,7 +628,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         return share.checkTransferRestriction(from, to, value);
     }
 
-    /// @inheritdoc IInvestmentManager
+    /// @inheritdoc IBaseInvestmentManager
     function vaultByAssetId(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (address) {
         return vault[poolId][trancheId][assetId];
     }

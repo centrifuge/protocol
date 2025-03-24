@@ -11,12 +11,12 @@ import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 contract SyncVaultFactory is Auth, IVaultFactory {
     address public immutable root;
     address public immutable investmentManager;
-    address public immutable syncInvestManager;
+    address public immutable syncInvestAsyncRedeemManager;
 
-    constructor(address _root, address _investmentManager, address _syncInvestManager) Auth(msg.sender) {
+    constructor(address _root, address _investmentManager, address _syncInvestAsyncRedeemManager) Auth(msg.sender) {
         root = _root;
         investmentManager = _investmentManager;
-        syncInvestManager = _syncInvestManager;
+        syncInvestAsyncRedeemManager = _syncInvestAsyncRedeemManager;
     }
 
     /// @inheritdoc IVaultFactory
@@ -29,12 +29,13 @@ contract SyncVaultFactory is Auth, IVaultFactory {
         address, /* escrow */
         address[] calldata wards_
     ) public auth returns (address) {
-        SyncDepositVault vault =
-            new SyncDepositVault(poolId, trancheId, asset, tokenId, tranche, root, investmentManager, syncInvestManager);
+        SyncDepositVault vault = new SyncDepositVault(
+            poolId, trancheId, asset, tokenId, tranche, root, investmentManager, syncInvestAsyncRedeemManager
+        );
 
         vault.rely(root);
         vault.rely(investmentManager);
-        vault.rely(syncInvestManager);
+        vault.rely(syncInvestAsyncRedeemManager);
 
         uint256 wardsCount = wards_.length;
         for (uint256 i; i < wardsCount; i++) {
