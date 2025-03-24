@@ -8,7 +8,7 @@ import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
@@ -113,13 +113,7 @@ contract TestMainMethodsChecks is TestCommon {
         poolRouter.updateContract(0, ShareClassId.wrap(0), bytes32(0), bytes(""));
 
         vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.deployVault(ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), bytes32(0));
-
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.addVault(ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), bytes32(0));
-
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.removeVault(ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), bytes32(0));
+        poolRouter.updateVault(ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), bytes32(0), VaultUpdateKind(0));
 
         vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.createHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
@@ -170,24 +164,6 @@ contract TestNotifyShareClass is TestCommon {
 
         vm.prank(ADMIN);
         vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
-        poolRouter.execute(POOL_A, cs);
-    }
-}
-
-contract TestDeployVault is TestCommon {
-    function testErrHoldingNotFound() public {
-        vm.mockCall(
-            address(holdings),
-            abi.encodeWithSelector(holdings.exists.selector, POOL_A, SC_A, ASSET_A),
-            abi.encode(false)
-        );
-
-        bytes[] memory cs = new bytes[](1);
-        cs[0] =
-            abi.encodeWithSelector(poolRouter.deployVault.selector, SC_A, ASSET_A, bytes32(0), bytes32(0), bytes32(0));
-
-        vm.prank(ADMIN);
-        vm.expectRevert(IHoldings.HoldingNotFound.selector);
         poolRouter.execute(POOL_A, cs);
     }
 }

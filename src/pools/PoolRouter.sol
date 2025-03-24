@@ -258,28 +258,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     }
 
     /// @inheritdoc IPoolRouter
-    function deployVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 factory)
-        public payable
-    {
-        _protectedAndUnlocked();
-
-        require(holdings.exists(unlockedPoolId, scId, assetId), IHoldings.HoldingNotFound());
-
-        sender.sendUpdateContract(
-            assetId.chainId(),
-            unlockedPoolId,
-            scId,
-            target,
-            MessageLib.UpdateContractVaultUpdate({
-                vaultOrFactory: factory,
-                assetId: assetId.raw(),
-                kind: uint8(VaultUpdateKind.DeployAndLink)
-            }).serialize()
-        );
-    }
-
-    /// @inheritdoc IPoolRouter
-    function addVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 vault)
+    function updateVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 vaultOrFactory, VaultUpdateKind kind)
         public payable
     {
         _protectedAndUnlocked();
@@ -290,28 +269,9 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
             scId,
             target,
             MessageLib.UpdateContractVaultUpdate({
-                vaultOrFactory: vault,
+                vaultOrFactory: vaultOrFactory,
                 assetId: assetId.raw(),
-                kind: uint8(VaultUpdateKind.Link)
-            }).serialize()
-        );
-    }
-
-    /// @inheritdoc IPoolRouter
-    function removeVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 vault)
-        public payable
-    {
-        _protectedAndUnlocked();
-
-        sender.sendUpdateContract(
-            assetId.chainId(),
-            unlockedPoolId,
-            scId,
-            target,
-            MessageLib.UpdateContractVaultUpdate({
-                vaultOrFactory: vault,
-                assetId: assetId.raw(),
-                kind: uint8(VaultUpdateKind.Unlink)
+                kind: uint8(kind)
             }).serialize()
         );
     }

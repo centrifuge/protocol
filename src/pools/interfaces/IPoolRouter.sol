@@ -4,6 +4,8 @@ pragma solidity 0.8.28;
 import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
+import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
 import {AccountId} from "src/pools/types/AccountId.sol";
@@ -136,20 +138,15 @@ interface IPoolRouter {
     /// @notice Deploy a vault in the Vaults side.
     /// @param assetId Asset used in the vault.
     /// @param target contract where to execute this action in CV. Check IUpdateContract interface.
-    /// @param factory Factory address. Check `IVaultFactory` interface.
-    function deployVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 factory) external payable;
-
-    /// @notice Add a vault that was previously removed in Vaults side.
-    /// @param assetId Asset used in the vault.
-    /// @param target contract where to execute this action in CV. Check IUpdateContract interface.
-    /// @param vault Vault address. Check `IBaseVault`.
-    function addVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 vault) external payable;
-
-    /// @notice Removes a vault in the Vaults side. This unlink a previous deployed vault.
-    /// @param assetId Asset used in the vault.
-    /// @param target contract where to execute in CV. Check IUpdateContract interface.
-    /// @param vault Vault address. Check `IBaseVault`.
-    function removeVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 vault) external payable;
+    /// @param vaultOrFactory Vault or Factory address, depending on kind. Check `IVaultFactory` interface.
+    /// @param kind The action to do with the vault. See `VaultUpdateKind`
+    function updateVault(
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 target,
+        bytes32 vaultOrFactory,
+        VaultUpdateKind kind
+    ) external payable;
 
     /// @notice Create a new holding associated to the asset in a share class.
     /// It will generate and register the different accounts used for holdings.
