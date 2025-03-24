@@ -364,3 +364,11 @@ contract TestExists is TestCommon {
         assert(!holdings.exists(POOL_A, SC_1, POOL_CURRENCY));
     }
 }
+
+contract TestLiability is TestCommon {
+    function testSuccess() public {
+        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, true, new AccountId[](0));
+
+        assert(holdings.isLiability(POOL_A, SC_1, ASSET_A));
+    }
+}
