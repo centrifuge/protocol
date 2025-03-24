@@ -44,11 +44,11 @@ contract AccountingTest is Test {
         accounting.unlock(POOL_A, 1);
 
         vm.expectEmit();
-        emit IAccounting.Debit(POOL_A, 1, CASH_ACCOUNT, 500);
+        emit IAccounting.Debit(POOL_A, CASH_ACCOUNT, 500);
         accounting.addDebit(CASH_ACCOUNT, 500);
 
         vm.expectEmit();
-        emit IAccounting.Credit(POOL_A, 1, EQUITY_ACCOUNT, 500);
+        emit IAccounting.Credit(POOL_A, EQUITY_ACCOUNT, 500);
         accounting.addCredit(EQUITY_ACCOUNT, 500);
 
         accounting.addDebit(BOND1_INVESTMENT_ACCOUNT, 245);

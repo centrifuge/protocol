@@ -6,8 +6,8 @@ import {PoolId} from "src/pools/types/PoolId.sol";
 
 interface IAccounting {
     /// @notice Emitted when a an entry is done
-    event Credit(PoolId indexed poolId, uint256 indexed journalId, AccountId indexed account, uint128 value);
-    event Debit(PoolId indexed poolId, uint256 indexed journalId, AccountId indexed account, uint128 value);
+    event Credit(PoolId indexed poolId, AccountId indexed account, uint128 value);
+    event Debit(PoolId indexed poolId, AccountId indexed account, uint128 value);
 
     /// @notice Emitted at the beginning and end of a journal entry
     event StartJournalId(PoolId indexed poolId, uint256 journalId);

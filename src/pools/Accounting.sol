@@ -13,10 +13,10 @@ contract Accounting is Auth, IAccounting {
     uint128 public transient debited;
     uint128 public transient credited;
     PoolId internal transient _currentPoolId;
-
-    mapping(PoolId => uint64) internal _poolJournalIdCounter;
     /// @inheritdoc IAccounting
     uint256 public transient journalId;
+
+    mapping(PoolId => uint64) internal _poolJournalIdCounter;
 
     constructor(address deployer) Auth(deployer) {}
 
@@ -30,7 +30,7 @@ contract Accounting is Auth, IAccounting {
         acc.totalDebit += value;
         debited += value;
         acc.lastUpdated = uint64(block.timestamp);
-        emit Debit(_currentPoolId, journalId, account, value);
+        emit Debit(_currentPoolId, account, value);
     }
 
     /// @inheritdoc IAccounting
@@ -43,7 +43,7 @@ contract Accounting is Auth, IAccounting {
         acc.totalCredit += value;
         credited += value;
         acc.lastUpdated = uint64(block.timestamp);
-        emit Credit(_currentPoolId, journalId, account, value);
+        emit Credit(_currentPoolId, account, value);
     }
 
     /// @inheritdoc IAccounting
