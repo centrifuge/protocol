@@ -38,6 +38,7 @@ contract TestMessageLibCategories is Test {
 
 // The following tests check that the function composition of deserializing and serializing equals to the identity:
 //       I = deserialize º serialize
+// NOTE. To fully ensure a good testing, use different values for each field.
 contract TestMessageLibIdentities is Test {
     using MessageLib for *;
 
@@ -275,33 +276,15 @@ contract TestMessageLibIdentities is Test {
     }
 
     function testUpdateContractVaultUpdate() public pure {
-        MessageLib.UpdateContractVaultUpdate memory a = MessageLib.UpdateContractVaultUpdate({
-            factory: bytes32("1"),
-            assetId: 1,
-            isLinked: false,
-            vault: bytes32("1")
-        });
+        MessageLib.UpdateContractVaultUpdate memory a =
+            MessageLib.UpdateContractVaultUpdate({vaultOrFactory: bytes32("address"), assetId: 1, kind: 2});
         MessageLib.UpdateContractVaultUpdate memory b = MessageLib.deserializeUpdateContractVaultUpdate(a.serialize());
 
-        assertEq(a.factory, b.factory);
+        assertEq(a.vaultOrFactory, b.vaultOrFactory);
         assertEq(a.assetId, b.assetId);
-        assertEq(a.isLinked, b.isLinked);
-        assertEq(a.vault, b.vault);
+        assertEq(a.kind, b.kind);
 
         // This message is a submessage and has not static message length defined
-
-        MessageLib.UpdateContractVaultUpdate memory c = MessageLib.UpdateContractVaultUpdate({
-            factory: bytes32("2"),
-            assetId: 1,
-            isLinked: true,
-            vault: bytes32("2")
-        });
-        MessageLib.UpdateContractVaultUpdate memory d = MessageLib.deserializeUpdateContractVaultUpdate(c.serialize());
-
-        assertEq(c.factory, d.factory);
-        assertEq(c.assetId, d.assetId);
-        assertEq(c.isLinked, d.isLinked);
-        assertEq(c.vault, d.vault);
     }
 
     function testDepositRequest() public pure {

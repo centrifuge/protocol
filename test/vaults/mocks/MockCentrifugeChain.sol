@@ -6,7 +6,7 @@ import "forge-std/Test.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
-import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 import {PoolManager} from "src/vaults/PoolManager.sol";
@@ -43,10 +43,9 @@ contract MockCentrifugeChain is Test {
                 scId: trancheId,
                 target: bytes32(bytes20(address(poolManager))),
                 payload: MessageLib.UpdateContractVaultUpdate({
-                    factory: bytes32(0),
+                    vaultOrFactory: bytes32(bytes20(vault)),
                     assetId: vaultDetails.assetId,
-                    isLinked: false,
-                    vault: bytes32(bytes20(vault))
+                    kind: uint8(VaultUpdateKind.Unlink)
                 }).serialize()
             }).serialize()
         );
@@ -61,10 +60,9 @@ contract MockCentrifugeChain is Test {
                 scId: trancheId,
                 target: bytes32(bytes20(address(poolManager))),
                 payload: MessageLib.UpdateContractVaultUpdate({
-                    factory: bytes32(0),
+                    vaultOrFactory: bytes32(bytes20(vault)),
                     assetId: vaultDetails.assetId,
-                    isLinked: true,
-                    vault: bytes32(bytes20(vault))
+                    kind: uint8(VaultUpdateKind.Link)
                 }).serialize()
             }).serialize()
         );

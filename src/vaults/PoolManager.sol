@@ -10,7 +10,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {VaultUpdateKind, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IPoolManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
@@ -281,21 +281,25 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     function update(uint64 poolId, bytes16 trancheId, bytes memory payload) public auth {
         MessageLib.UpdateContractVaultUpdate memory m = MessageLib.deserializeUpdateContractVaultUpdate(payload);
 
-        address vault = address(bytes20(m.vault));
-        address factory = address(bytes20(m.factory));
+        if (m.kind == uint8(VaultUpdateKind.DeployAndLink)) {
+            address factory = address(bytes20(m.vaultOrFactory));
 
-        if (factory != address(0) && vault == address(0)) {
-            vault = deployVault(poolId, trancheId, m.assetId, factory);
-        }
-
-        // Needed as safeguard against non-validated vaults
-        // I.e. we only accept vaults that have been deployed by the pool manager
-        require(_vaultDetails[vault].asset != address(0), "PoolManager/unknown-vault");
-
-        if (m.isLinked) {
+            address vault = deployVault(poolId, trancheId, m.assetId, factory);
             linkVault(poolId, trancheId, m.assetId, vault);
         } else {
-            unlinkVault(poolId, trancheId, m.assetId, vault);
+            address vault = address(bytes20(m.vaultOrFactory));
+
+            // Needed as safeguard against non-validated vaults
+            // I.e. we only accept vaults that have been deployed by the pool manager
+            require(_vaultDetails[vault].asset != address(0), "PoolManager/unknown-vault");
+
+            if (m.kind == uint8(VaultUpdateKind.Link)) {
+                linkVault(poolId, trancheId, m.assetId, vault);
+            } else if (m.kind == uint8(VaultUpdateKind.Unlink)) {
+                unlinkVault(poolId, trancheId, m.assetId, vault);
+            } else {
+                revert("PoolManager/malformed-vault-update-msg");
+            }
         }
     }
 

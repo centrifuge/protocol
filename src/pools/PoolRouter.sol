@@ -9,7 +9,7 @@ import {Auth} from "src/misc/Auth.sol";
 import {Multicall, IMulticall} from "src/misc/Multicall.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
+import {MessageLib, UpdateContractType, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IPoolRouterGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
@@ -256,16 +256,14 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
 
         if (payload.updateContractType() == UpdateContractType.VaultUpdate) {
             MessageLib.UpdateContractVaultUpdate memory m = MessageLib.deserializeUpdateContractVaultUpdate(payload);
-            if (m.isLinked) {
-                if (m.factory != bytes32(0) && m.vault == bytes32(0)) {
-                    deployVault(scId, AssetId.wrap(m.assetId), target, m.factory);
-                }
-                else {
-                    addVault(scId, AssetId.wrap(m.assetId), target, m.factory);
-                }
-            }
-            else {
-                removeVault(scId, AssetId.wrap(m.assetId), target, m.vault);
+            if (m.kind == uint8(VaultUpdateKind.DeployAndLink)) {
+                deployVault(scId, AssetId.wrap(m.assetId), target, m.vaultOrFactory);
+            } else if (m.kind == uint8(VaultUpdateKind.Link)) {
+                addVault(scId, AssetId.wrap(m.assetId), target, m.vaultOrFactory);
+            } else if (m.kind == uint8(VaultUpdateKind.Unlink)) {
+                removeVault(scId, AssetId.wrap(m.assetId), target, m.vaultOrFactory);
+            } else {
+                revert UpdateContractMalformed();
             }
         }
         else {
@@ -287,10 +285,9 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
             scId,
             target,
             MessageLib.UpdateContractVaultUpdate({
-                factory: factory,
+                vaultOrFactory: factory,
                 assetId: assetId.raw(),
-                isLinked: true,
-                vault: bytes32(0)
+                kind: uint8(VaultUpdateKind.DeployAndLink)
             }).serialize()
         );
     }
@@ -307,10 +304,9 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
             scId,
             target,
             MessageLib.UpdateContractVaultUpdate({
-                factory: bytes32(0),
+                vaultOrFactory: vault,
                 assetId: assetId.raw(),
-                isLinked: true,
-                vault: vault
+                kind: uint8(VaultUpdateKind.Link)
             }).serialize()
         );
     }
@@ -327,10 +323,9 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
             scId,
             target,
             MessageLib.UpdateContractVaultUpdate({
-                factory: bytes32(0),
+                vaultOrFactory: vault,
                 assetId: assetId.raw(),
-                isLinked: false,
-                vault: vault
+                kind: uint8(VaultUpdateKind.Unlink)
             }).serialize()
         );
     }

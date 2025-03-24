@@ -8,7 +8,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
@@ -130,9 +130,8 @@ contract TestCases is PoolsDeployer, Test {
 
         MessageLib.UpdateContractVaultUpdate memory m3 = MessageLib.deserializeUpdateContractVaultUpdate(m2.payload);
         assertEq(m3.assetId, USDC_C2.raw());
-        assertEq(m3.factory, bytes32("factory"));
-        assertEq(m3.vault, bytes32(0));
-        assertEq(m3.isLinked, true);
+        assertEq(m3.vaultOrFactory, bytes32("factory"));
+        assertEq(m3.kind, uint8(VaultUpdateKind.DeployAndLink));
 
         cv.resetMessages();
     }

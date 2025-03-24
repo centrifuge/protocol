@@ -50,6 +50,9 @@ interface IPoolRouter {
     /// @notice Dispatched when the pool is not unlocked to interact with.
     error PoolLocked();
 
+    /// @notice Dispatched when the an UpdateContract payload is not well formed.
+    error UpdateContractMalformed();
+
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
     /// Accepts a `bytes32` representation of 'poolRegistry', 'assetRegistry', 'accounting', 'holdings', 'gateway' and '

@@ -8,6 +8,7 @@ import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
@@ -22,6 +23,7 @@ import {IPoolRouter} from "src/pools/interfaces/IPoolRouter.sol";
 import {PoolRouter} from "src/pools/PoolRouter.sol";
 
 contract TestCommon is Test {
+    uint16 constant CHAIN_A = 23;
     PoolId constant POOL_A = PoolId.wrap(1);
     ShareClassId constant SC_A = ShareClassId.wrap(bytes16(uint128(2)));
     AssetId constant ASSET_A = AssetId.wrap(3);
@@ -182,6 +184,26 @@ contract TestDeployVault is TestCommon {
 
         vm.prank(ADMIN);
         vm.expectRevert(IHoldings.HoldingNotFound.selector);
+        poolRouter.execute(POOL_A, cs);
+    }
+}
+
+contract TestUpdateContract is TestCommon {
+    using MessageLib for *;
+
+    function testErrUpdateContractMalformed() public {
+        bytes memory payload = MessageLib.UpdateContractVaultUpdate({
+            vaultOrFactory: bytes32("factory"),
+            assetId: ASSET_A.raw(),
+            kind: 3
+        }) // Unknown kind, see VaultUpdateKind
+            .serialize();
+
+        bytes[] memory cs = new bytes[](1);
+        cs[0] = abi.encodeWithSelector(poolRouter.updateContract.selector, CHAIN_A, SC_A, bytes32("target"), payload);
+
+        vm.prank(ADMIN);
+        vm.expectRevert(IPoolRouter.UpdateContractMalformed.selector);
         poolRouter.execute(POOL_A, cs);
     }
 }

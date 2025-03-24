@@ -1039,10 +1039,9 @@ contract PoolManagerUpdateContract is BaseTest, PoolManagerTestHelper {
         setUpPoolAndTranche(poolId_, decimals_, tokenName_, tokenSymbol_, trancheId_);
         registerAssetErc20();
         bytes memory vaultUpdate = MessageLib.UpdateContractVaultUpdate({
-            factory: bytes32(bytes20(vaultFactory)),
+            vaultOrFactory: bytes32("1"),
             assetId: assetIdErc20,
-            isLinked: true,
-            vault: bytes32("1")
+            kind: uint8(VaultUpdateKind.Link)
         }).serialize();
 
         vm.expectRevert("PoolManager/unknown-vault");
@@ -1071,10 +1070,9 @@ contract PoolManagerUpdateContract is BaseTest, PoolManagerTestHelper {
 
     function _serializedUpdateContractNewVault(address vaultFactory_) internal view returns (bytes memory payload) {
         return MessageLib.UpdateContractVaultUpdate({
-            factory: bytes32(bytes20(vaultFactory_)),
+            vaultOrFactory: bytes32(bytes20(vaultFactory_)),
             assetId: assetIdErc20,
-            isLinked: true,
-            vault: bytes32(0)
+            kind: uint8(VaultUpdateKind.DeployAndLink)
         }).serialize();
     }
 }
