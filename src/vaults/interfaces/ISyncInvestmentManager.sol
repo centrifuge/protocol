@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 
-interface IInstantManager is IMessageHandler, IRecoverable {
+interface ISyncInvestmentManager is IMessageHandler, IRecoverable {
     // --- Events ---
     event File(bytes32 indexed what, address data);
 

@@ -13,13 +13,13 @@ import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
-import {IInstantManager} from "src/vaults/interfaces/IInstantManager.sol";
+import {ISyncInvestmentManager} from "src/vaults/interfaces/ISyncInvestmentManager.sol";
 import {PriceConversionLib} from "src/vaults/libraries/PriceConversionLib.sol";
 
-/// @title  Instant Manager
+/// @title  Sync Investment Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
-contract InstantManager is Auth, IInstantManager {
+contract SyncInvestmentManager is Auth, ISyncInvestmentManager {
     using MathLib for uint256;
 
     address public immutable escrow;
@@ -34,11 +34,11 @@ contract InstantManager is Auth, IInstantManager {
     }
 
     // --- Administration ---
-    /// @inheritdoc IInstantManager
+    /// @inheritdoc ISyncInvestmentManager
     function file(bytes32 what, address data) external auth {
         if (what == "gateway") gateway = IGateway(data);
         else if (what == "poolManager") poolManager = IPoolManager(data);
-        else revert("InstantManager/file-unrecognized-param");
+        else revert("SyncInvestmentManager/file-unrecognized-param");
         emit File(what, data);
     }
 
@@ -52,7 +52,7 @@ contract InstantManager is Auth, IInstantManager {
     }
 
     // --- Deposits ---
-    /// @inheritdoc IInstantManager
+    /// @inheritdoc ISyncInvestmentManager
     function maxDeposit(address vaultAddr, address /* owner */ ) public view returns (uint256) {
         IBaseVault vault = IBaseVault(vaultAddr);
 
@@ -60,7 +60,7 @@ contract InstantManager is Auth, IInstantManager {
         return type(uint256).max;
     }
 
-    /// @inheritdoc IInstantManager
+    /// @inheritdoc ISyncInvestmentManager
     function previewDeposit(address vaultAddr, address, /* sender */ uint256 assets)
         public
         view
@@ -75,7 +75,7 @@ contract InstantManager is Auth, IInstantManager {
         shares = PriceConversionLib.calculateShares(assets.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down);
     }
 
-    /// @inheritdoc IInstantManager
+    /// @inheritdoc ISyncInvestmentManager
     function deposit(address vaultAddr, uint256 assets, address receiver, address owner)
         external
         returns (uint256 shares)
@@ -89,7 +89,7 @@ contract InstantManager is Auth, IInstantManager {
         // TODO: Call CAL.IssueShares + CAL.UpdateHoldings
     }
 
-    /// @inheritdoc IInstantManager
+    /// @inheritdoc ISyncInvestmentManager
     function maxMint(address vaultAddr, address /* owner */ ) public view returns (uint256) {
         IBaseVault vault = IBaseVault(vaultAddr);
 
@@ -97,7 +97,7 @@ contract InstantManager is Auth, IInstantManager {
         return type(uint256).max;
     }
 
-    /// @inheritdoc IInstantManager
+    /// @inheritdoc ISyncInvestmentManager
     function previewMint(address vaultAddr, address, /* sender */ uint256 shares)
         public
         view
@@ -113,7 +113,7 @@ contract InstantManager is Auth, IInstantManager {
         assets = PriceConversionLib.calculateAssets(shares.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down);
     }
 
-    /// @inheritdoc IInstantManager
+    /// @inheritdoc ISyncInvestmentManager
     function mint(address vaultAddr, uint256 shares, address receiver, address owner)
         external
         returns (uint256 assets)

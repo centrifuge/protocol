@@ -8,8 +8,8 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
-import {InstantDepositVault} from "src/vaults/InstantDepositVault.sol";
-import {IInstantManager} from "src/vaults/interfaces/IInstantManager.sol";
+import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
+import {ISyncInvestmentManager} from "src/vaults/interfaces/ISyncInvestmentManager.sol";
 
 contract DepositTest is BaseTest {
     using CastLib for *;
@@ -29,7 +29,7 @@ contract DepositTest is BaseTest {
         return address(0);
     }
 
-    function testInstantDeposit(uint256 amount) public {
+    function testSyncDeposit(uint256 amount) public {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
         amount = uint128(bound(amount, 4, MAX_UINT128));
         vm.assume(amount % 2 == 0);
@@ -46,9 +46,9 @@ contract DepositTest is BaseTest {
 
         erc20.mint(self, amount);
 
-        // Deploy instant vault
+        // Deploy sync vault
         address syncVault_ = _deploySyncVault(asyncVault.poolId(), asyncVault.trancheId(), assetId);
-        InstantDepositVault syncVault = InstantDepositVault(syncVault_);
+        SyncDepositVault syncVault = SyncDepositVault(syncVault_);
 
         // Check price and max amounts
         assertEq(syncVault.previewMint(amount / 2), amount);

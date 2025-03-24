@@ -3,15 +3,15 @@ pragma solidity 0.8.28;
 
 import {BaseVault} from "src/vaults/BaseVault.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
-import {IInstantManager} from "src/vaults/interfaces/IInstantManager.sol";
+import {ISyncInvestmentManager} from "src/vaults/interfaces/ISyncInvestmentManager.sol";
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 import "src/misc/interfaces/IERC20.sol";
 
-/// @title  InstantDepositVault
+/// @title  SyncDepositVault
 /// @notice TODO
-contract InstantDepositVault is BaseVault {
-    IInstantManager public instantManager;
+contract SyncDepositVault is BaseVault {
+    ISyncInvestmentManager public syncInvestManager;
 
     constructor(
         uint64 poolId_,
@@ -21,41 +21,41 @@ contract InstantDepositVault is BaseVault {
         address share_,
         address root_,
         address manager_,
-        address instantManager_
+        address syncInvestManager_
     ) BaseVault(poolId_, trancheId_, asset_, tokenId_, share_, root_, manager_) {
-        instantManager = IInstantManager(instantManager_);
+        syncInvestManager = ISyncInvestmentManager(syncInvestManager_);
     }
 
     // --- ERC-4626 methods ---
     /// @inheritdoc IERC7575
     function maxDeposit(address owner) public view returns (uint256 maxAssets) {
-        maxAssets = instantManager.maxDeposit(address(this), owner);
+        maxAssets = syncInvestManager.maxDeposit(address(this), owner);
     }
 
     function previewDeposit(uint256 assets) external view returns (uint256 shares) {
-        shares = instantManager.previewDeposit(address(this), msg.sender, assets);
+        shares = syncInvestManager.previewDeposit(address(this), msg.sender, assets);
     }
 
     /// @inheritdoc IERC7575
     function deposit(uint256 assets, address receiver) external returns (uint256 shares) {
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, instantManager.escrow(), assets);
-        shares = instantManager.deposit(address(this), assets, receiver, msg.sender);
+        SafeTransferLib.safeTransferFrom(asset, msg.sender, syncInvestManager.escrow(), assets);
+        shares = syncInvestManager.deposit(address(this), assets, receiver, msg.sender);
         emit Deposit(receiver, msg.sender, assets, shares);
     }
 
     /// @inheritdoc IERC7575
     function maxMint(address owner) public view returns (uint256 maxShares) {
-        maxShares = instantManager.maxMint(address(this), owner);
+        maxShares = syncInvestManager.maxMint(address(this), owner);
     }
 
     function previewMint(uint256 shares) external view returns (uint256 assets) {
-        assets = instantManager.previewMint(address(this), msg.sender, shares);
+        assets = syncInvestManager.previewMint(address(this), msg.sender, shares);
     }
 
     /// @inheritdoc IERC7575
     function mint(uint256 shares, address receiver) public returns (uint256 assets) {
-        assets = instantManager.mint(address(this), shares, receiver, msg.sender);
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, instantManager.escrow(), assets);
+        assets = syncInvestManager.mint(address(this), shares, receiver, msg.sender);
+        SafeTransferLib.safeTransferFrom(asset, msg.sender, syncInvestManager.escrow(), assets);
         emit Deposit(receiver, msg.sender, assets, shares);
     }
 

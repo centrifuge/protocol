@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 
-import {InstantDepositVault} from "src/vaults/InstantDepositVault.sol";
+import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 
 /// @title  Sync Vault Factory
@@ -11,12 +11,12 @@ import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 contract SyncVaultFactory is Auth, IVaultFactory {
     address public immutable root;
     address public immutable investmentManager;
-    address public immutable instantManager;
+    address public immutable syncInvestManager;
 
-    constructor(address _root, address _investmentManager, address _instantManager) Auth(msg.sender) {
+    constructor(address _root, address _investmentManager, address _syncInvestManager) Auth(msg.sender) {
         root = _root;
         investmentManager = _investmentManager;
-        instantManager = _instantManager;
+        syncInvestManager = _syncInvestManager;
     }
 
     /// @inheritdoc IVaultFactory
@@ -29,12 +29,12 @@ contract SyncVaultFactory is Auth, IVaultFactory {
         address, /* escrow */
         address[] calldata wards_
     ) public auth returns (address) {
-        InstantDepositVault vault =
-            new InstantDepositVault(poolId, trancheId, asset, tokenId, tranche, root, investmentManager, instantManager);
+        SyncDepositVault vault =
+            new SyncDepositVault(poolId, trancheId, asset, tokenId, tranche, root, investmentManager, syncInvestManager);
 
         vault.rely(root);
         vault.rely(investmentManager);
-        vault.rely(instantManager);
+        vault.rely(syncInvestManager);
 
         uint256 wardsCount = wards_.length;
         for (uint256 i; i < wardsCount; i++) {
