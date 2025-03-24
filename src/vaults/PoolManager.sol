@@ -54,7 +54,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
     uint32 internal _assetCounter;
 
-    mapping(uint64 poolId => Pool) internal _pools;
+    mapping(uint64 poolId => Pool) public pools;
     mapping(address factory => bool) public vaultFactory;
     mapping(address => VaultDetails) internal _vaultDetails;
     mapping(uint128 assetId => AssetIdKey) internal _idToAsset;
@@ -159,7 +159,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
     /// @inheritdoc IPoolManagerGatewayHandler
     function addPool(uint64 poolId) public auth {
-        Pool storage pool = _pools[poolId];
+        Pool storage pool = pools[poolId];
         require(pool.createdAt == 0, "PoolManager/pool-already-added");
         pool.createdAt = block.timestamp;
         emit AddPool(poolId);
@@ -192,7 +192,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
             ITranche(token).file("hook", hook);
         }
 
-        _pools[poolId].tranches[trancheId].token = token;
+        pools[poolId].tranches[trancheId].token = token;
 
         emit AddTranche(poolId, trancheId, token);
 
@@ -222,7 +222,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         public
         auth
     {
-        TrancheDetails storage tranche_ = _pools[poolId].tranches[trancheId];
+        TrancheDetails storage tranche_ = pools[poolId].tranches[trancheId];
         require(tranche_.token != address(0), "PoolManager/tranche-does-not-exist");
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
@@ -305,7 +305,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         auth
         returns (address)
     {
-        TrancheDetails storage tranche_ = _pools[poolId].tranches[trancheId];
+        TrancheDetails storage tranche_ = pools[poolId].tranches[trancheId];
         require(tranche_.token != address(0), "PoolManager/tranche-does-not-exist");
         require(vaultFactory[factory], "PoolManager/invalid-factory");
 
@@ -337,7 +337,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
     /// @inheritdoc IPoolManager
     function linkVault(uint64 poolId, bytes16 trancheId, uint128 assetId, address vault) public auth {
-        TrancheDetails storage tranche_ = _pools[poolId].tranches[trancheId];
+        TrancheDetails storage tranche_ = pools[poolId].tranches[trancheId];
         require(tranche_.token != address(0), "PoolManager/tranche-does-not-exist");
 
         address manager = IBaseVault(vault).manager();
@@ -350,7 +350,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
     /// @inheritdoc IPoolManager
     function unlinkVault(uint64 poolId, bytes16 trancheId, uint128 assetId, address vault) public auth {
-        TrancheDetails storage tranche_ = _pools[poolId].tranches[trancheId];
+        TrancheDetails storage tranche_ = pools[poolId].tranches[trancheId];
         require(tranche_.token != address(0), "PoolManager/tranche-does-not-exist");
 
         address manager = IBaseVault(vault).manager();
@@ -364,12 +364,12 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     // --- Helpers ---
     /// @inheritdoc IPoolManager
     function isPoolActive(uint64 poolId) public view returns (bool) {
-        return _pools[poolId].createdAt > 0;
+        return pools[poolId].createdAt > 0;
     }
 
     /// @inheritdoc IPoolManager
     function tranche(uint64 poolId, bytes16 trancheId) public view returns (address) {
-        TrancheDetails storage tranche_ = _pools[poolId].tranches[trancheId];
+        TrancheDetails storage tranche_ = pools[poolId].tranches[trancheId];
         return tranche_.token;
     }
 
@@ -380,7 +380,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         returns (uint128 price, uint64 computedAt)
     {
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
-        TranchePrice memory value = _pools[poolId].tranches[trancheId].prices[assetIdKey.asset][assetIdKey.tokenId];
+        TranchePrice memory value = pools[poolId].tranches[trancheId].prices[assetIdKey.asset][assetIdKey.tokenId];
         require(value.computedAt > 0, "PoolManager/unknown-price");
         price = value.price;
         computedAt = value.computedAt;

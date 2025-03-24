@@ -2,7 +2,6 @@
 pragma solidity ^0.8.28;
 
 import "forge-std/Test.sol";
-import "forge-std/Script.sol";
 
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
@@ -15,6 +14,8 @@ import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {FullDeployer, PoolsDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
 
 import {LocalAdapter} from "test/integration/adapters/LocalAdapter.sol";
+
+import "src/vaults/interfaces/IPoolManager.sol";
 
 /// End to end testing assuming two full deployments in two different chains
 contract TestEndToEnd is Test {
@@ -30,23 +31,9 @@ contract TestEndToEnd is Test {
     FullDeployer deployA = new FullDeployer();
     FullDeployer deployB = new FullDeployer();
 
-    function _deployChain(uint16 chainId, ISafe safeAdmin, FullDeployer deploy) public returns (LocalAdapter adapter) {
-        deploy.deployFull(chainId, safeAdmin);
-
-        adapter = new LocalAdapter(deploy.gateway(), address(deploy));
-        deploy.wire(adapter);
-
-        // Configure here as deployer
-        vm.startPrank(address(deploy));
-        deploy.gasService().file("messageGasLimit", GAS);
-        vm.stopPrank();
-
-        deploy.removeFullDeployerAccess();
-    }
-
     function setUp() public {
-        LocalAdapter adapterA = _deployChain(CHAIN_A, safeAdminA, deployA);
-        LocalAdapter adapterB = _deployChain(CHAIN_B, safeAdminB, deployB);
+        LocalAdapter adapterA = _deployChain(deployA, CHAIN_A, safeAdminA);
+        LocalAdapter adapterB = _deployChain(deployB, CHAIN_B, safeAdminB);
 
         // We connect both deploys through the adapters
         adapterA.setEndpoint(adapterB);
@@ -61,6 +48,20 @@ contract TestEndToEnd is Test {
         // Label contracts (for debugging)
         vm.label(address(deployA.poolRouter()), "CP.PoolRouter");
         // ...
+    }
+
+    function _deployChain(FullDeployer deploy, uint16 chainId, ISafe safeAdmin) public returns (LocalAdapter adapter) {
+        deploy.deployFull(chainId, safeAdmin);
+
+        adapter = new LocalAdapter(chainId, deploy.gateway(), address(deploy));
+        deploy.wire(adapter);
+
+        // Configure here as deployer
+        vm.startPrank(address(deploy));
+        deploy.gasService().file("messageGasLimit", GAS);
+        vm.stopPrank();
+
+        deploy.removeFullDeployerAccess();
     }
 
     function _getDeploys(bool sameChain) public returns (PoolsDeployer cp, VaultsDeployer cv) {
@@ -87,6 +88,6 @@ contract TestEndToEnd is Test {
 
         cp.poolRouter().execute{value: GAS}(poolId, c);
 
-        //assetEq(cv.poolManager().pools(poolId.raw()).createdAt, block.number);
+        assert(cv.poolManager().pools(poolId.raw()) != 0);
     }
 }
