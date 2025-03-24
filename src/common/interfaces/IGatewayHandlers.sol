@@ -39,7 +39,7 @@ interface IPoolRouterGatewayHandler {
     ) external;
 
     /// @notice Perform accounting entries by request from CAL.
-    function updateJournal(PoolId poolId, ShareClassId scId, JournalEntry[] memory debits, JournalEntry[] memory credits) external returns (uint128 debited, uint128 credited);
+    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external returns (uint128 debited, uint128 credited);
 }
 
 /// -----------------------------------------------------

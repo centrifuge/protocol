@@ -535,10 +535,10 @@ contract MessageProcessor is Auth, IMessageProcessor {
             } else if (kind == MessageType.UpdateJournal) {
                 MessageLib.UpdateJournal memory m = message.deserializeUpdateJournal();
                 poolRouter.updateJournal(
-                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.debits, m.credits
+                    PoolId.wrap(m.poolId), m.debits, m.credits
                 );
-            } else if (kind == MessageType.UpdateShares) {
-                MessageLib.UpdateShares memory m = message.deserializeUpdateShares();
+            // } else if (kind == MessageType.UpdateShares) {
+            //     MessageLib.UpdateShares memory m = message.deserializeUpdateShares();
             } else {
                 revert InvalidMessage(uint8(kind));
             }

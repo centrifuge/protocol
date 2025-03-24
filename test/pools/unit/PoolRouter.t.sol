@@ -21,6 +21,7 @@ import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 import {IPoolRouter} from "src/pools/interfaces/IPoolRouter.sol";
 import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 import {PoolRouter} from "src/pools/PoolRouter.sol";
+import {JournalEntry} from "src/common/types/JournalEntry.sol";
 
 contract TestCommon is Test {
     PoolId constant POOL_A = PoolId.wrap(1);
@@ -73,6 +74,13 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         poolRouter.cancelRedeemRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
+
+        JournalEntry[] memory entries = new JournalEntry[](0);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolRouter.updateHoldingAmount(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(1), false, entries, entries);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolRouter.updateJournal(PoolId.wrap(0), entries, entries);
 
         vm.stopPrank();
     }
