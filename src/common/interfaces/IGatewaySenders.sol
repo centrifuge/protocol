@@ -5,14 +5,18 @@ import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
 
+interface ICentrifugeChainId {
+    function centrifugeChainId() external view returns (uint16);
+}
+
 /// @notice Interface for dispatch-only gateway
-interface IMessageProcessor {
+interface IPoolMessageSender is ICentrifugeChainId {
     /// @notice Creates and send the message
-    function sendNotifyPool(uint32 chainId, PoolId poolId) external;
+    function sendNotifyPool(uint16 chainId, PoolId poolId) external;
 
     /// @notice Creates and send the message
     function sendNotifyShareClass(
-        uint32 chainId,
+        uint16 chainId,
         PoolId poolId,
         ShareClassId scId,
         string memory name,
@@ -62,10 +66,40 @@ interface IMessageProcessor {
 
     /// @notice Creates and send the message
     function sendUpdateContract(
-        uint32 chainId,
+        uint16 chainId,
         PoolId poolId,
         ShareClassId scId,
         bytes32 target,
         bytes calldata payload
+    ) external;
+}
+
+/// @notice Interface for dispatch-only gateway
+interface IVaultMessageSender is ICentrifugeChainId {
+    /// @notice Creates and send the message
+    function sendTransferShares(uint16 chainId, uint64 poolId, bytes16 scId, bytes32 recipient, uint128 amount)
+        external;
+
+    /// @notice Creates and send the message
+    function sendDepositRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId, uint128 amount)
+        external;
+
+    /// @notice Creates and send the message
+    function sendRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId, uint128 amount)
+        external;
+
+    /// @notice Creates and send the message
+    function sendCancelDepositRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId) external;
+
+    /// @notice Creates and send the message
+    function sendCancelRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId) external;
+
+    /// @notice Creates and send the message
+    function sendRegisterAsset(
+        uint16 chainId,
+        uint128 assetId,
+        string memory name,
+        string memory symbol,
+        uint8 decimals
     ) external;
 }

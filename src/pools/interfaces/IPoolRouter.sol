@@ -76,12 +76,12 @@ interface IPoolRouter {
 
     /// @notice Notify to a CV instance that a new pool is available
     /// @param chainId Chain where CV instance lives
-    function notifyPool(uint32 chainId) external payable;
+    function notifyPool(uint16 chainId) external payable;
 
     /// @notice Notify to a CV instance that a new share class is available
     /// @param chainId Chain where CV instance lives
     /// @param hook The hook address of the share class
-    function notifyShareClass(uint32 chainId, ShareClassId scId, bytes32 hook) external payable;
+    function notifyShareClass(uint16 chainId, ShareClassId scId, bytes32 hook) external payable;
 
     /// @notice Attach custom data to a pool
     function setPoolMetadata(bytes calldata metadata) external payable;
@@ -129,7 +129,7 @@ interface IPoolRouter {
     /// @param chainId Chain where CV instance lives.
     /// @param target contract where to execute in CV. Check IUpdateContract interface.
     /// @param payload content of the to execute.
-    function updateContract(uint32 chainId, ShareClassId scId, bytes32 target, bytes calldata payload)
+    function updateContract(uint16 chainId, ShareClassId scId, bytes32 target, bytes calldata payload)
         external
         payable;
 
@@ -192,26 +192,4 @@ interface IPoolRouter {
     /// @notice Compute the escrow address used for a share class
     /// @return The escrow address
     function escrow(PoolId poolId, ShareClassId scId, EscrowId escrow_) external pure returns (address);
-}
-
-/// @notice Interface for methods called by the gateway
-interface IPoolRouterHandler {
-    /// @notice Tells that an asset was already registered in CV, in order to perform the corresponding register.
-    /// @dev The same asset can be re-registered using this. Decimals can not change.
-    function registerAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals) external;
-
-    /// @notice Perform a deposit that was requested from CV.
-    function depositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId, uint128 amount)
-        external;
-
-    /// @notice Perform a redeem that was requested from CV.
-    function redeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId, uint128 amount)
-        external;
-
-    /// @notice Perform a deposit cancellation that was requested from CV.
-    function cancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
-        external;
-
-    /// @notice Perform a redeem cancellation that was requested from CV.
-    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId) external;
 }

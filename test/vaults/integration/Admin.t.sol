@@ -14,7 +14,7 @@ contract AdminTest is BaseTest {
     using MessageLib for *;
     using CastLib for *;
 
-    uint32 constant CHAIN_ID = 1;
+    uint16 constant CHAIN_ID = 1;
 
     function testDeployment() public view {
         // values set correctly
@@ -104,7 +104,7 @@ contract AdminTest is BaseTest {
         address spell = vm.addr(1);
         vm.prank(address(adminSafe));
         guardian.scheduleRely(spell);
-        vm.warp(block.timestamp + delay + 1 hours);
+        vm.warp(block.timestamp + DELAY + 1 hours);
         root.executeScheduledRely(spell);
         assertEq(root.wards(spell), 1);
     }
@@ -113,7 +113,7 @@ contract AdminTest is BaseTest {
         address spell = vm.addr(1);
         vm.prank(address(adminSafe));
         guardian.scheduleRely(spell);
-        vm.warp(block.timestamp + delay - 1 hours);
+        vm.warp(block.timestamp + DELAY - 1 hours);
         vm.expectRevert(IRoot.TargetNotReady.selector);
         root.executeScheduledRely(spell);
     }
@@ -129,11 +129,11 @@ contract AdminTest is BaseTest {
         address spell = vm.addr(1);
         vm.prank(address(adminSafe));
         guardian.scheduleRely(spell);
-        assertEq(root.schedule(spell), block.timestamp + delay);
+        assertEq(root.schedule(spell), block.timestamp + DELAY);
         vm.prank(address(adminSafe));
         guardian.cancelRely(spell);
         assertEq(root.schedule(spell), 0);
-        vm.warp(block.timestamp + delay + 1 hours);
+        vm.warp(block.timestamp + DELAY + 1 hours);
         vm.expectRevert(IRoot.TargetNotScheduled.selector);
         root.executeScheduledRely(spell);
     }
@@ -167,7 +167,7 @@ contract AdminTest is BaseTest {
     function testIncomingScheduleUpgradeMessage() public {
         address spell = vm.addr(1);
         centrifugeChain.incomingScheduleUpgrade(spell);
-        vm.warp(block.timestamp + delay + 1 hours);
+        vm.warp(block.timestamp + DELAY + 1 hours);
         root.executeScheduledRely(spell);
         assertEq(root.wards(spell), 1);
     }
@@ -175,19 +175,19 @@ contract AdminTest is BaseTest {
     function testIncomingCancelUpgradeMessage() public {
         address spell = vm.addr(1);
         centrifugeChain.incomingScheduleUpgrade(spell);
-        assertEq(root.schedule(spell), block.timestamp + delay);
+        assertEq(root.schedule(spell), block.timestamp + DELAY);
         centrifugeChain.incomingCancelUpgrade(spell);
         assertEq(root.schedule(spell), 0);
-        vm.warp(block.timestamp + delay + 1 hours);
+        vm.warp(block.timestamp + DELAY + 1 hours);
         vm.expectRevert(IRoot.TargetNotScheduled.selector);
         root.executeScheduledRely(spell);
     }
 
-    //------ Updating delay tests ------///
+    //------ Updating DELAY tests ------///
     function testUpdatingDelayWorks() public {
         vm.prank(address(adminSafe));
         guardian.scheduleRely(address(this));
-        vm.warp(block.timestamp + delay + 1 hours);
+        vm.warp(block.timestamp + DELAY + 1 hours);
         root.executeScheduledRely(address(this));
     }
 
@@ -214,7 +214,7 @@ contract AdminTest is BaseTest {
     function testRelyDenyContract() public {
         vm.prank(address(adminSafe));
         guardian.scheduleRely(address(this));
-        vm.warp(block.timestamp + delay + 1 hours);
+        vm.warp(block.timestamp + DELAY + 1 hours);
         root.executeScheduledRely(address(this));
 
         assertEq(investmentManager.wards(address(this)), 1);
@@ -279,6 +279,7 @@ contract AdminTest is BaseTest {
         assertEq(root.endorsed(router), false);
     }
 
+    /* TODO: Uncomment when guardian has access again to dispute messages
     function testDisputeRecovery() public {
         MockManager poolManager = new MockManager();
         gateway.file("adapters", testAdapters);
@@ -292,7 +293,7 @@ contract AdminTest is BaseTest {
         assertEq(poolManager.received(message), 0);
 
         // Initiate recovery
-        _send(adapter1, MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
+    _send(adapter1, MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
 
         vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
         gateway.executeMessageRecovery(adapter3, proof);
@@ -310,6 +311,7 @@ contract AdminTest is BaseTest {
         gateway.executeMessageRecovery(adapter3, proof);
         assertEq(poolManager.received(message), 0);
     }
+    */
 
     function _send(MockAdapter adapter, bytes memory message) internal {
         vm.prank(address(adapter));

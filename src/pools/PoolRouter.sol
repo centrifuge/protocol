@@ -10,6 +10,8 @@ import {Multicall, IMulticall} from "src/misc/Multicall.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
+import {IPoolRouterGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
+import {IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
@@ -21,11 +23,10 @@ import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 import {IMultiShareClass} from "src/pools/interfaces/IMultiShareClass.sol";
 import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
-import {IMessageProcessor} from "src/pools/interfaces/IMessageProcessor.sol";
-import {IPoolRouter, IPoolRouterHandler, EscrowId, AccountType} from "src/pools/interfaces/IPoolRouter.sol";
+import {IPoolRouter, EscrowId, AccountType} from "src/pools/interfaces/IPoolRouter.sol";
 
 // @inheritdoc IPoolRouter
-contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
+contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     using MessageLib for *;
     using MathLib for uint256;
     using CastLib for bytes;
@@ -39,7 +40,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
     IAssetRegistry public assetRegistry;
     IAccounting public accounting;
     IHoldings public holdings;
-    IMessageProcessor public sender;
+    IPoolMessageSender public sender;
     IGateway public gateway;
 
     constructor(
@@ -63,7 +64,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
 
     /// @inheritdoc IPoolRouter
     function file(bytes32 what, address data) external auth {
-        if (what == "sender") sender = IMessageProcessor(data);
+        if (what == "sender") sender = IPoolMessageSender(data);
         else if (what == "holdings") holdings = IHoldings(data);
         else if (what == "poolRegistry") poolRegistry = IPoolRegistry(data);
         else if (what == "assetRegistry") assetRegistry = IAssetRegistry(data);
@@ -115,7 +116,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
         returns (PoolId poolId)
     {
         // TODO: add fees?
-        return poolRegistry.registerPool(admin, currency, shareClassManager);
+        return poolRegistry.registerPool(admin, sender.centrifugeChainId(), currency, shareClassManager);
     }
 
     /// @inheritdoc IPoolRouter
@@ -148,14 +149,14 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IPoolRouter
-    function notifyPool(uint32 chainId) external payable {
+    function notifyPool(uint16 chainId) external payable {
         _protectedAndUnlocked();
 
         sender.sendNotifyPool(chainId, unlockedPoolId);
     }
 
     /// @inheritdoc IPoolRouter
-    function notifyShareClass(uint32 chainId, ShareClassId scId, bytes32 hook) external payable {
+    function notifyShareClass(uint16 chainId, ShareClassId scId, bytes32 hook) external payable {
         _protectedAndUnlocked();
 
         IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
@@ -250,7 +251,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
     }
 
     /// @inheritdoc IPoolRouter
-    function updateContract(uint32 chainId, ShareClassId scId, bytes32 target, bytes calldata payload) external payable {
+    function updateContract(uint16 chainId, ShareClassId scId, bytes32 target, bytes calldata payload) external payable {
         _protectedAndUnlocked();
 
         if (payload.updateContractType() == UpdateContractType.VaultUpdate) {
@@ -449,7 +450,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
     // Gateway owner methods
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IPoolRouterHandler
+    /// @inheritdoc IPoolRouterGatewayHandler
     function registerAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals)
         external auth
     {
@@ -457,7 +458,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
         assetRegistry.registerAsset(assetId, name, symbol, decimals);
     }
 
-    /// @inheritdoc IPoolRouterHandler
+    /// @inheritdoc IPoolRouterGatewayHandler
     function depositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId, uint128 amount)
         external auth
     {
@@ -469,7 +470,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
         scm.requestDeposit(poolId, scId, amount, investor, depositAssetId);
     }
 
-    /// @inheritdoc IPoolRouterHandler
+    /// @inheritdoc IPoolRouterGatewayHandler
     function redeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId, uint128 amount)
         external auth
     {
@@ -478,7 +479,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
         scm.requestRedeem(poolId, scId, amount, investor, payoutAssetId);
     }
 
-    /// @inheritdoc IPoolRouterHandler
+    /// @inheritdoc IPoolRouterGatewayHandler
     function cancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
         external auth
     {
@@ -492,7 +493,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterHandler {
         sender.sendFulfilledCancelDepositRequest(poolId, scId, depositAssetId, investor, cancelledAssetAmount);
     }
 
-    /// @inheritdoc IPoolRouterHandler
+    /// @inheritdoc IPoolRouterGatewayHandler
     function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
         external auth
     {

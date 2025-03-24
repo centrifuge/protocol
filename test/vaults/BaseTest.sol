@@ -10,6 +10,7 @@ import {ISafe} from "src/common/interfaces/IGuardian.sol";
 import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {newAssetId} from "src/pools/types/AssetId.sol";
 
 // core contracts
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
@@ -21,7 +22,7 @@ import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
-import {Deployer} from "script/vaults/Deployer.sol";
+import {VaultsDeployer} from "script/VaultsDeployer.s.sol";
 
 // mocks
 import {MockCentrifugeChain} from "test/vaults/mocks/MockCentrifugeChain.sol";
@@ -33,7 +34,7 @@ import {MockSafe} from "test/vaults/mocks/MockSafe.sol";
 import "forge-std/Test.sol";
 import {GasSnapshot} from "forge-gas-snapshot/GasSnapshot.sol";
 
-contract BaseTest is Deployer, GasSnapshot, Test {
+contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     using MessageLib for *;
 
     MockCentrifugeChain centrifugeChain;
@@ -53,9 +54,9 @@ contract BaseTest is Deployer, GasSnapshot, Test {
     uint256 constant GATEWAY_INITIAL_BALANCE = 10 ether;
 
     // default values
-    uint32 public defaultChainId = 1;
+    uint16 public defaultChainId = 1;
     uint256 public erc20TokenId = 0;
-    uint128 public defaultAssetId = uint128(bytes16(abi.encodePacked(uint32(defaultChainId), uint32(1))));
+    uint128 public defaultAssetId = newAssetId(defaultChainId, 1).raw();
     uint128 public defaultPrice = 1 * 10 ** 18;
     uint8 public defaultDecimals = 8;
 
@@ -65,10 +66,10 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         // make yourself owner of the adminSafe
         address[] memory pausers = new address[](1);
         pausers[0] = self;
-        adminSafe = new MockSafe(pausers, 1);
+        ISafe adminSafe = new MockSafe(pausers, 1);
 
         // deploy core contracts
-        deploy(address(this));
+        deployVaults(defaultChainId, adminSafe, address(this));
 
         // deploy mock adapters
 
@@ -85,9 +86,9 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         testAdapters.push(adapter3);
 
         // wire contracts
-        wire(adapter1);
+        wire(adapter1, address(this));
         // remove deployer access
-        // removeDeployerAccess(address(adapter)); // need auth permissions in tests
+        // removeVaultsDeployerAccess(address(adapter)); // need auth permissions in tests
 
         centrifugeChain = new MockCentrifugeChain(testAdapters, poolManager);
         mockedGasService = new MockGasService();
@@ -105,12 +106,13 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         vm.label(address(investmentManager), "InvestmentManager");
         vm.label(address(poolManager), "PoolManager");
         vm.label(address(gateway), "Gateway");
+        vm.label(address(messageProcessor), "MessageProcessor");
         vm.label(address(adapter1), "MockAdapter1");
         vm.label(address(adapter2), "MockAdapter2");
         vm.label(address(adapter3), "MockAdapter3");
         vm.label(address(erc20), "ERC20");
         vm.label(address(centrifugeChain), "CentrifugeChain");
-        vm.label(address(router), "VaultRouter");
+        vm.label(address(vaultRouter), "VaultRouter");
         vm.label(address(gasService), "GasService");
         vm.label(address(mockedGasService), "MockGasService");
         vm.label(address(escrow), "Escrow");
@@ -126,7 +128,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         excludeContract(address(gateway));
         excludeContract(address(erc20));
         excludeContract(address(centrifugeChain));
-        excludeContract(address(router));
+        excludeContract(address(vaultRouter));
         excludeContract(address(adapter1));
         excludeContract(address(adapter2));
         excludeContract(address(adapter3));
@@ -147,7 +149,7 @@ contract BaseTest is Deployer, GasSnapshot, Test {
         bytes16 trancheId,
         address asset,
         uint256 assetTokenId,
-        uint32 destinationChain
+        uint16 destinationChain
     ) public returns (address vaultAddress, uint128 assetId) {
         if (poolManager.assetToId(asset, assetTokenId) == 0) {
             assetId = poolManager.registerAsset(asset, assetTokenId, destinationChain);

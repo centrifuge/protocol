@@ -16,16 +16,16 @@ import {PoolId} from "src/pools/types/PoolId.sol";
 import {AccountId} from "src/pools/types/AccountId.sol";
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AccountType} from "src/pools/interfaces/IPoolRouter.sol";
-import {Deployer} from "script/pools/Deployer.s.sol";
+import {PoolsDeployer, ISafe} from "script/PoolsDeployer.s.sol";
 
 import {MockVaults} from "test/pools/mocks/MockVaults.sol";
 
-contract TestCases is Deployer, Test {
+contract TestCases is PoolsDeployer, Test {
     using CastLib for string;
     using CastLib for bytes32;
 
-    uint32 constant CHAIN_CP = 5;
-    uint32 constant CHAIN_CV = 6;
+    uint16 constant CHAIN_CP = 5;
+    uint16 constant CHAIN_CV = 6;
 
     string constant SC_NAME = "ExampleName";
     string constant SC_SYMBOL = "ExampleSymbol";
@@ -48,25 +48,20 @@ contract TestCases is Deployer, Test {
 
     MockVaults cv;
 
-    function _configMockVaultsAdapter() private {
+    function _mockStuff() private {
         cv = new MockVaults(CHAIN_CV, gateway);
+        wire(cv, address(this));
 
-        IAdapter[] memory testAdapters = new IAdapter[](1);
-        testAdapters[0] = cv;
-
-        gateway.file("adapters", testAdapters);
-    }
-
-    function _configGasPrice() private {
         gasService.file("messageGasLimit", GAS);
     }
 
     function setUp() public {
-        deploy();
-        _configMockVaultsAdapter();
-        _configGasPrice();
-        removeDeployerAccess();
+        // Deployment
+        deployPools(CHAIN_CP, ISafe(address(0)), address(this));
+        _mockStuff();
+        removePoolsDeployerAccess(address(this));
 
+        // Initialize accounts
         vm.deal(FM, 1 ether);
 
         // Label contracts & actors (for debugging)
@@ -79,10 +74,11 @@ contract TestCases is Deployer, Test {
         vm.label(address(multiShareClass), "MultiShareClass");
         vm.label(address(poolRouter), "PoolRouter");
         vm.label(address(gateway), "Gateway");
+        vm.label(address(messageProcessor), "MessageProcessor");
         vm.label(address(cv), "CV");
 
-        // We decide CP is located at CHAIN_CP for messaging
-        vm.chainId(CHAIN_CP);
+        // We should not use the ChainID
+        vm.chainId(0xDEAD);
     }
 
     /// forge-config: default.isolate = true

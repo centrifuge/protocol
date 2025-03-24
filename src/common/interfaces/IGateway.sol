@@ -36,9 +36,9 @@ interface IGateway is IMessageHandler, IMessageSender {
     }
 
     // --- Events ---
-    event ProcessMessage(uint32 chainId, bytes message, IAdapter adapter);
-    event ProcessProof(uint32 chainId, bytes32 messageHash, IAdapter adapter);
-    event ExecuteMessage(uint32 chainId, bytes message, IAdapter adapter);
+    event ProcessMessage(uint16 chainId, bytes message, IAdapter adapter);
+    event ProcessProof(uint16 chainId, bytes32 messageHash, IAdapter adapter);
+    event ExecuteMessage(uint16 chainId, bytes message, IAdapter adapter);
     event SendMessage(bytes message);
     event RecoverMessage(IAdapter adapter, bytes message);
     event RecoverProof(IAdapter adapter, bytes32 messageHash);
@@ -126,13 +126,16 @@ interface IGateway is IMessageHandler, IMessageSender {
     /// @return perAdapter An array of cost values per adapter. Each value is how much it's going to cost
     ///         for a message / proof to be passed through one router and executed on Centrifuge Chain
     /// @return total Total cost for sending one message and corresponding proofs on through all adapters
-    function estimate(uint32 chainId, bytes calldata payload)
+    function estimate(uint16 chainId, bytes calldata payload)
         external
         view
         returns (uint256[] memory perAdapter, uint256 total);
 
     /// @notice Returns the address of the adapter at the given id.
     function adapters(uint256 id) external view returns (IAdapter);
+
+    /// @notice Returns the number of adapters.
+    function adapterCount() external view returns (uint256);
 
     /// @notice Returns the timestamp when the given recovery can be executed.
     function recoveries(IAdapter adapter, bytes32 messageHash) external view returns (uint256 timestamp);
