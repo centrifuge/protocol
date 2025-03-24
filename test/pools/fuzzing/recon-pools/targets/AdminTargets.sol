@@ -144,17 +144,16 @@ abstract contract AdminTargets is
 
         try poolRouter.depositRequest(poolId, scId, investor, depositAssetId, amount) {
             deposited = true;
+
+            (, uint32 lastUpdate) = multiShareClass.depositRequest(scId, depositAssetId, investor);
+            uint32 epochId = multiShareClass.epochId(poolId);
+
+            eq(lastUpdate, epochId, "lastUpdate is not equal to epochId");  
         } catch (bytes memory reason) {
             bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
             t(!arithmeticRevert, "depositRequest reverts with arithmetic panic");
-        }
-
-        (, uint32 lastUpdate) = multiShareClass.depositRequest(scId, depositAssetId, investor);
-        
-        uint32 epochId = multiShareClass.epochId(poolId);
-
-        eq(lastUpdate, epochId, "lastUpdate is not equal to epochId");    
-    }  
+        }  
+    }   
 
     /// @dev Property: After successfully calling redeemRequest for an investor, their redeemRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     /// @dev Property: _updateRedeemRequest should never revert due to underflow
@@ -163,15 +162,14 @@ abstract contract AdminTargets is
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
         try poolRouter.redeemRequest(poolId, scId, investor, payoutAssetId, amount) {
+            (, uint32 lastUpdate) = multiShareClass.redeemRequest(scId, payoutAssetId, investor);
+            uint32 epochId = multiShareClass.epochId(poolId);
+
+            eq(lastUpdate, epochId, "lastUpdate is not equal to epochId after redeemRequest");
         } catch (bytes memory reason) {
             bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
             t(!arithmeticRevert, "redeemRequest reverts with arithmetic panic");
         }
-
-        (, uint32 lastUpdate) = multiShareClass.redeemRequest(scId, payoutAssetId, investor);
-        uint32 epochId = multiShareClass.epochId(poolId);
-
-        eq(lastUpdate, epochId, "lastUpdate is not equal to epochId after redeemRequest");
     }  
 
     /// @dev Property: after successfully calling cancelDepositRequest for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
@@ -184,16 +182,15 @@ abstract contract AdminTargets is
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
         try poolRouter.cancelDepositRequest(poolId, scId, investor, depositAssetId) {
+            (uint128 pending, uint32 lastUpdate) = multiShareClass.depositRequest(scId, depositAssetId, investor);
+            uint32 epochId = multiShareClass.epochId(poolId);
+
+            eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId");
+            eq(pending, 0, "pending is not zero");
         } catch (bytes memory reason) {
             bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
             t(!arithmeticRevert, "cancelDepositRequest reverts with arithmetic panic");
         }
-
-        (uint128 pending, uint32 lastUpdate) = multiShareClass.depositRequest(scId, depositAssetId, investor);
-        uint32 epochId = multiShareClass.epochId(poolId);
-
-        eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId");
-        eq(pending, 0, "pending is not zero");
     }
 
     /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].lastUpdate equals the current epoch id epochId[poolId]
@@ -206,16 +203,15 @@ abstract contract AdminTargets is
         poolRouter.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
 
         try poolRouter.cancelRedeemRequest(poolId, scId, investor, payoutAssetId) {
+            (uint128 pending, uint32 lastUpdate) = multiShareClass.redeemRequest(scId, payoutAssetId, investor);
+            uint32 epochId = multiShareClass.epochId(poolId);
+
+            eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId after cancelRedeemRequest");
+            eq(pending, 0, "pending is not zero after cancelRedeemRequest");
         } catch (bytes memory reason) {
             bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
             t(!arithmeticRevert, "cancelRedeemRequest reverts with arithmetic panic");
         }
-
-        (uint128 pending, uint32 lastUpdate) = multiShareClass.redeemRequest(scId, payoutAssetId, investor);
-        uint32 epochId = multiShareClass.epochId(poolId);
-
-        eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId after cancelRedeemRequest");
-        eq(pending, 0, "pending is not zero after cancelRedeemRequest");
     }
 
     // === PoolRouter === //

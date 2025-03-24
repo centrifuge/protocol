@@ -307,7 +307,7 @@ abstract contract TargetFunctions is
         bool isIdentityValuation,
         uint24 prefix,
         D18 newPrice
-    ) public  {
+    ) public returns (PoolId poolId, ShareClassId scId) {
         (PoolId poolId, ShareClassId scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
     
         AssetId assetId = newAssetId(isoCode);
