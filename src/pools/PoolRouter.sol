@@ -492,6 +492,21 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     }
 
     /// @inheritdoc IPoolRouterGatewayHandler
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePerUnit)
+        external auth
+    {
+        transientValuation.setPrice(assetId.addr(), poolRegistry.currency(poolId).addr(), pricePerUnit);
+        IERC7726 _valuation = holdings.valuation(poolId, scId, assetId);
+        holdings.updateValuation(poolId, scId, assetId, transientValuation);
+
+        accounting.unlock(poolId, accounting.generateJournalId(poolId));
+        this.updateHolding(scId, assetId);
+        accounting.lock();
+    
+        holdings.updateValuation(poolId, scId, assetId, _valuation);
+    }
+
+    /// @inheritdoc IPoolRouterGatewayHandler
     function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external auth {
         accounting.unlock(poolId, accounting.generateJournalId(poolId));
         _updateJournal(debits, credits);
