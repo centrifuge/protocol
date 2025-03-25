@@ -16,10 +16,6 @@ import {PoolId} from "src/pools/types/PoolId.sol";
 
 // Script to deploy CP and CP with an Localhost Adapter.
 contract LocalhostDeployer is FullDeployer {
-    PoolId public POOL_A = PoolId.wrap(33);
-    PoolId public POOL_B = PoolId.wrap(44);
-    ShareClassId public SC_A = ShareClassId.wrap(bytes16("sc"));
-
     function run() public {
         uint16 centrifugeChainId = uint16(vm.envUint("CENTRIFUGE_CHAIN_ID"));
 
