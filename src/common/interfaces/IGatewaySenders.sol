@@ -145,6 +145,7 @@ interface IVaultMessageSender is ICentrifugeChainId {
         PoolId poolId,
         ShareClassId shareClassId,
         address receiver,
+        D18 pricePerShare,
         uint128 shares,
         uint256 timestamp
     ) external;
@@ -154,6 +155,7 @@ interface IVaultMessageSender is ICentrifugeChainId {
         PoolId poolId,
         ShareClassId shareClassId,
         address provider,
+        D18 pricePerShare,
         uint128 shares,
         uint256 timestamp
     ) external;

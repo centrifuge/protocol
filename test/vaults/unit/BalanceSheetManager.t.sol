@@ -5,7 +5,7 @@ import "test/vaults/BaseTest.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {d18} from "src/misc/types/D18.sol";
+import {D18, d18} from "src/misc/types/D18.sol";
 
 import {Meta, JournalEntry} from "src/common/types/JournalEntry.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
@@ -22,6 +22,7 @@ contract BalanceSheetManagerTest is BaseTest {
     using CastLib for *;
 
     uint128 defaultAmount;
+    D18 defaultPricePerShare;
     AssetId assetId;
     PoolId defaultTypedPoolId;
     ShareClassId defaultTypedShareClassId;
@@ -29,6 +30,7 @@ contract BalanceSheetManagerTest is BaseTest {
     function setUp() public override {
         super.setUp();
         defaultAmount = 100;
+        defaultPricePerShare = d18(1, 1);
         defaultTypedPoolId = PoolId.wrap(defaultPoolId);
         defaultTypedShareClassId = ShareClassId.wrap(defaultShareClassId);
 
@@ -57,7 +59,7 @@ contract BalanceSheetManagerTest is BaseTest {
         );
     }
 
-    function _defaultMeta() internal view returns (Meta memory) {
+    function _defaultMeta() internal pure returns (Meta memory) {
         JournalEntry[] memory debits = new JournalEntry[](1);
         debits[0] = JournalEntry({amount: 100, accountId: AccountId.wrap(1)});
         JournalEntry[] memory credits = new JournalEntry[](3);
@@ -338,14 +340,20 @@ contract BalanceSheetManagerTest is BaseTest {
     function testIssue() public {
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheetManager.issue(defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultAmount, false);
+        balanceSheetManager.issue(
+            defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount, false
+        );
 
         IERC20 token = IERC20(poolManager.tranche(defaultPoolId, defaultShareClassId));
         assertEq(token.balanceOf(address(this)), 0);
 
         vm.expectEmit();
-        emit IBalanceSheetManager.Issue(defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultAmount);
-        balanceSheetManager.issue(defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultAmount, false);
+        emit IBalanceSheetManager.Issue(
+            defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount
+        );
+        balanceSheetManager.issue(
+            defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount, false
+        );
 
         assertEq(token.balanceOf(address(this)), defaultAmount);
     }
@@ -353,12 +361,16 @@ contract BalanceSheetManagerTest is BaseTest {
     function testIssueAsAllowance() public {
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheetManager.issue(defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultAmount, true);
+        balanceSheetManager.issue(
+            defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount, true
+        );
 
         IERC20 token = IERC20(poolManager.tranche(defaultPoolId, defaultShareClassId));
         assertEq(token.balanceOf(address(this)), 0);
 
-        balanceSheetManager.issue(defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultAmount, true);
+        balanceSheetManager.issue(
+            defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount, true
+        );
 
         token.transferFrom(address(balanceSheetManager), address(this), defaultAmount);
         assertEq(token.balanceOf(address(this)), defaultAmount);
@@ -371,15 +383,23 @@ contract BalanceSheetManagerTest is BaseTest {
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheetManager.revoke(defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultAmount);
+        balanceSheetManager.revoke(
+            defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount
+        );
 
         vm.expectRevert(IERC20.InsufficientAllowance.selector);
-        balanceSheetManager.revoke(defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultAmount);
+        balanceSheetManager.revoke(
+            defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount
+        );
 
         token.approve(address(balanceSheetManager), defaultAmount);
         vm.expectEmit();
-        emit IBalanceSheetManager.Revoke(defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultAmount);
-        balanceSheetManager.revoke(defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultAmount);
+        emit IBalanceSheetManager.Revoke(
+            defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount
+        );
+        balanceSheetManager.revoke(
+            defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount
+        );
 
         assertEq(token.balanceOf(address(this)), 0);
     }

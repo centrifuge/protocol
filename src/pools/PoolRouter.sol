@@ -480,15 +480,15 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     }
 
     /// @inheritdoc IPoolRouterGatewayHandler
-    function increaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external auth {
+    function increaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare, uint128 amount) external auth {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        scm.increaseShareClassIssuance(poolId, scId, amount);
+        scm.increaseShareClassIssuance(poolId, scId, pricePerShare, amount);
     }
 
     /// @inheritdoc IPoolRouterGatewayHandler
-    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external auth {
+    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare,uint128 amount) external auth {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
-        scm.decreaseShareClassIssuance(poolId, scId, amount);
+        scm.decreaseShareClassIssuance(poolId, scId, pricePerShare, amount);
     }
 
     //----------------------------------------------------------------------------------------------

@@ -49,10 +49,10 @@ interface IPoolRouterGatewayHandler {
     function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external;
 
     /// @notice Increases the total issuance of shares by request from CAL.
-    function increaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external;
+    function increaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare, uint128 amount) external;
 
     /// @notice Decreases the total issuance of shares by request from CAL.
-    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external;
+    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare, uint128 amount) external;
 }
 
 /// -----------------------------------------------------
@@ -226,7 +226,7 @@ interface IInvestmentManagerGatewayHandler {
 
 /// @notice Interface for CV methods related to epoch called by the gateway
 interface IBalanceSheetManagerGatewayHandler {
-    function deposit(
+    function triggerDeposit(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
@@ -236,7 +236,7 @@ interface IBalanceSheetManagerGatewayHandler {
         Meta calldata meta
     ) external;
 
-    function withdraw(
+    function triggerWithdraw(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
@@ -247,8 +247,15 @@ interface IBalanceSheetManagerGatewayHandler {
         Meta calldata m
     ) external;
 
-    function triggerIssueShares(PoolId poolId, ShareClassId scId, address to, uint128 shares, bool asAllowance)
-        external;
+    function triggerIssueShares(
+        PoolId poolId,
+        ShareClassId scId,
+        address to,
+        D18 pricePerShare,
+        uint128 shares,
+        bool asAllowance
+    ) external;
 
-    function triggerRevokeShares(PoolId poolId, ShareClassId scId, address from, uint128 shares) external;
+    function triggerRevokeShares(PoolId poolId, ShareClassId scId, address from, D18 pricePerShare, uint128 shares)
+        external;
 }

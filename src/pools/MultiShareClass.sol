@@ -533,20 +533,25 @@ contract MultiShareClass is Auth, IMultiShareClass {
 
 
     /// @inheritdoc IShareClassManager
-    function increaseShareClassIssuance(PoolId poolId, ShareClassId shareClassId_, uint128 amount) external auth {
+    function increaseShareClassIssuance(PoolId poolId, ShareClassId shareClassId_, D18 navPerShare, uint128 amount) external auth {
         require(exists(poolId, shareClassId_), ShareClassNotFound());
 
-        metrics[shareClassId_].totalIssuance += amount;
-        // TODO: emit event?
+        uint128 newIssuance = metrics[shareClassId_].totalIssuance + amount;
+        metrics[shareClassId_].totalIssuance = newIssuance;
+
+        emit IssuedShares(poolId, shareClassId_, epochId[poolId], navPerShare, navPerShare.mulUint128(newIssuance), amount);
     }
 
     /// @inheritdoc IShareClassManager
-    function decreaseShareClassIssuance(PoolId poolId, ShareClassId shareClassId_, uint128 amount) external auth {
+    function decreaseShareClassIssuance(PoolId poolId, ShareClassId shareClassId_, D18 navPerShare, uint128 amount) external auth {
         require(exists(poolId, shareClassId_), ShareClassNotFound());
         require(metrics[shareClassId_].totalIssuance >= amount, "Issuance too low");
 
-        metrics[shareClassId_].totalIssuance -= amount;
-        // TODO: emit event?
+        uint128 newIssuance = metrics[shareClassId_].totalIssuance - amount;
+        metrics[shareClassId_].totalIssuance = newIssuance;
+
+        // TODO: Maybe remove the redeemAssets part from the event?
+        emit RevokedShares(poolId, shareClassId_, epochId[poolId], navPerShare, navPerShare.mulUint128(newIssuance), amount, 0);
     }
 
 

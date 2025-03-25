@@ -145,19 +145,19 @@ contract BalanceSheetManager is
     }
 
     /// @inheritdoc IBalanceSheetManager
-    function revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares)
+    function revoke(PoolId poolId, ShareClassId scId, address from, D18 pricePerShare, uint128 shares)
         external
         authOrPermission(poolId, scId)
     {
-        _revoke(poolId, scId, from, shares);
+        _revoke(poolId, scId, from, pricePerShare, shares);
     }
 
     /// @inheritdoc IBalanceSheetManager
-    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares, bool asAllowance)
+    function issue(PoolId poolId, ShareClassId scId, address to, D18 pricePerShare, uint128 shares, bool asAllowance)
         external
         authOrPermission(poolId, scId)
     {
-        _issue(poolId, scId, to, shares, asAllowance);
+        _issue(poolId, scId, to, pricePerShare, shares, asAllowance);
     }
 
     /// @inheritdoc IBalanceSheetManager
@@ -169,7 +169,7 @@ contract BalanceSheetManager is
 
     /// --- IBalanceSheetManagerHandler ---
     /// @inheritdoc IBalanceSheetManagerGatewayHandler
-    function deposit(
+    function triggerDeposit(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
@@ -184,7 +184,7 @@ contract BalanceSheetManager is
     }
 
     /// @inheritdoc IBalanceSheetManagerGatewayHandler
-    function withdraw(
+    function triggerWithdraw(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
@@ -199,20 +199,29 @@ contract BalanceSheetManager is
     }
 
     /// @inheritdoc IBalanceSheetManagerGatewayHandler
-    function triggerIssueShares(PoolId poolId, ShareClassId scId, address to, uint128 shares, bool asAllowance)
-        external
-        auth
-    {
-        _issue(poolId, scId, to, shares, asAllowance);
+    function triggerIssueShares(
+        PoolId poolId,
+        ShareClassId scId,
+        address to,
+        D18 pricePerShare,
+        uint128 shares,
+        bool asAllowance
+    ) external auth {
+        _issue(poolId, scId, to, pricePerShare, shares, asAllowance);
     }
 
     /// @inheritdoc IBalanceSheetManagerGatewayHandler
-    function triggerRevokeShares(PoolId poolId, ShareClassId scId, address from, uint128 shares) external auth {
-        _revoke(poolId, scId, from, shares);
+    function triggerRevokeShares(PoolId poolId, ShareClassId scId, address from, D18 pricePerShare, uint128 shares)
+        external
+        auth
+    {
+        _revoke(poolId, scId, from, pricePerShare, shares);
     }
 
     // --- Internal ---
-    function _issue(PoolId poolId, ShareClassId scId, address to, uint128 shares, bool asAllowance) internal {
+    function _issue(PoolId poolId, ShareClassId scId, address to, D18 pricePerShare, uint128 shares, bool asAllowance)
+        internal
+    {
         address token = poolManager.checkedTranche(poolId.raw(), scId.raw());
 
         if (asAllowance) {
@@ -222,16 +231,16 @@ contract BalanceSheetManager is
             ITranche(token).mint(address(to), shares);
         }
 
-        sender.sendIssueShares(poolId, scId, to, shares, block.timestamp);
-        emit Issue(poolId, scId, to, shares);
+        sender.sendIssueShares(poolId, scId, to, pricePerShare, shares, block.timestamp);
+        emit Issue(poolId, scId, to, pricePerShare, shares);
     }
 
-    function _revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) internal {
+    function _revoke(PoolId poolId, ShareClassId scId, address from, D18 pricePerShare, uint128 shares) internal {
         address token = poolManager.checkedTranche(poolId.raw(), scId.raw());
         ITranche(token).burn(address(from), shares);
 
-        sender.sendRevokeShares(poolId, scId, from, shares, block.timestamp);
-        emit Revoke(poolId, scId, from, shares);
+        sender.sendRevokeShares(poolId, scId, from, pricePerShare, shares, block.timestamp);
+        emit Revoke(poolId, scId, from, pricePerShare, shares);
     }
 
     function _withdraw(

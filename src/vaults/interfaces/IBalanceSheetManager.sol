@@ -39,8 +39,8 @@ interface IBalanceSheetManager {
         JournalEntry[] debits,
         JournalEntry[] credits
     );
-    event Issue(PoolId indexed poolId, ShareClassId indexed scId, address to, uint128 shares);
-    event Revoke(PoolId indexed poolId, ShareClassId indexed scId, address from, uint128 shares);
+    event Issue(PoolId indexed poolId, ShareClassId indexed scId, address to, D18 pricePerShare, uint128 shares);
+    event Revoke(PoolId indexed poolId, ShareClassId indexed scId, address from, D18 pricePerShare, uint128 shares);
     event UpdateEntry(PoolId indexed poolId, ShareClassId indexed scId, JournalEntry[] debits, JournalEntry[] credits);
     event UpdateValue(
         PoolId indexed poolId,
@@ -77,9 +77,10 @@ interface IBalanceSheetManager {
 
     function updateValue(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, D18 pricePerUnit) external;
 
-    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares, bool asAllowance) external;
+    function issue(PoolId poolId, ShareClassId scId, address to, D18 pricePerShare, uint128 shares, bool asAllowance)
+        external;
 
-    function revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) external;
+    function revoke(PoolId poolId, ShareClassId scId, address from, D18 pricePerShare, uint128 shares) external;
 
     function journalEntry(PoolId poolId, ShareClassId scId, Meta calldata m) external;
 }

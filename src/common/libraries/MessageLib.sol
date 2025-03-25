@@ -116,10 +116,10 @@ library MessageLib {
         (89 << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (89 << uint8(MessageType.TriggerRedeemRequest) * 8) +
         (142 << uint8(MessageType.UpdateHolding) * 8) +
-        (106 << uint8(MessageType.UpdateShares) * 8) +
+        (122 << uint8(MessageType.UpdateShares) * 8) +
         (29 << uint8(MessageType.UpdateJournal) * 8) +
         (111 << uint8(MessageType.TriggerUpdateHolding) * 8) +
-        (75 << uint8(MessageType.TriggerUpdateShares) * 8);
+        (91 << uint8(MessageType.TriggerUpdateShares) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -980,6 +980,7 @@ library MessageLib {
         uint64 poolId;
         bytes16 scId;
         bytes32 who;
+        D18 pricePerShare;
         uint128 shares;
         uint256 timestamp;
         bool isIssuance;
@@ -992,14 +993,17 @@ library MessageLib {
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             who: data.toBytes32(25),
-            shares: data.toUint128(57),
-            timestamp: data.toUint256(73),
-            isIssuance: data.toBool(105)
+            pricePerShare: D18.wrap(data.toUint128(57)),
+            shares: data.toUint128(73),
+            timestamp: data.toUint256(89),
+            isIssuance: data.toBool(121)
         });
     }
 
     function serialize(UpdateShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.UpdateShares, t.poolId, t.scId, t.who, t.shares, t.timestamp, t.isIssuance);
+        return abi.encodePacked(
+            MessageType.UpdateShares, t.poolId, t.scId, t.who, t.pricePerShare, t.shares, t.timestamp, t.isIssuance
+        );
     }
 
     //---------------------------------------
@@ -1095,6 +1099,7 @@ library MessageLib {
         uint64 poolId;
         bytes16 scId;
         bytes32 who;
+        D18 pricePerShare;
         uint128 shares;
         bool isIssuance;
         bool asAllowance;
@@ -1107,15 +1112,23 @@ library MessageLib {
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             who: data.toBytes32(25),
-            shares: data.toUint128(57),
-            isIssuance: data.toBool(73),
-            asAllowance: data.toBool(74)
+            pricePerShare: D18.wrap(data.toUint128(57)),
+            shares: data.toUint128(73),
+            isIssuance: data.toBool(89),
+            asAllowance: data.toBool(90)
         });
     }
 
     function serialize(TriggerUpdateShares memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.TriggerUpdateShares, t.poolId, t.scId, t.who, t.shares, t.isIssuance, t.asAllowance
+            MessageType.TriggerUpdateShares,
+            t.poolId,
+            t.scId,
+            t.who,
+            t.pricePerShare,
+            t.shares,
+            t.isIssuance,
+            t.asAllowance
         );
     }
 }

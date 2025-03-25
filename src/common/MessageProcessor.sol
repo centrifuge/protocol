@@ -352,15 +352,21 @@ contract MessageProcessor is Auth, IMessageProcessor {
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendIssueShares(PoolId poolId, ShareClassId scId, address receiver, uint128 shares, uint256 timestamp)
-        external
-    {
+    function sendIssueShares(
+        PoolId poolId,
+        ShareClassId scId,
+        address receiver,
+        D18 pricePerShare,
+        uint128 shares,
+        uint256 timestamp
+    ) external {
         gateway.send(
             poolId.chainId(),
             MessageLib.UpdateShares({
                 poolId: poolId.raw(),
                 scId: scId.raw(),
                 who: receiver.toBytes32(),
+                pricePerShare: pricePerShare,
                 shares: shares,
                 timestamp: timestamp,
                 isIssuance: true
@@ -369,15 +375,21 @@ contract MessageProcessor is Auth, IMessageProcessor {
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendRevokeShares(PoolId poolId, ShareClassId scId, address provider, uint128 shares, uint256 timestamp)
-        external
-    {
+    function sendRevokeShares(
+        PoolId poolId,
+        ShareClassId scId,
+        address provider,
+        D18 pricePerShare,
+        uint128 shares,
+        uint256 timestamp
+    ) external {
         gateway.send(
             poolId.chainId(),
             MessageLib.UpdateShares({
                 poolId: poolId.raw(),
                 scId: scId.raw(),
                 who: provider.toBytes32(),
+                pricePerShare: pricePerShare,
                 shares: shares,
                 timestamp: timestamp,
                 isIssuance: false
@@ -516,14 +528,12 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 revert InvalidMessage(uint8(kind));
             }
         } else if (cat == MessageCategory.BalanceSheet) {
-            // TODO: Change into different message type - TriggerUpdateHolding & TriggerUpdateShares & ApproveDeposit &
-            // ApproveRedeem & RevokeShares & IssueShares
             if (kind == MessageType.TriggerUpdateHolding) {
                 MessageLib.TriggerUpdateHolding memory m = message.deserializeTriggerUpdateHolding();
 
                 Meta memory meta = Meta({debits: m.debits, credits: m.credits});
                 if (m.isIncrease) {
-                    balanceSheetManager.deposit(
+                    balanceSheetManager.triggerDeposit(
                         PoolId.wrap(m.poolId),
                         ShareClassId.wrap(m.scId),
                         AssetId.wrap(m.assetId),
@@ -533,7 +543,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
                         meta
                     );
                 } else {
-                    balanceSheetManager.withdraw(
+                    balanceSheetManager.triggerWithdraw(
                         PoolId.wrap(m.poolId),
                         ShareClassId.wrap(m.scId),
                         AssetId.wrap(m.assetId),
@@ -551,12 +561,17 @@ contract MessageProcessor is Auth, IMessageProcessor {
                         PoolId.wrap(m.poolId),
                         ShareClassId.wrap(m.scId),
                         address(bytes20(m.who)),
+                        m.pricePerShare,
                         m.shares,
                         m.asAllowance
                     );
                 } else {
                     balanceSheetManager.triggerRevokeShares(
-                        PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), address(bytes20(m.who)), m.shares
+                        PoolId.wrap(m.poolId),
+                        ShareClassId.wrap(m.scId),
+                        address(bytes20(m.who)),
+                        m.pricePerShare,
+                        m.shares
                     );
                 }
             } else if (kind == MessageType.UpdateHolding) {
@@ -578,9 +593,13 @@ contract MessageProcessor is Auth, IMessageProcessor {
             } else if (kind == MessageType.UpdateShares) {
                 MessageLib.UpdateShares memory m = message.deserializeUpdateShares();
                 if (m.isIssuance) {
-                    poolRouter.increaseShareIssuance(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares);
+                    poolRouter.increaseShareIssuance(
+                        PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.pricePerShare, m.shares
+                    );
                 } else {
-                    poolRouter.decreaseShareIssuance(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares);
+                    poolRouter.decreaseShareIssuance(
+                        PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.pricePerShare, m.shares
+                    );
                 }
             } else {
                 revert InvalidMessage(uint8(kind));

@@ -513,6 +513,7 @@ contract TestMessageLibIdentities is Test {
             poolId: 1,
             scId: bytes16("sc"),
             who: bytes32("alice"),
+            pricePerShare: d18(123456),
             shares: 100,
             timestamp: 12345,
             isIssuance: true
@@ -524,6 +525,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.scId, b.scId);
         assertEq(a.who, b.who);
         assertEq(a.shares, b.shares);
+        assert(a.pricePerShare.eq(b.pricePerShare));
         assertEq(a.timestamp, b.timestamp);
         assertEq(a.isIssuance, b.isIssuance);
 
@@ -615,6 +617,7 @@ contract TestMessageLibIdentities is Test {
             poolId: 1,
             scId: bytes16("sc"),
             who: bytes32("alice"),
+            pricePerShare: d18(123456),
             shares: 100,
             isIssuance: true,
             asAllowance: true
@@ -625,6 +628,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
         assertEq(a.who, b.who);
+        assert(a.pricePerShare.eq(b.pricePerShare));
         assertEq(a.shares, b.shares);
         assertEq(a.isIssuance, b.isIssuance);
         assertEq(a.asAllowance, b.asAllowance);
