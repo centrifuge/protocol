@@ -59,11 +59,11 @@ contract BalanceSheetManagerTest is BaseTest {
 
     function _defaultMeta() internal view returns (Meta memory) {
         JournalEntry[] memory debits = new JournalEntry[](1);
-        debits[0] = JournalEntry({amount: d18(100, 5), accountId: AccountId.wrap(1)});
+        debits[0] = JournalEntry({amount: 100, accountId: AccountId.wrap(1)});
         JournalEntry[] memory credits = new JournalEntry[](3);
-        credits[0] = JournalEntry({amount: d18(9, 5), accountId: AccountId.wrap(2)});
-        credits[1] = JournalEntry({amount: d18(40, 5), accountId: AccountId.wrap(2)});
-        credits[2] = JournalEntry({amount: d18(7, 5), accountId: AccountId.wrap(3)});
+        credits[0] = JournalEntry({amount: 9, accountId: AccountId.wrap(2)});
+        credits[1] = JournalEntry({amount: 5, accountId: AccountId.wrap(2)});
+        credits[2] = JournalEntry({amount: 5, accountId: AccountId.wrap(3)});
 
         return Meta({debits: debits, credits: credits});
     }
@@ -408,5 +408,21 @@ contract BalanceSheetManagerTest is BaseTest {
             defaultTypedPoolId, defaultTypedShareClassId, asset, tokenId, d18(1, 3), block.timestamp
         );
         balanceSheetManager.updateValue(defaultTypedPoolId, defaultTypedShareClassId, asset, tokenId, d18(1, 3));
+    }
+
+    function testEnsureEntries() public {
+        erc20.mint(address(this), defaultAmount);
+        erc20.approve(address(balanceSheetManager), defaultAmount);
+        vm.expectRevert(IBalanceSheetManager.EntriesUnbalanced.selector);
+        balanceSheetManager.deposit(
+            defaultTypedPoolId,
+            defaultTypedShareClassId,
+            address(erc20),
+            erc20TokenId,
+            address(this),
+            defaultAmount,
+            d18(0),
+            _defaultMeta()
+        );
     }
 }

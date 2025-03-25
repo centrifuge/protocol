@@ -5,7 +5,7 @@ import {D18, d18} from "src/misc/types/D18.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 
 struct JournalEntry {
-    D18 amount;
+    uint128 amount;
     AccountId accountId;
 }
 
@@ -29,7 +29,7 @@ library JournalEntryLib {
             uint256 offset = i * 20;
 
             // Store `amount` as 16 bytes (big-endian)
-            uint128 amount = entries[i].amount.raw();
+            uint128 amount = entries[i].amount;
             for (uint256 j = 0; j < 16; j++) {
                 // shift right by 8*(15-j) to get the correct byte
                 packed[offset + j] = bytes1(uint8(amount >> (8 * (15 - j))));
@@ -76,7 +76,7 @@ library JournalEntryLib {
                 accountId = (accountId << 8) | uint32(uint8(_bytes[offset + 16 + j]));
             }
 
-            entries[i] = JournalEntry({amount: d18(amount), accountId: AccountId.wrap(accountId)});
+            entries[i] = JournalEntry({amount: amount, accountId: AccountId.wrap(accountId)});
         }
 
         return entries;

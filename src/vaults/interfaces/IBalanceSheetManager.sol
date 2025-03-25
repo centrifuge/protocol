@@ -10,6 +10,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 
 interface IBalanceSheetManager {
     // --- Errors ---
+    error EntriesUnbalanced();
 
     // --- Events ---
     event File(bytes32 indexed what, address data);
