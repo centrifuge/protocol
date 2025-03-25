@@ -138,6 +138,7 @@ abstract contract AdminTargets is
 
     /// @dev Property: after successfully calling requestDeposit for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     /// @dev Property: _updateDepositRequest should never revert due to underflow
+    /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
     function poolRouter_depositRequest(PoolId poolId, ShareClassId scId, uint32 isoCode, uint128 amount) public updateGhosts asAdmin {
         AssetId depositAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
@@ -148,7 +149,18 @@ abstract contract AdminTargets is
             (, uint32 lastUpdate) = multiShareClass.depositRequest(scId, depositAssetId, investor);
             uint32 epochId = multiShareClass.epochId(poolId);
 
-            eq(lastUpdate, epochId, "lastUpdate is not equal to epochId");  
+            eq(lastUpdate, epochId, "lastUpdate is not equal to epochId"); 
+
+            address[] memory _actors = _getActors();
+            uint128 totalPendingDeposit = multiShareClass.pendingDeposit(scId, depositAssetId);
+            uint128 totalPendingUserDeposit = 0;
+            for (uint256 k = 0; k < _actors.length; k++) {
+                address actor = _actors[k];
+                (uint128 pendingUserDeposit,) = multiShareClass.depositRequest(scId, depositAssetId, Helpers.addressToBytes32(actor));
+                totalPendingUserDeposit += pendingUserDeposit;
+            }
+
+            gte(totalPendingDeposit, totalPendingUserDeposit, "total pending deposit is less than sum of pending user deposit amounts"); 
         } catch (bytes memory reason) {
             bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
             t(!arithmeticRevert, "depositRequest reverts with arithmetic panic");
@@ -172,11 +184,12 @@ abstract contract AdminTargets is
         }
     }  
 
+    /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
     /// @dev Property: after successfully calling cancelDepositRequest for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     /// @dev Property: after successfully calling cancelDepositRequest for an investor, their depositRequest[..].pending is zero
-    /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
     /// @dev Property: cancelDepositRequest absolute value should never be higher than pendingDeposit (would result in underflow revert)
     /// @dev Property: _updateDepositRequest should never revert due to underflow
+    /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
     function poolRouter_cancelDepositRequest(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asAdmin {
         AssetId depositAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
@@ -187,6 +200,17 @@ abstract contract AdminTargets is
 
             eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId");
             eq(pending, 0, "pending is not zero");
+
+            address[] memory _actors = _getActors();
+            uint128 totalPendingDeposit = multiShareClass.pendingDeposit(scId, depositAssetId);
+            uint128 totalPendingUserDeposit = 0;
+            for (uint256 k = 0; k < _actors.length; k++) {
+                address actor = _actors[k];
+                (uint128 pendingUserDeposit,) = multiShareClass.depositRequest(scId, depositAssetId, Helpers.addressToBytes32(actor));
+                totalPendingUserDeposit += pendingUserDeposit;
+            }
+
+            gte(totalPendingDeposit, totalPendingUserDeposit, "total pending deposit is less than sum of pending user deposit amounts");
         } catch (bytes memory reason) {
             bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
             t(!arithmeticRevert, "cancelDepositRequest reverts with arithmetic panic");
