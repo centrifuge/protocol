@@ -17,7 +17,8 @@ import {IPoolManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
-import {IBaseVault, IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
+import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {ITrancheFactory} from "src/vaults/interfaces/factories/ITrancheFactory.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";

@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-interface IRedeemManager {
+import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+
+interface IRedeemManager is IBaseInvestmentManager {
     event TriggerRedeemRequest(
         uint64 indexed poolId,
         bytes16 indexed trancheId,

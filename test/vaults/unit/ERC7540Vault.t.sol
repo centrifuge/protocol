@@ -17,7 +17,7 @@ contract ERC7540VaultTest is BaseTest {
         uint128 assetId,
         address nonWard
     ) public {
-        vm.assume(nonWard != address(root) && nonWard != address(this) && nonWard != address(investmentManager));
+        vm.assume(nonWard != address(root) && nonWard != address(this) && nonWard != address(asyncInvestmentManager));
         vm.assume(assetId > 0);
         vm.assume(bytes(tokenName).length <= 128);
         vm.assume(bytes(tokenSymbol).length <= 32);
@@ -26,7 +26,7 @@ contract ERC7540VaultTest is BaseTest {
         ERC7540Vault vault = ERC7540Vault(vault_);
 
         // values set correctly
-        assertEq(address(vault.manager()), address(investmentManager));
+        assertEq(address(vault.manager()), address(asyncInvestmentManager));
         assertEq(vault.asset(), address(erc20));
         assertEq(vault.poolId(), poolId);
         assertEq(vault.trancheId(), trancheId);
@@ -37,7 +37,7 @@ contract ERC7540VaultTest is BaseTest {
 
         // permissions set correctly
         assertEq(vault.wards(address(root)), 1);
-        assertEq(vault.wards(address(investmentManager)), 1);
+        assertEq(vault.wards(address(asyncInvestmentManager)), 1);
         assertEq(vault.wards(nonWard), 0);
     }
 
@@ -70,7 +70,7 @@ contract ERC7540VaultTest is BaseTest {
         vm.expectRevert(MathLib.Uint128_Overflow.selector);
         vault.convertToAssets(amount);
 
-        vm.expectRevert(bytes("InvestmentManager/exceeds-max-deposit"));
+        vm.expectRevert(bytes("AsyncInvestmentManager/exceeds-max-deposit"));
         vault.deposit(amount, randomUser, self);
 
         vm.expectRevert(MathLib.Uint128_Overflow.selector);
@@ -79,7 +79,7 @@ contract ERC7540VaultTest is BaseTest {
         vm.expectRevert(MathLib.Uint128_Overflow.selector);
         vault.withdraw(amount, randomUser, self);
 
-        vm.expectRevert(bytes("InvestmentManager/exceeds-max-redeem"));
+        vm.expectRevert(bytes("AsyncInvestmentManager/exceeds-max-redeem"));
         vault.redeem(amount, randomUser, self);
 
         erc20.mint(address(this), amount);

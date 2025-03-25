@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.5.0;
 
-import {IERC7575} from "src/vaults/interfaces/IERC7575.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
+
+import {IERC7575} from "src/vaults/interfaces/IERC7575.sol";
+import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 
 interface IERC7540Operator {
     /**
@@ -278,15 +281,8 @@ interface IERC7714 {
     function isPermissioned(address controller) external view returns (bool);
 }
 
-/**
- * @title  IBaseVault
- * @dev    This is the specific set of interfaces used by the Centrifuge impelmentation of ERC7540,
- *         as a fully asynchronous Vault, with cancelation support, and authorize operator signature support.
- */
-interface IBaseVault is IERC7540Redeem, IERC7540CancelRedeem, IERC7575, IERC7741, IERC7714, IRecoverable {
-    event RedeemClaimable(address indexed controller, uint256 indexed requestId, uint256 assets, uint256 shares);
-    event CancelRedeemClaimable(address indexed controller, uint256 indexed requestId, uint256 shares);
-
+// TODO(@wischli): Find better naming + docs
+interface IBaseVault is IERC7540Operator, IERC7741, IERC7714, IRecoverable, IERC7575 {
     /// @notice Identifier of the Centrifuge pool
     function poolId() external view returns (uint64);
 
@@ -296,6 +292,36 @@ interface IBaseVault is IERC7540Redeem, IERC7540CancelRedeem, IERC7575, IERC7741
     /// @notice Set msg.sender as operator of owner, to `approved` status
     /// @dev    MUST be called by endorsed sender
     function setEndorsedOperator(address owner, bool approved) external;
+
+    /// @notice Returns the address of the manager contract handling the vault.
+    /// @dev This naming MUST NOT change due to requirements of olds vaults from v2
+    /// @return The address of the manager contract that is between vault and gateway
+    function manager() external view returns (address);
+}
+
+// /// @title  IBaseVault Interface
+// /// @notice Interface for the all vault contracts
+// /// @dev Must be implemented by all vaults
+// interface IBaseVault is IBaseVaultMinimal {
+//     /// @notice Returns the address of asset that the vault is accepting
+//     /// @dev This naming MUST NOT change due to requirements of olds vaults from v2
+//     /// @return The address of the asset that the vault is accepting
+//     function asset() external view virtual returns (address);
+
+//     /// @notice Returns the address of the share token the vault is issuing
+//     /// @dev This naming MUST NOT change due to requirements of olds vaults from v2
+//     /// @return The address of the share token that the vault is issuing
+//     function share() external view virtual returns (address);
+// }
+
+/**
+ * @title  IAsyncRedeemVault
+ * @dev    This is the specific set of interfaces used by the Centrifuge implementation of ERC7540,
+ *         as a fully asynchronous Vault, with cancellation support, and authorize operator signature support.
+ */
+interface IAsyncRedeemVault is IERC7540Redeem, IERC7540CancelRedeem, IBaseVault {
+    event RedeemClaimable(address indexed controller, uint256 indexed requestId, uint256 assets, uint256 shares);
+    event CancelRedeemClaimable(address indexed controller, uint256 indexed requestId, uint256 shares);
 
     /// @notice Callback when a redeem Request is triggered externally;
     function onRedeemRequest(address controller, address owner, uint256 shares) external;
@@ -307,7 +333,7 @@ interface IBaseVault is IERC7540Redeem, IERC7540CancelRedeem, IERC7575, IERC7741
     function onCancelRedeemClaimable(address owner, uint256 shares) external;
 }
 
-interface IERC7540Vault is IERC7540Deposit, IERC7540CancelDeposit, IBaseVault {
+interface IERC7540Vault is IERC7540Deposit, IERC7540CancelDeposit, IAsyncRedeemVault {
     event DepositClaimable(address indexed controller, uint256 indexed requestId, uint256 assets, uint256 shares);
     event CancelDepositClaimable(address indexed controller, uint256 indexed requestId, uint256 assets);
 

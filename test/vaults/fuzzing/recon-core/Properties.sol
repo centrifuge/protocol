@@ -37,7 +37,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
 
         // Mint and Deposit
         return sumOfClaimedDeposits[address(trancheToken)]
-        // investmentManager_fulfilledDepositRequest
+        // asyncInvestmentManager_fulfilledDepositRequest
         <= sumOfFullfilledDeposits[address(trancheToken)];
     }
 
@@ -48,7 +48,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
 
         // Redeem and Withdraw
         return sumOfClaimedRedemptions[address(token)]
-        // investmentManager_handleExecutedCollectRedeem
+        // asyncInvestmentManager_handleExecutedCollectRedeem
         <= mintedByCurrencyPayout[address(token)];
     }
 
@@ -81,7 +81,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
 
         // NOTE: Skipping escrow which instead can have non-zero bal
 
-        systemAddresses[2] = address(investmentManager);
+        systemAddresses[2] = address(asyncInvestmentManager);
         systemAddresses[3] = address(poolManager);
         systemAddresses[4] = address(vault);
         systemAddresses[5] = address(token);
@@ -140,7 +140,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
 
         // claimCancelDepositRequest
         return sumOfClaimedDepositCancelations[address(token)]
-        // investmentManager_fulfillCancelDepositRequest
+        // asyncInvestmentManager_fulfillCancelDepositRequest
         <= cancelDepositCurrencyPayout[address(token)];
     }
 
@@ -153,7 +153,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
 
         // claimCancelRedeemRequest
         return sumOfClaimedRedeemCancelations[address(trancheToken)]
-        // investmentManager_fulfillCancelRedeemRequest
+        // asyncInvestmentManager_fulfillCancelRedeemRequest
         <= cancelRedeemTrancheTokenPayout[address(trancheToken)];
     }
 
@@ -186,7 +186,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
     }
 
     function invariant_IM_1() public view returns (bool) {
-        if (address(investmentManager) == address(0)) {
+        if (address(asyncInvestmentManager) == address(0)) {
             return true;
         }
         if (address(vault) == address(0)) {
@@ -217,7 +217,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
     }
 
     function invariant_IM_2() public view returns (bool) {
-        if (address(investmentManager) == address(0)) {
+        if (address(asyncInvestmentManager) == address(0)) {
             return true;
         }
         if (address(vault) == address(0)) {

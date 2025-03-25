@@ -92,8 +92,8 @@ interface IPoolManagerGatewayHandler {
     function updateContract(uint64 poolId, bytes16 trancheId, address target, bytes memory update) external;
 }
 
-/// @notice Interface for CV methods related to investment called by the gateway
-interface IInvestmentManagerGatewayHandler {
+/// @notice Interface for CV methods related to async deposits called by the gateway
+interface IDepositGatewayHandler {
     /// @notice Fulfills pending deposit requests after successful epoch execution on CP.
     ///         The amount of shares that can be claimed by the user is minted and moved to the escrow contract.
     ///         The MaxMint bookkeeping value is updated.
@@ -101,21 +101,6 @@ interface IInvestmentManagerGatewayHandler {
     /// @dev    The shares in the escrow are reserved for the user and are transferred to the user on deposit
     ///         and mint calls.
     function fulfillDepositRequest(
-        uint64 poolId,
-        bytes16 trancheId,
-        address user,
-        uint128 assetId,
-        uint128 assets,
-        uint128 shares
-    ) external;
-
-    /// @notice Fulfills pending redeem requests after successful epoch execution on CP.
-    ///         The amount of redeemed shares is burned. The amount of assets that can be claimed by the user in
-    ///         return is locked in the escrow contract. The MaxWithdraw bookkeeping value is updated.
-    ///         The request fulfillment can be partial.
-    /// @dev    The assets in the escrow are reserved for the user and are transferred to the user on redeem
-    ///         and withdraw calls.
-    function fulfillRedeemRequest(
         uint64 poolId,
         bytes16 trancheId,
         address user,
@@ -181,6 +166,24 @@ interface IInvestmentManagerGatewayHandler {
         uint128 assetId,
         uint128 assets,
         uint128 fulfillment
+    ) external;
+}
+
+/// @notice Interface for CV methods related to async redemptions called by the gateway
+interface IRedeemGatewayHandler {
+    /// @notice Fulfills pending redeem requests after successful epoch execution on CP.
+    ///         The amount of redeemed shares is burned. The amount of assets that can be claimed by the user in
+    ///         return is locked in the escrow contract. The MaxWithdraw bookkeeping value is updated.
+    ///         The request fulfillment can be partial.
+    /// @dev    The assets in the escrow are reserved for the user and are transferred to the user on redeem
+    ///         and withdraw calls.
+    function fulfillRedeemRequest(
+        uint64 poolId,
+        bytes16 trancheId,
+        address user,
+        uint128 assetId,
+        uint128 assets,
+        uint128 shares
     ) external;
 
     /// @notice Fulfills redeem request cancellation after successful epoch execution on CP.

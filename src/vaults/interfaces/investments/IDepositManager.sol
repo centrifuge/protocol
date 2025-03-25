@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-interface IDepositManager {
+import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+
+interface IDepositManager is IBaseInvestmentManager {
     /// @notice Processes owner's asset deposit after the epoch has been executed on Centrifuge and the deposit order
     ///         has been successfully processed (partial fulfillment possible).
     ///         Shares are transferred from the escrow to the receiver. Amount of shares is computed based of the amount

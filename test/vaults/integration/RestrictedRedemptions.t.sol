@@ -45,7 +45,7 @@ contract RedeemTest is BaseTest {
         tranche.transfer(investor2, amount / 2);
 
         // Not everyone can redeem
-        vm.expectRevert(bytes("InvestmentManager/transfer-not-allowed"));
+        vm.expectRevert(bytes("AsyncInvestmentManager/transfer-not-allowed"));
         vm.prank(investor);
         vault.requestRedeem(amount / 2, investor, investor);
 

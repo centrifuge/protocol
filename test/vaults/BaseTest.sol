@@ -14,7 +14,7 @@ import {Gateway} from "src/common/Gateway.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 // core contracts
-import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
+import {AsyncInvestmentManager} from "src/vaults/AsyncInvestmentManager.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
 import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
@@ -110,7 +110,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
         // Label contracts
         vm.label(address(root), "Root");
-        vm.label(address(investmentManager), "InvestmentManager");
+        vm.label(address(asyncInvestmentManager), "AsyncInvestmentManager");
         vm.label(address(poolManager), "PoolManager");
         vm.label(address(balanceSheetManager), "BalanceSheetManager");
         vm.label(address(gateway), "Gateway");
@@ -133,7 +133,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
         // Exclude predeployed contracts from invariant tests by default
         excludeContract(address(root));
-        excludeContract(address(investmentManager));
+        excludeContract(address(asyncInvestmentManager));
         excludeContract(address(balanceSheetManager));
         excludeContract(address(poolManager));
         excludeContract(address(gateway));

@@ -40,7 +40,7 @@ contract DepositRedeem is BaseTest {
             poolId, trancheId, bytes32(bytes20(self)), _assetId, assets, firstTranchePayout
         );
 
-        (,, uint256 depositPrice,,,,,,,) = investmentManager.investments(address(vault), self);
+        (,, uint256 depositPrice,,,,,,,) = asyncInvestmentManager.investments(address(vault), self);
         assertEq(depositPrice, 1400000000000000000);
 
         // second trigger executed collectInvest of the second 50% at a price of 1.2
@@ -49,7 +49,7 @@ contract DepositRedeem is BaseTest {
             poolId, trancheId, bytes32(bytes20(self)), _assetId, assets, secondTranchePayout
         );
 
-        (,, depositPrice,,,,,,,) = investmentManager.investments(address(vault), self);
+        (,, depositPrice,,,,,,,) = asyncInvestmentManager.investments(address(vault), self);
         assertEq(depositPrice, 1292307679384615384);
 
         // assert deposit & mint values adjusted
@@ -81,7 +81,7 @@ contract DepositRedeem is BaseTest {
 
         assertEq(vault.maxRedeem(self), firstTrancheRedeem);
 
-        (,,, uint256 redeemPrice,,,,,,) = investmentManager.investments(address(vault), self);
+        (,,, uint256 redeemPrice,,,,,,) = asyncInvestmentManager.investments(address(vault), self);
         assertEq(redeemPrice, 1100000000000000000);
 
         // second trigger executed collectRedeem of the second 25 tranches at a price of 1.3
@@ -90,7 +90,7 @@ contract DepositRedeem is BaseTest {
             poolId, trancheId, bytes32(bytes20(self)), assetId, secondCurrencyPayout, secondTrancheRedeem
         );
 
-        (,,, redeemPrice,,,,,,) = investmentManager.investments(address(vault), self);
+        (,,, redeemPrice,,,,,,) = asyncInvestmentManager.investments(address(vault), self);
         assertEq(redeemPrice, 1200000000000000000);
 
         assertApproxEqAbs(vault.maxWithdraw(self), firstCurrencyPayout + secondCurrencyPayout, 2);

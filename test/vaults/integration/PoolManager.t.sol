@@ -16,7 +16,8 @@ import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
 import {IRestrictionManager} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
-import {IBaseVault, IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
+import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 
 contract PoolManagerTestHelper is BaseTest {
@@ -84,7 +85,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         // values set correctly
         assertEq(address(poolManager.escrow()), address(escrow));
-        assertEq(address(investmentManager.poolManager()), address(poolManager));
+        assertEq(address(asyncInvestmentManager.poolManager()), address(poolManager));
         assertEq(address(gateway.handler()), address(poolManager.sender()));
 
         // permissions set correctly
@@ -527,11 +528,11 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         bytes16 trancheId = oldVault.trancheId();
         address asset = address(oldVault.asset());
 
-        ERC7540VaultFactory newVaultFactory = new ERC7540VaultFactory(address(root), address(investmentManager));
+        ERC7540VaultFactory newVaultFactory = new ERC7540VaultFactory(address(root), address(asyncInvestmentManager));
 
         // rewire factory contracts
         newVaultFactory.rely(address(poolManager));
-        investmentManager.rely(address(newVaultFactory));
+        asyncInvestmentManager.rely(address(newVaultFactory));
         poolManager.file("vaultFactory", address(newVaultFactory), true);
 
         // Remove old vault
@@ -634,15 +635,15 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
             // check vault state
             assertEq(vaultAddress, vault_, "vault address mismatch");
             ERC7540Vault vault = ERC7540Vault(vault_);
-            assertEq(address(vault.manager()), address(investmentManager), "investment manager mismatch");
+            assertEq(address(vault.manager()), address(asyncInvestmentManager), "investment manager mismatch");
             assertEq(vault.asset(), asset, "asset mismatch");
             assertEq(vault.poolId(), poolId, "poolId mismatch");
             assertEq(vault.trancheId(), trancheId, "trancheId mismatch");
             assertEq(address(vault.share()), tranche_, "tranche mismatch");
 
-            assertEq(vault.wards(address(investmentManager)), 1);
+            assertEq(vault.wards(address(asyncInvestmentManager)), 1);
             assertEq(vault.wards(address(this)), 0);
-            assertEq(investmentManager.wards(vaultAddress), 1);
+            assertEq(asyncInvestmentManager.wards(vaultAddress), 1);
         } else {
             assert(!poolManager.isLinked(poolId, trancheId, asset, vaultAddress));
             // Check Tranche permissions
@@ -650,7 +651,11 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
 
             // Check missing link
             assertEq(vault_, address(0), "Tranche link to vault requires linkVault");
-            assertEq(investmentManager.wards(vaultAddress), 0, "Vault auth on investmentManager set up in linkVault");
+            assertEq(
+                asyncInvestmentManager.wards(vaultAddress),
+                0,
+                "Vault auth on asyncInvestmentManager set up in linkVault"
+            );
         }
     }
 

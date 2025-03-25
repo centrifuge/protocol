@@ -3,11 +3,13 @@ pragma solidity 0.8.28;
 
 import {BaseVault} from "src/vaults/BaseVault.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
+import {IAsyncRedeemVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 
-abstract contract AsyncRedeemVault is BaseVault {
+abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     constructor(
         uint64 poolId_,
         bytes16 trancheId_,
@@ -28,11 +30,11 @@ abstract contract AsyncRedeemVault is BaseVault {
         address sender = isOperator[owner][msg.sender] ? owner : msg.sender;
 
         require(
-            manager.requestRedeem(address(this), shares, controller, owner, sender),
+            asyncRedeemManager().requestRedeem(address(this), shares, controller, owner, sender),
             "ERC7540Vault/request-redeem-failed"
         );
 
-        address escrow = manager.escrow();
+        address escrow = asyncRedeemManager().escrow();
         try ITranche(share).authTransferFrom(sender, owner, escrow, shares) returns (bool) {}
         catch {
             // Support tranche tokens that block authTransferFrom. In this case ERC20 approval needs to be set
@@ -45,7 +47,7 @@ abstract contract AsyncRedeemVault is BaseVault {
 
     /// @inheritdoc IERC7540Redeem
     function pendingRedeemRequest(uint256, address controller) public view returns (uint256 pendingShares) {
-        pendingShares = manager.pendingRedeemRequest(address(this), controller);
+        pendingShares = asyncRedeemManager().pendingRedeemRequest(address(this), controller);
     }
 
     /// @inheritdoc IERC7540Redeem
@@ -57,18 +59,18 @@ abstract contract AsyncRedeemVault is BaseVault {
     /// @inheritdoc IERC7540CancelRedeem
     function cancelRedeemRequest(uint256, address controller) external {
         _validateController(controller);
-        manager.cancelRedeemRequest(address(this), controller, msg.sender);
+        asyncRedeemManager().cancelRedeemRequest(address(this), controller, msg.sender);
         emit CancelRedeemRequest(controller, REQUEST_ID, msg.sender);
     }
 
     /// @inheritdoc IERC7540CancelRedeem
     function pendingCancelRedeemRequest(uint256, address controller) public view returns (bool isPending) {
-        isPending = manager.pendingCancelRedeemRequest(address(this), controller);
+        isPending = asyncRedeemManager().pendingCancelRedeemRequest(address(this), controller);
     }
 
     /// @inheritdoc IERC7540CancelRedeem
     function claimableCancelRedeemRequest(uint256, address controller) public view returns (uint256 claimableShares) {
-        claimableShares = manager.claimableCancelRedeemRequest(address(this), controller);
+        claimableShares = asyncRedeemManager().claimableCancelRedeemRequest(address(this), controller);
     }
 
     /// @inheritdoc IERC7540CancelRedeem
@@ -77,36 +79,17 @@ abstract contract AsyncRedeemVault is BaseVault {
         returns (uint256 shares)
     {
         _validateController(controller);
-        shares = manager.claimCancelRedeemRequest(address(this), receiver, controller);
+        shares = asyncRedeemManager().claimCancelRedeemRequest(address(this), receiver, controller);
         emit CancelRedeemClaim(receiver, controller, REQUEST_ID, msg.sender, shares);
     }
 
-    /// @dev Preview functions for ERC-7540 vaults revert
-    function previewWithdraw(uint256) external pure returns (uint256) {
-        revert();
-    }
-
-    /// @dev Preview functions for ERC-7540 vaults revert
-    function previewRedeem(uint256) external pure returns (uint256) {
-        revert();
-    }
-
+    // --- Synchronous redeem methods ---
     /// @inheritdoc IERC7575
     /// @notice     DOES NOT support controller != msg.sender since shares are already transferred on requestRedeem
     function withdraw(uint256 assets, address receiver, address controller) public returns (uint256 shares) {
         _validateController(controller);
-        shares = manager.withdraw(address(this), assets, receiver, controller);
+        shares = asyncRedeemManager().withdraw(address(this), assets, receiver, controller);
         emit Withdraw(msg.sender, receiver, controller, assets, shares);
-    }
-
-    /// @inheritdoc IERC7575
-    function maxWithdraw(address controller) public view returns (uint256 maxAssets) {
-        maxAssets = manager.maxWithdraw(address(this), controller);
-    }
-
-    /// @inheritdoc IERC7575
-    function maxRedeem(address controller) public view returns (uint256 maxShares) {
-        maxShares = manager.maxRedeem(address(this), controller);
     }
 
     /// @inheritdoc IERC7575
@@ -115,7 +98,7 @@ abstract contract AsyncRedeemVault is BaseVault {
     ///             It is recommended to use withdraw() to claim redemption requests instead.
     function redeem(uint256 shares, address receiver, address controller) external returns (uint256 assets) {
         _validateController(controller);
-        assets = manager.redeem(address(this), shares, receiver, controller);
+        assets = asyncRedeemManager().redeem(address(this), shares, receiver, controller);
         emit Withdraw(msg.sender, receiver, controller, assets, shares);
     }
 
@@ -130,5 +113,31 @@ abstract contract AsyncRedeemVault is BaseVault {
 
     function onCancelRedeemClaimable(address controller, uint256 shares) public auth {
         emit CancelRedeemClaimable(controller, REQUEST_ID, shares);
+    }
+
+    // --- View methods ---
+    /// @inheritdoc IERC7575
+    function maxWithdraw(address controller) public view returns (uint256 maxAssets) {
+        maxAssets = asyncRedeemManager().maxWithdraw(address(this), controller);
+    }
+
+    /// @inheritdoc IERC7575
+    function maxRedeem(address controller) public view returns (uint256 maxShares) {
+        maxShares = asyncRedeemManager().maxRedeem(address(this), controller);
+    }
+
+    /// @dev Strongly-typed accessor to the generic base manager
+    function asyncRedeemManager() public view returns (IAsyncRedeemManager) {
+        return IAsyncRedeemManager(IBaseVault(address(this)).manager());
+    }
+
+    /// @dev Preview functions for ERC-7540 vaults revert
+    function previewWithdraw(uint256) external pure returns (uint256) {
+        revert();
+    }
+
+    /// @dev Preview functions for ERC-7540 vaults revert
+    function previewRedeem(uint256) external pure returns (uint256) {
+        revert();
     }
 }

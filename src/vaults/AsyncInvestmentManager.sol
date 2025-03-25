@@ -14,11 +14,14 @@ import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-import {IInvestmentManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
+import {IDepositGatewayHandler, IRedeemGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
-import {IAsyncInvestmentManager, InvestmentState} from "src/vaults/interfaces/investments/IAsyncInvestmentManager.sol";
+import {
+    IAsyncInvestmentManager,
+    AsyncInvestmentState
+} from "src/vaults/interfaces/investments/IAsyncInvestmentManager.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {IAsyncDepositManager} from "src/vaults/interfaces/investments/IAsyncDepositManager.sol";
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
@@ -32,7 +35,7 @@ import {PriceConversionLib} from "src/vaults/libraries/PriceConversionLib.sol";
 /// @title  Investment Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
-contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerGatewayHandler {
+contract AsyncInvestmentManager is Auth, IAsyncInvestmentManager, IDepositGatewayHandler, IRedeemGatewayHandler {
     using MessageLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;
@@ -46,7 +49,7 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
     IPoolManager public poolManager;
 
     mapping(uint64 poolId => mapping(bytes16 trancheId => mapping(uint128 assetId => address vault))) public vault;
-    mapping(address vault => mapping(address investor => InvestmentState)) public investments;
+    mapping(address vault => mapping(address investor => AsyncInvestmentState)) public investments;
 
     constructor(address root_, address escrow_) Auth(msg.sender) {
         root = root_;
@@ -58,7 +61,7 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
         if (what == "gateway") gateway = IGateway(data);
         else if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "poolManager") poolManager = IPoolManager(data);
-        else revert("InvestmentManager/file-unrecognized-param");
+        else revert("AsyncInvestmentManager/file-unrecognized-param");
         emit File(what, data);
     }
 
@@ -77,12 +80,11 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
         public
         auth
     {
-        // TODO: Switch all occurences to BaseVault?
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
         address token = vault_.share();
 
-        require(vault_.asset() == asset_, "InvestmentManager/asset-mismatch");
-        require(vault[poolId][trancheId][assetId] == address(0), "InvestmentManager/vault-already-exists");
+        require(vault_.asset() == asset_, "AsyncInvestmentManager/asset-mismatch");
+        require(vault[poolId][trancheId][assetId] == address(0), "AsyncInvestmentManager/vault-already-exists");
 
         vault[poolId][trancheId][assetId] = vaultAddr;
 
@@ -99,8 +101,8 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
         address token = vault_.share();
 
-        require(vault_.asset() == asset_, "InvestmentManager/asset-mismatch");
-        require(vault[poolId][trancheId][assetId] != address(0), "InvestmentManager/vault-does-not-exist");
+        require(vault_.asset() == asset_, "AsyncInvestmentManager/asset-mismatch");
+        require(vault[poolId][trancheId][assetId] != address(0), "AsyncInvestmentManager/vault-does-not-exist");
 
         delete vault[poolId][trancheId][assetId];
 
@@ -117,21 +119,21 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
     {
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
         uint128 _assets = assets.toUint128();
-        require(_assets != 0, "InvestmentManager/zero-amount-not-allowed");
+        require(_assets != 0, "AsyncInvestmentManager/zero-amount-not-allowed");
 
         address asset = vault_.asset();
         require(
             poolManager.isLinked(vault_.poolId(), vault_.trancheId(), asset, vaultAddr),
-            "InvestmentManager/asset-not-allowed"
+            "AsyncInvestmentManager/asset-not-allowed"
         );
 
         require(
             _canTransfer(vaultAddr, address(0), controller, convertToShares(vaultAddr, assets)),
-            "InvestmentManager/transfer-not-allowed"
+            "AsyncInvestmentManager/transfer-not-allowed"
         );
 
-        InvestmentState storage state = investments[vaultAddr][controller];
-        require(state.pendingCancelDepositRequest != true, "InvestmentManager/cancellation-is-pending");
+        AsyncInvestmentState storage state = investments[vaultAddr][controller];
+        require(state.pendingCancelDepositRequest != true, "AsyncInvestmentManager/cancellation-is-pending");
 
         state.pendingDepositRequest = state.pendingDepositRequest + _assets;
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
@@ -151,19 +153,19 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
         returns (bool)
     {
         uint128 _shares = shares.toUint128();
-        require(_shares != 0, "InvestmentManager/zero-amount-not-allowed");
+        require(_shares != 0, "AsyncInvestmentManager/zero-amount-not-allowed");
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
 
         // You cannot redeem using a disallowed asset, instead another vault will have to be used
         require(
             poolManager.isLinked(vault_.poolId(), vault_.trancheId(), vault_.asset(), vaultAddr),
-            "InvestmentManager/asset-not-allowed"
+            "AsyncInvestmentManager/asset-not-allowed"
         );
 
         require(
             _canTransfer(vaultAddr, owner, address(escrow), shares)
                 && _canTransfer(vaultAddr, controller, address(escrow), shares),
-            "InvestmentManager/transfer-not-allowed"
+            "AsyncInvestmentManager/transfer-not-allowed"
         );
 
         return _processRedeemRequest(vaultAddr, _shares, controller, source, false);
@@ -178,8 +180,8 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
         bool triggered
     ) internal returns (bool) {
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
-        InvestmentState storage state = investments[vaultAddr][controller];
-        require(state.pendingCancelRedeemRequest != true || triggered, "InvestmentManager/cancellation-is-pending");
+        AsyncInvestmentState storage state = investments[vaultAddr][controller];
+        require(state.pendingCancelRedeemRequest != true || triggered, "AsyncInvestmentManager/cancellation-is-pending");
 
         state.pendingRedeemRequest = state.pendingRedeemRequest + shares;
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
@@ -196,9 +198,9 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
     function cancelDepositRequest(address vaultAddr, address controller, address source) public auth {
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
 
-        InvestmentState storage state = investments[vaultAddr][controller];
-        require(state.pendingDepositRequest > 0, "InvestmentManager/no-pending-deposit-request");
-        require(state.pendingCancelDepositRequest != true, "InvestmentManager/cancellation-is-pending");
+        AsyncInvestmentState storage state = investments[vaultAddr][controller];
+        require(state.pendingDepositRequest > 0, "AsyncInvestmentManager/no-pending-deposit-request");
+        require(state.pendingCancelDepositRequest != true, "AsyncInvestmentManager/cancellation-is-pending");
         state.pendingCancelDepositRequest = true;
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
@@ -213,14 +215,14 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
     function cancelRedeemRequest(address vaultAddr, address controller, address source) public auth {
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
         uint256 approximateTranchesPayout = pendingRedeemRequest(vaultAddr, controller);
-        require(approximateTranchesPayout > 0, "InvestmentManager/no-pending-redeem-request");
+        require(approximateTranchesPayout > 0, "AsyncInvestmentManager/no-pending-redeem-request");
         require(
             _canTransfer(vaultAddr, address(0), controller, approximateTranchesPayout),
-            "InvestmentManager/transfer-not-allowed"
+            "AsyncInvestmentManager/transfer-not-allowed"
         );
 
-        InvestmentState storage state = investments[vaultAddr][controller];
-        require(state.pendingCancelRedeemRequest != true, "InvestmentManager/cancellation-is-pending");
+        AsyncInvestmentState storage state = investments[vaultAddr][controller];
+        require(state.pendingCancelRedeemRequest != true, "AsyncInvestmentManager/cancellation-is-pending");
         state.pendingCancelRedeemRequest = true;
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
@@ -231,7 +233,8 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
         );
     }
 
-    /// @inheritdoc IInvestmentManagerGatewayHandler
+    // -- Gateway handlers --
+    /// @inheritdoc IDepositGatewayHandler
     function fulfillDepositRequest(
         uint64 poolId,
         bytes16 trancheId,
@@ -242,8 +245,8 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
     ) public auth {
         address vault_ = vault[poolId][trancheId][assetId];
 
-        InvestmentState storage state = investments[vault_][user];
-        require(state.pendingDepositRequest != 0, "InvestmentManager/no-pending-deposit-request");
+        AsyncInvestmentState storage state = investments[vault_][user];
+        require(state.pendingDepositRequest != 0, "AsyncInvestmentManager/no-pending-deposit-request");
         state.depositPrice =
             PriceConversionLib.calculatePrice(vault_, _maxDeposit(vault_, user) + assets, state.maxMint + shares);
         state.maxMint = state.maxMint + shares;
@@ -258,7 +261,7 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
         IERC7540Vault(vault_).onDepositClaimable(user, assets, shares);
     }
 
-    /// @inheritdoc IInvestmentManagerGatewayHandler
+    /// @inheritdoc IRedeemGatewayHandler
     function fulfillRedeemRequest(
         uint64 poolId,
         bytes16 trancheId,
@@ -269,8 +272,8 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
     ) public auth {
         address vault_ = vault[poolId][trancheId][assetId];
 
-        InvestmentState storage state = investments[vault_][user];
-        require(state.pendingRedeemRequest != 0, "InvestmentManager/no-pending-redeem-request");
+        AsyncInvestmentState storage state = investments[vault_][user];
+        require(state.pendingRedeemRequest != 0, "AsyncInvestmentManager/no-pending-redeem-request");
 
         // Calculate new weighted average redeem price and update order book values
         state.redeemPrice = PriceConversionLib.calculatePrice(
@@ -288,7 +291,7 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
         IERC7540Vault(vault_).onRedeemClaimable(user, assets, shares);
     }
 
-    /// @inheritdoc IInvestmentManagerGatewayHandler
+    /// @inheritdoc IDepositGatewayHandler
     function fulfillCancelDepositRequest(
         uint64 poolId,
         bytes16 trancheId,
@@ -299,8 +302,8 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
     ) public auth {
         address vault_ = vault[poolId][trancheId][assetId];
 
-        InvestmentState storage state = investments[vault_][user];
-        require(state.pendingCancelDepositRequest == true, "InvestmentManager/no-pending-cancel-deposit-request");
+        AsyncInvestmentState storage state = investments[vault_][user];
+        require(state.pendingCancelDepositRequest == true, "AsyncInvestmentManager/no-pending-cancel-deposit-request");
 
         state.claimableCancelDepositRequest = state.claimableCancelDepositRequest + assets;
         state.pendingDepositRequest =
@@ -311,14 +314,14 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
         IERC7540Vault(vault_).onCancelDepositClaimable(user, assets);
     }
 
-    /// @inheritdoc IInvestmentManagerGatewayHandler
+    /// @inheritdoc IRedeemGatewayHandler
     function fulfillCancelRedeemRequest(uint64 poolId, bytes16 trancheId, address user, uint128 assetId, uint128 shares)
         public
         auth
     {
         address vault_ = vault[poolId][trancheId][assetId];
-        InvestmentState storage state = investments[vault_][user];
-        require(state.pendingCancelRedeemRequest == true, "InvestmentManager/no-pending-cancel-redeem-request");
+        AsyncInvestmentState storage state = investments[vault_][user];
+        require(state.pendingCancelRedeemRequest == true, "AsyncInvestmentManager/no-pending-cancel-redeem-request");
 
         state.claimableCancelRedeemRequest = state.claimableCancelRedeemRequest + shares;
         state.pendingRedeemRequest = state.pendingRedeemRequest > shares ? state.pendingRedeemRequest - shares : 0;
@@ -328,16 +331,16 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
         IERC7540Vault(vault_).onCancelRedeemClaimable(user, shares);
     }
 
-    /// @inheritdoc IInvestmentManagerGatewayHandler
+    /// @inheritdoc IRedeemGatewayHandler
     function triggerRedeemRequest(uint64 poolId, bytes16 trancheId, address user, uint128 assetId, uint128 shares)
         public
         auth
     {
-        require(shares != 0, "InvestmentManager/tranche-token-amount-is-zero");
+        require(shares != 0, "AsyncInvestmentManager/tranche-token-amount-is-zero");
         address vault_ = vault[poolId][trancheId][assetId];
 
         // If there's any unclaimed deposits, claim those first
-        InvestmentState storage state = investments[vault_][user];
+        AsyncInvestmentState storage state = investments[vault_][user];
         uint128 tokensToTransfer = shares;
         if (state.maxMint >= shares) {
             // The full redeem request is covered by the claimable amount
@@ -350,7 +353,8 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
         }
 
         require(
-            _processRedeemRequest(vault_, shares, user, msg.sender, true), "InvestmentManager/failed-redeem-request"
+            _processRedeemRequest(vault_, shares, user, msg.sender, true),
+            "AsyncInvestmentManager/failed-redeem-request"
         );
 
         // Transfer the tranche token amount that was not covered by tokens still in escrow for claims,
@@ -360,7 +364,7 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
                 ITranche(address(IERC7540Vault(vault_).share())).authTransferFrom(
                     user, user, address(escrow), tokensToTransfer
                 ),
-                "InvestmentManager/transfer-failed"
+                "AsyncInvestmentManager/transfer-failed"
             );
         }
 
@@ -397,7 +401,7 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
     }
 
     function _maxDeposit(address vaultAddr, address user) internal view returns (uint128 assets) {
-        InvestmentState memory state = investments[vaultAddr][user];
+        AsyncInvestmentState memory state = investments[vaultAddr][user];
         assets = PriceConversionLib.calculateAssets(state.maxMint, vaultAddr, state.depositPrice, MathLib.Rounding.Down);
     }
 
@@ -416,7 +420,7 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
     /// @inheritdoc IRedeemManager
     function maxRedeem(address vaultAddr, address user) public view returns (uint256 shares) {
         if (!_canTransfer(vaultAddr, user, address(0), 0)) return 0;
-        InvestmentState memory state = investments[vaultAddr][user];
+        AsyncInvestmentState memory state = investments[vaultAddr][user];
         shares = uint256(
             PriceConversionLib.calculateShares(state.maxWithdraw, vaultAddr, state.redeemPrice, MathLib.Rounding.Down)
         );
@@ -465,9 +469,9 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
         auth
         returns (uint256 shares)
     {
-        require(assets <= _maxDeposit(vaultAddr, controller), "InvestmentManager/exceeds-max-deposit");
+        require(assets <= _maxDeposit(vaultAddr, controller), "AsyncInvestmentManager/exceeds-max-deposit");
 
-        InvestmentState storage state = investments[vaultAddr][controller];
+        AsyncInvestmentState storage state = investments[vaultAddr][controller];
         uint128 sharesUp =
             PriceConversionLib.calculateShares(assets.toUint128(), vaultAddr, state.depositPrice, MathLib.Rounding.Up);
         uint128 sharesDown =
@@ -482,7 +486,7 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
         auth
         returns (uint256 assets)
     {
-        InvestmentState storage state = investments[vaultAddr][controller];
+        AsyncInvestmentState storage state = investments[vaultAddr][controller];
         uint128 shares_ = shares.toUint128();
         _processDeposit(state, shares_, shares_, vaultAddr, receiver);
         assets =
@@ -490,18 +494,18 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
     }
 
     function _processDeposit(
-        InvestmentState storage state,
+        AsyncInvestmentState storage state,
         uint128 sharesUp,
         uint128 sharesDown,
         address vaultAddr,
         address receiver
     ) internal {
-        require(sharesUp <= state.maxMint, "InvestmentManager/exceeds-deposit-limits");
+        require(sharesUp <= state.maxMint, "AsyncInvestmentManager/exceeds-deposit-limits");
         state.maxMint = state.maxMint > sharesUp ? state.maxMint - sharesUp : 0;
         if (sharesDown > 0) {
             require(
                 IERC20(IERC7540Vault(vaultAddr).share()).transferFrom(address(escrow), receiver, sharesDown),
-                "InvestmentManager/tranche-tokens-transfer-failed"
+                "AsyncInvestmentManager/tranche-tokens-transfer-failed"
             );
         }
     }
@@ -512,9 +516,9 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
         auth
         returns (uint256 assets)
     {
-        require(shares <= maxRedeem(vaultAddr, controller), "InvestmentManager/exceeds-max-redeem");
+        require(shares <= maxRedeem(vaultAddr, controller), "AsyncInvestmentManager/exceeds-max-redeem");
 
-        InvestmentState storage state = investments[vaultAddr][controller];
+        AsyncInvestmentState storage state = investments[vaultAddr][controller];
         uint128 assetsUp =
             PriceConversionLib.calculateAssets(shares.toUint128(), vaultAddr, state.redeemPrice, MathLib.Rounding.Up);
         uint128 assetsDown =
@@ -529,7 +533,7 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
         auth
         returns (uint256 shares)
     {
-        InvestmentState storage state = investments[vaultAddr][controller];
+        AsyncInvestmentState storage state = investments[vaultAddr][controller];
         uint128 assets_ = assets.toUint128();
         _processRedeem(state, assets_, assets_, vaultAddr, receiver, controller);
         shares =
@@ -537,7 +541,7 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
     }
 
     function _processRedeem(
-        InvestmentState storage state,
+        AsyncInvestmentState storage state,
         uint128 assetsUp,
         uint128 assetsDown,
         address vaultAddr,
@@ -548,16 +552,16 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
         if (controller != receiver) {
             require(
                 _canTransfer(vaultAddr, controller, receiver, convertToShares(vaultAddr, assetsDown)),
-                "InvestmentManager/transfer-not-allowed"
+                "AsyncInvestmentManager/transfer-not-allowed"
             );
         }
 
         require(
             _canTransfer(vaultAddr, receiver, address(0), convertToShares(vaultAddr, assetsDown)),
-            "InvestmentManager/transfer-not-allowed"
+            "AsyncInvestmentManager/transfer-not-allowed"
         );
 
-        require(assetsUp <= state.maxWithdraw, "InvestmentManager/exceeds-redeem-limits");
+        require(assetsUp <= state.maxWithdraw, "AsyncInvestmentManager/exceeds-redeem-limits");
         state.maxWithdraw = state.maxWithdraw > assetsUp ? state.maxWithdraw - assetsUp : 0;
 
         if (assetsDown > 0) {
@@ -577,19 +581,19 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
         auth
         returns (uint256 assets)
     {
-        InvestmentState storage state = investments[vaultAddr][controller];
+        AsyncInvestmentState storage state = investments[vaultAddr][controller];
         assets = state.claimableCancelDepositRequest;
         state.claimableCancelDepositRequest = 0;
 
         if (controller != receiver) {
             require(
                 _canTransfer(vaultAddr, controller, receiver, convertToShares(vaultAddr, assets)),
-                "InvestmentManager/transfer-not-allowed"
+                "AsyncInvestmentManager/transfer-not-allowed"
             );
         }
         require(
             _canTransfer(vaultAddr, receiver, address(0), convertToShares(vaultAddr, assets)),
-            "InvestmentManager/transfer-not-allowed"
+            "AsyncInvestmentManager/transfer-not-allowed"
         );
 
         if (assets > 0) {
@@ -609,13 +613,13 @@ contract InvestmentManager is Auth, IAsyncInvestmentManager, IInvestmentManagerG
         auth
         returns (uint256 shares)
     {
-        InvestmentState storage state = investments[vaultAddr][controller];
+        AsyncInvestmentState storage state = investments[vaultAddr][controller];
         shares = state.claimableCancelRedeemRequest;
         state.claimableCancelRedeemRequest = 0;
         if (shares > 0) {
             require(
                 IERC20(IERC7540Vault(vaultAddr).share()).transferFrom(address(escrow), receiver, shares),
-                "InvestmentManager/tranche-tokens-transfer-failed"
+                "AsyncInvestmentManager/tranche-tokens-transfer-failed"
             );
         }
     }

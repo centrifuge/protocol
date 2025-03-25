@@ -6,7 +6,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {ISafe} from "src/common/Guardian.sol";
 import {Gateway} from "src/common/Gateway.sol";
 
-import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
+import {AsyncInvestmentManager} from "src/vaults/AsyncInvestmentManager.sol";
 import {BalanceSheetManager} from "src/vaults/BalanceSheetManager.sol";
 import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
 import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
@@ -17,14 +17,17 @@ import {SyncDepositAsyncRedeemManager} from "src/vaults/SyncDepositAsyncRedeemMa
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
+import {InvestmentManagerMapper} from "src/vaults/InvestmentManagerMapper.sol";
+import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 
 import "forge-std/Script.sol";
 import {CommonDeployer} from "script/CommonDeployer.s.sol";
 
 contract VaultsDeployer is CommonDeployer {
     BalanceSheetManager public balanceSheetManager;
-    InvestmentManager public investmentManager;
+    AsyncInvestmentManager public asyncInvestmentManager;
     SyncDepositAsyncRedeemManager public syncDepositAsyncRedeemManager;
+    InvestmentManagerMapper public investmentManagerMapper;
     PoolManager public poolManager;
     Escrow public escrow;
     Escrow public routerEscrow;
@@ -43,12 +46,14 @@ contract VaultsDeployer is CommonDeployer {
         restrictionManager = address(new RestrictionManager{salt: SALT}(address(root), deployer));
         restrictedRedemptions = address(new RestrictedRedemptions{salt: SALT}(address(root), address(escrow), deployer));
         trancheFactory = address(new TrancheFactory{salt: SALT}(address(root), deployer));
-        investmentManager = new InvestmentManager(address(root), address(escrow));
+        asyncInvestmentManager = new AsyncInvestmentManager(address(root), address(escrow));
         syncDepositAsyncRedeemManager = new SyncDepositAsyncRedeemManager(address(escrow));
-        asyncVaultFactory = address(new ERC7540VaultFactory(address(root), address(investmentManager)));
-        syncVaultFactory = address(
-            new SyncVaultFactory(address(root), address(investmentManager), address(syncDepositAsyncRedeemManager))
-        );
+        IBaseInvestmentManager[] memory investmentManagers;
+        investmentManagers[0] = IBaseInvestmentManager(address(asyncInvestmentManager));
+        investmentManagers[1] = IBaseInvestmentManager(address(syncDepositAsyncRedeemManager));
+        investmentManagerMapper = new InvestmentManagerMapper(investmentManagers, deployer);
+        asyncVaultFactory = address(new ERC7540VaultFactory(address(root), address(asyncInvestmentManager)));
+        syncVaultFactory = address(new SyncVaultFactory(address(root), address(syncDepositAsyncRedeemManager)));
 
         address[] memory vaultFactories = new address[](1);
         vaultFactories[0] = asyncVaultFactory;
@@ -70,7 +75,9 @@ contract VaultsDeployer is CommonDeployer {
         register("restrictionManager", address(restrictionManager));
         register("restrictedRedemptions", address(restrictedRedemptions));
         register("trancheFactory", address(trancheFactory));
-        register("investmentManager", address(investmentManager));
+        register("asyncInvestmentManager", address(asyncInvestmentManager));
+        register("syncDepositAsyncRedeemManager", address(syncDepositAsyncRedeemManager));
+        register("investmentManagerMapper", address(investmentManagerMapper));
         register("asyncVaultFactory", address(asyncVaultFactory));
         register("syncVaultFactory", address(syncVaultFactory));
         register("poolManager", address(poolManager));
@@ -88,13 +95,15 @@ contract VaultsDeployer is CommonDeployer {
         IAuth(asyncVaultFactory).rely(address(poolManager));
         IAuth(syncVaultFactory).rely(address(poolManager));
         IAuth(trancheFactory).rely(address(poolManager));
-        IAuth(investmentManager).rely(address(poolManager));
+        IAuth(asyncInvestmentManager).rely(address(poolManager));
+        IAuth(syncDepositAsyncRedeemManager).rely(address(poolManager));
         IAuth(restrictionManager).rely(address(poolManager));
         IAuth(restrictedRedemptions).rely(address(poolManager));
         messageProcessor.rely(address(poolManager));
 
-        // Rely on InvestmentManager
-        messageProcessor.rely(address(investmentManager));
+        // Rely on investment managers
+        messageProcessor.rely(address(asyncInvestmentManager));
+        messageProcessor.rely(address(syncDepositAsyncRedeemManager));
 
         // Rely on BalanceSheetManager
         messageProcessor.rely(address(balanceSheetManager));
@@ -103,8 +112,9 @@ contract VaultsDeployer is CommonDeployer {
         // Rely on Root
         vaultRouter.rely(address(root));
         poolManager.rely(address(root));
-        investmentManager.rely(address(root));
+        asyncInvestmentManager.rely(address(root));
         syncDepositAsyncRedeemManager.rely(address(root));
+        investmentManagerMapper.rely(address(root));
         balanceSheetManager.rely(address(root));
         escrow.rely(address(root));
         routerEscrow.rely(address(root));
@@ -115,8 +125,7 @@ contract VaultsDeployer is CommonDeployer {
         IAuth(restrictedRedemptions).rely(address(root));
 
         // Rely on vaultGateway
-        investmentManager.rely(address(gateway));
-        // TODO(wischli): Check if truly needed
+        asyncInvestmentManager.rely(address(gateway));
         syncDepositAsyncRedeemManager.rely(address(gateway));
         poolManager.rely(address(gateway));
 
@@ -126,7 +135,9 @@ contract VaultsDeployer is CommonDeployer {
 
         // Rely on vaultMessageProcessor
         poolManager.rely(address(messageProcessor));
-        investmentManager.rely(address(messageProcessor));
+        asyncInvestmentManager.rely(address(messageProcessor));
+        syncDepositAsyncRedeemManager.rely(address(messageProcessor));
+        investmentManagerMapper.rely(address(messageProcessor));
         balanceSheetManager.rely(address(messageProcessor));
 
         // Rely on VaultRouter
@@ -136,17 +147,18 @@ contract VaultsDeployer is CommonDeployer {
 
     function _vaultsFile() public {
         messageProcessor.file("poolManager", address(poolManager));
-        messageProcessor.file("investmentManager", address(investmentManager));
+        messageProcessor.file("investmentManagerMapper", address(investmentManagerMapper));
 
         poolManager.file("sender", address(messageProcessor));
         poolManager.file("balanceSheetManager", address(balanceSheetManager));
 
-        investmentManager.file("poolManager", address(poolManager));
-        investmentManager.file("gateway", address(gateway));
-        investmentManager.file("sender", address(messageProcessor));
+        asyncInvestmentManager.file("poolManager", address(poolManager));
+        asyncInvestmentManager.file("gateway", address(gateway));
+        asyncInvestmentManager.file("sender", address(messageProcessor));
 
         syncDepositAsyncRedeemManager.file("poolManager", address(poolManager));
         syncDepositAsyncRedeemManager.file("gateway", address(gateway));
+        syncDepositAsyncRedeemManager.file("sender", address(messageProcessor));
 
         balanceSheetManager.file("poolManager", address(poolManager));
         balanceSheetManager.file("gateway", address(gateway));
@@ -161,8 +173,9 @@ contract VaultsDeployer is CommonDeployer {
         IAuth(trancheFactory).deny(deployer);
         IAuth(restrictionManager).deny(deployer);
         IAuth(restrictedRedemptions).deny(deployer);
-        investmentManager.deny(deployer);
+        asyncInvestmentManager.deny(deployer);
         syncDepositAsyncRedeemManager.deny(deployer);
+        investmentManagerMapper.deny(deployer);
         poolManager.deny(deployer);
         escrow.deny(deployer);
         routerEscrow.deny(deployer);

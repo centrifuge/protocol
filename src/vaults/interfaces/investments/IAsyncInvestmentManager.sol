@@ -4,12 +4,11 @@ pragma solidity 0.8.28;
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 
 import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
-import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IAsyncDepositManager} from "src/vaults/interfaces/investments/IAsyncDepositManager.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 
 /// @dev Vault requests and deposit/redeem bookkeeping per user
-struct InvestmentState {
+struct AsyncInvestmentState {
     /// @dev Shares that can be claimed using `mint()`
     uint128 maxMint;
     /// @dev Assets that can be claimed using `withdraw()`
@@ -32,13 +31,7 @@ struct InvestmentState {
     bool pendingCancelRedeemRequest;
 }
 
-interface IAsyncInvestmentManager is
-    IBaseInvestmentManager,
-    IAsyncDepositManager,
-    IAsyncRedeemManager,
-    IRecoverable,
-    IVaultManager
-{
+interface IAsyncInvestmentManager is IRecoverable, IVaultManager, IAsyncDepositManager, IAsyncRedeemManager {
     /// @notice Returns the investment state
     function investments(address vaultAddr, address investor)
         external
