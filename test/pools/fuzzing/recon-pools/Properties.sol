@@ -42,7 +42,8 @@ abstract contract Properties is BeforeAfter, Asserts {
             PoolId poolId = createdPools[i];
             uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
             // loop through all share classes in the pool
-            for (uint32 j = 0; j < shareClassCount; j++) {
+            // skip the first share class because it's never assigned
+            for (uint32 j = 1; j < shareClassCount; j++) {
                 ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
                 AssetId assetId = poolRegistry.currency(poolId);
 
@@ -65,7 +66,8 @@ abstract contract Properties is BeforeAfter, Asserts {
             uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
             
             // loop through all share classes in the pool
-            for (uint32 j = 0; j < shareClassCount; j++) {
+            // skip the first share class because it's never assigned
+            for (uint32 j = 1; j < shareClassCount; j++) {
                 ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
                 AssetId assetId = poolRegistry.currency(poolId);
 
@@ -91,8 +93,8 @@ abstract contract Properties is BeforeAfter, Asserts {
         for (uint256 i = 0; i < createdPools.length; i++) {
             PoolId poolId = createdPools[i];
             uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
-
-            for (uint32 j = 0; j < shareClassCount; j++) {
+            // skip the first share class because it's never assigned
+            for (uint32 j = 1; j < shareClassCount; j++) {
                 ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
                 AssetId assetId = poolRegistry.currency(poolId);
 
@@ -114,8 +116,8 @@ abstract contract Properties is BeforeAfter, Asserts {
         for (uint256 i = 0; i < createdPools.length; i++) {
             PoolId poolId = createdPools[i];
             uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
-
-            for (uint32 j = 0; j < shareClassCount; j++) {
+            // skip the first share class because it's never assigned
+            for (uint32 j = 1; j < shareClassCount; j++) {
                 ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
                 AssetId assetId = poolRegistry.currency(poolId);
 
@@ -145,7 +147,8 @@ abstract contract Properties is BeforeAfter, Asserts {
             uint32 epochId = multiShareClass.epochId(poolId);
 
             uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
-            for (uint32 j = 0; j < shareClassCount; j++) {
+            // skip the first share class because it's never assigned
+            for (uint32 j = 1; j < shareClassCount; j++) {
                 ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
                 AssetId assetId = poolRegistry.currency(poolId);
 
@@ -218,7 +221,8 @@ abstract contract Properties is BeforeAfter, Asserts {
             // loop over all share classes in the pool
             uint128 totalPayoutShareAmount = 0;
             uint128 totalPayoutAssetAmount = 0;
-            for (uint32 j = 0; j < shareClassCount; j++) {
+            // skip the first share class because it's never assigned
+            for (uint32 j = 1; j < shareClassCount; j++) {
                 ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
                 AssetId assetId = poolRegistry.currency(poolId);
 
@@ -263,7 +267,8 @@ abstract contract Properties is BeforeAfter, Asserts {
             PoolId poolId = createdPools[i];
             uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
             // loop over all share classes in the pool
-            for (uint32 j = 0; j < shareClassCount; j++) {
+            // skip the first share class because it's never assigned
+            for (uint32 j = 1; j < shareClassCount; j++) {
                 ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
                 AssetId assetId = poolRegistry.currency(poolId);
 
@@ -303,8 +308,8 @@ abstract contract Properties is BeforeAfter, Asserts {
         for (uint256 i = 0; i < createdPools.length; i++) {
             PoolId poolId = createdPools[i];
             uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
-
-            for (uint32 j = 0; j < shareClassCount; j++) {
+            // skip the first share class because it's never assigned
+            for (uint32 j = 1; j < shareClassCount; j++) {
                 ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
                 AssetId assetId = poolRegistry.currency(poolId);
 
