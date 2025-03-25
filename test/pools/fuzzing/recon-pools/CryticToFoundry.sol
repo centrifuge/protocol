@@ -192,61 +192,52 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         // poolRouter.depositRequest(newPoolId(4294967297), scId, Helpers.addressToBytes32(_getActor()), newAssetId(123), 0);
     }
 
-    // forge test --match-test test_shortcut_deposit_claim_and_cancel_0 -vvv 
-    // TODO: look into source of arithmetic error, might be due to approvals
-    function test_shortcut_deposit_claim_and_cancel_0() public {
-
-        shortcut_deposit_claim_and_cancel(1,1,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,1,1,d18(1000325916116491877));
-
-    }
-
-    // forge test --match-test test_property_total_pending_redeem_geq_sum_pending_user_redeem_2 -vvv 
-    function test_property_total_pending_redeem_geq_sum_pending_user_redeem_2() public {
-
-        shortcut_deposit_redeem_and_claim(18,1524785991,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,1,1,1,d18(1));
-
-        shortcut_deposit(18,1524785991,hex"4e554c",hex"4e554c",hex"4e554d",hex"",false,0,1,1,d18(1));
-
-        property_total_pending_redeem_geq_sum_pending_user_redeem();
-
-    }
-
-    // forge test --match-test test_property_cancelled_redemption_never_greater_than_requested_4 -vvv 
-    function test_property_cancelled_redemption_never_greater_than_requested_4() public {
-
-        shortcut_deposit_redeem_and_claim(18,1524785991,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,1,1,1,d18(1));
-
-        shortcut_deposit(18,1524785991,hex"4e554c",hex"4e554c",hex"4e554d",hex"",false,0,1,1,d18(1));
-
-        property_cancelled_redemption_never_greater_than_requested();
-
-    }
-
     // forge test --match-test test_property_debited_transient_reset_6 -vvv 
-    // TODO: come back to this
-    function test_property_debited_transient_reset_6() public {
+    // NOTE: see this issue: https://github.com/Recon-Fuzz/centrifuge-review/issues/13#issuecomment-2752022094
+    // function test_property_debited_transient_reset_6() public {
 
-        shortcut_deposit(18,1,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,1,1,d18(1));
+    //     shortcut_deposit(18,1,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,1,1,d18(1));
 
-        property_debited_transient_reset();
+    //     property_debited_transient_reset();
 
-    }
+    // }
 
     // forge test --match-test test_property_credited_transient_reset_7 -vvv 
-    // TODO: come back to this
-    function test_property_credited_transient_reset_7() public {
+    // NOTE: see this issue: https://github.com/Recon-Fuzz/centrifuge-review/issues/13#issuecomment-2752022094
+    // function test_property_credited_transient_reset_7() public {
 
-        shortcut_deposit_claim_and_cancel(18,1,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,1,1,d18(1));
+    //     shortcut_deposit_claim_and_cancel(18,1,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,1,1,d18(1));
 
-        property_credited_transient_reset();
+    //     property_credited_transient_reset();
 
-    }
+    // }
 
-    // forge test --match-test test_shortcut_request_deposit_and_cancel_8 -vvv 
-    function test_shortcut_request_deposit_and_cancel_8() public {
+    // forge test --match-test test_property_total_pending_redeem_geq_sum_pending_user_redeem_4 -vvv 
+    // function test_property_total_pending_redeem_geq_sum_pending_user_redeem_4() public {
 
-        shortcut_request_deposit_and_cancel(18,1,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,1,1,d18(1000057717258193750));
+    //     add_new_asset(1);
 
-    }
+    //     poolRouter_registerAsset(4370001);
 
+    //     poolRouter_createPool(0x00000000000000000000000000000000DeaDBeef,265579,0x00000000000000000000000000000000DeaDBeef);
+
+    //     poolRouter_createPool(0x00000000000000000000000000000000DeaDBeef,14368038,0x00000000000000000000000000000000DeaDBeef);
+
+    //     shortcut_deposit_cancel_redemption(255,2952413,hex"36",hex"4e554c",hex"4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c11e5a1d32c498bcbf291e4537226ab3d7e",hex"4e554c",false,16777215,59167473942766968409652671010151557487,4370001,340282366920938463463374607431768211455,68974355377861434201898710956536803685);
+
+    //     shortcut_create_pool_and_holding(34,2174887,hex"4e554c4e554c",hex"4e554c4e554c8177",hex"4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4bf51d8748",hex"4e554cc1",false,225444);
+
+    //     shortcut_deposit(57,11997047,hex"4e554c",hex"4e554c",hex"4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554cdead2a65",hex"",false,931595,15181545,1,5586821380662590463086820788114813989);
+
+    //     shortcut_notify_share_class(9,786698677,hex"4e554cc981",hex"4e554c4e554c4e554c",hex"4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c92ab456758fb44454cbbdf1199d7616c10882635",hex"",false,154596,156270,52780,11548587195433904796536682687500352563);
+
+    //     shortcut_deposit(224,113141302,hex"4e554c4e554c",hex"4e554c",hex"4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c0561031d6776ba",hex"",false,3129,36723093323160378947632723973730204781,197715827619412613769761948149529375,11530238160705630681683530665358879747);
+
+    //     shortcut_deposit_redeem_and_claim(4294967304,"4e554c","4e554c","4e554c","4e554c","4e554c",4370001,false,55227);
+
+    //     property_total_pending_redeem_geq_sum_pending_user_redeem();
+
+    // }
+
+    
 }

@@ -25,13 +25,14 @@ abstract contract Properties is BeforeAfter, Asserts {
         eq(_after.ghostUnlockedPoolId.raw(), 0, "unlockedPoolId not reset");
     }
 
-    function property_debited_transient_reset() public {
-        eq(_after.ghostDebited, 0, "debited not reset");
-    }
+    // NOTE: these are commented out because they don't actually get reset after calls, only when there's a call to unlock or a new tx
+    // function property_debited_transient_reset() public {
+    //     eq(_after.ghostDebited, 0, "debited not reset");
+    // }
 
-    function property_credited_transient_reset() public {
-        eq(_after.ghostCredited, 0, "credited not reset");
-    }
+    // function property_credited_transient_reset() public {
+    //     eq(_after.ghostCredited, 0, "credited not reset");
+    // }
 
     /// @dev Property: The total pending asset amount pendingDeposit[..] is always >= the approved asset amount epochAmounts[..].depositApproved
     function property_pending_deposit_geq_approved_deposit() public {
