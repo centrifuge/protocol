@@ -338,20 +338,39 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
 
         int128 diff = holdings.update(unlockedPoolId, scId, assetId);
 
+
         if (diff > 0) {
-            accounting.addCredit(
-                holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.GAIN)), uint128(diff)
-            );
-            accounting.addDebit(
-                holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.ASSET)), uint128(diff)
-            );
+            if (holdings.isLiability(unlockedPoolId, scId, assetId)) {
+                accounting.addCredit(
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.LIABILITY)), uint128(diff)
+                );
+                accounting.addDebit(
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.EXPENSE)), uint128(diff)
+                );
+            } else {
+                accounting.addCredit(
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.GAIN)), uint128(diff)
+                );
+                accounting.addDebit(
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.ASSET)), uint128(diff)
+                );
+            }
         } else if (diff < 0) {
-            accounting.addCredit(
-                holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.ASSET)), uint128(diff)
-            );
-            accounting.addDebit(
-                holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.LOSS)), uint128(diff)
-            );
+            if (holdings.isLiability(unlockedPoolId, scId, assetId)) {
+                accounting.addCredit(
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.EXPENSE)), uint128(diff)
+                );
+                accounting.addDebit(
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.LIABILITY)), uint128(diff)
+                );
+            } else {
+                accounting.addCredit(
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.ASSET)), uint128(diff)
+                );
+                accounting.addDebit(
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.LOSS)), uint128(diff)
+                );
+            }
         }
     }
 
