@@ -10,8 +10,6 @@ abstract contract Auth is IAuth {
     /// @inheritdoc IAuth
     mapping(address => uint256) public wards;
 
-    event Caller(address addr);
-
     constructor(address initialWard) {
         wards[initialWard] = 1;
         emit Rely(initialWard);
@@ -25,7 +23,6 @@ abstract contract Auth is IAuth {
 
     /// @inheritdoc IAuth
     function rely(address user) public auth {
-        emit Caller(msg.sender);
         wards[user] = 1;
         emit Rely(user);
     }
