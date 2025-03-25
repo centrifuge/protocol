@@ -18,9 +18,7 @@ import {PoolId} from "src/pools/types/PoolId.sol";
 contract LocalhostDeployer is FullDeployer {
     PoolId public POOL_A = PoolId.wrap(33);
     PoolId public POOL_B = PoolId.wrap(44);
-    uint16 public CENTRIFUGE_CHAIN_ID = 23;
     ShareClassId public SC_A = ShareClassId.wrap(bytes16("sc"));
-    AssetId immutable USDC_C2 = newAssetId(CENTRIFUGE_CHAIN_ID, 1);
 
     function run() public {
         uint16 centrifugeChainId = uint16(vm.envUint("CENTRIFUGE_CHAIN_ID"));
@@ -33,30 +31,35 @@ contract LocalhostDeployer is FullDeployer {
         LocalhostAdapter adapter = new LocalhostAdapter(gateway, msg.sender);
         wire(adapter);
 
+        // Create pool
         PoolId poolId = poolRouter.createPool(msg.sender, USD, multiShareClass);
         ShareClassId scId = multiShareClass.previewNextShareClassId(poolId);
 
+        // Deploy and register test USDC
         ERC20 token = new ERC20(6);
         token.file("name", "USD Coin");
         token.file("symbol", "USDC");
-        vaultRouter.registerAsset{value: 0.1 ether}(address(token), 0, CENTRIFUGE_CHAIN_ID);
+        token.mint(msg.sender, 10_000_000e6);
+        vaultRouter.registerAsset{value: 0.1 ether}(address(token), 0, centrifugeChainId);
 
+        // Deploy vault
+        AssetId assetId = newAssetId(centrifugeChainId, 1);
         (bytes[] memory cs, uint256 c) = (new bytes[](6), 0);
         cs[c++] = abi.encodeWithSelector(poolRouter.setPoolMetadata.selector, bytes("Testing pool"));
         cs[c++] = abi.encodeWithSelector(
             poolRouter.addShareClass.selector, "Tokenized MMF", "MMF", bytes32(bytes("1")), bytes("")
         );
-        cs[c++] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CENTRIFUGE_CHAIN_ID);
+        cs[c++] = abi.encodeWithSelector(poolRouter.notifyPool.selector, centrifugeChainId);
         cs[c++] = abi.encodeWithSelector(
-            poolRouter.notifyShareClass.selector, CENTRIFUGE_CHAIN_ID, scId, address(restrictedRedemptions)
+            poolRouter.notifyShareClass.selector, centrifugeChainId, scId, bytes32(bytes20(restrictedRedemptions))
         );
-        cs[c++] = abi.encodeWithSelector(poolRouter.createHolding.selector, scId, USDC_C2, identityValuation, 0x01);
+        cs[c++] = abi.encodeWithSelector(poolRouter.createHolding.selector, scId, assetId, identityValuation, 0x01);
         cs[c++] = abi.encodeWithSelector(
             poolRouter.updateVault.selector,
             scId,
-            USDC_C2,
-            bytes32("target"),
-            bytes32("factory"),
+            assetId,
+            bytes32(bytes20(address(poolManager))),
+            bytes32(bytes20(address(vaultFactory))),
             VaultUpdateKind.DeployAndLink
         );
 
