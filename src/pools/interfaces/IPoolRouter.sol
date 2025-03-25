@@ -4,6 +4,8 @@ pragma solidity 0.8.28;
 import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
+import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+
 import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {AssetId} from "src/pools/types/AssetId.sol";
 import {AccountId} from "src/pools/types/AccountId.sol";
@@ -89,10 +91,6 @@ interface IPoolRouter {
     /// @notice Allow/disallow an account to interact as pool admin
     function allowPoolAdmin(address account, bool allow) external payable;
 
-    /// @notice Allow/disallow an asset for investment.
-    /// Notify to the CV instance of that asset that the asset is available for investing for such share class id
-    function allowAsset(ShareClassId scId, AssetId assetId, bool allow) external payable;
-
     /// @notice Add a new share class to the pool
     function addShareClass(string calldata name, string calldata symbol, bytes32 salt, bytes calldata data)
         external
@@ -128,6 +126,27 @@ interface IPoolRouter {
     function revokeShares(ShareClassId scId, AssetId payoutAssetId, D18 navPerShare, IERC7726 valuation)
         external
         payable;
+
+    /// @notice Update remotely an exiting vault.
+    /// @param chainId Chain where CV instance lives.
+    /// @param target contract where to execute in CV. Check IUpdateContract interface.
+    /// @param payload content of the to execute.
+    function updateContract(uint16 chainId, ShareClassId scId, bytes32 target, bytes calldata payload)
+        external
+        payable;
+
+    /// @notice Deploy a vault in the Vaults side.
+    /// @param assetId Asset used in the vault.
+    /// @param target contract where to execute this action in CV. Check IUpdateContract interface.
+    /// @param vaultOrFactory Vault or Factory address, depending on kind. Check `IVaultFactory` interface.
+    /// @param kind The action to do with the vault. See `VaultUpdateKind`
+    function updateVault(
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 target,
+        bytes32 vaultOrFactory,
+        VaultUpdateKind kind
+    ) external payable;
 
     /// @notice Create a new holding associated to the asset in a share class.
     /// It will generate and register the different accounts used for holdings.

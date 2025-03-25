@@ -219,6 +219,25 @@ contract MessageProcessor is Auth, IMessageProcessor {
         }
     }
 
+    /// @inheritdoc IPoolMessageSender
+    function sendUpdateContract(
+        uint16 chainId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 target,
+        bytes calldata payload
+    ) external auth {
+        if (chainId == centrifugeChainId) {
+            poolManager.updateContract(poolId.raw(), scId.raw(), address(bytes20(target)), payload);
+        } else {
+            gateway.send(
+                chainId,
+                MessageLib.UpdateContract({poolId: poolId.raw(), scId: scId.raw(), target: target, payload: payload})
+                    .serialize()
+            );
+        }
+    }
+
     /// @inheritdoc IVaultMessageSender
     function sendTransferShares(uint16 chainId, uint64 poolId, bytes16 scId, bytes32 recipient, uint128 amount)
         external

@@ -9,6 +9,7 @@ import {Auth} from "src/misc/Auth.sol";
 import {Multicall, IMulticall} from "src/misc/Multicall.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {MessageLib, UpdateContractType, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IPoolRouterGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
@@ -26,6 +27,7 @@ import {IPoolRouter, EscrowId, AccountType} from "src/pools/interfaces/IPoolRout
 
 // @inheritdoc IPoolRouter
 contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
+    using MessageLib for *;
     using MathLib for uint256;
     using CastLib for bytes;
     using CastLib for bytes32;
@@ -181,15 +183,6 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     }
 
     /// @inheritdoc IPoolRouter
-    function allowAsset(ShareClassId scId, AssetId assetId, bool /*allow*/ ) external payable {
-        _protectedAndUnlocked();
-
-        require(holdings.exists(unlockedPoolId, scId, assetId), IHoldings.HoldingNotFound());
-
-        // TODO: cal update contract feature
-    }
-
-    /// @inheritdoc IPoolRouter
     function addShareClass(string calldata name, string calldata symbol, bytes32 salt, bytes calldata data)
         external payable
     {
@@ -255,6 +248,32 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         );
 
         decreaseHolding(scId, payoutAssetId, valuation, payoutAssetAmount);
+    }
+
+    /// @inheritdoc IPoolRouter
+    function updateContract(uint16 chainId, ShareClassId scId, bytes32 target, bytes calldata payload) external payable {
+        _protectedAndUnlocked();
+
+        sender.sendUpdateContract(chainId, unlockedPoolId, scId, target, payload);
+    }
+
+    /// @inheritdoc IPoolRouter
+    function updateVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 vaultOrFactory, VaultUpdateKind kind)
+        public payable
+    {
+        _protectedAndUnlocked();
+
+        sender.sendUpdateContract(
+            assetId.chainId(),
+            unlockedPoolId,
+            scId,
+            target,
+            MessageLib.UpdateContractVaultUpdate({
+                vaultOrFactory: vaultOrFactory,
+                assetId: assetId.raw(),
+                kind: uint8(kind)
+            }).serialize()
+        );
     }
 
     /// @inheritdoc IPoolRouter

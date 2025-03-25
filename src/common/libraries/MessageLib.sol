@@ -51,6 +51,13 @@ enum UpdateContractType {
     VaultUpdate
 }
 
+/// @dev Used internally in the VaultUpdateMessage (not represent a submessage)
+enum VaultUpdateKind {
+    DeployAndLink,
+    Link,
+    Unlink
+}
+
 enum MessageCategory {
     Invalid,
     Gateway,
@@ -574,10 +581,9 @@ library MessageLib {
     //---------------------------------------
 
     struct UpdateContractVaultUpdate {
-        address factory;
+        bytes32 vaultOrFactory;
         uint128 assetId;
-        bool isLinked;
-        address vault;
+        uint8 kind;
     }
 
     function deserializeUpdateContractVaultUpdate(bytes memory data)
@@ -588,15 +594,14 @@ library MessageLib {
         require(updateContractType(data) == UpdateContractType.VaultUpdate, UnknownMessageType());
 
         return UpdateContractVaultUpdate({
-            factory: data.toAddress(1),
-            assetId: data.toUint128(21),
-            isLinked: data.toBool(37),
-            vault: data.toAddress(38)
+            vaultOrFactory: data.toBytes32(1),
+            assetId: data.toUint128(33),
+            kind: data.toUint8(49)
         });
     }
 
     function serialize(UpdateContractVaultUpdate memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(UpdateContractType.VaultUpdate, t.factory, t.assetId, t.isLinked, t.vault);
+        return abi.encodePacked(UpdateContractType.VaultUpdate, t.vaultOrFactory, t.assetId, t.kind);
     }
 
     //---------------------------------------
