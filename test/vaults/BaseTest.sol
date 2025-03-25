@@ -56,6 +56,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     // default values
     uint16 public constant OTHER_CHAIN_ID = 1;
     uint16 public constant THIS_CHAIN_ID = OTHER_CHAIN_ID + 100;
+    uint32 public constant BLOCK_CHAIN_ID = 23;
     uint256 public erc20TokenId = 0;
     uint128 public defaultAssetId = newAssetId(THIS_CHAIN_ID, 1).raw();
     uint128 public defaultPrice = 1 * 10 ** 18;
@@ -63,7 +64,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
     function setUp() public virtual {
         // We should not use the block ChainID
-        vm.chainId(23);
+        vm.chainId(BLOCK_CHAIN_ID);
 
         // make yourself owner of the adminSafe
         address[] memory pausers = new address[](1);
