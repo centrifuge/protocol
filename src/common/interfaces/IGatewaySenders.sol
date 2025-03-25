@@ -63,6 +63,15 @@ interface IPoolMessageSender is ICentrifugeChainId {
         bytes32 investor,
         uint128 cancelledShares
     ) external;
+
+    /// @notice Creates and send the message
+    function sendUpdateContract(
+        uint16 chainId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 target,
+        bytes calldata payload
+    ) external;
 }
 
 /// @notice Interface for dispatch-only gateway

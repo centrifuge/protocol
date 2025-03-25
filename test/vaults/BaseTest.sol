@@ -5,7 +5,7 @@ pragma abicoder v2;
 import "src/misc/interfaces/IERC20.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 
-import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
@@ -166,10 +166,9 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
         // Trigger new vault deployment via UpdateContract
         bytes memory vaultUpdate = MessageLib.UpdateContractVaultUpdate({
-            factory: vaultFactory,
+            vaultOrFactory: bytes32(bytes20(vaultFactory)),
             assetId: assetId,
-            isLinked: true,
-            vault: address(0)
+            kind: uint8(VaultUpdateKind.DeployAndLink)
         }).serialize();
         poolManager.update(poolId, trancheId, vaultUpdate);
         vaultAddress = ITranche(poolManager.tranche(poolId, trancheId)).vault(asset);
