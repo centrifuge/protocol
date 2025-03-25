@@ -33,20 +33,11 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
 
     // --- Administrative ---
     /// @inheritdoc IWormholeAdapter
-    function fileSource(bytes32 what, uint16 wormholeId, uint16 centrifugeChainId, address source) external auth {
-        if (what == "sources") sources[wormholeId] = WormholeSource(centrifugeChainId, source);
+    function file(bytes32 what, uint16 centrifugeChainId, uint16 wormholeId, address addr) external auth {
+        if (what == "sources") sources[wormholeId] = WormholeSource(centrifugeChainId, addr);
+        else if (what == "destinations") destinations[centrifugeChainId] = WormholeDestination(wormholeId, addr);
         else revert FileUnrecognizedParam();
-        emit FileSource(what, wormholeId, centrifugeChainId, source);
-    }
-
-    /// @inheritdoc IWormholeAdapter
-    function fileDestination(bytes32 what, uint16 centrifugeChainId, uint16 wormholeId, address destination)
-        external
-        auth
-    {
-        if (what == "destinations") destinations[centrifugeChainId] = WormholeDestination(wormholeId, destination);
-        else revert FileUnrecognizedParam();
-        emit FileDestination(what, centrifugeChainId, wormholeId, destination);
+        emit File(what, centrifugeChainId, wormholeId, addr);
     }
 
     // --- Incoming ---
