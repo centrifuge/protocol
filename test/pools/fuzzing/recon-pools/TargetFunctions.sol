@@ -40,18 +40,21 @@ abstract contract TargetFunctions is
         bool isIdentityValuation,
         uint24 prefix
     ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
+        decimals %= 24; // upper bound of decimals for most ERC20s is 24
+        require(decimals >= 6, "decimals must be >= 6");
+
         // add and register asset
         add_new_asset(decimals);
-        poolRouter_registerAsset(isoCode);
+        poolRouter_registerAsset(isoCode); // 4294967295
 
         // defaults to pool admined by the admin actor (address(this))
         poolId = poolRouter_createPool(address(this), isoCode, multiShareClass);
         
         // create holding
         scId = multiShareClass.previewNextShareClassId(poolId);
-        AssetId assetId = newAssetId(isoCode);
+        AssetId assetId = newAssetId(isoCode); // 4294967295
         shortcut_add_share_class_and_holding(poolId, name, symbol, salt, data, scId, assetId, isIdentityValuation, prefix);
-        
+
         return (poolId, scId);
     }
 
@@ -68,6 +71,9 @@ abstract contract TargetFunctions is
         uint128 maxApproval,
         D18 navPerShare
     ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
+        decimals %= 24; // upper bound of decimals for most ERC20s is 24
+        require(decimals >= 6, "decimals must be >= 6");
+
         (poolId, scId) = shortcut_create_pool_and_holding(
             decimals, isoCode, 
             name, symbol, salt, data, 
@@ -99,6 +105,9 @@ abstract contract TargetFunctions is
         uint128 maxApproval,
         D18 navPerShare
     ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
+        decimals %= 24; // upper bound of decimals for most ERC20s is 24
+        require(decimals >= 6, "decimals must be >= 6");
+
         (poolId, scId) = shortcut_deposit(
             decimals, isoCode, name, symbol, salt, data, 
             isIdentityValuation, prefix, amount, maxApproval, navPerShare
@@ -123,6 +132,9 @@ abstract contract TargetFunctions is
         uint128 maxApproval,
         D18 navPerShare
     ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
+        decimals %= 24; // upper bound of decimals for most ERC20s is 24
+        require(decimals >= 6, "decimals must be >= 6");
+
         (poolId, scId) = shortcut_deposit(
             decimals, isoCode, name, symbol, salt, data, 
             isIdentityValuation, prefix, amount, maxApproval, navPerShare
@@ -150,6 +162,9 @@ abstract contract TargetFunctions is
         uint128 maxApproval,
         D18 navPerShare
     ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
+        decimals %= 24; // upper bound of decimals for most ERC20s is 24
+        require(decimals >= 6, "decimals must be >= 6");
+
         (poolId, scId) = shortcut_deposit(
             decimals, isoCode, name, symbol, salt, data, 
             isIdentityValuation, prefix, amount, maxApproval, navPerShare
@@ -174,6 +189,9 @@ abstract contract TargetFunctions is
         uint128 maxApproval,
         D18 navPerShare
     ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
+        decimals %= 24; // upper bound of decimals for most ERC20s is 24
+        require(decimals >= 6, "decimals must be >= 6");
+
         (poolId, scId) = shortcut_deposit(
             decimals, isoCode, name, symbol, salt, data, 
             isIdentityValuation, prefix, amount, maxApproval, navPerShare
@@ -247,6 +265,9 @@ abstract contract TargetFunctions is
         uint128 maxApproval,
         D18 navPerShare
     ) public clearQueuedCalls {
+        decimals %= 24; // upper bound of decimals for most ERC20s is 24
+        require(decimals >= 6, "decimals must be >= 6");
+
         (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(
             decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix, depositAmount, maxApproval, navPerShare
         );
@@ -286,6 +307,9 @@ abstract contract TargetFunctions is
         uint128 maxApproval,
         D18 navPerShare
     ) public clearQueuedCalls  {
+        decimals %= 24; // upper bound of decimals for most ERC20s is 24
+        require(decimals >= 6, "decimals must be >= 6");
+
         (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(
             decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix, depositAmount, maxApproval, navPerShare
         );
@@ -308,13 +332,14 @@ abstract contract TargetFunctions is
         uint24 prefix,
         D18 newPrice
     ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
-        (PoolId poolId, ShareClassId scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
-    
+        decimals %= 24; // upper bound of decimals for most ERC20s is 24
+        require(decimals >= 6, "decimals must be >= 6");
+
+        (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
         AssetId assetId = newAssetId(isoCode);
+
         transientValuation_setPrice(assetId.addr(), poolRegistry.currency(poolId).addr(), newPrice);
-
         poolRouter_updateHolding(scId, assetId);
-
         poolRouter_execute_clamped(poolId);
     }
 
@@ -346,6 +371,9 @@ abstract contract TargetFunctions is
         bool isIdentityValuation,
         uint24 prefix
     ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
+        decimals %= 24; // upper bound of decimals for most ERC20s is 24
+        require(decimals >= 6, "decimals must be >= 6");
+        
         (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
     
         AssetId assetId = newAssetId(isoCode);
@@ -366,6 +394,9 @@ abstract contract TargetFunctions is
         uint128 shareAmount,
         D18 navPerShare
     ) public clearQueuedCalls  {
+        decimals %= 24; // upper bound of decimals for most ERC20s is 24
+        require(decimals >= 6, "decimals must be >= 6");
+
         (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix, depositAmount, shareAmount, navPerShare);
 
         // set chainId and hook to constants because we're mocking Gateway so they're not needed
@@ -375,7 +406,7 @@ abstract contract TargetFunctions is
 
     /// === POOL ADMIN SHORTCUTS === ///
     /// @dev these don't have the clearQueuedCalls modifier because they just add to the queue and execute so don't make debugging difficult
-    
+
     function shortcut_add_share_class_and_holding(
         PoolId poolId,
         string memory name,
