@@ -13,6 +13,8 @@ fi
 
 mkdir -p deployments/latest
 
+forge clean
+
 case "$ADAPTER" in
     Localhost|Axelar|Wormhole)
         forge script script/adapters/${ADAPTER}.s.sol:${ADAPTER}Deployer --optimize --rpc-url $RPC_URL --private-key $PRIVATE_KEY --verify --broadcast --chain-id $CHAIN_ID --etherscan-api-key $ETHERSCAN_KEY
