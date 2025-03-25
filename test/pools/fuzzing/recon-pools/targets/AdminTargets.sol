@@ -200,17 +200,6 @@ abstract contract AdminTargets is
 
             eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId");
             eq(pending, 0, "pending is not zero");
-
-            address[] memory _actors = _getActors();
-            uint128 totalPendingDeposit = multiShareClass.pendingDeposit(scId, depositAssetId);
-            uint128 totalPendingUserDeposit = 0;
-            for (uint256 k = 0; k < _actors.length; k++) {
-                address actor = _actors[k];
-                (uint128 pendingUserDeposit,) = multiShareClass.depositRequest(scId, depositAssetId, Helpers.addressToBytes32(actor));
-                totalPendingUserDeposit += pendingUserDeposit;
-            }
-
-            gte(totalPendingDeposit, totalPendingUserDeposit, "total pending deposit is less than sum of pending user deposit amounts");
         } catch (bytes memory reason) {
             bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
             t(!arithmeticRevert, "cancelDepositRequest reverts with arithmetic panic");

@@ -48,16 +48,6 @@ abstract contract PoolRouterTargets is
         uint32 epochId = multiShareClass.epochId(poolId);
 
         eq(lastUpdate, epochId, "lastUpdate is not equal to epochId");
-        
-        address[] memory _actors = _getActors();
-        uint128 totalPendingDeposit = multiShareClass.pendingDeposit(scId, assetId);
-        uint128 totalPendingUserDeposit = 0;
-        for (uint256 k = 0; k < _actors.length; k++) {
-            address actor = _actors[k];
-            (uint128 pendingUserDeposit,) = multiShareClass.depositRequest(scId, assetId, Helpers.addressToBytes32(actor));
-            totalPendingUserDeposit += pendingUserDeposit;
-        }
-        gte(totalPendingDeposit, totalPendingUserDeposit, "total pending deposit is less than sum of pending user deposit amounts");
     }
 
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 

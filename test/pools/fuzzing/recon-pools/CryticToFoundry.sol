@@ -192,52 +192,60 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         // poolRouter.depositRequest(newPoolId(4294967297), scId, Helpers.addressToBytes32(_getActor()), newAssetId(123), 0);
     }
 
-    // forge test --match-test test_property_credited_transient_reset_0 -vvv 
-    function test_property_credited_transient_reset_0() public {
+    // forge test --match-test test_shortcut_deposit_claim_and_cancel_0 -vvv 
+    // TODO: look into source of arithmetic error, might be due to approvals
+    function test_shortcut_deposit_claim_and_cancel_0() public {
 
-        shortcut_deposit(1,1,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,1,1,d18(1));
+        shortcut_deposit_claim_and_cancel(1,1,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,1,1,d18(1000325916116491877));
+
+    }
+
+    // forge test --match-test test_property_total_pending_redeem_geq_sum_pending_user_redeem_2 -vvv 
+    function test_property_total_pending_redeem_geq_sum_pending_user_redeem_2() public {
+
+        shortcut_deposit_redeem_and_claim(18,1524785991,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,1,1,1,d18(1));
+
+        shortcut_deposit(18,1524785991,hex"4e554c",hex"4e554c",hex"4e554d",hex"",false,0,1,1,d18(1));
+
+        property_total_pending_redeem_geq_sum_pending_user_redeem();
+
+    }
+
+    // forge test --match-test test_property_cancelled_redemption_never_greater_than_requested_4 -vvv 
+    function test_property_cancelled_redemption_never_greater_than_requested_4() public {
+
+        shortcut_deposit_redeem_and_claim(18,1524785991,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,1,1,1,d18(1));
+
+        shortcut_deposit(18,1524785991,hex"4e554c",hex"4e554c",hex"4e554d",hex"",false,0,1,1,d18(1));
+
+        property_cancelled_redemption_never_greater_than_requested();
+
+    }
+
+    // forge test --match-test test_property_debited_transient_reset_6 -vvv 
+    // TODO: come back to this
+    function test_property_debited_transient_reset_6() public {
+
+        shortcut_deposit(18,1,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,1,1,d18(1));
+
+        property_debited_transient_reset();
+
+    }
+
+    // forge test --match-test test_property_credited_transient_reset_7 -vvv 
+    // TODO: come back to this
+    function test_property_credited_transient_reset_7() public {
+
+        shortcut_deposit_claim_and_cancel(18,1,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,1,1,d18(1));
 
         property_credited_transient_reset();
 
     }
 
-    // forge test --match-test test_shortcut_request_deposit_and_cancel_1 -vvv 
-    function test_shortcut_request_deposit_and_cancel_1() public {
+    // forge test --match-test test_shortcut_request_deposit_and_cancel_8 -vvv 
+    function test_shortcut_request_deposit_and_cancel_8() public {
 
-        shortcut_request_deposit_and_cancel(1,2,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,305086230337229670000892808,1,d18(7526125501742048274453118150));
-
-    }
-
-    // forge test --match-test test_property_epochId_strictly_greater_than_any_latest_pointer_2 -vvv 
-    function test_property_epochId_strictly_greater_than_any_latest_pointer_2() public {
-
-        shortcut_deposit(1,4294967295,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,1,1,d18(1));
-
-        shortcut_create_pool_and_update_holding(0,4294967295,hex"4e554c",hex"4e554c",hex"4e554d",hex"",false,0,d18(1));
-
-        property_epochId_strictly_greater_than_any_latest_pointer();
-
-    }
-
-    // forge test --match-test test_property_total_pending_deposit_geq_sum_pending_user_deposit_3 -vvv 
-    function test_property_total_pending_deposit_geq_sum_pending_user_deposit_3() public {
-
-        shortcut_deposit(10,4294967295,hex"4e554c",hex"4e554c",hex"4e554c",hex"38",false,667689,2146661205180694826475217943988191265,43767649,d18(5020341717619307870061350833496066976));
-
-        shortcut_create_pool_and_update_holding(2,4294967295,hex"4e554c",hex"4e554c",hex"4e554d",hex"4e554d",false,112146,d18(519738));
-
-        property_total_pending_deposit_geq_sum_pending_user_deposit();
-
-    }
-
-    // forge test --match-test test_property_total_pending_and_approved_4 -vvv 
-    function test_property_total_pending_and_approved_4() public {
-
-        shortcut_deposit(1,4294967295,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,1,1,d18(1));
-
-        shortcut_create_pool_and_update_holding(0,4294967295,hex"4e554c",hex"4e554c",hex"4e554d",hex"",false,0,d18(1));
-
-        property_total_pending_and_approved();
+        shortcut_request_deposit_and_cancel(18,1,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,1,1,d18(1000057717258193750));
 
     }
 
