@@ -14,11 +14,11 @@ contract LocalhostDeployer is FullDeployer {
 
         vm.startBroadcast();
 
-        deployFull(centrifugeChainId, ISafe(vm.envAddress("ADMIN")), msg.sender);
+        deployFull(centrifugeChainId, ISafe(vm.envAddress("ADMIN")));
         saveDeploymentOutput();
 
-        LocalhostAdapter adapter = new LocalhostAdapter(gateway);
-        wire(adapter, msg.sender);
+        LocalhostAdapter adapter = new LocalhostAdapter(gateway, address(this));
+        wire(adapter);
 
         vm.stopBroadcast();
     }

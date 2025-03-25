@@ -26,7 +26,9 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     mapping(string axelarId => AxelarSource) public sources;
     mapping(uint16 centrifugeChainId => AxelarDestination) public destinations;
 
-    constructor(IMessageHandler gateway_, address axelarGateway_, address axelarGasService_) Auth(msg.sender) {
+    constructor(IMessageHandler gateway_, address axelarGateway_, address axelarGasService_, address deployer)
+        Auth(deployer)
+    {
         gateway = gateway_;
         axelarGateway = IAxelarGateway(axelarGateway_);
         axelarGasService = IAxelarGasService(axelarGasService_);

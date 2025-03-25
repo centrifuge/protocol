@@ -54,14 +54,17 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     uint256 constant GATEWAY_INITIAL_BALANCE = 10 ether;
 
     // default values
-    uint16 public defaultChainId = 1;
+    uint16 public constant OTHER_CHAIN_ID = 1;
+    uint16 public constant THIS_CHAIN_ID = OTHER_CHAIN_ID + 100;
+    uint32 public constant BLOCK_CHAIN_ID = 23;
     uint256 public erc20TokenId = 0;
-    uint128 public defaultAssetId = newAssetId(defaultChainId, 1).raw();
+    uint128 public defaultAssetId = newAssetId(THIS_CHAIN_ID, 1).raw();
     uint128 public defaultPrice = 1 * 10 ** 18;
     uint8 public defaultDecimals = 8;
 
     function setUp() public virtual {
-        vm.chainId(defaultChainId);
+        // We should not use the block ChainID
+        vm.chainId(BLOCK_CHAIN_ID);
 
         // make yourself owner of the adminSafe
         address[] memory pausers = new address[](1);
@@ -69,7 +72,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         ISafe adminSafe = new MockSafe(pausers, 1);
 
         // deploy core contracts
-        deployVaults(defaultChainId, adminSafe, address(this));
+        deployVaults(THIS_CHAIN_ID, adminSafe);
 
         // deploy mock adapters
 
@@ -86,7 +89,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         testAdapters.push(adapter3);
 
         // wire contracts
-        wire(adapter1, address(this));
+        wire(adapter1);
         // remove deployer access
         // removeVaultsDeployerAccess(address(adapter)); // need auth permissions in tests
 
@@ -190,7 +193,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
             trancheId,
             address(erc20),
             erc20TokenId,
-            defaultChainId
+            OTHER_CHAIN_ID
         );
     }
 
@@ -204,7 +207,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
             bytes16(bytes("1")),
             address(erc20),
             erc20TokenId,
-            defaultChainId
+            OTHER_CHAIN_ID
         );
     }
 

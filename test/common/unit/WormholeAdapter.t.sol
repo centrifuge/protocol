@@ -57,7 +57,7 @@ contract WormholeAdapterTest is Test {
 
     function setUp() public {
         relayer = new MockWormholeRelayer();
-        adapter = new WormholeAdapter(GATEWAY, address(relayer), WORMHOLE_CHAIN_ID);
+        adapter = new WormholeAdapter(GATEWAY, address(relayer), WORMHOLE_CHAIN_ID, address(this));
     }
 
     function testDeploy() public view {

@@ -50,16 +50,16 @@ contract TestCases is PoolsDeployer, Test {
 
     function _mockStuff() private {
         cv = new MockVaults(CHAIN_CV, gateway);
-        wire(cv, address(this));
+        wire(cv);
 
         gasService.file("messageGasLimit", GAS);
     }
 
     function setUp() public {
         // Deployment
-        deployPools(CHAIN_CP, ISafe(address(0)), address(this));
+        deployPools(CHAIN_CP, ISafe(address(0)));
         _mockStuff();
-        removePoolsDeployerAccess(address(this));
+        removePoolsDeployerAccess();
 
         // Initialize accounts
         vm.deal(FM, 1 ether);
@@ -77,7 +77,7 @@ contract TestCases is PoolsDeployer, Test {
         vm.label(address(messageProcessor), "MessageProcessor");
         vm.label(address(cv), "CV");
 
-        // We should not use the ChainID
+        // We should not use the block ChainID
         vm.chainId(0xDEAD);
     }
 

@@ -29,14 +29,15 @@ contract VaultsDeployer is CommonDeployer {
     address public restrictedRedemptions;
     address public trancheFactory;
 
-    function deployVaults(uint16 centrifugeChainId, ISafe adminSafe_, address deployer) public {
-        deployCommon(centrifugeChainId, adminSafe_, deployer);
+    function deployVaults(uint16 chainId, ISafe adminSafe_) public {
+        deployCommon(chainId, adminSafe_);
 
-        escrow = new Escrow{salt: SALT}(deployer);
-        routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow2"))}(deployer);
-        restrictionManager = address(new RestrictionManager{salt: SALT}(address(root), deployer));
-        restrictedRedemptions = address(new RestrictedRedemptions{salt: SALT}(address(root), address(escrow), deployer));
-        trancheFactory = address(new TrancheFactory{salt: SALT}(address(root), deployer));
+        escrow = new Escrow{salt: SALT}(address(this));
+        routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow2"))}(address(this));
+        restrictionManager = address(new RestrictionManager{salt: SALT}(address(root), address(this)));
+        restrictedRedemptions =
+            address(new RestrictedRedemptions{salt: SALT}(address(root), address(escrow), address(this)));
+        trancheFactory = address(new TrancheFactory{salt: SALT}(address(root), address(this)));
         investmentManager = new InvestmentManager(address(root), address(escrow));
         vaultFactory = address(new ERC7540VaultFactory(address(root), address(investmentManager)));
 
@@ -120,17 +121,17 @@ contract VaultsDeployer is CommonDeployer {
         investmentManager.file("sender", address(messageProcessor));
     }
 
-    function removeVaultsDeployerAccess(address deployer) public {
-        removeCommonDeployerAccess(deployer);
+    function removeVaultsDeployerAccess() public {
+        removeCommonDeployerAccess();
 
-        IAuth(vaultFactory).deny(deployer);
-        IAuth(trancheFactory).deny(deployer);
-        IAuth(restrictionManager).deny(deployer);
-        IAuth(restrictedRedemptions).deny(deployer);
-        investmentManager.deny(deployer);
-        poolManager.deny(deployer);
-        escrow.deny(deployer);
-        routerEscrow.deny(deployer);
-        vaultRouter.deny(deployer);
+        IAuth(vaultFactory).deny(msg.sender);
+        IAuth(trancheFactory).deny(msg.sender);
+        IAuth(restrictionManager).deny(msg.sender);
+        IAuth(restrictedRedemptions).deny(msg.sender);
+        investmentManager.deny(msg.sender);
+        poolManager.deny(msg.sender);
+        escrow.deny(msg.sender);
+        routerEscrow.deny(msg.sender);
+        vaultRouter.deny(msg.sender);
     }
 }

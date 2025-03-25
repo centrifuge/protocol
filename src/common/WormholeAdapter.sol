@@ -25,7 +25,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     mapping(uint16 wormholeId => WormholeSource) public sources;
     mapping(uint16 centrifugeChainId => WormholeDestination) public destinations;
 
-    constructor(IMessageHandler gateway_, address relayer_, uint16 refundChain_) Auth(msg.sender) {
+    constructor(IMessageHandler gateway_, address relayer_, uint16 refundChain_, address deployer) Auth(deployer) {
         gateway = gateway_;
         relayer = IWormholeRelayer(relayer_);
         refundChain = refundChain_;
