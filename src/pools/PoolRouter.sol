@@ -500,13 +500,13 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     /// @notice Update the journal with the given debits and credits. Can be unequal.
     function _updateJournal(JournalEntry[] memory debits, JournalEntry[] memory credits) internal returns (uint128 debited, uint128 credited) {
         for (uint256 i; i < debits.length; i++) {
-            accounting.addDebit(debits[i].accountId, debits[i].amount.raw());
-            debited += debits[i].amount.raw();
+            accounting.addDebit(debits[i].accountId, debits[i].amount);
+            debited += debits[i].amount;
         }
 
         for (uint256 i; i < credits.length; i++) {
-            accounting.addCredit(credits[i].accountId, credits[i].amount.raw());
-            credited += credits[i].amount.raw();
+            accounting.addCredit(credits[i].accountId, credits[i].amount);
+            credited += credits[i].amount;
         }
     }
 
