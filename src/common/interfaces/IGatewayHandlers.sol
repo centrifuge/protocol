@@ -33,6 +33,9 @@ interface IPoolRouterGatewayHandler {
     /// @notice Perform a redeem cancellation that was requested from CV.
     function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId) external;
 
+    /// @notice Performs a manual update of the holdings value given the provided price
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePerUnit) external;
+
     /// @notice Update a holding by request from CAL.
     function updateHoldingAmount(
         PoolId poolId,
