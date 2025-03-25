@@ -502,7 +502,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         accounting.unlock(poolId, accounting.generateJournalId(poolId));
         this.updateHolding(scId, assetId);
         accounting.lock();
-    
+
         holdings.updateValuation(poolId, scId, assetId, _valuation);
     }
 
