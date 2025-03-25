@@ -10,11 +10,12 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {VaultUpdateKind, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IPoolManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {newAssetId} from "src/common/types/AssetId.sol";
 
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 import {IBaseVault, IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
@@ -48,7 +49,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
     IEscrow public immutable escrow;
 
-    IGateway public gateway;
     IVaultMessageSender public sender;
     ITrancheFactory public trancheFactory;
     address public balanceSheetManager;
@@ -75,8 +75,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     // --- Administration ---
     /// @inheritdoc IPoolManager
     function file(bytes32 what, address data) external auth {
-        if (what == "gateway") gateway = IGateway(data);
-        else if (what == "sender") sender = IVaultMessageSender(data);
+        if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "trancheFactory") trancheFactory = ITrancheFactory(data);
         else if (what == "balanceSheetManager") balanceSheetManager = data;
         else revert("PoolManager/file-unrecognized-param");
@@ -106,22 +105,25 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     function transferTrancheTokens(
         uint64 poolId,
         bytes16 trancheId,
-        uint32 destinationId,
+        uint16 destinationId,
         bytes32 recipient,
         uint128 amount
-    ) external {
+    ) external auth {
         ITranche tranche_ = ITranche(tranche(poolId, trancheId));
         require(address(tranche_) != address(0), "PoolManager/unknown-token");
         tranche_.burn(msg.sender, amount);
 
-        gateway.setPayableSource(msg.sender);
         sender.sendTransferShares(destinationId, poolId, trancheId, recipient, amount);
 
         emit TransferTrancheTokens(poolId, trancheId, msg.sender, destinationId, recipient, amount);
     }
 
     // @inheritdoc IPoolManagerGatewayHandler
-    function registerAsset(address asset, uint256 tokenId, uint32 destChainId) external returns (uint128 assetId) {
+    function registerAsset(address asset, uint256 tokenId, uint16 destChainId)
+        external
+        auth
+        returns (uint128 assetId)
+    {
         string memory name;
         string memory symbol;
         uint8 decimals;
@@ -143,7 +145,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         assetId = assetToId[asset][tokenId];
         if (assetId == 0) {
             _assetCounter++;
-            assetId = uint128(bytes16(abi.encodePacked(uint32(block.chainid), _assetCounter)));
+            assetId = newAssetId(sender.centrifugeChainId(), _assetCounter).raw();
 
             _idToAsset[assetId] = AssetIdKey(asset, tokenId);
             assetToId[asset][tokenId] = assetId;
@@ -159,7 +161,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
             emit RegisterAsset(assetId, asset, tokenId, name, symbol, decimals);
         }
 
-        gateway.setPayableSource(msg.sender);
         sender.sendRegisterAsset(destChainId, assetId, name, symbol, decimals);
     }
 
@@ -289,20 +290,25 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     function update(uint64 poolId, bytes16 trancheId, bytes memory payload) public auth {
         MessageLib.UpdateContractVaultUpdate memory m = MessageLib.deserializeUpdateContractVaultUpdate(payload);
 
-        address vault = m.vault;
-        if (m.factory != address(0) && vault == address(0)) {
-            require(vaultFactory[m.factory], "PoolManager/invalid-vault-factory");
-            vault = deployVault(poolId, trancheId, m.assetId, m.factory);
-        }
+        if (m.kind == uint8(VaultUpdateKind.DeployAndLink)) {
+            address factory = address(bytes20(m.vaultOrFactory));
 
-        // Needed as safeguard against non-validated vaults
-        // I.e. we only accept vaults that have been deployed by the pool manager
-        require(_vaultDetails[vault].asset != address(0), "PoolManager/unknown-vault");
-
-        if (m.isLinked) {
+            address vault = deployVault(poolId, trancheId, m.assetId, factory);
             linkVault(poolId, trancheId, m.assetId, vault);
         } else {
-            unlinkVault(poolId, trancheId, m.assetId, vault);
+            address vault = address(bytes20(m.vaultOrFactory));
+
+            // Needed as safeguard against non-validated vaults
+            // I.e. we only accept vaults that have been deployed by the pool manager
+            require(_vaultDetails[vault].asset != address(0), "PoolManager/unknown-vault");
+
+            if (m.kind == uint8(VaultUpdateKind.Link)) {
+                linkVault(poolId, trancheId, m.assetId, vault);
+            } else if (m.kind == uint8(VaultUpdateKind.Unlink)) {
+                unlinkVault(poolId, trancheId, m.assetId, vault);
+            } else {
+                revert("PoolManager/malformed-vault-update-msg");
+            }
         }
     }
 

@@ -39,8 +39,8 @@ contract PoolsDeployer is CommonDeployer {
     // Data
     AssetId immutable USD = newAssetId(840);
 
-    function deployPools(ISafe adminSafe_, address deployer) public {
-        deployCommon(adminSafe_, deployer);
+    function deployPools(uint16 centrifugeChainId, ISafe adminSafe_, address deployer) public {
+        deployCommon(centrifugeChainId, adminSafe_, deployer);
 
         poolRegistry = new PoolRegistry(deployer);
         assetRegistry = new AssetRegistry(deployer);
@@ -49,11 +49,24 @@ contract PoolsDeployer is CommonDeployer {
         accounting = new Accounting(deployer);
         holdings = new Holdings(poolRegistry, deployer);
         multiShareClass = new MultiShareClass(poolRegistry, deployer);
-        poolRouter = new PoolRouter(poolRegistry, assetRegistry, accounting, holdings, gateway, transientValuation, deployer);
+        poolRouter =
+            new PoolRouter(poolRegistry, assetRegistry, accounting, holdings, gateway, transientValuation, deployer);
 
+        _poolsRegister();
         _poolsRely();
         _poolsFile();
         _poolsInitialConfig();
+    }
+
+    function _poolsRegister() private {
+        register("poolRegistry", address(poolRegistry));
+        register("assetRegistry", address(assetRegistry));
+        register("accounting", address(accounting));
+        register("holdings", address(holdings));
+        register("multiShareClass", address(multiShareClass));
+        register("poolRouter", address(poolRouter));
+        register("transientValuation", address(transientValuation));
+        register("identityValuation", address(identityValuation));
     }
 
     function _poolsRely() private {

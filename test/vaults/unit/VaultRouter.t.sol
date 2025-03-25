@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "test/vaults/BaseTest.sol";
+import "src/misc/interfaces/IERC20.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
+
 import "src/vaults/interfaces/IERC7575.sol";
 import "src/vaults/interfaces/IERC7540.sol";
-import "src/misc/interfaces/IERC20.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
+import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
+
+import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
+import "test/vaults/BaseTest.sol";
 
 interface Authlike {
     function rely(address) external;
@@ -24,7 +28,7 @@ contract ERC20WrapperFake {
 contract VaultRouterTest is BaseTest {
     using CastLib for *;
 
-    uint32 constant CHAIN_ID = 1;
+    uint16 constant CHAIN_ID = 1;
     uint256 constant GAS_BUFFER = 10 gwei;
     /// @dev Payload is not taken into account during gas estimation
     bytes constant PAYLOAD_FOR_GAS_ESTIMATION = "irrelevant_value";
@@ -325,14 +329,14 @@ contract VaultRouterTest is BaseTest {
     }
 
     /// forge-config: default.isolate = true
-    function testTranferTrancheTokensToAddressDestination() public {
+    function testTransferTrancheTokensToAddressDestination() public {
         (address vault_,) = deploySimpleVault();
         vm.label(vault_, "vault");
         ERC7540Vault vault = ERC7540Vault(vault_);
         ERC20 share = ERC20(IERC7540Vault(vault_).share());
 
         uint256 amount = 100 * 10 ** 18;
-        uint32 destinationChainId = 2;
+        uint16 destinationChainId = 2;
         address destinationAddress = makeAddr("destinationAddress");
 
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), address(this), type(uint64).max);
@@ -359,14 +363,14 @@ contract VaultRouterTest is BaseTest {
         assertEq(share.balanceOf(address(this)), 0);
     }
 
-    function testTranferTrancheTokensToBytes32Destination() public {
+    function testTransferTrancheTokensToBytes32Destination() public {
         (address vault_,) = deploySimpleVault();
         vm.label(vault_, "vault");
         ERC7540Vault vault = ERC7540Vault(vault_);
         ERC20 share = ERC20(IERC7540Vault(vault_).share());
 
         uint256 amount = 100 * 10 ** 18;
-        uint32 destinationChainId = 2;
+        uint16 destinationChainId = 2;
         address destinationAddress = makeAddr("destinationAddress");
         bytes32 destinationAddressAsBytes32 = destinationAddress.toBytes32();
 
@@ -395,6 +399,42 @@ contract VaultRouterTest is BaseTest {
         );
         assertEq(share.balanceOf(address(vaultRouter)), 0);
         assertEq(share.balanceOf(address(this)), 0);
+    }
+
+    function testRegisterAssetERC20() public {
+        address asset = address(erc20);
+        uint16 destinationChainId = 2;
+        uint256 fuel = estimateGas();
+
+        vm.expectRevert("Gateway/cannot-topup-with-nothing");
+        vaultRouter.registerAsset{value: 0}(asset, 0, destinationChainId);
+
+        vm.expectRevert("Gateway/not-enough-gas-funds");
+        vaultRouter.registerAsset{value: fuel - 1}(asset, 0, destinationChainId);
+
+        vm.expectEmit();
+        emit IPoolManager.RegisterAsset(defaultAssetId, asset, 0, erc20.name(), erc20.symbol(), erc20.decimals());
+        vaultRouter.registerAsset{value: fuel}(asset, 0, destinationChainId);
+    }
+
+    function testRegisterAssetERC6909() public {
+        MockERC6909 erc6909 = new MockERC6909();
+        address asset = address(erc6909);
+        uint256 tokenId = 18;
+        uint16 destinationChainId = 2;
+        uint256 fuel = estimateGas();
+
+        vm.expectRevert("Gateway/cannot-topup-with-nothing");
+        vaultRouter.registerAsset{value: 0}(asset, tokenId, destinationChainId);
+
+        vm.expectRevert("Gateway/not-enough-gas-funds");
+        vaultRouter.registerAsset{value: fuel - 1}(asset, tokenId, destinationChainId);
+
+        vm.expectEmit();
+        emit IPoolManager.RegisterAsset(
+            defaultAssetId, asset, tokenId, erc6909.name(tokenId), erc6909.symbol(tokenId), erc6909.decimals(tokenId)
+        );
+        vaultRouter.registerAsset{value: fuel}(asset, tokenId, destinationChainId);
     }
 
     function testEnableAndDisable() public {

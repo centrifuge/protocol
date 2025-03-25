@@ -9,7 +9,7 @@ import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 contract MockManager is Mock, IMessageHandler {
     mapping(bytes => uint256) public received;
 
-    function handle(uint32, bytes memory message) public {
+    function handle(uint16, bytes memory message) public {
         values_bytes["handle_message"] = message;
         received[message]++;
     }

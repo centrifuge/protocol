@@ -155,11 +155,11 @@ interface IVaultRouter is IMulticall, IRecoverable {
     /// @param  chainId Check `IPoolManager.transferTrancheTokens.destinationId`
     /// @param  recipient Check `IPoolManager.transferTrancheTokens.recipient`
     /// @param  amount Check `IPoolManager.transferTrancheTokens.amount`
-    function transferTrancheTokens(address vault, uint32 chainId, bytes32 recipient, uint128 amount) external payable;
+    function transferTrancheTokens(address vault, uint16 chainId, bytes32 recipient, uint128 amount) external payable;
 
     /// @notice This is a more friendly version where the recipient is and EVM address
     /// @dev    The recipient address is padded to 32 bytes internally
-    function transferTrancheTokens(address vault, uint32 chainId, address recipient, uint128 amount) external payable;
+    function transferTrancheTokens(address vault, uint16 chainId, address recipient, uint128 amount) external payable;
 
     // --- ERC20 permit ---
     /// @notice Check IERC20.permit
@@ -189,7 +189,7 @@ interface IVaultRouter is IMulticall, IRecoverable {
 
     /// @notice Check IGateway.estimate
     /// @param chainId destination chain
-    function estimate(uint32 chainId, bytes calldata payload) external view returns (uint256 amount);
+    function estimate(uint16 chainId, bytes calldata payload) external view returns (uint256 amount);
 
     /// @notice Called to check if `user` has permissions on `vault` to execute requests
     ///

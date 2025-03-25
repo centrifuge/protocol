@@ -54,7 +54,16 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IInvestmentManagerGatewayHandler public investmentManager;
     IBalanceSheetManagerGatewayHandler public balanceSheetManager;
 
-    constructor(IMessageSender gateway_, IRoot root_, IGasService gasService_, address deployer) Auth(deployer) {
+    uint16 public centrifugeChainId;
+
+    constructor(
+        uint16 centrifugeChainId_,
+        IMessageSender gateway_,
+        IRoot root_,
+        IGasService gasService_,
+        address deployer
+    ) Auth(deployer) {
+        centrifugeChainId = centrifugeChainId_;
         gateway = gateway_;
         root = root_;
         gasService = gasService_;
@@ -72,9 +81,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
     }
 
     /// @inheritdoc IPoolMessageSender
-    function sendNotifyPool(uint32 chainId, PoolId poolId) external auth {
+    function sendNotifyPool(uint16 chainId, PoolId poolId) external auth {
         // In case we want to optimize for the same network:
-        //if chainId == uint32(block.chainId) {
+        //if chainId == centrifugeChainId {
         //    cv.poolManager.notifyPool(poolId);
         //}
         //else {
@@ -84,7 +93,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
     /// @inheritdoc IPoolMessageSender
     function sendNotifyShareClass(
-        uint32 chainId,
+        uint16 chainId,
         PoolId poolId,
         ShareClassId scId,
         string memory name,
@@ -191,8 +200,23 @@ contract MessageProcessor is Auth, IMessageProcessor {
         );
     }
 
+    /// @inheritdoc IPoolMessageSender
+    function sendUpdateContract(
+        uint16 chainId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 target,
+        bytes calldata payload
+    ) external auth {
+        gateway.send(
+            chainId,
+            MessageLib.UpdateContract({poolId: poolId.raw(), scId: scId.raw(), target: target, payload: payload})
+                .serialize()
+        );
+    }
+
     /// @inheritdoc IVaultMessageSender
-    function sendTransferShares(uint32 chainId, uint64 poolId, bytes16 scId, bytes32 recipient, uint128 amount)
+    function sendTransferShares(uint16 chainId, uint64 poolId, bytes16 scId, bytes32 recipient, uint128 amount)
         external
         auth
     {
@@ -208,7 +232,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         auth
     {
         gateway.send(
-            uint32(poolId >> 32),
+            PoolId.wrap(poolId).chainId(),
             MessageLib.DepositRequest({poolId: poolId, scId: scId, investor: investor, assetId: assetId, amount: amount})
                 .serialize()
         );
@@ -220,7 +244,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         auth
     {
         gateway.send(
-            uint32(poolId >> 32),
+            PoolId.wrap(poolId).chainId(),
             MessageLib.RedeemRequest({poolId: poolId, scId: scId, investor: investor, assetId: assetId, amount: amount})
                 .serialize()
         );
@@ -229,7 +253,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     /// @inheritdoc IVaultMessageSender
     function sendCancelDepositRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId) external auth {
         gateway.send(
-            uint32(poolId >> 32),
+            PoolId.wrap(poolId).chainId(),
             MessageLib.CancelDepositRequest({poolId: poolId, scId: scId, investor: investor, assetId: assetId})
                 .serialize()
         );
@@ -238,7 +262,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     /// @inheritdoc IVaultMessageSender
     function sendCancelRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId) external auth {
         gateway.send(
-            uint32(poolId >> 32),
+            PoolId.wrap(poolId).chainId(),
             MessageLib.CancelRedeemRequest({poolId: poolId, scId: scId, investor: investor, assetId: assetId}).serialize(
             )
         );
@@ -377,7 +401,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
     /// @inheritdoc IVaultMessageSender
     function sendRegisterAsset(
-        uint32 chainId,
+        uint16 chainId,
         uint128 assetId,
         string memory name,
         string memory symbol,
@@ -391,7 +415,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     }
 
     /// @inheritdoc IMessageHandler
-    function handle(uint32, /* chainId */ bytes memory message) external auth {
+    function handle(uint16, /* chainId */ bytes memory message) external auth {
         MessageCategory cat = message.messageCode().category();
         MessageType kind = message.messageType();
 
@@ -550,19 +574,13 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 );
             } else if (kind == MessageType.UpdateJournal) {
                 MessageLib.UpdateJournal memory m = message.deserializeUpdateJournal();
-                poolRouter.updateJournal(
-                    PoolId.wrap(m.poolId), m.debits, m.credits
-                );
+                poolRouter.updateJournal(PoolId.wrap(m.poolId), m.debits, m.credits);
             } else if (kind == MessageType.UpdateShares) {
                 MessageLib.UpdateShares memory m = message.deserializeUpdateShares();
                 if (m.isIssuance) {
-                    poolRouter.increaseShareIssuance(
-                        PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares
-                    );
+                    poolRouter.increaseShareIssuance(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares);
                 } else {
-                    poolRouter.decreaseShareIssuance(
-                        PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares
-                    );
+                    poolRouter.decreaseShareIssuance(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares);
                 }
             } else {
                 revert InvalidMessage(uint8(kind));

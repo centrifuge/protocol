@@ -9,6 +9,7 @@ import {Auth} from "src/misc/Auth.sol";
 import {Multicall, IMulticall} from "src/misc/Multicall.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {MessageLib, UpdateContractType, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IPoolRouterGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
@@ -29,6 +30,7 @@ import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 
 // @inheritdoc IPoolRouter
 contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
+    using MessageLib for *;
     using MathLib for uint256;
     using CastLib for bytes;
     using CastLib for bytes32;
@@ -100,7 +102,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         require(unlockedPoolId.isNull(), IPoolRouter.PoolAlreadyUnlocked());
         require(poolRegistry.isAdmin(poolId, msg.sender), IPoolRouter.NotAuthorizedAdmin());
 
-        accounting.unlock(poolId, "TODO");
+        accounting.unlock(poolId, accounting.generateJournalId(poolId));
         unlockedPoolId = poolId;
 
         multicall(data);
@@ -120,7 +122,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         returns (PoolId poolId)
     {
         // TODO: add fees?
-        return poolRegistry.registerPool(admin, currency, shareClassManager);
+        return poolRegistry.registerPool(admin, sender.centrifugeChainId(), currency, shareClassManager);
     }
 
     /// @inheritdoc IPoolRouter
@@ -153,14 +155,14 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IPoolRouter
-    function notifyPool(uint32 chainId) external payable {
+    function notifyPool(uint16 chainId) external payable {
         _protectedAndUnlocked();
 
         sender.sendNotifyPool(chainId, unlockedPoolId);
     }
 
     /// @inheritdoc IPoolRouter
-    function notifyShareClass(uint32 chainId, ShareClassId scId, bytes32 hook) external payable {
+    function notifyShareClass(uint16 chainId, ShareClassId scId, bytes32 hook) external payable {
         _protectedAndUnlocked();
 
         IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
@@ -184,15 +186,6 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         _protectedAndUnlocked();
 
         poolRegistry.updateAdmin(unlockedPoolId, account, allow);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function allowAsset(ShareClassId scId, AssetId assetId, bool /*allow*/ ) external payable {
-        _protectedAndUnlocked();
-
-        require(holdings.exists(unlockedPoolId, scId, assetId), IHoldings.HoldingNotFound());
-
-        // TODO: cal update contract feature
     }
 
     /// @inheritdoc IPoolRouter
@@ -261,6 +254,32 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         );
 
         decreaseHolding(scId, payoutAssetId, valuation, payoutAssetAmount);
+    }
+
+    /// @inheritdoc IPoolRouter
+    function updateContract(uint16 chainId, ShareClassId scId, bytes32 target, bytes calldata payload) external payable {
+        _protectedAndUnlocked();
+
+        sender.sendUpdateContract(chainId, unlockedPoolId, scId, target, payload);
+    }
+
+    /// @inheritdoc IPoolRouter
+    function updateVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 vaultOrFactory, VaultUpdateKind kind)
+        public payable
+    {
+        _protectedAndUnlocked();
+
+        sender.sendUpdateContract(
+            assetId.chainId(),
+            unlockedPoolId,
+            scId,
+            target,
+            MessageLib.UpdateContractVaultUpdate({
+                vaultOrFactory: vaultOrFactory,
+                assetId: assetId.raw(),
+                kind: uint8(kind)
+            }).serialize()
+        );
     }
 
     /// @inheritdoc IPoolRouter
@@ -440,7 +459,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     function updateHoldingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount, D18 pricePerUnit, bool isIncrease, JournalEntry[] memory debits, JournalEntry[] memory credits)
         external auth
     {
-        accounting.unlock(poolId, "TODO");
+        accounting.unlock(poolId, accounting.generateJournalId(poolId));
         address poolCurrency = poolRegistry.currency(poolId).addr();
         transientValuation.setPrice(assetId.addr(), poolCurrency, pricePerUnit);
         uint128 valueChange = transientValuation.getQuote(amount, assetId.addr(), poolCurrency).toUint128();
@@ -455,7 +474,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
 
     /// @inheritdoc IPoolRouterGatewayHandler
     function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external auth {
-        accounting.unlock(poolId, "TODO");
+        accounting.unlock(poolId, accounting.generateJournalId(poolId));
         _updateJournal(debits, credits);
         accounting.lock();
     }

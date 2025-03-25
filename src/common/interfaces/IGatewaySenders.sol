@@ -8,14 +8,18 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {JournalEntry} from "src/common/types/JournalEntry.sol";
 
+interface ICentrifugeChainId {
+    function centrifugeChainId() external view returns (uint16);
+}
+
 /// @notice Interface for dispatch-only gateway
-interface IPoolMessageSender {
+interface IPoolMessageSender is ICentrifugeChainId {
     /// @notice Creates and send the message
-    function sendNotifyPool(uint32 chainId, PoolId poolId) external;
+    function sendNotifyPool(uint16 chainId, PoolId poolId) external;
 
     /// @notice Creates and send the message
     function sendNotifyShareClass(
-        uint32 chainId,
+        uint16 chainId,
         PoolId poolId,
         ShareClassId scId,
         string memory name,
@@ -62,12 +66,21 @@ interface IPoolMessageSender {
         bytes32 investor,
         uint128 cancelledShares
     ) external;
+
+    /// @notice Creates and send the message
+    function sendUpdateContract(
+        uint16 chainId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 target,
+        bytes calldata payload
+    ) external;
 }
 
 /// @notice Interface for dispatch-only gateway
-interface IVaultMessageSender {
+interface IVaultMessageSender is ICentrifugeChainId {
     /// @notice Creates and send the message
-    function sendTransferShares(uint32 chainId, uint64 poolId, bytes16 scId, bytes32 recipient, uint128 amount)
+    function sendTransferShares(uint16 chainId, uint64 poolId, bytes16 scId, bytes32 recipient, uint128 amount)
         external;
 
     /// @notice Creates and send the message
@@ -86,7 +99,7 @@ interface IVaultMessageSender {
 
     /// @notice Creates and send the message
     function sendRegisterAsset(
-        uint32 chainId,
+        uint16 chainId,
         uint128 assetId,
         string memory name,
         string memory symbol,

@@ -33,10 +33,14 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @inheritdoc IHoldings
-    function create(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation_, bool isLiability_, AccountId[] memory accounts)
-        external
-        auth
-    {
+    function create(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        IERC7726 valuation_,
+        bool isLiability_,
+        AccountId[] memory accounts
+    ) external auth {
         require(!scId.isNull(), WrongShareClassId());
         require(address(valuation_) != address(0), WrongValuation());
 

@@ -77,7 +77,8 @@ contract TestCreate is TestCommon {
         emit IHoldings.Created(POOL_A, SC_1, ASSET_A, itemValuation, false);
         holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, accounts);
 
-        (uint128 amount, uint128 amountValue, IERC7726 valuation, bool isLiability) = holdings.holding(POOL_A, SC_1, ASSET_A);
+        (uint128 amount, uint128 amountValue, IERC7726 valuation, bool isLiability) =
+            holdings.holding(POOL_A, SC_1, ASSET_A);
 
         assertEq(address(valuation), address(itemValuation));
         assertEq(amount, 0);

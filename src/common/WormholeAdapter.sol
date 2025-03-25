@@ -23,7 +23,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     IWormholeRelayer public immutable relayer;
 
     mapping(uint16 wormholeId => WormholeSource) public sources;
-    mapping(uint32 centrifugeId => WormholeDestination) public destinations;
+    mapping(uint16 centrifugeChainId => WormholeDestination) public destinations;
 
     constructor(IMessageHandler gateway_, address relayer_, uint16 refundChain_) Auth(msg.sender) {
         gateway = gateway_;
@@ -33,17 +33,20 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
 
     // --- Administrative ---
     /// @inheritdoc IWormholeAdapter
-    function file(bytes32 what, uint16 wormholeId, uint32 centrifugeId, address source) external auth {
-        if (what == "sources") sources[wormholeId] = WormholeSource(centrifugeId, source);
+    function fileSource(bytes32 what, uint16 wormholeId, uint16 centrifugeChainId, address source) external auth {
+        if (what == "sources") sources[wormholeId] = WormholeSource(centrifugeChainId, source);
         else revert FileUnrecognizedParam();
-        emit File(what, wormholeId, centrifugeId, source);
+        emit FileSource(what, wormholeId, centrifugeChainId, source);
     }
 
     /// @inheritdoc IWormholeAdapter
-    function file(bytes32 what, uint32 centrifugeId, uint16 wormholeId, address destination) external auth {
-        if (what == "destinations") destinations[centrifugeId] = WormholeDestination(wormholeId, destination);
+    function fileDestination(bytes32 what, uint16 centrifugeChainId, uint16 wormholeId, address destination)
+        external
+        auth
+    {
+        if (what == "destinations") destinations[centrifugeChainId] = WormholeDestination(wormholeId, destination);
         else revert FileUnrecognizedParam();
-        emit File(what, centrifugeId, wormholeId, destination);
+        emit FileDestination(what, centrifugeChainId, wormholeId, destination);
     }
 
     // --- Incoming ---
@@ -59,14 +62,17 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         require(source.addr == sourceAddress.toAddressLeftPadded(), InvalidSource());
         require(msg.sender == address(relayer), NotWormholeRelayer());
 
-        gateway.handle(source.centrifugeId, payload);
+        gateway.handle(source.centrifugeChainId, payload);
     }
 
     // --- Outgoing ---
     /// @inheritdoc IAdapter
-    function send(uint32 centrifugeId, bytes calldata payload, uint256 gasLimit, address refund) external payable {
+    function send(uint16 centrifugeChainId, bytes calldata payload, uint256 gasLimit, address refund)
+        external
+        payable
+    {
         require(msg.sender == address(gateway), NotGateway());
-        WormholeDestination memory destination = destinations[centrifugeId];
+        WormholeDestination memory destination = destinations[centrifugeChainId];
         require(destination.wormholeId != 0, UnknownChainId());
 
         relayer.sendPayloadToEvm{value: msg.value}(
@@ -75,11 +81,11 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     }
 
     /// @inheritdoc IAdapter
-    function estimate(uint32 centrifugeId, bytes calldata, uint256 gasLimit)
+    function estimate(uint16 centrifugeChainId, bytes calldata, uint256 gasLimit)
         public
         view
         returns (uint256 nativePriceQuote)
     {
-        (nativePriceQuote,) = relayer.quoteEVMDeliveryPrice(destinations[centrifugeId].wormholeId, 0, gasLimit);
+        (nativePriceQuote,) = relayer.quoteEVMDeliveryPrice(destinations[centrifugeChainId].wormholeId, 0, gasLimit);
     }
 }

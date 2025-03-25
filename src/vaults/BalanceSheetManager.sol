@@ -314,6 +314,6 @@ contract BalanceSheetManager is
             totalCredits += m.credits[i].amount;
         }
 
-        require(totalDebits <= amount  && totalDebits <= amount, EntriesUnbalanced());
+        require(totalDebits <= amount && totalDebits <= amount, EntriesUnbalanced());
     }
 }

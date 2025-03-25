@@ -7,11 +7,12 @@ import {IERC6909Fungible} from "src/misc/interfaces/IERC6909.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 
-import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {newAssetId} from "src/common/types/AssetId.sol";
 
 // core contracts
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
@@ -57,10 +58,10 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     uint256 constant GATEWAY_INITIAL_BALANCE = 10 ether;
 
     // default values
-    uint32 public defaultChainId = 1;
+    uint16 public defaultChainId = 1;
     uint256 public erc20TokenId = 0;
     uint256 public defaultErc6909TokenId = 16;
-    uint128 public defaultAssetId = uint128(bytes16(abi.encodePacked(uint32(defaultChainId), uint32(1))));
+    uint128 public defaultAssetId = newAssetId(defaultChainId, 1).raw();
     uint128 public defaultPrice = 1 * 10 ** 18;
     uint8 public defaultDecimals = 8;
     uint32 public defaultPoolId = 5;
@@ -75,7 +76,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         ISafe adminSafe = new MockSafe(pausers, 1);
 
         // deploy core contracts
-        deployVaults(adminSafe, address(this));
+        deployVaults(defaultChainId, adminSafe, address(this));
 
         // deploy mock adapters
 
@@ -160,7 +161,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         bytes16 trancheId,
         address asset,
         uint256 assetTokenId,
-        uint32 destinationChain
+        uint16 destinationChain
     ) public returns (address vaultAddress, uint128 assetId) {
         if (poolManager.assetToId(asset, assetTokenId) == 0) {
             assetId = poolManager.registerAsset(asset, assetTokenId, destinationChain);
@@ -177,10 +178,9 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
         // Trigger new vault deployment via UpdateContract
         bytes memory vaultUpdate = MessageLib.UpdateContractVaultUpdate({
-            factory: vaultFactory,
+            vaultOrFactory: bytes32(bytes20(vaultFactory)),
             assetId: assetId,
-            isLinked: true,
-            vault: address(0)
+            kind: uint8(VaultUpdateKind.DeployAndLink)
         }).serialize();
         poolManager.update(poolId, trancheId, vaultUpdate);
         vaultAddress = ITranche(poolManager.tranche(poolId, trancheId)).vault(asset);
