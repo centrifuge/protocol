@@ -21,6 +21,8 @@ import {BeforeAfter, OpType} from "../BeforeAfter.sol";
 import {Properties} from "../Properties.sol";
 import {Helpers} from "../utils/Helpers.sol";
 
+import "forge-std/console2.sol";
+
 abstract contract AdminTargets is
     BaseTargetFunctions,
     Properties
@@ -201,8 +203,18 @@ abstract contract AdminTargets is
             eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId");
             eq(pending, 0, "pending is not zero");
         } catch (bytes memory reason) {
-            bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
-            t(!arithmeticRevert, "cancelDepositRequest reverts with arithmetic panic");
+            uint32 epochId = multiShareClass.epochId(poolId);
+            uint128 previousDepositApproved;
+            if(epochId > 0) {
+                // we also check the previous epoch because approvals can increment the epochId
+                (,previousDepositApproved,,,,,) = multiShareClass.epochAmounts(scId, depositAssetId, epochId - 1);
+            }
+            (,uint128 currentDepositApproved,,,,,) = multiShareClass.epochAmounts(scId, depositAssetId, epochId);
+            // we only care about arithmetic reverts in the case of 0 approvals because if there have been any approvals, it's expected that user won't be able to cancel their request 
+            if(previousDepositApproved == 0 && currentDepositApproved == 0) {
+                bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
+                t(!arithmeticRevert, "cancelDepositRequest reverts with arithmetic panic");
+            }
         }
     }
 
@@ -222,8 +234,18 @@ abstract contract AdminTargets is
             eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId after cancelRedeemRequest");
             eq(pending, 0, "pending is not zero after cancelRedeemRequest");
         } catch (bytes memory reason) {
-            bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
-            t(!arithmeticRevert, "cancelRedeemRequest reverts with arithmetic panic");
+            uint32 epochId = multiShareClass.epochId(poolId);
+            uint128 previousRedeemApproved;
+            if(epochId > 0) {
+                // we also check the previous epoch because approvals can increment the epochId
+                (,,,,, previousRedeemApproved,) = multiShareClass.epochAmounts(scId, payoutAssetId, epochId - 1);
+            }
+            (,,,,, uint128 currentRedeemApproved,) = multiShareClass.epochAmounts(scId, payoutAssetId, epochId);
+            // we only care about arithmetic reverts in the case of 0 approvals because if there have been any approvals, it's expected that user won't be able to cancel their request 
+            if(previousRedeemApproved == 0 && currentRedeemApproved == 0) {
+                bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
+                t(!arithmeticRevert, "cancelRedeemRequest reverts with arithmetic panic");
+            }
         }
     }
 
