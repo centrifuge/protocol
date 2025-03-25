@@ -535,6 +535,35 @@ contract MessageProcessor is Auth, IMessageProcessor {
                         PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), address(bytes20(m.who)), m.shares
                     );
                 }
+            } else if (kind == MessageType.UpdateHolding) {
+                MessageLib.UpdateHolding memory m = message.deserializeUpdateHolding();
+
+                poolRouter.updateHoldingAmount(
+                    PoolId.wrap(m.poolId),
+                    ShareClassId.wrap(m.scId),
+                    AssetId.wrap(m.assetId),
+                    m.amount,
+                    m.pricePerUnit,
+                    m.isIncrease,
+                    m.debits,
+                    m.credits
+                );
+            } else if (kind == MessageType.UpdateJournal) {
+                MessageLib.UpdateJournal memory m = message.deserializeUpdateJournal();
+                poolRouter.updateJournal(
+                    PoolId.wrap(m.poolId), m.debits, m.credits
+                );
+            } else if (kind == MessageType.UpdateShares) {
+                MessageLib.UpdateShares memory m = message.deserializeUpdateShares();
+                if (m.isIssuance) {
+                    poolRouter.increaseShareIssuance(
+                        PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares
+                    );
+                } else {
+                    poolRouter.decreaseShareIssuance(
+                        PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares
+                    );
+                }
             } else {
                 revert InvalidMessage(uint8(kind));
             }

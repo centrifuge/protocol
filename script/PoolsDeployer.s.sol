@@ -44,13 +44,12 @@ contract PoolsDeployer is CommonDeployer {
 
         poolRegistry = new PoolRegistry(deployer);
         assetRegistry = new AssetRegistry(deployer);
+        transientValuation = new TransientValuation(assetRegistry, deployer);
+        identityValuation = new IdentityValuation(assetRegistry, deployer);
         accounting = new Accounting(deployer);
         holdings = new Holdings(poolRegistry, deployer);
         multiShareClass = new MultiShareClass(poolRegistry, deployer);
-        poolRouter = new PoolRouter(poolRegistry, assetRegistry, accounting, holdings, gateway, deployer);
-
-        transientValuation = new TransientValuation(assetRegistry, deployer);
-        identityValuation = new IdentityValuation(assetRegistry, deployer);
+        poolRouter = new PoolRouter(poolRegistry, assetRegistry, accounting, holdings, gateway, transientValuation, deployer);
 
         _poolsRely();
         _poolsFile();

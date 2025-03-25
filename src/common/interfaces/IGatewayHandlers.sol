@@ -32,6 +32,20 @@ interface IPoolRouterGatewayHandler {
 
     /// @notice Perform a redeem cancellation that was requested from CV.
     function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId) external;
+
+    /// @notice Update a holding by request from CAL.
+    function updateHoldingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount, 
+    D18 pricePerUnit, bool isIncrease, JournalEntry[] memory debits, JournalEntry[] memory credits
+    ) external;
+
+    /// @notice Perform accounting entries by request from CAL.
+    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external;
+
+    /// @notice Increases the total issuance of shares by request from CAL.
+    function increaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external;
+
+    /// @notice Decreases the total issuance of shares by request from CAL.
+    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external;
 }
 
 /// -----------------------------------------------------

@@ -533,6 +533,24 @@ contract MultiShareClass is Auth, IMultiShareClass {
 
 
     /// @inheritdoc IShareClassManager
+    function increaseShareClassIssuance(PoolId poolId, ShareClassId shareClassId_, uint128 amount) external auth {
+        require(exists(poolId, shareClassId_), ShareClassNotFound());
+
+        metrics[shareClassId_].totalIssuance += amount;
+        // TODO: emit event?
+    }
+
+    /// @inheritdoc IShareClassManager
+    function decreaseShareClassIssuance(PoolId poolId, ShareClassId shareClassId_, uint128 amount) external auth {
+        require(exists(poolId, shareClassId_), ShareClassNotFound());
+        require(metrics[shareClassId_].totalIssuance >= amount, "Issuance too low");
+
+        metrics[shareClassId_].totalIssuance -= amount;
+        // TODO: emit event?
+    }
+
+
+    /// @inheritdoc IShareClassManager
     function updateShareClassNav(PoolId poolId, ShareClassId shareClassId_) external view auth returns (uint128, D18) {
         require(exists(poolId, shareClassId_), ShareClassNotFound());
         revert("unsupported");

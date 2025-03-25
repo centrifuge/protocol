@@ -13,10 +13,12 @@ import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
+import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
 
 import {PoolsDeployer, ISafe} from "script/PoolsDeployer.s.sol";
 import {AccountType} from "src/pools/interfaces/IPoolRouter.sol";
+import {JournalEntry} from "src/common/types/JournalEntry.sol";
+
 
 import {MockVaults} from "test/pools/mocks/MockVaults.sol";
 
@@ -100,7 +102,7 @@ contract TestCases is PoolsDeployer, Test {
         cs[c++] = abi.encodeWithSelector(poolRouter.addShareClass.selector, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
         cs[c++] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
         cs[c++] = abi.encodeWithSelector(poolRouter.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
-        cs[c++] = abi.encodeWithSelector(poolRouter.createHolding.selector, scId, USDC_C2, identityValuation, 0x01);
+        cs[c++] = abi.encodeWithSelector(poolRouter.createHolding.selector, scId, USDC_C2, identityValuation, false, 0x01);
         //TODO: CAL update contract here
         assertEq(c, cs.length);
 
@@ -243,5 +245,71 @@ contract TestCases is PoolsDeployer, Test {
         assertEq(c, cs.length);
 
         poolRouter.multicall{value: GAS}(cs);
+    }
+
+    function testCalUpdateJournal() public {
+        (PoolId poolId, ShareClassId scId) = testPoolCreation();
+
+        AccountId extraAccountId = newAccountId(123, uint8(AccountType.ASSET));
+
+        (bytes[] memory cs, uint256 c) = (new bytes[](1), 0);
+        cs[c++] = abi.encodeWithSelector(poolRouter.createAccount.selector, extraAccountId, true);
+        vm.prank(FM);
+        poolRouter.execute(poolId, cs);
+
+        (JournalEntry[] memory debits, uint256 i) = (new JournalEntry[](3), 0);
+        debits[i++] = JournalEntry(D18.wrap(1000), holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.ASSET)));
+        debits[i++] = JournalEntry(D18.wrap(250), extraAccountId);
+        debits[i++] = JournalEntry(D18.wrap(130), holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EQUITY)));
+
+        (JournalEntry[] memory credits, uint256 j) = (new JournalEntry[](2), 0);
+        credits[j++] = JournalEntry(D18.wrap(1250), holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EQUITY)));
+        credits[j++] = JournalEntry(D18.wrap(130), holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.LOSS)));
+
+        cv.updateJournal(poolId, scId, debits, credits);
+    }
+
+    function testCalUpdateHolding() public {
+        (PoolId poolId, ShareClassId scId) = testPoolCreation();
+
+        uint128 decimalDiff = 1e12;
+
+        JournalEntry[] memory debits = new JournalEntry[](0);
+        (JournalEntry[] memory credits, uint256 i) = (new JournalEntry[](1), 0);
+        credits[i++] = JournalEntry(D18.wrap(130 * uint128(decimalDiff)), holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.GAIN)));
+
+        cv.updateHolding(poolId, scId, USDC_C2, 1000, D18.wrap(1e18), true, debits, credits);
+
+        assertEq(holdings.amount(poolId, scId, USDC_C2), 1000);
+        assertEq(holdings.value(poolId, scId, USDC_C2), 1000 * decimalDiff);
+        assertEq(accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.GAIN))), int128(130 * decimalDiff));
+        assertEq(accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EQUITY))), int128(870 * decimalDiff));        
+
+        (JournalEntry[] memory debits2, uint256 j) = (new JournalEntry[](1), 0);
+        debits2[j++] = JournalEntry(D18.wrap(12 * uint128(decimalDiff)), holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.LOSS)));
+        (JournalEntry[] memory credits2, uint256 k) = (new JournalEntry[](1), 0);
+        credits2[k++] = JournalEntry(D18.wrap(12 * uint128(decimalDiff)), holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EXPENSE)));
+
+        cv.updateHolding(poolId, scId, USDC_C2, 500, D18.wrap(1e18), false, debits2, credits2);
+
+        assertEq(holdings.amount(poolId, scId, USDC_C2), 500);
+        assertEq(holdings.value(poolId, scId, USDC_C2), 500 * decimalDiff);
+        assertEq(accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.LOSS))), -int128(12 * decimalDiff));
+        assertEq(accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EXPENSE))), -int128(12 * decimalDiff));
+        assertEq(accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EQUITY))), int128(382 * decimalDiff));        
+    }
+
+    function testCalUpdateShares() public {
+        (PoolId poolId, ShareClassId scId) = testPoolCreation();
+        
+        cv.updateShares(poolId, scId, 100, true);
+
+        (uint128 totalIssuance,) = multiShareClass.metrics(scId);
+        assertEq(totalIssuance, 100);
+
+        cv.updateShares(poolId, scId, 45, false);
+
+        (uint128 totalIssuance2,) = multiShareClass.metrics(scId);
+        assertEq(totalIssuance2, 55);
     }
 }

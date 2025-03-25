@@ -19,7 +19,9 @@ import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
 import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 import {IPoolRouter} from "src/pools/interfaces/IPoolRouter.sol";
+import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 import {PoolRouter} from "src/pools/PoolRouter.sol";
+import {JournalEntry} from "src/common/types/JournalEntry.sol";
 
 contract TestCommon is Test {
     PoolId constant POOL_A = PoolId.wrap(1);
@@ -33,8 +35,9 @@ contract TestCommon is Test {
     IAssetRegistry immutable assetRegistry = IAssetRegistry(makeAddr("AssetRegistry"));
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
     IGateway immutable gateway = IGateway(makeAddr("Gateway"));
+    ITransientValuation immutable transientValuation = ITransientValuation(makeAddr("TransientValuation"));
 
-    PoolRouter poolRouter = new PoolRouter(poolRegistry, assetRegistry, accounting, holdings, gateway, address(this));
+    PoolRouter poolRouter = new PoolRouter(poolRegistry, assetRegistry, accounting, holdings, gateway, transientValuation, address(this));
 
     function setUp() public {
         vm.mockCall(
@@ -72,6 +75,13 @@ contract TestMainMethodsChecks is TestCommon {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         poolRouter.cancelRedeemRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
 
+        JournalEntry[] memory entries = new JournalEntry[](0);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolRouter.updateHoldingAmount(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(1), false, entries, entries);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        poolRouter.updateJournal(PoolId.wrap(0), entries, entries);
+
         vm.stopPrank();
     }
 
@@ -107,7 +117,7 @@ contract TestMainMethodsChecks is TestCommon {
         poolRouter.revokeShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
 
         vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.createHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
+        poolRouter.createHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), false, 0);
 
         vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.increaseHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
@@ -185,7 +195,7 @@ contract TestCreateHolding is TestCommon {
         );
 
         bytes[] memory cs = new bytes[](1);
-        cs[0] = abi.encodeWithSelector(poolRouter.createHolding.selector, SC_A, ASSET_A, IERC7726(address(1)), 0);
+        cs[0] = abi.encodeWithSelector(poolRouter.createHolding.selector, SC_A, ASSET_A, IERC7726(address(1)), false, 0);
 
         vm.prank(ADMIN);
         vm.expectRevert(IAssetRegistry.AssetNotFound.selector);
