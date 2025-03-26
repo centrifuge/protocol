@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Basic usage: ./development/deploy.sh <Localhost|Axelar|Wormhole>
+# Basic usage: ./development/deploy.sh <Localhost|Axelar|Wormhole> $2
 
 source .env
 

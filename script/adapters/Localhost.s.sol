@@ -27,6 +27,12 @@ contract LocalhostDeployer is FullDeployer {
         LocalhostAdapter adapter = new LocalhostAdapter(gateway, msg.sender);
         wire(adapter);
 
+        _configureTestPool();
+
+        vm.stopBroadcast();
+    }
+
+    function _configureTestPool() internal {
         // Create pool
         PoolId poolId = poolRouter.createPool(msg.sender, USD, multiShareClass);
         ShareClassId scId = multiShareClass.previewNextShareClassId(poolId);
@@ -60,7 +66,5 @@ contract LocalhostDeployer is FullDeployer {
         );
 
         poolRouter.execute{value: 0.1 ether}(poolId, cs);
-
-        vm.stopBroadcast();
     }
 }
