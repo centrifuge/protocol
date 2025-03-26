@@ -2,6 +2,10 @@
 pragma solidity 0.8.28;
 
 import {MessageType, MessageCategory, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {JournalEntry} from "src/common/types/JournalEntry.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
+
+import {D18, d18} from "src/misc/types/D18.sol";
 
 import "forge-std/Test.sol";
 
@@ -33,6 +37,9 @@ contract TestMessageLibCategories is Test {
         assert(MessageCategory.Investment == uint8(MessageType.CancelRedeemRequest).category());
         assert(MessageCategory.Investment == uint8(MessageType.FulfilledCancelDepositRequest).category());
         assert(MessageCategory.Investment == uint8(MessageType.FulfilledCancelRedeemRequest).category());
+        assert(MessageCategory.BalanceSheet == uint8(MessageType.UpdateHolding).category());
+        assert(MessageCategory.BalanceSheet == uint8(MessageType.UpdateShares).category());
+        assert(MessageCategory.BalanceSheet == uint8(MessageType.UpdateJournal).category());
     }
 }
 
@@ -448,6 +455,183 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.investor, b.investor);
         assertEq(a.assetId, b.assetId);
         assertEq(a.shares, b.shares);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+    }
+
+    function testUpdateHolding() public pure {
+        JournalEntry[] memory debits = new JournalEntry[](3);
+        debits[0] = JournalEntry({accountId: AccountId.wrap(9), amount: 1});
+        debits[1] = JournalEntry({accountId: AccountId.wrap(8), amount: 2});
+        debits[2] = JournalEntry({accountId: AccountId.wrap(7), amount: 3});
+
+        JournalEntry[] memory credits = new JournalEntry[](2);
+        credits[0] = JournalEntry({accountId: AccountId.wrap(1), amount: 2});
+        credits[1] = JournalEntry({accountId: AccountId.wrap(3), amount: 4});
+
+        MessageLib.UpdateHolding memory a = MessageLib.UpdateHolding({
+            poolId: 1,
+            scId: bytes16("sc"),
+            assetId: 5,
+            who: bytes32("alice"),
+            amount: 100,
+            pricePerUnit: d18(3, 1),
+            timestamp: 12345,
+            isIncrease: false,
+            debits: debits,
+            credits: credits
+        });
+
+        MessageLib.UpdateHolding memory b = MessageLib.deserializeUpdateHolding(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.assetId, b.assetId);
+        assertEq(a.who, b.who);
+        assertEq(a.amount, b.amount);
+        assert(a.pricePerUnit.eq(b.pricePerUnit));
+        assertEq(a.timestamp, b.timestamp);
+        assertEq(a.isIncrease, b.isIncrease);
+        assertEq(a.debits.length, b.debits.length);
+        assertEq(a.credits.length, b.credits.length);
+
+        for (uint256 i = 0; i < a.credits.length; i++) {
+            assertEq(a.credits[i].accountId.raw(), b.credits[i].accountId.raw());
+            assertEq(a.credits[i].amount, b.credits[i].amount);
+        }
+
+        for (uint256 i = 0; i < a.debits.length; i++) {
+            assertEq(a.debits[i].accountId.raw(), b.debits[i].accountId.raw());
+            assertEq(a.debits[i].amount, b.debits[i].amount);
+        }
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+    }
+
+    function testUpdateShares() public pure {
+        MessageLib.UpdateShares memory a = MessageLib.UpdateShares({
+            poolId: 1,
+            scId: bytes16("sc"),
+            who: bytes32("alice"),
+            pricePerShare: d18(123456),
+            shares: 100,
+            timestamp: 12345,
+            isIssuance: true
+        });
+
+        MessageLib.UpdateShares memory b = MessageLib.deserializeUpdateShares(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.who, b.who);
+        assertEq(a.shares, b.shares);
+        assert(a.pricePerShare.eq(b.pricePerShare));
+        assertEq(a.timestamp, b.timestamp);
+        assertEq(a.isIssuance, b.isIssuance);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+    }
+
+    function testUpdateJournal() public pure {
+        JournalEntry[] memory debits = new JournalEntry[](3);
+        debits[0] = JournalEntry({accountId: AccountId.wrap(9), amount: 1});
+        debits[1] = JournalEntry({accountId: AccountId.wrap(8), amount: 2});
+        debits[2] = JournalEntry({accountId: AccountId.wrap(7), amount: 3});
+
+        JournalEntry[] memory credits = new JournalEntry[](2);
+        credits[0] = JournalEntry({accountId: AccountId.wrap(1), amount: 2});
+        credits[1] = JournalEntry({accountId: AccountId.wrap(3), amount: 4});
+
+        MessageLib.UpdateJournal memory a =
+            MessageLib.UpdateJournal({poolId: 1, scId: bytes16("sc"), debits: debits, credits: credits});
+
+        MessageLib.UpdateJournal memory b = MessageLib.deserializeUpdateJournal(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+
+        for (uint256 i = 0; i < a.credits.length; i++) {
+            assertEq(a.credits[i].accountId.raw(), b.credits[i].accountId.raw());
+            assertEq(a.credits[i].amount, b.credits[i].amount);
+        }
+
+        for (uint256 i = 0; i < a.debits.length; i++) {
+            assertEq(a.debits[i].accountId.raw(), b.debits[i].accountId.raw());
+            assertEq(a.debits[i].amount, b.debits[i].amount);
+        }
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+    }
+
+    function testTriggerUpdateHolding() public pure {
+        JournalEntry[] memory debits = new JournalEntry[](3);
+        debits[0] = JournalEntry({accountId: AccountId.wrap(9), amount: 1});
+        debits[1] = JournalEntry({accountId: AccountId.wrap(8), amount: 2});
+        debits[2] = JournalEntry({accountId: AccountId.wrap(7), amount: 3});
+
+        JournalEntry[] memory credits = new JournalEntry[](2);
+        credits[0] = JournalEntry({accountId: AccountId.wrap(1), amount: 2});
+        credits[1] = JournalEntry({accountId: AccountId.wrap(3), amount: 4});
+
+        MessageLib.TriggerUpdateHolding memory a = MessageLib.TriggerUpdateHolding({
+            poolId: 1,
+            scId: bytes16("sc"),
+            assetId: 5,
+            who: bytes32("alice"),
+            amount: 100,
+            pricePerUnit: d18(3, 1),
+            isIncrease: false,
+            asAllowance: true,
+            debits: debits,
+            credits: credits
+        });
+
+        MessageLib.TriggerUpdateHolding memory b = MessageLib.deserializeTriggerUpdateHolding(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.assetId, b.assetId);
+        assertEq(a.who, b.who);
+        assertEq(a.amount, b.amount);
+        assert(a.pricePerUnit.eq(b.pricePerUnit));
+        assertEq(a.isIncrease, b.isIncrease);
+        assertEq(a.asAllowance, b.asAllowance);
+        assertEq(a.debits.length, b.debits.length);
+        assertEq(a.credits.length, b.credits.length);
+
+        for (uint256 i = 0; i < a.credits.length; i++) {
+            assertEq(a.credits[i].accountId.raw(), b.credits[i].accountId.raw());
+            assertEq(a.credits[i].amount, b.credits[i].amount);
+        }
+
+        for (uint256 i = 0; i < a.debits.length; i++) {
+            assertEq(a.debits[i].accountId.raw(), b.debits[i].accountId.raw());
+            assertEq(a.debits[i].amount, b.debits[i].amount);
+        }
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+    }
+
+    function testTriggerUpdateShares() public pure {
+        MessageLib.TriggerUpdateShares memory a = MessageLib.TriggerUpdateShares({
+            poolId: 1,
+            scId: bytes16("sc"),
+            who: bytes32("alice"),
+            pricePerShare: d18(123456),
+            shares: 100,
+            isIssuance: true,
+            asAllowance: true
+        });
+
+        MessageLib.TriggerUpdateShares memory b = MessageLib.deserializeTriggerUpdateShares(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.who, b.who);
+        assert(a.pricePerShare.eq(b.pricePerShare));
+        assertEq(a.shares, b.shares);
+        assertEq(a.isIssuance, b.isIssuance);
+        assertEq(a.asAllowance, b.asAllowance);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
     }

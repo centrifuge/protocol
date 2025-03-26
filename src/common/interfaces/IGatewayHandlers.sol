@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
-import {AssetId} from "src/pools/types/AssetId.sol";
-import {PoolId} from "src/pools/types/PoolId.sol";
+import {D18} from "src/misc/types/D18.sol";
+
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {JournalEntry, Meta} from "src/common/types/JournalEntry.sol";
 
 /// -----------------------------------------------------
 ///  CP Handlers
@@ -29,6 +32,30 @@ interface IPoolRouterGatewayHandler {
 
     /// @notice Perform a redeem cancellation that was requested from CV.
     function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId) external;
+
+    /// @notice Performs a manual update of the holdings value given the provided price
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePerUnit) external;
+
+    /// @notice Update a holding by request from CAL.
+    function updateHoldingAmount(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 amount,
+        D18 pricePerUnit,
+        bool isIncrease,
+        JournalEntry[] memory debits,
+        JournalEntry[] memory credits
+    ) external;
+
+    /// @notice Perform accounting entries by request from CAL.
+    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external;
+
+    /// @notice Increases the total issuance of shares by request from CAL.
+    function increaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare, uint128 amount) external;
+
+    /// @notice Decreases the total issuance of shares by request from CAL.
+    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare, uint128 amount) external;
 }
 
 /// -----------------------------------------------------
@@ -197,5 +224,41 @@ interface IInvestmentManagerGatewayHandler {
     /// @dev    The user share amount required to fulfill the redeem request has to be locked in escrow,
     ///         even though the asset payout can only happen after epoch execution.
     function triggerRedeemRequest(uint64 poolId, bytes16 trancheId, address user, uint128 assetId, uint128 shares)
+        external;
+}
+
+/// @notice Interface for CV methods related to epoch called by the gateway
+interface IBalanceSheetManagerGatewayHandler {
+    function triggerDeposit(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        address provider,
+        uint128 amount,
+        D18 pricePerUnit,
+        Meta calldata meta
+    ) external;
+
+    function triggerWithdraw(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        address receiver,
+        uint128 amount,
+        D18 pricePerUnit,
+        bool asAllowance,
+        Meta calldata m
+    ) external;
+
+    function triggerIssueShares(
+        PoolId poolId,
+        ShareClassId scId,
+        address to,
+        D18 pricePerShare,
+        uint128 shares,
+        bool asAllowance
+    ) external;
+
+    function triggerRevokeShares(PoolId poolId, ShareClassId scId, address from, D18 pricePerShare, uint128 shares)
         external;
 }

@@ -84,14 +84,24 @@ function d18(uint128 num, uint128 den) pure returns (D18) {
     return D18.wrap(MathLib.mulDiv(num, 1e18, den).toUint128());
 }
 
+function eq(D18 a, D18 b) pure returns (bool) {
+    return D18.unwrap(a) == D18.unwrap(b);
+}
+
+function raw(D18 d) pure returns (uint128) {
+    return D18.unwrap(d);
+}
+
 using {
     add as +,
     sub as -,
     divD8 as /,
     inner,
+    eq,
     mulD8 as *,
     mulUint128,
     mulUint256,
     reciprocalMulUint128,
-    reciprocalMulUint256
+    reciprocalMulUint256,
+    raw
 } for D18 global;

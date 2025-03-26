@@ -110,6 +110,27 @@ interface IPoolManager is IRecoverable {
     /// @return tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
     function idToAsset(uint128 assetId) external view returns (address asset, uint256 tokenId);
 
+    /// @notice Returns assetId given the asset address and tokenId.
+    ///
+    /// @param asset The address of the asset linked to the given asset id.
+    /// @param tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
+    /// @return assetId The underlying internal uint128 assetId.
+    function assetToId(address asset, uint256 tokenId) external view returns (uint128 assetId);
+
+    /// @notice Returns the asset address and tokenId associated with a given asset id. Ensures asset exists.
+    ///
+    /// @param assetId The underlying internal uint128 assetId.
+    /// @return asset The address of the asset linked to the given asset id.
+    /// @return tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
+    function checkedIdToAsset(uint128 assetId) external view returns (address asset, uint256 tokenId);
+
+    /// @notice Returns assetId given the asset address and tokenId. Ensures asset exists.
+    ///
+    /// @param asset The address of the asset linked to the given asset id.
+    /// @param tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
+    /// @return assetId The underlying internal uint128 assetId.
+    function checkedAssetToId(address asset, uint256 tokenId) external view returns (uint128 assetId);
+
     /// @notice Updates a contract parameter
     /// @param what Accepts a bytes32 representation of 'gateway', 'investmentManager', 'trancheFactory',
     ///                'vaultFactory', or 'gasService'
@@ -154,6 +175,9 @@ interface IPoolManager is IRecoverable {
 
     /// @notice Returns the tranche token for a given pool and tranche id
     function tranche(uint64 poolId, bytes16 trancheId) external view returns (address);
+
+    /// @notice Returns the tranche token for a given pool and tranche id. Ensures tranche exists
+    function checkedTranche(uint64 poolId, bytes16 trancheId) external view returns (address);
 
     /// @notice Retuns the latest tranche token price for a given pool, tranche id, and asset
     function tranchePrice(uint64 poolId, bytes16 trancheId, uint128 assetId)

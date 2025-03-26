@@ -26,7 +26,7 @@ contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
     /// @inheritdoc IMessageHandler
     function handle(uint16 chainId, bytes calldata message) external {
         // Local messages must be bypassed
-        assertEq(sourceChainId, chainId, "Local messages must be bypassed");
+        assertEq(sourceChainId, chainId, "Expected same chain");
 
         gateway.handle(chainId, message);
     }
