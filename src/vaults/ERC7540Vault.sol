@@ -5,9 +5,8 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
-import {BaseVault} from "src/vaults/BaseVault.sol";
+import {BaseVault, AsyncRedeemVault} from "src/vaults/BaseVaults.sol";
 import {IAsyncInvestmentManager} from "src/vaults/interfaces/investments/IAsyncInvestmentManager.sol";
-import {AsyncRedeemVault} from "src/vaults/AsyncRedeemVault.sol";
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 
@@ -29,9 +28,8 @@ contract ERC7540Vault is AsyncRedeemVault, IERC7540Vault {
         uint256 tokenId_,
         address share_,
         address root_,
-        address baseManager_,
-        address asyncRedeemManager_
-    ) AsyncRedeemVault(poolId_, trancheId_, asset_, tokenId_, share_, root_, baseManager_, asyncRedeemManager_) {}
+        address manager_
+    ) BaseVault(poolId_, trancheId_, asset_, tokenId_, share_, root_, manager_) AsyncRedeemVault(manager_) {}
 
     // --- ERC-7540 methods ---
     /// @inheritdoc IERC7540Deposit

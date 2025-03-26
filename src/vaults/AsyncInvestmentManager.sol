@@ -594,13 +594,12 @@ contract AsyncInvestmentManager is BaseInvestmentManager, IAsyncInvestmentManage
         override(BaseInvestmentManager, IERC165)
         returns (bool)
     {
-        return interfaceId == type(IVaultManager).interfaceId || interfaceId == type(IBaseInvestmentManager).interfaceId
+        return super.supportsInterface(interfaceId) || interfaceId == type(IVaultManager).interfaceId
             || interfaceId == type(IDepositManager).interfaceId || interfaceId == type(IAsyncDepositManager).interfaceId
             || interfaceId == type(IRedeemManager).interfaceId || interfaceId == type(IAsyncRedeemManager).interfaceId
             || interfaceId == type(IAsyncInvestmentManager).interfaceId
             || interfaceId == type(IDepositGatewayHandler).interfaceId
-            || interfaceId == type(IAsyncRedeemManager).interfaceId || interfaceId == type(IMessageHandler).interfaceId
-            || interfaceId == type(IRecoverable).interfaceId || interfaceId == type(IERC165).interfaceId;
+            || interfaceId == type(IAsyncRedeemManager).interfaceId || interfaceId == type(IMessageHandler).interfaceId;
     }
 
     // --- Helpers ---

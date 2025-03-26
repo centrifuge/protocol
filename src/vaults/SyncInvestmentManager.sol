@@ -30,7 +30,7 @@ import {IRedeemManager} from "src/vaults/interfaces/investments/IRedeemManager.s
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 import {PriceConversionLib} from "src/vaults/libraries/PriceConversionLib.sol";
 import {SyncDepositAsyncRedeemVault} from "src/vaults/SyncDepositAsyncRedeemVault.sol";
-import {AsyncRedeemVault} from "src/vaults/AsyncRedeemVault.sol";
+import {AsyncRedeemVault} from "src/vaults/BaseVaults.sol";
 import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 
 // TODO(@wischli) implement IUpdateContract for max price age
@@ -183,10 +183,9 @@ contract SyncInvestmentManager is BaseInvestmentManager, ISyncInvestmentManager 
         override(BaseInvestmentManager, IERC165)
         returns (bool)
     {
-        return interfaceId == type(IVaultManager).interfaceId || interfaceId == type(IBaseInvestmentManager).interfaceId
+        return super.supportsInterface(interfaceId) || interfaceId == type(IVaultManager).interfaceId
             || interfaceId == type(IDepositManager).interfaceId || interfaceId == type(ISyncDepositManager).interfaceId
-            || interfaceId == type(ISyncInvestmentManager).interfaceId || interfaceId == type(IMessageHandler).interfaceId
-            || interfaceId == type(IRecoverable).interfaceId || interfaceId == type(IERC165).interfaceId;
+            || interfaceId == type(ISyncInvestmentManager).interfaceId || interfaceId == type(IMessageHandler).interfaceId;
     }
 
     // --- Admin actions ---

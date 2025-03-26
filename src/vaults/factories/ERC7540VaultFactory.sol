@@ -27,8 +27,7 @@ contract ERC7540VaultFactory is Auth, IVaultFactory {
         address, /* escrow */
         address[] calldata wards_
     ) public auth returns (address) {
-        ERC7540Vault vault =
-            new ERC7540Vault(poolId, trancheId, asset, tokenId, tranche, root, investmentManager, investmentManager);
+        ERC7540Vault vault = new ERC7540Vault(poolId, trancheId, asset, tokenId, tranche, root, investmentManager);
 
         vault.rely(root);
         vault.rely(investmentManager);
