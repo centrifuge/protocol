@@ -428,7 +428,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         D18 pricePerShare,
         uint128 shares,
         uint256 timestamp
-    ) external {
+    ) external auth {
         gateway.send(
             poolId.chainId(),
             MessageLib.UpdateShares({
@@ -451,7 +451,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         D18 pricePerShare,
         uint128 shares,
         uint256 timestamp
-    ) external {
+    ) external auth {
         gateway.send(
             poolId.chainId(),
             MessageLib.UpdateShares({
@@ -472,7 +472,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         ShareClassId scId,
         JournalEntry[] calldata debits,
         JournalEntry[] calldata credits
-    ) external {
+    ) external auth {
         gateway.send(
             poolId.chainId(),
             MessageLib.UpdateJournal({poolId: poolId.raw(), scId: scId.raw(), debits: debits, credits: credits})
