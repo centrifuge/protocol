@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IERC165} from "forge-std/interfaces/IERC165.sol";
+
 import {Auth} from "src/misc/Auth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
@@ -13,7 +15,7 @@ import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {PriceConversionLib} from "src/vaults/libraries/PriceConversionLib.sol";
 
-abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager, IRecoverable {
+abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
     using MathLib for uint256;
 
     address public immutable root;
@@ -75,5 +77,11 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager, IRecove
     /// @inheritdoc IBaseInvestmentManager
     function vaultByAssetId(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (address) {
         return vault[poolId][trancheId][assetId];
+    }
+
+    /// @inheritdoc IERC165
+    function supportsInterface(bytes4 interfaceId) public view virtual returns (bool) {
+        return interfaceId == type(IBaseInvestmentManager).interfaceId || interfaceId == type(IRecoverable).interfaceId
+            || interfaceId == type(IERC165).interfaceId;
     }
 }

@@ -3,18 +3,21 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 
-import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
+import {SyncDepositAsyncRedeemVault} from "src/vaults/SyncDepositAsyncRedeemVault.sol";
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 
 /// @title  Sync Vault Factory
 /// @dev    Utility for deploying new vault contracts
-contract SyncVaultFactory is Auth, IVaultFactory {
+// TODO(@wischli): Rename
+contract SyncDepositAsyncRedeemVaultFactory is Auth, IVaultFactory {
     address public immutable root;
-    address public immutable investmentManager;
+    address public immutable syncInvestmentManager;
+    address public immutable asyncInvestmentManager;
 
-    constructor(address _root, address investmentManager_) Auth(msg.sender) {
-        root = _root;
-        investmentManager = investmentManager_;
+    constructor(address root_, address syncInvestmentManager_, address asyncInvestmentManager_) Auth(msg.sender) {
+        root = root_;
+        syncInvestmentManager = syncInvestmentManager_;
+        asyncInvestmentManager = asyncInvestmentManager_;
     }
 
     /// @inheritdoc IVaultFactory
@@ -27,11 +30,13 @@ contract SyncVaultFactory is Auth, IVaultFactory {
         address, /* escrow */
         address[] calldata wards_
     ) public auth returns (address) {
-        SyncDepositVault vault =
-            new SyncDepositVault(poolId, trancheId, asset, tokenId, tranche, root, investmentManager);
+        SyncDepositAsyncRedeemVault vault = new SyncDepositAsyncRedeemVault(
+            poolId, trancheId, asset, tokenId, tranche, root, syncInvestmentManager, asyncInvestmentManager
+        );
 
         vault.rely(root);
-        vault.rely(investmentManager);
+        vault.rely(syncInvestmentManager);
+        vault.rely(asyncInvestmentManager);
 
         uint256 wardsCount = wards_.length;
         for (uint256 i; i < wardsCount; i++) {

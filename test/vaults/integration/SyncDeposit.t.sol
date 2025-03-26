@@ -8,8 +8,8 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
-import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
-import {ISyncDepositAsyncRedeemManager} from "src/vaults/interfaces/investments/ISyncDepositAsyncRedeemManager.sol";
+import {SyncDepositAsyncRedeemVault} from "src/vaults/SyncDepositAsyncRedeemVault.sol";
+import {ISyncInvestmentManager} from "src/vaults/interfaces/investments/ISyncInvestmentManager.sol";
 
 contract DepositTest is BaseTest {
     using CastLib for *;
@@ -17,7 +17,7 @@ contract DepositTest is BaseTest {
 
     function _deploySyncVault(uint64 poolId, bytes16 trancheId, uint128 assetId) internal returns (address vault) {
         bytes memory syncVaultUpdate = MessageLib.UpdateContractVaultUpdate({
-            factory: syncVaultFactory,
+            factory: syncDepositAsyncRedeemVaultFactory,
             assetId: assetId,
             isLinked: true,
             vault: address(0)
@@ -48,7 +48,7 @@ contract DepositTest is BaseTest {
 
         // Deploy sync vault
         address syncVault_ = _deploySyncVault(asyncVault.poolId(), asyncVault.trancheId(), assetId);
-        SyncDepositVault syncVault = SyncDepositVault(syncVault_);
+        SyncDepositAsyncRedeemVault syncVault = SyncDepositAsyncRedeemVault(syncVault_);
 
         // Check price and max amounts
         assertEq(syncVault.previewMint(amount / 2), amount);

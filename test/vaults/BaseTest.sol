@@ -129,7 +129,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         vm.label(address(guardian), "Guardian");
         vm.label(address(poolManager.trancheFactory()), "TrancheFactory");
         vm.label(address(asyncVaultFactory), "ERC7540VaultFactory");
-        vm.label(address(syncVaultFactory), "SyncVaultFactory");
+        vm.label(address(syncDepositAsyncRedeemVaultFactory), "SyncDepositAsyncRedeemVaultFactory");
 
         // Exclude predeployed contracts from invariant tests by default
         excludeContract(address(root));
@@ -149,7 +149,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         excludeContract(address(guardian));
         excludeContract(address(poolManager.trancheFactory()));
         excludeContract(address(asyncVaultFactory));
-        excludeContract(address(syncVaultFactory));
+        excludeContract(address(syncDepositAsyncRedeemVaultFactory));
     }
 
     // helpers
@@ -180,7 +180,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
         // Trigger new vault deployment via UpdateContract
         bytes memory vaultUpdate = MessageLib.UpdateContractVaultUpdate({
-            factory: isAsync ? asyncVaultFactory : syncVaultFactory,
+            factory: isAsync ? asyncVaultFactory : syncDepositAsyncRedeemVaultFactory,
             assetId: assetId,
             isLinked: true,
             vault: address(0)

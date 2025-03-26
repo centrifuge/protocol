@@ -29,8 +29,9 @@ contract ERC7540Vault is AsyncRedeemVault, IERC7540Vault {
         uint256 tokenId_,
         address share_,
         address root_,
-        address manager_
-    ) AsyncRedeemVault(poolId_, trancheId_, asset_, tokenId_, share_, root_, manager_) {}
+        address baseManager_,
+        address asyncRedeemManager_
+    ) AsyncRedeemVault(poolId_, trancheId_, asset_, tokenId_, share_, root_, baseManager_, asyncRedeemManager_) {}
 
     // --- ERC-7540 methods ---
     /// @inheritdoc IERC7540Deposit
@@ -97,9 +98,10 @@ contract ERC7540Vault is AsyncRedeemVault, IERC7540Vault {
 
     // --- ERC165 support ---
     /// @inheritdoc IERC165
-    function supportsInterface(bytes4 interfaceId) public pure override(BaseVault, IERC165) returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public pure override(AsyncRedeemVault, IERC165) returns (bool) {
         return interfaceId == type(IERC7540Deposit).interfaceId
-            || interfaceId == type(IERC7540CancelDeposit).interfaceId || super.supportsInterface(interfaceId);
+            || interfaceId == type(IERC7540CancelDeposit).interfaceId || interfaceId == type(IAsyncRedeemVault).interfaceId
+            || super.supportsInterface(interfaceId);
     }
 
     // --- ERC-4626 methods ---
@@ -139,9 +141,9 @@ contract ERC7540Vault is AsyncRedeemVault, IERC7540Vault {
         assets = mint(shares, receiver, msg.sender);
     }
 
-    /// @dev Strongly-typed accessor to the generic base manager
+    /// @dev Strongly-typed accessor to the generic async redeem manager
     function asyncInvestmentManager() public view returns (IAsyncInvestmentManager) {
-        return IAsyncInvestmentManager(IBaseVault(address(this)).manager());
+        return IAsyncInvestmentManager(address(IAsyncRedeemVault(address(this)).asyncManager()));
     }
 
     /// @dev Preview functions for ERC-7540 vaults revert

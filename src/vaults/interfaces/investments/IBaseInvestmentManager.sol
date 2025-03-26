@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-interface IBaseInvestmentManager {
+import {IERC165} from "forge-std/interfaces/IERC165.sol";
+
+import {IRecoverable} from "src/common/interfaces/IRoot.sol";
+
+interface IBaseInvestmentManager is IRecoverable, IERC165 {
     // --- Events ---
     event File(bytes32 indexed what, address data);
 

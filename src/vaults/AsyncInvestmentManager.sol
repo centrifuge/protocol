@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IERC165} from "forge-std/interfaces/IERC165.sol";
+
 import {Auth} from "src/misc/Auth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
@@ -14,8 +16,8 @@ import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-import {IDepositGatewayHandler, IRedeemGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {IDepositGatewayHandler, IRedeemGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {
@@ -36,12 +38,7 @@ import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 /// @title  Investment Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
-contract AsyncInvestmentManager is
-    BaseInvestmentManager,
-    IAsyncInvestmentManager,
-    IDepositGatewayHandler,
-    IRedeemGatewayHandler
-{
+contract AsyncInvestmentManager is BaseInvestmentManager, IAsyncInvestmentManager {
     using BytesLib for bytes;
     using MathLib for uint256;
     using MessageLib for *;
@@ -100,6 +97,7 @@ contract AsyncInvestmentManager is
         deny(vaultAddr);
     }
 
+    // --- Async investment handlers ---
     /// @inheritdoc IAsyncDepositManager
     function requestDeposit(address vaultAddr, uint256 assets, address controller, address, /* owner */ address source)
         public
@@ -363,69 +361,7 @@ contract AsyncInvestmentManager is
         IERC7540Vault(vault_).onRedeemRequest(user, user, shares);
     }
 
-    // --- View functions ---
-    /// @inheritdoc IDepositManager
-    function maxDeposit(address vaultAddr, address user) public view returns (uint256 assets) {
-        if (!_canTransfer(vaultAddr, address(escrow), user, 0)) return 0;
-        assets = uint256(_maxDeposit(vaultAddr, user));
-    }
-
-    function _maxDeposit(address vaultAddr, address user) internal view returns (uint128 assets) {
-        AsyncInvestmentState memory state = investments[vaultAddr][user];
-        assets = PriceConversionLib.calculateAssets(state.maxMint, vaultAddr, state.depositPrice, MathLib.Rounding.Down);
-    }
-
-    /// @inheritdoc IDepositManager
-    function maxMint(address vaultAddr, address user) public view returns (uint256 shares) {
-        if (!_canTransfer(vaultAddr, address(escrow), user, 0)) return 0;
-        shares = uint256(investments[vaultAddr][user].maxMint);
-    }
-
-    /// @inheritdoc IRedeemManager
-    function maxWithdraw(address vaultAddr, address user) public view returns (uint256 assets) {
-        if (!_canTransfer(vaultAddr, user, address(0), 0)) return 0;
-        assets = uint256(investments[vaultAddr][user].maxWithdraw);
-    }
-
-    /// @inheritdoc IRedeemManager
-    function maxRedeem(address vaultAddr, address user) public view returns (uint256 shares) {
-        if (!_canTransfer(vaultAddr, user, address(0), 0)) return 0;
-        AsyncInvestmentState memory state = investments[vaultAddr][user];
-        shares = uint256(
-            PriceConversionLib.calculateShares(state.maxWithdraw, vaultAddr, state.redeemPrice, MathLib.Rounding.Down)
-        );
-    }
-
-    /// @inheritdoc IAsyncDepositManager
-    function pendingDepositRequest(address vaultAddr, address user) public view returns (uint256 assets) {
-        assets = uint256(investments[vaultAddr][user].pendingDepositRequest);
-    }
-
-    /// @inheritdoc IAsyncRedeemManager
-    function pendingRedeemRequest(address vaultAddr, address user) public view returns (uint256 shares) {
-        shares = uint256(investments[vaultAddr][user].pendingRedeemRequest);
-    }
-
-    /// @inheritdoc IAsyncDepositManager
-    function pendingCancelDepositRequest(address vaultAddr, address user) public view returns (bool isPending) {
-        isPending = investments[vaultAddr][user].pendingCancelDepositRequest;
-    }
-
-    /// @inheritdoc IAsyncRedeemManager
-    function pendingCancelRedeemRequest(address vaultAddr, address user) public view returns (bool isPending) {
-        isPending = investments[vaultAddr][user].pendingCancelRedeemRequest;
-    }
-
-    /// @inheritdoc IAsyncDepositManager
-    function claimableCancelDepositRequest(address vaultAddr, address user) public view returns (uint256 assets) {
-        assets = investments[vaultAddr][user].claimableCancelDepositRequest;
-    }
-
-    /// @inheritdoc IAsyncRedeemManager
-    function claimableCancelRedeemRequest(address vaultAddr, address user) public view returns (uint256 shares) {
-        shares = investments[vaultAddr][user].claimableCancelRedeemRequest;
-    }
-
+    // --- Sync investment handlers ---
     /// @inheritdoc IDepositManager
     function deposit(address vaultAddr, uint256 assets, address receiver, address controller)
         public
@@ -473,6 +409,7 @@ contract AsyncInvestmentManager is
         }
     }
 
+    // --- Redeem Manager ---
     /// @inheritdoc IRedeemManager
     function redeem(address vaultAddr, uint256 shares, address receiver, address controller)
         public
@@ -585,6 +522,85 @@ contract AsyncInvestmentManager is
                 "AsyncInvestmentManager/tranche-tokens-transfer-failed"
             );
         }
+    }
+
+    // --- View functions ---
+    /// @inheritdoc IDepositManager
+    function maxDeposit(address vaultAddr, address user) public view returns (uint256 assets) {
+        if (!_canTransfer(vaultAddr, address(escrow), user, 0)) return 0;
+        assets = uint256(_maxDeposit(vaultAddr, user));
+    }
+
+    function _maxDeposit(address vaultAddr, address user) internal view returns (uint128 assets) {
+        AsyncInvestmentState memory state = investments[vaultAddr][user];
+        assets = PriceConversionLib.calculateAssets(state.maxMint, vaultAddr, state.depositPrice, MathLib.Rounding.Down);
+    }
+
+    /// @inheritdoc IDepositManager
+    function maxMint(address vaultAddr, address user) public view returns (uint256 shares) {
+        if (!_canTransfer(vaultAddr, address(escrow), user, 0)) return 0;
+        shares = uint256(investments[vaultAddr][user].maxMint);
+    }
+
+    /// @inheritdoc IRedeemManager
+    function maxWithdraw(address vaultAddr, address user) public view returns (uint256 assets) {
+        if (!_canTransfer(vaultAddr, user, address(0), 0)) return 0;
+        assets = uint256(investments[vaultAddr][user].maxWithdraw);
+    }
+
+    /// @inheritdoc IRedeemManager
+    function maxRedeem(address vaultAddr, address user) public view returns (uint256 shares) {
+        if (!_canTransfer(vaultAddr, user, address(0), 0)) return 0;
+        AsyncInvestmentState memory state = investments[vaultAddr][user];
+        shares = uint256(
+            PriceConversionLib.calculateShares(state.maxWithdraw, vaultAddr, state.redeemPrice, MathLib.Rounding.Down)
+        );
+    }
+
+    /// @inheritdoc IAsyncDepositManager
+    function pendingDepositRequest(address vaultAddr, address user) public view returns (uint256 assets) {
+        assets = uint256(investments[vaultAddr][user].pendingDepositRequest);
+    }
+
+    /// @inheritdoc IAsyncRedeemManager
+    function pendingRedeemRequest(address vaultAddr, address user) public view returns (uint256 shares) {
+        shares = uint256(investments[vaultAddr][user].pendingRedeemRequest);
+    }
+
+    /// @inheritdoc IAsyncDepositManager
+    function pendingCancelDepositRequest(address vaultAddr, address user) public view returns (bool isPending) {
+        isPending = investments[vaultAddr][user].pendingCancelDepositRequest;
+    }
+
+    /// @inheritdoc IAsyncRedeemManager
+    function pendingCancelRedeemRequest(address vaultAddr, address user) public view returns (bool isPending) {
+        isPending = investments[vaultAddr][user].pendingCancelRedeemRequest;
+    }
+
+    /// @inheritdoc IAsyncDepositManager
+    function claimableCancelDepositRequest(address vaultAddr, address user) public view returns (uint256 assets) {
+        assets = investments[vaultAddr][user].claimableCancelDepositRequest;
+    }
+
+    /// @inheritdoc IAsyncRedeemManager
+    function claimableCancelRedeemRequest(address vaultAddr, address user) public view returns (uint256 shares) {
+        shares = investments[vaultAddr][user].claimableCancelRedeemRequest;
+    }
+
+    /// @inheritdoc IERC165
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(BaseInvestmentManager, IERC165)
+        returns (bool)
+    {
+        return interfaceId == type(IVaultManager).interfaceId || interfaceId == type(IBaseInvestmentManager).interfaceId
+            || interfaceId == type(IDepositManager).interfaceId || interfaceId == type(IAsyncDepositManager).interfaceId
+            || interfaceId == type(IRedeemManager).interfaceId || interfaceId == type(IAsyncRedeemManager).interfaceId
+            || interfaceId == type(IAsyncInvestmentManager).interfaceId
+            || interfaceId == type(IDepositGatewayHandler).interfaceId
+            || interfaceId == type(IAsyncRedeemManager).interfaceId || interfaceId == type(IMessageHandler).interfaceId
+            || interfaceId == type(IRecoverable).interfaceId || interfaceId == type(IERC165).interfaceId;
     }
 
     // --- Helpers ---

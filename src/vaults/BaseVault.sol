@@ -23,7 +23,7 @@ abstract contract BaseVault is Auth, IBaseVault {
     uint256 internal constant REQUEST_ID = 0;
 
     IRoot public immutable root;
-    IBaseInvestmentManager internal _manager;
+    IBaseInvestmentManager public manager;
 
     /// @inheritdoc IBaseVault
     uint64 public immutable poolId;
@@ -64,7 +64,7 @@ abstract contract BaseVault is Auth, IBaseVault {
         uint256 tokenId_,
         address share_,
         address root_,
-        address _manager_
+        address manager_
     ) Auth(msg.sender) {
         poolId = poolId_;
         trancheId = trancheId_;
@@ -73,7 +73,7 @@ abstract contract BaseVault is Auth, IBaseVault {
         share = share_;
         _shareDecimals = IERC20Metadata(share).decimals();
         root = IRoot(root_);
-        _manager = IBaseInvestmentManager(_manager_);
+        manager = IBaseInvestmentManager(manager_);
 
         nameHash = keccak256(bytes("Centrifuge"));
         versionHash = keccak256(bytes("1"));
@@ -83,7 +83,7 @@ abstract contract BaseVault is Auth, IBaseVault {
 
     // --- Administration ---
     function file(bytes32 what, address data) external auth {
-        if (what == "_manager") _manager = IBaseInvestmentManager(data);
+        if (what == "manager") manager = IBaseInvestmentManager(data);
         else revert("ERC7540Vault/file-unrecognized-param");
         emit File(what, data);
     }
@@ -159,11 +159,9 @@ abstract contract BaseVault is Auth, IBaseVault {
     // --- ERC165 support ---
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) public pure virtual override returns (bool) {
-        // TODO(@wischli): Add sync interfaces?
-        return interfaceId == type(IERC7540Redeem).interfaceId || interfaceId == type(IERC7540Operator).interfaceId
-            || interfaceId == type(IERC7540CancelRedeem).interfaceId || interfaceId == type(IERC7575).interfaceId
-            || interfaceId == type(IERC7741).interfaceId || interfaceId == type(IERC7714).interfaceId
-            || interfaceId == type(IERC165).interfaceId;
+        return interfaceId == type(IERC7540Operator).interfaceId || interfaceId == type(IERC7741).interfaceId
+            || interfaceId == type(IERC7714).interfaceId || interfaceId == type(IERC7575).interfaceId
+            || interfaceId == type(IRecoverable).interfaceId || interfaceId == type(IERC165).interfaceId;
     }
 
     // --- ERC-4626 methods ---
@@ -176,14 +174,14 @@ abstract contract BaseVault is Auth, IBaseVault {
     /// @notice     The calculation is based on the token price from the most recent epoch retrieved from Centrifuge.
     ///             The actual conversion MAY change between order submission and execution.
     function convertToShares(uint256 assets) public view returns (uint256 shares) {
-        shares = _manager.convertToShares(address(this), assets);
+        shares = manager.convertToShares(address(this), assets);
     }
 
     /// @inheritdoc IERC7575
     /// @notice     The calculation is based on the token price from the most recent epoch retrieved from Centrifuge.
     ///             The actual conversion MAY change between order submission and execution.
     function convertToAssets(uint256 shares) public view returns (uint256 assets) {
-        assets = _manager.convertToAssets(address(this), shares);
+        assets = manager.convertToAssets(address(this), shares);
     }
 
     // --- Helpers ---
@@ -194,17 +192,12 @@ abstract contract BaseVault is Auth, IBaseVault {
 
     /// @notice Returns timestamp of the last share price update.
     function priceLastUpdated() external view returns (uint64) {
-        return _manager.priceLastUpdated(address(this));
+        return manager.priceLastUpdated(address(this));
     }
 
     /// @inheritdoc IERC7714
     function isPermissioned(address controller) external view returns (bool) {
         return ITranche(share).checkTransferRestriction(address(0), controller, 0);
-    }
-
-    /// @inheritdoc IBaseVault
-    function manager() external view returns (address) {
-        return address(_manager);
     }
 
     /// @notice Ensures msg.sender can operate on behalf of controller.

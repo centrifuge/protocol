@@ -3,9 +3,10 @@ pragma solidity >=0.5.0;
 
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 
-import {IERC7575} from "src/vaults/interfaces/IERC7575.sol";
+import {IERC7575, IERC165} from "src/vaults/interfaces/IERC7575.sol";
 import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 
 interface IERC7540Operator {
     /**
@@ -281,8 +282,9 @@ interface IERC7714 {
     function isPermissioned(address controller) external view returns (bool);
 }
 
-// TODO(@wischli): Find better naming + docs
-interface IBaseVault is IERC7540Operator, IERC7741, IERC7714, IRecoverable, IERC7575 {
+/// @notice Interface for the all vault contracts
+/// @dev Must be implemented by all vaults
+interface IBaseVault is IERC7540Operator, IERC7741, IERC7714, IERC7575, IRecoverable {
     /// @notice Identifier of the Centrifuge pool
     function poolId() external view returns (uint64);
 
@@ -293,26 +295,11 @@ interface IBaseVault is IERC7540Operator, IERC7741, IERC7714, IRecoverable, IERC
     /// @dev    MUST be called by endorsed sender
     function setEndorsedOperator(address owner, bool approved) external;
 
-    /// @notice Returns the address of the manager contract handling the vault.
+    /// @notice Returns the base investment manager contract handling the vault.
     /// @dev This naming MUST NOT change due to requirements of olds vaults from v2
     /// @return The address of the manager contract that is between vault and gateway
-    function manager() external view returns (address);
+    function manager() external view returns (IBaseInvestmentManager);
 }
-
-// /// @title  IBaseVault Interface
-// /// @notice Interface for the all vault contracts
-// /// @dev Must be implemented by all vaults
-// interface IBaseVault is IBaseVaultMinimal {
-//     /// @notice Returns the address of asset that the vault is accepting
-//     /// @dev This naming MUST NOT change due to requirements of olds vaults from v2
-//     /// @return The address of the asset that the vault is accepting
-//     function asset() external view virtual returns (address);
-
-//     /// @notice Returns the address of the share token the vault is issuing
-//     /// @dev This naming MUST NOT change due to requirements of olds vaults from v2
-//     /// @return The address of the share token that the vault is issuing
-//     function share() external view virtual returns (address);
-// }
 
 /**
  * @title  IAsyncRedeemVault
@@ -331,6 +318,9 @@ interface IAsyncRedeemVault is IERC7540Redeem, IERC7540CancelRedeem, IBaseVault 
 
     /// @notice Callback when a claim redeem Request becomes claimable
     function onCancelRedeemClaimable(address owner, uint256 shares) external;
+
+    /// @notice Retrieve the asynchronous redeem manager
+    function asyncManager() external view returns (IAsyncRedeemManager);
 }
 
 interface IERC7540Vault is IERC7540Deposit, IERC7540CancelDeposit, IAsyncRedeemVault {

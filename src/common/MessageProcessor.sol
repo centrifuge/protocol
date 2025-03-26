@@ -27,7 +27,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 
-import {IInvestmentManagerMapper} from "src/vaults/interfaces/investments/IInvestmentManagerMapper.sol";
+import {IAsyncInvestmentManager} from "src/vaults/interfaces/investments/IAsyncInvestmentManager.sol";
 
 interface IMessageProcessor is IVaultMessageSender, IPoolMessageSender, IMessageHandler {
     /// @notice Emitted when a call to `file()` was performed.
@@ -54,7 +54,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
     IPoolRouterGatewayHandler public poolRouter;
     IPoolManagerGatewayHandler public poolManager;
-    IInvestmentManagerMapper public investmentManagerMapper;
+    IAsyncInvestmentManager public investmentManager;
     IBalanceSheetManagerGatewayHandler public balanceSheetManager;
 
     constructor(IMessageSender gateway_, IRoot root_, IGasService gasService_, address deployer) Auth(deployer) {
@@ -67,7 +67,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     function file(bytes32 what, address data) external auth {
         if (what == "poolRouter") poolRouter = IPoolRouterGatewayHandler(data);
         else if (what == "poolManager") poolManager = IPoolManagerGatewayHandler(data);
-        else if (what == "investmentManagerMapper") investmentManagerMapper = IInvestmentManagerMapper(data);
+        else if (what == "investmentManager") investmentManager = IAsyncInvestmentManager(data);
         else if (what == "balanceSheetManager") balanceSheetManager = IBalanceSheetManagerGatewayHandler(data);
         else revert FileUnrecognizedParam();
 
@@ -464,41 +464,26 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 );
             } else if (kind == MessageType.FulfilledDepositRequest) {
                 MessageLib.FulfilledDepositRequest memory m = message.deserializeFulfilledDepositRequest();
-                IDepositGatewayHandler investmentManager = IDepositGatewayHandler(
-                    address(investmentManagerMapper.vaultKeysToInvestmentManager(m.poolId, m.scId, m.assetId))
-                );
                 investmentManager.fulfillDepositRequest(
                     m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.assetAmount, m.shareAmount
                 );
             } else if (kind == MessageType.FulfilledRedeemRequest) {
                 MessageLib.FulfilledRedeemRequest memory m = message.deserializeFulfilledRedeemRequest();
-                IRedeemGatewayHandler investmentManager = IRedeemGatewayHandler(
-                    address(investmentManagerMapper.vaultKeysToInvestmentManager(m.poolId, m.scId, m.assetId))
-                );
                 investmentManager.fulfillRedeemRequest(
                     m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.assetAmount, m.shareAmount
                 );
             } else if (kind == MessageType.FulfilledCancelDepositRequest) {
                 MessageLib.FulfilledCancelDepositRequest memory m = message.deserializeFulfilledCancelDepositRequest();
-                IDepositGatewayHandler investmentManager = IDepositGatewayHandler(
-                    address(investmentManagerMapper.vaultKeysToInvestmentManager(m.poolId, m.scId, m.assetId))
-                );
                 investmentManager.fulfillCancelDepositRequest(
                     m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.cancelledAmount, m.cancelledAmount
                 );
             } else if (kind == MessageType.FulfilledCancelRedeemRequest) {
                 MessageLib.FulfilledCancelRedeemRequest memory m = message.deserializeFulfilledCancelRedeemRequest();
-                IRedeemGatewayHandler investmentManager = IRedeemGatewayHandler(
-                    address(investmentManagerMapper.vaultKeysToInvestmentManager(m.poolId, m.scId, m.assetId))
-                );
                 investmentManager.fulfillCancelRedeemRequest(
                     m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.cancelledShares
                 );
             } else if (kind == MessageType.TriggerRedeemRequest) {
                 MessageLib.TriggerRedeemRequest memory m = message.deserializeTriggerRedeemRequest();
-                IRedeemGatewayHandler investmentManager = IRedeemGatewayHandler(
-                    address(investmentManagerMapper.vaultKeysToInvestmentManager(m.poolId, m.scId, m.assetId))
-                );
                 investmentManager.triggerRedeemRequest(
                     m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.shares
                 );

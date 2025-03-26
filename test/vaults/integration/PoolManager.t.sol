@@ -536,7 +536,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.file("vaultFactory", address(newVaultFactory), true);
 
         // Remove old vault
-        address vaultManager = IBaseVault(oldVault_).manager();
+        address vaultManager = address(IBaseVault(oldVault_).manager());
         IVaultManager(vaultManager).removeVault(poolId, trancheId, oldVault_, asset, assetId);
         assertEq(Tranche(poolManager.tranche(poolId, trancheId)).vault(asset), address(0));
 
@@ -616,7 +616,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         private
         view
     {
-        address vaultManager = IBaseVault(vaultAddress).manager();
+        address vaultManager = address(IBaseVault(vaultAddress).manager());
         address tranche_ = poolManager.tranche(poolId, trancheId);
         address vault_ = ITranche(tranche_).vault(asset);
 
@@ -678,7 +678,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
     }
 
     function _assertAllowance(address vaultAddress, address asset, uint256 tokenId) private view {
-        address vaultManager = IBaseVault(vaultAddress).manager();
+        address vaultManager = address(IBaseVault(vaultAddress).manager());
         address escrow_ = address(poolManager.escrow());
         address tranche_ = poolManager.tranche(poolId, trancheId);
 

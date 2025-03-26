@@ -12,9 +12,9 @@ contract ERC7540VaultFactory is Auth, IVaultFactory {
     address public immutable root;
     address public immutable investmentManager;
 
-    constructor(address _root, address _investmentManager) Auth(msg.sender) {
-        root = _root;
-        investmentManager = _investmentManager;
+    constructor(address root_, address investmentManager_) Auth(msg.sender) {
+        root = root_;
+        investmentManager = investmentManager_;
     }
 
     /// @inheritdoc IVaultFactory
@@ -27,7 +27,8 @@ contract ERC7540VaultFactory is Auth, IVaultFactory {
         address, /* escrow */
         address[] calldata wards_
     ) public auth returns (address) {
-        ERC7540Vault vault = new ERC7540Vault(poolId, trancheId, asset, tokenId, tranche, root, investmentManager);
+        ERC7540Vault vault =
+            new ERC7540Vault(poolId, trancheId, asset, tokenId, tranche, root, investmentManager, investmentManager);
 
         vault.rely(root);
         vault.rely(investmentManager);
