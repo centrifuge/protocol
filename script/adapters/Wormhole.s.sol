@@ -15,12 +15,12 @@ contract WormholeDeployer is FullDeployer {
 
         vm.startBroadcast();
 
-        deployFull(centrifugeChainId, ISafe(vm.envAddress("ADMIN")), msg.sender);
+        deployFull(centrifugeChainId, ISafe(vm.envAddress("ADMIN")));
 
-        WormholeAdapter adapter = new WormholeAdapter(gateway, relayer, localChainId);
-        wire(adapter, msg.sender);
+        WormholeAdapter adapter = new WormholeAdapter(gateway, relayer, localChainId, address(this));
+        wire(adapter);
 
-        removeFullDeployerAccess(msg.sender);
+        removeFullDeployerAccess();
 
         vm.stopBroadcast();
     }

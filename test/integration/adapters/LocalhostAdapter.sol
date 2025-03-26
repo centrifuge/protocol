@@ -8,10 +8,9 @@ import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 /// An adapter that sends the message to the same gateway that send them
 contract LocalhostAdapter is Auth, IAdapter {
-    uint32 public chainId;
     IMessageHandler public immutable gateway;
 
-    constructor(IMessageHandler gateway_) Auth(msg.sender) {
+    constructor(IMessageHandler gateway_, address deployer) Auth(deployer) {
         gateway = gateway_;
     }
 

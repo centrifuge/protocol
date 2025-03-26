@@ -34,7 +34,7 @@ contract BalanceSheetManagerTest is BaseTest {
         defaultTypedPoolId = PoolId.wrap(defaultPoolId);
         defaultTypedShareClassId = ShareClassId.wrap(defaultShareClassId);
 
-        assetId = AssetId.wrap(poolManager.registerAsset(address(erc20), erc20TokenId, defaultChainId));
+        assetId = AssetId.wrap(poolManager.registerAsset(address(erc20), erc20TokenId, OTHER_CHAIN_ID));
         poolManager.addPool(defaultPoolId);
         poolManager.addTranche(
             defaultPoolId,

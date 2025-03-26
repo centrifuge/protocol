@@ -336,7 +336,6 @@ contract VaultRouterTest is BaseTest {
         ERC20 share = ERC20(IERC7540Vault(vault_).share());
 
         uint256 amount = 100 * 10 ** 18;
-        uint16 destinationChainId = 2;
         address destinationAddress = makeAddr("destinationAddress");
 
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), address(this), type(uint64).max);
@@ -349,15 +348,13 @@ contract VaultRouterTest is BaseTest {
         uint256 fuel = estimateGas();
 
         vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        vaultRouter.transferTrancheTokens{value: 0}(vault_, destinationChainId, destinationAddress, uint128(amount));
+        vaultRouter.transferTrancheTokens{value: 0}(vault_, OTHER_CHAIN_ID, destinationAddress, uint128(amount));
 
         vm.expectRevert("Gateway/not-enough-gas-funds");
-        vaultRouter.transferTrancheTokens{value: fuel - 1}(
-            vault_, destinationChainId, destinationAddress, uint128(amount)
-        );
+        vaultRouter.transferTrancheTokens{value: fuel - 1}(vault_, OTHER_CHAIN_ID, destinationAddress, uint128(amount));
 
         snapStart("VaultRouter_transferTrancheTokens");
-        vaultRouter.transferTrancheTokens{value: fuel}(vault_, destinationChainId, destinationAddress, uint128(amount));
+        vaultRouter.transferTrancheTokens{value: fuel}(vault_, OTHER_CHAIN_ID, destinationAddress, uint128(amount));
         snapEnd();
         assertEq(share.balanceOf(address(vaultRouter)), 0);
         assertEq(share.balanceOf(address(this)), 0);
@@ -370,7 +367,6 @@ contract VaultRouterTest is BaseTest {
         ERC20 share = ERC20(IERC7540Vault(vault_).share());
 
         uint256 amount = 100 * 10 ** 18;
-        uint16 destinationChainId = 2;
         address destinationAddress = makeAddr("destinationAddress");
         bytes32 destinationAddressAsBytes32 = destinationAddress.toBytes32();
 
@@ -386,16 +382,16 @@ contract VaultRouterTest is BaseTest {
 
         vm.expectRevert("Gateway/cannot-topup-with-nothing");
         vaultRouter.transferTrancheTokens{value: 0}(
-            vault_, destinationChainId, destinationAddressAsBytes32, uint128(amount)
+            vault_, OTHER_CHAIN_ID, destinationAddressAsBytes32, uint128(amount)
         );
 
         vm.expectRevert("Gateway/not-enough-gas-funds");
         vaultRouter.transferTrancheTokens{value: fuel - 1}(
-            vault_, destinationChainId, destinationAddressAsBytes32, uint128(amount)
+            vault_, OTHER_CHAIN_ID, destinationAddressAsBytes32, uint128(amount)
         );
 
         vaultRouter.transferTrancheTokens{value: fuel}(
-            vault_, destinationChainId, destinationAddressAsBytes32, uint128(amount)
+            vault_, OTHER_CHAIN_ID, destinationAddressAsBytes32, uint128(amount)
         );
         assertEq(share.balanceOf(address(vaultRouter)), 0);
         assertEq(share.balanceOf(address(this)), 0);
@@ -403,38 +399,36 @@ contract VaultRouterTest is BaseTest {
 
     function testRegisterAssetERC20() public {
         address asset = address(erc20);
-        uint16 destinationChainId = 2;
         uint256 fuel = estimateGas();
 
         vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        vaultRouter.registerAsset{value: 0}(asset, 0, destinationChainId);
+        vaultRouter.registerAsset{value: 0}(asset, 0, OTHER_CHAIN_ID);
 
         vm.expectRevert("Gateway/not-enough-gas-funds");
-        vaultRouter.registerAsset{value: fuel - 1}(asset, 0, destinationChainId);
+        vaultRouter.registerAsset{value: fuel - 1}(asset, 0, OTHER_CHAIN_ID);
 
         vm.expectEmit();
         emit IPoolManager.RegisterAsset(defaultAssetId, asset, 0, erc20.name(), erc20.symbol(), erc20.decimals());
-        vaultRouter.registerAsset{value: fuel}(asset, 0, destinationChainId);
+        vaultRouter.registerAsset{value: fuel}(asset, 0, OTHER_CHAIN_ID);
     }
 
     function testRegisterAssetERC6909() public {
         MockERC6909 erc6909 = new MockERC6909();
         address asset = address(erc6909);
         uint256 tokenId = 18;
-        uint16 destinationChainId = 2;
         uint256 fuel = estimateGas();
 
         vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        vaultRouter.registerAsset{value: 0}(asset, tokenId, destinationChainId);
+        vaultRouter.registerAsset{value: 0}(asset, tokenId, OTHER_CHAIN_ID);
 
         vm.expectRevert("Gateway/not-enough-gas-funds");
-        vaultRouter.registerAsset{value: fuel - 1}(asset, tokenId, destinationChainId);
+        vaultRouter.registerAsset{value: fuel - 1}(asset, tokenId, OTHER_CHAIN_ID);
 
         vm.expectEmit();
         emit IPoolManager.RegisterAsset(
             defaultAssetId, asset, tokenId, erc6909.name(tokenId), erc6909.symbol(tokenId), erc6909.decimals(tokenId)
         );
-        vaultRouter.registerAsset{value: fuel}(asset, tokenId, destinationChainId);
+        vaultRouter.registerAsset{value: fuel}(asset, tokenId, OTHER_CHAIN_ID);
     }
 
     function testEnableAndDisable() public {

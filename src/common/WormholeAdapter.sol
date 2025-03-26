@@ -25,7 +25,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     mapping(uint16 wormholeId => WormholeSource) public sources;
     mapping(uint16 centrifugeChainId => WormholeDestination) public destinations;
 
-    constructor(IMessageHandler gateway_, address relayer_, uint16 refundChain_) Auth(msg.sender) {
+    constructor(IMessageHandler gateway_, address relayer_, uint16 refundChain_, address deployer) Auth(deployer) {
         gateway = gateway_;
         relayer = IWormholeRelayer(relayer_);
         refundChain = refundChain_;
@@ -33,20 +33,11 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
 
     // --- Administrative ---
     /// @inheritdoc IWormholeAdapter
-    function fileSource(bytes32 what, uint16 wormholeId, uint16 centrifugeChainId, address source) external auth {
-        if (what == "sources") sources[wormholeId] = WormholeSource(centrifugeChainId, source);
+    function file(bytes32 what, uint16 centrifugeChainId, uint16 wormholeId, address addr) external auth {
+        if (what == "sources") sources[wormholeId] = WormholeSource(centrifugeChainId, addr);
+        else if (what == "destinations") destinations[centrifugeChainId] = WormholeDestination(wormholeId, addr);
         else revert FileUnrecognizedParam();
-        emit FileSource(what, wormholeId, centrifugeChainId, source);
-    }
-
-    /// @inheritdoc IWormholeAdapter
-    function fileDestination(bytes32 what, uint16 centrifugeChainId, uint16 wormholeId, address destination)
-        external
-        auth
-    {
-        if (what == "destinations") destinations[centrifugeChainId] = WormholeDestination(wormholeId, destination);
-        else revert FileUnrecognizedParam();
-        emit FileDestination(what, centrifugeChainId, wormholeId, destination);
+        emit File(what, centrifugeChainId, wormholeId, addr);
     }
 
     // --- Incoming ---
