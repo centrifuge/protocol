@@ -51,7 +51,7 @@ contract TestEndToEnd is Test {
     }
 
     function _deployChain(FullDeployer deploy, uint16 chainId, ISafe safeAdmin) public returns (LocalAdapter adapter) {
-        deploy.deployFull(chainId, safeAdmin);
+        deploy.deployFull(chainId, safeAdmin, address(this));
 
         adapter = new LocalAdapter(chainId, deploy.gateway(), address(deploy));
         deploy.wire(adapter);
@@ -61,7 +61,7 @@ contract TestEndToEnd is Test {
         deploy.gasService().file("messageGasLimit", GAS);
         vm.stopPrank();
 
-        deploy.removeFullDeployerAccess();
+        deploy.removeFullDeployerAccess(address(this));
     }
 
     function _getDeploys(bool sameChain) public returns (PoolsDeployer cp, VaultsDeployer cv) {

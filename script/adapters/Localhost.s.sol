@@ -27,12 +27,12 @@ contract LocalhostDeployer is FullDeployer {
         LocalhostAdapter adapter = new LocalhostAdapter(gateway, msg.sender);
         wire(adapter);
 
-        _configureTestData();
+        _configureTestData(centrifugeChainId);
 
         vm.stopBroadcast();
     }
 
-    function _configureTestData() internal {
+    function _configureTestData(uint16 centrifugeChainId) internal {
         // Create pool
         PoolId poolId = poolRouter.createPool(msg.sender, USD, multiShareClass);
         ShareClassId scId = multiShareClass.previewNextShareClassId(poolId);

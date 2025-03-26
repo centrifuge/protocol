@@ -20,7 +20,7 @@ contract WormholeDeployer is FullDeployer {
         WormholeAdapter adapter = new WormholeAdapter(gateway, relayer, localChainId, msg.sender);
         wire(adapter);
 
-        removeFullDeployerAccess();
+        removeFullDeployerAccess(msg.sender);
 
         vm.stopBroadcast();
     }

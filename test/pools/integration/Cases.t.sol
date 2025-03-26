@@ -57,9 +57,9 @@ contract TestCases is PoolsDeployer, Test {
 
     function setUp() public {
         // Deployment
-        deployPools(CHAIN_CP, ISafe(address(0)));
+        deployPools(CHAIN_CP, ISafe(address(0)), address(this));
         _mockStuff();
-        removePoolsDeployerAccess();
+        removePoolsDeployerAccess(address(this));
 
         // Initialize accounts
         vm.deal(FM, 1 ether);

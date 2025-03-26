@@ -20,7 +20,7 @@ contract AxelarDeployer is FullDeployer {
         AxelarAdapter adapter = new AxelarAdapter(gateway, axelarGateway, axelarGasService, msg.sender);
         wire(adapter);
 
-        removeFullDeployerAccess();
+        removeFullDeployerAccess(msg.sender);
 
         vm.stopBroadcast();
     }

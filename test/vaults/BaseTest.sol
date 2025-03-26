@@ -72,7 +72,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         ISafe adminSafe = new MockSafe(pausers, 1);
 
         // deploy core contracts
-        deployVaults(THIS_CHAIN_ID, adminSafe);
+        deployVaults(THIS_CHAIN_ID, adminSafe, address(this));
 
         // deploy mock adapters
 
