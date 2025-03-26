@@ -272,6 +272,9 @@ abstract contract TargetFunctions is
             decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix, depositAmount, maxApproval, navPerShare
         );
 
+        // reset the epoch increment to 0 so that the next approval is in a "new tx"
+        _setEpochIncrement(0);
+
         // request redemption
         poolRouter_redeemRequest(poolId, scId, isoCode, shareAmount);
         
@@ -477,6 +480,12 @@ abstract contract TargetFunctions is
     /// === Gateway === ///
     function gateway_topUp() public payable {
         gateway.topUp{value: msg.value}();
+    }
+
+    /// === Helpers === ///
+    /// helper to set the epoch increment for the multi share class for multiple calls to approvals in same transaction
+    function _setEpochIncrement(uint32 epochIncrement) internal {
+        multiShareClass.setEpochIncrement(epochIncrement);
     }
 
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///

@@ -33,6 +33,7 @@ import "src/common/Root.sol";
 import "test/common/mocks/MockAdapter.sol";
 import "test/common/mocks/MockGasService.sol";
 import "test/pools/fuzzing/recon-pools/mocks/MockGateway.sol";
+import "test/pools/fuzzing/recon-pools/utils/MultiShareClassWrapper.sol";
 
 abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     enum Op {
@@ -51,7 +52,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     Holdings holdings;
     PoolRegistry poolRegistry;
     PoolRouter poolRouter;
-    MultiShareClass multiShareClass;
+    MultiShareClassWrapper multiShareClass;
     MessageProcessor messageProcessor;
     TransientValuation transientValuation;
     IdentityValuation identityValuation;
@@ -101,7 +102,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
 
         holdings = new Holdings(IPoolRegistry(address(poolRegistry)), address(this));
         poolRouter = new PoolRouter(IPoolRegistry(address(poolRegistry)), IAssetRegistry(address(assetRegistry)), IAccounting(address(accounting)), IHoldings(address(holdings)), IGateway(address(gateway)), address(this));
-        multiShareClass = new MultiShareClass(IPoolRegistry(address(poolRegistry)), address(this));
+        multiShareClass = new MultiShareClassWrapper(IPoolRegistry(address(poolRegistry)), address(this));
         messageProcessor = new MessageProcessor(IMessageSender(address(gateway)), IPoolRouterHandler(address(poolRouter)), address(this));
 
         mockAdapter = new MockAdapter(IMessageHandler(address(gateway)));

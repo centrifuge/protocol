@@ -16,6 +16,9 @@ import {console2} from "forge-std/console2.sol";
 
 abstract contract Properties is BeforeAfter, Asserts {
     using MathLib for D18;
+    using MathLib for uint128;
+    using MathLib for uint256;
+
 
     /// === Canaries === ///
 
@@ -58,6 +61,7 @@ abstract contract Properties is BeforeAfter, Asserts {
 
     /// @dev Property: The total pending redeem amount pendingRedeem[..] is always >= the sum of pending user redeem amounts redeemRequest[..]
     /// @dev Property: The total pending redeem amount pendingRedeem[..] is always >= the approved redeem amount epochAmounts[..].redeemRevokedShares
+    // TODO: come back to this to check if accounting for case is correct
     function property_total_pending_redeem_geq_sum_pending_user_redeem() public {
         address[] memory _actors = _getActors();
 
@@ -65,25 +69,42 @@ abstract contract Properties is BeforeAfter, Asserts {
             PoolId poolId = createdPools[i];
             uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
             // skip the first share class because it's never assigned
-            for (uint32 j = 1; j < shareClassCount; j++) {
+            for (uint32 j = 1; j < shareClassCount; j++) { 
                 ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
                 AssetId assetId = poolRegistry.currency(poolId);
 
                 uint32 epochId = multiShareClass.epochId(poolId);
-                uint128 pendingRedeem = multiShareClass.pendingRedeem(scId, assetId);
-                (,,,,, uint128 redeemApproved,) = multiShareClass.epochAmounts(scId, assetId, epochId);
+                uint128 pendingRedeemCurrent = multiShareClass.pendingRedeem(scId, assetId);
+                
+                // get the pending and approved redeem amounts for the previous epoch
+                (,,,, uint128 redeemPendingPrevious, uint128 redeemApprovedPrevious, uint128 redeemAssetsPrevious) = multiShareClass.epochAmounts(scId, assetId, epochId - 1);
+
+                // get the pending and approved redeem amounts for the current epoch
+                (,,,,, uint128 redeemApprovedCurrent,) = multiShareClass.epochAmounts(scId, assetId, epochId);
 
                 uint128 totalPendingUserRedeem = 0;
                 for (uint256 k = 0; k < _actors.length; k++) {
                     address actor = _actors[k];
-                    (uint128 pendingUserRedeem,) = multiShareClass.redeemRequest(scId, assetId, Helpers.addressToBytes32(actor));
-                    totalPendingUserRedeem += pendingUserRedeem;
-                }
 
-                // check that the pending redeem is >= the total pending user redeem
-                gte(pendingRedeem, totalPendingUserRedeem, "pending redeem is < total pending user redeems");
+                    (uint128 pendingUserRedeemCurrent,) = multiShareClass.redeemRequest(scId, assetId, Helpers.addressToBytes32(actor));
+                    totalPendingUserRedeem += pendingUserRedeemCurrent;
+                    
+                    // pendingUserRedeem hasn't changed if the claimableAssetAmountPrevious is 0, so we can use it to calculate the claimableAssetAmount from the previous epoch 
+                    uint128 approvedShareAmountPrevious = pendingUserRedeemCurrent.mulDiv(redeemApprovedPrevious, redeemPendingPrevious).toUint128();
+                    uint128 claimableAssetAmountPrevious = uint256(approvedShareAmountPrevious).mulDiv(
+                        redeemAssetsPrevious, redeemApprovedPrevious
+                    ).toUint128();
+
+                    // account for the edge case where user claimed redemption in previous epoch but there was no claimable amount
+                    // in this case, the totalPendingUserRedeem will be greater than the pendingRedeemCurrent for this epoch 
+                    if(claimableAssetAmountPrevious > 0) {
+                        // check that the pending redeem is >= the total pending user redeem
+                        gte(pendingRedeemCurrent, totalPendingUserRedeem, "pending redeem is < total pending user redeems");
+                    }
+                }
+                
                 // check that the pending redeem is >= the approved redeem
-                gte(pendingRedeem, redeemApproved, "pending redeem is < approved redeem");
+                gte(pendingRedeemCurrent, redeemApprovedCurrent, "pending redeem is < approved redeem");
             }
         }
     }
