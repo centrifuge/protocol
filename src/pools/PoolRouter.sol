@@ -96,12 +96,12 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         require(unlockedPoolId.isNull(), IPoolRouter.PoolAlreadyUnlocked());
         require(poolRegistry.isAdmin(poolId, msg.sender), IPoolRouter.NotAuthorizedAdmin());
 
-        accounting.unlock(poolId, accounting.generateJournalId(poolId));
+        accounting.unlock(poolId);
         unlockedPoolId = poolId;
 
         multicall(data);
 
-        accounting.lock();
+        accounting.lock(poolId);
         unlockedPoolId = PoolId.wrap(0);
     }
 
@@ -306,8 +306,8 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
 
         uint128 valueChange = holdings.increase(unlockedPoolId, scId, assetId, valuation, amount);
 
-        accounting.addCredit(holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.EQUITY)), valueChange);
-        accounting.addDebit(holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.ASSET)), valueChange);
+        accounting.addCredit(unlockedPoolId, holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.EQUITY)), valueChange);
+        accounting.addDebit(unlockedPoolId, holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.ASSET)), valueChange);
     }
 
     /// @inheritdoc IPoolRouter
@@ -318,8 +318,8 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
 
         uint128 valueChange = holdings.decrease(unlockedPoolId, scId, assetId, valuation, amount);
 
-        accounting.addCredit(holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.ASSET)), valueChange);
-        accounting.addDebit(holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.EQUITY)), valueChange);
+        accounting.addCredit(unlockedPoolId, holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.ASSET)), valueChange);
+        accounting.addDebit(unlockedPoolId, holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.EQUITY)), valueChange);
     }
 
     /// @inheritdoc IPoolRouter
@@ -329,17 +329,17 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         int128 diff = holdings.update(unlockedPoolId, scId, assetId);
 
         if (diff > 0) {
-            accounting.addCredit(
+            accounting.addCredit(unlockedPoolId, 
                 holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.GAIN)), uint128(diff)
             );
-            accounting.addDebit(
+            accounting.addDebit(unlockedPoolId, 
                 holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.ASSET)), uint128(diff)
             );
         } else if (diff < 0) {
-            accounting.addCredit(
+            accounting.addCredit(unlockedPoolId, 
                 holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.ASSET)), uint128(diff)
             );
-            accounting.addDebit(
+            accounting.addDebit(unlockedPoolId, 
                 holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.LOSS)), uint128(diff)
             );
         }
@@ -377,14 +377,14 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     function addDebit(AccountId account, uint128 amount) external payable {
         _protectedAndUnlocked();
 
-        accounting.addDebit(account, amount);
+        accounting.addDebit(unlockedPoolId, account, amount);
     }
 
     /// @inheritdoc IPoolRouter
     function addCredit(AccountId account, uint128 amount) external payable {
         _protectedAndUnlocked();
 
-        accounting.addCredit(account, amount);
+        accounting.addCredit(unlockedPoolId, account, amount);
     }
 
     //----------------------------------------------------------------------------------------------

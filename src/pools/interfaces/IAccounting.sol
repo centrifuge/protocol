@@ -44,22 +44,24 @@ interface IAccounting {
     }
 
     /// @notice Debits an account. Increase the value of debit-normal accounts, decrease for credit-normal ones.
+    /// @param poolId The pool the account belongs to
     /// @param account The account to debit
     /// @param value Amount being debited
-    function addDebit(AccountId account, uint128 value) external;
+    function addDebit(PoolId poolId, AccountId account, uint128 value) external;
 
     /// @notice Credits an account. Decrease the value of debit-normal accounts, increase for credit-normal ones.
+    /// @param poolId The pool the account belongs to
     /// @param account The account to credit
     /// @param value Amount being credited
-    function addCredit(AccountId account, uint128 value) external;
+    function addCredit(PoolId poolId, AccountId account, uint128 value) external;
 
-    /// @notice Sets the pool ID and transaction ID for the coming transaction.
+    /// @notice Unlocks the journal for a pool
     /// @param poolId The pool to unlock
-    /// @param journalId The id to use for this set of debits/credits
-    function unlock(PoolId poolId, uint256 journalId) external;
+    function unlock(PoolId poolId) external;
 
-    /// @notice Closes the transaction and checks if the entries are balanced.
-    function lock() external;
+    /// @notice Closes the journal for a pool and checks if the entries are balanced.
+    /// @param poolId The pool to unlock
+    function lock(PoolId poolId) external;
 
     /// @notice Creates an account.
     /// @param poolId The pool the account belongs to
@@ -78,10 +80,4 @@ interface IAccounting {
     /// @param account The account to get the value of
     /// @return The value of the account. Will be a negative value for positive balances of credit-normal accounts
     function accountValue(PoolId poolId, AccountId account) external returns (int128);
-
-    /// @notice generates a new journal id for the given pool
-    function generateJournalId(PoolId poolId) external returns (uint256);
-
-    /// @notice gets the current journal id
-    function journalId() external returns (uint256);
 }

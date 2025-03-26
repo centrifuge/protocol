@@ -6,61 +6,101 @@ import {Auth} from "src/misc/Auth.sol";
 import {AccountId} from "src/pools/types/AccountId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
+import {TransientStorage} from "src/misc/libraries/TransientStorage.sol";
+
+library TransientJournal {
+    function debited(PoolId poolId) internal view returns (uint128) {
+        return uint128(TransientStorage.tloadUint256(keccak256(abi.encode("debited", poolId))));
+    }
+
+    function credited(PoolId poolId) internal view returns (uint128) {
+        return uint128(TransientStorage.tloadUint256(keccak256(abi.encode("credited", poolId))));
+    }
+
+    function journalId(PoolId poolId) internal view returns (uint256) {
+        return TransientStorage.tloadUint256(keccak256(abi.encode("journalId", poolId)));
+    }
+
+    function unlocked(PoolId poolId) internal view returns (bool) {
+        return TransientStorage.tloadBool(keccak256(abi.encode("unlocked", poolId)));
+    }
+
+    function setDebited(PoolId poolId, uint128 value) internal {
+        TransientStorage.tstore(keccak256(abi.encode("debited", poolId)), uint256(value));
+    }
+
+    function setCredited(PoolId poolId, uint128 value) internal {
+        TransientStorage.tstore(keccak256(abi.encode("credited", poolId)), uint256(value));
+    }
+
+    function setJournalId(PoolId poolId, uint256 value) internal {
+        TransientStorage.tstore(keccak256(abi.encode("journalId", poolId)), value);
+    }
+
+    function setUnlocked(PoolId poolId, bool value) internal {
+        TransientStorage.tstore(keccak256(abi.encode("unlocked", poolId)), value);
+    }
+}
 
 contract Accounting is Auth, IAccounting {
-    mapping(PoolId => mapping(AccountId => Account)) public accounts;
+    using TransientJournal for PoolId;
 
-    uint128 public transient debited;
-    uint128 public transient credited;
-    PoolId internal transient _currentPoolId;
-    /// @inheritdoc IAccounting
-    uint256 public transient journalId;
+    struct JournalEntry {
+        uint128 debited;
+        uint128 credited;
+        uint256 journalId;
+        bool unlocked;
+    }
 
     mapping(PoolId => uint64) internal _poolJournalIdCounter;
+    mapping(PoolId => mapping(AccountId => Account)) public accounts;
 
     constructor(address deployer) Auth(deployer) {}
 
     /// @inheritdoc IAccounting
-    function addDebit(AccountId account, uint128 value) public auth {
-        require(!_currentPoolId.isNull(), AccountingLocked());
+    function addDebit(PoolId poolId, AccountId account, uint128 value) public auth {
+        require(poolId.journalId() != 0, AccountingLocked());
 
-        Account storage acc = accounts[_currentPoolId][account];
+        Account storage acc = accounts[poolId][account];
         require(acc.lastUpdated != 0, AccountDoesNotExist());
 
         acc.totalDebit += value;
-        debited += value;
+        poolId.setDebited(poolId.debited() + value);
         acc.lastUpdated = uint64(block.timestamp);
-        emit Debit(_currentPoolId, account, value);
+        emit Debit(poolId, account, value);
     }
 
     /// @inheritdoc IAccounting
-    function addCredit(AccountId account, uint128 value) public auth {
-        require(!_currentPoolId.isNull(), AccountingLocked());
+    function addCredit(PoolId poolId, AccountId account, uint128 value) public auth {
+        require(poolId.journalId() != 0, AccountingLocked());
 
-        Account storage acc = accounts[_currentPoolId][account];
+        Account storage acc = accounts[poolId][account];
         require(acc.lastUpdated != 0, AccountDoesNotExist());
 
         acc.totalCredit += value;
-        credited += value;
+        poolId.setCredited(poolId.credited() + value);
         acc.lastUpdated = uint64(block.timestamp);
-        emit Credit(_currentPoolId, account, value);
+        emit Credit(poolId, account, value);
     }
 
     /// @inheritdoc IAccounting
-    function unlock(PoolId poolId, uint256 journalId_) external auth {
-        require(PoolId.unwrap(_currentPoolId) == 0, AccountingAlreadyUnlocked());
-        debited = 0;
-        credited = 0;
-        journalId = journalId_;
-        _currentPoolId = poolId;
-        emit StartJournalId(poolId, journalId_);
+    function unlock(PoolId poolId) external auth {
+        require(!poolId.unlocked(), AccountingAlreadyUnlocked());
+        poolId.setDebited(0);
+        poolId.setCredited(0);
+        poolId.setUnlocked(true);
+
+        if (poolId.journalId() == 0) {
+            poolId.setJournalId(_generateJournalId(poolId));
+        }
+        emit StartJournalId(poolId, poolId.journalId());
     }
 
     /// @inheritdoc IAccounting
-    function lock() external auth {
-        require(debited == credited, Unbalanced());
-        emit EndJournalId(_currentPoolId, journalId);
-        _currentPoolId = PoolId.wrap(0);
+    function lock(PoolId poolId) external auth {
+        require(poolId.debited() == poolId.credited(), Unbalanced());
+        emit EndJournalId(poolId, poolId.journalId());
+        poolId.setUnlocked(false);
     }
 
     /// @inheritdoc IAccounting
@@ -89,9 +129,7 @@ contract Accounting is Auth, IAccounting {
         }
     }
 
-    /// @inheritdoc IAccounting
-    function generateJournalId(PoolId poolId) external auth returns (uint256) {
-        journalId = uint256((uint128(poolId.raw()) << 64) | ++_poolJournalIdCounter[poolId]);
-        return journalId;
+    function _generateJournalId(PoolId poolId) internal returns (uint256) {
+        return uint256((uint128(poolId.raw()) << 64) | ++_poolJournalIdCounter[poolId]);
     }
 }
