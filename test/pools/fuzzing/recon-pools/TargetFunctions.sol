@@ -272,9 +272,6 @@ abstract contract TargetFunctions is
             decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix, depositAmount, maxApproval, navPerShare
         );
 
-        // reset the epoch increment to 0 so that the next approval is in a "new tx"
-        _setEpochIncrement(0);
-
         // request redemption
         poolRouter_redeemRequest(poolId, scId, isoCode, shareAmount);
         
@@ -287,11 +284,6 @@ abstract contract TargetFunctions is
 
         // claim redemption as actor
         poolRouter_claimRedeem(poolId, scId, isoCode);
-    }
-
-    function _getMultiShareClassMetrics(ShareClassId scId) internal view returns (uint128 totalIssuance) {
-        (totalIssuance,) = multiShareClass.metrics(scId);
-        return totalIssuance;
     }
 
     // deposit and cancel redemption in one call
@@ -448,6 +440,9 @@ abstract contract TargetFunctions is
         poolRouter_approveDeposits(scId, assetId, maxApproval, valuation);
         poolRouter_issueShares(scId, assetId, navPerShare);
         poolRouter_execute_clamped(poolId);
+
+        // reset the epoch increment to 0 so that the next approval is in a "new tx"
+        _setEpochIncrement(0);
     }
 
     function shortcut_approve_and_revoke_shares(
@@ -463,6 +458,9 @@ abstract contract TargetFunctions is
         poolRouter_approveRedeems(scId, isoCode, maxApproval);
         poolRouter_revokeShares(scId, isoCode, navPerShare, valuation);
         poolRouter_execute_clamped(poolId);
+
+        // reset the epoch increment to 0 so that the next approval is in a "new tx"
+        _setEpochIncrement(0);
     }
 
     /// === Transient Valuation === ///
@@ -486,6 +484,11 @@ abstract contract TargetFunctions is
     /// helper to set the epoch increment for the multi share class for multiple calls to approvals in same transaction
     function _setEpochIncrement(uint32 epochIncrement) internal {
         multiShareClass.setEpochIncrement(epochIncrement);
+    }
+
+    function _getMultiShareClassMetrics(ShareClassId scId) internal view returns (uint128 totalIssuance) {
+        (totalIssuance,) = multiShareClass.metrics(scId);
+        return totalIssuance;
     }
 
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
