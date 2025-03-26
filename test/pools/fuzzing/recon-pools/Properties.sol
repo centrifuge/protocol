@@ -34,31 +34,8 @@ abstract contract Properties is BeforeAfter, Asserts {
     //     eq(_after.ghostCredited, 0, "credited not reset");
     // }
 
-    /// @dev Property: The total pending asset amount pendingDeposit[..] is always >= the approved asset amount epochAmounts[..].depositApproved
-    function property_pending_deposit_geq_approved_deposit() public {
-        address[] memory _actors = _getActors();
-
-        // loop through all created pools
-        for (uint256 i = 0; i < createdPools.length; i++) {
-            PoolId poolId = createdPools[i];
-            uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
-            // loop through all share classes in the pool
-            // skip the first share class because it's never assigned
-            for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
-                AssetId assetId = poolRegistry.currency(poolId);
-
-                uint32 epochId = multiShareClass.epochId(poolId);
-                uint128 pendingDeposit = multiShareClass.pendingDeposit(scId, assetId);
-                (, uint128 depositApproved,,,,,) = multiShareClass.epochAmounts(scId, assetId, epochId);
-                
-                gte(pendingDeposit, depositApproved, "pending deposit is less than approved deposit");
-            }
-        }
-    }
-
     /// @dev Property: User pending redemption is never greater than the total redemption
-    function property_cancelled_redemption_never_greater_than_requested() public {
+    function property_pending_user_redemption_never_greater_than_total_redemption() public {
         address[] memory _actors = _getActors();
 
         // loop through all created pools
@@ -87,7 +64,7 @@ abstract contract Properties is BeforeAfter, Asserts {
         }
     }
 
-    /// @dev Property: The total pending asset amount pendingDeposit[..] is always geq than the approved asset amount epochAmounts[..].depositApproved
+    /// @dev Property: The total pending asset amount pendingDeposit[..] is always >= than the approved asset amount epochAmounts[..].depositApproved
     function property_total_pending_and_approved() public {
         address[] memory _actors = _getActors();
 
