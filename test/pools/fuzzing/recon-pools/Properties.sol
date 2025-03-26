@@ -34,36 +34,6 @@ abstract contract Properties is BeforeAfter, Asserts {
     //     eq(_after.ghostCredited, 0, "credited not reset");
     // }
 
-    /// @dev Property: User pending redemption is never greater than the total redemption
-    function property_pending_user_redemption_never_greater_than_total_redemption() public {
-        address[] memory _actors = _getActors();
-
-        // loop through all created pools
-        for (uint256 i = 0; i < createdPools.length; i++) {
-            PoolId poolId = createdPools[i];
-            uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
-            
-            // loop through all share classes in the pool
-            // skip the first share class because it's never assigned
-            for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
-                AssetId assetId = poolRegistry.currency(poolId);
-
-                // loop through all actors
-                for (uint256 k = 0; k < _actors.length; k++) {
-                    address actor = _actors[k];
-                    (uint128 pendingUserRedemption,) = multiShareClass.redeemRequest(scId, assetId, Helpers.addressToBytes32(actor));
-                    // check if the actor has a redeem request
-                    gte(
-                        multiShareClass.pendingRedeem(scId, assetId), 
-                        pendingUserRedemption, 
-                        "user redemption is greater than total redemption"
-                        );
-                }
-            }
-        }
-    }
-
     /// @dev Property: The total pending asset amount pendingDeposit[..] is always >= than the approved asset amount epochAmounts[..].depositApproved
     function property_total_pending_and_approved() public {
         address[] memory _actors = _getActors();
@@ -86,8 +56,8 @@ abstract contract Properties is BeforeAfter, Asserts {
         }
     }
 
-    /// @dev Property: The total pending redeem amount pendingRedeem[..] is always geq the sum of pending user redeem amounts redeemRequest[..]
-    /// @dev Property: The total pending redeem amount pendingRedeem[..] is always geq than the approved redeem amount epochAmounts[..].redeemRevokedShares
+    /// @dev Property: The total pending redeem amount pendingRedeem[..] is always >= the sum of pending user redeem amounts redeemRequest[..]
+    /// @dev Property: The total pending redeem amount pendingRedeem[..] is always >= the approved redeem amount epochAmounts[..].redeemRevokedShares
     function property_total_pending_redeem_geq_sum_pending_user_redeem() public {
         address[] memory _actors = _getActors();
 
