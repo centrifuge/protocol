@@ -45,13 +45,6 @@ library TransientJournal {
 contract Accounting is Auth, IAccounting {
     using TransientJournal for PoolId;
 
-    struct JournalEntry {
-        uint128 debited;
-        uint128 credited;
-        uint256 journalId;
-        bool unlocked;
-    }
-
     mapping(PoolId => uint64) internal _poolJournalIdCounter;
     mapping(PoolId => mapping(AccountId => Account)) public accounts;
 
