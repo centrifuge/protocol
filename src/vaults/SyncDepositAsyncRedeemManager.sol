@@ -16,6 +16,7 @@ import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IRedeemGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
+import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
@@ -34,41 +35,32 @@ import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 /// @title  Sync Investment Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
-contract SyncDepositAsyncRedeemManager is Auth, ISyncDepositAsyncRedeemManager, IVaultManager, IRedeemGatewayHandler {
+contract SyncDepositAsyncRedeemManager is
+    BaseInvestmentManager,
+    ISyncDepositAsyncRedeemManager,
+    IVaultManager,
+    IRedeemGatewayHandler
+{
     using BytesLib for bytes;
     using MathLib for uint256;
     using CastLib for *;
 
-    address public immutable escrow;
-
     IGateway public gateway;
     IVaultMessageSender public sender;
-    IPoolManager public poolManager;
 
     mapping(address vaultAddr => uint64) public maxPriceAge;
-    mapping(uint64 poolId => mapping(bytes16 trancheId => mapping(uint128 assetId => address vault))) public vault;
+    // TODO: Remove
     mapping(address vault => mapping(address investor => AsyncRedeemState)) public redemptions;
 
-    constructor(address escrow_) Auth(msg.sender) {
-        escrow = escrow_;
-    }
+    constructor(address root_, address escrow_) BaseInvestmentManager(root_, escrow_) {}
 
     // --- Administration ---
     /// @inheritdoc IBaseInvestmentManager
-    function file(bytes32 what, address data) external auth {
+    function file(bytes32 what, address data) external override(IBaseInvestmentManager, BaseInvestmentManager) auth {
         if (what == "gateway") gateway = IGateway(data);
         else if (what == "poolManager") poolManager = IPoolManager(data);
         else revert("SyncDepositAsyncRedeemManager/file-unrecognized-param");
         emit IBaseInvestmentManager.File(what, data);
-    }
-
-    /// @inheritdoc IRecoverable
-    function recoverTokens(address token, uint256 tokenId, address to, uint256 amount) external auth {
-        if (tokenId == 0) {
-            SafeTransferLib.safeTransfer(token, to, amount);
-        } else {
-            IERC6909(token).transfer(to, tokenId, amount);
-        }
     }
 
     // --- IVaultManager ---
@@ -83,6 +75,8 @@ contract SyncDepositAsyncRedeemManager is Auth, ISyncDepositAsyncRedeemManager, 
 
         require(vault_.asset() == asset_, "SyncDepositAsyncRedeemManager/asset-mismatch");
         require(vault[poolId][trancheId][assetId] == address(0), "SyncDepositAsyncRedeemManager/vault-already-exists");
+
+        // TODO(@wischli): Also execute for asyncManager
 
         vault[poolId][trancheId][assetId] = vaultAddr;
 
@@ -102,6 +96,8 @@ contract SyncDepositAsyncRedeemManager is Auth, ISyncDepositAsyncRedeemManager, 
 
         require(vault_.asset() == asset_, "SyncDepositAsyncRedeemManager/asset-mismatch");
         require(vault[poolId][trancheId][assetId] != address(0), "SyncDepositAsyncRedeemManager/vault-does-not-exist");
+
+        // TODO(@wischli): Also execute for asyncManager
 
         delete vault[poolId][trancheId][assetId];
 
@@ -192,6 +188,7 @@ contract SyncDepositAsyncRedeemManager is Auth, ISyncDepositAsyncRedeemManager, 
         auth
         returns (bool)
     {
+        // TODO(@wischli): Execute via asyncManager
         uint128 _shares = shares.toUint128();
         require(_shares != 0, "SyncDepositAsyncRedeemManager/zero-amount-not-allowed");
         SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
@@ -436,38 +433,6 @@ contract SyncDepositAsyncRedeemManager is Auth, ISyncDepositAsyncRedeemManager, 
     }
 
     // --- View functions ---
-    /// @inheritdoc IBaseInvestmentManager
-    function convertToShares(address vaultAddr, uint256 _assets) public view returns (uint256 shares) {
-        SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-        (uint128 latestPrice,) = poolManager.tranchePrice(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
-        shares = uint256(
-            PriceConversionLib.calculateShares(_assets.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down)
-        );
-    }
-
-    /// @inheritdoc IBaseInvestmentManager
-    function convertToAssets(address vaultAddr, uint256 _shares) public view returns (uint256 assets) {
-        SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-        (uint128 latestPrice,) = poolManager.tranchePrice(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
-        assets = uint256(
-            PriceConversionLib.calculateAssets(_shares.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down)
-        );
-    }
-
-    /// @inheritdoc IBaseInvestmentManager
-    function vaultByAssetId(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (address) {
-        return vault[poolId][trancheId][assetId];
-    }
-
-    /// @inheritdoc IBaseInvestmentManager
-    function priceLastUpdated(address vaultAddr) public view returns (uint64 lastUpdated) {
-        SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-        (, lastUpdated) = poolManager.tranchePrice(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
-    }
-
     /// @inheritdoc IAsyncRedeemManager
     function pendingRedeemRequest(address vaultAddr, address user) public view returns (uint256 shares) {
         shares = uint256(redemptions[vaultAddr][user].pendingRedeemRequest);

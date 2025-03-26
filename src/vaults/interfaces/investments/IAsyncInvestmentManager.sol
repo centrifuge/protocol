@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IRecoverable} from "src/common/interfaces/IRoot.sol";
-
 import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {IAsyncDepositManager} from "src/vaults/interfaces/investments/IAsyncDepositManager.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
@@ -31,7 +29,7 @@ struct AsyncInvestmentState {
     bool pendingCancelRedeemRequest;
 }
 
-interface IAsyncInvestmentManager is IRecoverable, IVaultManager, IAsyncDepositManager, IAsyncRedeemManager {
+interface IAsyncInvestmentManager is IVaultManager, IAsyncDepositManager, IAsyncRedeemManager {
     /// @notice Returns the investment state
     function investments(address vaultAddr, address investor)
         external

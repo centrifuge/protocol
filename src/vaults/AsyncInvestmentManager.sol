@@ -31,47 +31,36 @@ import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
 import {PriceConversionLib} from "src/vaults/libraries/PriceConversionLib.sol";
+import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 
 /// @title  Investment Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
-contract AsyncInvestmentManager is Auth, IAsyncInvestmentManager, IDepositGatewayHandler, IRedeemGatewayHandler {
-    using MessageLib for *;
+contract AsyncInvestmentManager is
+    BaseInvestmentManager,
+    IAsyncInvestmentManager,
+    IDepositGatewayHandler,
+    IRedeemGatewayHandler
+{
     using BytesLib for bytes;
     using MathLib for uint256;
+    using MessageLib for *;
     using CastLib for *;
-
-    address public immutable root;
-    address public immutable escrow;
 
     IGateway public gateway;
     IVaultMessageSender public sender;
-    IPoolManager public poolManager;
 
-    mapping(uint64 poolId => mapping(bytes16 trancheId => mapping(uint128 assetId => address vault))) public vault;
     mapping(address vault => mapping(address investor => AsyncInvestmentState)) public investments;
 
-    constructor(address root_, address escrow_) Auth(msg.sender) {
-        root = root_;
-        escrow = escrow_;
-    }
+    constructor(address root_, address escrow_) BaseInvestmentManager(root_, escrow_) {}
 
     /// @inheritdoc IBaseInvestmentManager
-    function file(bytes32 what, address data) external auth {
+    function file(bytes32 what, address data) external override(IBaseInvestmentManager, BaseInvestmentManager) auth {
         if (what == "gateway") gateway = IGateway(data);
         else if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "poolManager") poolManager = IPoolManager(data);
         else revert("AsyncInvestmentManager/file-unrecognized-param");
         emit File(what, data);
-    }
-
-    /// @inheritdoc IRecoverable
-    function recoverTokens(address token, uint256 tokenId, address to, uint256 amount) external auth {
-        if (tokenId == 0) {
-            SafeTransferLib.safeTransfer(token, to, amount);
-        } else {
-            IERC6909(token).transfer(to, tokenId, amount);
-        }
     }
 
     // --- IVaultManager ---
@@ -288,6 +277,7 @@ contract AsyncInvestmentManager is Auth, IAsyncInvestmentManager, IDepositGatewa
         ITranche tranche = ITranche(IERC7540Vault(vault_).share());
         tranche.burn(address(escrow), shares);
 
+        // TODO: Use IAsyncRedeemVault interface instead
         IERC7540Vault(vault_).onRedeemClaimable(user, assets, shares);
     }
 
@@ -374,26 +364,6 @@ contract AsyncInvestmentManager is Auth, IAsyncInvestmentManager, IDepositGatewa
     }
 
     // --- View functions ---
-    /// @inheritdoc IBaseInvestmentManager
-    function convertToShares(address vaultAddr, uint256 _assets) public view returns (uint256 shares) {
-        IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-        (uint128 latestPrice,) = poolManager.tranchePrice(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
-        shares = uint256(
-            PriceConversionLib.calculateShares(_assets.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down)
-        );
-    }
-
-    /// @inheritdoc IBaseInvestmentManager
-    function convertToAssets(address vaultAddr, uint256 _shares) public view returns (uint256 assets) {
-        IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-        (uint128 latestPrice,) = poolManager.tranchePrice(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
-        assets = uint256(
-            PriceConversionLib.calculateAssets(_shares.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down)
-        );
-    }
-
     /// @inheritdoc IDepositManager
     function maxDeposit(address vaultAddr, address user) public view returns (uint256 assets) {
         if (!_canTransfer(vaultAddr, address(escrow), user, 0)) return 0;
@@ -454,13 +424,6 @@ contract AsyncInvestmentManager is Auth, IAsyncInvestmentManager, IDepositGatewa
     /// @inheritdoc IAsyncRedeemManager
     function claimableCancelRedeemRequest(address vaultAddr, address user) public view returns (uint256 shares) {
         shares = investments[vaultAddr][user].claimableCancelRedeemRequest;
-    }
-
-    /// @inheritdoc IBaseInvestmentManager
-    function priceLastUpdated(address vaultAddr) public view returns (uint64 lastUpdated) {
-        IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-        (, lastUpdated) = poolManager.tranchePrice(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
     }
 
     /// @inheritdoc IDepositManager
@@ -630,10 +593,5 @@ contract AsyncInvestmentManager is Auth, IAsyncInvestmentManager, IDepositGatewa
     function _canTransfer(address vaultAddr, address from, address to, uint256 value) internal view returns (bool) {
         ITranche share = ITranche(IERC7540Vault(vaultAddr).share());
         return share.checkTransferRestriction(from, to, value);
-    }
-
-    /// @inheritdoc IBaseInvestmentManager
-    function vaultByAssetId(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (address) {
-        return vault[poolId][trancheId][assetId];
     }
 }

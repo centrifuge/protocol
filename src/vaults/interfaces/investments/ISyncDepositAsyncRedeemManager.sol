@@ -2,12 +2,10 @@
 pragma solidity 0.8.28;
 
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-import {IRecoverable} from "src/common/interfaces/IRoot.sol";
-
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 
-interface ISyncDepositAsyncRedeemManager is IMessageHandler, IRecoverable, ISyncDepositManager, IAsyncRedeemManager {
+interface ISyncDepositAsyncRedeemManager is IMessageHandler, ISyncDepositManager, IAsyncRedeemManager {
     error PriceTooOld();
     error ExceedsMaxDeposit();
     error AssetNotAllowed();

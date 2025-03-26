@@ -47,7 +47,7 @@ contract VaultsDeployer is CommonDeployer {
         restrictedRedemptions = address(new RestrictedRedemptions{salt: SALT}(address(root), address(escrow), deployer));
         trancheFactory = address(new TrancheFactory{salt: SALT}(address(root), deployer));
         asyncInvestmentManager = new AsyncInvestmentManager(address(root), address(escrow));
-        syncDepositAsyncRedeemManager = new SyncDepositAsyncRedeemManager(address(escrow));
+        syncDepositAsyncRedeemManager = new SyncDepositAsyncRedeemManager(address(root), address(escrow));
         IBaseInvestmentManager[] memory investmentManagers;
         investmentManagers[0] = IBaseInvestmentManager(address(asyncInvestmentManager));
         investmentManagers[1] = IBaseInvestmentManager(address(syncDepositAsyncRedeemManager));
