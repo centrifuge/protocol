@@ -8,12 +8,12 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {JournalEntry} from "src/common/types/JournalEntry.sol";
 
-interface ICentrifugeChainId {
-    function centrifugeChainId() external view returns (uint16);
+interface ILocalCentrifugeId {
+    function localCentrifugeId() external view returns (uint16);
 }
 
 /// @notice Interface for dispatch-only gateway
-interface IPoolMessageSender is ICentrifugeChainId {
+interface IPoolMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
     function sendNotifyPool(uint16 chainId, PoolId poolId) external;
 
@@ -78,7 +78,7 @@ interface IPoolMessageSender is ICentrifugeChainId {
 }
 
 /// @notice Interface for dispatch-only gateway
-interface IVaultMessageSender is ICentrifugeChainId {
+interface IVaultMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
     function sendTransferShares(uint16 chainId, uint64 poolId, bytes16 scId, bytes32 recipient, uint128 amount)
         external;

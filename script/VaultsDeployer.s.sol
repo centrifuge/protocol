@@ -81,13 +81,13 @@ contract VaultsDeployer is CommonDeployer {
         IAuth(investmentManager).rely(address(poolManager));
         IAuth(restrictionManager).rely(address(poolManager));
         IAuth(restrictedRedemptions).rely(address(poolManager));
-        messageProcessor.rely(address(poolManager));
+        messageDispatcher.rely(address(poolManager));
 
         // Rely on InvestmentManager
-        messageProcessor.rely(address(investmentManager));
+        messageDispatcher.rely(address(investmentManager));
 
         // Rely on BalanceSheetManager
-        messageProcessor.rely(address(balanceSheetManager));
+        messageDispatcher.rely(address(balanceSheetManager));
         escrow.rely(address(balanceSheetManager));
 
         // Rely on Root
@@ -109,10 +109,14 @@ contract VaultsDeployer is CommonDeployer {
         // Rely on others
         routerEscrow.rely(address(vaultRouter));
 
-        // Rely on vaultMessageProcessor
+        // Rely on messageProcessor
         poolManager.rely(address(messageProcessor));
         investmentManager.rely(address(messageProcessor));
         balanceSheetManager.rely(address(messageProcessor));
+
+        poolManager.rely(address(messageDispatcher));
+        investmentManager.rely(address(messageDispatcher));
+        balanceSheetManager.rely(address(messageDispatcher));
 
         // Rely on VaultRouter
         gateway.rely(address(vaultRouter));
@@ -120,19 +124,24 @@ contract VaultsDeployer is CommonDeployer {
     }
 
     function _vaultsFile() public {
+        messageDispatcher.file("poolManager", address(poolManager));
+        messageDispatcher.file("investmentManager", address(investmentManager));
+        messageDispatcher.file("balanceSheetManager", address(investmentManager));
+
         messageProcessor.file("poolManager", address(poolManager));
         messageProcessor.file("investmentManager", address(investmentManager));
+        messageProcessor.file("balanceSheetManager", address(investmentManager));
 
-        poolManager.file("sender", address(messageProcessor));
         poolManager.file("balanceSheetManager", address(balanceSheetManager));
+        poolManager.file("sender", address(messageDispatcher));
 
         investmentManager.file("poolManager", address(poolManager));
         investmentManager.file("gateway", address(gateway));
-        investmentManager.file("sender", address(messageProcessor));
+        investmentManager.file("sender", address(messageDispatcher));
 
         balanceSheetManager.file("poolManager", address(poolManager));
         balanceSheetManager.file("gateway", address(gateway));
-        balanceSheetManager.file("sender", address(messageProcessor));
+        balanceSheetManager.file("sender", address(messageDispatcher));
     }
 
     function removeVaultsDeployerAccess() public {

@@ -74,7 +74,7 @@ contract BalanceSheetManagerTest is BaseTest {
     function testDeployment(address nonWard) public {
         vm.assume(
             nonWard != address(root) && nonWard != address(vaultFactory) && nonWard != address(gateway)
-                && nonWard != address(this)
+                && nonWard != address(messageProcessor) && nonWard != address(messageDispatcher) && nonWard != address(this)
         );
 
         // redeploying within test to increase coverage
@@ -84,7 +84,6 @@ contract BalanceSheetManagerTest is BaseTest {
         assertEq(address(balanceSheetManager.escrow()), address(escrow));
         assertEq(address(balanceSheetManager.gateway()), address(gateway));
         assertEq(address(balanceSheetManager.poolManager()), address(poolManager));
-        assertEq(address(gateway.handler()), address(balanceSheetManager.sender()));
 
         // permissions set correctly
         assertEq(balanceSheetManager.wards(address(root)), 1);

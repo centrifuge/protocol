@@ -79,6 +79,7 @@ contract TestCases is PoolsDeployer, Test {
         vm.label(address(poolRouter), "PoolRouter");
         vm.label(address(gateway), "Gateway");
         vm.label(address(messageProcessor), "MessageProcessor");
+        vm.label(address(messageDispatcher), "MessageDispatcher");
         vm.label(address(cv), "CV");
 
         // We should not use the block ChainID
