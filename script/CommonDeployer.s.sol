@@ -9,6 +9,7 @@ import {Gateway} from "src/common/Gateway.sol";
 import {Guardian, ISafe} from "src/common/Guardian.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {MessageProcessor} from "src/common/MessageProcessor.sol";
+import {MessageDispatcher} from "src/common/MessageDispatcher.sol";
 
 import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
 
@@ -27,6 +28,7 @@ contract CommonDeployer is Script, JsonRegistry {
     GasService public gasService;
     Gateway public gateway;
     MessageProcessor public messageProcessor;
+    MessageDispatcher public messageDispatcher;
 
     constructor() {
         // If no salt is provided, a pseudo-random salt is generated,
@@ -51,7 +53,8 @@ contract CommonDeployer is Script, JsonRegistry {
 
         gasService = new GasService(messageGasLimit, proofGasLimit);
         gateway = new Gateway(root, gasService);
-        messageProcessor = new MessageProcessor(chainId, gateway, root, gasService, address(this));
+        messageProcessor = new MessageProcessor(root, gasService, address(this));
+        messageDispatcher = new MessageDispatcher(chainId, gateway, address(this));
 
         _commonRegister();
         _commonRely();
@@ -67,15 +70,17 @@ contract CommonDeployer is Script, JsonRegistry {
         register("gasService", address(gasService));
         register("gateway", address(gateway));
         register("messageProcessor", address(messageProcessor));
+        register("messageDispatcher", address(messageDispatcher));
     }
 
     function _commonRely() private {
         gasService.rely(address(root));
         root.rely(address(guardian));
         root.rely(address(messageProcessor));
+        root.rely(address(messageDispatcher));
         gateway.rely(address(root));
         gateway.rely(address(guardian));
-        gateway.rely(address(messageProcessor));
+        gateway.rely(address(messageDispatcher));
         messageProcessor.rely(address(gateway));
     }
 
@@ -99,5 +104,6 @@ contract CommonDeployer is Script, JsonRegistry {
         gasService.deny(address(this));
         gateway.deny(address(this));
         messageProcessor.deny(address(this));
+        messageDispatcher.deny(address(this));
     }
 }

@@ -145,7 +145,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         assetId = assetToId[asset][tokenId];
         if (assetId == 0) {
             _assetCounter++;
-            assetId = newAssetId(sender.centrifugeChainId(), _assetCounter).raw();
+            assetId = newAssetId(sender.localCentrifugeId(), _assetCounter).raw();
 
             _idToAsset[assetId] = AssetIdKey(asset, tokenId);
             assetToId[asset][tokenId] = assetId;
