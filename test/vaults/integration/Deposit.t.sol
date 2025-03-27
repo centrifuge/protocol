@@ -6,12 +6,11 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import "test/vaults/BaseTest.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {PoolId, newPoolId} from "src/pools/types/PoolId.sol";
 
 contract DepositTest is BaseTest {
     using MessageLib for *;
     using CastLib for *;
-
-    uint16 constant CHAIN_ID = 1;
 
     /// forge-config: default.isolate = true
     function testDepositMint() public {
@@ -150,15 +149,17 @@ contract DepositTest is BaseTest {
     function testDepositWithPrepaymentFromGateway(uint256 amount) public {
         amount = uint128(bound(amount, 4, MAX_UINT128));
         vm.assume(amount % 2 == 0);
+        vm.deal(address(this), 1 ether);
 
-        (, uint256 gasPerMessage) = gateway.estimate(CHAIN_ID, "PAYLOAD_IS_IRRELEVANT");
+        (, uint256 gasPerMessage) = gateway.estimate(OTHER_CHAIN_ID, "PAYLOAD_IS_IRRELEVANT");
+        gateway.subsidizePool{value: gasPerMessage}(PoolId.wrap(POOL_A));
 
-        assertEq(address(gateway).balance, GATEWAY_INITIAL_BALANCE);
+        assertEq(gateway.subsidy(PoolId.wrap(POOL_A)), gasPerMessage);
 
+        // One outgoing requestDeposit message
         _testDepositMint(amount, false);
 
-        // Multiply estimated gas by two due to outgoing registerAsset and requestDeposit messages
-        assertEq(address(gateway).balance, GATEWAY_INITIAL_BALANCE - 2 * gasPerMessage);
+        assertEq(gateway.subsidy(PoolId.wrap(POOL_A)), 0);
     }
 
     function testPartialDepositExecutions(uint64 poolId, bytes16 trancheId) public {

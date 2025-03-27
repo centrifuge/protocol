@@ -11,6 +11,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {Gateway, IRoot, IGasService} from "src/common/Gateway.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {PoolId, newPoolId} from "src/pools/types/PoolId.sol";
 
 import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
 import {MockRoot} from "test/common/mocks/MockRoot.sol";
@@ -22,6 +23,7 @@ contract GatewayTest is Test {
     using MessageLib for *;
 
     uint16 constant CHAIN_ID = 23;
+    PoolId immutable POOL_A = newPoolId(CHAIN_ID, 42);
     uint256 constant INITIAL_BALANCE = 1 ether;
 
     uint256 constant FIRST_ADAPTER_ESTIMATE = 1.5 gwei;
@@ -54,7 +56,6 @@ contract GatewayTest is Test {
         gateway = new Gateway(IRoot(address(root)), IGasService(address(gasService)));
         gateway.file("handler", address(handler));
         gasService.setReturn("shouldRefuel", true);
-        vm.deal(address(gateway), INITIAL_BALANCE);
 
         adapter1 = new MockAdapter(gateway);
         vm.label(address(adapter1), "MockAdapter1");
@@ -360,7 +361,7 @@ contract GatewayTest is Test {
         uint256 topUpAmount = 10 wei;
 
         gateway.topUp{value: topUpAmount}();
-        gateway.setPayableSource(self);
+        gateway.setPayableSource(self, POOL_A);
 
         vm.expectRevert(bytes("Gateway/not-enough-gas-funds"));
         gateway.send(CHAIN_ID, message);
@@ -389,7 +390,7 @@ contract GatewayTest is Test {
         (uint256[] memory tranches, uint256 total) = gateway.estimate(CHAIN_ID, message);
         gateway.topUp{value: total}();
 
-        gateway.setPayableSource(self);
+        gateway.setPayableSource(self, POOL_A);
         gateway.send(CHAIN_ID, message);
 
         assertEq(gasService.calls("shouldRefuel"), 0);
@@ -421,7 +422,7 @@ contract GatewayTest is Test {
         uint256 topUpAmount = total + extra;
         gateway.topUp{value: topUpAmount}();
 
-        gateway.setPayableSource(self);
+        gateway.setPayableSource(self, POOL_A);
         gateway.send(CHAIN_ID, message);
 
         assertEq(gasService.calls("shouldRefuel"), 0);
@@ -442,16 +443,15 @@ contract GatewayTest is Test {
     function testingOutgoingMessagingWithCoveredPayment() public {
         gateway.file("adapters", threeMockAdapters);
 
-        bytes memory message = MessageLib.NotifyPool(1).serialize();
+        bytes memory message = MessageLib.NotifyPool(POOL_A.raw()).serialize();
         bytes memory proof = _formatMessageProof(message);
-
-        uint256 balanceBeforeTx = address(gateway).balance;
 
         (uint256[] memory tranches, uint256 total) = gateway.estimate(CHAIN_ID, message);
 
         assertEq(_quota(), 0);
 
-        gateway.setPayableSource(self);
+        gateway.subsidizePool{value: total}(POOL_A);
+        gateway.setPayableSource(self, POOL_A);
         gateway.send(CHAIN_ID, message);
 
         assertEq(gasService.calls("shouldRefuel"), 1);
@@ -464,7 +464,7 @@ contract GatewayTest is Test {
 
             assertEq(currentAdapter.sent(i == 0 ? message : proof), 1);
         }
-        assertEq(address(gateway).balance, balanceBeforeTx - total);
+        assertEq(address(gateway).balance, 0);
         assertEq(_quota(), 0);
     }
 
@@ -477,13 +477,11 @@ contract GatewayTest is Test {
         (uint256[] memory tranches,) = gateway.estimate(CHAIN_ID, message);
 
         uint256 fundsToCoverTwoAdaptersOnly = tranches[0] + tranches[1];
-        vm.deal(address(gateway), fundsToCoverTwoAdaptersOnly);
-        uint256 balanceBeforeTx = address(gateway).balance;
 
-        assertEq(balanceBeforeTx, fundsToCoverTwoAdaptersOnly);
         assertEq(_quota(), 0);
 
-        gateway.setPayableSource(self);
+        gateway.subsidizePool{value: fundsToCoverTwoAdaptersOnly}(POOL_A);
+        gateway.setPayableSource(self, POOL_A);
         gateway.send(CHAIN_ID, message);
 
         assertEq(gasService.calls("shouldRefuel"), 1);
@@ -503,7 +501,7 @@ contract GatewayTest is Test {
         assertEq(r3Metadata[0], 0);
         assertEq(adapter3.sent(proof), 1);
 
-        assertEq(address(gateway).balance, balanceBeforeTx - fundsToCoverTwoAdaptersOnly);
+        assertEq(address(gateway).balance, 0);
         assertEq(_quota(), 0);
     }
 
@@ -517,7 +515,7 @@ contract GatewayTest is Test {
 
         assertEq(_quota(), 0);
 
-        gateway.setPayableSource(self);
+        gateway.setPayableSource(self, POOL_A);
         gateway.send(CHAIN_ID, message);
 
         assertEq(gasService.calls("shouldRefuel"), 1);
@@ -545,18 +543,15 @@ contract GatewayTest is Test {
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
 
-        uint256 balanceBeforeTx = address(gateway).balance;
-        assertEq(balanceBeforeTx, INITIAL_BALANCE);
         assertEq(_quota(), 0);
 
         gasService.setReturn("shouldRefuel", false);
 
-        gateway.setPayableSource(self);
+        gateway.setPayableSource(self, POOL_A);
 
         vm.expectRevert(bytes("Gateway/not-enough-gas-funds"));
         gateway.send(CHAIN_ID, message);
 
-        assertEq(balanceBeforeTx, INITIAL_BALANCE);
         assertEq(_quota(), 0);
     }
 
@@ -747,6 +742,7 @@ contract GatewayTest is Test {
         address ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
         address receiver = makeAddr("receiver");
 
+        vm.deal(address(gateway), INITIAL_BALANCE);
         assertEq(address(gateway).balance, INITIAL_BALANCE);
         assertEq(receiver.balance, 0);
 

@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {PoolId} from "src/pools/types/PoolId.sol";
 
 uint8 constant MAX_ADAPTER_COUNT = 8;
 
@@ -47,7 +48,7 @@ interface IGateway is IMessageHandler, IMessageSender {
     event ExecuteMessageRecovery(bytes message, IAdapter adapter);
     event File(bytes32 indexed what, IAdapter[] adapters);
     event File(bytes32 indexed what, address addr);
-    event ReceiveNativeTokens(address indexed sender, uint256 amount);
+    event ReceiveNativeTokens(PoolId indexed poolId, address indexed sender, uint256 amount);
 
     // --- Administration ---
     /// @notice Used to update an array of addresses ( state variable ) on very rare occasions.
@@ -64,7 +65,8 @@ interface IGateway is IMessageHandler, IMessageSender {
 
     /// @notice Set the payable source of the message.
     /// @param  source Used to determine whether it is eligible for TX cost payment.
-    function setPayableSource(address source) external;
+    /// @param  poolId Used to associate the message to a pool, in order to subsidize the cost.
+    function setPayableSource(address source, PoolId poolId) external;
 
     /// @notice Initialize batching message
     function startBatch() external;
