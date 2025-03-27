@@ -42,7 +42,7 @@ contract AccountingTest is Test {
     function beforeTestSetup(bytes4 testSelector) public pure returns (bytes[] memory beforeTestCalldata) {
         if (testSelector == this.testJournalId.selector) {
             beforeTestCalldata = new bytes[](1);
-            beforeTestCalldata[0] = abi.encodePacked(this.setupJournalId.selector);
+            beforeTestCalldata[0] = abi.encode(this.setupJournalId.selector);
         }
     }
 
