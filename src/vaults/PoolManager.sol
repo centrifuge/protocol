@@ -344,11 +344,8 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         bool isWrappedERC20 = success && data.length == 32;
         _vaultDetails[vault] = VaultDetails(assetId, assetIdKey.asset, assetIdKey.tokenId, isWrappedERC20, false);
 
-        address manager = address(IBaseVault(vault).manager());
         // NOTE - Reverting the three actions below is not easy. We SHOULD do that if we phase-out a manager
-        IAuth(tranche_.token).rely(manager);
-        escrow.approveMax(tranche_.token, manager);
-        escrow.approveMax(assetIdKey.asset, assetIdKey.tokenId, manager);
+        _approveManagers(vault, tranche_.token, assetIdKey.asset, assetIdKey.tokenId);
 
         emit DeployVault(poolId, trancheId, assetIdKey.asset, assetIdKey.tokenId, factory, vault);
         return vault;
@@ -474,6 +471,26 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
             isPartial = true;
             otherManager = address(IAsyncRedeemVault(vault).asyncManager());
         }
+    }
+
+    /// @dev Sets up permissions for the base vault manager and potentially a side manager (in case of partially sync
+    /// vault)
+    function _approveManagers(address vault, address trancheToken, address asset, uint256 tokenId) internal {
+        IBaseInvestmentManager manager = IBaseVault(vault).manager();
+        _approveManager(address(manager), trancheToken, asset, tokenId);
+
+        // For sync deposit & async redeem vault, also repeat above for async manager (base manager is sync one)
+        (bool isSyncDepositAsyncRedeemVault, address asyncRedeemManager) = isPartiallySyncVault(vault, manager);
+        if (isSyncDepositAsyncRedeemVault) {
+            _approveManager(asyncRedeemManager, trancheToken, asset, tokenId);
+        }
+    }
+
+    /// @dev Sets up permissions for a vault manager
+    function _approveManager(address manager, address trancheToken, address asset, uint256 tokenId) internal {
+        IAuth(trancheToken).rely(manager);
+        escrow.approveMax(trancheToken, manager);
+        escrow.approveMax(asset, tokenId, manager);
     }
 
     function _safeGetAssetDecimals(address asset, uint256 tokenId) private view returns (uint8) {

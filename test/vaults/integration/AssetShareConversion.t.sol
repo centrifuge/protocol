@@ -12,7 +12,7 @@ contract AssetShareConversionTest is BaseTest {
 
         ERC20 asset = _newErc20("Asset", "A", INVESTMENT_CURRENCY_DECIMALS);
         (address vault_, uint128 assetId) = deployVault(
-            true, poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0
+            VaultKind.Async, poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0
         );
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
@@ -65,7 +65,7 @@ contract AssetShareConversionTest is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         (address vault_, uint128 assetId) = deployVault(
-            true, poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0
+            VaultKind.Async, poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0
         );
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
@@ -113,7 +113,7 @@ contract AssetShareConversionTest is BaseTest {
 
         ERC20 asset = _newErc20("Asset", "A", INVESTMENT_CURRENCY_DECIMALS);
         (address vault_, uint128 assetId) = deployVault(
-            true, poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0
+            VaultKind.Async, poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0
         );
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche(address(ERC7540Vault(vault_).share()));

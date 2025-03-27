@@ -71,8 +71,6 @@ contract SyncInvestmentManager is BaseInvestmentManager, ISyncInvestmentManager 
         require(vault_.asset() == asset_, "SyncInvestmentManager/asset-mismatch");
         require(vault[poolId][trancheId][assetId] == address(0), "SyncInvestmentManager/vault-already-exists");
 
-        // TODO(@wischli): Also execute for asyncManager
-
         vault[poolId][trancheId][assetId] = vaultAddr;
 
         IAuth(token).rely(vaultAddr);

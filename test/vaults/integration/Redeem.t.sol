@@ -13,7 +13,7 @@ contract RedeemTest is BaseTest {
     function testRedeem(uint256 amount) public {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
-        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
+        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
 
@@ -90,7 +90,7 @@ contract RedeemTest is BaseTest {
     function testWithdraw(uint256 amount) public {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
-        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
+        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
 
@@ -138,7 +138,7 @@ contract RedeemTest is BaseTest {
         uint256 amount = redemption1 + redemption2;
         vm.assume(amountAssumption(amount));
 
-        (address vault_,) = deploySimpleAsyncVault();
+        (address vault_,) = deploySimpleVault(VaultKind.Async);
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
 
@@ -160,7 +160,7 @@ contract RedeemTest is BaseTest {
     function testCancelRedeemOrder(uint256 amount) public {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
-        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
+        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         deposit(vault_, self, amount * 2); // deposit funds first
@@ -214,7 +214,7 @@ contract RedeemTest is BaseTest {
     function testTriggerRedeemRequestTokens(uint128 amount) public {
         amount = uint128(bound(amount, 2, (MAX_UINT128 - 1)));
 
-        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
+        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         deposit(vault_, investor, amount, false); // request and execute deposit, but don't claim
@@ -262,7 +262,7 @@ contract RedeemTest is BaseTest {
         amount = uint128(bound(amount, 2, (MAX_UINT128 - 1)));
         vm.assume(amount % 2 == 0);
 
-        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
+        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         deposit(vault_, investor, amount, false); // request and execute deposit, but don't claim
@@ -297,7 +297,7 @@ contract RedeemTest is BaseTest {
     function testTriggerRedeemRequestTokensUnmintedTokensInEscrow(uint128 amount) public {
         amount = uint128(bound(amount, 2, (MAX_UINT128 - 1)));
 
-        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
+        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         deposit(vault_, investor, amount, false); // request and execute deposit, but don't claim
@@ -338,7 +338,7 @@ contract RedeemTest is BaseTest {
     }
 
     function testPartialRedemptionExecutions() public {
-        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
+        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         uint64 poolId = vault.poolId();

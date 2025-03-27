@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {Root} from "src/common/Root.sol";
+
 import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
-import {Root} from "src/common/Root.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
+import {VaultKind} from "src/vaults/BaseVaults.sol";
+
 import {BaseTest} from "test/vaults/BaseTest.sol";
 import "forge-std/Test.sol";
 
@@ -33,7 +36,16 @@ contract FactoryTest is Test {
             BaseTest testSetup1 = new BaseTest{salt: keccak256(abi.encode(vm.envString("DEPLOYMENT_SALT")))}();
             testSetup1.setUp();
             testSetup1.deployVault(
-                true, poolId, 18, testSetup1.restrictionManager(), "", "", trancheId, address(testSetup1.erc20()), 0, 0
+                VaultKind.Async,
+                poolId,
+                18,
+                testSetup1.restrictionManager(),
+                "",
+                "",
+                trancheId,
+                address(testSetup1.erc20()),
+                0,
+                0
             );
             address tranche1 = PoolManagerLike(address(testSetup1.poolManager())).getTranche(poolId, trancheId);
             address root1 = address(testSetup1.root());
@@ -42,7 +54,16 @@ contract FactoryTest is Test {
             BaseTest testSetup2 = new BaseTest{salt: keccak256(abi.encode(vm.envString("DEPLOYMENT_SALT")))}();
             testSetup2.setUp();
             testSetup2.deployVault(
-                true, poolId, 18, testSetup2.restrictionManager(), "", "", trancheId, address(testSetup2.erc20()), 0, 0
+                VaultKind.Async,
+                poolId,
+                18,
+                testSetup2.restrictionManager(),
+                "",
+                "",
+                trancheId,
+                address(testSetup2.erc20()),
+                0,
+                0
             );
             address tranche2 = PoolManagerLike(address(testSetup2.poolManager())).getTranche(poolId, trancheId);
             address root2 = address(testSetup2.root());

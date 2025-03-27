@@ -227,7 +227,7 @@ contract AdminTest is BaseTest {
 
     //------ Token Recovery tests ------///
     function testRecoverTokens() public {
-        deploySimpleAsyncVault();
+        deploySimpleVault(VaultKind.Async);
         address clumsyUser = vm.addr(0x1234);
         address vault_ =
             asyncInvestmentManager.vault(5, bytes16(bytes("1")), poolManager.assetToId(address(erc20), erc20TokenId));

@@ -43,7 +43,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testGetVault() public {
-        (address vault_,) = deploySimpleAsyncVault();
+        (address vault_,) = deploySimpleVault(VaultKind.Async);
         ERC7540Vault vault = ERC7540Vault(vault_);
         vm.label(vault_, "vault");
 
@@ -59,7 +59,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testRequestDeposit() public {
-        (address vault_,) = deploySimpleAsyncVault();
+        (address vault_,) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint256 amount = 100 * 10 ** 18;
@@ -83,7 +83,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testLockDepositRequests() public {
-        (address vault_,) = deploySimpleAsyncVault();
+        (address vault_,) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
 
         uint256 amount = 100 * 10 ** 18;
@@ -101,7 +101,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testUnlockDepositRequests() public {
-        (address vault_,) = deploySimpleAsyncVault();
+        (address vault_,) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
 
         uint256 amount = 100 * 10 ** 18;
@@ -121,7 +121,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testCancelDepositRequest() public {
-        (address vault_,) = deploySimpleAsyncVault();
+        (address vault_,) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
         ERC7540Vault vault = ERC7540Vault(vault_);
 
@@ -154,7 +154,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testClaimCancelDepositRequest() public {
-        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
+        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
         ERC7540Vault vault = ERC7540Vault(vault_);
 
@@ -192,7 +192,7 @@ contract VaultRouterTest is BaseTest {
 
     function testRequestRedeem() external {
         // Deposit first
-        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
+        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint256 amount = 100 * 10 ** 18;
@@ -224,7 +224,7 @@ contract VaultRouterTest is BaseTest {
 
     function testCancelRedeemRequest() public {
         // Deposit first
-        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
+        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint256 amount = 100 * 10 ** 18;
@@ -260,7 +260,7 @@ contract VaultRouterTest is BaseTest {
 
     function testClaimCancelRedeemRequest() public {
         // Deposit first
-        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
+        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint256 amount = 100 * 10 ** 18;
@@ -300,7 +300,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testPermit() public {
-        (address vault_,) = deploySimpleAsyncVault();
+        (address vault_,) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
 
         bytes32 PERMIT_TYPEHASH =
@@ -330,7 +330,7 @@ contract VaultRouterTest is BaseTest {
 
     /// forge-config: default.isolate = true
     function testTransferTrancheTokensToAddressDestination() public {
-        (address vault_,) = deploySimpleAsyncVault();
+        (address vault_,) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
         ERC7540Vault vault = ERC7540Vault(vault_);
         ERC20 share = ERC20(IERC7540Vault(vault_).share());
@@ -361,7 +361,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testTransferTrancheTokensToBytes32Destination() public {
-        (address vault_,) = deploySimpleAsyncVault();
+        (address vault_,) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
         ERC7540Vault vault = ERC7540Vault(vault_);
         ERC20 share = ERC20(IERC7540Vault(vault_).share());
@@ -432,7 +432,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testEnableAndDisable() public {
-        (address vault_,) = deploySimpleAsyncVault();
+        (address vault_,) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
 
         assertFalse(ERC7540Vault(vault_).isOperator(self, address(vaultRouter)));
@@ -506,7 +506,7 @@ contract VaultRouterTest is BaseTest {
 
     function testIfUserIsPermittedToExecuteRequests() public {
         uint256 amount = 100 * 10 ** 18;
-        (address vault_,) = deploySimpleAsyncVault();
+        (address vault_,) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
         ERC7540Vault vault = ERC7540Vault(vault_);
 

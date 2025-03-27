@@ -73,7 +73,6 @@ contract AsyncInvestmentManager is BaseInvestmentManager, IAsyncInvestmentManage
         require(vault[poolId][trancheId][assetId] == address(0), "AsyncInvestmentManager/vault-already-exists");
 
         vault[poolId][trancheId][assetId] = vaultAddr;
-
         IAuth(token).rely(vaultAddr);
         ITranche(token).updateVault(vault_.asset(), vaultAddr);
         rely(vaultAddr);

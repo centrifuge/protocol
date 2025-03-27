@@ -11,7 +11,7 @@ contract OperatorTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
+        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         address investor = makeAddr("investor");
         address operator = makeAddr("operator");
         ERC7540Vault vault = ERC7540Vault(vault_);
@@ -66,7 +66,7 @@ contract OperatorTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
+        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         (address controller, uint256 controllerPk) = makeAddrAndKey("controller");
         address operator = makeAddr("operator");
         ERC7540Vault vault = ERC7540Vault(vault_);
@@ -143,7 +143,7 @@ contract OperatorTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
         vm.assume(amount % 2 == 0);
 
-        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
+        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         address investor = makeAddr("investor");
         address operator = makeAddr("operator");
         ERC7540Vault vault = ERC7540Vault(vault_);
@@ -191,7 +191,7 @@ contract OperatorTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (address vault_, uint128 assetId) = deploySimpleAsyncVault();
+        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         (address controller, uint256 controllerPk) = makeAddrAndKey("controller");
         address operator = makeAddr("operator");
         ERC7540Vault vault = ERC7540Vault(vault_);

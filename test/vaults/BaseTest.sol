@@ -24,6 +24,9 @@ import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
+import {VaultKind} from "src/vaults/BaseVaults.sol";
+
+// scripts
 import {VaultsDeployer} from "script/VaultsDeployer.s.sol";
 
 // mocks
@@ -161,8 +164,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
     // helpers
     function deployVault(
-        // TODO(@wischli): Replace with enum
-        bool isAsync,
+        VaultKind vaultKind,
         uint64 poolId,
         uint8 trancheDecimals,
         address hook,
@@ -187,8 +189,9 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         poolManager.updateTranchePrice(poolId, trancheId, assetId, uint128(10 ** 18), uint64(block.timestamp));
 
         // Trigger new vault deployment via UpdateContract
+        bytes32 vaultFactory = _vaultKindToVaultFactory(vaultKind);
         bytes memory vaultUpdate = MessageLib.UpdateContractVaultUpdate({
-            vaultOrFactory: bytes32(bytes20(isAsync ? asyncVaultFactory : syncDepositAsyncRedeemVaultFactory)),
+            vaultOrFactory: vaultFactory,
             assetId: assetId,
             kind: uint8(VaultUpdateKind.DeployAndLink)
         }).serialize();
@@ -197,7 +200,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     }
 
     function deployVault(
-        bool isAsync,
+        VaultKind vaultKind,
         uint64 poolId,
         uint8 decimals,
         string memory tokenName,
@@ -205,7 +208,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         bytes16 trancheId
     ) public returns (address vaultAddress, uint128 assetId) {
         return deployVault(
-            isAsync,
+            vaultKind,
             poolId,
             decimals,
             restrictionManager,
@@ -218,9 +221,9 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         );
     }
 
-    function deploySimpleAsyncVault() public returns (address vaultAddress, uint128 assetId) {
+    function deploySimpleVault(VaultKind vaultKind) public returns (address vaultAddress, uint128 assetId) {
         return deployVault(
-            true,
+            vaultKind,
             5,
             6,
             restrictionManager,
@@ -308,6 +311,20 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         }
         uint256 randomnumber = uint256(keccak256(abi.encodePacked(block.timestamp, self, nonce))) % (maxValue - 1);
         return randomnumber + 1;
+    }
+
+    function _vaultKindToVaultFactory(VaultKind vaultKind) internal view returns (bytes32 vaultFactoryBytes) {
+        address vaultFactory;
+
+        if (vaultKind == VaultKind.Async) {
+            vaultFactory = asyncVaultFactory;
+        } else if (vaultKind == VaultKind.SyncDepositAsyncRedeem) {
+            vaultFactory = syncDepositAsyncRedeemVaultFactory;
+        } else {
+            revert("BaseTest/unsupported-vault-kind");
+        }
+
+        return bytes32(bytes20(vaultFactory));
     }
 
     // assumptions
