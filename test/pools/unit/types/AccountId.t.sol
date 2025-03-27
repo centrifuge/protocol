@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 
-import {AccountId, newAccountId} from "src/pools/types/AccountId.sol";
+import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
 
 contract AccountIdTest is Test {
     function testAccountId(uint24 id, uint8 kind) public pure {

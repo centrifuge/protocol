@@ -4,8 +4,8 @@ pragma solidity 0.8.28;
 import {Auth} from "src/misc/Auth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 
-import {PoolId, newPoolId} from "src/pools/types/PoolId.sol";
-import {AssetId} from "src/pools/types/AssetId.sol";
+import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 

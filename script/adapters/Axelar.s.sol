@@ -18,7 +18,7 @@ contract AxelarDeployer is FullDeployer {
         deployFull(centrifugeChainId, ISafe(vm.envAddress("ADMIN")), msg.sender);
 
         AxelarAdapter adapter = new AxelarAdapter(gateway, axelarGateway, axelarGasService, msg.sender);
-        wire(adapter);
+        wire(adapter, msg.sender);
 
         removeFullDeployerAccess(msg.sender);
 

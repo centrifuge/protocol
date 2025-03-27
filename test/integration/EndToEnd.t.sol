@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
-import {PoolId} from "src/pools/types/PoolId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 
 import {PoolRouter} from "src/pools/PoolRouter.sol";
 
@@ -51,7 +51,7 @@ contract TestEndToEnd is Test {
         deploy.deployFull(chainId, safeAdmin, address(deploy));
 
         adapter = new LocalAdapter(chainId, deploy.gateway(), address(deploy));
-        deploy.wire(adapter);
+        deploy.wire(adapter, address(deploy));
 
         vm.startPrank(address(deploy));
         deploy.gasService().file("messageGasLimit", GAS);
@@ -68,7 +68,7 @@ contract TestEndToEnd is Test {
     /// forge-config: default.isolate = true
     function testConfigurePool(bool sameChain) public {
         (PoolsDeployer cp, VaultsDeployer cv) = _getDeploys(sameChain);
-        uint16 cvChainId = cv.messageProcessor().centrifugeChainId();
+        uint16 cvChainId = cv.messageDispatcher().localCentrifugeId();
 
         vm.startPrank(FM);
 

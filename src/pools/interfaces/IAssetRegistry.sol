@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {IERC6909Fungible, IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
 
-import {AssetId} from "src/pools/types/AssetId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 
 /// @notice Interface for registering and handling assets
 interface IAssetRegistry is IERC6909MetadataExt, IERC6909Fungible {

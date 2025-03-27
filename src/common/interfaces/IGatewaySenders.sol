@@ -1,16 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
-import {AssetId} from "src/pools/types/AssetId.sol";
-import {PoolId} from "src/pools/types/PoolId.sol";
+import {D18} from "src/misc/types/D18.sol";
 
-interface ICentrifugeChainId {
-    function centrifugeChainId() external view returns (uint16);
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {JournalEntry} from "src/common/types/JournalEntry.sol";
+
+interface ILocalCentrifugeId {
+    function localCentrifugeId() external view returns (uint16);
 }
 
 /// @notice Interface for dispatch-only gateway
-interface IPoolMessageSender is ICentrifugeChainId {
+interface IPoolMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
     function sendNotifyPool(uint16 chainId, PoolId poolId) external;
 
@@ -75,7 +78,7 @@ interface IPoolMessageSender is ICentrifugeChainId {
 }
 
 /// @notice Interface for dispatch-only gateway
-interface IVaultMessageSender is ICentrifugeChainId {
+interface IVaultMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
     function sendTransferShares(uint16 chainId, uint64 poolId, bytes16 scId, bytes32 recipient, uint128 amount)
         external;
@@ -101,5 +104,66 @@ interface IVaultMessageSender is ICentrifugeChainId {
         string memory name,
         string memory symbol,
         uint8 decimals
+    ) external;
+
+    /// @notice Creates and send the message
+    function sendIncreaseHolding(
+        PoolId poolId,
+        ShareClassId shareClassId,
+        AssetId assetId,
+        address provider,
+        uint128 amount,
+        D18 pricePerUnit,
+        uint256 timestamp,
+        JournalEntry[] calldata debits,
+        JournalEntry[] calldata credits
+    ) external;
+
+    /// @notice Creates and send the message
+    function sendDecreaseHolding(
+        PoolId poolId,
+        ShareClassId shareClassId,
+        AssetId assetId,
+        address receiver,
+        uint128 amount,
+        D18 pricePerUnit,
+        uint256 timestamp,
+        JournalEntry[] calldata debits,
+        JournalEntry[] calldata credits
+    ) external;
+
+    function sendUpdateHoldingValue(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        D18 pricePerUnit,
+        uint256 timestamp
+    ) external;
+
+    /// @notice Creates and send the message
+    function sendIssueShares(
+        PoolId poolId,
+        ShareClassId shareClassId,
+        address receiver,
+        D18 pricePerShare,
+        uint128 shares,
+        uint256 timestamp
+    ) external;
+
+    /// @notice Creates and send the message
+    function sendRevokeShares(
+        PoolId poolId,
+        ShareClassId shareClassId,
+        address provider,
+        D18 pricePerShare,
+        uint128 shares,
+        uint256 timestamp
+    ) external;
+
+    function sendJournalEntry(
+        PoolId poolId,
+        ShareClassId shareClassId,
+        JournalEntry[] calldata debits,
+        JournalEntry[] calldata credits
     ) external;
 }

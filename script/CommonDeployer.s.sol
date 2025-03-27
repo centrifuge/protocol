@@ -9,6 +9,7 @@ import {Gateway} from "src/common/Gateway.sol";
 import {Guardian, ISafe} from "src/common/Guardian.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {MessageProcessor} from "src/common/MessageProcessor.sol";
+import {MessageDispatcher} from "src/common/MessageDispatcher.sol";
 
 import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
 
@@ -27,6 +28,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     GasService public gasService;
     Gateway public gateway;
     MessageProcessor public messageProcessor;
+    MessageDispatcher public messageDispatcher;
 
     constructor() {
         // If no salt is provided, a pseudo-random salt is generated,
@@ -51,7 +53,9 @@ abstract contract CommonDeployer is Script, JsonRegistry {
 
         gasService = new GasService(messageGasLimit, proofGasLimit);
         gateway = new Gateway(root, gasService);
-        messageProcessor = new MessageProcessor(chainId, gateway, root, gasService, deployer);
+
+        messageProcessor = new MessageProcessor(root, gasService, deployer);
+        messageDispatcher = new MessageDispatcher(chainId, gateway, deployer);
 
         _commonRegister();
         _commonRely();
@@ -67,15 +71,17 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         register("gasService", address(gasService));
         register("gateway", address(gateway));
         register("messageProcessor", address(messageProcessor));
+        register("messageDispatcher", address(messageDispatcher));
     }
 
     function _commonRely() private {
         gasService.rely(address(root));
         root.rely(address(guardian));
         root.rely(address(messageProcessor));
+        root.rely(address(messageDispatcher));
         gateway.rely(address(root));
         gateway.rely(address(guardian));
-        gateway.rely(address(messageProcessor));
+        gateway.rely(address(messageDispatcher));
         messageProcessor.rely(address(gateway));
     }
 
@@ -83,11 +89,11 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         gateway.file("handler", address(messageProcessor));
     }
 
-    function wire(IAdapter adapter) public {
+    function wire(IAdapter adapter, address deployer) public {
         adapters.push(adapter);
         gateway.file("adapters", adapters);
         IAuth(address(adapter)).rely(address(root));
-        IAuth(address(adapter)).deny(address(this));
+        IAuth(address(adapter)).deny(deployer);
     }
 
     function removeCommonDeployerAccess(address deployer) public {
@@ -99,5 +105,6 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         gasService.deny(deployer);
         gateway.deny(deployer);
         messageProcessor.deny(deployer);
+        messageDispatcher.deny(deployer);
     }
 }

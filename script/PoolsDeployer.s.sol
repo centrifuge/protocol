@@ -11,7 +11,7 @@ import {Root} from "src/common/Root.sol";
 import {GasService} from "src/common/GasService.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
-import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
+import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {PoolRegistry} from "src/pools/PoolRegistry.sol";
 import {MultiShareClass} from "src/pools/MultiShareClass.sol";
 import {Holdings} from "src/pools/Holdings.sol";
@@ -44,13 +44,13 @@ contract PoolsDeployer is CommonDeployer {
 
         poolRegistry = new PoolRegistry(deployer);
         assetRegistry = new AssetRegistry(deployer);
+        transientValuation = new TransientValuation(assetRegistry, deployer);
+        identityValuation = new IdentityValuation(assetRegistry, deployer);
         accounting = new Accounting(deployer);
         holdings = new Holdings(poolRegistry, deployer);
         multiShareClass = new MultiShareClass(poolRegistry, deployer);
-        poolRouter = new PoolRouter(poolRegistry, assetRegistry, accounting, holdings, gateway, deployer);
-
-        transientValuation = new TransientValuation(assetRegistry, deployer);
-        identityValuation = new IdentityValuation(assetRegistry, deployer);
+        poolRouter =
+            new PoolRouter(poolRegistry, assetRegistry, accounting, holdings, gateway, transientValuation, deployer);
 
         _poolsRegister();
         _poolsRely();
@@ -77,12 +77,15 @@ contract PoolsDeployer is CommonDeployer {
         multiShareClass.rely(address(poolRouter));
         gateway.rely(address(poolRouter));
         poolRouter.rely(address(messageProcessor));
-        messageProcessor.rely(address(poolRouter));
+        poolRouter.rely(address(messageDispatcher));
+        messageDispatcher.rely(address(poolRouter));
     }
 
     function _poolsFile() private {
         messageProcessor.file("poolRouter", address(poolRouter));
-        poolRouter.file("sender", address(messageProcessor));
+        messageDispatcher.file("poolRouter", address(poolRouter));
+
+        poolRouter.file("sender", address(messageDispatcher));
     }
 
     function _poolsInitialConfig() private {

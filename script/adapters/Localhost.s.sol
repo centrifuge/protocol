@@ -5,14 +5,13 @@ import {ERC20} from "src/misc/ERC20.sol";
 
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 
 import {FullDeployer, PoolsDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
 
 import {LocalhostAdapter} from "test/integration/adapters/LocalhostAdapter.sol";
-
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
-import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
-import {PoolId} from "src/pools/types/PoolId.sol";
 
 // Script to deploy CP and CP with an Localhost Adapter.
 contract LocalhostDeployer is FullDeployer {
@@ -25,7 +24,7 @@ contract LocalhostDeployer is FullDeployer {
         saveDeploymentOutput();
 
         LocalhostAdapter adapter = new LocalhostAdapter(gateway, msg.sender);
-        wire(adapter);
+        wire(adapter, msg.sender);
 
         _configureTestData(centrifugeChainId);
 
