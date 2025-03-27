@@ -274,7 +274,6 @@ contract AsyncInvestmentManager is BaseInvestmentManager, IAsyncInvestmentManage
         ITranche tranche = ITranche(IERC7540Vault(vault_).share());
         tranche.burn(address(escrow), shares);
 
-        // TODO: Use IAsyncRedeemVault interface instead
         IERC7540Vault(vault_).onRedeemClaimable(user, assets, shares);
     }
 

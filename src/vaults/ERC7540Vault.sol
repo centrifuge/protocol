@@ -13,7 +13,7 @@ import "src/vaults/interfaces/IERC7575.sol";
 /// @title  ERC7540Vault
 /// @notice Asynchronous Tokenized Vault standard implementation for Centrifuge pools
 ///
-/// @dev    Each vault issues shares of Centrifuge tranches as restricted ERC-20 tokens
+/// @dev    Each vault issues shares of Centrifuge tranches as restricted ERC-20 or ERC-6909 tokens
 ///         against asset deposits based on the current share price.
 ///
 ///         ERC-7540 is an extension of the ERC-4626 standard by 'requestDeposit' & 'requestRedeem' methods, where
