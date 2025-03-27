@@ -117,17 +117,13 @@ contract SyncInvestmentManager is BaseInvestmentManager, ISyncInvestmentManager 
     }
 
     /// @inheritdoc IDepositManager
-    function maxMint(address vaultAddr, address /* owner */ ) public view returns (uint256) {
-        SyncDepositAsyncRedeemVault vault_ = SyncDepositAsyncRedeemVault(vaultAddr);
-
+    function maxMint(address, /* vaultAddr */ address /* owner */ ) public pure returns (uint256) {
         // TODO(follow-up PR): implement rate limit
         return type(uint256).max;
     }
 
     /// @inheritdoc IDepositManager
-    function maxDeposit(address vaultAddr, address /* owner */ ) public view returns (uint256) {
-        SyncDepositAsyncRedeemVault vault_ = SyncDepositAsyncRedeemVault(vaultAddr);
-
+    function maxDeposit(address, /* vaultAddr */ address /* owner */ ) public pure returns (uint256) {
         // TODO(follow-up PR): implement rate limit
         return type(uint256).max;
     }
