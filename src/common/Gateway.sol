@@ -57,7 +57,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
     mapping(bytes32 messageHash => Message) internal _messages;
     mapping(IAdapter adapter => Adapter) internal _activeAdapters;
 
-    /// @notice Amount of ETH received per pool for paying messages
+    /// @notice Amount of native tokens received per pool for paying messages
     mapping(PoolId => uint256) public subsidy;
 
     /// @inheritdoc IGateway
