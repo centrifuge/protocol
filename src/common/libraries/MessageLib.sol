@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {D18, d18} from "src/misc/types/D18.sol";
 
 import {JournalEntry, JournalEntryLib} from "src/common/types/JournalEntry.sol";
 
@@ -906,7 +905,7 @@ library MessageLib {
         uint128 assetId;
         bytes32 who;
         uint128 amount;
-        D18 pricePerUnit;
+        uint128 pricePerUnit;
         uint256 timestamp;
         bool isIncrease; // Signals whether this is an increase or a decrease
         JournalEntry[] debits; // As secuence of bytes
@@ -925,7 +924,7 @@ library MessageLib {
             assetId: data.toUint128(25),
             who: data.toBytes32(41),
             amount: data.toUint128(73),
-            pricePerUnit: D18.wrap(data.toUint128(89)),
+            pricePerUnit: data.toUint128(89),
             timestamp: data.toUint256(105),
             isIncrease: data.toBool(137),
             // Skip 2 bytes for sequence length at 138
@@ -964,7 +963,7 @@ library MessageLib {
         uint64 poolId;
         bytes16 scId;
         uint128 assetId;
-        D18 pricePerUnit;
+        uint128 pricePerUnit;
         uint256 timestamp;
     }
 
@@ -975,7 +974,7 @@ library MessageLib {
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
-            pricePerUnit: D18.wrap(data.toUint128(41)),
+            pricePerUnit: data.toUint128(41),
             timestamp: data.toUint256(57)
         });
     }
@@ -993,7 +992,7 @@ library MessageLib {
         uint64 poolId;
         bytes16 scId;
         bytes32 who;
-        D18 pricePerShare;
+        uint128 pricePerShare;
         uint128 shares;
         uint256 timestamp;
         bool isIssuance;
@@ -1006,7 +1005,7 @@ library MessageLib {
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             who: data.toBytes32(25),
-            pricePerShare: D18.wrap(data.toUint128(57)),
+            pricePerShare: data.toUint128(57),
             shares: data.toUint128(73),
             timestamp: data.toUint256(89),
             isIssuance: data.toBool(121)
@@ -1063,7 +1062,7 @@ library MessageLib {
         uint128 assetId;
         bytes32 who;
         uint128 amount;
-        D18 pricePerUnit;
+        uint128 pricePerUnit;
         bool isIncrease; // Signals whether this is an increase or a decrease
         bool asAllowance; // Signals whether the amount is transferred or allowed to who on the BSM
         JournalEntry[] debits; // As secuence of bytes
@@ -1086,7 +1085,7 @@ library MessageLib {
             assetId: data.toUint128(25),
             who: data.toBytes32(41),
             amount: data.toUint128(73),
-            pricePerUnit: D18.wrap(data.toUint128(89)),
+            pricePerUnit: data.toUint128(89),
             isIncrease: data.toBool(105),
             asAllowance: data.toBool(106),
             // Skip 2 bytes for sequence length at 107
@@ -1125,7 +1124,7 @@ library MessageLib {
         uint64 poolId;
         bytes16 scId;
         bytes32 who;
-        D18 pricePerShare;
+        uint128 pricePerShare;
         uint128 shares;
         bool isIssuance;
         bool asAllowance;
@@ -1138,7 +1137,7 @@ library MessageLib {
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             who: data.toBytes32(25),
-            pricePerShare: D18.wrap(data.toUint128(57)),
+            pricePerShare: data.toUint128(57),
             shares: data.toUint128(73),
             isIssuance: data.toBool(89),
             asAllowance: data.toBool(90)

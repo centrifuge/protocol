@@ -441,7 +441,7 @@ contract TestMessageLibIdentities is Test {
             assetId: 5,
             who: bytes32("alice"),
             amount: 100,
-            pricePerUnit: d18(3, 1),
+            pricePerUnit: 23,
             timestamp: 12345,
             isIncrease: false,
             debits: debits,
@@ -455,7 +455,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.assetId, b.assetId);
         assertEq(a.who, b.who);
         assertEq(a.amount, b.amount);
-        assert(a.pricePerUnit.eq(b.pricePerUnit));
+        assertEq(a.pricePerUnit, b.pricePerUnit);
         assertEq(a.timestamp, b.timestamp);
         assertEq(a.isIncrease, b.isIncrease);
         _checkEntries(a.debits, b.debits);
@@ -469,7 +469,7 @@ contract TestMessageLibIdentities is Test {
             poolId: 1,
             scId: bytes16("sc"),
             assetId: 5,
-            pricePerUnit: d18(3, 1),
+            pricePerUnit: 23,
             timestamp: 12345
         });
         MessageLib.UpdateHoldingValue memory b = MessageLib.deserializeUpdateHoldingValue(a.serialize());
@@ -477,7 +477,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
         assertEq(a.assetId, b.assetId);
-        assert(a.pricePerUnit.eq(b.pricePerUnit));
+        assertEq(a.pricePerUnit, b.pricePerUnit);
         assertEq(a.timestamp, b.timestamp);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
@@ -488,7 +488,7 @@ contract TestMessageLibIdentities is Test {
             poolId: 1,
             scId: bytes16("sc"),
             who: bytes32("alice"),
-            pricePerShare: d18(123456),
+            pricePerShare: 23,
             shares: 100,
             timestamp: 12345,
             isIssuance: true
@@ -500,7 +500,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.scId, b.scId);
         assertEq(a.who, b.who);
         assertEq(a.shares, b.shares);
-        assert(a.pricePerShare.eq(b.pricePerShare));
+        assertEq(a.pricePerShare, b.pricePerShare);
         assertEq(a.timestamp, b.timestamp);
         assertEq(a.isIssuance, b.isIssuance);
 
@@ -543,7 +543,7 @@ contract TestMessageLibIdentities is Test {
             assetId: 5,
             who: bytes32("alice"),
             amount: 100,
-            pricePerUnit: d18(3, 1),
+            pricePerUnit: 23,
             isIncrease: false,
             asAllowance: true,
             debits: debits,
@@ -557,7 +557,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.assetId, b.assetId);
         assertEq(a.who, b.who);
         assertEq(a.amount, b.amount);
-        assert(a.pricePerUnit.eq(b.pricePerUnit));
+        assertEq(a.pricePerUnit, b.pricePerUnit);
         assertEq(a.isIncrease, b.isIncrease);
         assertEq(a.asAllowance, b.asAllowance);
         _checkEntries(a.debits, b.debits);
@@ -571,7 +571,7 @@ contract TestMessageLibIdentities is Test {
             poolId: 1,
             scId: bytes16("sc"),
             who: bytes32("alice"),
-            pricePerShare: d18(123456),
+            pricePerShare: 23,
             shares: 100,
             isIssuance: false,
             asAllowance: true
@@ -582,7 +582,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
         assertEq(a.who, b.who);
-        assert(a.pricePerShare.eq(b.pricePerShare));
+        assertEq(a.pricePerShare, b.pricePerShare);
         assertEq(a.shares, b.shares);
         assertEq(a.isIssuance, b.isIssuance);
         assertEq(a.asAllowance, b.asAllowance);

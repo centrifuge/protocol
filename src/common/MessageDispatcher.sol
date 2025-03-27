@@ -352,7 +352,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     assetId: assetId.raw(),
                     who: provider.toBytes32(),
                     amount: amount,
-                    pricePerUnit: pricePerUnit,
+                    pricePerUnit: pricePerUnit.raw(),
                     timestamp: timestamp,
                     isIncrease: isIncrease,
                     debits: meta.debits,
@@ -379,7 +379,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     assetId: assetId.raw(),
-                    pricePerUnit: pricePerUnit,
+                    pricePerUnit: pricePerUnit.raw(),
                     timestamp: timestamp
                 }).serialize()
             );
@@ -409,7 +409,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     who: receiver.toBytes32(),
-                    pricePerShare: pricePerShare,
+                    pricePerShare: pricePerShare.raw(),
                     shares: shares,
                     timestamp: timestamp,
                     isIssuance: isIssuance

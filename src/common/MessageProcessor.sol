@@ -166,7 +166,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
                     AssetId.wrap(m.assetId),
                     address(bytes20(m.who)),
                     m.amount,
-                    m.pricePerUnit,
+                    D18.wrap(m.pricePerUnit),
                     meta
                 );
             } else {
@@ -176,7 +176,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
                     AssetId.wrap(m.assetId),
                     address(bytes20(m.who)),
                     m.amount,
-                    m.pricePerUnit,
+                    D18.wrap(m.pricePerUnit),
                     m.asAllowance,
                     meta
                 );
@@ -188,13 +188,17 @@ contract MessageProcessor is Auth, IMessageProcessor {
                     PoolId.wrap(m.poolId),
                     ShareClassId.wrap(m.scId),
                     address(bytes20(m.who)),
-                    m.pricePerShare,
+                    D18.wrap(m.pricePerShare),
                     m.shares,
                     m.asAllowance
                 );
             } else {
                 balanceSheetManager.triggerRevokeShares(
-                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), address(bytes20(m.who)), m.pricePerShare, m.shares
+                    PoolId.wrap(m.poolId),
+                    ShareClassId.wrap(m.scId),
+                    address(bytes20(m.who)),
+                    D18.wrap(m.pricePerShare),
+                    m.shares
                 );
             }
         } else if (kind == MessageType.UpdateHoldingAmount) {
@@ -204,7 +208,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 ShareClassId.wrap(m.scId),
                 AssetId.wrap(m.assetId),
                 m.amount,
-                m.pricePerUnit,
+                D18.wrap(m.pricePerUnit),
                 m.isIncrease,
                 m.debits,
                 m.credits
@@ -212,7 +216,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.UpdateHoldingValue) {
             MessageLib.UpdateHoldingValue memory m = message.deserializeUpdateHoldingValue();
             poolRouter.updateHoldingValue(
-                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.pricePerUnit
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), D18.wrap(m.pricePerUnit)
             );
         } else if (kind == MessageType.UpdateJournal) {
             MessageLib.UpdateJournal memory m = message.deserializeUpdateJournal();
@@ -221,11 +225,11 @@ contract MessageProcessor is Auth, IMessageProcessor {
             MessageLib.UpdateShares memory m = message.deserializeUpdateShares();
             if (m.isIssuance) {
                 poolRouter.increaseShareIssuance(
-                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.pricePerShare, m.shares
+                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), D18.wrap(m.pricePerShare), m.shares
                 );
             } else {
                 poolRouter.decreaseShareIssuance(
-                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.pricePerShare, m.shares
+                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), D18.wrap(m.pricePerShare), m.shares
                 );
             }
         } else {

@@ -108,7 +108,7 @@ contract MockVaults is Test, Auth, IAdapter {
                 assetId: assetId.raw(),
                 who: bytes32(0),
                 amount: amount,
-                pricePerUnit: pricePerUnit,
+                pricePerUnit: pricePerUnit.raw(),
                 timestamp: 0,
                 isIncrease: isIncrease,
                 debits: debits,
@@ -124,7 +124,7 @@ contract MockVaults is Test, Auth, IAdapter {
                 poolId: poolId.raw(),
                 scId: scId.raw(),
                 assetId: assetId.raw(),
-                pricePerUnit: pricePerUnit,
+                pricePerUnit: pricePerUnit.raw(),
                 timestamp: 0
             }).serialize()
         );
@@ -144,7 +144,7 @@ contract MockVaults is Test, Auth, IAdapter {
                 poolId: poolId.raw(),
                 scId: scId.raw(),
                 who: bytes32(0),
-                pricePerShare: d18(1, 1),
+                pricePerShare: d18(1, 1).raw(),
                 shares: amount,
                 timestamp: 0,
                 isIssuance: isIssuance
