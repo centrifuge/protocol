@@ -24,8 +24,8 @@ library TransientJournal {
 contract Accounting is Auth, IAccounting {
     mapping(PoolId => mapping(AccountId => Account)) public accounts;
 
-    uint128 internal transient _debited;
-    uint128 internal transient _credited;
+    uint128 public transient debited;
+    uint128 public transient credited;
     PoolId internal transient _currentPoolId;
     mapping(PoolId => uint64) internal _poolJournalIdCounter;
 
@@ -39,7 +39,7 @@ contract Accounting is Auth, IAccounting {
         require(acc.lastUpdated != 0, AccountDoesNotExist());
 
         acc.totalDebit += value;
-        _debited += value;
+        debited += value;
         acc.lastUpdated = uint64(block.timestamp);
         emit Debit(_currentPoolId, account, value);
     }
@@ -52,7 +52,7 @@ contract Accounting is Auth, IAccounting {
         require(acc.lastUpdated != 0, AccountDoesNotExist());
 
         acc.totalCredit += value;
-        _credited += value;
+        credited += value;
         acc.lastUpdated = uint64(block.timestamp);
         emit Credit(_currentPoolId, account, value);
     }
@@ -60,8 +60,8 @@ contract Accounting is Auth, IAccounting {
     /// @inheritdoc IAccounting
     function unlock(PoolId poolId) external auth {
         require(PoolId.unwrap(_currentPoolId) == 0, AccountingAlreadyUnlocked());
-        _debited = 0;
-        _credited = 0;
+        debited = 0;
+        credited = 0;
         _currentPoolId = poolId;
         
         if (TransientJournal.journalId(poolId) == 0) {
@@ -72,7 +72,7 @@ contract Accounting is Auth, IAccounting {
 
     /// @inheritdoc IAccounting
     function lock() external auth {
-        require(_debited == _credited, Unbalanced());
+        require(debited == credited, Unbalanced());
 
         emit EndJournalId(_currentPoolId, TransientJournal.journalId(_currentPoolId));
         _currentPoolId = PoolId.wrap(0);
