@@ -71,9 +71,8 @@ enum VaultUpdateKind {
 library MessageLib {
     using MessageLib for bytes;
     using BytesLib for bytes;
-    using JournalEntryLib for bytes;
+    using JournalEntryLib for *;
     using CastLib for *;
-    using JournalEntryLib for JournalEntry[];
 
     error UnknownMessageType();
 
