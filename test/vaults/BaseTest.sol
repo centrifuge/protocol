@@ -161,6 +161,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
     // helpers
     function deployVault(
+        // TODO(@wischli): Replace with enum
         bool isAsync,
         uint64 poolId,
         uint8 trancheDecimals,

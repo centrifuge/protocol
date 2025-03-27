@@ -52,9 +52,10 @@ contract SyncInvestmentManager is BaseInvestmentManager, ISyncInvestmentManager 
     /// @inheritdoc IBaseInvestmentManager
     function file(bytes32 what, address data) external override(IBaseInvestmentManager, BaseInvestmentManager) auth {
         if (what == "gateway") gateway = IGateway(data);
+        else if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "poolManager") poolManager = IPoolManager(data);
         else revert("SyncInvestmentManager/file-unrecognized-param");
-        emit IBaseInvestmentManager.File(what, data);
+        emit File(what, data);
     }
 
     // --- IVaultManager ---

@@ -54,7 +54,7 @@ contract VaultsDeployer is CommonDeployer {
             )
         );
 
-        address[] memory vaultFactories = new address[](1);
+        address[] memory vaultFactories = new address[](2);
         vaultFactories[0] = asyncVaultFactory;
         vaultFactories[1] = syncDepositAsyncRedeemVaultFactory;
 

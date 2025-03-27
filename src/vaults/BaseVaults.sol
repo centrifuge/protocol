@@ -215,18 +215,6 @@ abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     constructor(address asyncManager_) {
         asyncManager = IAsyncRedeemManager(asyncManager_);
     }
-    // constructor(
-    //     uint64 poolId_,
-    //     bytes16 trancheId_,
-    //     address asset_,
-    //     uint256 tokenId_,
-    //     address share_,
-    //     address root_,
-    //     address baseManager_,
-    //     address asyncManager_
-    // ) BaseVault(poolId_, trancheId_, asset_, tokenId_, share_, root_, baseManager_) {
-    //     asyncManager = IAsyncRedeemManager(asyncManager_);
-    // }
 
     // --- ERC-7540 methods ---
     /// @inheritdoc IERC7540Redeem
@@ -326,7 +314,8 @@ abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     // --- View methods ---
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) public pure virtual override(BaseVault, IERC165) returns (bool) {
-        return super.supportsInterface(interfaceId) || interfaceId == type(IAsyncRedeemVault).interfaceId;
+        return super.supportsInterface(interfaceId) || interfaceId == type(IAsyncRedeemVault).interfaceId
+            || interfaceId == type(IERC7540Redeem).interfaceId || interfaceId == type(IERC7540CancelRedeem).interfaceId;
     }
 
     /// @inheritdoc IERC7575

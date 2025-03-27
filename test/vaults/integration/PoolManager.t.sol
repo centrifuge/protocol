@@ -89,7 +89,8 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         // values set correctly
         assertEq(address(poolManager.escrow()), address(escrow));
         assertEq(address(asyncInvestmentManager.poolManager()), address(poolManager));
-        assertEq(address(gateway.handler()), address(poolManager.sender()));
+        assertEq(address(syncInvestmentManager.poolManager()), address(poolManager));
+        assertEq(address(messageDispatcher), address(poolManager.sender()));
 
         // permissions set correctly
         assertEq(poolManager.wards(address(root)), 1);
