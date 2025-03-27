@@ -236,7 +236,7 @@ contract BalanceSheetManagerTest is BaseTest {
             address(this),
             defaultAmount,
             d18(100, 5),
-            block.timestamp,
+            uint64(block.timestamp),
             _defaultMeta().debits,
             _defaultMeta().credits
         );
@@ -282,7 +282,7 @@ contract BalanceSheetManagerTest is BaseTest {
             address(this),
             defaultAmount,
             d18(100, 5),
-            block.timestamp,
+            uint64(block.timestamp),
             _defaultMeta().debits,
             _defaultMeta().credits
         );
@@ -424,7 +424,7 @@ contract BalanceSheetManagerTest is BaseTest {
 
         vm.expectEmit();
         emit IBalanceSheetManager.UpdateValue(
-            defaultTypedPoolId, defaultTypedShareClassId, asset, tokenId, d18(1, 3), block.timestamp
+            defaultTypedPoolId, defaultTypedShareClassId, asset, tokenId, d18(1, 3), uint64(block.timestamp)
         );
         balanceSheetManager.updateValue(defaultTypedPoolId, defaultTypedShareClassId, asset, tokenId, d18(1, 3));
     }

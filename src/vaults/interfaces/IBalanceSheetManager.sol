@@ -23,7 +23,7 @@ interface IBalanceSheetManager {
         address receiver,
         uint128 amount,
         D18 pricePerUnit,
-        uint256 timestamp,
+        uint64 timestamp,
         JournalEntry[] debits,
         JournalEntry[] credits
     );
@@ -35,7 +35,7 @@ interface IBalanceSheetManager {
         address provider,
         uint128 amount,
         D18 pricePerUnit,
-        uint256 timestamp,
+        uint64 timestamp,
         JournalEntry[] debits,
         JournalEntry[] credits
     );
@@ -48,7 +48,7 @@ interface IBalanceSheetManager {
         address asset,
         uint256 tokenId,
         D18 pricePerUnit,
-        uint256 timestamp
+        uint64 timestamp
     );
 
     // Overloaded increase

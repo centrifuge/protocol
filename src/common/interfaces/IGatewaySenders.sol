@@ -114,7 +114,7 @@ interface IVaultMessageSender is ILocalCentrifugeId {
         address provider,
         uint128 amount,
         D18 pricePerUnit,
-        uint256 timestamp,
+        uint64 timestamp,
         bool isIncrease,
         Meta calldata meta
     ) external;
@@ -124,7 +124,7 @@ interface IVaultMessageSender is ILocalCentrifugeId {
         ShareClassId scId,
         AssetId assetId,
         D18 pricePerUnit,
-        uint256 timestamp
+        uint64 timestamp
     ) external;
 
     /// @notice Creates and send the message
@@ -134,7 +134,7 @@ interface IVaultMessageSender is ILocalCentrifugeId {
         address receiver,
         D18 pricePerShare,
         uint128 shares,
-        uint256 timestamp,
+        uint64 timestamp,
         bool isIssuance
     ) external;
 

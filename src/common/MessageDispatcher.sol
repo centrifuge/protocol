@@ -335,7 +335,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         address provider,
         uint128 amount,
         D18 pricePerUnit,
-        uint256 timestamp,
+        uint64 timestamp,
         bool isIncrease,
         Meta calldata meta
     ) external auth {
@@ -368,7 +368,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         ShareClassId scId,
         AssetId assetId,
         D18 pricePerUnit,
-        uint256 timestamp
+        uint64 timestamp
     ) external auth {
         if (poolId.chainId() == localCentrifugeId) {
             poolRouter.updateHoldingValue(poolId, scId, assetId, pricePerUnit);
@@ -393,7 +393,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         address receiver,
         D18 pricePerShare,
         uint128 shares,
-        uint256 timestamp,
+        uint64 timestamp,
         bool isIssuance
     ) external auth {
         if (poolId.chainId() == localCentrifugeId) {
