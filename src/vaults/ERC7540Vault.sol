@@ -91,7 +91,7 @@ contract ERC7540Vault is AsyncRedeemVault, IERC7540Vault {
     {
         _validateController(controller);
         assets = asyncInvestmentManager().claimCancelDepositRequest(address(this), receiver, controller);
-        emit CancelDepositClaim(receiver, controller, REQUEST_ID, msg.sender, assets);
+        emit CancelDepositClaim(controller, receiver, REQUEST_ID, msg.sender, assets);
     }
 
     // --- ERC165 support ---
