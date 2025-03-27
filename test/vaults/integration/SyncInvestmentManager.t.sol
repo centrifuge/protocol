@@ -15,25 +15,21 @@ contract SyncInvestmentManagerTest is BaseTest {
 
     // Deployment
     function testDeployment(address nonWard) public {
-        vm.assume(
-            nonWard != address(root) && nonWard != address(gateway) && nonWard != address(poolManager)
-                && nonWard != address(messageDispatcher) && nonWard != address(messageProcessor) && nonWard != address(this)
-        );
+        vm.assume(nonWard != address(root) && nonWard != address(poolManager) && nonWard != address(this));
 
         // redeploying within test to increase coverage
         new SyncInvestmentManager(address(root), address(escrow));
 
         // values set correctly
         assertEq(address(syncInvestmentManager.escrow()), address(escrow));
-        assertEq(address(syncInvestmentManager.gateway()), address(gateway));
         assertEq(address(syncInvestmentManager.poolManager()), address(poolManager));
+        assertEq(address(syncInvestmentManager.balanceSheetManager()), address(balanceSheetManager));
 
         // permissions set correctly
         assertEq(syncInvestmentManager.wards(address(root)), 1);
-        assertEq(syncInvestmentManager.wards(address(gateway)), 1);
         assertEq(syncInvestmentManager.wards(address(poolManager)), 1);
-        assertEq(syncInvestmentManager.wards(address(messageProcessor)), 1);
-        assertEq(syncInvestmentManager.wards(address(messageDispatcher)), 1);
+        assertEq(syncInvestmentManager.wards(address(syncDepositAsyncRedeemVaultFactory)), 1);
+        assertEq(balanceSheetManager.wards(address(syncInvestmentManager)), 1);
         assertEq(syncInvestmentManager.wards(nonWard), 0);
     }
 
@@ -43,15 +39,14 @@ contract SyncInvestmentManagerTest is BaseTest {
         vm.expectRevert(bytes("SyncInvestmentManager/file-unrecognized-param"));
         syncInvestmentManager.file("random", self);
 
-        assertEq(address(syncInvestmentManager.gateway()), address(gateway));
         assertEq(address(syncInvestmentManager.poolManager()), address(poolManager));
+        assertEq(address(syncInvestmentManager.balanceSheetManager()), address(balanceSheetManager));
+
         // success
-        syncInvestmentManager.file("sender", randomUser);
-        assertEq(address(syncInvestmentManager.sender()), randomUser);
         syncInvestmentManager.file("poolManager", randomUser);
         assertEq(address(syncInvestmentManager.poolManager()), randomUser);
-        syncInvestmentManager.file("gateway", randomUser);
-        assertEq(address(syncInvestmentManager.gateway()), randomUser);
+        syncInvestmentManager.file("balanceSheetManager", randomUser);
+        assertEq(address(syncInvestmentManager.balanceSheetManager()), randomUser);
 
         // remove self from wards
         syncInvestmentManager.deny(self);

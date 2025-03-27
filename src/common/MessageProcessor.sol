@@ -63,7 +63,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
         if (what == "poolRouter") poolRouter = IPoolRouterGatewayHandler(data);
         else if (what == "poolManager") poolManager = IPoolManagerGatewayHandler(data);
         else if (what == "investmentManager") investmentManager = IInvestmentManagerGatewayHandler(data);
-        // TODO: Add syncInvestmentManager for handling updateMaxPriceAge resolving
         else if (what == "balanceSheetManager") balanceSheetManager = IBalanceSheetManagerGatewayHandler(data);
         else revert FileUnrecognizedParam();
 

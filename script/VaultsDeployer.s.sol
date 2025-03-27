@@ -99,11 +99,11 @@ contract VaultsDeployer is CommonDeployer {
         IAuth(restrictedRedemptions).rely(address(poolManager));
         messageDispatcher.rely(address(poolManager));
 
-        // Rely on investment managers
+        // Rely on async investment manager
         messageDispatcher.rely(address(asyncInvestmentManager));
-        messageDispatcher.rely(address(syncInvestmentManager));
 
-        // Rely on InvestmentManager
+        // Rely on sync investment manager
+        balanceSheetManager.rely(address(syncInvestmentManager));
 
         // Rely on BalanceSheetManager
         messageDispatcher.rely(address(balanceSheetManager));
@@ -125,7 +125,6 @@ contract VaultsDeployer is CommonDeployer {
 
         // Rely on vaultGateway
         asyncInvestmentManager.rely(address(gateway));
-        syncInvestmentManager.rely(address(gateway));
         poolManager.rely(address(gateway));
 
         // Rely on others
@@ -135,12 +134,11 @@ contract VaultsDeployer is CommonDeployer {
         // Rely on messageProcessor
         poolManager.rely(address(messageProcessor));
         asyncInvestmentManager.rely(address(messageProcessor));
-        syncInvestmentManager.rely(address(messageProcessor));
         balanceSheetManager.rely(address(messageProcessor));
 
+        // Rely on messageDispatcher
         poolManager.rely(address(messageDispatcher));
         asyncInvestmentManager.rely(address(messageDispatcher));
-        syncInvestmentManager.rely(address(messageDispatcher));
         balanceSheetManager.rely(address(messageDispatcher));
 
         // Rely on VaultRouter
@@ -163,9 +161,9 @@ contract VaultsDeployer is CommonDeployer {
         asyncInvestmentManager.file("poolManager", address(poolManager));
         asyncInvestmentManager.file("gateway", address(gateway));
         asyncInvestmentManager.file("sender", address(messageDispatcher));
+
         syncInvestmentManager.file("poolManager", address(poolManager));
-        syncInvestmentManager.file("gateway", address(gateway));
-        syncInvestmentManager.file("sender", address(messageDispatcher));
+        syncInvestmentManager.file("balanceSheetManager", address(balanceSheetManager));
 
         balanceSheetManager.file("poolManager", address(poolManager));
         balanceSheetManager.file("gateway", address(gateway));
