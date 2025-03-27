@@ -153,6 +153,7 @@ contract VaultsDeployer is CommonDeployer {
         IAuth(restrictedRedemptions).deny(msg.sender);
         investmentManager.deny(msg.sender);
         poolManager.deny(msg.sender);
+        balanceSheetManager.deny(msg.sender);
         escrow.deny(msg.sender);
         routerEscrow.deny(msg.sender);
         vaultRouter.deny(msg.sender);
