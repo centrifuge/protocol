@@ -346,7 +346,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         } else {
             gateway.send(
                 poolId.chainId(),
-                MessageLib.UpdateHolding({
+                MessageLib.UpdateHoldingAmount({
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     assetId: assetId.raw(),
@@ -375,17 +375,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         } else {
             gateway.send(
                 poolId.chainId(),
-                MessageLib.UpdateHolding({
+                MessageLib.UpdateHoldingValue({
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     assetId: assetId.raw(),
-                    who: bytes32(0),
-                    amount: 0,
                     pricePerUnit: pricePerUnit,
-                    timestamp: timestamp,
-                    isIncrease: false,
-                    debits: new JournalEntry[](0),
-                    credits: new JournalEntry[](0)
+                    timestamp: timestamp
                 }).serialize()
             );
         }

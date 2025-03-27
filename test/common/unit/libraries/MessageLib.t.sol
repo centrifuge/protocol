@@ -37,7 +37,7 @@ contract TestMessageLibCategories is Test {
         assert(MessageCategory.Investment == uint8(MessageType.CancelRedeemRequest).category());
         assert(MessageCategory.Investment == uint8(MessageType.FulfilledCancelDepositRequest).category());
         assert(MessageCategory.Investment == uint8(MessageType.FulfilledCancelRedeemRequest).category());
-        assert(MessageCategory.BalanceSheet == uint8(MessageType.UpdateHolding).category());
+        assert(MessageCategory.BalanceSheet == uint8(MessageType.UpdateHoldingAmount).category());
         assert(MessageCategory.BalanceSheet == uint8(MessageType.UpdateShares).category());
         assert(MessageCategory.BalanceSheet == uint8(MessageType.UpdateJournal).category());
     }
@@ -459,7 +459,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageLength(), a.serialize().length);
     }
 
-    function testUpdateHolding() public pure {
+    function testUpdateHoldingAmount() public pure {
         JournalEntry[] memory debits = new JournalEntry[](3);
         debits[0] = JournalEntry({accountId: AccountId.wrap(9), amount: 1});
         debits[1] = JournalEntry({accountId: AccountId.wrap(8), amount: 2});
@@ -469,7 +469,7 @@ contract TestMessageLibIdentities is Test {
         credits[0] = JournalEntry({accountId: AccountId.wrap(1), amount: 4});
         credits[1] = JournalEntry({accountId: AccountId.wrap(3), amount: 5});
 
-        MessageLib.UpdateHolding memory a = MessageLib.UpdateHolding({
+        MessageLib.UpdateHoldingAmount memory a = MessageLib.UpdateHoldingAmount({
             poolId: 1,
             scId: bytes16("sc"),
             assetId: 5,
@@ -482,7 +482,7 @@ contract TestMessageLibIdentities is Test {
             credits: credits
         });
 
-        MessageLib.UpdateHolding memory b = MessageLib.deserializeUpdateHolding(a.serialize());
+        MessageLib.UpdateHoldingAmount memory b = MessageLib.deserializeUpdateHoldingAmount(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
@@ -494,6 +494,25 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.isIncrease, b.isIncrease);
         _checkEntries(a.debits, b.debits);
         _checkEntries(a.credits, b.credits);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+    }
+
+    function testUpdateHoldingValue() public pure {
+        MessageLib.UpdateHoldingValue memory a = MessageLib.UpdateHoldingValue({
+            poolId: 1,
+            scId: bytes16("sc"),
+            assetId: 5,
+            pricePerUnit: d18(3, 1),
+            timestamp: 12345
+        });
+        MessageLib.UpdateHoldingValue memory b = MessageLib.deserializeUpdateHoldingValue(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.assetId, b.assetId);
+        assert(a.pricePerUnit.eq(b.pricePerUnit));
+        assertEq(a.timestamp, b.timestamp);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
     }
@@ -588,7 +607,7 @@ contract TestMessageLibIdentities is Test {
             who: bytes32("alice"),
             pricePerShare: d18(123456),
             shares: 100,
-            isIssuance: true,
+            isIssuance: false,
             asAllowance: true
         });
 

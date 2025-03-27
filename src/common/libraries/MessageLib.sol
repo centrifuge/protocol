@@ -39,7 +39,8 @@ enum MessageType {
     FulfilledCancelRedeemRequest,
     TriggerRedeemRequest,
     // -- BalanceSheetManager messages 25 - 27
-    UpdateHolding,
+    UpdateHoldingAmount,
+    UpdateHoldingValue,
     UpdateShares,
     UpdateJournal,
     TriggerUpdateHolding,
@@ -115,7 +116,8 @@ library MessageLib {
         (89 << uint8(MessageType.FulfilledCancelDepositRequest) * 8) +
         (89 << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (89 << uint8(MessageType.TriggerRedeemRequest) * 8) +
-        (138 << uint8(MessageType.UpdateHolding) * 8) +
+        (138 << uint8(MessageType.UpdateHoldingAmount) * 8) +
+        (89 << uint8(MessageType.UpdateHoldingValue) * 8) +
         (122 << uint8(MessageType.UpdateShares) * 8) +
         (9 << uint8(MessageType.UpdateJournal) * 8) +
         (107 << uint8(MessageType.TriggerUpdateHolding) * 8) +
@@ -141,7 +143,7 @@ library MessageLib {
         } else if (kind == uint8(MessageType.UpdateContract)) {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (
-            kind == uint8(MessageType.UpdateHolding) || kind == uint8(MessageType.TriggerUpdateHolding)
+            kind == uint8(MessageType.UpdateHoldingAmount) || kind == uint8(MessageType.TriggerUpdateHolding)
                 || kind == uint8(MessageType.UpdateJournal)
         ) {
             uint16 debitsBytelen = message.toUint16(length); // debitsBytelen
@@ -491,7 +493,7 @@ library MessageLib {
     struct UpdateRestriction {
         uint64 poolId;
         bytes16 scId;
-        bytes payload; // As secuences of bytes
+        bytes payload; // As secuence of bytes
     }
 
     function deserializeUpdateRestriction(bytes memory data) internal pure returns (UpdateRestriction memory) {
@@ -584,7 +586,7 @@ library MessageLib {
         uint64 poolId;
         bytes16 scId;
         bytes32 target;
-        bytes payload; // As secuences of bytes
+        bytes payload; // As secuence of bytes
     }
 
     function deserializeUpdateContract(bytes memory data) internal pure returns (UpdateContract memory) {
@@ -923,10 +925,10 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //    UpdateHolding
+    //    UpdateHoldingAmount
     //---------------------------------------
 
-    struct UpdateHolding {
+    struct UpdateHoldingAmount {
         uint64 poolId;
         bytes16 scId;
         uint128 assetId;
@@ -935,17 +937,17 @@ library MessageLib {
         D18 pricePerUnit;
         uint256 timestamp;
         bool isIncrease; // Signals whether this is an increase or a decrease
-        JournalEntry[] debits; // As secuences of bytes
-        JournalEntry[] credits; // As secuences of bytes
+        JournalEntry[] debits; // As secuence of bytes
+        JournalEntry[] credits; // As secuence of bytes
     }
 
-    function deserializeUpdateHolding(bytes memory data) internal pure returns (UpdateHolding memory h) {
-        require(messageType(data) == MessageType.UpdateHolding, "UnknownMessageType");
+    function deserializeUpdateHoldingAmount(bytes memory data) internal pure returns (UpdateHoldingAmount memory h) {
+        require(messageType(data) == MessageType.UpdateHoldingAmount, "UnknownMessageType");
 
         uint16 debitsByteLen = data.toUint16(138);
         uint16 creditsByteLen = data.toUint16(140 + debitsByteLen);
 
-        return UpdateHolding({
+        return UpdateHoldingAmount({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
@@ -961,12 +963,12 @@ library MessageLib {
         });
     }
 
-    function serialize(UpdateHolding memory t) public pure returns (bytes memory) {
+    function serialize(UpdateHoldingAmount memory t) public pure returns (bytes memory) {
         bytes memory debits = t.debits.encodePacked();
         bytes memory credits = t.credits.encodePacked();
 
         return abi.encodePacked(
-            MessageType.UpdateHolding,
+            MessageType.UpdateHoldingAmount,
             t.poolId,
             t.scId,
             t.assetId,
@@ -980,6 +982,35 @@ library MessageLib {
             uint16(credits.length),
             credits
         );
+    }
+
+    //---------------------------------------
+    //    UpdateHoldingValue
+    //---------------------------------------
+
+    struct UpdateHoldingValue {
+        uint64 poolId;
+        bytes16 scId;
+        uint128 assetId;
+        D18 pricePerUnit;
+        uint256 timestamp;
+    }
+
+    function deserializeUpdateHoldingValue(bytes memory data) internal pure returns (UpdateHoldingValue memory h) {
+        require(messageType(data) == MessageType.UpdateHoldingValue, "UnknownMessageType");
+
+        return UpdateHoldingValue({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            assetId: data.toUint128(25),
+            pricePerUnit: D18.wrap(data.toUint128(41)),
+            timestamp: data.toUint256(57)
+        });
+    }
+
+    function serialize(UpdateHoldingValue memory t) public pure returns (bytes memory) {
+        return
+            abi.encodePacked(MessageType.UpdateHoldingValue, t.poolId, t.scId, t.assetId, t.pricePerUnit, t.timestamp);
     }
 
     //---------------------------------------
@@ -1022,8 +1053,8 @@ library MessageLib {
 
     struct UpdateJournal {
         uint64 poolId;
-        JournalEntry[] debits; // As secuences of bytes
-        JournalEntry[] credits; // As secuences of bytes
+        JournalEntry[] debits; // As secuence of bytes
+        JournalEntry[] credits; // As secuence of bytes
     }
 
     function deserializeUpdateJournal(bytes memory data) internal pure returns (UpdateJournal memory) {
@@ -1063,8 +1094,8 @@ library MessageLib {
         D18 pricePerUnit;
         bool isIncrease; // Signals whether this is an increase or a decrease
         bool asAllowance; // Signals whether the amount is transferred or allowed to who on the BSM
-        JournalEntry[] debits; // As secuences of bytes
-        JournalEntry[] credits; // As secuences of bytes
+        JournalEntry[] debits; // As secuence of bytes
+        JournalEntry[] credits; // As secuence of bytes
     }
 
     function deserializeTriggerUpdateHolding(bytes memory data) internal pure returns (TriggerUpdateHolding memory h) {

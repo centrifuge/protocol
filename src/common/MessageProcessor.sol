@@ -217,25 +217,23 @@ contract MessageProcessor is Auth, IMessageProcessor {
                         m.shares
                     );
                 }
-            } else if (kind == MessageType.UpdateHolding) {
-                MessageLib.UpdateHolding memory m = message.deserializeUpdateHolding();
-
-                if (m.amount == 0) {
-                    poolRouter.updateHoldingValue(
-                        PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.pricePerUnit
-                    );
-                } else {
-                    poolRouter.updateHoldingAmount(
-                        PoolId.wrap(m.poolId),
-                        ShareClassId.wrap(m.scId),
-                        AssetId.wrap(m.assetId),
-                        m.amount,
-                        m.pricePerUnit,
-                        m.isIncrease,
-                        m.debits,
-                        m.credits
-                    );
-                }
+            } else if (kind == MessageType.UpdateHoldingAmount) {
+                MessageLib.UpdateHoldingAmount memory m = message.deserializeUpdateHoldingAmount();
+                poolRouter.updateHoldingAmount(
+                    PoolId.wrap(m.poolId),
+                    ShareClassId.wrap(m.scId),
+                    AssetId.wrap(m.assetId),
+                    m.amount,
+                    m.pricePerUnit,
+                    m.isIncrease,
+                    m.debits,
+                    m.credits
+                );
+            } else if (kind == MessageType.UpdateHoldingValue) {
+                MessageLib.UpdateHoldingValue memory m = message.deserializeUpdateHoldingValue();
+                poolRouter.updateHoldingValue(
+                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.pricePerUnit
+                );
             } else if (kind == MessageType.UpdateJournal) {
                 MessageLib.UpdateJournal memory m = message.deserializeUpdateJournal();
                 poolRouter.updateJournal(PoolId.wrap(m.poolId), m.debits, m.credits);
