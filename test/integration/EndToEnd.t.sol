@@ -26,6 +26,7 @@ contract TestEndToEnd is Test {
     uint16 constant CHAIN_B = 6;
     uint64 constant GAS = 100 wei;
 
+    address immutable DEPLOYER = address(this);
     address immutable FM = makeAddr("FM");
 
     FullDeployer deployA = new FullDeployer();
@@ -44,33 +45,24 @@ contract TestEndToEnd is Test {
 
         // We not use the VM chain
         vm.chainId(0xDEAD);
-
-        // Label contracts (for debugging)
-        vm.label(address(deployA.poolRouter()), "CP.PoolRouter");
-        // ...
     }
 
     function _deployChain(FullDeployer deploy, uint16 chainId, ISafe safeAdmin) public returns (LocalAdapter adapter) {
-        deploy.deployFull(chainId, safeAdmin, address(this));
+        deploy.deployFull(chainId, safeAdmin, address(deploy));
 
         adapter = new LocalAdapter(chainId, deploy.gateway(), address(deploy));
         deploy.wire(adapter);
 
-        // Configure here as deployer
         vm.startPrank(address(deploy));
         deploy.gasService().file("messageGasLimit", GAS);
         vm.stopPrank();
 
-        deploy.removeFullDeployerAccess(address(this));
+        deploy.removeFullDeployerAccess(address(deploy));
     }
 
-    function _getDeploys(bool sameChain) public returns (PoolsDeployer cp, VaultsDeployer cv) {
+    function _getDeploys(bool sameChain) public view returns (PoolsDeployer cp, VaultsDeployer cv) {
         cp = deployA;
         cv = (sameChain) ? deployA : deployB;
-
-        // Label contracts (for debugging)
-        vm.label(address(cv.vaultRouter()), "CV.VaultRouter");
-        // ...
     }
 
     /// forge-config: default.isolate = true
