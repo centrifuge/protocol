@@ -8,7 +8,6 @@ import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 
 /// @title  Sync Vault Factory
 /// @dev    Utility for deploying new vault contracts
-// TODO(@wischli): Rename
 contract SyncDepositAsyncRedeemVaultFactory is Auth, IVaultFactory {
     address public immutable root;
     address public immutable syncInvestmentManager;

@@ -54,6 +54,8 @@ contract AsyncInvestmentManagerTest is BaseTest {
         assertEq(address(asyncInvestmentManager.gateway()), address(gateway));
         assertEq(address(asyncInvestmentManager.poolManager()), address(poolManager));
         // success
+        asyncInvestmentManager.file("sender", randomUser);
+        assertEq(address(asyncInvestmentManager.sender()), randomUser);
         asyncInvestmentManager.file("poolManager", randomUser);
         assertEq(address(asyncInvestmentManager.poolManager()), randomUser);
         asyncInvestmentManager.file("gateway", randomUser);

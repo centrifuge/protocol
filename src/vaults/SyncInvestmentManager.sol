@@ -4,14 +4,15 @@ pragma solidity 0.8.28;
 import {IERC165} from "forge-std/interfaces/IERC165.sol";
 
 import {Auth} from "src/misc/Auth.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
@@ -32,7 +33,6 @@ import {SyncDepositAsyncRedeemVault} from "src/vaults/SyncDepositAsyncRedeemVaul
 import {AsyncRedeemVault} from "src/vaults/BaseVaults.sol";
 import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 
-// TODO(@wischli) implement IUpdateContract for max price age
 /// @title  Sync Investment Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
@@ -40,6 +40,7 @@ contract SyncInvestmentManager is BaseInvestmentManager, ISyncInvestmentManager 
     using BytesLib for bytes;
     using MathLib for uint256;
     using CastLib for *;
+    using MessageLib for *;
 
     IGateway public gateway;
     IVaultMessageSender public sender;
@@ -90,8 +91,6 @@ contract SyncInvestmentManager is BaseInvestmentManager, ISyncInvestmentManager 
         require(vault_.asset() == asset_, "SyncInvestmentManager/asset-mismatch");
         require(vault[poolId][trancheId][assetId] != address(0), "SyncInvestmentManager/vault-does-not-exist");
 
-        // TODO(@wischli): Also execute for asyncManager
-
         delete vault[poolId][trancheId][assetId];
 
         IAuth(token).deny(vaultAddr);
@@ -131,7 +130,7 @@ contract SyncInvestmentManager is BaseInvestmentManager, ISyncInvestmentManager 
     function maxMint(address vaultAddr, address /* owner */ ) public view returns (uint256) {
         SyncDepositAsyncRedeemVault vault_ = SyncDepositAsyncRedeemVault(vaultAddr);
 
-        // TODO: implement rate limit
+        // TODO(follow-up PR): implement rate limit
         return type(uint256).max;
     }
 
@@ -139,7 +138,7 @@ contract SyncInvestmentManager is BaseInvestmentManager, ISyncInvestmentManager 
     function maxDeposit(address vaultAddr, address /* owner */ ) public view returns (uint256) {
         SyncDepositAsyncRedeemVault vault_ = SyncDepositAsyncRedeemVault(vaultAddr);
 
-        // TODO: implement rate limit
+        // TODO(follow-up PR): implement rate limit
         return type(uint256).max;
     }
 
@@ -174,6 +173,17 @@ contract SyncInvestmentManager is BaseInvestmentManager, ISyncInvestmentManager 
         shares = PriceConversionLib.calculateShares(assets.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down);
     }
 
+    /// --- IUpdateContract ---
+    function update(uint64, bytes16, bytes calldata payload) external auth {
+        MessageLib.UpdateContractMaxPriceAge memory m = MessageLib.deserializeUpdateContractMaxPriceAge(payload);
+
+        address vault = address(bytes20(m.vault));
+        maxPriceAge[vault] = m.maxPriceAge;
+
+        emit MaxPriceAgeUpdate(vault, m.maxPriceAge);
+    }
+
+    /// --- IERC165 ---
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId)
         public
@@ -185,7 +195,4 @@ contract SyncInvestmentManager is BaseInvestmentManager, ISyncInvestmentManager 
             || interfaceId == type(IDepositManager).interfaceId || interfaceId == type(ISyncDepositManager).interfaceId
             || interfaceId == type(ISyncInvestmentManager).interfaceId;
     }
-
-    // --- Admin actions ---
-    // TODO: updateMaxPriceAge handler
 }

@@ -140,7 +140,7 @@ contract VaultsDeployer is CommonDeployer {
 
         poolManager.rely(address(messageDispatcher));
         asyncInvestmentManager.rely(address(messageDispatcher));
-        asyncInvestmentManager.rely(address(messageDispatcher));
+        syncInvestmentManager.rely(address(messageDispatcher));
         balanceSheetManager.rely(address(messageDispatcher));
 
         // Rely on VaultRouter
