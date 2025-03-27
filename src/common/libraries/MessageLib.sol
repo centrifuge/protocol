@@ -43,7 +43,7 @@ enum MessageType {
     UpdateHoldingValue,
     UpdateShares,
     UpdateJournal,
-    TriggerUpdateHolding,
+    TriggerUpdateHoldingAmount,
     TriggerUpdateShares
 }
 
@@ -110,7 +110,7 @@ library MessageLib {
         (89 << uint8(MessageType.UpdateHoldingValue) * 8) +
         (122 << uint8(MessageType.UpdateShares) * 8) +
         (9 << uint8(MessageType.UpdateJournal) * 8) +
-        (107 << uint8(MessageType.TriggerUpdateHolding) * 8) +
+        (107 << uint8(MessageType.TriggerUpdateHoldingAmount) * 8) +
         (91 << uint8(MessageType.TriggerUpdateShares) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
@@ -133,7 +133,7 @@ library MessageLib {
         } else if (kind == uint8(MessageType.UpdateContract)) {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (
-            kind == uint8(MessageType.UpdateHoldingAmount) || kind == uint8(MessageType.TriggerUpdateHolding)
+            kind == uint8(MessageType.UpdateHoldingAmount) || kind == uint8(MessageType.TriggerUpdateHoldingAmount)
                 || kind == uint8(MessageType.UpdateJournal)
         ) {
             uint16 debitsBytelen = message.toUint16(length); // debitsBytelen
@@ -1054,10 +1054,10 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //    TriggerUpdateHolding
+    //    TriggerUpdateHoldingAmount
     //---------------------------------------
 
-    struct TriggerUpdateHolding {
+    struct TriggerUpdateHoldingAmount {
         uint64 poolId;
         bytes16 scId;
         uint128 assetId;
@@ -1070,13 +1070,17 @@ library MessageLib {
         JournalEntry[] credits; // As secuence of bytes
     }
 
-    function deserializeTriggerUpdateHolding(bytes memory data) internal pure returns (TriggerUpdateHolding memory h) {
-        require(messageType(data) == MessageType.TriggerUpdateHolding, "UnknownMessageType");
+    function deserializeTriggerUpdateHoldingAmount(bytes memory data)
+        internal
+        pure
+        returns (TriggerUpdateHoldingAmount memory h)
+    {
+        require(messageType(data) == MessageType.TriggerUpdateHoldingAmount, "UnknownMessageType");
 
         uint16 debitsByteLen = data.toUint16(107);
         uint16 creditsByteLen = data.toUint16(109 + debitsByteLen);
 
-        return TriggerUpdateHolding({
+        return TriggerUpdateHoldingAmount({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
@@ -1092,12 +1096,12 @@ library MessageLib {
         });
     }
 
-    function serialize(TriggerUpdateHolding memory t) internal pure returns (bytes memory) {
+    function serialize(TriggerUpdateHoldingAmount memory t) internal pure returns (bytes memory) {
         bytes memory debits = t.debits.toBytes();
         bytes memory credits = t.credits.toBytes();
 
         return abi.encodePacked(
-            MessageType.TriggerUpdateHolding,
+            MessageType.TriggerUpdateHoldingAmount,
             t.poolId,
             t.scId,
             t.assetId,

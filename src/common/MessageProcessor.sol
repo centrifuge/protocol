@@ -155,8 +155,8 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.TriggerRedeemRequest) {
             MessageLib.TriggerRedeemRequest memory m = message.deserializeTriggerRedeemRequest();
             investmentManager.triggerRedeemRequest(m.poolId, m.scId, address(bytes20(m.investor)), m.assetId, m.shares);
-        } else if (kind == MessageType.TriggerUpdateHolding) {
-            MessageLib.TriggerUpdateHolding memory m = message.deserializeTriggerUpdateHolding();
+        } else if (kind == MessageType.TriggerUpdateHoldingAmount) {
+            MessageLib.TriggerUpdateHoldingAmount memory m = message.deserializeTriggerUpdateHoldingAmount();
 
             Meta memory meta = Meta({debits: m.debits, credits: m.credits});
             if (m.isIncrease) {
