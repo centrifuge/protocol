@@ -7,7 +7,8 @@ interface IAsyncDepositManager is IDepositManager {
     // --- Outgoing message handling ---
     /// @notice Requests assets deposit. Vaults have to request investments from Centrifuge before
     ///         shares can be minted. The deposit requests are added to the order book
-    ///         on Centrifuge. Once the next epoch is executed on Centrifuge, vaults can
+    ///         on the corresponding CP instance. Once the next epoch is executed on the corresponding CP instance,
+    /// vaults can
     ///         proceed with share payouts in case the order got fulfilled.
     /// @dev    The assets required to fulfill the deposit request have to be locked and are transferred from the
     ///         owner to the escrow, even though the share payout can only happen after epoch execution.
@@ -21,13 +22,14 @@ interface IAsyncDepositManager is IDepositManager {
     /// transferred
     ///         to the owner.
     ///         While users have outstanding cancellation requests no new deposit requests can be submitted.
-    ///         Once the next epoch is executed on Centrifuge, vaults can proceed with asset payouts
+    ///         Once the next epoch is executed on the corresponding CP instance, vaults can proceed with asset payouts
     ///         if orders could be cancelled successfully.
     /// @dev    The cancellation request might fail in case the pending deposit order already got fulfilled on
     ///         Centrifuge.
     function cancelDepositRequest(address vaultAddr, address owner, address source) external;
 
-    /// @notice Processes owner's deposit request cancellation after the epoch has been executed on Centrifuge and the
+    /// @notice Processes owner's deposit request cancellation after the epoch has been executed on the corresponding CP
+    /// instance and the
     ///         deposit order cancellation has been successfully processed (partial fulfillment possible).
     ///         Assets are transferred from the escrow to the receiver.
     /// @dev    The assets required to fulfill the claim have already been reserved for the owner in escrow on

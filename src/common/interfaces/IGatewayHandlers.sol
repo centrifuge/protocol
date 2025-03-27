@@ -221,7 +221,8 @@ interface IInvestmentManagerGatewayHandler {
     /// @notice Triggers a redeem request on behalf of the user through Centrifuge governance.
     ///         This function is required for legal/compliance reasons and rare scenarios, like share contract
     ///         migrations.
-    ///         Once the next epoch is executed on Centrifuge, vaults can proceed with asset payouts in case the orders
+    ///         Once the next epoch is executed on the corresponding CP instance, vaults can proceed with asset payouts
+    /// in case the orders
     ///         got fulfilled.
     /// @dev    The user share amount required to fulfill the redeem request has to be locked in escrow,
     ///         even though the asset payout can only happen after epoch execution.

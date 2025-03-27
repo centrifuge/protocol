@@ -11,17 +11,17 @@ interface IGasService {
     ///         It is used in occasions where update is done rarely.
     function file(bytes32 what, uint64 value) external;
 
-    /// @notice The cost of 'message' execution on Centrifuge Chain.
+    /// @notice The cost of 'message' execution on the recipient chain.
     /// @dev    This is a getter method
-    /// @return Amount in Weigth ( gas unit on Centrifuge Chain )
+    /// @return Amount in gas
     function messageGasLimit() external returns (uint64);
 
-    /// @notice The cost of 'proof' execution on Centrifuge Chain.
+    /// @notice The cost of 'proof' execution on the recipient chain.
     /// @dev    This is a getter method
-    /// @return Amount in Weight ( gas unit on Centrifuge Chain )
+    /// @return Amount in gas
     function proofGasLimit() external returns (uint64);
 
-    /// @notice Estimate the total execution cost on Centrifuge Chain in ETH.
+    /// @notice Estimate the total execution cost on the recipient chain in ETH.
     /// @dev    Currently payload is disregarded and not included in the calculation.
     /// @param  payload Estimates the execution cost based on the payload
     /// @return Estimated cost in WEI units

@@ -20,8 +20,8 @@ struct AsyncRedeemState {
 interface IAsyncRedeemManager is IRedeemManager {
     /// @notice Requests share redemption. Vaults have to request redemptions
     ///         from Centrifuge before actual asset payouts can be done. The redemption
-    ///         requests are added to the order book on Centrifuge. Once the next epoch is
-    ///         executed on Centrifuge, vaults can proceed with asset payouts
+    ///         requests are added to the order book on the corresponding CP instance. Once the next epoch is
+    ///         executed on the corresponding CP instance, vaults can proceed with asset payouts
     ///         in case the order got fulfilled.
     /// @dev    The shares required to fulfill the redemption request have to be locked and are transferred from the
     ///         owner to the escrow, even though the asset payout can only happen after epoch execution.
@@ -35,13 +35,14 @@ interface IAsyncRedeemManager is IRedeemManager {
     ///         transferred to the owner.
     ///         While users have outstanding cancellation requests no new redeem requests can be submitted (exception:
     ///         trigger through governance).
-    ///         Once the next epoch is executed on Centrifuge, vaults can proceed with share payouts
+    ///         Once the next epoch is executed on the corresponding CP instance, vaults can proceed with share payouts
     ///         if the orders could be cancelled successfully.
     /// @dev    The cancellation request might fail in case the pending redeem order already got fulfilled on
     ///         Centrifuge.
     function cancelRedeemRequest(address vaultAddr, address owner, address source) external;
 
-    /// @notice Processes owner's redeem request cancellation after the epoch has been executed on Centrifuge and the
+    /// @notice Processes owner's redeem request cancellation after the epoch has been executed on the corresponding CP
+    /// instance and the
     ///         redeem order cancellation has been successfully processed (partial fulfillment possible).
     ///         Shares are transferred from the escrow to the receiver.
     /// @dev    The shares required to fulfill the claim have already been reserved for the owner in escrow on
