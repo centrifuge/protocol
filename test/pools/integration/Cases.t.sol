@@ -54,7 +54,7 @@ contract TestCases is PoolsDeployer, Test {
 
     function _mockStuff() private {
         cv = new MockVaults(CHAIN_CV, gateway);
-        wire(cv);
+        wire(CHAIN_CV, cv);
 
         gasService.file("messageGasLimit", GAS);
     }

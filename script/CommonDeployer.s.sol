@@ -88,9 +88,9 @@ contract CommonDeployer is Script, JsonRegistry {
         gateway.file("handler", address(messageProcessor));
     }
 
-    function wire(IAdapter adapter) public {
+    function wire(uint16 chainId, IAdapter adapter) public {
         adapters.push(adapter);
-        gateway.file("adapters", adapters);
+        gateway.file("adapters", chainId, adapters);
         IAuth(address(adapter)).rely(address(root));
         IAuth(address(adapter)).deny(address(this));
     }

@@ -54,7 +54,7 @@ contract TestEndToEnd is Test {
         deploy.deployFull(chainId, safeAdmin);
 
         adapter = new LocalAdapter(chainId, deploy.gateway(), address(deploy));
-        deploy.wire(adapter);
+        deploy.wire(chainId, adapter);
 
         // Configure here as deployer
         vm.startPrank(address(deploy));

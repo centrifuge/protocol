@@ -54,22 +54,22 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     IMessageHandler public handler;
 
-    mapping(bytes32 messageHash => Message) internal _messages;
-    mapping(IAdapter adapter => Adapter) internal _activeAdapters;
+    mapping(uint16 chainId => mapping(bytes32 messageHash => Message)) internal _messages;
+    mapping(uint16 chainId => mapping(IAdapter adapter => Adapter)) internal _activeAdapters;
 
     /// @notice Amount of native tokens received per pool for paying messages
     mapping(PoolId => uint256) public subsidy;
 
     /// @inheritdoc IGateway
-    IAdapter[] public adapters;
+    mapping(uint16 chainId => IAdapter[]) public adapters;
 
     /// @inheritdoc IGateway
-    mapping(IAdapter adapter => mapping(bytes32 messageHash => uint256 timestamp)) public recoveries;
+    mapping(uint16 chainId => mapping(IAdapter adapter => mapping(bytes32 messageHash => uint256 timestamp))) public recoveries;
 
     /// @notice Current batch messages pending to be sent
     mapping(uint16 chainId => bytes) public /*transient*/ batch;
 
-    /// @notice Chains ID with pendign batch messages
+    /// @notice Chains ID with pending batch messages
     uint16[] public /*transient*/ chainIds;
 
     constructor(IRoot root_, IGasService gasService_) Auth(msg.sender) {
@@ -92,35 +92,35 @@ contract Gateway is Auth, IGateway, IRecoverable {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IGateway
-    function file(bytes32 what, IAdapter[] calldata addresses) external auth {
+    function file(bytes32 what, uint16 chainId, IAdapter[] calldata addresses) external auth {
         if (what == "adapters") {
             uint8 quorum_ = addresses.length.toUint8();
             require(quorum_ != 0, "Gateway/empty-adapter-set");
             require(quorum_ <= MAX_ADAPTER_COUNT, "Gateway/exceeds-max");
 
             // Increment session id to reset pending votes
-            uint256 numAdapters = adapters.length;
-            uint64 sessionId = numAdapters > 0 ? _activeAdapters[adapters[0]].activeSessionId + 1 : 0;
+            uint256 numAdapters = adapters[chainId].length;
+            uint64 sessionId = numAdapters > 0 ? _activeAdapters[chainId][adapters[chainId][0]].activeSessionId + 1 : 0;
 
             // Disable old adapters
             for (uint8 i; i < numAdapters; i++) {
-                delete _activeAdapters[adapters[i]];
+                delete _activeAdapters[chainId][adapters[chainId][i]];
             }
 
             // Enable new adapters, setting quorum to number of adapters
             for (uint8 j; j < quorum_; j++) {
-                require(_activeAdapters[addresses[j]].id == 0, "Gateway/no-duplicates-allowed");
+                require(_activeAdapters[chainId][addresses[j]].id == 0, "Gateway/no-duplicates-allowed");
 
                 // Ids are assigned sequentially starting at 1
-                _activeAdapters[addresses[j]] = Adapter(j + 1, quorum_, sessionId);
+                _activeAdapters[chainId][addresses[j]] = Adapter(j + 1, quorum_, sessionId);
             }
 
-            adapters = addresses;
+            adapters[chainId] = addresses;
         } else {
             revert("Gateway/file-unrecognized-param");
         }
 
-        emit File(what, addresses);
+        emit File(what, chainId, addresses);
     }
 
     /// @inheritdoc IGateway
@@ -162,14 +162,14 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     /// @dev Handle an isolated message
     function _handle(uint16 chainId, bytes memory payload, IAdapter adapter_, bool isRecovery) internal {
-        Adapter memory adapter = _activeAdapters[adapter_];
+        Adapter memory adapter = _activeAdapters[chainId][adapter_];
         require(adapter.id != 0, "Gateway/invalid-adapter");
 
         uint8 code = payload.messageCode();
         if (code == uint8(MessageType.InitiateMessageRecovery) || code == uint8(MessageType.DisputeMessageRecovery)) {
             require(!isRecovery, "Gateway/no-recursion");
-            require(adapters.length > 1, "Gateway/no-recovery-with-one-adapter-allowed");
-            return _handleRecovery(payload);
+            require(adapters[chainId].length > 1, "Gateway/no-recovery-with-one-adapter-allowed");
+            return _handleRecovery(chainId, payload);
         }
 
         bool isMessageProof = code == uint8(MessageType.MessageProof);
@@ -192,7 +192,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
             emit ProcessMessage(chainId, payload, adapter_);
         }
 
-        Message storage state = _messages[messageHash];
+        Message storage state = _messages[chainId][messageHash];
 
         if (adapter.activeSessionId != state.sessionId) {
             // Clear votes from previous session
@@ -225,42 +225,42 @@ contract Gateway is Auth, IGateway, IRecoverable {
         }
     }
 
-    function _handleRecovery(bytes memory message) internal {
+    function _handleRecovery(uint16 chainId, bytes memory message) internal {
         MessageType kind = message.messageType();
 
         if (kind == MessageType.InitiateMessageRecovery) {
             MessageLib.InitiateMessageRecovery memory m = message.deserializeInitiateMessageRecovery();
             IAdapter adapter = IAdapter(address(bytes20(m.adapter)));
-            require(_activeAdapters[adapter].id != 0, "Gateway/invalid-adapter");
-            recoveries[adapter][m.hash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
-            emit InitiateMessageRecovery(m.hash, adapter);
+            require(_activeAdapters[chainId][adapter].id != 0, "Gateway/invalid-adapter");
+            recoveries[chainId][adapter][m.hash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
+            emit InitiateMessageRecovery(chainId, m.hash, adapter);
         } else if (kind == MessageType.DisputeMessageRecovery) {
             MessageLib.DisputeMessageRecovery memory m = message.deserializeDisputeMessageRecovery();
-            return _disputeMessageRecovery(IAdapter(address(bytes20(m.adapter))), m.hash);
+            return _disputeMessageRecovery(chainId, IAdapter(address(bytes20(m.adapter))), m.hash);
         }
     }
 
     /// @inheritdoc IGateway
-    function disputeMessageRecovery(IAdapter adapter, bytes32 messageHash) external auth {
-        _disputeMessageRecovery(adapter, messageHash);
+    function disputeMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) external auth {
+        _disputeMessageRecovery(chainId, adapter, messageHash);
     }
 
-    function _disputeMessageRecovery(IAdapter adapter, bytes32 messageHash) internal {
-        delete recoveries[adapter][messageHash];
-        emit DisputeMessageRecovery(messageHash, adapter);
+    function _disputeMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) internal {
+        delete recoveries[chainId][adapter][messageHash];
+        emit DisputeMessageRecovery(chainId, messageHash, adapter);
     }
 
     /// @inheritdoc IGateway
-    function executeMessageRecovery(IAdapter adapter, bytes calldata message) external {
+    function executeMessageRecovery(uint16 chainId, IAdapter adapter, bytes calldata message) external {
         bytes32 messageHash = keccak256(message);
-        uint256 recovery = recoveries[adapter][messageHash];
+        uint256 recovery = recoveries[chainId][adapter][messageHash];
 
         require(recovery != 0, "Gateway/message-recovery-not-initiated");
         require(recovery <= block.timestamp, "Gateway/challenge-period-has-not-ended");
 
-        delete recoveries[adapter][messageHash];
-        _handle(0, /* TODO*/ message, adapter, true);
-        emit ExecuteMessageRecovery(message, adapter);
+        delete recoveries[chainId][adapter][messageHash];
+        _handle(chainId, message, adapter, true);
+        emit ExecuteMessageRecovery(chainId, message, adapter);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -287,15 +287,16 @@ contract Gateway is Auth, IGateway, IRecoverable {
     function _send(uint16 chainId, bytes memory message) private {
         bytes memory proof = MessageLib.MessageProof({hash: keccak256(message)}).serialize();
 
-        require(adapters.length != 0, "Gateway/not-initialized");
+        IAdapter[] memory adapters_ = adapters[chainId];
+        require(adapters[chainId].length != 0, "Gateway/not-initialized");
 
         uint256 messageGasLimit = gasService.estimate(chainId, message);
         uint256 proofGasLimit = gasService.estimate(chainId, proof);
 
         if (fuel != 0) {
             uint256 tank = fuel;
-            for (uint256 i; i < adapters.length; i++) {
-                IAdapter currentAdapter = IAdapter(adapters[i]);
+            for (uint256 i; i < adapters_.length; i++) {
+                IAdapter currentAdapter = IAdapter(adapters_[i]);
                 bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
                 bytes memory payload = isPrimaryAdapter ? message : proof;
 
@@ -311,8 +312,8 @@ contract Gateway is Auth, IGateway, IRecoverable {
             }
             fuel = 0;
         } else if (gasService.shouldRefuel(payableSource, payablePool, message)) {
-            for (uint256 i; i < adapters.length; i++) {
-                IAdapter currentAdapter = IAdapter(adapters[i]);
+            for (uint256 i; i < adapters_.length; i++) {
+                IAdapter currentAdapter = IAdapter(adapters_[i]);
                 bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
                 bytes memory payload = isPrimaryAdapter ? message : proof;
 
@@ -387,37 +388,37 @@ contract Gateway is Auth, IGateway, IRecoverable {
         bytes memory proof = MessageLib.MessageProof({hash: keccak256(payload)}).serialize();
         uint256 messageGasLimit = gasService.estimate(chainId, payload);
         uint256 proofGasLimit = gasService.estimate(chainId, proof);
-        perAdapter = new uint256[](adapters.length);
+        perAdapter = new uint256[](adapters[chainId].length);
 
-        uint256 adaptersCount = adapters.length;
+        uint256 adaptersCount = adapters[chainId].length;
         for (uint256 i; i < adaptersCount; i++) {
             uint256 gasLimit = i == PRIMARY_ADAPTER_ID - 1 ? messageGasLimit : proofGasLimit;
             bytes memory message = i == PRIMARY_ADAPTER_ID - 1 ? payload : proof;
-            uint256 estimated = IAdapter(adapters[i]).estimate(chainId, message, gasLimit);
+            uint256 estimated = IAdapter(adapters[chainId][i]).estimate(chainId, message, gasLimit);
             perAdapter[i] = estimated;
             total += estimated;
         }
     }
 
     /// @inheritdoc IGateway
-    function quorum() external view returns (uint8) {
-        Adapter memory adapter = _activeAdapters[adapters[0]];
+    function quorum(uint16 chainId) external view returns (uint8) {
+        Adapter memory adapter = _activeAdapters[chainId][adapters[chainId][0]];
         return adapter.quorum;
     }
 
     /// @inheritdoc IGateway
-    function activeSessionId() external view returns (uint64) {
-        Adapter memory adapter = _activeAdapters[adapters[0]];
+    function activeSessionId(uint16 chainId) external view returns (uint64) {
+        Adapter memory adapter = _activeAdapters[chainId][adapters[chainId][0]];
         return adapter.activeSessionId;
     }
 
     /// @inheritdoc IGateway
-    function votes(bytes32 messageHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory) {
-        return _messages[messageHash].votes;
+    function votes(uint16 chainId, bytes32 messageHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory) {
+        return _messages[chainId][messageHash].votes;
     }
 
     /// @inheritdoc IGateway
-    function adapterCount() external view returns (uint256) {
-        return adapters.length;
+    function adapterCount(uint16 chainId) external view returns (uint256) {
+        return adapters[chainId].length;
     }
 }

@@ -18,7 +18,7 @@ contract LocalhostDeployer is FullDeployer {
         saveDeploymentOutput();
 
         LocalhostAdapter adapter = new LocalhostAdapter(gateway, address(this));
-        wire(adapter);
+        wire(centrifugeChainId, adapter);
 
         vm.stopBroadcast();
     }
