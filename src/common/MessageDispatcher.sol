@@ -7,7 +7,7 @@ import {Auth} from "src/misc/Auth.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 
-import {MessageCategory, MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";

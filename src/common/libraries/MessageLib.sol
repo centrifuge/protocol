@@ -10,15 +10,15 @@ import {JournalEntry, JournalEntryLib} from "src/common/types/JournalEntry.sol";
 enum MessageType {
     /// @dev Placeholder for null message type
     Invalid,
-    // -- Gateway messages 1 - 3
+    // -- Gateway messages
     MessageProof,
     InitiateMessageRecovery,
     DisputeMessageRecovery,
-    // -- Root messages 4 - 6
+    // -- Root messages
     ScheduleUpgrade,
     CancelUpgrade,
     RecoverTokens,
-    // -- Pool manager messages 7 - 15
+    // -- Pool manager messages
     RegisterAsset,
     NotifyPool,
     NotifyShareClass,
@@ -28,7 +28,7 @@ enum MessageType {
     TransferShares,
     UpdateRestriction,
     UpdateContract,
-    // -- Investment manager messages 16 - 24
+    // -- Investment manager messages
     DepositRequest,
     RedeemRequest,
     FulfilledDepositRequest,
@@ -38,7 +38,7 @@ enum MessageType {
     FulfilledCancelDepositRequest,
     FulfilledCancelRedeemRequest,
     TriggerRedeemRequest,
-    // -- BalanceSheetManager messages 25 - 27
+    // -- BalanceSheetManager messages
     UpdateHoldingAmount,
     UpdateHoldingValue,
     UpdateShares,
@@ -67,16 +67,6 @@ enum VaultUpdateKind {
     DeployAndLink,
     Link,
     Unlink
-}
-
-enum MessageCategory {
-    Invalid,
-    Gateway,
-    Root,
-    Pool,
-    Investment,
-    BalanceSheet,
-    Other
 }
 
 library MessageLib {
@@ -149,24 +139,6 @@ library MessageLib {
             uint16 debitsBytelen = message.toUint16(length); // debitsBytelen
             uint16 creditsByteLen = message.toUint16(length + 2 + debitsBytelen); //creditsByteLen
             length += 2 + debitsBytelen + 2 + creditsByteLen;
-        }
-    }
-
-    function category(uint8 code) internal pure returns (MessageCategory) {
-        if (code == 0) {
-            return MessageCategory.Invalid;
-        } else if (code >= 1 && code <= 3) {
-            return MessageCategory.Gateway;
-        } else if (code >= 4 && code <= 6) {
-            return MessageCategory.Root;
-        } else if (code >= 7 && code <= 15) {
-            return MessageCategory.Pool;
-        } else if (code >= 16 && code <= 24) {
-            return MessageCategory.Investment;
-        } else if (code >= 25 && code <= 29) {
-            return MessageCategory.BalanceSheet;
-        } else {
-            return MessageCategory.Other;
         }
     }
 
