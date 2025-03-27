@@ -104,8 +104,8 @@ library MessageLib {
         (185 << uint8(MessageType.UpdateShareClassMetadata) * 8) +
         (57 << uint8(MessageType.UpdateShareClassHook) * 8) +
         (73 << uint8(MessageType.TransferShares) * 8) +
-        (27 << uint8(MessageType.UpdateRestriction) * 8) +
-        (59 << uint8(MessageType.UpdateContract) * 8) +
+        (25 << uint8(MessageType.UpdateRestriction) * 8) +
+        (57 << uint8(MessageType.UpdateContract) * 8) +
         (89 << uint8(MessageType.DepositRequest) * 8) +
         (89 << uint8(MessageType.RedeemRequest) * 8) +
         (105 << uint8(MessageType.FulfilledDepositRequest) * 8) +
@@ -115,10 +115,10 @@ library MessageLib {
         (89 << uint8(MessageType.FulfilledCancelDepositRequest) * 8) +
         (89 << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (89 << uint8(MessageType.TriggerRedeemRequest) * 8) +
-        (142 << uint8(MessageType.UpdateHolding) * 8) +
+        (138 << uint8(MessageType.UpdateHolding) * 8) +
         (122 << uint8(MessageType.UpdateShares) * 8) +
-        (13 << uint8(MessageType.UpdateJournal) * 8) +
-        (111 << uint8(MessageType.TriggerUpdateHolding) * 8) +
+        (9 << uint8(MessageType.UpdateJournal) * 8) +
+        (107 << uint8(MessageType.TriggerUpdateHolding) * 8) +
         (91 << uint8(MessageType.TriggerUpdateShares) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
@@ -135,17 +135,18 @@ library MessageLib {
 
         length = uint16(uint8(bytes32(MESSAGE_LENGTHS)[31 - kind]));
 
+        // Spetial treatment for messages with dynamic size:
         if (kind == uint8(MessageType.UpdateRestriction)) {
-            length += message.toUint16(length - 2); //payloadLength
+            length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.UpdateContract)) {
-            length += message.toUint16(length - 2); //payloadLength
+            length += 2 + message.toUint16(length); //payloadLength
         } else if (
             kind == uint8(MessageType.UpdateHolding) || kind == uint8(MessageType.TriggerUpdateHolding)
                 || kind == uint8(MessageType.UpdateJournal)
         ) {
-            uint16 lengthCredits = message.toUint16(length - 2); // credits length
-            uint16 lengthDebits = message.toUint16(length - 4); //debits length
-            length += lengthCredits + lengthDebits;
+            uint16 debitsBytelen = message.toUint16(length); // debitsBytelen
+            uint16 creditsByteLen = message.toUint16(length + 2 + debitsBytelen); //creditsByteLen
+            length += 2 + debitsBytelen + 2 + creditsByteLen;
         }
     }
 
@@ -490,7 +491,7 @@ library MessageLib {
     struct UpdateRestriction {
         uint64 poolId;
         bytes16 scId;
-        bytes payload;
+        bytes payload; // As secuences of bytes
     }
 
     function deserializeUpdateRestriction(bytes memory data) internal pure returns (UpdateRestriction memory) {
@@ -583,7 +584,7 @@ library MessageLib {
         uint64 poolId;
         bytes16 scId;
         bytes32 target;
-        bytes payload;
+        bytes payload; // As secuences of bytes
     }
 
     function deserializeUpdateContract(bytes memory data) internal pure returns (UpdateContract memory) {
@@ -942,7 +943,7 @@ library MessageLib {
         require(messageType(data) == MessageType.UpdateHolding, "UnknownMessageType");
 
         uint16 debitsByteLen = data.toUint16(138);
-        uint16 creditsByteLen = data.toUint16(140);
+        uint16 creditsByteLen = data.toUint16(140 + debitsByteLen);
 
         return UpdateHolding({
             poolId: data.toUint64(1),
@@ -953,7 +954,9 @@ library MessageLib {
             pricePerUnit: D18.wrap(data.toUint128(89)),
             timestamp: data.toUint256(105),
             isIncrease: data.toBool(137),
-            debits: data.toJournalEntries(142, debitsByteLen),
+            // Skip 2 bytes for sequence length at 138
+            debits: data.toJournalEntries(140, debitsByteLen),
+            // Skip 2 bytes for sequence length at 140 + debitsByteLen
             credits: data.toJournalEntries(142 + debitsByteLen, creditsByteLen)
         });
     }
@@ -973,8 +976,8 @@ library MessageLib {
             t.timestamp,
             t.isIncrease,
             uint16(debits.length),
-            uint16(credits.length),
             debits,
+            uint16(credits.length),
             credits
         );
     }
@@ -1026,13 +1029,15 @@ library MessageLib {
     function deserializeUpdateJournal(bytes memory data) internal pure returns (UpdateJournal memory) {
         require(messageType(data) == MessageType.UpdateJournal, UnknownMessageType());
 
-        uint16 debitsLength = data.toUint16(9);
-        uint16 creditsLength = data.toUint16(11);
+        uint16 debitsByteLen = data.toUint16(9);
+        uint16 creditsByteLen = data.toUint16(11 + debitsByteLen);
 
         return UpdateJournal({
             poolId: data.toUint64(1),
-            debits: data.toJournalEntries(13, debitsLength),
-            credits: data.toJournalEntries(13 + debitsLength, creditsLength)
+            // Skip 2 bytes for sequence length at 9
+            debits: data.toJournalEntries(11, debitsByteLen),
+            // Skip 2 bytes for sequence length at 11 + debitsByteLen
+            credits: data.toJournalEntries(13 + debitsByteLen, creditsByteLen)
         });
     }
 
@@ -1041,7 +1046,7 @@ library MessageLib {
         bytes memory credits = t.credits.encodePacked();
 
         return abi.encodePacked(
-            MessageType.UpdateJournal, t.poolId, uint16(debits.length), uint16(credits.length), debits, credits
+            MessageType.UpdateJournal, t.poolId, uint16(debits.length), debits, uint16(credits.length), credits
         );
     }
 
@@ -1066,7 +1071,7 @@ library MessageLib {
         require(messageType(data) == MessageType.TriggerUpdateHolding, "UnknownMessageType");
 
         uint16 debitsByteLen = data.toUint16(107);
-        uint16 creditsByteLen = data.toUint16(109);
+        uint16 creditsByteLen = data.toUint16(109 + debitsByteLen);
 
         return TriggerUpdateHolding({
             poolId: data.toUint64(1),
@@ -1077,7 +1082,9 @@ library MessageLib {
             pricePerUnit: D18.wrap(data.toUint128(89)),
             isIncrease: data.toBool(105),
             asAllowance: data.toBool(106),
-            debits: data.toJournalEntries(111, debitsByteLen),
+            // Skip 2 bytes for sequence length at 107
+            debits: data.toJournalEntries(109, debitsByteLen),
+            // Skip 2 bytes for sequence length at 109 + debitsByteLen
             credits: data.toJournalEntries(111 + debitsByteLen, creditsByteLen)
         });
     }
@@ -1097,8 +1104,8 @@ library MessageLib {
             t.isIncrease,
             t.asAllowance,
             uint16(debits.length),
-            uint16(credits.length),
             debits,
+            uint16(credits.length),
             credits
         );
     }
