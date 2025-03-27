@@ -13,6 +13,7 @@ import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {newAssetId} from "src/common/types/AssetId.sol";
+import {newPoolId} from "src/common/types/PoolId.sol";
 
 // core contracts
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
@@ -55,12 +56,12 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
     uint128 constant MAX_UINT128 = type(uint128).max;
     uint64 constant MAX_UINT64 = type(uint64).max;
-    uint256 constant GATEWAY_INITIAL_BALANCE = 10 ether;
 
     // default values
     uint16 public constant OTHER_CHAIN_ID = 1;
     uint16 public constant THIS_CHAIN_ID = OTHER_CHAIN_ID + 100;
     uint32 public constant BLOCK_CHAIN_ID = 23;
+    uint64 immutable POOL_A = newPoolId(OTHER_CHAIN_ID, 1).raw();
     uint256 public erc20TokenId = 0;
     uint256 public defaultErc6909TokenId = 16;
     uint128 public defaultAssetId = newAssetId(THIS_CHAIN_ID, 1).raw();
@@ -107,7 +108,6 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
         gateway.file("adapters", testAdapters);
         gateway.file("gasService", address(mockedGasService));
-        vm.deal(address(gateway), GATEWAY_INITIAL_BALANCE);
 
         mockedGasService.setReturn("estimate", uint256(0.5 gwei));
         mockedGasService.setReturn("shouldRefuel", true);
@@ -212,7 +212,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
     function deploySimpleVault() public returns (address vaultAddress, uint128 assetId) {
         return deployVault(
-            5,
+            POOL_A,
             6,
             restrictionManager,
             "name",
