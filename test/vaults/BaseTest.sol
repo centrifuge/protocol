@@ -3,15 +3,17 @@ pragma solidity 0.8.28;
 pragma abicoder v2;
 
 import "src/misc/interfaces/IERC20.sol";
+import {IERC6909Fungible} from "src/misc/interfaces/IERC6909.sol";
 import {ERC20} from "src/misc/ERC20.sol";
+import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 
 import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {newAssetId} from "src/pools/types/AssetId.sol";
-import {newPoolId} from "src/pools/types/PoolId.sol";
+import {newAssetId} from "src/common/types/AssetId.sol";
+import {newPoolId} from "src/common/types/PoolId.sol";
 
 // core contracts
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
@@ -45,6 +47,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     MockAdapter adapter3;
     IAdapter[] testAdapters;
     ERC20 public erc20;
+    IERC6909Fungible public erc6909;
 
     address self = address(this);
     address investor = makeAddr("investor");
@@ -52,6 +55,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     address randomUser = makeAddr("randomUser");
 
     uint128 constant MAX_UINT128 = type(uint128).max;
+    uint64 constant MAX_UINT64 = type(uint64).max;
 
     // default values
     uint16 public constant OTHER_CHAIN_ID = 1;
@@ -59,9 +63,12 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     uint32 public constant BLOCK_CHAIN_ID = 23;
     uint64 immutable POOL_A = newPoolId(OTHER_CHAIN_ID, 1).raw();
     uint256 public erc20TokenId = 0;
+    uint256 public defaultErc6909TokenId = 16;
     uint128 public defaultAssetId = newAssetId(THIS_CHAIN_ID, 1).raw();
     uint128 public defaultPrice = 1 * 10 ** 18;
     uint8 public defaultDecimals = 8;
+    uint32 public defaultPoolId = 5;
+    bytes16 public defaultShareClassId = bytes16(bytes("1"));
 
     function setUp() public virtual {
         // We should not use the block ChainID
@@ -97,6 +104,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         centrifugeChain = new MockCentrifugeChain(testAdapters, poolManager);
         mockedGasService = new MockGasService();
         erc20 = _newErc20("X's Dollar", "USDX", 6);
+        erc6909 = new MockERC6909();
 
         gateway.file("adapters", testAdapters);
         gateway.file("gasService", address(mockedGasService));
@@ -108,12 +116,15 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         vm.label(address(root), "Root");
         vm.label(address(investmentManager), "InvestmentManager");
         vm.label(address(poolManager), "PoolManager");
+        vm.label(address(balanceSheetManager), "BalanceSheetManager");
         vm.label(address(gateway), "Gateway");
         vm.label(address(messageProcessor), "MessageProcessor");
+        vm.label(address(messageDispatcher), "MessageDispatcher");
         vm.label(address(adapter1), "MockAdapter1");
         vm.label(address(adapter2), "MockAdapter2");
         vm.label(address(adapter3), "MockAdapter3");
         vm.label(address(erc20), "ERC20");
+        vm.label(address(erc6909), "ERC6909");
         vm.label(address(centrifugeChain), "CentrifugeChain");
         vm.label(address(vaultRouter), "VaultRouter");
         vm.label(address(gasService), "GasService");
@@ -127,9 +138,11 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         // Exclude predeployed contracts from invariant tests by default
         excludeContract(address(root));
         excludeContract(address(investmentManager));
+        excludeContract(address(balanceSheetManager));
         excludeContract(address(poolManager));
         excludeContract(address(gateway));
         excludeContract(address(erc20));
+        excludeContract(address(erc6909));
         excludeContract(address(centrifugeChain));
         excludeContract(address(vaultRouter));
         excludeContract(address(adapter1));

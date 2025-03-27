@@ -3,8 +3,8 @@ pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 
-import {ShareClassId, newShareClassId} from "src/pools/types/ShareClassId.sol";
-import {PoolId, newPoolId} from "src/pools/types/PoolId.sol";
+import {ShareClassId, newShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 
 contract ShareClassIdTest is Test {
     function testShareClassId(bytes16 id) public pure {

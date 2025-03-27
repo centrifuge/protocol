@@ -11,7 +11,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {Gateway, IRoot, IGasService} from "src/common/Gateway.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {PoolId, newPoolId} from "src/pools/types/PoolId.sol";
+import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 
 import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
 import {MockRoot} from "test/common/mocks/MockRoot.sol";

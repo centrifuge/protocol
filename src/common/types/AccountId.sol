@@ -12,4 +12,8 @@ function newAccountId(uint24 id, uint8 kind_) pure returns (AccountId) {
     return AccountId.wrap((uint32(id) << 8) | kind_);
 }
 
-using {kind} for AccountId global;
+function raw(AccountId accountId_) pure returns (uint32) {
+    return AccountId.unwrap(accountId_);
+}
+
+using {kind, raw} for AccountId global;

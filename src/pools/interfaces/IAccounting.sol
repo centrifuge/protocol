@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {AccountId} from "src/pools/types/AccountId.sol";
-import {PoolId} from "src/pools/types/PoolId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 
 interface IAccounting {
     /// @notice Emitted when a an entry is done

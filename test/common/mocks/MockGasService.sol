@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import "test/common/mocks/Mock.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {MessageType} from "src/common/libraries/MessageLib.sol";
-import {PoolId} from "src/pools/types/PoolId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 
 contract MockGasService is Mock {
     using BytesLib for bytes;

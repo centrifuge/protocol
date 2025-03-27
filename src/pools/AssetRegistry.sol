@@ -8,7 +8,7 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {ERC6909Fungible} from "src/misc/ERC6909Fungible.sol";
 import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
 
-import {AssetId} from "src/pools/types/AssetId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 
 contract AssetRegistry is ERC6909Fungible, IAssetRegistry {

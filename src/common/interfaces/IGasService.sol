@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {PoolId} from "src/pools/types/PoolId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 
 interface IGasService {
     event File(bytes32 indexed what, uint64 value);

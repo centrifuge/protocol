@@ -15,7 +15,7 @@ import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IPoolManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-import {newAssetId} from "src/pools/types/AssetId.sol";
+import {newAssetId} from "src/common/types/AssetId.sol";
 
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 import {IBaseVault, IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
@@ -51,6 +51,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
     IVaultMessageSender public sender;
     ITrancheFactory public trancheFactory;
+    address public balanceSheetManager;
 
     uint32 internal _assetCounter;
 
@@ -58,6 +59,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     mapping(address factory => bool) public vaultFactory;
     mapping(address => VaultDetails) internal _vaultDetails;
     mapping(uint128 assetId => AssetIdKey) internal _idToAsset;
+    /// @inheritdoc IPoolManager
     mapping(address asset => mapping(uint256 tokenId => uint128 assetId)) public assetToId;
 
     constructor(address escrow_, address trancheFactory_, address[] memory vaultFactories) Auth(msg.sender) {
@@ -75,6 +77,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     function file(bytes32 what, address data) external auth {
         if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "trancheFactory") trancheFactory = ITrancheFactory(data);
+        else if (what == "balanceSheetManager") balanceSheetManager = data;
         else revert("PoolManager/file-unrecognized-param");
         emit File(what, data);
     }
@@ -142,7 +145,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         assetId = assetToId[asset][tokenId];
         if (assetId == 0) {
             _assetCounter++;
-            assetId = newAssetId(sender.centrifugeChainId(), _assetCounter).raw();
+            assetId = newAssetId(sender.localCentrifugeId(), _assetCounter).raw();
 
             _idToAsset[assetId] = AssetIdKey(asset, tokenId);
             assetToId[asset][tokenId] = assetId;
@@ -150,6 +153,10 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
             // Give pool manager infinite approval for asset
             // in the escrow to transfer to the user on transfer
             escrow.approveMax(asset, tokenId, address(this));
+
+            // Give balance sheet manager infinite approval for asset
+            // in the escrow to transfer to the user on transfer
+            escrow.approveMax(asset, tokenId, balanceSheetManager);
 
             emit RegisterAsset(assetId, asset, tokenId, name, symbol, decimals);
         }
@@ -183,8 +190,10 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         // Hook can be address zero if the tranche_token is fully permissionless and has no custom logic
         require(hook == address(0) || _isValidHook(hook), "PoolManager/invalid-hook");
 
-        address[] memory trancheWards = new address[](1);
+        address[] memory trancheWards = new address[](2);
         trancheWards[0] = address(this);
+        // BalanceSheetManager needs this in order to mint shares
+        trancheWards[1] = address(balanceSheetManager);
 
         address token = trancheFactory.newTranche(name, symbol, decimals, salt, trancheWards);
 
@@ -379,6 +388,13 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     }
 
     /// @inheritdoc IPoolManager
+    function checkedTranche(uint64 poolId, bytes16 trancheId) public view returns (address) {
+        address token = tranche(poolId, trancheId);
+        require(token != address(0), "PoolManager/unknown-tranche");
+        return token;
+    }
+
+    /// @inheritdoc IPoolManager
     function tranchePrice(uint64 poolId, bytes16 trancheId, uint128 assetId)
         public
         view
@@ -410,6 +426,18 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     function idToAsset(uint128 assetId) public view returns (address asset, uint256 tokenId) {
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
         return (assetIdKey.asset, assetIdKey.tokenId);
+    }
+
+    /// @inheritdoc IPoolManager
+    function checkedIdToAsset(uint128 assetId) public view returns (address asset, uint256 tokenId) {
+        (asset, tokenId) = idToAsset(assetId);
+        require(asset != address(0), "PoolManager/unknown-asset");
+    }
+
+    /// @inheritdoc IPoolManager
+    function checkedAssetToId(address asset, uint256 tokenId) public view returns (uint128 assetId) {
+        assetId = assetToId[asset][tokenId];
+        require(assetId != 0, "PoolManager/unknown-asset");
     }
 
     function _safeGetAssetDecimals(address asset, uint256 tokenId) private view returns (uint8) {
