@@ -465,7 +465,7 @@ library MessageLib {
     struct UpdateRestriction {
         uint64 poolId;
         bytes16 scId;
-        bytes payload; // As secuence of bytes
+        bytes payload; // As sequence of bytes
     }
 
     function deserializeUpdateRestriction(bytes memory data) internal pure returns (UpdateRestriction memory) {
@@ -558,7 +558,7 @@ library MessageLib {
         uint64 poolId;
         bytes16 scId;
         bytes32 target;
-        bytes payload; // As secuence of bytes
+        bytes payload; // As sequence of bytes
     }
 
     function deserializeUpdateContract(bytes memory data) internal pure returns (UpdateContract memory) {
@@ -909,8 +909,8 @@ library MessageLib {
         uint128 pricePerUnit;
         uint64 timestamp;
         bool isIncrease; // Signals whether this is an increase or a decrease
-        JournalEntry[] debits; // As secuence of bytes
-        JournalEntry[] credits; // As secuence of bytes
+        JournalEntry[] debits; // As sequence of bytes
+        JournalEntry[] credits; // As sequence of bytes
     }
 
     function deserializeUpdateHoldingAmount(bytes memory data) internal pure returns (UpdateHoldingAmount memory h) {
@@ -1025,8 +1025,8 @@ library MessageLib {
 
     struct UpdateJournal {
         uint64 poolId;
-        JournalEntry[] debits; // As secuence of bytes
-        JournalEntry[] credits; // As secuence of bytes
+        JournalEntry[] debits; // As sequence of bytes
+        JournalEntry[] credits; // As sequence of bytes
     }
 
     function deserializeUpdateJournal(bytes memory data) internal pure returns (UpdateJournal memory) {
@@ -1066,8 +1066,8 @@ library MessageLib {
         uint128 pricePerUnit;
         bool isIncrease; // Signals whether this is an increase or a decrease
         bool asAllowance; // Signals whether the amount is transferred or allowed to who on the BSM
-        JournalEntry[] debits; // As secuence of bytes
-        JournalEntry[] credits; // As secuence of bytes
+        JournalEntry[] debits; // As sequence of bytes
+        JournalEntry[] credits; // As sequence of bytes
     }
 
     function deserializeTriggerUpdateHoldingAmount(bytes memory data)
