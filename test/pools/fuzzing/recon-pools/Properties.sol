@@ -8,6 +8,7 @@ import {ShareClassId} from "src/pools/types/ShareClassId.sol";
 import {PoolId} from "src/pools/types/PoolId.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {EscrowId} from "src/pools/interfaces/IPoolRouter.sol";
 
 import {Helpers} from "test/pools/fuzzing/recon-pools/utils/Helpers.sol";
 import {BeforeAfter, OpType} from "./BeforeAfter.sol";
@@ -293,6 +294,30 @@ abstract contract Properties is BeforeAfter, Asserts {
                     // check that the lastUpdate was > the latest redeem approval pointer
                     gt(_before.ghostRedeemRequest[scId][assetId][actor].lastUpdate, _before.ghostLatestRedeemApproval, "lastUpdate is > latest redeem approval");
                 }
+            }
+        }
+    }
+
+    /// @dev Property: The amount of holdings of an asset for a pool-shareClas pair in Holdings MUST always be equal to the balance of the escrow for said pool-shareClass for the respective token
+    function property_holdings_balance_equals_escrow_balance() public stateless {
+        address[] memory _actors = _getActors();
+
+        for (uint256 i = 0; i < createdPools.length; i++) {
+            PoolId poolId = createdPools[i];
+            uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
+            // skip the first share class because it's never assigned
+            for (uint32 j = 1; j < shareClassCount; j++) {
+                ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
+                AssetId assetId = poolRegistry.currency(poolId);
+
+                (uint128 holdingAssetAmount,,) = holdings.holding(poolId, scId, assetId);
+                
+                address pendingShareClassEscrow = poolRouter.escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS);
+                address shareClassEscrow = poolRouter.escrow(poolId, scId, EscrowId.SHARE_CLASS);
+                uint256 pendingShareClassEscrowBalance = assetRegistry.balanceOf(pendingShareClassEscrow, assetId.raw());
+                uint256 shareClassEscrowBalance = assetRegistry.balanceOf(shareClassEscrow, assetId.raw());
+                
+                eq(holdingAssetAmount, pendingShareClassEscrowBalance + shareClassEscrowBalance, "holding != escrow balance");
             }
         }
     }
