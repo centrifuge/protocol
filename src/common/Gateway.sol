@@ -15,6 +15,7 @@ import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 
 /// @title  Gateway
 /// @notice Routing contract that forwards outgoing messages to multiple adapters (1 full message, n-1 proofs)
@@ -41,7 +42,12 @@ contract Gateway is Auth, IGateway, IRecoverable {
     bool public transient isBatching;
 
     /// @notice The payer of the transaction.
+    /// @dev This is never used along with batching
     address public transient payableSource;
+
+    /// @notice The pool associated to the message.
+    /// @dev This is never used along with batching
+    PoolId public transient payablePool;
 
     IRoot public immutable root;
     IGasService public gasService;
@@ -50,6 +56,9 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     mapping(bytes32 messageHash => Message) internal _messages;
     mapping(IAdapter adapter => Adapter) internal _activeAdapters;
+
+    /// @notice Amount of native tokens received per pool for paying messages
+    mapping(PoolId => uint256) public subsidy;
 
     /// @inheritdoc IGateway
     IAdapter[] public adapters;
@@ -73,8 +82,9 @@ contract Gateway is Auth, IGateway, IRecoverable {
         _;
     }
 
-    receive() external payable {
-        emit ReceiveNativeTokens(msg.sender, msg.value);
+    function subsidizePool(PoolId poolId) external payable {
+        subsidy[poolId] += msg.value;
+        emit ReceiveNativeTokens(poolId, msg.sender, msg.value);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -300,7 +310,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
                 );
             }
             fuel = 0;
-        } else if (gasService.shouldRefuel(payableSource, message)) {
+        } else if (gasService.shouldRefuel(payableSource, payablePool, message)) {
             for (uint256 i; i < adapters.length; i++) {
                 IAdapter currentAdapter = IAdapter(adapters[i]);
                 bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
@@ -309,10 +319,11 @@ contract Gateway is Auth, IGateway, IRecoverable {
                 uint256 consumed =
                     currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit);
 
-                if (consumed <= address(this).balance) {
+                if (consumed <= subsidy[payablePool]) {
                     currentAdapter.send{value: consumed}(
                         chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this)
                     );
+                    subsidy[payablePool] -= consumed;
                 } else {
                     currentAdapter.send(
                         chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this)
@@ -338,8 +349,9 @@ contract Gateway is Auth, IGateway, IRecoverable {
     }
 
     /// @inheritdoc IGateway
-    function setPayableSource(address source) external {
+    function setPayableSource(address source, PoolId poolId) external {
         payableSource = source;
+        payablePool = poolId;
     }
 
     /// @inheritdoc IGateway
@@ -379,9 +391,9 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
         uint256 adaptersCount = adapters.length;
         for (uint256 i; i < adaptersCount; i++) {
-            uint256 centrifugeCost = i == PRIMARY_ADAPTER_ID - 1 ? messageGasLimit : proofGasLimit;
+            uint256 gasLimit = i == PRIMARY_ADAPTER_ID - 1 ? messageGasLimit : proofGasLimit;
             bytes memory message = i == PRIMARY_ADAPTER_ID - 1 ? payload : proof;
-            uint256 estimated = IAdapter(adapters[i]).estimate(chainId, message, centrifugeCost);
+            uint256 estimated = IAdapter(adapters[i]).estimate(chainId, message, gasLimit);
             perAdapter[i] = estimated;
             total += estimated;
         }

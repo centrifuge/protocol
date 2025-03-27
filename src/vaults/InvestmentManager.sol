@@ -16,6 +16,7 @@ import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IInvestmentManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IInvestmentManager, InvestmentState} from "src/vaults/interfaces/IInvestmentManager.sol";
@@ -138,7 +139,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         state.pendingDepositRequest = state.pendingDepositRequest + _assets;
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
-        gateway.setPayableSource(source);
+        gateway.setPayableSource(source, PoolId.wrap(vault_.poolId()));
         sender.sendDepositRequest(
             vault_.poolId(), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId, _assets
         );
@@ -186,7 +187,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         state.pendingRedeemRequest = state.pendingRedeemRequest + shares;
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
-        gateway.setPayableSource(source);
+        gateway.setPayableSource(source, PoolId.wrap(vault_.poolId()));
         sender.sendRedeemRequest(
             vault_.poolId(), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId, shares
         );
@@ -205,7 +206,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
-        gateway.setPayableSource(source);
+        gateway.setPayableSource(source, PoolId.wrap(vault_.poolId()));
         sender.sendCancelDepositRequest(
             vault_.poolId(), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId
         );
@@ -227,7 +228,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
-        gateway.setPayableSource(source);
+        gateway.setPayableSource(source, PoolId.wrap(vault_.poolId()));
         sender.sendCancelRedeemRequest(
             vault_.poolId(), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId
         );

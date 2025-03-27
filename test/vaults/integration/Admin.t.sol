@@ -230,7 +230,7 @@ contract AdminTest is BaseTest {
         deploySimpleVault();
         address clumsyUser = vm.addr(0x1234);
         address vault_ =
-            investmentManager.vault(5, bytes16(bytes("1")), poolManager.assetToId(address(erc20), erc20TokenId));
+            investmentManager.vault(POOL_A, bytes16(bytes("1")), poolManager.assetToId(address(erc20), erc20TokenId));
         ERC7540Vault vault = ERC7540Vault(vault_);
         address asset_ = vault.asset();
         ERC20 asset = ERC20(asset_);
