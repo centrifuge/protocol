@@ -15,12 +15,6 @@ library TransientStorage {
         }
     }
 
-    function tstore(bytes32 slot, bool value) internal {
-        assembly {
-            tstore(slot, value)
-        }
-    }
-
     function tloadAddress(bytes32 slot) internal view returns (address value) {
         assembly {
             value := tload(slot)
@@ -28,12 +22,6 @@ library TransientStorage {
     }
 
     function tloadUint256(bytes32 slot) internal view returns (uint256 value) {
-        assembly {
-            value := tload(slot)
-        }
-    }
-
-    function tloadBool(bytes32 slot) internal view returns (bool value) {
         assembly {
             value := tload(slot)
         }

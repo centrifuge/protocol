@@ -44,24 +44,21 @@ interface IAccounting {
     }
 
     /// @notice Debits an account. Increase the value of debit-normal accounts, decrease for credit-normal ones.
-    /// @param poolId The pool the account belongs to
     /// @param account The account to debit
     /// @param value Amount being debited
-    function addDebit(PoolId poolId, AccountId account, uint128 value) external;
+    function addDebit(AccountId account, uint128 value) external;
 
     /// @notice Credits an account. Decrease the value of debit-normal accounts, increase for credit-normal ones.
-    /// @param poolId The pool the account belongs to
     /// @param account The account to credit
     /// @param value Amount being credited
-    function addCredit(PoolId poolId, AccountId account, uint128 value) external;
+    function addCredit(AccountId account, uint128 value) external;
 
-    /// @notice Unlocks the journal for a pool
+    /// @notice Unlocks a pool for journal entries
     /// @param poolId The pool to unlock
     function unlock(PoolId poolId) external;
 
-    /// @notice Closes the journal for a pool and checks if the entries are balanced.
-    /// @param poolId The pool to unlock
-    function lock(PoolId poolId) external;
+    /// @notice Closes the transaction and checks if the entries are balanced.
+    function lock() external;
 
     /// @notice Creates an account.
     /// @param poolId The pool the account belongs to
