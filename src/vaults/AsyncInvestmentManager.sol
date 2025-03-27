@@ -18,6 +18,7 @@ import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IInvestmentManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {
@@ -124,7 +125,7 @@ contract AsyncInvestmentManager is BaseInvestmentManager, IAsyncInvestmentManage
         state.pendingDepositRequest = state.pendingDepositRequest + _assets;
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
-        gateway.setPayableSource(source);
+        gateway.setPayableSource(source, PoolId.wrap(vault_.poolId()));
         sender.sendDepositRequest(
             vault_.poolId(), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId, _assets
         );
@@ -172,7 +173,7 @@ contract AsyncInvestmentManager is BaseInvestmentManager, IAsyncInvestmentManage
         state.pendingRedeemRequest = state.pendingRedeemRequest + shares;
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
-        gateway.setPayableSource(source);
+        gateway.setPayableSource(source, PoolId.wrap(vault_.poolId()));
         sender.sendRedeemRequest(
             vault_.poolId(), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId, shares
         );
@@ -191,7 +192,7 @@ contract AsyncInvestmentManager is BaseInvestmentManager, IAsyncInvestmentManage
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
-        gateway.setPayableSource(source);
+        gateway.setPayableSource(source, PoolId.wrap(vault_.poolId()));
         sender.sendCancelDepositRequest(
             vault_.poolId(), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId
         );
@@ -213,7 +214,7 @@ contract AsyncInvestmentManager is BaseInvestmentManager, IAsyncInvestmentManage
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
-        gateway.setPayableSource(source);
+        gateway.setPayableSource(source, PoolId.wrap(vault_.poolId()));
         sender.sendCancelRedeemRequest(
             vault_.poolId(), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId
         );
