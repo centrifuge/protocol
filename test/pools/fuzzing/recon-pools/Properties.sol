@@ -322,6 +322,30 @@ abstract contract Properties is BeforeAfter, Asserts {
         }
     }
 
+    /// @dev Property: The amount of tokens existing in the AssetRegistry MUST always be <= the balance of the associated token in the escrow
+    // TODO: confirm if this is correct because it seems like AssetRegistry would never be receiving tokens in the first place
+    function property_assetRegistry_balance_leq_escrow_balance() public stateless {
+        address[] memory _actors = _getActors();
+
+        for (uint256 i = 0; i < createdPools.length; i++) {
+            PoolId poolId = createdPools[i];
+            uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
+            // skip the first share class because it's never assigned
+            for (uint32 j = 1; j < shareClassCount; j++) {
+                ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
+                AssetId assetId = poolRegistry.currency(poolId);
+
+                address pendingShareClassEscrow = poolRouter.escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS);
+                address shareClassEscrow = poolRouter.escrow(poolId, scId, EscrowId.SHARE_CLASS);
+                uint256 assetRegistryBalance = assetRegistry.balanceOf(address(assetRegistry), assetId.raw());
+                uint256 pendingShareClassEscrowBalance = assetRegistry.balanceOf(pendingShareClassEscrow, assetId.raw());
+                uint256 shareClassEscrowBalance = assetRegistry.balanceOf(shareClassEscrow, assetId.raw());
+
+                lte(assetRegistryBalance, pendingShareClassEscrowBalance + shareClassEscrowBalance, "assetRegistry balance > escrow balance");
+            }
+        }
+    }
+
     /// Rounding Properties /// 
 
     /// @dev Property: Checks that rounding error is within acceptable bounds (1000 wei)
