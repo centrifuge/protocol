@@ -161,7 +161,7 @@ contract BalanceSheetManagerTest is BaseTest {
         balanceSheetManager.update(
             defaultPoolId,
             defaultShareClassId,
-            MessageLib.UpdateContractPermission({who: randomUser, allowed: true}).serialize()
+            MessageLib.UpdateContractPermission({who: bytes20(randomUser), allowed: true}).serialize()
         );
 
         balanceSheetManager.deposit(
@@ -181,7 +181,7 @@ contract BalanceSheetManagerTest is BaseTest {
         balanceSheetManager.update(
             defaultPoolId,
             defaultShareClassId,
-            MessageLib.UpdateContractPermission({who: randomUser, allowed: false}).serialize()
+            MessageLib.UpdateContractPermission({who: bytes20(randomUser), allowed: false}).serialize()
         );
 
         vm.prank(randomUser);

@@ -77,10 +77,11 @@ contract BalanceSheetManager is
 
         PoolId poolId = PoolId.wrap(poolId_);
         ShareClassId scId = ShareClassId.wrap(scId_);
+        address who = address(bytes20(m.who));
 
-        permission[poolId][scId][m.who] = m.allowed;
+        permission[poolId][scId][who] = m.allowed;
 
-        emit Permission(poolId, scId, m.who, m.allowed);
+        emit Permission(poolId, scId, who, m.allowed);
     }
 
     /// --- External ---

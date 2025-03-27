@@ -611,7 +611,7 @@ library MessageLib {
     //---------------------------------------
 
     struct UpdateContractPermission {
-        address who;
+        bytes32 who;
         bool allowed;
     }
 
@@ -622,7 +622,7 @@ library MessageLib {
     {
         require(updateContractType(data) == UpdateContractType.Permission, UnknownMessageType());
 
-        return UpdateContractPermission({who: data.toAddress(1), allowed: data.toBool(21)});
+        return UpdateContractPermission({who: data.toBytes32(1), allowed: data.toBool(33)});
     }
 
     function serialize(UpdateContractPermission memory t) internal pure returns (bytes memory) {
