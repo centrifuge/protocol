@@ -97,7 +97,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         testAdapters.push(adapter3);
 
         // wire contracts
-        wire(BLOCK_CHAIN_ID, adapter1);
+        wire(THIS_CHAIN_ID, adapter1);
         // remove deployer access
         // removeVaultsDeployerAccess(address(adapter)); // need auth permissions in tests
 
@@ -106,7 +106,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         erc20 = _newErc20("X's Dollar", "USDX", 6);
         erc6909 = new MockERC6909();
 
-        gateway.file("adapters", testAdapters);
+        gateway.file("adapters", THIS_CHAIN_ID, testAdapters);
         gateway.file("gasService", address(mockedGasService));
 
         mockedGasService.setReturn("estimate", uint256(0.5 gwei));

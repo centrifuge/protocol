@@ -86,11 +86,11 @@ abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
     function executeMessageRecovery(uint8 adapterId, uint256 messageIndex) public {
         adapterId %= uint8(RECON_ADAPTERS);
         messageIndex %= uint8(messages.length);
-        IAdapter router = routerAggregator.adapters(adapterId);
+        IAdapter router = routerAggregator.adapters(CHAIN_ID, adapterId);
 
         bytes memory message = messages[messageIndex];
         require(recoverMessageTime[keccak256(message)] != 0);
-        routerAggregator.executeMessageRecovery(router, message);
+        routerAggregator.executeMessageRecovery(CHAIN_ID, router, message);
 
         messageRecoveredCount[keccak256(message)] += 1;
 
@@ -103,10 +103,10 @@ abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
     function disputeMessageRecovery(uint8 adapterId, uint256 messageIndex) public {
         adapterId %= uint8(RECON_ADAPTERS);
         messageIndex %= uint8(messages.length);
-        IAdapter router = routerAggregator.adapters(adapterId);
+        IAdapter router = routerAggregator.adapters(CHAIN_ID, adapterId);
 
         bytes memory message = messages[messageIndex];
-        routerAggregator.disputeMessageRecovery(router, keccak256(message));
+        routerAggregator.disputeMessageRecovery(CHAIN_ID, router, keccak256(message));
 
         recoverMessageTime[keccak256(message)] = 0; // Unset time
     }

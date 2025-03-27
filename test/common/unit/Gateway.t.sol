@@ -122,7 +122,7 @@ contract GatewayTest is Test {
 
     // --- Permissions ---
     function testOnlyAdaptersCanCall() public {
-        gateway.file("adapters", threeMockAdapters);
+        gateway.file("adapters", CHAIN_ID, threeMockAdapters);
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
 
@@ -136,42 +136,42 @@ contract GatewayTest is Test {
     }
 
     function testFileAdapters() public {
-        gateway.file("adapters", threeMockAdapters);
-        assertEq(gateway.quorum(), 3);
-        assertEq(address(gateway.adapters(0)), address(adapter1));
-        assertEq(address(gateway.adapters(1)), address(adapter2));
-        assertEq(address(gateway.adapters(2)), address(adapter3));
-        assertEq(gateway.activeSessionId(), 0);
+        gateway.file("adapters", CHAIN_ID, threeMockAdapters);
+        assertEq(gateway.quorum(CHAIN_ID), 3);
+        assertEq(address(gateway.adapters(CHAIN_ID, 0)), address(adapter1));
+        assertEq(address(gateway.adapters(CHAIN_ID, 1)), address(adapter2));
+        assertEq(address(gateway.adapters(CHAIN_ID, 2)), address(adapter3));
+        assertEq(gateway.activeSessionId(CHAIN_ID), 0);
 
-        gateway.file("adapters", fourMockAdapters);
-        assertEq(gateway.quorum(), 4);
-        assertEq(address(gateway.adapters(0)), address(adapter1));
-        assertEq(address(gateway.adapters(1)), address(adapter2));
-        assertEq(address(gateway.adapters(2)), address(adapter3));
-        assertEq(address(gateway.adapters(3)), address(adapter4));
-        assertEq(gateway.activeSessionId(), 1);
+        gateway.file("adapters", CHAIN_ID, fourMockAdapters);
+        assertEq(gateway.quorum(CHAIN_ID), 4);
+        assertEq(address(gateway.adapters(CHAIN_ID, 0)), address(adapter1));
+        assertEq(address(gateway.adapters(CHAIN_ID, 1)), address(adapter2));
+        assertEq(address(gateway.adapters(CHAIN_ID, 2)), address(adapter3));
+        assertEq(address(gateway.adapters(CHAIN_ID, 3)), address(adapter4));
+        assertEq(gateway.activeSessionId(CHAIN_ID), 1);
 
-        gateway.file("adapters", threeMockAdapters);
-        assertEq(gateway.quorum(), 3);
-        assertEq(address(gateway.adapters(0)), address(adapter1));
-        assertEq(address(gateway.adapters(1)), address(adapter2));
-        assertEq(address(gateway.adapters(2)), address(adapter3));
-        assertEq(gateway.activeSessionId(), 2);
+        gateway.file("adapters", CHAIN_ID, threeMockAdapters);
+        assertEq(gateway.quorum(CHAIN_ID), 3);
+        assertEq(address(gateway.adapters(CHAIN_ID, 0)), address(adapter1));
+        assertEq(address(gateway.adapters(CHAIN_ID, 1)), address(adapter2));
+        assertEq(address(gateway.adapters(CHAIN_ID, 2)), address(adapter3));
+        assertEq(gateway.activeSessionId(CHAIN_ID), 2);
         vm.expectRevert(bytes(""));
-        assertEq(address(gateway.adapters(3)), address(0));
+        assertEq(address(gateway.adapters(CHAIN_ID, 3)), address(0));
 
         vm.expectRevert(bytes("Gateway/exceeds-max"));
-        gateway.file("adapters", nineMockAdapters);
+        gateway.file("adapters", CHAIN_ID, nineMockAdapters);
 
         vm.expectRevert(bytes("Gateway/file-unrecognized-param"));
-        gateway.file("notAdapters", nineMockAdapters);
+        gateway.file("notAdapters", CHAIN_ID, nineMockAdapters);
 
         vm.expectRevert(bytes("Gateway/no-duplicates-allowed"));
-        gateway.file("adapters", twoDuplicateMockAdapters);
+        gateway.file("adapters", CHAIN_ID, twoDuplicateMockAdapters);
 
         gateway.deny(address(this));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.file("adapters", threeMockAdapters);
+        gateway.file("adapters", CHAIN_ID, threeMockAdapters);
     }
 
     function testUseBeforeInitialization() public {
@@ -185,7 +185,7 @@ contract GatewayTest is Test {
     }
 
     function testIncomingAggregatedMessages() public {
-        gateway.file("adapters", threeMockAdapters);
+        gateway.file("adapters", CHAIN_ID, threeMockAdapters);
 
         bytes memory firstMessage = MessageLib.NotifyPool(1).serialize();
         bytes memory firstProof = _formatMessageProof(firstMessage);
@@ -253,7 +253,7 @@ contract GatewayTest is Test {
     }
 
     function testQuorumOfOne() public {
-        gateway.file("adapters", oneMockAdapter);
+        gateway.file("adapters", CHAIN_ID, oneMockAdapter);
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
 
@@ -263,7 +263,7 @@ contract GatewayTest is Test {
     }
 
     function testOneFasterPayloadAdapter() public {
-        gateway.file("adapters", threeMockAdapters);
+        gateway.file("adapters", CHAIN_ID, threeMockAdapters);
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
@@ -299,7 +299,7 @@ contract GatewayTest is Test {
     }
 
     function testVotesExpireAfterSession() public {
-        gateway.file("adapters", fourMockAdapters);
+        gateway.file("adapters", CHAIN_ID, fourMockAdapters);
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
@@ -309,7 +309,7 @@ contract GatewayTest is Test {
         assertEq(handler.received(message), 0);
         assertVotes(message, 1, 1, 0);
 
-        gateway.file("adapters", threeMockAdapters);
+        gateway.file("adapters", CHAIN_ID, threeMockAdapters);
 
         adapter3.execute(proof);
         assertEq(handler.received(message), 0);
@@ -317,7 +317,7 @@ contract GatewayTest is Test {
     }
 
     function testOutgoingAggregatedMessages() public {
-        gateway.file("adapters", threeMockAdapters);
+        gateway.file("adapters", CHAIN_ID, threeMockAdapters);
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
@@ -352,7 +352,7 @@ contract GatewayTest is Test {
     }
 
     function testOutgoingMessagingWithNotEnoughPrepayment() public {
-        gateway.file("adapters", threeMockAdapters);
+        gateway.file("adapters", CHAIN_ID, threeMockAdapters);
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
@@ -380,7 +380,7 @@ contract GatewayTest is Test {
     }
 
     function testOutgoingMessagingWithPrepayment() public {
-        gateway.file("adapters", threeMockAdapters);
+        gateway.file("adapters", CHAIN_ID, threeMockAdapters);
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
@@ -410,7 +410,7 @@ contract GatewayTest is Test {
     }
 
     function testOutgoingMessagingWithExtraPrepayment() public {
-        gateway.file("adapters", threeMockAdapters);
+        gateway.file("adapters", CHAIN_ID, threeMockAdapters);
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
@@ -441,7 +441,7 @@ contract GatewayTest is Test {
     }
 
     function testingOutgoingMessagingWithCoveredPayment() public {
-        gateway.file("adapters", threeMockAdapters);
+        gateway.file("adapters", CHAIN_ID, threeMockAdapters);
 
         bytes memory message = MessageLib.NotifyPool(POOL_A.raw()).serialize();
         bytes memory proof = _formatMessageProof(message);
@@ -469,7 +469,7 @@ contract GatewayTest is Test {
     }
 
     function testingOutgoingMessagingWithPartiallyCoveredPayment() public {
-        gateway.file("adapters", threeMockAdapters);
+        gateway.file("adapters", CHAIN_ID, threeMockAdapters);
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
@@ -506,7 +506,7 @@ contract GatewayTest is Test {
     }
 
     function testingOutgoingMessagingWithoutBeingCovered() public {
-        gateway.file("adapters", threeMockAdapters);
+        gateway.file("adapters", CHAIN_ID, threeMockAdapters);
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
@@ -539,7 +539,7 @@ contract GatewayTest is Test {
     }
 
     function testingOutgoingMessagingWherePaymentCoverIsNotAllowed() public {
-        gateway.file("adapters", threeMockAdapters);
+        gateway.file("adapters", CHAIN_ID, threeMockAdapters);
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
 
@@ -556,7 +556,7 @@ contract GatewayTest is Test {
     }
 
     function testRecoverFailedMessage() public {
-        gateway.file("adapters", threeMockAdapters);
+        gateway.file("adapters", CHAIN_ID, threeMockAdapters);
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
@@ -567,7 +567,7 @@ contract GatewayTest is Test {
         assertEq(handler.received(message), 0);
 
         vm.expectRevert(bytes("Gateway/message-recovery-not-initiated"));
-        gateway.executeMessageRecovery(adapter1, message);
+        gateway.executeMessageRecovery(CHAIN_ID, adapter1, message);
 
         // Initiate recovery
         _send(
@@ -575,16 +575,16 @@ contract GatewayTest is Test {
         );
 
         vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
-        gateway.executeMessageRecovery(adapter1, message);
+        gateway.executeMessageRecovery(CHAIN_ID, adapter1, message);
 
         // Execute recovery
         vm.warp(block.timestamp + gateway.RECOVERY_CHALLENGE_PERIOD());
-        gateway.executeMessageRecovery(adapter1, message);
+        gateway.executeMessageRecovery(CHAIN_ID, adapter1, message);
         assertEq(handler.received(message), 1);
     }
 
     function testCannotRecoverWithOneAdapter() public {
-        gateway.file("adapters", oneMockAdapter);
+        gateway.file("adapters", CHAIN_ID, oneMockAdapter);
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
 
@@ -595,7 +595,7 @@ contract GatewayTest is Test {
     }
 
     function testRecoverFailedProof() public {
-        gateway.file("adapters", threeMockAdapters);
+        gateway.file("adapters", CHAIN_ID, threeMockAdapters);
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
@@ -608,22 +608,22 @@ contract GatewayTest is Test {
         assertEq(handler.received(message), 0);
 
         vm.expectRevert(bytes("Gateway/message-recovery-not-initiated"));
-        gateway.executeMessageRecovery(adapter3, proof);
+        gateway.executeMessageRecovery(CHAIN_ID, adapter3, proof);
 
         // Initiate recovery
         _send(adapter1, MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
 
         vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
-        gateway.executeMessageRecovery(adapter3, proof);
+        gateway.executeMessageRecovery(CHAIN_ID, adapter3, proof);
         vm.warp(block.timestamp + gateway.RECOVERY_CHALLENGE_PERIOD());
 
         // Execute recovery
-        gateway.executeMessageRecovery(adapter3, proof);
+        gateway.executeMessageRecovery(CHAIN_ID, adapter3, proof);
         assertEq(handler.received(message), 1);
     }
 
     function testCannotRecoverInvalidAdapter() public {
-        gateway.file("adapters", threeMockAdapters);
+        gateway.file("adapters", CHAIN_ID, threeMockAdapters);
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
@@ -638,14 +638,14 @@ contract GatewayTest is Test {
 
         vm.warp(block.timestamp + gateway.RECOVERY_CHALLENGE_PERIOD());
 
-        gateway.file("adapters", oneMockAdapter);
+        gateway.file("adapters", CHAIN_ID, oneMockAdapter);
         vm.expectRevert(bytes("Gateway/invalid-adapter"));
-        gateway.executeMessageRecovery(adapter3, proof);
-        gateway.file("adapters", threeMockAdapters);
+        gateway.executeMessageRecovery(CHAIN_ID, adapter3, proof);
+        gateway.file("adapters", CHAIN_ID, threeMockAdapters);
     }
 
     function testDisputeRecovery() public {
-        gateway.file("adapters", threeMockAdapters);
+        gateway.file("adapters", CHAIN_ID, threeMockAdapters);
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
@@ -659,19 +659,19 @@ contract GatewayTest is Test {
         _send(adapter1, MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
 
         vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
-        gateway.executeMessageRecovery(adapter3, proof);
+        gateway.executeMessageRecovery(CHAIN_ID, adapter3, proof);
 
         // Dispute recovery
         _send(adapter2, MessageLib.DisputeMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
 
         // Check that recovery is not possible anymore
         vm.expectRevert(bytes("Gateway/message-recovery-not-initiated"));
-        gateway.executeMessageRecovery(adapter3, proof);
+        gateway.executeMessageRecovery(CHAIN_ID, adapter3, proof);
         assertEq(handler.received(message), 0);
     }
 
     function testRecursiveRecoveryMessageFails() public {
-        gateway.file("adapters", threeMockAdapters);
+        gateway.file("adapters", CHAIN_ID, threeMockAdapters);
 
         bytes memory message = MessageLib.DisputeMessageRecovery(keccak256(""), bytes32(0)).serialize();
         bytes memory proof = _formatMessageProof(message);
@@ -687,7 +687,7 @@ contract GatewayTest is Test {
         vm.warp(block.timestamp + gateway.RECOVERY_CHALLENGE_PERIOD());
 
         vm.expectRevert(bytes("Gateway/no-recursion"));
-        gateway.executeMessageRecovery(adapter1, message);
+        gateway.executeMessageRecovery(CHAIN_ID, adapter1, message);
         assertEq(handler.received(message), 0);
     }
 
@@ -705,7 +705,7 @@ contract GatewayTest is Test {
         for (uint256 i = 0; i < numAdapters; i++) {
             testAdapters[i] = new MockAdapter(gateway);
         }
-        gateway.file("adapters", testAdapters);
+        gateway.file("adapters", CHAIN_ID, testAdapters);
 
         // Generate random sequence of confirming messages and proofs
         uint256 it = 0;
@@ -785,7 +785,7 @@ contract GatewayTest is Test {
     }
 
     function testEstimate() public {
-        gateway.file("adapters", threeMockAdapters);
+        gateway.file("adapters", CHAIN_ID, threeMockAdapters);
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
 
@@ -804,7 +804,7 @@ contract GatewayTest is Test {
     }
 
     function assertVotes(bytes memory message, uint16 r1, uint16 r2, uint16 r3) internal view {
-        uint16[8] memory votes = gateway.votes(keccak256(message));
+        uint16[8] memory votes = gateway.votes(CHAIN_ID, keccak256(message));
         assertEq(votes[0], r1);
         assertEq(votes[1], r2);
         assertEq(votes[2], r3);

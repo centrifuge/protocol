@@ -34,6 +34,8 @@ abstract contract Setup is BaseSetup, Asserts {
 
     IAdapter[] adapters;
 
+    uint16 public constant CHAIN_ID = 1;
+
     // todo: create some sort of a function that is usable
     bytes[] messages;
     mapping(bytes32 => bool) doesMessageExists;
@@ -65,6 +67,6 @@ abstract contract Setup is BaseSetup, Asserts {
             adapters.push(new MockAdapter(routerAggregator));
         }
 
-        routerAggregator.file("adapters", adapters);
+        routerAggregator.file("adapters", CHAIN_ID, adapters);
     }
 }
