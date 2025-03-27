@@ -936,8 +936,8 @@ library MessageLib {
     }
 
     function serialize(UpdateHoldingAmount memory t) public pure returns (bytes memory) {
-        bytes memory debits = t.debits.encodePacked();
-        bytes memory credits = t.credits.encodePacked();
+        bytes memory debits = t.debits.toBytes();
+        bytes memory credits = t.credits.toBytes();
 
         return abi.encodePacked(
             MessageType.UpdateHoldingAmount,
@@ -1045,8 +1045,8 @@ library MessageLib {
     }
 
     function serialize(UpdateJournal memory t) internal pure returns (bytes memory) {
-        bytes memory debits = t.debits.encodePacked();
-        bytes memory credits = t.credits.encodePacked();
+        bytes memory debits = t.debits.toBytes();
+        bytes memory credits = t.credits.toBytes();
 
         return abi.encodePacked(
             MessageType.UpdateJournal, t.poolId, uint16(debits.length), debits, uint16(credits.length), credits
@@ -1093,8 +1093,8 @@ library MessageLib {
     }
 
     function serialize(TriggerUpdateHolding memory t) internal pure returns (bytes memory) {
-        bytes memory debits = t.debits.encodePacked();
-        bytes memory credits = t.credits.encodePacked();
+        bytes memory debits = t.debits.toBytes();
+        bytes memory credits = t.credits.toBytes();
 
         return abi.encodePacked(
             MessageType.TriggerUpdateHolding,

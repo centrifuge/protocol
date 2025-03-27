@@ -253,7 +253,7 @@ contract BalanceSheetManager is
         uint128 amount,
         D18 pricePerUnit,
         bool asAllowance,
-        Meta memory m
+        Meta calldata m
     ) internal {
         _ensureEntries(pricePerUnit.mulUint128(amount), m);
         escrow.withdraw(asset, tokenId, poolId.raw(), scId.raw(), amount);
@@ -290,7 +290,7 @@ contract BalanceSheetManager is
         address provider,
         uint128 amount,
         D18 pricePerUnit,
-        Meta memory m
+        Meta calldata m
     ) internal {
         _ensureEntries(pricePerUnit.mulUint128(amount), m);
         escrow.pendingDepositIncrease(asset, tokenId, poolId.raw(), scId.raw(), amount);
@@ -307,7 +307,7 @@ contract BalanceSheetManager is
         emit Deposit(poolId, scId, asset, tokenId, provider, amount, pricePerUnit, block.timestamp, m.debits, m.credits);
     }
 
-    function _ensureEntries(uint128 amount, Meta memory m) internal pure {
+    function _ensureEntries(uint128 amount, Meta calldata m) internal pure {
         uint128 totalDebits;
         uint128 totalCredits;
 

@@ -21,7 +21,7 @@ library JournalEntryLib {
      *         - amount (uint128) is stored in 16 bytes (big-endian)
      *         - accountId (uint32) in 4 bytes (big-endian)
      */
-    function encodePacked(JournalEntry[] memory entries) internal pure returns (bytes memory) {
+    function toBytes(JournalEntry[] memory entries) internal pure returns (bytes memory) {
         // Each entry = 20 bytes
         bytes memory packed = new bytes(entries.length * 20);
 
