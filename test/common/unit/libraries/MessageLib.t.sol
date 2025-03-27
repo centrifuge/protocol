@@ -539,16 +539,13 @@ contract TestMessageLibIdentities is Test {
         debits[2] = JournalEntry({accountId: AccountId.wrap(7), amount: 3});
 
         JournalEntry[] memory credits = new JournalEntry[](2);
-        credits[0] = JournalEntry({accountId: AccountId.wrap(1), amount: 2});
-        credits[1] = JournalEntry({accountId: AccountId.wrap(3), amount: 4});
+        credits[0] = JournalEntry({accountId: AccountId.wrap(1), amount: 4});
+        credits[1] = JournalEntry({accountId: AccountId.wrap(3), amount: 5});
 
-        MessageLib.UpdateJournal memory a =
-            MessageLib.UpdateJournal({poolId: 1, scId: bytes16("sc"), debits: debits, credits: credits});
-
+        MessageLib.UpdateJournal memory a = MessageLib.UpdateJournal({poolId: 1, debits: debits, credits: credits});
         MessageLib.UpdateJournal memory b = MessageLib.deserializeUpdateJournal(a.serialize());
 
         assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
 
         for (uint256 i = 0; i < a.credits.length; i++) {
             assertEq(a.credits[i].accountId.raw(), b.credits[i].accountId.raw());
@@ -570,8 +567,8 @@ contract TestMessageLibIdentities is Test {
         debits[2] = JournalEntry({accountId: AccountId.wrap(7), amount: 3});
 
         JournalEntry[] memory credits = new JournalEntry[](2);
-        credits[0] = JournalEntry({accountId: AccountId.wrap(1), amount: 2});
-        credits[1] = JournalEntry({accountId: AccountId.wrap(3), amount: 4});
+        credits[0] = JournalEntry({accountId: AccountId.wrap(1), amount: 4});
+        credits[1] = JournalEntry({accountId: AccountId.wrap(3), amount: 5});
 
         MessageLib.TriggerUpdateHolding memory a = MessageLib.TriggerUpdateHolding({
             poolId: 1,

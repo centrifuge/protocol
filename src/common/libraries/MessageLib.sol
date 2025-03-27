@@ -117,7 +117,7 @@ library MessageLib {
         (89 << uint8(MessageType.TriggerRedeemRequest) * 8) +
         (142 << uint8(MessageType.UpdateHolding) * 8) +
         (122 << uint8(MessageType.UpdateShares) * 8) +
-        (29 << uint8(MessageType.UpdateJournal) * 8) +
+        (13 << uint8(MessageType.UpdateJournal) * 8) +
         (111 << uint8(MessageType.TriggerUpdateHolding) * 8) +
         (91 << uint8(MessageType.TriggerUpdateShares) * 8);
 
@@ -934,8 +934,8 @@ library MessageLib {
         D18 pricePerUnit;
         uint256 timestamp;
         bool isIncrease; // Signals whether this is an increase or a decrease
-        JournalEntry[] debits;
-        JournalEntry[] credits;
+        JournalEntry[] debits; // As secuences of bytes
+        JournalEntry[] credits; // As secuences of bytes
     }
 
     function deserializeUpdateHolding(bytes memory data) internal pure returns (UpdateHolding memory h) {
@@ -944,32 +944,39 @@ library MessageLib {
         uint16 debitsByteLen = data.toUint16(138);
         uint16 creditsByteLen = data.toUint16(140);
 
-        uint256 offset = 142;
-        h.debits = data.toJournalEntries(offset, debitsByteLen);
-        offset += debitsByteLen;
-        h.credits = data.toJournalEntries(offset, creditsByteLen);
-
-        // Now assign each field one at a time
-        h.poolId = data.toUint64(1);
-        h.scId = data.toBytes16(9);
-        h.assetId = data.toUint128(25);
-        h.who = data.toBytes32(41);
-        h.amount = data.toUint128(73);
-        h.pricePerUnit = D18.wrap(data.toUint128(89));
-        h.timestamp = data.toUint256(105);
-        h.isIncrease = data.toBool(137);
-        return h;
+        return UpdateHolding({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            assetId: data.toUint128(25),
+            who: data.toBytes32(41),
+            amount: data.toUint128(73),
+            pricePerUnit: D18.wrap(data.toUint128(89)),
+            timestamp: data.toUint256(105),
+            isIncrease: data.toBool(137),
+            debits: data.toJournalEntries(142, debitsByteLen),
+            credits: data.toJournalEntries(142 + debitsByteLen, creditsByteLen)
+        });
     }
 
-    function serialize(UpdateHolding memory t) internal pure returns (bytes memory) {
+    function serialize(UpdateHolding memory t) public pure returns (bytes memory) {
         bytes memory debits = t.debits.encodePacked();
         bytes memory credits = t.credits.encodePacked();
 
-        bytes memory partial1 = abi.encodePacked(MessageType.UpdateHolding, t.poolId, t.scId, t.assetId, t.who);
-        bytes memory partial2 = abi.encodePacked(partial1, t.amount, t.pricePerUnit, t.timestamp, t.isIncrease);
-        bytes memory partial3 = abi.encodePacked(partial2, uint16(debits.length), uint16(credits.length));
-
-        return abi.encodePacked(partial3, debits, credits);
+        return abi.encodePacked(
+            MessageType.UpdateHolding,
+            t.poolId,
+            t.scId,
+            t.assetId,
+            t.who,
+            t.amount,
+            t.pricePerUnit,
+            t.timestamp,
+            t.isIncrease,
+            uint16(debits.length),
+            uint16(credits.length),
+            debits,
+            credits
+        );
     }
 
     //---------------------------------------
@@ -1012,22 +1019,21 @@ library MessageLib {
 
     struct UpdateJournal {
         uint64 poolId;
-        bytes16 scId;
-        JournalEntry[] debits;
-        JournalEntry[] credits;
+        JournalEntry[] debits; // As secuences of bytes
+        JournalEntry[] credits; // As secuences of bytes
     }
 
     function deserializeUpdateJournal(bytes memory data) internal pure returns (UpdateJournal memory) {
         require(messageType(data) == MessageType.UpdateJournal, UnknownMessageType());
 
-        uint16 debitsLength = data.toUint16(25);
-        uint16 creditsLength = data.toUint16(27);
-        uint256 offset = 29;
-        JournalEntry[] memory debits = data.toJournalEntries(offset, debitsLength);
-        offset += debitsLength;
-        JournalEntry[] memory credits = data.toJournalEntries(offset, creditsLength);
+        uint16 debitsLength = data.toUint16(9);
+        uint16 creditsLength = data.toUint16(11);
 
-        return UpdateJournal({poolId: data.toUint64(1), scId: data.toBytes16(9), debits: debits, credits: credits});
+        return UpdateJournal({
+            poolId: data.toUint64(1),
+            debits: data.toJournalEntries(13, debitsLength),
+            credits: data.toJournalEntries(13 + debitsLength, creditsLength)
+        });
     }
 
     function serialize(UpdateJournal memory t) internal pure returns (bytes memory) {
@@ -1035,7 +1041,7 @@ library MessageLib {
         bytes memory credits = t.credits.encodePacked();
 
         return abi.encodePacked(
-            MessageType.UpdateJournal, t.poolId, t.scId, uint16(debits.length), uint16(credits.length), debits, credits
+            MessageType.UpdateJournal, t.poolId, uint16(debits.length), uint16(credits.length), debits, credits
         );
     }
 
@@ -1052,8 +1058,8 @@ library MessageLib {
         D18 pricePerUnit;
         bool isIncrease; // Signals whether this is an increase or a decrease
         bool asAllowance; // Signals whether the amount is transferred or allowed to who on the BSM
-        JournalEntry[] debits;
-        JournalEntry[] credits;
+        JournalEntry[] debits; // As secuences of bytes
+        JournalEntry[] credits; // As secuences of bytes
     }
 
     function deserializeTriggerUpdateHolding(bytes memory data) internal pure returns (TriggerUpdateHolding memory h) {
@@ -1062,33 +1068,39 @@ library MessageLib {
         uint16 debitsByteLen = data.toUint16(107);
         uint16 creditsByteLen = data.toUint16(109);
 
-        uint256 offset = 111;
-        h.debits = data.toJournalEntries(offset, debitsByteLen);
-        offset += debitsByteLen;
-        h.credits = data.toJournalEntries(offset, creditsByteLen);
-
-        // Now assign each field one at a time
-        h.poolId = data.toUint64(1);
-        h.scId = data.toBytes16(9);
-        h.assetId = data.toUint128(25);
-        h.who = data.toBytes32(41);
-        h.amount = data.toUint128(73);
-        h.pricePerUnit = D18.wrap(data.toUint128(89));
-        h.isIncrease = data.toBool(105);
-        h.asAllowance = data.toBool(106);
-
-        return h;
+        return TriggerUpdateHolding({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            assetId: data.toUint128(25),
+            who: data.toBytes32(41),
+            amount: data.toUint128(73),
+            pricePerUnit: D18.wrap(data.toUint128(89)),
+            isIncrease: data.toBool(105),
+            asAllowance: data.toBool(106),
+            debits: data.toJournalEntries(111, debitsByteLen),
+            credits: data.toJournalEntries(111 + debitsByteLen, creditsByteLen)
+        });
     }
 
     function serialize(TriggerUpdateHolding memory t) internal pure returns (bytes memory) {
         bytes memory debits = t.debits.encodePacked();
         bytes memory credits = t.credits.encodePacked();
 
-        bytes memory partial1 = abi.encodePacked(MessageType.TriggerUpdateHolding, t.poolId, t.scId, t.assetId, t.who);
-        bytes memory partial2 = abi.encodePacked(partial1, t.amount, t.pricePerUnit, t.isIncrease, t.asAllowance);
-        bytes memory partial3 = abi.encodePacked(partial2, uint16(debits.length), uint16(credits.length));
-
-        return abi.encodePacked(partial3, debits, credits);
+        return abi.encodePacked(
+            MessageType.TriggerUpdateHolding,
+            t.poolId,
+            t.scId,
+            t.assetId,
+            t.who,
+            t.amount,
+            t.pricePerUnit,
+            t.isIncrease,
+            t.asAllowance,
+            uint16(debits.length),
+            uint16(credits.length),
+            debits,
+            credits
+        );
     }
 
     //---------------------------------------

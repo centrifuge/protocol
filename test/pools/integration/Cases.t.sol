@@ -286,7 +286,7 @@ contract TestCases is PoolsDeployer, Test {
         credits[j++] = JournalEntry(1250, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EQUITY)));
         credits[j++] = JournalEntry(130, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.LOSS)));
 
-        cv.updateJournal(poolId, scId, debits, credits);
+        cv.updateJournal(poolId, debits, credits);
     }
 
     function testCalUpdateHolding() public {

@@ -162,8 +162,8 @@ contract BalanceSheetManager is
 
     /// @inheritdoc IBalanceSheetManager
     function journalEntry(PoolId poolId, ShareClassId scId, Meta calldata m) external authOrPermission(poolId, scId) {
-        // @dev we do not need to ensure the meta here. Could be part of a batch and must not be balanced
-        sender.sendJournalEntry(poolId, scId, m.debits, m.credits);
+        // We do not need to ensure the meta here. Could be part of a batch and must not be balanced
+        sender.sendJournalEntry(poolId, m.debits, m.credits);
         emit UpdateEntry(poolId, scId, m.debits, m.credits);
     }
 
@@ -231,7 +231,7 @@ contract BalanceSheetManager is
             ITranche(token).mint(address(to), shares);
         }
 
-        sender.sendIssueShares(poolId, scId, to, pricePerShare, shares, block.timestamp);
+        sender.sendUpdateShares(poolId, scId, to, pricePerShare, shares, block.timestamp, true);
         emit Issue(poolId, scId, to, pricePerShare, shares);
     }
 
@@ -239,7 +239,7 @@ contract BalanceSheetManager is
         address token = poolManager.checkedTranche(poolId.raw(), scId.raw());
         ITranche(token).burn(address(from), shares);
 
-        sender.sendRevokeShares(poolId, scId, from, pricePerShare, shares, block.timestamp);
+        sender.sendUpdateShares(poolId, scId, from, pricePerShare, shares, block.timestamp, false);
         emit Revoke(poolId, scId, from, pricePerShare, shares);
     }
 
@@ -274,9 +274,7 @@ contract BalanceSheetManager is
             }
         }
 
-        sender.sendDecreaseHolding(
-            poolId, scId, assetId, receiver, amount, pricePerUnit, block.timestamp, m.debits, m.credits
-        );
+        sender.sendUpdateHoldingAmount(poolId, scId, assetId, receiver, amount, pricePerUnit, block.timestamp, true, m);
 
         emit Withdraw(
             poolId, scId, asset, tokenId, receiver, amount, pricePerUnit, block.timestamp, m.debits, m.credits
@@ -304,9 +302,7 @@ contract BalanceSheetManager is
         }
 
         escrow.deposit(asset, tokenId, poolId.raw(), scId.raw(), amount);
-        sender.sendIncreaseHolding(
-            poolId, scId, assetId, provider, amount, pricePerUnit, block.timestamp, m.debits, m.credits
-        );
+        sender.sendUpdateHoldingAmount(poolId, scId, assetId, provider, amount, pricePerUnit, block.timestamp, false, m);
 
         emit Deposit(poolId, scId, asset, tokenId, provider, amount, pricePerUnit, block.timestamp, m.debits, m.credits);
     }
@@ -323,6 +319,6 @@ contract BalanceSheetManager is
             totalCredits += m.credits[i].amount;
         }
 
-        require(totalDebits <= amount && totalDebits <= amount, EntriesUnbalanced());
+        require(totalDebits <= amount && totalCredits <= amount, EntriesUnbalanced());
     }
 }

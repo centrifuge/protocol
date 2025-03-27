@@ -190,7 +190,8 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
 
     /// @inheritdoc IPoolRouter
     function addShareClass(string calldata name, string calldata symbol, bytes32 salt, bytes calldata data)
-        external payable
+        external
+        payable
     {
         _protectedAndUnlocked();
 
@@ -200,13 +201,15 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
 
     /// @inheritdoc IPoolRouter
     function approveDeposits(ShareClassId scId, AssetId paymentAssetId, uint128 maxApproval, IERC7726 valuation)
-        external payable
+        external
+        payable
     {
         _protectedAndUnlocked();
 
         IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
 
-        (uint128 approvedAssetAmount, ) = scm.approveDeposits(unlockedPoolId, scId, maxApproval, paymentAssetId, valuation);
+        (uint128 approvedAssetAmount,) =
+            scm.approveDeposits(unlockedPoolId, scId, maxApproval, paymentAssetId, valuation);
 
         assetRegistry.authTransferFrom(
             escrow(unlockedPoolId, scId, EscrowId.PENDING_SHARE_CLASS),
@@ -238,7 +241,8 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
 
     /// @inheritdoc IPoolRouter
     function revokeShares(ShareClassId scId, AssetId payoutAssetId, D18 navPerShare, IERC7726 valuation)
-        external payable
+        external
+        payable
     {
         _protectedAndUnlocked();
 
@@ -257,16 +261,23 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     }
 
     /// @inheritdoc IPoolRouter
-    function updateContract(uint16 chainId, ShareClassId scId, bytes32 target, bytes calldata payload) external payable {
+    function updateContract(uint16 chainId, ShareClassId scId, bytes32 target, bytes calldata payload)
+        external
+        payable
+    {
         _protectedAndUnlocked();
 
         sender.sendUpdateContract(chainId, unlockedPoolId, scId, target, payload);
     }
 
     /// @inheritdoc IPoolRouter
-    function updateVault(ShareClassId scId, AssetId assetId, bytes32 target, bytes32 vaultOrFactory, VaultUpdateKind kind)
-        public payable
-    {
+    function updateVault(
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 target,
+        bytes32 vaultOrFactory,
+        VaultUpdateKind kind
+    ) public payable {
         _protectedAndUnlocked();
 
         sender.sendUpdateContract(
@@ -284,7 +295,8 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
 
     /// @inheritdoc IPoolRouter
     function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, bool isLiability, uint24 prefix)
-        external payable
+        external
+        payable
     {
         _protectedAndUnlocked();
 
@@ -309,9 +321,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     }
 
     /// @inheritdoc IPoolRouter
-    function increaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount)
-        public payable
-    {
+    function increaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount) public payable {
         _protectedAndUnlocked();
 
         uint128 valueChange = holdings.increase(unlockedPoolId, scId, assetId, valuation, amount);
@@ -321,9 +331,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     }
 
     /// @inheritdoc IPoolRouter
-    function decreaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount)
-        public payable
-    {
+    function decreaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount) public payable {
         _protectedAndUnlocked();
 
         uint128 valueChange = holdings.decrease(unlockedPoolId, scId, assetId, valuation, amount);
@@ -333,11 +341,10 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     }
 
     /// @inheritdoc IPoolRouter
-    function updateHolding(ShareClassId scId, AssetId assetId) external payable {
+    function updateHolding(ShareClassId scId, AssetId assetId) public payable {
         _protectedAndUnlocked();
 
         int128 diff = holdings.update(unlockedPoolId, scId, assetId);
-
 
         if (diff > 0) {
             if (holdings.isLiability(unlockedPoolId, scId, assetId)) {
@@ -422,17 +429,17 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
 
     /// @inheritdoc IPoolRouterGatewayHandler
     function registerAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals)
-        external auth
+        external
+        auth
     {
-
         assetRegistry.registerAsset(assetId, name, symbol, decimals);
     }
 
     /// @inheritdoc IPoolRouterGatewayHandler
     function depositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId, uint128 amount)
-        external auth
+        external
+        auth
     {
-
         address pendingShareClassEscrow = escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS);
         assetRegistry.mint(pendingShareClassEscrow, depositAssetId.raw(), amount);
 
@@ -442,18 +449,18 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
 
     /// @inheritdoc IPoolRouterGatewayHandler
     function redeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId, uint128 amount)
-        external auth
+        external
+        auth
     {
-
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
         scm.requestRedeem(poolId, scId, amount, investor, payoutAssetId);
     }
 
     /// @inheritdoc IPoolRouterGatewayHandler
     function cancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
-        external auth
+        external
+        auth
     {
-
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
         (uint128 cancelledAssetAmount) = scm.cancelDepositRequest(poolId, scId, investor, depositAssetId);
 
@@ -465,9 +472,9 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
 
     /// @inheritdoc IPoolRouterGatewayHandler
     function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
-        external auth
+        external
+        auth
     {
-
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
         uint128 cancelledShareAmount = scm.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
 
@@ -475,9 +482,16 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     }
 
     /// @inheritdoc IPoolRouterGatewayHandler
-    function updateHoldingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount, D18 pricePerUnit, bool isIncrease, JournalEntry[] memory debits, JournalEntry[] memory credits)
-        external auth
-    {
+    function updateHoldingAmount(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 amount,
+        D18 pricePerUnit,
+        bool isIncrease,
+        JournalEntry[] memory debits,
+        JournalEntry[] memory credits
+    ) external auth {
         accounting.unlock(poolId, accounting.generateJournalId(poolId));
         address poolCurrency = poolRegistry.currency(poolId).addr();
         transientValuation.setPrice(assetId.addr(), poolCurrency, pricePerUnit);
@@ -487,20 +501,20 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         uint128 debitValueLeft = valueChange - debited;
         uint128 creditValueLeft = valueChange - credited;
 
-        _updateHoldingWithPartialDebitsAndCredits(poolId, scId, assetId, amount, isIncrease, debitValueLeft, creditValueLeft);
+        _updateHoldingWithPartialDebitsAndCredits(
+            poolId, scId, assetId, amount, isIncrease, debitValueLeft, creditValueLeft
+        );
         accounting.lock();
     }
 
     /// @inheritdoc IPoolRouterGatewayHandler
-    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePerUnit)
-        external auth
-    {
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePerUnit) external auth {
         transientValuation.setPrice(assetId.addr(), poolRegistry.currency(poolId).addr(), pricePerUnit);
         IERC7726 _valuation = holdings.valuation(poolId, scId, assetId);
         holdings.updateValuation(poolId, scId, assetId, transientValuation);
 
         accounting.unlock(poolId, accounting.generateJournalId(poolId));
-        this.updateHolding(scId, assetId);
+        updateHolding(scId, assetId);
         accounting.lock();
 
         holdings.updateValuation(poolId, scId, assetId, _valuation);
@@ -520,7 +534,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     }
 
     /// @inheritdoc IPoolRouterGatewayHandler
-    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare,uint128 amount) external auth {
+    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare, uint128 amount) external auth {
         IShareClassManager scm = poolRegistry.shareClassManager(poolId);
         scm.decreaseShareClassIssuance(poolId, scId, pricePerShare, amount);
     }
@@ -551,7 +565,10 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     }
 
     /// @notice Update the journal with the given debits and credits. Can be unequal.
-    function _updateJournal(JournalEntry[] memory debits, JournalEntry[] memory credits) internal returns (uint128 debited, uint128 credited) {
+    function _updateJournal(JournalEntry[] memory debits, JournalEntry[] memory credits)
+        internal
+        returns (uint128 debited, uint128 credited)
+    {
         for (uint256 i; i < debits.length; i++) {
             accounting.addDebit(debits[i].accountId, debits[i].amount);
             debited += debits[i].amount;
@@ -564,7 +581,15 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     }
 
     /// @notice Update a holding while debiting and/or crediting only a portion of the value change.
-    function _updateHoldingWithPartialDebitsAndCredits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount, bool isIncrease, uint128 debitValue, uint128 creditValue) internal {
+    function _updateHoldingWithPartialDebitsAndCredits(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 amount,
+        bool isIncrease,
+        uint128 debitValue,
+        uint128 creditValue
+    ) internal {
         bool isLiability = holdings.isLiability(poolId, scId, assetId);
         AccountType debitAccountType = isLiability ? AccountType.EXPENSE : AccountType.ASSET;
         AccountType creditAccountType = isLiability ? AccountType.LIABILITY : AccountType.EQUITY;

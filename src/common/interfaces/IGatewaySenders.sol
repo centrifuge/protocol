@@ -6,7 +6,7 @@ import {D18} from "src/misc/types/D18.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {JournalEntry} from "src/common/types/JournalEntry.sol";
+import {JournalEntry, Meta} from "src/common/types/JournalEntry.sol";
 
 interface ILocalCentrifugeId {
     function localCentrifugeId() external view returns (uint16);
@@ -107,7 +107,7 @@ interface IVaultMessageSender is ILocalCentrifugeId {
     ) external;
 
     /// @notice Creates and send the message
-    function sendIncreaseHolding(
+    function sendUpdateHoldingAmount(
         PoolId poolId,
         ShareClassId shareClassId,
         AssetId assetId,
@@ -115,21 +115,8 @@ interface IVaultMessageSender is ILocalCentrifugeId {
         uint128 amount,
         D18 pricePerUnit,
         uint256 timestamp,
-        JournalEntry[] calldata debits,
-        JournalEntry[] calldata credits
-    ) external;
-
-    /// @notice Creates and send the message
-    function sendDecreaseHolding(
-        PoolId poolId,
-        ShareClassId shareClassId,
-        AssetId assetId,
-        address receiver,
-        uint128 amount,
-        D18 pricePerUnit,
-        uint256 timestamp,
-        JournalEntry[] calldata debits,
-        JournalEntry[] calldata credits
+        bool isIncrease,
+        Meta calldata meta
     ) external;
 
     function sendUpdateHoldingValue(
@@ -141,29 +128,16 @@ interface IVaultMessageSender is ILocalCentrifugeId {
     ) external;
 
     /// @notice Creates and send the message
-    function sendIssueShares(
+    function sendUpdateShares(
         PoolId poolId,
         ShareClassId shareClassId,
         address receiver,
         D18 pricePerShare,
         uint128 shares,
-        uint256 timestamp
+        uint256 timestamp,
+        bool isIssuance
     ) external;
 
-    /// @notice Creates and send the message
-    function sendRevokeShares(
-        PoolId poolId,
-        ShareClassId shareClassId,
-        address provider,
-        D18 pricePerShare,
-        uint128 shares,
-        uint256 timestamp
-    ) external;
-
-    function sendJournalEntry(
-        PoolId poolId,
-        ShareClassId shareClassId,
-        JournalEntry[] calldata debits,
-        JournalEntry[] calldata credits
-    ) external;
+    function sendJournalEntry(PoolId poolId, JournalEntry[] calldata debits, JournalEntry[] calldata credits)
+        external;
 }

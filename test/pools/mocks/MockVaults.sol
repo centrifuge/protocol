@@ -117,16 +117,10 @@ contract MockVaults is Test, Auth, IAdapter {
         );
     }
 
-    function updateJournal(
-        PoolId poolId,
-        ShareClassId scId,
-        JournalEntry[] memory debits,
-        JournalEntry[] memory credits
-    ) public {
+    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) public {
         handler.handle(
             sourceChainId,
-            MessageLib.UpdateJournal({poolId: poolId.raw(), scId: scId.raw(), debits: debits, credits: credits})
-                .serialize()
+            MessageLib.UpdateJournal({poolId: poolId.raw(), debits: debits, credits: credits}).serialize()
         );
     }
 
