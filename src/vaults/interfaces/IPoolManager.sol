@@ -152,7 +152,7 @@ interface IPoolManager is IRecoverable {
     function transferTrancheTokens(
         uint64 poolId,
         bytes16 trancheId,
-        uint32 destinationId,
+        uint16 destinationId,
         bytes32 recipient,
         uint128 amount
     ) external;
@@ -160,7 +160,7 @@ interface IPoolManager is IRecoverable {
     /// @notice     Registers an ERC-20 or ERC-6909 asset in another chain.
     /// @dev        `decimals()` MUST return a `uint8` value between 2 and 18.
     ///             `name()` and `symbol()` MAY return no values.
-    function registerAsset(address asset, uint256 tokenId, uint32 destinationChain)
+    function registerAsset(address asset, uint256 tokenId, uint16 destinationChain)
         external
         returns (uint128 assetId);
 

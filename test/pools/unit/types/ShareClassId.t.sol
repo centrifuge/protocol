@@ -17,10 +17,10 @@ contract ShareClassIdTest is Test {
         assertEq(shareClassId == shareClassId2, true);
     }
 
-    function testNewShareClassId(uint32 poolId_, uint32 index) public view {
-        PoolId poolId = newPoolId(poolId_);
+    function testNewShareClassId(uint64 poolId_, uint32 index) public pure {
+        PoolId poolId = PoolId.wrap(poolId_);
         ShareClassId scId = newShareClassId(poolId, index);
 
-        assertEq(scId.raw(), bytes16(uint128(poolId.raw() + index)));
+        assertEq(scId.raw(), bytes16(uint128(poolId.raw()) + index));
     }
 }

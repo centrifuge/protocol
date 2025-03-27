@@ -12,8 +12,11 @@ contract Accounting is Auth, IAccounting {
 
     uint128 public transient debited;
     uint128 public transient credited;
-    bytes32 private transient _transactionId;
-    PoolId private transient _currentPoolId;
+    PoolId internal transient _currentPoolId;
+    /// @inheritdoc IAccounting
+    uint256 public transient journalId;
+
+    mapping(PoolId => uint64) internal _poolJournalIdCounter;
 
     constructor(address deployer) Auth(deployer) {}
 
@@ -27,7 +30,7 @@ contract Accounting is Auth, IAccounting {
         acc.totalDebit += value;
         debited += value;
         acc.lastUpdated = uint64(block.timestamp);
-        emit Debit(_currentPoolId, _transactionId, account, value);
+        emit Debit(_currentPoolId, account, value);
     }
 
     /// @inheritdoc IAccounting
@@ -40,21 +43,23 @@ contract Accounting is Auth, IAccounting {
         acc.totalCredit += value;
         credited += value;
         acc.lastUpdated = uint64(block.timestamp);
-        emit Credit(_currentPoolId, _transactionId, account, value);
+        emit Credit(_currentPoolId, account, value);
     }
 
     /// @inheritdoc IAccounting
-    function unlock(PoolId poolId, bytes32 transactionId) external auth {
+    function unlock(PoolId poolId, uint256 journalId_) external auth {
         require(PoolId.unwrap(_currentPoolId) == 0, AccountingAlreadyUnlocked());
         debited = 0;
         credited = 0;
-        _transactionId = transactionId;
+        journalId = journalId_;
         _currentPoolId = poolId;
+        emit StartJournalId(poolId, journalId_);
     }
 
     /// @inheritdoc IAccounting
     function lock() external auth {
         require(debited == credited, Unbalanced());
+        emit EndJournalId(_currentPoolId, journalId);
         _currentPoolId = PoolId.wrap(0);
     }
 
@@ -82,5 +87,11 @@ contract Accounting is Auth, IAccounting {
             // For credit-normal accounts: Value = Total Credit - Total Debit
             return int128(acc.totalCredit) - int128(acc.totalDebit);
         }
+    }
+
+    /// @inheritdoc IAccounting
+    function generateJournalId(PoolId poolId) external auth returns (uint256) {
+        journalId = uint256((uint128(poolId.raw()) << 64) | ++_poolJournalIdCounter[poolId]);
+        return journalId;
     }
 }

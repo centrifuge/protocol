@@ -11,7 +11,7 @@ contract DepositTest is BaseTest {
     using MessageLib for *;
     using CastLib for *;
 
-    uint32 constant CHAIN_ID = 1;
+    uint16 constant CHAIN_ID = 1;
 
     /// forge-config: default.isolate = true
     function testDepositMint() public {
@@ -162,6 +162,8 @@ contract DepositTest is BaseTest {
     }
 
     function testPartialDepositExecutions(uint64 poolId, bytes16 trancheId) public {
+        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
+
         uint8 TRANCHE_TOKEN_DECIMALS = 18; // Like DAI
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
 
@@ -421,6 +423,8 @@ contract DepositTest is BaseTest {
     }
 
     function testDepositAndRedeemPrecision(uint64 poolId, bytes16 trancheId) public {
+        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
+
         uint8 TRANCHE_TOKEN_DECIMALS = 18; // Like DAI
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
 
@@ -486,6 +490,8 @@ contract DepositTest is BaseTest {
     }
 
     function testDepositAndRedeemPrecisionWithInverseDecimals(uint64 poolId, bytes16 trancheId) public {
+        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
+
         // uint8 TRANCHE_TOKEN_DECIMALS = 6; // Like DAI
         // uint8 INVESTMENT_CURRENCY_DECIMALS = 18; // 18, like USDC
 
@@ -558,6 +564,8 @@ contract DepositTest is BaseTest {
 
     // Test that assumes the swap from usdc (investment asset) to dai (pool asset) has a cost of 1%
     function testDepositAndRedeemPrecisionWithSlippage(uint64 poolId, bytes16 trancheId) public {
+        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
+
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
         uint8 TRANCHE_TOKEN_DECIMALS = 18; // Like DAI
 
@@ -599,6 +607,8 @@ contract DepositTest is BaseTest {
 
     // Test that assumes the swap from usdc (investment asset) to dai (pool asset) has a cost of 1%
     function testDepositAndRedeemPrecisionWithSlippageAndWithInverseDecimal(uint64 poolId, bytes16 trancheId) public {
+        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
+
         uint8 INVESTMENT_CURRENCY_DECIMALS = 18; // 18, like DAI
         uint8 TRANCHE_TOKEN_DECIMALS = 6; // Like USDC
 
@@ -695,6 +705,8 @@ contract DepositTest is BaseTest {
     }
 
     function partialDeposit(uint64 poolId, bytes16 trancheId, ERC7540Vault vault, ERC20 asset) public {
+        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
+
         ITranche tranche = ITranche(address(vault.share()));
 
         uint256 investmentAmount = 100000000; // 100 * 10**6

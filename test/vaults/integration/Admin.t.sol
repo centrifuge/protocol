@@ -14,7 +14,7 @@ contract AdminTest is BaseTest {
     using MessageLib for *;
     using CastLib for *;
 
-    uint32 constant CHAIN_ID = 1;
+    uint16 constant CHAIN_ID = 1;
 
     function testDeployment() public view {
         // values set correctly

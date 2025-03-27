@@ -32,6 +32,30 @@ interface IPoolRouterGatewayHandler {
 
     /// @notice Perform a redeem cancellation that was requested from CV.
     function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId) external;
+
+    /// @notice Performs a manual update of the holdings value given the provided price
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePerUnit) external;
+
+    /// @notice Update a holding by request from CAL.
+    function updateHoldingAmount(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 amount,
+        D18 pricePerUnit,
+        bool isIncrease,
+        JournalEntry[] memory debits,
+        JournalEntry[] memory credits
+    ) external;
+
+    /// @notice Perform accounting entries by request from CAL.
+    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external;
+
+    /// @notice Increases the total issuance of shares by request from CAL.
+    function increaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare, uint128 amount) external;
+
+    /// @notice Decreases the total issuance of shares by request from CAL.
+    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare, uint128 amount) external;
 }
 
 /// -----------------------------------------------------
@@ -92,8 +116,9 @@ interface IPoolManagerGatewayHandler {
     function updateContract(uint64 poolId, bytes16 trancheId, address target, bytes memory update) external;
 }
 
-/// @notice Interface for CV methods related to async deposits called by the gateway
-interface IDepositGatewayHandler {
+/// @notice Interface for CV methods related to async investments called by the gateway
+interface IInvestmentManagerGatewayHandler {
+    // --- Deposits ---
     /// @notice Fulfills pending deposit requests after successful epoch execution on CP.
     ///         The amount of shares that can be claimed by the user is minted and moved to the escrow contract.
     ///         The MaxMint bookkeeping value is updated.
@@ -167,10 +192,8 @@ interface IDepositGatewayHandler {
         uint128 assets,
         uint128 fulfillment
     ) external;
-}
 
-/// @notice Interface for CV methods related to async redemptions called by the gateway
-interface IRedeemGatewayHandler {
+    // --- Redeems ---
     /// @notice Fulfills pending redeem requests after successful epoch execution on CP.
     ///         The amount of redeemed shares is burned. The amount of assets that can be claimed by the user in
     ///         return is locked in the escrow contract. The MaxWithdraw bookkeeping value is updated.
@@ -208,20 +231,20 @@ interface IRedeemGatewayHandler {
 
 /// @notice Interface for CV methods related to epoch called by the gateway
 interface IBalanceSheetManagerGatewayHandler {
-    function deposit(
-        uint64 poolId,
-        bytes16 scId,
-        uint128 assetId,
+    function triggerDeposit(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
         address provider,
         uint128 amount,
         D18 pricePerUnit,
         Meta calldata meta
     ) external;
 
-    function withdraw(
-        uint64 poolId,
-        bytes16 scId,
-        uint128 assetId,
+    function triggerWithdraw(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
         address receiver,
         uint128 amount,
         D18 pricePerUnit,
@@ -229,7 +252,15 @@ interface IBalanceSheetManagerGatewayHandler {
         Meta calldata m
     ) external;
 
-    function triggerIssueShares(uint64 poolId, bytes16 scId, address to, uint128 shares, bool asAllowance) external;
+    function triggerIssueShares(
+        PoolId poolId,
+        ShareClassId scId,
+        address to,
+        D18 pricePerShare,
+        uint128 shares,
+        bool asAllowance
+    ) external;
 
-    function triggerRevokeShares(uint64 poolId, bytes16 scId, address from, uint128 shares) external;
+    function triggerRevokeShares(PoolId poolId, ShareClassId scId, address from, D18 pricePerShare, uint128 shares)
+        external;
 }

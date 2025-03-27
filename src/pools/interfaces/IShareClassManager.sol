@@ -235,6 +235,20 @@ interface IShareClassManager {
         external
         returns (uint128 issuance, D18 navPerShare);
 
+    /// @notice Increases the share class issuance
+    ///
+    /// @param poolId Identifier of the pool
+    /// @param scId Identifier of the share class
+    /// @param amount The amount to increase the share class issuance by
+    function increaseShareClassIssuance(PoolId poolId, ShareClassId scId, D18 navPerShare, uint128 amount) external;
+
+    /// @notice Decreases the share class issuance
+    ///
+    /// @param poolId Identifier of the pool
+    /// @param scId Identifier of the share class
+    /// @param amount The amount to decrease the share class issuance by
+    function decreaseShareClassIssuance(PoolId poolId, ShareClassId scId, D18 navPerShare, uint128 amount) external;
+
     /// @notice Generic update function for a pool.
     ///
     /// @param poolId Identifier of the pool

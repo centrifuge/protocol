@@ -533,6 +533,29 @@ contract MultiShareClass is Auth, IMultiShareClass {
 
 
     /// @inheritdoc IShareClassManager
+    function increaseShareClassIssuance(PoolId poolId, ShareClassId shareClassId_, D18 navPerShare, uint128 amount) external auth {
+        require(exists(poolId, shareClassId_), ShareClassNotFound());
+
+        uint128 newIssuance = metrics[shareClassId_].totalIssuance + amount;
+        metrics[shareClassId_].totalIssuance = newIssuance;
+
+        emit IssuedShares(poolId, shareClassId_, epochId[poolId], navPerShare, navPerShare.mulUint128(newIssuance), amount);
+    }
+
+    /// @inheritdoc IShareClassManager
+    function decreaseShareClassIssuance(PoolId poolId, ShareClassId shareClassId_, D18 navPerShare, uint128 amount) external auth {
+        require(exists(poolId, shareClassId_), ShareClassNotFound());
+        require(metrics[shareClassId_].totalIssuance >= amount, "Issuance too low");
+
+        uint128 newIssuance = metrics[shareClassId_].totalIssuance - amount;
+        metrics[shareClassId_].totalIssuance = newIssuance;
+
+        // TODO: Maybe remove the redeemAssets part from the event?
+        emit RevokedShares(poolId, shareClassId_, epochId[poolId], navPerShare, navPerShare.mulUint128(newIssuance), amount, 0);
+    }
+
+
+    /// @inheritdoc IShareClassManager
     function updateShareClassNav(PoolId poolId, ShareClassId shareClassId_) external view auth returns (uint128, D18) {
         require(exists(poolId, shareClassId_), ShareClassNotFound());
         revert("unsupported");

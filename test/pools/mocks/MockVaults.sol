@@ -12,6 +12,8 @@ import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {JournalEntry} from "src/common/types/JournalEntry.sol";
+import {D18, d18} from "src/misc/types/D18.sol";
 
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
@@ -23,12 +25,12 @@ contract MockVaults is Test, Auth, IAdapter {
     using BytesLib for bytes;
 
     IMessageHandler public handler;
-    uint32 public sourceChainId;
+    uint16 public sourceChainId;
 
     uint32[] public lastChainDestinations;
     bytes[] public lastMessages;
 
-    constructor(uint32 chainId, IMessageHandler handler_) Auth(msg.sender) {
+    constructor(uint16 chainId, IMessageHandler handler_) Auth(msg.sender) {
         handler = handler_;
         sourceChainId = chainId;
     }
@@ -75,7 +77,7 @@ contract MockVaults is Test, Auth, IAdapter {
         );
     }
 
-    function send(uint32 chainId, bytes memory data, uint256, address) external payable {
+    function send(uint16 chainId, bytes memory data, uint256, address) external payable {
         lastChainDestinations.push(chainId);
 
         while (data.length > 0) {
@@ -88,7 +90,62 @@ contract MockVaults is Test, Auth, IAdapter {
         }
     }
 
-    function estimate(uint32, bytes calldata, uint256 baseCost) external pure returns (uint256) {
+    function updateHolding(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 amount,
+        D18 pricePerUnit,
+        bool isIncrease,
+        JournalEntry[] memory debits,
+        JournalEntry[] memory credits
+    ) public {
+        handler.handle(
+            sourceChainId,
+            MessageLib.UpdateHolding({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                assetId: assetId.raw(),
+                who: bytes32(0),
+                amount: amount,
+                pricePerUnit: pricePerUnit,
+                timestamp: 0,
+                isIncrease: isIncrease,
+                debits: debits,
+                credits: credits
+            }).serialize()
+        );
+    }
+
+    function updateJournal(
+        PoolId poolId,
+        ShareClassId scId,
+        JournalEntry[] memory debits,
+        JournalEntry[] memory credits
+    ) public {
+        handler.handle(
+            sourceChainId,
+            MessageLib.UpdateJournal({poolId: poolId.raw(), scId: scId.raw(), debits: debits, credits: credits})
+                .serialize()
+        );
+    }
+
+    function updateShares(PoolId poolId, ShareClassId scId, uint128 amount, bool isIssuance) public {
+        handler.handle(
+            sourceChainId,
+            MessageLib.UpdateShares({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                who: bytes32(0),
+                pricePerShare: d18(1, 1),
+                shares: amount,
+                timestamp: 0,
+                isIssuance: isIssuance
+            }).serialize()
+        );
+    }
+
+    function estimate(uint16, bytes calldata, uint256 baseCost) external pure returns (uint256) {
         return baseCost;
     }
 

@@ -15,7 +15,6 @@ import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
-import {IRedeemGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
@@ -185,12 +184,9 @@ contract SyncInvestmentManager is BaseInvestmentManager, ISyncInvestmentManager 
     {
         return super.supportsInterface(interfaceId) || interfaceId == type(IVaultManager).interfaceId
             || interfaceId == type(IDepositManager).interfaceId || interfaceId == type(ISyncDepositManager).interfaceId
-            || interfaceId == type(ISyncInvestmentManager).interfaceId || interfaceId == type(IMessageHandler).interfaceId;
+            || interfaceId == type(ISyncInvestmentManager).interfaceId;
     }
 
     // --- Admin actions ---
-    /// @inheritdoc IMessageHandler
-    function handle(uint32 chainId, bytes calldata message) public auth {
-        // TODO: updateMaxPriceAge handler
-    }
+    // TODO: updateMaxPriceAge handler
 }

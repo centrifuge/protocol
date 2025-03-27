@@ -6,8 +6,18 @@ import {PoolId} from "src/common/types/PoolId.sol";
 
 interface IAccounting {
     /// @notice Emitted when a an entry is done
-    event Credit(PoolId indexed poolId, bytes32 indexed transactionId, AccountId indexed account, uint128 value);
-    event Debit(PoolId indexed poolId, bytes32 indexed transactionId, AccountId indexed account, uint128 value);
+    event Credit(PoolId indexed poolId, AccountId indexed account, uint128 value);
+    event Debit(PoolId indexed poolId, AccountId indexed account, uint128 value);
+
+    /// @notice Emitted at the beginning and end of a journal entry
+    event StartJournalId(PoolId indexed poolId, uint256 journalId);
+    event EndJournalId(PoolId indexed poolId, uint256 journalId);
+
+    /// @notice Emitted when a new account is created
+    event AccountCreated(PoolId indexed poolId, AccountId indexed account, bool isDebitNormal);
+
+    /// @notice Emitted when metadata is set for an account
+    event AccountMetadataSet(PoolId indexed poolId, AccountId indexed account, bytes metadata);
 
     /// @notice Dispatched when the pool is already unlocked.
     error AccountingAlreadyUnlocked();
@@ -24,7 +34,7 @@ interface IAccounting {
     /// @notice Dispatched when trying debit or credit an account that doesn't exists.
     error AccountDoesNotExist();
 
-    /// @notice
+    /// @notice Represents an account
     struct Account {
         uint128 totalDebit;
         uint128 totalCredit;
@@ -34,24 +44,44 @@ interface IAccounting {
     }
 
     /// @notice Debits an account. Increase the value of debit-normal accounts, decrease for credit-normal ones.
+    /// @param account The account to debit
+    /// @param value Amount being debited
     function addDebit(AccountId account, uint128 value) external;
 
     /// @notice Credits an account. Decrease the value of debit-normal accounts, increase for credit-normal ones.
+    /// @param account The account to credit
+    /// @param value Amount being credited
     function addCredit(AccountId account, uint128 value) external;
 
     /// @notice Sets the pool ID and transaction ID for the coming transaction.
-    function unlock(PoolId poolId, bytes32 transactionId) external;
+    /// @param poolId The pool to unlock
+    /// @param journalId The id to use for this set of debits/credits
+    function unlock(PoolId poolId, uint256 journalId) external;
 
     /// @notice Closes the transaction and checks if the entries are balanced.
     function lock() external;
 
     /// @notice Creates an account.
+    /// @param poolId The pool the account belongs to
+    /// @param account The account to create
+    /// @param isDebitNormal Whether the account is debit-normal or credit-normal
     function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) external;
 
     /// @notice Sets metadata associated to an existent account.
+    /// @param poolId The pool the account belongs to
+    /// @param account The account to set metadata for
+    /// @param metadata The metadata to set
     function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external;
 
-    /// @notice Returns the value of an account, returns a negative value for positive balances of credt-normal
-    /// accounts.
+    /// @notice Returns the value of an account
+    /// @param poolId The pool the account belongs to
+    /// @param account The account to get the value of
+    /// @return The value of the account. Will be a negative value for positive balances of credit-normal accounts
     function accountValue(PoolId poolId, AccountId account) external returns (int128);
+
+    /// @notice generates a new journal id for the given pool
+    function generateJournalId(PoolId poolId) external returns (uint256);
+
+    /// @notice gets the current journal id
+    function journalId() external returns (uint256);
 }

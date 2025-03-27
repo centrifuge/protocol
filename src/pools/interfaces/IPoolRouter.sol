@@ -4,6 +4,8 @@ pragma solidity 0.8.28;
 import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
+import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
@@ -29,7 +31,11 @@ enum AccountType {
     /// @notice Credit normal account for tracking losses
     LOSS,
     /// @notice Credit normal account for tracking profits
-    GAIN
+    GAIN,
+    /// @notice Debit normal account for tracking expenses
+    EXPENSE,
+    /// @notice Credit normal account for tracking liabilities
+    LIABILITY
 }
 
 /// @notice Interface with all methods available in the system used by actors
@@ -76,22 +82,18 @@ interface IPoolRouter {
 
     /// @notice Notify to a CV instance that a new pool is available
     /// @param chainId Chain where CV instance lives
-    function notifyPool(uint32 chainId) external payable;
+    function notifyPool(uint16 chainId) external payable;
 
     /// @notice Notify to a CV instance that a new share class is available
     /// @param chainId Chain where CV instance lives
     /// @param hook The hook address of the share class
-    function notifyShareClass(uint32 chainId, ShareClassId scId, bytes32 hook) external payable;
+    function notifyShareClass(uint16 chainId, ShareClassId scId, bytes32 hook) external payable;
 
     /// @notice Attach custom data to a pool
     function setPoolMetadata(bytes calldata metadata) external payable;
 
     /// @notice Allow/disallow an account to interact as pool admin
     function allowPoolAdmin(address account, bool allow) external payable;
-
-    /// @notice Allow/disallow an asset for investment.
-    /// Notify to the CV instance of that asset that the asset is available for investing for such share class id
-    function allowAsset(ShareClassId scId, AssetId assetId, bool allow) external payable;
 
     /// @notice Add a new share class to the pool
     function addShareClass(string calldata name, string calldata symbol, bytes32 salt, bytes calldata data)
@@ -129,11 +131,35 @@ interface IPoolRouter {
         external
         payable;
 
+    /// @notice Update remotely an exiting vault.
+    /// @param chainId Chain where CV instance lives.
+    /// @param target contract where to execute in CV. Check IUpdateContract interface.
+    /// @param payload content of the to execute.
+    function updateContract(uint16 chainId, ShareClassId scId, bytes32 target, bytes calldata payload)
+        external
+        payable;
+
+    /// @notice Deploy a vault in the Vaults side.
+    /// @param assetId Asset used in the vault.
+    /// @param target contract where to execute this action in CV. Check IUpdateContract interface.
+    /// @param vaultOrFactory Vault or Factory address, depending on kind. Check `IVaultFactory` interface.
+    /// @param kind The action to do with the vault. See `VaultUpdateKind`
+    function updateVault(
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 target,
+        bytes32 vaultOrFactory,
+        VaultUpdateKind kind
+    ) external payable;
+
     /// @notice Create a new holding associated to the asset in a share class.
     /// It will generate and register the different accounts used for holdings.
     /// @param valuation Used to transform between payment assets and pool currency
+    /// @param isLiability Determines if the holding is a liability or not
     /// @param prefix Account prefix used for generating the account ids
-    function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint24 prefix) external payable;
+    function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, bool isLiability, uint24 prefix)
+        external
+        payable;
 
     /// @notice Increase the amount of a holding.
     /// @param valuation Used to transform between payment assets and pool currency

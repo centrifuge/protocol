@@ -17,7 +17,7 @@ import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-import {IDepositGatewayHandler, IRedeemGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
+import {IInvestmentManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {
@@ -221,7 +221,7 @@ contract AsyncInvestmentManager is BaseInvestmentManager, IAsyncInvestmentManage
     }
 
     // -- Gateway handlers --
-    /// @inheritdoc IDepositGatewayHandler
+    /// @inheritdoc IInvestmentManagerGatewayHandler
     function fulfillDepositRequest(
         uint64 poolId,
         bytes16 trancheId,
@@ -248,7 +248,7 @@ contract AsyncInvestmentManager is BaseInvestmentManager, IAsyncInvestmentManage
         IERC7540Vault(vault_).onDepositClaimable(user, assets, shares);
     }
 
-    /// @inheritdoc IRedeemGatewayHandler
+    /// @inheritdoc IInvestmentManagerGatewayHandler
     function fulfillRedeemRequest(
         uint64 poolId,
         bytes16 trancheId,
@@ -279,7 +279,7 @@ contract AsyncInvestmentManager is BaseInvestmentManager, IAsyncInvestmentManage
         IERC7540Vault(vault_).onRedeemClaimable(user, assets, shares);
     }
 
-    /// @inheritdoc IDepositGatewayHandler
+    /// @inheritdoc IInvestmentManagerGatewayHandler
     function fulfillCancelDepositRequest(
         uint64 poolId,
         bytes16 trancheId,
@@ -302,7 +302,7 @@ contract AsyncInvestmentManager is BaseInvestmentManager, IAsyncInvestmentManage
         IERC7540Vault(vault_).onCancelDepositClaimable(user, assets);
     }
 
-    /// @inheritdoc IRedeemGatewayHandler
+    /// @inheritdoc IInvestmentManagerGatewayHandler
     function fulfillCancelRedeemRequest(uint64 poolId, bytes16 trancheId, address user, uint128 assetId, uint128 shares)
         public
         auth
@@ -319,7 +319,7 @@ contract AsyncInvestmentManager is BaseInvestmentManager, IAsyncInvestmentManage
         IERC7540Vault(vault_).onCancelRedeemClaimable(user, shares);
     }
 
-    /// @inheritdoc IRedeemGatewayHandler
+    /// @inheritdoc IInvestmentManagerGatewayHandler
     function triggerRedeemRequest(uint64 poolId, bytes16 trancheId, address user, uint128 assetId, uint128 shares)
         public
         auth
@@ -598,7 +598,7 @@ contract AsyncInvestmentManager is BaseInvestmentManager, IAsyncInvestmentManage
             || interfaceId == type(IDepositManager).interfaceId || interfaceId == type(IAsyncDepositManager).interfaceId
             || interfaceId == type(IRedeemManager).interfaceId || interfaceId == type(IAsyncRedeemManager).interfaceId
             || interfaceId == type(IAsyncInvestmentManager).interfaceId
-            || interfaceId == type(IDepositGatewayHandler).interfaceId
+            || interfaceId == type(IInvestmentManagerGatewayHandler).interfaceId
             || interfaceId == type(IAsyncRedeemManager).interfaceId || interfaceId == type(IMessageHandler).interfaceId;
     }
 

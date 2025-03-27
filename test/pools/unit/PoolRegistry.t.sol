@@ -18,8 +18,11 @@ contract PoolRegistryTest is Test {
 
     PoolRegistry registry;
 
+    uint16 constant CENTRIFUGE_CHAIN_ID = 23;
     AssetId constant USD = AssetId.wrap(840);
     ShareClassId constant SC_A = ShareClassId.wrap(bytes16("sc"));
+    PoolId constant POOL_A = PoolId.wrap(33);
+    PoolId constant POOL_B = PoolId.wrap(44);
 
     IShareClassManager shareClassManager = IShareClassManager(makeAddr("shareClassManager"));
 
@@ -40,23 +43,23 @@ contract PoolRegistryTest is Test {
     function testPoolRegistration(address fundAdmin) public nonZero(fundAdmin) notThisContract(fundAdmin) {
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.registerPool(address(this), USD, shareClassManager);
+        registry.registerPool(address(this), CENTRIFUGE_CHAIN_ID, USD, shareClassManager);
 
         vm.expectRevert(IPoolRegistry.EmptyShareClassManager.selector);
-        registry.registerPool(address(this), USD, IShareClassManager(address(0)));
+        registry.registerPool(address(this), CENTRIFUGE_CHAIN_ID, USD, IShareClassManager(address(0)));
 
         vm.expectRevert(IPoolRegistry.EmptyAdmin.selector);
-        registry.registerPool(address(0), USD, shareClassManager);
+        registry.registerPool(address(0), CENTRIFUGE_CHAIN_ID, USD, shareClassManager);
 
         vm.expectRevert(IPoolRegistry.EmptyCurrency.selector);
-        registry.registerPool(address(this), AssetId.wrap(0), shareClassManager);
+        registry.registerPool(address(this), CENTRIFUGE_CHAIN_ID, AssetId.wrap(0), shareClassManager);
 
         vm.expectEmit();
-        emit IPoolRegistry.NewPool(newPoolId(1), fundAdmin, shareClassManager, USD);
-        PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
+        emit IPoolRegistry.NewPool(newPoolId(CENTRIFUGE_CHAIN_ID, 1), fundAdmin, shareClassManager, USD);
+        PoolId poolId = registry.registerPool(fundAdmin, CENTRIFUGE_CHAIN_ID, USD, shareClassManager);
 
-        assertEq(poolId.chainId(), block.chainid.toUint32());
-        assertEq(PoolId.unwrap(poolId), ((uint64(block.chainid.toUint32()) << 32) | 1));
+        assertEq(poolId.chainId(), CENTRIFUGE_CHAIN_ID);
+        assertEq(poolId.raw(), newPoolId(CENTRIFUGE_CHAIN_ID, 1).raw());
         assertEq(registry.latestId(), 1);
 
         assertTrue(registry.isAdmin(poolId, fundAdmin));
@@ -72,7 +75,7 @@ contract PoolRegistryTest is Test {
         notThisContract(additionalAdmin)
     {
         vm.assume(fundAdmin != additionalAdmin);
-        PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
+        PoolId poolId = registry.registerPool(fundAdmin, CENTRIFUGE_CHAIN_ID, USD, shareClassManager);
 
         assertFalse(registry.isAdmin(poolId, additionalAdmin));
 
@@ -103,7 +106,7 @@ contract PoolRegistryTest is Test {
     function testSetMetadata(bytes calldata metadata) public {
         address fundAdmin = makeAddr("fundAdmin");
 
-        PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
+        PoolId poolId = registry.registerPool(fundAdmin, CENTRIFUGE_CHAIN_ID, USD, shareClassManager);
 
         assertEq(registry.metadata(poolId).length, 0);
 
@@ -127,7 +130,7 @@ contract PoolRegistryTest is Test {
     {
         address fundAdmin = makeAddr("fundAdmin");
 
-        PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
+        PoolId poolId = registry.registerPool(fundAdmin, CENTRIFUGE_CHAIN_ID, USD, shareClassManager);
 
         assertEq(address(registry.shareClassManager(poolId)), address(shareClassManager));
 
@@ -151,7 +154,7 @@ contract PoolRegistryTest is Test {
     function testUpdateCurrency(AssetId currency) public nonZero(currency.addr()) {
         address fundAdmin = makeAddr("fundAdmin");
 
-        PoolId poolId = registry.registerPool(fundAdmin, USD, shareClassManager);
+        PoolId poolId = registry.registerPool(fundAdmin, CENTRIFUGE_CHAIN_ID, USD, shareClassManager);
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -172,7 +175,7 @@ contract PoolRegistryTest is Test {
     }
 
     function testExists() public {
-        PoolId poolId = registry.registerPool(makeAddr("fundManager"), USD, shareClassManager);
+        PoolId poolId = registry.registerPool(makeAddr("fundManager"), CENTRIFUGE_CHAIN_ID, USD, shareClassManager);
         assertEq(registry.exists(poolId), true);
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);

@@ -5,6 +5,8 @@ import "test/vaults/BaseTest.sol";
 
 contract AssetShareConversionTest is BaseTest {
     function testAssetShareConversion(uint64 poolId, bytes16 trancheId) public {
+        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
+
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
         uint8 TRANCHE_TOKEN_DECIMALS = 18; // Like DAI
 
@@ -56,6 +58,8 @@ contract AssetShareConversionTest is BaseTest {
     }
 
     function testAssetShareConversionWithInverseDecimals(uint64 poolId, bytes16 trancheId) public {
+        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
+
         uint8 INVESTMENT_CURRENCY_DECIMALS = 18; // 18, like DAI
         uint8 TRANCHE_TOKEN_DECIMALS = 6; // Like USDC
 
@@ -102,6 +106,8 @@ contract AssetShareConversionTest is BaseTest {
     }
 
     function testPriceWorksAfterRemovingVault(uint64 poolId, bytes16 trancheId) public {
+        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
+
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
         uint8 TRANCHE_TOKEN_DECIMALS = 18; // Like DAI
 

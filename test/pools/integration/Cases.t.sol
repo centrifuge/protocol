@@ -5,27 +5,31 @@ import "forge-std/Test.sol";
 
 import {D18, d18} from "src/misc/types/D18.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
+import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
 
 import {PoolsDeployer, ISafe} from "script/PoolsDeployer.s.sol";
 import {AccountType} from "src/pools/interfaces/IPoolRouter.sol";
+import {JournalEntry} from "src/common/types/JournalEntry.sol";
 
 import {MockVaults} from "test/pools/mocks/MockVaults.sol";
+import {ShareClassIdTest} from "../unit/types/ShareClassId.t.sol";
 
 contract TestCases is PoolsDeployer, Test {
     using CastLib for string;
     using CastLib for bytes32;
+    using MathLib for *;
 
-    uint32 constant CHAIN_CP = 5;
-    uint32 constant CHAIN_CV = 6;
+    uint16 constant CHAIN_CP = 5;
+    uint16 constant CHAIN_CV = 6;
 
     string constant SC_NAME = "ExampleName";
     string constant SC_SYMBOL = "ExampleSymbol";
@@ -50,16 +54,16 @@ contract TestCases is PoolsDeployer, Test {
 
     function _mockStuff() private {
         cv = new MockVaults(CHAIN_CV, gateway);
-        wire(cv, address(this));
+        wire(cv);
 
         gasService.file("messageGasLimit", GAS);
     }
 
     function setUp() public {
         // Deployment
-        deployPools(ISafe(address(0)), address(this));
+        deployPools(CHAIN_CP, ISafe(address(0)));
         _mockStuff();
-        removePoolsDeployerAccess(address(this));
+        removePoolsDeployerAccess();
 
         // Initialize accounts
         vm.deal(FM, 1 ether);
@@ -75,10 +79,11 @@ contract TestCases is PoolsDeployer, Test {
         vm.label(address(poolRouter), "PoolRouter");
         vm.label(address(gateway), "Gateway");
         vm.label(address(messageProcessor), "MessageProcessor");
+        vm.label(address(messageDispatcher), "MessageDispatcher");
         vm.label(address(cv), "CV");
 
-        // We decide CP is located at CHAIN_CP for messaging
-        vm.chainId(CHAIN_CP);
+        // We should not use the block ChainID
+        vm.chainId(0xDEAD);
     }
 
     /// forge-config: default.isolate = true
@@ -95,13 +100,21 @@ contract TestCases is PoolsDeployer, Test {
 
         scId = multiShareClass.previewNextShareClassId(poolId);
 
-        (bytes[] memory cs, uint256 c) = (new bytes[](5), 0);
+        (bytes[] memory cs, uint256 c) = (new bytes[](6), 0);
         cs[c++] = abi.encodeWithSelector(poolRouter.setPoolMetadata.selector, bytes("Testing pool"));
         cs[c++] = abi.encodeWithSelector(poolRouter.addShareClass.selector, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
         cs[c++] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
         cs[c++] = abi.encodeWithSelector(poolRouter.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
-        cs[c++] = abi.encodeWithSelector(poolRouter.createHolding.selector, scId, USDC_C2, identityValuation, 0x01);
-        //TODO: CAL update contract here
+        cs[c++] =
+            abi.encodeWithSelector(poolRouter.createHolding.selector, scId, USDC_C2, identityValuation, false, 0x01);
+        cs[c++] = abi.encodeWithSelector(
+            poolRouter.updateVault.selector,
+            scId,
+            USDC_C2,
+            bytes32("target"),
+            bytes32("factory"),
+            VaultUpdateKind.DeployAndLink
+        );
         assertEq(c, cs.length);
 
         vm.prank(FM);
@@ -121,6 +134,15 @@ contract TestCases is PoolsDeployer, Test {
         assertEq(m1.decimals, 18);
         assertEq(m1.salt, SC_SALT);
         assertEq(m1.hook, SC_HOOK);
+
+        MessageLib.UpdateContract memory m2 = MessageLib.deserializeUpdateContract(cv.lastMessages(2));
+        assertEq(m2.scId, scId.raw());
+        assertEq(m2.target, bytes32("target"));
+
+        MessageLib.UpdateContractVaultUpdate memory m3 = MessageLib.deserializeUpdateContractVaultUpdate(m2.payload);
+        assertEq(m3.assetId, USDC_C2.raw());
+        assertEq(m3.vaultOrFactory, bytes32("factory"));
+        assertEq(m3.kind, uint8(VaultUpdateKind.DeployAndLink));
 
         cv.resetMessages();
     }
@@ -243,5 +265,98 @@ contract TestCases is PoolsDeployer, Test {
         assertEq(c, cs.length);
 
         poolRouter.multicall{value: GAS}(cs);
+    }
+
+    function testCalUpdateJournal() public {
+        (PoolId poolId, ShareClassId scId) = testPoolCreation();
+
+        AccountId extraAccountId = newAccountId(123, uint8(AccountType.ASSET));
+
+        (bytes[] memory cs, uint256 c) = (new bytes[](1), 0);
+        cs[c++] = abi.encodeWithSelector(poolRouter.createAccount.selector, extraAccountId, true);
+        vm.prank(FM);
+        poolRouter.execute(poolId, cs);
+
+        (JournalEntry[] memory debits, uint256 i) = (new JournalEntry[](3), 0);
+        debits[i++] = JournalEntry(1000, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.ASSET)));
+        debits[i++] = JournalEntry(250, extraAccountId);
+        debits[i++] = JournalEntry(130, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EQUITY)));
+
+        (JournalEntry[] memory credits, uint256 j) = (new JournalEntry[](2), 0);
+        credits[j++] = JournalEntry(1250, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EQUITY)));
+        credits[j++] = JournalEntry(130, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.LOSS)));
+
+        cv.updateJournal(poolId, scId, debits, credits);
+    }
+
+    function testCalUpdateHolding() public {
+        (PoolId poolId, ShareClassId scId) = testPoolCreation();
+        uint128 poolDecimals = (10 ** assetRegistry.decimals(USD.raw())).toUint128();
+        uint128 assetDecimals = (10 ** assetRegistry.decimals(USDC_C2.raw())).toUint128();
+
+        JournalEntry[] memory debits = new JournalEntry[](0);
+        (JournalEntry[] memory credits, uint256 i) = (new JournalEntry[](1), 0);
+        credits[i++] =
+            JournalEntry(130 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.GAIN)));
+
+        cv.updateHolding(poolId, scId, USDC_C2, 1000 * assetDecimals, D18.wrap(1e18), true, debits, credits);
+        assertEq(holdings.amount(poolId, scId, USDC_C2), 1000 * assetDecimals);
+        assertEq(holdings.value(poolId, scId, USDC_C2), 1000 * poolDecimals);
+        assertEq(
+            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.GAIN))),
+            int128(130 * poolDecimals)
+        );
+        assertEq(
+            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EQUITY))),
+            int128(870 * poolDecimals)
+        );
+
+        extensionCalUpdateHoldingLoss(poolId, scId, poolDecimals, assetDecimals);
+    }
+
+    function extensionCalUpdateHoldingLoss(
+        PoolId poolId,
+        ShareClassId scId,
+        uint128 poolDecimals,
+        uint128 assetDecimals
+    ) public {
+        (JournalEntry[] memory debits, uint256 j) = (new JournalEntry[](1), 0);
+        debits[j++] =
+            JournalEntry(12 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EXPENSE)));
+        (JournalEntry[] memory credits, uint256 k) = (new JournalEntry[](1), 0);
+        credits[k++] =
+            JournalEntry(12 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.LOSS)));
+
+        cv.updateHolding(poolId, scId, USDC_C2, 500 * assetDecimals, D18.wrap(1e18), false, debits, credits);
+
+        assertEq(holdings.amount(poolId, scId, USDC_C2), 500 * assetDecimals);
+        assertEq(holdings.value(poolId, scId, USDC_C2), 500 * poolDecimals);
+        assertEq(
+            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.LOSS))),
+            int128(12 * poolDecimals)
+        );
+        assertEq(
+            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EXPENSE))),
+            int128(12 * poolDecimals)
+        );
+        assertEq(
+            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EQUITY))),
+            // 1000 - 130 - (500-12) = 382
+            int128(382 * poolDecimals)
+        );
+    }
+
+    function testCalUpdateShares() public {
+        (PoolId poolId, ShareClassId scId) = testPoolCreation();
+
+        cv.updateShares(poolId, scId, 100, true);
+
+        (uint128 totalIssuance,) = multiShareClass.metrics(scId);
+        assertEq(totalIssuance, 100);
+
+        cv.updateShares(poolId, scId, 45, false);
+
+        (uint128 totalIssuance2,) = multiShareClass.metrics(scId);
+        assertEq(totalIssuance2, 55);
     }
 }

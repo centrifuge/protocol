@@ -7,11 +7,12 @@ import {IERC6909Fungible} from "src/misc/interfaces/IERC6909.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 
-import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {newAssetId} from "src/common/types/AssetId.sol";
 
 // core contracts
 import {AsyncInvestmentManager} from "src/vaults/AsyncInvestmentManager.sol";
@@ -57,17 +58,20 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     uint256 constant GATEWAY_INITIAL_BALANCE = 10 ether;
 
     // default values
-    uint32 public defaultChainId = 1;
+    uint16 public constant OTHER_CHAIN_ID = 1;
+    uint16 public constant THIS_CHAIN_ID = OTHER_CHAIN_ID + 100;
+    uint32 public constant BLOCK_CHAIN_ID = 23;
     uint256 public erc20TokenId = 0;
     uint256 public defaultErc6909TokenId = 16;
-    uint128 public defaultAssetId = uint128(bytes16(abi.encodePacked(uint32(defaultChainId), uint32(1))));
+    uint128 public defaultAssetId = newAssetId(THIS_CHAIN_ID, 1).raw();
     uint128 public defaultPrice = 1 * 10 ** 18;
     uint8 public defaultDecimals = 8;
     uint32 public defaultPoolId = 5;
     bytes16 public defaultShareClassId = bytes16(bytes("1"));
 
     function setUp() public virtual {
-        vm.chainId(defaultChainId);
+        // We should not use the block ChainID
+        vm.chainId(BLOCK_CHAIN_ID);
 
         // make yourself owner of the adminSafe
         address[] memory pausers = new address[](1);
@@ -75,7 +79,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         ISafe adminSafe = new MockSafe(pausers, 1);
 
         // deploy core contracts
-        deployVaults(adminSafe, address(this));
+        deployVaults(THIS_CHAIN_ID, adminSafe);
 
         // deploy mock adapters
 
@@ -92,7 +96,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         testAdapters.push(adapter3);
 
         // wire contracts
-        wire(adapter1, address(this));
+        wire(adapter1);
         // remove deployer access
         // removeVaultsDeployerAccess(address(adapter)); // need auth permissions in tests
 
@@ -111,10 +115,12 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         // Label contracts
         vm.label(address(root), "Root");
         vm.label(address(asyncInvestmentManager), "AsyncInvestmentManager");
+        vm.label(address(syncInvestmentManager), "SyncInvestmentManager");
         vm.label(address(poolManager), "PoolManager");
         vm.label(address(balanceSheetManager), "BalanceSheetManager");
         vm.label(address(gateway), "Gateway");
         vm.label(address(messageProcessor), "MessageProcessor");
+        vm.label(address(messageDispatcher), "MessageDispatcher");
         vm.label(address(adapter1), "MockAdapter1");
         vm.label(address(adapter2), "MockAdapter2");
         vm.label(address(adapter3), "MockAdapter3");
@@ -134,6 +140,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         // Exclude predeployed contracts from invariant tests by default
         excludeContract(address(root));
         excludeContract(address(asyncInvestmentManager));
+        excludeContract(address(syncInvestmentManager));
         excludeContract(address(balanceSheetManager));
         excludeContract(address(poolManager));
         excludeContract(address(gateway));
@@ -163,7 +170,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         bytes16 trancheId,
         address asset,
         uint256 assetTokenId,
-        uint32 destinationChain
+        uint16 destinationChain
     ) public returns (address vaultAddress, uint128 assetId) {
         if (poolManager.assetToId(asset, assetTokenId) == 0) {
             assetId = poolManager.registerAsset(asset, assetTokenId, destinationChain);
@@ -180,10 +187,9 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
         // Trigger new vault deployment via UpdateContract
         bytes memory vaultUpdate = MessageLib.UpdateContractVaultUpdate({
-            factory: isAsync ? asyncVaultFactory : syncDepositAsyncRedeemVaultFactory,
+            vaultOrFactory: bytes32(bytes20(isAsync ? asyncVaultFactory : syncDepositAsyncRedeemVaultFactory)),
             assetId: assetId,
-            isLinked: true,
-            vault: address(0)
+            kind: uint8(VaultUpdateKind.DeployAndLink)
         }).serialize();
         poolManager.update(poolId, trancheId, vaultUpdate);
         vaultAddress = ITranche(poolManager.tranche(poolId, trancheId)).vault(asset);
@@ -207,7 +213,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
             trancheId,
             address(erc20),
             erc20TokenId,
-            defaultChainId
+            OTHER_CHAIN_ID
         );
     }
 
@@ -222,7 +228,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
             bytes16(bytes("1")),
             address(erc20),
             erc20TokenId,
-            defaultChainId
+            OTHER_CHAIN_ID
         );
     }
 

@@ -17,10 +17,9 @@ contract DepositTest is BaseTest {
 
     function _deploySyncVault(uint64 poolId, bytes16 trancheId, uint128 assetId) internal returns (address vault) {
         bytes memory syncVaultUpdate = MessageLib.UpdateContractVaultUpdate({
-            factory: syncDepositAsyncRedeemVaultFactory,
+            vaultOrFactory: bytes32(bytes20(syncDepositAsyncRedeemVaultFactory)),
             assetId: assetId,
-            isLinked: true,
-            vault: address(0)
+            kind: uint8(VaultUpdateKind.DeployAndLink)
         }).serialize();
 
         poolManager.update(poolId, trancheId, syncVaultUpdate);

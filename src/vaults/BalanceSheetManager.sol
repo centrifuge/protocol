@@ -16,6 +16,9 @@ import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {JournalEntry, Meta} from "src/common/types/JournalEntry.sol";
 import {IVaultMessageSender} from "../common/interfaces/IGatewaySenders.sol";
 import {IBalanceSheetManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
@@ -38,14 +41,14 @@ contract BalanceSheetManager is
     IVaultMessageSender public sender;
     IPoolManager public poolManager;
 
-    mapping(uint64 => mapping(bytes16 => mapping(address => bool))) public permission;
+    mapping(PoolId => mapping(ShareClassId => mapping(address => bool))) public permission;
 
     constructor(address escrow_) Auth(msg.sender) {
         escrow = IPerPoolEscrow(escrow_);
     }
 
     /// @dev Check if the msg.sender has permissions
-    modifier authOrPermission(uint64 poolId, bytes16 scId) {
+    modifier authOrPermission(PoolId poolId, ShareClassId scId) {
         require(wards[msg.sender] == 1 || permission[poolId][scId][msg.sender], IAuth.NotAuthorized());
         _;
     }
@@ -69,8 +72,11 @@ contract BalanceSheetManager is
     }
 
     /// --- IUpdateContract Implementation ---
-    function update(uint64 poolId, bytes16 scId, bytes calldata payload) external override auth {
+    function update(uint64 poolId_, bytes16 scId_, bytes calldata payload) external auth {
         MessageLib.UpdateContractPermission memory m = MessageLib.deserializeUpdateContractPermission(payload);
+
+        PoolId poolId = PoolId.wrap(poolId_);
+        ShareClassId scId = ShareClassId.wrap(scId_);
 
         permission[poolId][scId][m.who] = m.allowed;
 
@@ -80,8 +86,8 @@ contract BalanceSheetManager is
     /// --- External ---
     /// @inheritdoc IBalanceSheetManager
     function deposit(
-        uint64 poolId,
-        bytes16 scId,
+        PoolId poolId,
+        ShareClassId scId,
         address asset,
         uint256 tokenId,
         address provider,
@@ -92,7 +98,7 @@ contract BalanceSheetManager is
         _deposit(
             poolId,
             scId,
-            poolManager.checkedAssetToId(asset, tokenId),
+            AssetId.wrap(poolManager.checkedAssetToId(asset, tokenId)),
             asset,
             tokenId,
             provider,
@@ -104,8 +110,8 @@ contract BalanceSheetManager is
 
     /// @inheritdoc IBalanceSheetManager
     function withdraw(
-        uint64 poolId,
-        bytes16 scId,
+        PoolId poolId,
+        ShareClassId scId,
         address asset,
         uint256 tokenId,
         address receiver,
@@ -117,7 +123,7 @@ contract BalanceSheetManager is
         _withdraw(
             poolId,
             scId,
-            poolManager.checkedAssetToId(asset, tokenId),
+            AssetId.wrap(poolManager.checkedAssetToId(asset, tokenId)),
             asset,
             tokenId,
             receiver,
@@ -129,81 +135,94 @@ contract BalanceSheetManager is
     }
 
     /// @inheritdoc IBalanceSheetManager
-    function updateValue(uint64 poolId, bytes16 scId, uint128 assetId, D18 pricePerUnit, uint256 timestamp)
+    function updateValue(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, D18 pricePerUnit)
         external
         auth
     {
-        sender.sendUpdateHoldingValue(poolId, scId, assetId, pricePerUnit, timestamp);
+        uint128 assetId = poolManager.checkedAssetToId(asset, tokenId);
+        sender.sendUpdateHoldingValue(poolId, scId, AssetId.wrap(assetId), pricePerUnit, block.timestamp);
+        emit UpdateValue(poolId, scId, asset, tokenId, pricePerUnit, block.timestamp);
     }
 
     /// @inheritdoc IBalanceSheetManager
-    function revoke(uint64 poolId, bytes16 scId, address from, uint128 shares)
+    function revoke(PoolId poolId, ShareClassId scId, address from, D18 pricePerShare, uint128 shares)
         external
         authOrPermission(poolId, scId)
     {
-        _revoke(poolId, scId, from, shares);
+        _revoke(poolId, scId, from, pricePerShare, shares);
     }
 
     /// @inheritdoc IBalanceSheetManager
-    function issue(uint64 poolId, bytes16 scId, address to, uint128 shares, bool asAllowance)
+    function issue(PoolId poolId, ShareClassId scId, address to, D18 pricePerShare, uint128 shares, bool asAllowance)
         external
         authOrPermission(poolId, scId)
     {
-        _issue(poolId, scId, to, shares, asAllowance);
+        _issue(poolId, scId, to, pricePerShare, shares, asAllowance);
     }
 
     /// @inheritdoc IBalanceSheetManager
-    function journalEntry(uint64 poolId, bytes16 scId, Meta calldata m) external authOrPermission(poolId, scId) {
+    function journalEntry(PoolId poolId, ShareClassId scId, Meta calldata m) external authOrPermission(poolId, scId) {
+        // @dev we do not need to ensure the meta here. Could be part of a batch and must not be balanced
         sender.sendJournalEntry(poolId, scId, m.debits, m.credits);
+        emit UpdateEntry(poolId, scId, m.debits, m.credits);
     }
 
     /// --- IBalanceSheetManagerHandler ---
     /// @inheritdoc IBalanceSheetManagerGatewayHandler
-    function deposit(
-        uint64 poolId,
-        bytes16 scId,
-        uint128 assetId,
+    function triggerDeposit(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
         address provider,
         uint128 amount,
         D18 pricePerUnit,
         Meta calldata m
     ) external auth {
-        (address asset, uint256 tokenId) = poolManager.checkedIdToAsset(assetId);
+        (address asset, uint256 tokenId) = poolManager.checkedIdToAsset(assetId.raw());
 
         _deposit(poolId, scId, assetId, asset, tokenId, provider, amount, pricePerUnit, m);
     }
 
     /// @inheritdoc IBalanceSheetManagerGatewayHandler
-    function withdraw(
-        uint64 poolId,
-        bytes16 scId,
-        uint128 assetId,
+    function triggerWithdraw(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
         address receiver,
         uint128 amount,
         D18 pricePerUnit,
         bool asAllowance,
         Meta calldata m
     ) external auth {
-        (address asset, uint256 tokenId) = poolManager.checkedIdToAsset(assetId);
+        (address asset, uint256 tokenId) = poolManager.checkedIdToAsset(assetId.raw());
         _withdraw(poolId, scId, assetId, asset, tokenId, receiver, amount, pricePerUnit, asAllowance, m);
     }
 
     /// @inheritdoc IBalanceSheetManagerGatewayHandler
-    function triggerIssueShares(uint64 poolId, bytes16 scId, address to, uint128 shares, bool asAllowance)
-        external
-        auth
-    {
-        _issue(poolId, scId, to, shares, asAllowance);
+    function triggerIssueShares(
+        PoolId poolId,
+        ShareClassId scId,
+        address to,
+        D18 pricePerShare,
+        uint128 shares,
+        bool asAllowance
+    ) external auth {
+        _issue(poolId, scId, to, pricePerShare, shares, asAllowance);
     }
 
     /// @inheritdoc IBalanceSheetManagerGatewayHandler
-    function triggerRevokeShares(uint64 poolId, bytes16 scId, address from, uint128 shares) external auth {
-        _revoke(poolId, scId, from, shares);
+    function triggerRevokeShares(PoolId poolId, ShareClassId scId, address from, D18 pricePerShare, uint128 shares)
+        external
+        auth
+    {
+        _revoke(poolId, scId, from, pricePerShare, shares);
     }
 
     // --- Internal ---
-    function _issue(uint64 poolId, bytes16 scId, address to, uint128 shares, bool asAllowance) internal {
-        address token = poolManager.checkedTranche(poolId, scId);
+    function _issue(PoolId poolId, ShareClassId scId, address to, D18 pricePerShare, uint128 shares, bool asAllowance)
+        internal
+    {
+        address token = poolManager.checkedTranche(poolId.raw(), scId.raw());
 
         if (asAllowance) {
             ITranche(token).mint(address(this), shares);
@@ -212,22 +231,22 @@ contract BalanceSheetManager is
             ITranche(token).mint(address(to), shares);
         }
 
-        sender.sendIssueShares(poolId, scId, to, shares, block.timestamp);
-        emit IssueShares(poolId, scId, to, shares);
+        sender.sendIssueShares(poolId, scId, to, pricePerShare, shares, block.timestamp);
+        emit Issue(poolId, scId, to, pricePerShare, shares);
     }
 
-    function _revoke(uint64 poolId, bytes16 scId, address from, uint128 shares) internal {
-        address token = poolManager.checkedTranche(poolId, scId);
+    function _revoke(PoolId poolId, ShareClassId scId, address from, D18 pricePerShare, uint128 shares) internal {
+        address token = poolManager.checkedTranche(poolId.raw(), scId.raw());
         ITranche(token).burn(address(from), shares);
 
-        sender.sendRevokeShares(poolId, scId, from, shares, block.timestamp);
-        emit RevokeShares(poolId, scId, from, shares);
+        sender.sendRevokeShares(poolId, scId, from, pricePerShare, shares, block.timestamp);
+        emit Revoke(poolId, scId, from, pricePerShare, shares);
     }
 
     function _withdraw(
-        uint64 poolId,
-        bytes16 scId,
-        uint128 assetId,
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
         address asset,
         uint256 tokenId,
         address receiver,
@@ -236,7 +255,8 @@ contract BalanceSheetManager is
         bool asAllowance,
         Meta memory m
     ) internal {
-        escrow.withdraw(asset, tokenId, poolId, scId, amount);
+        _ensureEntries(pricePerUnit.mulUint128(amount), m);
+        escrow.withdraw(asset, tokenId, poolId.raw(), scId.raw(), amount);
 
         if (tokenId == 0) {
             if (asAllowance) {
@@ -255,16 +275,18 @@ contract BalanceSheetManager is
         }
 
         sender.sendDecreaseHolding(
-            poolId, scId, assetId, receiver, amount, pricePerUnit, m.timestamp, m.debits, m.credits
+            poolId, scId, assetId, receiver, amount, pricePerUnit, block.timestamp, m.debits, m.credits
         );
 
-        emit Withdraw(poolId, scId, asset, tokenId, receiver, amount, pricePerUnit, m.timestamp, m.debits, m.credits);
+        emit Withdraw(
+            poolId, scId, asset, tokenId, receiver, amount, pricePerUnit, block.timestamp, m.debits, m.credits
+        );
     }
 
     function _deposit(
-        uint64 poolId,
-        bytes16 scId,
-        uint128 assetId,
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
         address asset,
         uint256 tokenId,
         address provider,
@@ -272,7 +294,8 @@ contract BalanceSheetManager is
         D18 pricePerUnit,
         Meta memory m
     ) internal {
-        escrow.pendingDepositIncrease(asset, tokenId, poolId, scId, amount);
+        _ensureEntries(pricePerUnit.mulUint128(amount), m);
+        escrow.pendingDepositIncrease(asset, tokenId, poolId.raw(), scId.raw(), amount);
 
         if (tokenId == 0) {
             SafeTransferLib.safeTransferFrom(asset, provider, address(escrow), amount);
@@ -280,11 +303,26 @@ contract BalanceSheetManager is
             IERC6909(asset).transferFrom(provider, address(escrow), tokenId, amount);
         }
 
-        escrow.deposit(asset, tokenId, poolId, scId, amount);
+        escrow.deposit(asset, tokenId, poolId.raw(), scId.raw(), amount);
         sender.sendIncreaseHolding(
-            poolId, scId, assetId, provider, amount, pricePerUnit, m.timestamp, m.debits, m.credits
+            poolId, scId, assetId, provider, amount, pricePerUnit, block.timestamp, m.debits, m.credits
         );
 
-        emit Deposit(poolId, scId, asset, tokenId, provider, amount, pricePerUnit, m.timestamp, m.debits, m.credits);
+        emit Deposit(poolId, scId, asset, tokenId, provider, amount, pricePerUnit, block.timestamp, m.debits, m.credits);
+    }
+
+    function _ensureEntries(uint128 amount, Meta memory m) internal pure {
+        uint128 totalDebits;
+        uint128 totalCredits;
+
+        for (uint256 i = 0; i < m.debits.length; i++) {
+            totalDebits += m.debits[i].amount;
+        }
+
+        for (uint256 i = 0; i < m.credits.length; i++) {
+            totalCredits += m.credits[i].amount;
+        }
+
+        require(totalDebits <= amount && totalDebits <= amount, EntriesUnbalanced());
     }
 }

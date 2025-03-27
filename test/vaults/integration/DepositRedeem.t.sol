@@ -5,6 +5,8 @@ import "test/vaults/BaseTest.sol";
 
 contract DepositRedeem is BaseTest {
     function testPartialDepositAndRedeemExecutions(uint64 poolId, bytes16 trancheId) public {
+        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
+
         uint8 TRANCHE_TOKEN_DECIMALS = 18; // Like DAI
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
 
@@ -24,6 +26,8 @@ contract DepositRedeem is BaseTest {
     // Helpers
 
     function partialDeposit(uint64 poolId, bytes16 trancheId, ERC7540Vault vault, ERC20 asset) public {
+        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
+
         ITranche tranche = ITranche(address(vault.share()));
 
         uint256 investmentAmount = 100000000; // 100 * 10**6
@@ -62,6 +66,8 @@ contract DepositRedeem is BaseTest {
     }
 
     function partialRedeem(uint64 poolId, bytes16 trancheId, ERC7540Vault vault, ERC20 asset) public {
+        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
+
         ITranche tranche = ITranche(address(vault.share()));
 
         uint128 assetId = poolManager.assetToId(address(asset), erc20TokenId);

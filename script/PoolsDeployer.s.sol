@@ -37,20 +37,21 @@ contract PoolsDeployer is CommonDeployer {
     IdentityValuation public identityValuation;
 
     // Data
-    AssetId immutable USD = newAssetId(840);
+    AssetId public immutable USD = newAssetId(840);
 
-    function deployPools(ISafe adminSafe_, address deployer) public {
-        deployCommon(adminSafe_, deployer);
+    function deployPools(uint16 chainId, ISafe adminSafe_) public {
+        deployCommon(chainId, adminSafe_);
 
-        poolRegistry = new PoolRegistry(deployer);
-        assetRegistry = new AssetRegistry(deployer);
-        accounting = new Accounting(deployer);
-        holdings = new Holdings(poolRegistry, deployer);
-        multiShareClass = new MultiShareClass(poolRegistry, deployer);
-        poolRouter = new PoolRouter(poolRegistry, assetRegistry, accounting, holdings, gateway, deployer);
-
-        transientValuation = new TransientValuation(assetRegistry, deployer);
-        identityValuation = new IdentityValuation(assetRegistry, deployer);
+        poolRegistry = new PoolRegistry(address(this));
+        assetRegistry = new AssetRegistry(address(this));
+        transientValuation = new TransientValuation(assetRegistry, address(this));
+        identityValuation = new IdentityValuation(assetRegistry, address(this));
+        accounting = new Accounting(address(this));
+        holdings = new Holdings(poolRegistry, address(this));
+        multiShareClass = new MultiShareClass(poolRegistry, address(this));
+        poolRouter = new PoolRouter(
+            poolRegistry, assetRegistry, accounting, holdings, gateway, transientValuation, address(this)
+        );
 
         _poolsRegister();
         _poolsRely();
@@ -77,29 +78,32 @@ contract PoolsDeployer is CommonDeployer {
         multiShareClass.rely(address(poolRouter));
         gateway.rely(address(poolRouter));
         poolRouter.rely(address(messageProcessor));
-        messageProcessor.rely(address(poolRouter));
+        poolRouter.rely(address(messageDispatcher));
+        messageDispatcher.rely(address(poolRouter));
     }
 
     function _poolsFile() private {
         messageProcessor.file("poolRouter", address(poolRouter));
-        poolRouter.file("sender", address(messageProcessor));
+        messageDispatcher.file("poolRouter", address(poolRouter));
+
+        poolRouter.file("sender", address(messageDispatcher));
     }
 
     function _poolsInitialConfig() private {
         assetRegistry.registerAsset(USD, "United States dollar", "USD", 18);
     }
 
-    function removePoolsDeployerAccess(address deployer) public {
-        removeCommonDeployerAccess(deployer);
+    function removePoolsDeployerAccess() public {
+        removeCommonDeployerAccess();
 
-        poolRegistry.deny(deployer);
-        assetRegistry.deny(deployer);
-        accounting.deny(deployer);
-        holdings.deny(deployer);
-        multiShareClass.deny(deployer);
-        poolRouter.deny(deployer);
+        poolRegistry.deny(address(this));
+        assetRegistry.deny(address(this));
+        accounting.deny(address(this));
+        holdings.deny(address(this));
+        multiShareClass.deny(address(this));
+        poolRouter.deny(address(this));
 
-        transientValuation.deny(deployer);
-        identityValuation.deny(deployer);
+        transientValuation.deny(address(this));
+        identityValuation.deny(address(this));
     }
 }

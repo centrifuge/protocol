@@ -45,6 +45,7 @@ contract TestMessageLibCategories is Test {
 
 // The following tests check that the function composition of deserializing and serializing equals to the identity:
 //       I = deserialize º serialize
+// NOTE. To fully ensure a good testing, use different values for each field.
 contract TestMessageLibIdentities is Test {
     using MessageLib for *;
 
@@ -283,24 +284,14 @@ contract TestMessageLibIdentities is Test {
 
     function testUpdateContractVaultUpdate() public pure {
         MessageLib.UpdateContractVaultUpdate memory a =
-            MessageLib.UpdateContractVaultUpdate({factory: address(0), assetId: 1, isLinked: false, vault: address(0)});
+            MessageLib.UpdateContractVaultUpdate({vaultOrFactory: bytes32("address"), assetId: 1, kind: 2});
         MessageLib.UpdateContractVaultUpdate memory b = MessageLib.deserializeUpdateContractVaultUpdate(a.serialize());
 
-        assertEq(a.factory, b.factory);
+        assertEq(a.vaultOrFactory, b.vaultOrFactory);
         assertEq(a.assetId, b.assetId);
-        assertEq(a.isLinked, b.isLinked);
-        assertEq(a.vault, b.vault);
+        assertEq(a.kind, b.kind);
 
         // This message is a submessage and has not static message length defined
-
-        MessageLib.UpdateContractVaultUpdate memory c =
-            MessageLib.UpdateContractVaultUpdate({factory: address(1), assetId: 1, isLinked: true, vault: address(1)});
-        MessageLib.UpdateContractVaultUpdate memory d = MessageLib.deserializeUpdateContractVaultUpdate(c.serialize());
-
-        assertEq(c.factory, d.factory);
-        assertEq(c.assetId, d.assetId);
-        assertEq(c.isLinked, d.isLinked);
-        assertEq(c.vault, d.vault);
     }
 
     function testDepositRequest() public pure {
@@ -470,13 +461,13 @@ contract TestMessageLibIdentities is Test {
 
     function testUpdateHolding() public pure {
         JournalEntry[] memory debits = new JournalEntry[](3);
-        debits[0] = JournalEntry({accountId: AccountId.wrap(9), amount: d18(1)});
-        debits[1] = JournalEntry({accountId: AccountId.wrap(8), amount: d18(2)});
-        debits[2] = JournalEntry({accountId: AccountId.wrap(7), amount: d18(3)});
+        debits[0] = JournalEntry({accountId: AccountId.wrap(9), amount: 1});
+        debits[1] = JournalEntry({accountId: AccountId.wrap(8), amount: 2});
+        debits[2] = JournalEntry({accountId: AccountId.wrap(7), amount: 3});
 
         JournalEntry[] memory credits = new JournalEntry[](2);
-        credits[0] = JournalEntry({accountId: AccountId.wrap(1), amount: d18(2)});
-        credits[1] = JournalEntry({accountId: AccountId.wrap(3), amount: d18(4)});
+        credits[0] = JournalEntry({accountId: AccountId.wrap(1), amount: 2});
+        credits[1] = JournalEntry({accountId: AccountId.wrap(3), amount: 4});
 
         MessageLib.UpdateHolding memory a = MessageLib.UpdateHolding({
             poolId: 1,
@@ -506,12 +497,12 @@ contract TestMessageLibIdentities is Test {
 
         for (uint256 i = 0; i < a.credits.length; i++) {
             assertEq(a.credits[i].accountId.raw(), b.credits[i].accountId.raw());
-            assertEq(a.credits[i].amount.raw(), b.credits[i].amount.raw());
+            assertEq(a.credits[i].amount, b.credits[i].amount);
         }
 
         for (uint256 i = 0; i < a.debits.length; i++) {
             assertEq(a.debits[i].accountId.raw(), b.debits[i].accountId.raw());
-            assertEq(a.debits[i].amount.raw(), b.debits[i].amount.raw());
+            assertEq(a.debits[i].amount, b.debits[i].amount);
         }
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
@@ -522,6 +513,7 @@ contract TestMessageLibIdentities is Test {
             poolId: 1,
             scId: bytes16("sc"),
             who: bytes32("alice"),
+            pricePerShare: d18(123456),
             shares: 100,
             timestamp: 12345,
             isIssuance: true
@@ -533,6 +525,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.scId, b.scId);
         assertEq(a.who, b.who);
         assertEq(a.shares, b.shares);
+        assert(a.pricePerShare.eq(b.pricePerShare));
         assertEq(a.timestamp, b.timestamp);
         assertEq(a.isIssuance, b.isIssuance);
 
@@ -541,13 +534,13 @@ contract TestMessageLibIdentities is Test {
 
     function testUpdateJournal() public pure {
         JournalEntry[] memory debits = new JournalEntry[](3);
-        debits[0] = JournalEntry({accountId: AccountId.wrap(9), amount: d18(1)});
-        debits[1] = JournalEntry({accountId: AccountId.wrap(8), amount: d18(2)});
-        debits[2] = JournalEntry({accountId: AccountId.wrap(7), amount: d18(3)});
+        debits[0] = JournalEntry({accountId: AccountId.wrap(9), amount: 1});
+        debits[1] = JournalEntry({accountId: AccountId.wrap(8), amount: 2});
+        debits[2] = JournalEntry({accountId: AccountId.wrap(7), amount: 3});
 
         JournalEntry[] memory credits = new JournalEntry[](2);
-        credits[0] = JournalEntry({accountId: AccountId.wrap(1), amount: d18(2)});
-        credits[1] = JournalEntry({accountId: AccountId.wrap(3), amount: d18(4)});
+        credits[0] = JournalEntry({accountId: AccountId.wrap(1), amount: 2});
+        credits[1] = JournalEntry({accountId: AccountId.wrap(3), amount: 4});
 
         MessageLib.UpdateJournal memory a =
             MessageLib.UpdateJournal({poolId: 1, scId: bytes16("sc"), debits: debits, credits: credits});
@@ -559,12 +552,12 @@ contract TestMessageLibIdentities is Test {
 
         for (uint256 i = 0; i < a.credits.length; i++) {
             assertEq(a.credits[i].accountId.raw(), b.credits[i].accountId.raw());
-            assertEq(a.credits[i].amount.raw(), b.credits[i].amount.raw());
+            assertEq(a.credits[i].amount, b.credits[i].amount);
         }
 
         for (uint256 i = 0; i < a.debits.length; i++) {
             assertEq(a.debits[i].accountId.raw(), b.debits[i].accountId.raw());
-            assertEq(a.debits[i].amount.raw(), b.debits[i].amount.raw());
+            assertEq(a.debits[i].amount, b.debits[i].amount);
         }
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
@@ -572,13 +565,13 @@ contract TestMessageLibIdentities is Test {
 
     function testTriggerUpdateHolding() public pure {
         JournalEntry[] memory debits = new JournalEntry[](3);
-        debits[0] = JournalEntry({accountId: AccountId.wrap(9), amount: d18(1)});
-        debits[1] = JournalEntry({accountId: AccountId.wrap(8), amount: d18(2)});
-        debits[2] = JournalEntry({accountId: AccountId.wrap(7), amount: d18(3)});
+        debits[0] = JournalEntry({accountId: AccountId.wrap(9), amount: 1});
+        debits[1] = JournalEntry({accountId: AccountId.wrap(8), amount: 2});
+        debits[2] = JournalEntry({accountId: AccountId.wrap(7), amount: 3});
 
         JournalEntry[] memory credits = new JournalEntry[](2);
-        credits[0] = JournalEntry({accountId: AccountId.wrap(1), amount: d18(2)});
-        credits[1] = JournalEntry({accountId: AccountId.wrap(3), amount: d18(4)});
+        credits[0] = JournalEntry({accountId: AccountId.wrap(1), amount: 2});
+        credits[1] = JournalEntry({accountId: AccountId.wrap(3), amount: 4});
 
         MessageLib.TriggerUpdateHolding memory a = MessageLib.TriggerUpdateHolding({
             poolId: 1,
@@ -608,12 +601,12 @@ contract TestMessageLibIdentities is Test {
 
         for (uint256 i = 0; i < a.credits.length; i++) {
             assertEq(a.credits[i].accountId.raw(), b.credits[i].accountId.raw());
-            assertEq(a.credits[i].amount.raw(), b.credits[i].amount.raw());
+            assertEq(a.credits[i].amount, b.credits[i].amount);
         }
 
         for (uint256 i = 0; i < a.debits.length; i++) {
             assertEq(a.debits[i].accountId.raw(), b.debits[i].accountId.raw());
-            assertEq(a.debits[i].amount.raw(), b.debits[i].amount.raw());
+            assertEq(a.debits[i].amount, b.debits[i].amount);
         }
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
@@ -624,6 +617,7 @@ contract TestMessageLibIdentities is Test {
             poolId: 1,
             scId: bytes16("sc"),
             who: bytes32("alice"),
+            pricePerShare: d18(123456),
             shares: 100,
             isIssuance: true,
             asAllowance: true
@@ -634,6 +628,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
         assertEq(a.who, b.who);
+        assert(a.pricePerShare.eq(b.pricePerShare));
         assertEq(a.shares, b.shares);
         assertEq(a.isIssuance, b.isIssuance);
         assertEq(a.asAllowance, b.asAllowance);
