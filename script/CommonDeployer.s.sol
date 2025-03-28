@@ -15,7 +15,7 @@ import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
 
 import "forge-std/Script.sol";
 
-contract CommonDeployer is Script, JsonRegistry {
+abstract contract CommonDeployer is Script, JsonRegistry {
     uint256 constant DELAY = 48 hours;
     bytes32 immutable SALT;
     uint256 constant BASE_MSG_COST = 20000000000000000; // in Weight
@@ -38,20 +38,21 @@ contract CommonDeployer is Script, JsonRegistry {
         );
     }
 
-    function deployCommon(uint16 chainId, ISafe adminSafe_) public {
+    function deployCommon(uint16 chainId, ISafe adminSafe_, address deployer) public {
         if (address(root) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
 
-        root = new Root(DELAY, address(this));
+        root = new Root(DELAY, deployer);
 
         uint64 messageGasLimit = uint64(vm.envOr("MESSAGE_COST", BASE_MSG_COST));
         uint64 proofGasLimit = uint64(vm.envOr("PROOF_COST", BASE_MSG_COST));
 
         gasService = new GasService(messageGasLimit, proofGasLimit);
         gateway = new Gateway(root, gasService);
-        messageProcessor = new MessageProcessor(root, gasService, address(this));
-        messageDispatcher = new MessageDispatcher(chainId, gateway, address(this));
+
+        messageProcessor = new MessageProcessor(root, gasService, deployer);
+        messageDispatcher = new MessageDispatcher(chainId, gateway, deployer);
 
         adminSafe = adminSafe_;
         guardian = new Guardian(adminSafe, root, messageDispatcher);
@@ -88,22 +89,22 @@ contract CommonDeployer is Script, JsonRegistry {
         gateway.file("handler", address(messageProcessor));
     }
 
-    function wire(uint16 chainId, IAdapter adapter) public {
+    function wire(uint16 chainId, IAdapter adapter, address deployer) public {
         adapters.push(adapter);
         gateway.file("adapters", chainId, adapters);
         IAuth(address(adapter)).rely(address(root));
-        IAuth(address(adapter)).deny(address(this));
+        IAuth(address(adapter)).deny(deployer);
     }
 
-    function removeCommonDeployerAccess() public {
-        if (root.wards(address(this)) == 0) {
+    function removeCommonDeployerAccess(address deployer) public {
+        if (root.wards(deployer) == 0) {
             return; // Already removed. Make this method idempotent.
         }
 
-        root.deny(address(this));
-        gasService.deny(address(this));
-        gateway.deny(address(this));
-        messageProcessor.deny(address(this));
-        messageDispatcher.deny(address(this));
+        root.deny(deployer);
+        gasService.deny(deployer);
+        gateway.deny(deployer);
+        messageProcessor.deny(deployer);
+        messageDispatcher.deny(deployer);
     }
 }

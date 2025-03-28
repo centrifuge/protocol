@@ -54,16 +54,16 @@ contract TestCases is PoolsDeployer, Test {
 
     function _mockStuff() private {
         cv = new MockVaults(CHAIN_CV, gateway);
-        wire(CHAIN_CV, cv);
+        wire(CHAIN_CV, cv, address(this));
 
         gasService.file("messageGasLimit", GAS);
     }
 
     function setUp() public {
         // Deployment
-        deployPools(CHAIN_CP, ISafe(address(0)));
+        deployPools(CHAIN_CP, ISafe(address(0)), address(this));
         _mockStuff();
-        removePoolsDeployerAccess();
+        removePoolsDeployerAccess(address(this));
 
         // Initialize accounts
         vm.deal(FM, 1 ether);
