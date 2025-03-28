@@ -110,11 +110,10 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
-
     /// @inheritdoc IPoolMessageSender
     function sendNotifySharePrice(uint16 chainId, PoolId poolId, ShareClassId scId, AssetId assetId, D18 sharePrice)
-    external
-    auth
+        external
+        auth
     {
         uint64 timestamp = block.timestamp.toUint64();
         if (chainId == localCentrifugeId) {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {D18} from "src/misc/types/D18.sol";
+import {D18, d18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
@@ -157,7 +157,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     function setTransientPrice(AssetId assetId, D18 price) public payable {
         address poolCurrency = poolRegistry.currency(unlockedPoolId).addr();
         transientValuation.setPrice(assetId.addr(), poolCurrency, price);
-        transientValuation.setPrice(poolCurrency, assetId.addr(), price);
+        transientValuation.setPrice(poolCurrency, assetId.addr(), price.reciprocal());
     }
 
     /// @inheritdoc IPoolRouter
@@ -178,6 +178,21 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         uint8 decimals = assetRegistry.decimals(poolRegistry.currency(unlockedPoolId).raw());
 
         sender.sendNotifyShareClass(chainId, unlockedPoolId, scId, name, symbol, decimals, salt, hook);
+    }
+
+    /// @inheritdoc IPoolRouter
+    function notifySharePrice(ShareClassId scId, AssetId assetId)  public payable {
+        _protectedAndUnlocked();
+        IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
+        AssetId poolCurrency = poolRegistry.currency(unlockedPoolId);
+        // @dev we assume price parity between the pool currency and the asset
+        IERC7726 valuation = holdings.valuation(unlockedPoolId, scId, assetId);
+        (, D18 pricePerUnit) = scm.shareClassPrice(unlockedPoolId, scId);
+
+        uint128 pricePerAssetInPoolDec = pricePerUnit.mulUint128(valuation.getQuote(assetRegistry.unitAmount(assetId), assetId.addr(), poolCurrency.addr()).toUint128());
+        D18 pricePerAssetUnit = d18(pricePerAssetInPoolDec, assetRegistry.unitAmount(poolCurrency));
+
+        sender.sendNotifySharePrice(assetId.chainId(), unlockedPoolId, scId, assetId, pricePerAssetUnit);
     }
 
     /// @inheritdoc IPoolRouter
@@ -294,23 +309,6 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         _protectedAndUnlocked();
         IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
         scm.updateShareClass(unlockedPoolId, scId, navPerShare, "");
-    }
-
-    /// @inheritdoc IPoolRouter
-    function notifySharePrice(ShareClassId scId, AssetId assetId)  public payable {
-        _protectedAndUnlocked();
-        IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
-        AssetId poolCurrency = poolRegistry.currency(unlockedPoolId);
-
-
-        (, D18 pricePerUnit) = scm.shareClassPrice(unlockedPoolId, scId);
-        // uint128 pricePerUnitAmount = pricePerUnit.mulUint128(assetRegistry.unitAmount(poolCurrency))
-        // HOW to make price reflexive?
-        // IERC7726 valuation = holdings.valuation(unlockedPoolId, scId, assetId);
-
-        D18 pricePerAssetUnit = D18.wrap(IERC7726(transientValuation).getQuote(pricePerUnit.raw(), poolCurrency.addr(), assetId.addr()).toUint128());
-
-        sender.sendNotifySharePrice(assetId.chainId(), unlockedPoolId, scId, assetId, pricePerAssetUnit);
     }
 
     /// @inheritdoc IPoolRouter
