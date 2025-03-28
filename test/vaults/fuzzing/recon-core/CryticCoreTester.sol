@@ -4,9 +4,9 @@ pragma solidity 0.8.28;
 import {TargetFunctions} from "./TargetFunctions.sol";
 import {CryticAsserts} from "@chimera/CryticAsserts.sol";
 
-// echidna . --contract CryticTester --config echidna.yaml
+// echidna . --contract CryticCoreTester --config echidna.yaml
 // medusa fuzz
-contract CryticTester is TargetFunctions, CryticAsserts {
+contract CryticCoreTester is TargetFunctions, CryticAsserts {
     constructor() payable {
         setup();
     }
