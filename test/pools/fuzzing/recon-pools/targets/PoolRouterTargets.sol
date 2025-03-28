@@ -28,16 +28,18 @@ abstract contract PoolRouterTargets is
     /// === Permissionless Functions === ///
     function poolRouter_createPool(address admin, uint32 isoCode, IShareClassManager shareClassManager) public updateGhosts asActor returns (PoolId poolId) {
         AssetId assetId_ = newAssetId(isoCode); 
+
         poolId = poolRouter.createPool(admin, assetId_, shareClassManager);
+
         poolCreated = true;
         createdPools.push(poolId);
 
         return poolId;
     }
 
+    /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
     /// @dev Property: after successfully calling claimDeposit for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
-    /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
     function poolRouter_claimDeposit(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asActor {
         AssetId assetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());

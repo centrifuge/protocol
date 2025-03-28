@@ -81,6 +81,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         _;
     }
 
+    /// @dev Clear queued calls so they don't interfere with executions in shortcut functions 
     modifier clearQueuedCalls {
         queuedCalls = new bytes[](0);
         _;

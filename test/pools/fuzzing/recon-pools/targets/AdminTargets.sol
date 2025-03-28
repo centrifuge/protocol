@@ -127,8 +127,10 @@ abstract contract AdminTargets is
 
     // === PoolManager === //
     /// Gateway owner methods: these get called directly because we're not using the gateway in our setup
+    /// @notice These don't prank asAdmin because there are external calls first, 
+    /// @notice admin is the tester contract (address(this)) so we leave out an explicit prank directly before the call to the target function
 
-    function poolRouter_registerAsset(uint32 isoCode) public updateGhosts asAdmin {
+    function poolRouter_registerAsset(uint32 isoCode) public updateGhosts {
         AssetId assetId_ = newAssetId(isoCode); 
 
         string memory name = MockERC20(_getAsset()).name();
@@ -141,7 +143,7 @@ abstract contract AdminTargets is
     /// @dev Property: after successfully calling requestDeposit for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     /// @dev Property: _updateDepositRequest should never revert due to underflow
     /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
-    function poolRouter_depositRequest(PoolId poolId, ShareClassId scId, uint32 isoCode, uint128 amount) public updateGhosts asAdmin {
+    function poolRouter_depositRequest(PoolId poolId, ShareClassId scId, uint32 isoCode, uint128 amount) public updateGhosts {
         AssetId depositAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
@@ -171,7 +173,7 @@ abstract contract AdminTargets is
 
     /// @dev Property: After successfully calling redeemRequest for an investor, their redeemRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     /// @dev Property: _updateRedeemRequest should never revert due to underflow
-    function poolRouter_redeemRequest(PoolId poolId, ShareClassId scId, uint32 isoCode, uint128 amount) public updateGhosts asAdmin {
+    function poolRouter_redeemRequest(PoolId poolId, ShareClassId scId, uint32 isoCode, uint128 amount) public updateGhosts {
         AssetId payoutAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
@@ -192,7 +194,7 @@ abstract contract AdminTargets is
     /// @dev Property: cancelDepositRequest absolute value should never be higher than pendingDeposit (would result in underflow revert)
     /// @dev Property: _updateDepositRequest should never revert due to underflow
     /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
-    function poolRouter_cancelDepositRequest(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asAdmin {
+    function poolRouter_cancelDepositRequest(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts {
         AssetId depositAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
@@ -221,11 +223,9 @@ abstract contract AdminTargets is
     /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].pending is zero
     /// @dev Property: cancelRedeemRequest absolute value should never be higher than pendingRedeem (would result in underflow revert)
-    function poolRouter_cancelRedeemRequest(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asAdmin {
+    function poolRouter_cancelRedeemRequest(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts {
         AssetId payoutAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
-
-        poolRouter.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
 
         try poolRouter.cancelRedeemRequest(poolId, scId, investor, payoutAssetId) {
             (uint128 pending, uint32 lastUpdate) = multiShareClass.redeemRequest(scId, payoutAssetId, investor);
