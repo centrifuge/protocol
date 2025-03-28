@@ -107,6 +107,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         erc6909 = new MockERC6909();
 
         gateway.file("adapters", THIS_CHAIN_ID, testAdapters);
+        gateway.file("adapters", OTHER_CHAIN_ID, testAdapters);
         gateway.file("gasService", address(mockedGasService));
 
         mockedGasService.setReturn("estimate", uint256(0.5 gwei));
@@ -165,10 +166,10 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         bytes16 trancheId,
         address asset,
         uint256 assetTokenId,
-        uint16 destinationChain
+        uint16 /* TODO: destinationChain */
     ) public returns (address vaultAddress, uint128 assetId) {
         if (poolManager.assetToId(asset, assetTokenId) == 0) {
-            assetId = poolManager.registerAsset(asset, assetTokenId, destinationChain);
+            assetId = poolManager.registerAsset(asset, assetTokenId, OTHER_CHAIN_ID);
         } else {
             assetId = poolManager.assetToId(asset, assetTokenId);
         }

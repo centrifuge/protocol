@@ -269,6 +269,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     /// @inheritdoc IMessageSender
     function send(uint16 chainId, bytes calldata message) external pauseable auth {
+        emit Log(chainId);
         if (isBatching) {
             pendingBatch = true;
 
@@ -360,12 +361,15 @@ contract Gateway is Auth, IGateway, IRecoverable {
         isBatching = true;
     }
 
+    event Log(uint16 destCHain);
+
     /// @inheritdoc IGateway
     function endBatch() external {
         require(isBatching, NoBatched());
 
         for (uint256 i; i < chainIds.length; i++) {
             uint16 chainId = chainIds[i];
+            emit Log(chainId);
             _send(chainId, batch[chainId]);
             delete batch[chainId];
         }
