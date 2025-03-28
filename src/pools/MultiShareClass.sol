@@ -563,7 +563,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
 
         metrics[shareClassId_].navPerShare = navPerShare;
         uint128 totalIssuance = metrics[shareClassId_].totalIssuance;
-        emit UpdatedShareClass(poolId, shareClassId_, totalIssuance, navPerShare, data);
+        emit UpdatedShareClass(poolId, shareClassId_, navPerShare.mulUint128(totalIssuance), navPerShare, totalIssuance, data);
 
         return (totalIssuance, navPerShare);
     }
