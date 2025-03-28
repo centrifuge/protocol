@@ -1399,9 +1399,9 @@ contract MultiShareClassRevertsTest is MultiShareClassBaseTest {
         shareClass.claimRedeemUntilEpoch(poolId, wrongShareClassId, investor, USDC, 0);
     }
 
-    function testUpdateShareClassNavWrongShareClassId() public {
+    function testUpdateShareClassWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
-        shareClass.updateShareClassNav(poolId, wrongShareClassId);
+        shareClass.updateShareClass(poolId, wrongShareClassId, d18(1), "");
     }
 
     function testUpdateMetadataWrongShareClassId() public {
@@ -1437,16 +1437,6 @@ contract MultiShareClassRevertsTest is MultiShareClassBaseTest {
     function testClaimRedeemUntilEpochNotFound() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.EpochNotFound.selector));
         shareClass.claimRedeemUntilEpoch(poolId, scId, investor, USDC, 2);
-    }
-
-    function testUpdateShareClassUnsupported() public {
-        vm.expectRevert(bytes("unsupported"));
-        shareClass.updateShareClassNav(poolId, scId);
-    }
-
-    function testUpdateUnsupported() public {
-        vm.expectRevert(bytes("unsupported"));
-        shareClass.update(poolId, bytes(""));
     }
 
     function testRequestDepositRequiresClaim() public {

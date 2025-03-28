@@ -235,6 +235,31 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
+    /// @inheritdoc IPoolMessageSender
+    function sendNotifySharePrice(
+        uint16 chainId,
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        D18 sharePrice
+    ) external auth {
+        if (chainId == localCentrifugeId) {
+            // poolRouter.notifySharePrice(poolId, scId, sharePrice, timestamp);
+        } else {
+            /*
+            gateway.send(
+                poolId.chainId(),
+                MessageLib.NotifySharePrice({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    assetId: assetId,
+                    sharePrice: sharePrice,
+                }).serialize()
+            );
+            */
+        }
+    }
+
     /// @inheritdoc IVaultMessageSender
     function sendTransferShares(uint16 chainId, uint64 poolId, bytes16 scId, bytes32 recipient, uint128 amount)
         external

@@ -282,6 +282,28 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         );
     }
 
+
+    function updateSharePrice(ShareClassId scId, D18 navPerShare)  public payable
+    {
+        _protectedAndUnlocked();
+        IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
+        scm.updateShareClass(unlockedPoolId, scId, navPerShare, "");
+    }
+
+    function notifySharePrice(ShareClassId scId, AssetId assetId)  public payable {
+        _protectedAndUnlocked();
+        IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
+        AssetId poolCurrency = poolRegistry.currency(unlockedPoolId);
+
+
+        (, D18 pricePerUnit) = scm.shareClassPrice(unlockedPoolId, scId);
+        // uint128 pricePerUnitAmount = pricePerUnit.mulUint128(assetRegistry.unitAmount(poolCurrency))
+
+        D18 pricePerAssetUnit = D18.wrap(IERC7726(transientValuation).getQuote(pricePerUnit.raw(), poolCurrency.addr(), assetId.addr()).toUint128());
+
+        sender.sendNotifySharePrice(assetId.chainId(), unlockedPoolId, scId, assetId, pricePerAssetUnit);
+    }
+
     /// @inheritdoc IPoolRouter
     function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, bool isLiability, uint24 prefix)
         external payable
