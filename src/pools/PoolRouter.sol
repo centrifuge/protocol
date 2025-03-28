@@ -478,7 +478,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     function updateHoldingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount, D18 pricePerUnit, bool isIncrease, JournalEntry[] memory debits, JournalEntry[] memory credits)
         external auth
     {
-        accounting.unlock(poolId, accounting.generateJournalId(poolId));
+        accounting.unlock(poolId);
         address poolCurrency = poolRegistry.currency(poolId).addr();
         transientValuation.setPrice(assetId.addr(), poolCurrency, pricePerUnit);
         uint128 valueChange = transientValuation.getQuote(amount, assetId.addr(), poolCurrency).toUint128();
@@ -499,7 +499,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         IERC7726 _valuation = holdings.valuation(poolId, scId, assetId);
         holdings.updateValuation(poolId, scId, assetId, transientValuation);
 
-        accounting.unlock(poolId, accounting.generateJournalId(poolId));
+        accounting.unlock(poolId);
         this.updateHolding(scId, assetId);
         accounting.lock();
 
@@ -508,7 +508,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
 
     /// @inheritdoc IPoolRouterGatewayHandler
     function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external auth {
-        accounting.unlock(poolId, accounting.generateJournalId(poolId));
+        accounting.unlock(poolId);
         _updateJournal(debits, credits);
         accounting.lock();
     }
