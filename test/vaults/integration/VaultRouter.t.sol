@@ -71,17 +71,14 @@ contract VaultRouterTest is BaseTest {
             snapEnd();
         }
 
-        // Subtract registerAsset gas from deployment
-        assertEq(
-            address(gateway).balance, GATEWAY_INITIAL_BALANCE + GAS_BUFFER - estimateGas(), "Gateway balance mismatch"
-        );
+        assertEq(address(gateway).balance, GAS_BUFFER, "Gateway balance mismatch");
         for (uint8 i; i < testAdapters.length; i++) {
             MockAdapter adapter = MockAdapter(address(testAdapters[i]));
             uint256[] memory payCalls = adapter.callsWithValue("send");
             // Messages: registerAsset and requestDeposit
             assertEq(payCalls.length, 2);
             assertEq(
-                payCalls[0],
+                payCalls[1],
                 adapter.estimate(
                     CHAIN_ID,
                     PAYLOAD_FOR_GAS_ESTIMATION,

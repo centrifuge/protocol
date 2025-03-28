@@ -8,12 +8,13 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
+import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {ShareClassId, newShareClassId} from "src/common/types/ShareClassId.sol";
+
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 import {IMultiShareClass} from "src/pools/interfaces/IMultiShareClass.sol";
-import {PoolId} from "src/pools/types/PoolId.sol";
-import {AssetId} from "src/pools/types/AssetId.sol";
-import {ShareClassId, newShareClassId} from "src/pools/types/ShareClassId.sol";
 
 struct EpochAmounts {
     /// @dev Total pending asset amount of deposit asset
@@ -109,7 +110,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
     /// @inheritdoc IShareClassManager
     function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt, bytes calldata) external auth returns (ShareClassId shareClassId_) {
         shareClassId_ = previewNextShareClassId(poolId);
-        
+
         uint32 index = ++shareClassCount[poolId];
         shareClassIds[poolId][shareClassId_] = true;
 
@@ -420,10 +421,10 @@ contract MultiShareClass is Auth, IMultiShareClass {
             ).toUint128();
 
             // NOTE: During approvals, we reduce pendingDeposits by the approved asset amount. However, we only reduce the pending user amount if the claimable amount is non-zero.
-            // 
+            //
             // This extreme edge case has two implications:
             //  1. The sum of pending user orders <= pendingDeposits (instead of equality)
-            //  2. The sum of claimable user amounts <= amount of minted share class tokens corresponding to the approved deposit asset amount (instead of equality). 
+            //  2. The sum of claimable user amounts <= amount of minted share class tokens corresponding to the approved deposit asset amount (instead of equality).
             //     I.e., it is possible for an epoch to have an excess of a share class token atom which cannot be claimed by anyone.
             //
             // The first implication can be switched to equality if we reduce the pending user amount independent of the claimable amount.
@@ -496,7 +497,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
             //
             // This extreme edge case has two implications:
             //  1. The sum of pending user orders <= pendingRedeems (instead of equality)
-            //  2. The sum of claimable user amounts <= amount of payout asset corresponding to the approved share class token amount (instead of equality). 
+            //  2. The sum of claimable user amounts <= amount of payout asset corresponding to the approved share class token amount (instead of equality).
             //     I.e., it is possible for an epoch to have an excess of a single payout asset atom which cannot be claimed by anyone.
             //
             // The first implication can be switched to equality if we reduce the pending user amount independent of the claimable amount.
@@ -528,6 +529,29 @@ contract MultiShareClass is Auth, IMultiShareClass {
         _updateMetadata(shareClassId_, name, symbol, salt);
 
         emit UpdatedMetadata(poolId, shareClassId_, name, symbol, salt);
+    }
+
+
+    /// @inheritdoc IShareClassManager
+    function increaseShareClassIssuance(PoolId poolId, ShareClassId shareClassId_, D18 navPerShare, uint128 amount) external auth {
+        require(exists(poolId, shareClassId_), ShareClassNotFound());
+
+        uint128 newIssuance = metrics[shareClassId_].totalIssuance + amount;
+        metrics[shareClassId_].totalIssuance = newIssuance;
+
+        emit IssuedShares(poolId, shareClassId_, epochId[poolId], navPerShare, navPerShare.mulUint128(newIssuance), amount);
+    }
+
+    /// @inheritdoc IShareClassManager
+    function decreaseShareClassIssuance(PoolId poolId, ShareClassId shareClassId_, D18 navPerShare, uint128 amount) external auth {
+        require(exists(poolId, shareClassId_), ShareClassNotFound());
+        require(metrics[shareClassId_].totalIssuance >= amount, "Issuance too low");
+
+        uint128 newIssuance = metrics[shareClassId_].totalIssuance - amount;
+        metrics[shareClassId_].totalIssuance = newIssuance;
+
+        // TODO: Maybe remove the redeemAssets part from the event?
+        emit RevokedShares(poolId, shareClassId_, epochId[poolId], navPerShare, navPerShare.mulUint128(newIssuance), amount, 0);
     }
 
 

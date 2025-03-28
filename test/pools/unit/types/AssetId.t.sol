@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 
-import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
+import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 
 contract AssetIdTest is Test {
     function testAssetId(uint32 counter, uint16 chainId) public pure {

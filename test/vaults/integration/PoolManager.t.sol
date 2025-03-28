@@ -74,7 +74,10 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
     // Deployment
     function testDeployment(address nonWard) public {
-        vm.assume(nonWard != address(root) && nonWard != address(vaultRouter) && nonWard != address(this));
+        vm.assume(
+            nonWard != address(root) && nonWard != address(vaultRouter) && nonWard != address(this)
+                && nonWard != address(messageProcessor) && nonWard != address(messageDispatcher)
+        );
 
         address[] memory vaultFactories = new address[](1);
         vaultFactories[0] = address(vaultFactory);
@@ -85,7 +88,6 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         // values set correctly
         assertEq(address(poolManager.escrow()), address(escrow));
         assertEq(address(investmentManager.poolManager()), address(poolManager));
-        assertEq(address(gateway.handler()), address(poolManager.sender()));
 
         // permissions set correctly
         assertEq(poolManager.wards(address(root)), 1);
@@ -809,7 +811,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
     using CastLib for *;
     using BytesLib for *;
 
-    uint32 constant STORAGE_INDEX_ASSET_COUNTER = 2;
+    uint32 constant STORAGE_INDEX_ASSET_COUNTER = 3;
     uint256 constant STORAGE_OFFSET_ASSET_COUNTER = 20;
 
     function _assertAssetCounterEq(uint32 expected) internal view {

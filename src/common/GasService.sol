@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {Auth} from "src/misc/Auth.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 
 /// @title  GasService
 /// @notice This is a utility contract used to determine the execution gas limit
@@ -32,7 +33,7 @@ contract GasService is IGasService, Auth {
 
     /// --- Estimations ---
     /// @inheritdoc IGasService
-    function estimate(uint32, /*chainId*/ bytes calldata payload) public view returns (uint256) {
+    function estimate(uint16, bytes calldata payload) public view returns (uint256) {
         uint8 code = payload.messageCode();
         if (code == uint8(MessageType.MessageProof)) {
             return proofGasLimit;
@@ -42,7 +43,7 @@ contract GasService is IGasService, Auth {
     }
 
     /// @inheritdoc IGasService
-    function shouldRefuel(address source, bytes calldata) public pure returns (bool success) {
+    function shouldRefuel(address source, PoolId, bytes calldata) public pure returns (bool success) {
         return source != address(0);
     }
 }

@@ -13,17 +13,20 @@ import {MessageLib, UpdateContractType, VaultUpdateKind} from "src/common/librar
 import {IPoolRouterGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
-import {AssetId} from "src/pools/types/AssetId.sol";
-import {AccountId, newAccountId} from "src/pools/types/AccountId.sol";
-import {PoolId} from "src/pools/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {JournalEntry} from "src/common/types/JournalEntry.sol";
+
 import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 import {IMultiShareClass} from "src/pools/interfaces/IMultiShareClass.sol";
-import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
+import {IHoldings, Holding} from "src/pools/interfaces/IHoldings.sol";
 import {IPoolRouter, EscrowId, AccountType} from "src/pools/interfaces/IPoolRouter.sol";
+import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 
 // @inheritdoc IPoolRouter
 contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
@@ -42,6 +45,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     IHoldings public holdings;
     IPoolMessageSender public sender;
     IGateway public gateway;
+    ITransientValuation immutable transientValuation;
 
     constructor(
         IPoolRegistry poolRegistry_,
@@ -49,6 +53,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         IAccounting accounting_,
         IHoldings holdings_,
         IGateway gateway_,
+        ITransientValuation transientValuation_,
         address deployer
     ) Auth(deployer) {
         poolRegistry = poolRegistry_;
@@ -56,6 +61,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         accounting = accounting_;
         holdings = holdings_;
         gateway = gateway_;
+        transientValuation = transientValuation_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -116,7 +122,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         returns (PoolId poolId)
     {
         // TODO: add fees?
-        return poolRegistry.registerPool(admin, sender.centrifugeChainId(), currency, shareClassManager);
+        return poolRegistry.registerPool(admin, sender.localCentrifugeId(), currency, shareClassManager);
     }
 
     /// @inheritdoc IPoolRouter
@@ -277,25 +283,29 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     }
 
     /// @inheritdoc IPoolRouter
-    function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint24 prefix)
+    function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, bool isLiability, uint24 prefix)
         external payable
     {
         _protectedAndUnlocked();
 
         require(assetRegistry.isRegistered(assetId), IAssetRegistry.AssetNotFound());
 
-        AccountId[] memory accounts = new AccountId[](4);
+        AccountId[] memory accounts = new AccountId[](6);
         accounts[0] = newAccountId(prefix, uint8(AccountType.ASSET));
         accounts[1] = newAccountId(prefix, uint8(AccountType.EQUITY));
         accounts[2] = newAccountId(prefix, uint8(AccountType.LOSS));
         accounts[3] = newAccountId(prefix, uint8(AccountType.GAIN));
+        accounts[4] = newAccountId(prefix, uint8(AccountType.EXPENSE));
+        accounts[5] = newAccountId(prefix, uint8(AccountType.LIABILITY));
 
         createAccount(accounts[0], true);
         createAccount(accounts[1], false);
         createAccount(accounts[2], false);
         createAccount(accounts[3], false);
+        createAccount(accounts[4], true);
+        createAccount(accounts[5], false);
 
-        holdings.create(unlockedPoolId, scId, assetId, valuation, accounts);
+        holdings.create(unlockedPoolId, scId, assetId, valuation, isLiability, accounts);
     }
 
     /// @inheritdoc IPoolRouter
@@ -328,20 +338,39 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
 
         int128 diff = holdings.update(unlockedPoolId, scId, assetId);
 
+
         if (diff > 0) {
-            accounting.addCredit(
-                holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.GAIN)), uint128(diff)
-            );
-            accounting.addDebit(
-                holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.ASSET)), uint128(diff)
-            );
+            if (holdings.isLiability(unlockedPoolId, scId, assetId)) {
+                accounting.addCredit(
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.LIABILITY)), uint128(diff)
+                );
+                accounting.addDebit(
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.EXPENSE)), uint128(diff)
+                );
+            } else {
+                accounting.addCredit(
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.GAIN)), uint128(diff)
+                );
+                accounting.addDebit(
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.ASSET)), uint128(diff)
+                );
+            }
         } else if (diff < 0) {
-            accounting.addCredit(
-                holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.ASSET)), uint128(diff)
-            );
-            accounting.addDebit(
-                holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.LOSS)), uint128(diff)
-            );
+            if (holdings.isLiability(unlockedPoolId, scId, assetId)) {
+                accounting.addCredit(
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.EXPENSE)), uint128(diff)
+                );
+                accounting.addDebit(
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.LIABILITY)), uint128(diff)
+                );
+            } else {
+                accounting.addCredit(
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.ASSET)), uint128(diff)
+                );
+                accounting.addDebit(
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.LOSS)), uint128(diff)
+                );
+            }
         }
     }
 
@@ -445,6 +474,57 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         sender.sendFulfilledCancelRedeemRequest(poolId, scId, payoutAssetId, investor, cancelledShareAmount);
     }
 
+    /// @inheritdoc IPoolRouterGatewayHandler
+    function updateHoldingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount, D18 pricePerUnit, bool isIncrease, JournalEntry[] memory debits, JournalEntry[] memory credits)
+        external auth
+    {
+        accounting.unlock(poolId, accounting.generateJournalId(poolId));
+        address poolCurrency = poolRegistry.currency(poolId).addr();
+        transientValuation.setPrice(assetId.addr(), poolCurrency, pricePerUnit);
+        uint128 valueChange = transientValuation.getQuote(amount, assetId.addr(), poolCurrency).toUint128();
+
+        (uint128 debited, uint128 credited) = _updateJournal(debits, credits);
+        uint128 debitValueLeft = valueChange - debited;
+        uint128 creditValueLeft = valueChange - credited;
+
+        _updateHoldingWithPartialDebitsAndCredits(poolId, scId, assetId, amount, isIncrease, debitValueLeft, creditValueLeft);
+        accounting.lock();
+    }
+
+    /// @inheritdoc IPoolRouterGatewayHandler
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePerUnit)
+        external auth
+    {
+        transientValuation.setPrice(assetId.addr(), poolRegistry.currency(poolId).addr(), pricePerUnit);
+        IERC7726 _valuation = holdings.valuation(poolId, scId, assetId);
+        holdings.updateValuation(poolId, scId, assetId, transientValuation);
+
+        accounting.unlock(poolId, accounting.generateJournalId(poolId));
+        this.updateHolding(scId, assetId);
+        accounting.lock();
+
+        holdings.updateValuation(poolId, scId, assetId, _valuation);
+    }
+
+    /// @inheritdoc IPoolRouterGatewayHandler
+    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external auth {
+        accounting.unlock(poolId, accounting.generateJournalId(poolId));
+        _updateJournal(debits, credits);
+        accounting.lock();
+    }
+
+    /// @inheritdoc IPoolRouterGatewayHandler
+    function increaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare, uint128 amount) external auth {
+        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
+        scm.increaseShareClassIssuance(poolId, scId, pricePerShare, amount);
+    }
+
+    /// @inheritdoc IPoolRouterGatewayHandler
+    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare,uint128 amount) external auth {
+        IShareClassManager scm = poolRegistry.shareClassManager(poolId);
+        scm.decreaseShareClassIssuance(poolId, scId, pricePerShare, amount);
+    }
+
     //----------------------------------------------------------------------------------------------
     // view / pure methods
     //----------------------------------------------------------------------------------------------
@@ -467,6 +547,36 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     function _pay() internal {
         if (!gateway.isBatching()) {
             gateway.topUp{value: msg.value}();
+        }
+    }
+
+    /// @notice Update the journal with the given debits and credits. Can be unequal.
+    function _updateJournal(JournalEntry[] memory debits, JournalEntry[] memory credits) internal returns (uint128 debited, uint128 credited) {
+        for (uint256 i; i < debits.length; i++) {
+            accounting.addDebit(debits[i].accountId, debits[i].amount);
+            debited += debits[i].amount;
+        }
+
+        for (uint256 i; i < credits.length; i++) {
+            accounting.addCredit(credits[i].accountId, credits[i].amount);
+            credited += credits[i].amount;
+        }
+    }
+
+    /// @notice Update a holding while debiting and/or crediting only a portion of the value change.
+    function _updateHoldingWithPartialDebitsAndCredits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount, bool isIncrease, uint128 debitValue, uint128 creditValue) internal {
+        bool isLiability = holdings.isLiability(poolId, scId, assetId);
+        AccountType debitAccountType = isLiability ? AccountType.EXPENSE : AccountType.ASSET;
+        AccountType creditAccountType = isLiability ? AccountType.LIABILITY : AccountType.EQUITY;
+
+        if (isIncrease) {
+            holdings.increase(poolId, scId, assetId, transientValuation, amount);
+            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), debitValue);
+            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), creditValue);
+        } else {
+            holdings.decrease(poolId, scId, assetId, transientValuation, amount);
+            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), debitValue);
+            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), creditValue);
         }
     }
 }
