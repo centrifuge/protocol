@@ -110,8 +110,7 @@ contract TestCases is PoolsDeployer, Test {
         cs[c++] = abi.encodeWithSelector(poolRouter.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
         cs[c++] =
             abi.encodeWithSelector(poolRouter.createHolding.selector, scId, USDC_C2, identityValuation, false, 0x01);
-        cs[c++] =
-            abi.encodeWithSelector(poolRouter.createHolding.selector, scId, EUR, transientValuation, false, 0x02);
+        cs[c++] = abi.encodeWithSelector(poolRouter.createHolding.selector, scId, EUR, transientValuation, false, 0x02);
         cs[c++] = abi.encodeWithSelector(
             poolRouter.updateVault.selector,
             scId,
