@@ -2,16 +2,21 @@
 pragma solidity 0.8.28;
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
+import {IMessageDispatcher} from "src/common/MessageDispatcher.sol";
 
 contract Guardian is IGuardian {
     IRoot public immutable root;
     ISafe public immutable safe;
 
-    constructor(ISafe safe_, IRoot root_) {
+    IMessageDispatcher public messageDispatcher;
+
+    constructor(ISafe safe_, IRoot root_, IMessageDispatcher messageDispatcher_) {
         root = root_;
         safe = safe_;
+        messageDispatcher = messageDispatcher_;
     }
 
     modifier onlySafe() {
@@ -23,6 +28,8 @@ contract Guardian is IGuardian {
         require(msg.sender == address(safe) || _isSafeOwner(msg.sender), NotTheAuthorizedSafeOrItsOwner());
         _;
     }
+
+    // TODO: add file method for messageDispatcher
 
     // --- Admin actions ---
     /// @inheritdoc IGuardian
@@ -43,6 +50,26 @@ contract Guardian is IGuardian {
     /// @inheritdoc IGuardian
     function cancelRely(address target) external onlySafe {
         root.cancelRely(target);
+    }
+
+    /// @inheritdoc IGuardian
+    function scheduleUpgrade(uint16 chainId, address target) external onlySafe {
+        messageDispatcher.sendScheduleUpgrade(chainId, bytes32(bytes20(target)));
+    }
+
+    /// @inheritdoc IGuardian
+    function cancelUpgrade(uint16 chainId, address target) external onlySafe {
+        messageDispatcher.sendCancelUpgrade(chainId, bytes32(bytes20(target)));
+    }
+
+    /// @inheritdoc IGuardian
+    function initiateMessageRecovery(uint16 chainId, bytes32 hash, address adapter) external onlySafe {
+        messageDispatcher.sendInitiateMessageRecovery(chainId, bytes32(bytes20(hash)), bytes32(bytes20(adapter)));
+    }
+
+    /// @inheritdoc IGuardian
+    function disputeMessageRecovery(uint16 chainId, bytes32 hash, address adapter) external onlySafe {
+        messageDispatcher.sendDisputeMessageRecovery(chainId, bytes32(bytes20(hash)), bytes32(bytes20(adapter)));
     }
 
     // --- Helpers ---

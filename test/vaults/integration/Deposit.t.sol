@@ -6,7 +6,6 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import "test/vaults/BaseTest.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 
 contract DepositTest is BaseTest {
     using MessageLib for *;

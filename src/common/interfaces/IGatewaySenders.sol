@@ -75,6 +75,18 @@ interface IPoolMessageSender is ILocalCentrifugeId {
         bytes32 target,
         bytes calldata payload
     ) external;
+
+    /// @notice Creates and send the message
+    function sendScheduleUpgrade(uint16 chainId, bytes32 target) external;
+
+    /// @notice Creates and send the message
+    function sendCancelUpgrade(uint16 chainId, bytes32 target) external;
+
+    /// @notice Creates and send the message
+    function sendInitiateMessageRecovery(uint16 chainId, bytes32 hash, bytes32 adapter) external;
+
+    /// @notice Creates and send the message
+    function sendDisputeMessageRecovery(uint16 chainId, bytes32 hash, bytes32 adapter) external;
 }
 
 /// @notice Interface for dispatch-only gateway

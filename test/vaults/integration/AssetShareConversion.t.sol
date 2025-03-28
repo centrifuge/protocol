@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import "test/vaults/BaseTest.sol";
 
 contract AssetShareConversionTest is BaseTest {
-    function testAssetShareConversion(uint64 poolId, bytes16 trancheId) public {
+    function testAssetShareConversion(uint32 poolId, bytes16 trancheId) public {
         vm.assume(poolId >> 48 != THIS_CHAIN_ID);
 
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
@@ -56,7 +56,7 @@ contract AssetShareConversionTest is BaseTest {
         assertEq(vault.pricePerShare(), 1.2e6);
     }
 
-    function testAssetShareConversionWithInverseDecimals(uint64 poolId, bytes16 trancheId) public {
+    function testAssetShareConversionWithInverseDecimals(uint32 poolId, bytes16 trancheId) public {
         vm.assume(poolId >> 48 != THIS_CHAIN_ID);
 
         uint8 INVESTMENT_CURRENCY_DECIMALS = 18; // 18, like DAI
@@ -103,7 +103,7 @@ contract AssetShareConversionTest is BaseTest {
         assertEq(vault.pricePerShare(), 1.2e18);
     }
 
-    function testPriceWorksAfterRemovingVault(uint64 poolId, bytes16 trancheId) public {
+    function testPriceWorksAfterRemovingVault(uint32 poolId, bytes16 trancheId) public {
         vm.assume(poolId >> 48 != THIS_CHAIN_ID);
 
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC

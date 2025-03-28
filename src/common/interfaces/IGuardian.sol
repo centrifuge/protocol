@@ -26,4 +26,20 @@ interface IGuardian {
     /// @notice Cancel a scheduled rely
     /// @dev callable by safe only
     function cancelRely(address target) external;
+
+    /// @notice Schedule an upgrade (scheduled rely) on another chain
+    /// @dev    Only supports EVM targets today
+    function scheduleUpgrade(uint16 chainId, address target) external;
+
+    /// @notice Cancel an upgrade (scheduled rely) on another chain
+    /// @dev    Only supports EVM targets today
+    function cancelUpgrade(uint16 chainId, address target) external;
+
+    /// @notice Initiate message recovery on another chain
+    /// @dev    Only supports EVM targets today
+    function initiateMessageRecovery(uint16 chainId, bytes32 hash, address adapter) external;
+
+    /// @notice Dispute message recovery on another chain
+    /// @dev    Only supports EVM targets today
+    function disputeMessageRecovery(uint16 chainId, bytes32 hash, address adapter) external;
 }

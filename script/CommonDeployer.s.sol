@@ -45,9 +45,6 @@ contract CommonDeployer is Script, JsonRegistry {
 
         root = new Root(DELAY, address(this));
 
-        adminSafe = adminSafe_;
-        guardian = new Guardian(adminSafe, root);
-
         uint64 messageGasLimit = uint64(vm.envOr("MESSAGE_COST", BASE_MSG_COST));
         uint64 proofGasLimit = uint64(vm.envOr("PROOF_COST", BASE_MSG_COST));
 
@@ -55,6 +52,9 @@ contract CommonDeployer is Script, JsonRegistry {
         gateway = new Gateway(root, gasService);
         messageProcessor = new MessageProcessor(root, gasService, address(this));
         messageDispatcher = new MessageDispatcher(chainId, gateway, address(this));
+
+        adminSafe = adminSafe_;
+        guardian = new Guardian(adminSafe, root, messageDispatcher);
 
         _commonRegister();
         _commonRely();

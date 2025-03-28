@@ -13,7 +13,7 @@ import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {newAssetId} from "src/common/types/AssetId.sol";
-import {newPoolId} from "src/common/types/PoolId.sol";
+import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 
 // core contracts
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
@@ -61,7 +61,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     uint16 public constant OTHER_CHAIN_ID = 1;
     uint16 public constant THIS_CHAIN_ID = OTHER_CHAIN_ID + 100;
     uint32 public constant BLOCK_CHAIN_ID = 23;
-    uint64 immutable POOL_A = newPoolId(OTHER_CHAIN_ID, 1).raw();
+    uint32 immutable POOL_A = 1;
     uint256 public erc20TokenId = 0;
     uint256 public defaultErc6909TokenId = 16;
     uint128 public defaultAssetId = newAssetId(THIS_CHAIN_ID, 1).raw();
@@ -158,7 +158,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
     // helpers
     function deployVault(
-        uint64 poolId,
+        uint32 poolId_,
         uint8 trancheDecimals,
         address hook,
         string memory tokenName,
@@ -168,6 +168,8 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         uint256 assetTokenId,
         uint16 /* TODO: destinationChain */
     ) public returns (address vaultAddress, uint128 assetId) {
+        uint64 poolId = newPoolId(THIS_CHAIN_ID, poolId_).raw();
+
         if (poolManager.assetToId(asset, assetTokenId) == 0) {
             assetId = poolManager.registerAsset(asset, assetTokenId, OTHER_CHAIN_ID);
         } else {
@@ -192,7 +194,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     }
 
     function deployVault(
-        uint64 poolId,
+        uint32 poolId,
         uint8 decimals,
         string memory tokenName,
         string memory tokenSymbol,

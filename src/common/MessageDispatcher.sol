@@ -33,6 +33,9 @@ interface IMessageDispatcher is IVaultMessageSender, IPoolMessageSender {
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();
 
+    /// @notice Dispatched when a message is attempted to be executed on the same chain, when that is not allowed.
+    error LocalExecutionNotAllowed();
+
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
     /// Accepts a `bytes32` representation of 'poolRegistry' string value.
@@ -233,6 +236,30 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     .serialize()
             );
         }
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendScheduleUpgrade(uint16 chainId, bytes32 target) external auth {
+        require(chainId != localCentrifugeId, LocalExecutionNotAllowed());
+        gateway.send(chainId, MessageLib.ScheduleUpgrade({target: target}).serialize());
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendCancelUpgrade(uint16 chainId, bytes32 target) external auth {
+        require(chainId != localCentrifugeId, LocalExecutionNotAllowed());
+        gateway.send(chainId, MessageLib.CancelUpgrade({target: target}).serialize());
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendInitiateMessageRecovery(uint16 chainId, bytes32 hash, bytes32 adapter) external auth {
+        require(chainId != localCentrifugeId, LocalExecutionNotAllowed());
+        gateway.send(chainId, MessageLib.InitiateMessageRecovery({hash: hash, adapter: adapter}).serialize());
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendDisputeMessageRecovery(uint16 chainId, bytes32 hash, bytes32 adapter) external auth {
+        require(chainId != localCentrifugeId, LocalExecutionNotAllowed());
+        gateway.send(chainId, MessageLib.DisputeMessageRecovery({hash: hash, adapter: adapter}).serialize());
     }
 
     /// @inheritdoc IVaultMessageSender
