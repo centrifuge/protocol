@@ -8,6 +8,7 @@ import {FoundryAsserts} from "@chimera/FoundryAsserts.sol";
 
 import {ERC20} from "src/misc/ERC20.sol";
 
+// forge test --mc CryticToFoundry --match-path test/vaults/fuzzing/recon-core/CryticToFoundry.sol 
 contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     function setUp() public {
         setup();
