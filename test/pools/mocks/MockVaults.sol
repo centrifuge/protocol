@@ -157,4 +157,13 @@ contract MockVaults is Test, Auth, IAdapter {
     function messageCount() external view returns (uint256) {
         return lastMessages.length;
     }
+
+    function assertLastMsg(bytes memory m) external view {
+        require(lastMessages.length > 0, "MockVaults: no messages");
+        return this.assertMsg(lastMessages.length - 1, m);
+    }
+
+    function assertMsg(uint256 index, bytes memory m) external view {
+        require(keccak256(lastMessages[index]) == keccak256(m), "MockVaults: invalid message");
+    }
 }

@@ -24,6 +24,7 @@ import {MockVaults} from "test/pools/mocks/MockVaults.sol";
 import {ShareClassIdTest} from "../unit/types/ShareClassId.t.sol";
 
 contract TestCases is PoolsDeployer, Test {
+    using MessageLib for *;
     using CastLib for string;
     using CastLib for bytes32;
     using MathLib for *;
@@ -358,5 +359,34 @@ contract TestCases is PoolsDeployer, Test {
 
         (uint128 totalIssuance2,) = multiShareClass.metrics(scId);
         assertEq(totalIssuance2, 55);
+    }
+
+    function testNotifySharePrice() public {
+        (PoolId poolId, ShareClassId scId) = testPoolCreation();
+
+        (bytes[] memory cs, uint256 c) = (new bytes[](3), 0);
+        cs[c++] = abi.encodeWithSelector(poolRouter.setTransientPrice.selector, USDC_C2.addr(), d18(2, 1));
+        cs[c++] = abi.encodeWithSelector(poolRouter.updateSharePrice.selector, scId, d18(100, 1));
+        cs[c++] = abi.encodeWithSelector(poolRouter.notifySharePrice.selector, scId, USDC_C2);
+
+        vm.prank(FM);
+        poolRouter.execute{value: GAS}(poolId, cs);
+
+        MessageLib.NotifySharePrice memory m1 = MessageLib.deserializeNotifySharePrice(cv.lastMessages(0));
+        assertEq(m1.poolId, poolId.raw());
+        assertEq(m1.scId, scId.raw());
+        assertEq(m1.assetId, USDC_C2.raw());
+        assertEq(m1.price, d18(100, 1).raw());
+        assertEq(m1.timestamp, block.timestamp.toUint64());
+
+        cv.assertLastMsg(
+            MessageLib.NotifySharePrice({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                assetId: USDC_C2.raw(),
+                price: d18(100, 1).raw(),
+                timestamp: block.timestamp.toUint64()
+            }).serialize()
+        );
     }
 }

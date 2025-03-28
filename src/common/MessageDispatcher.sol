@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {D18} from "src/misc/types/D18.sol";
@@ -44,6 +45,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     using MessageLib for *;
     using BytesLib for bytes;
     using CastLib for *;
+    using MathLib for *;
 
     IMessageSender public immutable gateway;
 
@@ -103,6 +105,29 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     decimals: decimals,
                     salt: salt,
                     hook: hook
+                }).serialize()
+            );
+        }
+    }
+
+
+    /// @inheritdoc IPoolMessageSender
+    function sendNotifySharePrice(uint16 chainId, PoolId poolId, ShareClassId scId, AssetId assetId, D18 sharePrice)
+    external
+    auth
+    {
+        uint64 timestamp = block.timestamp.toUint64();
+        if (chainId == localCentrifugeId) {
+            poolManager.updateTranchePrice(poolId.raw(), scId.raw(), assetId.raw(), sharePrice.raw(), timestamp);
+        } else {
+            gateway.send(
+                poolId.chainId(),
+                MessageLib.NotifySharePrice({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    assetId: assetId.raw(),
+                    price: sharePrice.raw(),
+                    timestamp: timestamp
                 }).serialize()
             );
         }
@@ -232,31 +257,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 MessageLib.UpdateContract({poolId: poolId.raw(), scId: scId.raw(), target: target, payload: payload})
                     .serialize()
             );
-        }
-    }
-
-    /// @inheritdoc IPoolMessageSender
-    function sendNotifySharePrice(
-        uint16 chainId,
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        D18 sharePrice
-    ) external auth {
-        if (chainId == localCentrifugeId) {
-            // poolRouter.notifySharePrice(poolId, scId, sharePrice, timestamp);
-        } else {
-            /*
-            gateway.send(
-                poolId.chainId(),
-                MessageLib.NotifySharePrice({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    assetId: assetId,
-                    sharePrice: sharePrice,
-                }).serialize()
-            );
-            */
         }
     }
 

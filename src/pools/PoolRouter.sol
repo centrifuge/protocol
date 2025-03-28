@@ -114,7 +114,6 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     //----------------------------------------------------------------------------------------------
     // Permisionless methods
     //----------------------------------------------------------------------------------------------
-
     /// @inheritdoc IPoolRouter
     function createPool(address admin, AssetId currency, IShareClassManager shareClassManager)
         external
@@ -153,6 +152,13 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     //----------------------------------------------------------------------------------------------
     // Pool admin methods
     //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IPoolRouter
+    function setTransientPrice(AssetId assetId, D18 price) public payable {
+        address poolCurrency = poolRegistry.currency(unlockedPoolId).addr();
+        transientValuation.setPrice(assetId.addr(), poolCurrency, price);
+        transientValuation.setPrice(poolCurrency, assetId.addr(), price);
+    }
 
     /// @inheritdoc IPoolRouter
     function notifyPool(uint16 chainId) external payable {
@@ -282,7 +288,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         );
     }
 
-
+    /// @inheritdoc IPoolRouter
     function updateSharePrice(ShareClassId scId, D18 navPerShare)  public payable
     {
         _protectedAndUnlocked();
@@ -290,6 +296,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         scm.updateShareClass(unlockedPoolId, scId, navPerShare, "");
     }
 
+    /// @inheritdoc IPoolRouter
     function notifySharePrice(ShareClassId scId, AssetId assetId)  public payable {
         _protectedAndUnlocked();
         IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
@@ -298,6 +305,8 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
 
         (, D18 pricePerUnit) = scm.shareClassPrice(unlockedPoolId, scId);
         // uint128 pricePerUnitAmount = pricePerUnit.mulUint128(assetRegistry.unitAmount(poolCurrency))
+        // HOW to make price reflexive?
+        // IERC7726 valuation = holdings.valuation(unlockedPoolId, scId, assetId);
 
         D18 pricePerAssetUnit = D18.wrap(IERC7726(transientValuation).getQuote(pricePerUnit.raw(), poolCurrency.addr(), assetId.addr()).toUint128());
 

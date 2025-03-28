@@ -23,7 +23,7 @@ contract TestMessageLibCategories is Test {
         assert(MessageCategory.Pool == uint8(MessageType.RegisterAsset).category());
         assert(MessageCategory.Pool == uint8(MessageType.NotifyPool).category());
         assert(MessageCategory.Pool == uint8(MessageType.NotifyShareClass).category());
-        assert(MessageCategory.Pool == uint8(MessageType.UpdateShareClassPrice).category());
+        assert(MessageCategory.Pool == uint8(MessageType.NotifySharePrice).category());
         assert(MessageCategory.Pool == uint8(MessageType.UpdateShareClassMetadata).category());
         assert(MessageCategory.Pool == uint8(MessageType.UpdateShareClassHook).category());
         assert(MessageCategory.Pool == uint8(MessageType.TransferShares).category());
@@ -161,15 +161,10 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageLength(), a.serialize().length);
     }
 
-    function testUpdateShareClassPrice() public pure {
-        MessageLib.UpdateShareClassPrice memory a = MessageLib.UpdateShareClassPrice({
-            poolId: 1,
-            scId: bytes16("sc"),
-            assetId: 5,
-            price: 42,
-            timestamp: 0x12345678
-        });
-        MessageLib.UpdateShareClassPrice memory b = MessageLib.deserializeUpdateShareClassPrice(a.serialize());
+    function testNotifySharePrice() public pure {
+        MessageLib.NotifySharePrice memory a =
+            MessageLib.NotifySharePrice({poolId: 1, scId: bytes16("sc"), assetId: 5, price: 42, timestamp: 0x12345678});
+        MessageLib.NotifySharePrice memory b = MessageLib.deserializeNotifySharePrice(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);

@@ -573,6 +573,8 @@ contract MultiShareClass is Auth, IMultiShareClass {
         require(exists(poolId, shareClassId_), ShareClassNotFound());
 
         ShareClassMetrics memory m = metrics[shareClassId_];
+        require(m.navPerShare.raw() > 0, "ShareClassPriceNotInitialized");
+
         return (m.totalIssuance, m.navPerShare);
     }
 
