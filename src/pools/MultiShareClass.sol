@@ -308,7 +308,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
             totalIssuance += issuedShareAmount;
             uint128 nav = navPerShare.mulUint128(totalIssuance);
 
-            emit IssuedShares(poolId, shareClassId_, epochId_, navPerShare, nav, issuedShareAmount);
+            emit IssuedShares(poolId, shareClassId_, epochId_, nav, navPerShare, totalIssuance, issuedShareAmount);
         }
 
         epochPointers[shareClassId_][depositAssetId].latestIssuance = endEpochId;
@@ -541,7 +541,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
         uint128 newIssuance = metrics[shareClassId_].totalIssuance + amount;
         metrics[shareClassId_].totalIssuance = newIssuance;
 
-        emit IssuedShares(poolId, shareClassId_, epochId[poolId], navPerShare, navPerShare.mulUint128(newIssuance), amount);
+        emit IssuedShares(poolId, shareClassId_, epochId[poolId], navPerShare.mulUint128(newIssuance), navPerShare, newIssuance, amount);
     }
 
     /// @inheritdoc IShareClassManager
@@ -553,7 +553,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
         metrics[shareClassId_].totalIssuance = newIssuance;
 
         // TODO: Maybe remove the redeemAssets part from the event?
-        emit RevokedShares(poolId, shareClassId_, epochId[poolId], navPerShare, navPerShare.mulUint128(newIssuance), amount, 0);
+        emit RevokedShares(poolId, shareClassId_, epochId[poolId], navPerShare.mulUint128(newIssuance), navPerShare, newIssuance, amount, 0);
     }
 
 
@@ -622,13 +622,15 @@ contract MultiShareClass is Auth, IMultiShareClass {
         epochAmounts_.redeemAssets =
             IERC7726(valuation).getQuote(payoutPoolAmount, poolCurrency, payoutAssetId.addr()).toUint128();
 
-        uint128 nav = navPerShare.mulUint128(totalIssuance - epochAmounts_.redeemApproved);
+        uint128 newIssuance = totalIssuance - epochAmounts_.redeemApproved;
+        uint128 nav = navPerShare.mulUint128(newIssuance);
         emit RevokedShares(
             poolId,
             shareClassId_,
             epochId_,
-            navPerShare,
             nav,
+            navPerShare,
+            newIssuance,
             epochAmounts_.redeemApproved,
             epochAmounts_.redeemAssets
         );

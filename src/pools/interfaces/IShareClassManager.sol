@@ -49,8 +49,9 @@ interface IShareClassManager {
         PoolId indexed poolId,
         ShareClassId indexed scId,
         uint32 indexed epoch,
-        D18 navPerShare,
         uint128 nav,
+        D18 navPerShare,
+        uint128 newTotalIssuance,
         uint128 issuedShareAmount
     );
 
@@ -58,8 +59,9 @@ interface IShareClassManager {
         PoolId indexed poolId,
         ShareClassId indexed scId,
         uint32 indexed epoch,
-        D18 navPerShare,
         uint128 nav,
+        D18 navPerShare,
+        uint128 newTotalIssuance,
         uint128 revokedShareAmount,
         uint128 revokedAssetAmount
     );
@@ -86,7 +88,7 @@ interface IShareClassManager {
     );
     event Updated(PoolId indexed poolId, bytes data);
     event UpdatedShareClass(
-        PoolId indexed poolId, ShareClassId indexed scId, uint128 newIssuance, D18 newPrice, bytes data
+        PoolId indexed poolId, ShareClassId indexed scId, uint128 totalIssuance, D18 navPerShare, bytes data
     );
     event AddedShareClass(PoolId indexed poolId, ShareClassId indexed scId, uint32 indexed index);
 

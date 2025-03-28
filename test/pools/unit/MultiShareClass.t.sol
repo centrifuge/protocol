@@ -776,7 +776,7 @@ contract MultiShareClassTransientTest is MultiShareClassBaseTest {
             uint128 nav = shareToPoolQuote.mulUint128(totalIssuance_);
 
             vm.expectEmit(true, true, true, true);
-            emit IShareClassManager.IssuedShares(poolId, scId, i, shareToPoolQuote, nav, epochShares);
+            emit IShareClassManager.IssuedShares(poolId, scId, i, nav, shareToPoolQuote, totalIssuance_, epochShares);
         }
 
         shareClass.issueShares(poolId, scId, USDC, shareToPoolQuote);
@@ -795,7 +795,8 @@ contract MultiShareClassTransientTest is MultiShareClassBaseTest {
         }
         assertEq(totalIssuance(scId), shares, "totalIssuance mismatch");
         (uint128 issuance, D18 navPerShare) = shareClass.metrics(scId);
-        assertEq(navPerShare.inner(), shareToPoolQuote.inner());
+        // @dev navPerShare should be 0 since we are using updateShareClass(..) to set it
+        assertEq(navPerShare.inner(), 0);
         assertEq(issuance, shares, "totalIssuance mismatch");
 
         // Ensure another issuance reverts
@@ -895,7 +896,7 @@ contract MultiShareClassTransientTest is MultiShareClassBaseTest {
 
             vm.expectEmit(true, true, true, true);
             emit IShareClassManager.RevokedShares(
-                poolId, scId, i, shareToPoolQuote, nav, approvedRedeem, revokedAssetAmount
+                poolId, scId, i, nav, shareToPoolQuote, totalIssuance_, approvedRedeem, revokedAssetAmount
             );
         }
 
@@ -915,7 +916,8 @@ contract MultiShareClassTransientTest is MultiShareClassBaseTest {
         }
         assertEq(totalIssuance(scId), totalIssuance_);
         (uint128 issuance, D18 navPerShare) = shareClass.metrics(scId);
-        assertEq(navPerShare.inner(), shareToPoolQuote.inner());
+        // @dev navPerShare should be 0 since we are using updateShareClass(..) to set it
+        assertEq(navPerShare.inner(), 0);
         assertEq(issuance, totalIssuance_);
 
         // Ensure another issuance reverts
@@ -1049,7 +1051,8 @@ contract MultiShareClassTransientTest is MultiShareClassBaseTest {
         shares -= epochAmounts.redeemApproved;
         (uint128 issuance, D18 navPerShare) = shareClass.metrics(scId);
         assertEq(issuance, shares);
-        assertEq(navPerShare.inner(), navPerShareRedeem.inner());
+        // @dev navPerShare should be 0 since we are using updateShareClass(..) to set it
+        assertEq(navPerShare.inner(), 0);
         epochAmounts.redeemAssets = poolToUsdc(navPerShareRedeem.mulUint128(redeemApproval));
         _assertEpochAmountsEq(scId, USDC, epochId, epochAmounts);
 

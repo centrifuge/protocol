@@ -158,9 +158,9 @@ library MessageLib {
             return MessageCategory.Root;
         } else if (code >= 7 && code <= 15) {
             return MessageCategory.Pool;
-        } else if (code >= 16 && code <= 25) {
+        } else if (code >= 16 && code <= 24) {
             return MessageCategory.Investment;
-        } else if (code >= 26 && code <= 30) {
+        } else if (code >= 25 && code <= 29) {
             return MessageCategory.BalanceSheet;
         } else {
             return MessageCategory.Other;
