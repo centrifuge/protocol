@@ -308,6 +308,12 @@ contract MultiShareClassSimpleTest is MultiShareClassBaseTest {
     function testPreviewShareClassId(uint32 index) public view {
         assertEq(shareClass.previewShareClassId(poolId, index).raw(), bytes16(uint128(poolId.raw() + index)));
     }
+
+    function testUpdateShareClass() public {
+        vm.expectEmit();
+        emit IShareClassManager.UpdatedShareClass(poolId, scId, 0, d18(2,1), 0, "SOME_TEST_BYTES");
+        shareClass.updateShareClass(poolId, scId, d18(2,1), "SOME_TEST_BYTES");
+    }
 }
 
 ///@dev Contains all deposit related tests which are expected to succeed and don't make use of transient storage
@@ -776,7 +782,7 @@ contract MultiShareClassTransientTest is MultiShareClassBaseTest {
             uint128 nav = shareToPoolQuote.mulUint128(totalIssuance_);
 
             vm.expectEmit(true, true, true, true);
-            emit IShareClassManager.IssuedShares(poolId, scId, i, shareToPoolQuote, nav, epochShares);
+            emit IShareClassManager.IssuedShares(poolId, scId, i, nav, shareToPoolQuote, totalIssuance_, epochShares);
         }
 
         shareClass.issueShares(poolId, scId, USDC, shareToPoolQuote);
@@ -795,7 +801,8 @@ contract MultiShareClassTransientTest is MultiShareClassBaseTest {
         }
         assertEq(totalIssuance(scId), shares, "totalIssuance mismatch");
         (uint128 issuance, D18 navPerShare) = shareClass.metrics(scId);
-        assertEq(navPerShare.inner(), shareToPoolQuote.inner());
+        // @dev navPerShare should be 0 since we are using updateShareClass(..) to set it
+        assertEq(navPerShare.inner(), 0);
         assertEq(issuance, shares, "totalIssuance mismatch");
 
         // Ensure another issuance reverts
@@ -895,7 +902,7 @@ contract MultiShareClassTransientTest is MultiShareClassBaseTest {
 
             vm.expectEmit(true, true, true, true);
             emit IShareClassManager.RevokedShares(
-                poolId, scId, i, shareToPoolQuote, nav, approvedRedeem, revokedAssetAmount
+                poolId, scId, i, nav, shareToPoolQuote, totalIssuance_, approvedRedeem, revokedAssetAmount
             );
         }
 
@@ -915,7 +922,8 @@ contract MultiShareClassTransientTest is MultiShareClassBaseTest {
         }
         assertEq(totalIssuance(scId), totalIssuance_);
         (uint128 issuance, D18 navPerShare) = shareClass.metrics(scId);
-        assertEq(navPerShare.inner(), shareToPoolQuote.inner());
+        // @dev navPerShare should be 0 since we are using updateShareClass(..) to set it
+        assertEq(navPerShare.inner(), 0);
         assertEq(issuance, totalIssuance_);
 
         // Ensure another issuance reverts
@@ -1049,7 +1057,8 @@ contract MultiShareClassTransientTest is MultiShareClassBaseTest {
         shares -= epochAmounts.redeemApproved;
         (uint128 issuance, D18 navPerShare) = shareClass.metrics(scId);
         assertEq(issuance, shares);
-        assertEq(navPerShare.inner(), navPerShareRedeem.inner());
+        // @dev navPerShare should be 0 since we are using updateShareClass(..) to set it
+        assertEq(navPerShare.inner(), 0);
         epochAmounts.redeemAssets = poolToUsdc(navPerShareRedeem.mulUint128(redeemApproval));
         _assertEpochAmountsEq(scId, USDC, epochId, epochAmounts);
 
@@ -1399,9 +1408,9 @@ contract MultiShareClassRevertsTest is MultiShareClassBaseTest {
         shareClass.claimRedeemUntilEpoch(poolId, wrongShareClassId, investor, USDC, 0);
     }
 
-    function testUpdateShareClassNavWrongShareClassId() public {
+    function testUpdateShareClassWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
-        shareClass.updateShareClassNav(poolId, wrongShareClassId);
+        shareClass.updateShareClass(poolId, wrongShareClassId, d18(1), "");
     }
 
     function testUpdateMetadataWrongShareClassId() public {
@@ -1437,16 +1446,6 @@ contract MultiShareClassRevertsTest is MultiShareClassBaseTest {
     function testClaimRedeemUntilEpochNotFound() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.EpochNotFound.selector));
         shareClass.claimRedeemUntilEpoch(poolId, scId, investor, USDC, 2);
-    }
-
-    function testUpdateShareClassUnsupported() public {
-        vm.expectRevert(bytes("unsupported"));
-        shareClass.updateShareClassNav(poolId, scId);
-    }
-
-    function testUpdateUnsupported() public {
-        vm.expectRevert(bytes("unsupported"));
-        shareClass.update(poolId, bytes(""));
     }
 
     function testRequestDepositRequiresClaim() public {

@@ -100,8 +100,8 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 poolManager.addTranche(
                     m.poolId, m.scId, m.name, m.symbol.toString(), m.decimals, m.salt, address(bytes20(m.hook))
                 );
-            } else if (kind == MessageType.UpdateShareClassPrice) {
-                MessageLib.UpdateShareClassPrice memory m = MessageLib.deserializeUpdateShareClassPrice(message);
+            } else if (kind == MessageType.NotifySharePrice) {
+                MessageLib.NotifySharePrice memory m = MessageLib.deserializeNotifySharePrice(message);
                 poolManager.updateTranchePrice(m.poolId, m.scId, m.assetId, m.price, m.timestamp);
             } else if (kind == MessageType.UpdateShareClassMetadata) {
                 MessageLib.UpdateShareClassMetadata memory m = MessageLib.deserializeUpdateShareClassMetadata(message);

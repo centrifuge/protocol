@@ -40,6 +40,16 @@ function inner(D18 d1) pure returns (uint128) {
     return D18.unwrap(d1);
 }
 
+/// @dev Returns the reciprocal of a D18 decimal, i.e. 1 / d.
+///      Example: if d = 2.0 (2e18 internally), reciprocal(d) = 0.5 (5e17 internally).
+function reciprocal(D18 d) pure returns (D18) {
+    uint128 val = D18.unwrap(d);
+    require(val != 0, "reciprocal of zero");
+    // 1 D18 = 1e18 in raw form, so we do (1e18 * 1e18) / val
+    uint256 inverted = MathLib.mulDiv(1e18, 1e18, val);
+    return D18.wrap(inverted.toUint128());
+}
+
 /// @dev Multiplies a decimal by an integer. i.e:
 /// - d (decimal):      1_500_000_000_000_000_000
 /// - value (integer):  4_000_000_000_000_000_000
@@ -103,5 +113,6 @@ using {
     mulUint256,
     reciprocalMulUint128,
     reciprocalMulUint256,
+    reciprocal,
     raw
 } for D18 global;

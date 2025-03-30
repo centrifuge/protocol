@@ -144,7 +144,7 @@ contract MockCentrifugeChain is Test {
         public
     {
         execute(
-            MessageLib.UpdateShareClassPrice({
+            MessageLib.NotifySharePrice({
                 poolId: poolId,
                 scId: trancheId,
                 assetId: assetId,

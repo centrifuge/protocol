@@ -289,7 +289,8 @@ contract MultiShareClass is Auth, IMultiShareClass {
         require(exists(poolId, shareClassId_), ShareClassNotFound());
         require(endEpochId < epochId[poolId], EpochNotFound());
 
-        uint128 totalIssuance = metrics[shareClassId_].totalIssuance;
+        ShareClassMetrics memory m = metrics[shareClassId_];
+        (uint128 totalIssuance, D18 _navPerShare) = (m.totalIssuance, m.navPerShare);
 
         // First issuance starts at epoch 0, subsequent ones at latest pointer plus one
         uint32 startEpochId = epochPointers[shareClassId_][depositAssetId].latestIssuance + 1;
@@ -307,11 +308,11 @@ contract MultiShareClass is Auth, IMultiShareClass {
             totalIssuance += issuedShareAmount;
             uint128 nav = navPerShare.mulUint128(totalIssuance);
 
-            emit IssuedShares(poolId, shareClassId_, epochId_, navPerShare, nav, issuedShareAmount);
+            emit IssuedShares(poolId, shareClassId_, epochId_, nav, navPerShare, totalIssuance, issuedShareAmount);
         }
 
         epochPointers[shareClassId_][depositAssetId].latestIssuance = endEpochId;
-        metrics[shareClassId_] = ShareClassMetrics(totalIssuance, navPerShare);
+        metrics[shareClassId_] = ShareClassMetrics(totalIssuance, _navPerShare);
     }
 
     /// @inheritdoc IShareClassManager
@@ -342,7 +343,8 @@ contract MultiShareClass is Auth, IMultiShareClass {
         require(exists(poolId, shareClassId_), ShareClassNotFound());
         require(endEpochId < epochId[poolId], EpochNotFound());
 
-        uint128 totalIssuance = metrics[shareClassId_].totalIssuance;
+        ShareClassMetrics memory m = metrics[shareClassId_];
+        (uint128 totalIssuance, D18 _navPerShare) = (m.totalIssuance, m.navPerShare);
         address poolCurrency = poolRegistry.currency(poolId).addr();
 
         // First issuance starts at epoch 0, subsequent ones at latest pointer plus one
@@ -374,7 +376,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
         }
 
         epochPointers[shareClassId_][payoutAssetId].latestRevocation = endEpochId;
-        metrics[shareClassId_] = ShareClassMetrics(totalIssuance, navPerShare);
+        metrics[shareClassId_] = ShareClassMetrics(totalIssuance, _navPerShare);
     }
 
     /// @inheritdoc IShareClassManager
@@ -539,7 +541,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
         uint128 newIssuance = metrics[shareClassId_].totalIssuance + amount;
         metrics[shareClassId_].totalIssuance = newIssuance;
 
-        emit IssuedShares(poolId, shareClassId_, epochId[poolId], navPerShare, navPerShare.mulUint128(newIssuance), amount);
+        emit IssuedShares(poolId, shareClassId_, epochId[poolId], navPerShare.mulUint128(newIssuance), navPerShare, newIssuance, amount);
     }
 
     /// @inheritdoc IShareClassManager
@@ -551,14 +553,27 @@ contract MultiShareClass is Auth, IMultiShareClass {
         metrics[shareClassId_].totalIssuance = newIssuance;
 
         // TODO: Maybe remove the redeemAssets part from the event?
-        emit RevokedShares(poolId, shareClassId_, epochId[poolId], navPerShare, navPerShare.mulUint128(newIssuance), amount, 0);
+        emit RevokedShares(poolId, shareClassId_, epochId[poolId], navPerShare.mulUint128(newIssuance), navPerShare, newIssuance, amount, 0);
     }
 
 
     /// @inheritdoc IShareClassManager
-    function updateShareClassNav(PoolId poolId, ShareClassId shareClassId_) external view auth returns (uint128, D18) {
+    function updateShareClass(PoolId poolId, ShareClassId shareClassId_, D18 navPerShare, bytes calldata data) external auth returns (uint128, D18) {
         require(exists(poolId, shareClassId_), ShareClassNotFound());
-        revert("unsupported");
+
+        metrics[shareClassId_].navPerShare = navPerShare;
+        uint128 totalIssuance = metrics[shareClassId_].totalIssuance;
+        emit UpdatedShareClass(poolId, shareClassId_, navPerShare.mulUint128(totalIssuance), navPerShare, totalIssuance, data);
+
+        return (totalIssuance, navPerShare);
+    }
+
+    /// @inheritdoc IShareClassManager
+    function shareClassPrice(PoolId poolId, ShareClassId shareClassId_) external view returns (uint128, D18) {
+        require(exists(poolId, shareClassId_), ShareClassNotFound());
+
+        ShareClassMetrics memory m = metrics[shareClassId_];
+        return (m.totalIssuance, m.navPerShare);
     }
 
     /// @inheritdoc IShareClassManager
@@ -573,7 +588,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
 
     /// @inheritdoc IShareClassManager
     function update(PoolId, bytes calldata) external pure {
-        revert("unsupported");
+        // @dev No-op, but don't wanna fail in case composing share class calls this
     }
 
     /// @notice Revokes shares for a single epoch, updates epoch ratio and emits event.
@@ -605,13 +620,15 @@ contract MultiShareClass is Auth, IMultiShareClass {
         epochAmounts_.redeemAssets =
             IERC7726(valuation).getQuote(payoutPoolAmount, poolCurrency, payoutAssetId.addr()).toUint128();
 
-        uint128 nav = navPerShare.mulUint128(totalIssuance - epochAmounts_.redeemApproved);
+        uint128 newIssuance = totalIssuance - epochAmounts_.redeemApproved;
+        uint128 nav = navPerShare.mulUint128(newIssuance);
         emit RevokedShares(
             poolId,
             shareClassId_,
             epochId_,
-            navPerShare,
             nav,
+            navPerShare,
+            newIssuance,
             epochAmounts_.redeemApproved,
             epochAmounts_.redeemAssets
         );

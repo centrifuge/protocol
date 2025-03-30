@@ -24,6 +24,7 @@ import {MockVaults} from "test/pools/mocks/MockVaults.sol";
 import {ShareClassIdTest} from "../unit/types/ShareClassId.t.sol";
 
 contract TestCases is PoolsDeployer, Test {
+    using MessageLib for *;
     using CastLib for string;
     using CastLib for bytes32;
     using MathLib for *;
@@ -41,6 +42,7 @@ contract TestCases is PoolsDeployer, Test {
     bytes32 immutable INVESTOR = bytes32("Investor");
 
     AssetId immutable USDC_C2 = newAssetId(CHAIN_CV, 1);
+    AssetId immutable EUR = newAssetId(CHAIN_CV, 2);
 
     uint128 constant INVESTOR_AMOUNT = 100 * 1e6; // USDC_C2
     uint128 constant SHARE_AMOUNT = 10 * 1e18; // Share from USD
@@ -89,6 +91,7 @@ contract TestCases is PoolsDeployer, Test {
     /// forge-config: default.isolate = true
     function testPoolCreation() public returns (PoolId poolId, ShareClassId scId) {
         cv.registerAsset(USDC_C2, "USD Coin", "USDC", 6);
+        cv.registerAsset(EUR, "Euro", "EUR", 12);
 
         (string memory name, string memory symbol, uint8 decimals) = assetRegistry.asset(USDC_C2);
         assertEq(name, "USD Coin");
@@ -100,13 +103,14 @@ contract TestCases is PoolsDeployer, Test {
 
         scId = multiShareClass.previewNextShareClassId(poolId);
 
-        (bytes[] memory cs, uint256 c) = (new bytes[](6), 0);
+        (bytes[] memory cs, uint256 c) = (new bytes[](7), 0);
         cs[c++] = abi.encodeWithSelector(poolRouter.setPoolMetadata.selector, bytes("Testing pool"));
         cs[c++] = abi.encodeWithSelector(poolRouter.addShareClass.selector, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
         cs[c++] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
         cs[c++] = abi.encodeWithSelector(poolRouter.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
         cs[c++] =
             abi.encodeWithSelector(poolRouter.createHolding.selector, scId, USDC_C2, identityValuation, false, 0x01);
+        cs[c++] = abi.encodeWithSelector(poolRouter.createHolding.selector, scId, EUR, transientValuation, false, 0x02);
         cs[c++] = abi.encodeWithSelector(
             poolRouter.updateVault.selector,
             scId,
@@ -358,5 +362,32 @@ contract TestCases is PoolsDeployer, Test {
 
         (uint128 totalIssuance2,) = multiShareClass.metrics(scId);
         assertEq(totalIssuance2, 55);
+    }
+
+    function testNotifySharePrice(uint8 num, uint8 den) public {
+        vm.assume(num != 0 && den != 0);
+
+        (PoolId poolId, ShareClassId scId) = testPoolCreation();
+        D18 sharePrice = d18(100, 1);
+        D18 assetPerPool = d18(num, den);
+        D18 expectedPrice = assetPerPool.reciprocal() * sharePrice;
+
+        (bytes[] memory cs, uint256 c) = (new bytes[](3), 0);
+        cs[c++] = abi.encodeWithSelector(poolRouter.setTransientPrice.selector, EUR.addr(), assetPerPool);
+        cs[c++] = abi.encodeWithSelector(poolRouter.updateSharePrice.selector, scId, sharePrice);
+        cs[c++] = abi.encodeWithSelector(poolRouter.notifySharePrice.selector, scId, EUR);
+
+        vm.prank(FM);
+        poolRouter.execute{value: GAS}(poolId, cs);
+
+        cv.assertLastMsg(
+            MessageLib.NotifySharePrice({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                assetId: EUR.raw(),
+                price: expectedPrice.raw(),
+                timestamp: block.timestamp.toUint64()
+            }).serialize()
+        );
     }
 }

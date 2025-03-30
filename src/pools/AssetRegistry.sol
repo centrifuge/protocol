@@ -40,6 +40,14 @@ contract AssetRegistry is ERC6909Fungible, IAssetRegistry {
         return asset[assetId].decimals > 0;
     }
 
+    /// @inheritdoc IAssetRegistry
+    function unitAmount(AssetId assetId) external view returns (uint128) {
+        uint8 decimals_ = asset[assetId].decimals;
+        require(decimals_ > 0, AssetNotFound());
+
+        return (10 ** uint256(decimals_)).toUint128();
+    }
+
     /// @inheritdoc IERC6909MetadataExt
     function decimals(uint256 asset_) external view returns (uint8 decimals_) {
         decimals_ = asset[AssetId.wrap(asset_.toUint128())].decimals;

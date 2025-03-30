@@ -80,6 +80,12 @@ interface IPoolRouter {
     /// @notice Claim a redemption for an investor address located in the chain where the asset belongs
     function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external payable;
 
+    /// @notice Sets a temporary the price of an asset in the pool currency
+    /// @dev This price is set reflexive for both from asset to pool currency and from pool currency to asset
+    /// @param assetId The asset identifier
+    /// @param price The price of the asset
+    function setTransientPrice(AssetId assetId, D18 price) external payable;
+
     /// @notice Notify to a CV instance that a new pool is available
     /// @param chainId Chain where CV instance lives
     function notifyPool(uint16 chainId) external payable;
@@ -88,6 +94,12 @@ interface IPoolRouter {
     /// @param chainId Chain where CV instance lives
     /// @param hook The hook address of the share class
     function notifyShareClass(uint16 chainId, ShareClassId scId, bytes32 hook) external payable;
+
+    /// @notice Notify to a CV instance the latest available price per share per asset unit
+    /// @dev The receiving chainId is derived from the provided assetId
+    /// @param scId Identifier of the share class
+    /// @param assetId Identifier of the asset
+    function notifySharePrice(ShareClassId scId, AssetId assetId) external payable;
 
     /// @notice Attach custom data to a pool
     function setPoolMetadata(bytes calldata metadata) external payable;
@@ -151,6 +163,13 @@ interface IPoolRouter {
         bytes32 vaultOrFactory,
         VaultUpdateKind kind
     ) external payable;
+
+    /// @notice Update the price per share of a share class
+    /// @dev the provide price does not need to be the final price of the share class. This price can be retrieved via
+    /// the IShareClassManager.shareClassPrice() method
+    /// @param scId The share class identifier
+    /// @param pricePerShare The new price per share
+    function updateSharePrice(ShareClassId scId, D18 pricePerShare) external payable;
 
     /// @notice Create a new holding associated to the asset in a share class.
     /// It will generate and register the different accounts used for holdings.
