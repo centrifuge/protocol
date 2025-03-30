@@ -46,7 +46,7 @@ contract LocalhostDeployer is FullDeployer {
         token.file("name", "USD Coin");
         token.file("symbol", "USDC");
         token.mint(msg.sender, 10_000_000e6);
-        vaultRouter.registerAsset{value: 0.1 ether}(address(token), 0, centrifugeChainId);
+        vaultRouter.registerAsset{value: 0.001 ether}(address(token), 0, centrifugeChainId);
 
         // Deploy vault
         D18 navPerShare = d18(1, 1);
@@ -74,7 +74,7 @@ contract LocalhostDeployer is FullDeployer {
         cs[c++] = abi.encodeWithSelector(poolRouter.updateSharePrice.selector, scId, navPerShare);
         cs[c++] = abi.encodeWithSelector(poolRouter.notifySharePrice.selector, scId, assetId);
 
-        poolRouter.execute{value: 0.1 ether}(poolId, cs);
+        poolRouter.execute{value: 0.001 ether}(poolId, cs);
 
         // Submit deposit request
         IShareToken shareToken = IShareToken(poolManager.token(poolId.raw(), scId.raw()));
@@ -91,9 +91,9 @@ contract LocalhostDeployer is FullDeployer {
         cs2[c2++] = abi.encodeWithSelector(poolRouter.approveDeposits.selector, scId, assetId, investAmount, valuation);
         cs2[c2++] = abi.encodeWithSelector(poolRouter.issueShares.selector, scId, assetId, navPerShare);
 
-        poolRouter.execute{value: 0.1 ether}(poolId, cs2);
+        poolRouter.execute{value: 0.001 ether}(poolId, cs2);
 
-        poolRouter.claimDeposit{value: 0.1 ether}(poolId, scId, assetId, bytes32(bytes20(msg.sender)));
+        poolRouter.claimDeposit{value: 0.001 ether}(poolId, scId, assetId, bytes32(bytes20(msg.sender)));
 
         // Claim deposit request
         vault.mint(investAmount, msg.sender);
