@@ -20,7 +20,7 @@ interface IERC1404 {
     function messageForTransferRestriction(uint8 restrictionCode) external view returns (string memory);
 }
 
-interface ITranche is IERC20Metadata, IERC7575Share, IERC1404 {
+interface IShareToken is IERC20Metadata, IERC7575Share, IERC1404 {
     // --- Events ---
     event File(bytes32 indexed what, address data);
     event SetHookData(address indexed user, bytes16 data);

@@ -12,7 +12,7 @@ contract BurnTest is BaseTest {
         (address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
 
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
         root.relyContract(address(tranche), self); // give self auth permissions
         // add investor as member
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);

@@ -11,7 +11,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 
-import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
 
 import {FullDeployer, PoolsDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
@@ -77,7 +77,7 @@ contract LocalhostDeployer is FullDeployer {
         poolRouter.execute{value: 0.1 ether}(poolId, cs);
 
         // Submit deposit request
-        ITranche shareToken = ITranche(poolManager.tranche(poolId.raw(), scId.raw()));
+        IShareToken shareToken = IShareToken(poolManager.token(poolId.raw(), scId.raw()));
         IERC7540Vault vault = IERC7540Vault(shareToken.vault(address(token)));
 
         uint256 investAmount = 1_000_000e6;

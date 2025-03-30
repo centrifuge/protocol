@@ -77,7 +77,7 @@ abstract contract Properties is Setup, Asserts, AsyncVaultCentrifugeProperties {
 
         address[] memory systemAddresses = new address[](SYSTEM_ADDRESSES_LENGTH);
         systemAddresses[0] = address(vaultFactory);
-        systemAddresses[1] = address(trancheFactory);
+        systemAddresses[1] = address(tokenFactory);
 
         // NOTE: Skipping escrow which instead can have non-zero bal
 

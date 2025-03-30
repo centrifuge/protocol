@@ -24,15 +24,15 @@ import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInv
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
-import {ITrancheFactory} from "src/vaults/interfaces/factories/ITrancheFactory.sol";
+import {ITokenFactory} from "src/vaults/interfaces/factories/ITokenFactory.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 import {
     AssetIdKey,
     Pool,
-    TrancheDetails,
-    TranchePrice,
+    ShareClassDetails,
+    SharePrice,
     UndeployedTranche,
     VaultDetails,
     IPoolManager
@@ -41,7 +41,7 @@ import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 
 /// @title  Pool Manager
-/// @notice This contract manages which pools & tranches exist,
+/// @notice This contract manages which pools & share classes exist,
 ///         as well as managing allowed pool currencies, and incoming and outgoing transfers.
 contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGatewayHandler {
     using MessageLib for *;
@@ -55,7 +55,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     IEscrow public immutable escrow;
 
     IVaultMessageSender public sender;
-    ITrancheFactory public trancheFactory;
+    ITokenFactory public tokenFactory;
     address public balanceSheetManager;
 
     uint32 internal _assetCounter;
@@ -67,9 +67,9 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     /// @inheritdoc IPoolManager
     mapping(address asset => mapping(uint256 tokenId => uint128 assetId)) public assetToId;
 
-    constructor(address escrow_, address trancheFactory_, address[] memory vaultFactories) Auth(msg.sender) {
+    constructor(address escrow_, address tokenFactory_, address[] memory vaultFactories) Auth(msg.sender) {
         escrow = IEscrow(escrow_);
-        trancheFactory = ITrancheFactory(trancheFactory_);
+        tokenFactory = ITokenFactory(tokenFactory_);
 
         for (uint256 i = 0; i < vaultFactories.length; i++) {
             address factory = vaultFactories[i];
@@ -81,7 +81,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     /// @inheritdoc IPoolManager
     function file(bytes32 what, address data) external auth {
         if (what == "sender") sender = IVaultMessageSender(data);
-        else if (what == "trancheFactory") trancheFactory = ITrancheFactory(data);
+        else if (what == "tokenFactory") tokenFactory = ITokenFactory(data);
         else if (what == "balanceSheetManager") balanceSheetManager = data;
         else revert("PoolManager/file-unrecognized-param");
         emit File(what, data);
@@ -97,30 +97,27 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     }
 
     /// @inheritdoc IRecoverable
-    function recoverTokens(address token, uint256 tokenId, address to, uint256 amount) external auth {
+    function recoverTokens(address token_, uint256 tokenId, address to, uint256 amount) external auth {
         if (tokenId == 0) {
-            SafeTransferLib.safeTransfer(token, to, amount);
+            SafeTransferLib.safeTransfer(token_, to, amount);
         } else {
-            IERC6909(token).transfer(to, tokenId, amount);
+            IERC6909(token_).transfer(to, tokenId, amount);
         }
     }
 
     // --- Outgoing message handling ---
     /// @inheritdoc IPoolManager
-    function transferTrancheTokens(
-        uint64 poolId,
-        bytes16 trancheId,
-        uint16 destinationId,
-        bytes32 recipient,
-        uint128 amount
-    ) external auth {
-        ITranche tranche_ = ITranche(tranche(poolId, trancheId));
-        require(address(tranche_) != address(0), "PoolManager/unknown-token");
-        tranche_.burn(msg.sender, amount);
+    function transferShares(uint64 poolId, bytes16 scId, uint16 destinationId, bytes32 recipient, uint128 amount)
+        external
+        auth
+    {
+        IShareToken shareClass = IShareToken(token(poolId, scId));
+        require(address(shareClass) != address(0), "PoolManager/unknown-token");
+        shareClass.burn(msg.sender, amount);
 
-        sender.sendTransferShares(destinationId, poolId, trancheId, recipient, amount);
+        sender.sendTransferShares(destinationId, poolId, scId, recipient, amount);
 
-        emit TransferTrancheTokens(poolId, trancheId, msg.sender, destinationId, recipient, amount);
+        emit TransferTrancheTokens(poolId, scId, msg.sender, destinationId, recipient, amount);
     }
 
     // @inheritdoc IPoolManagerGatewayHandler
@@ -178,128 +175,125 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
-    function addTranche(
+    function addShareClass(
         uint64 poolId,
-        bytes16 trancheId,
+        bytes16 scId,
         string memory name,
         string memory symbol,
         uint8 decimals,
         bytes32 salt,
         address hook
     ) public auth returns (address) {
-        require(decimals >= MIN_DECIMALS, "PoolManager/too-few-tranche-token-decimals");
-        require(decimals <= MAX_DECIMALS, "PoolManager/too-many-tranche-token-decimals");
+        require(decimals >= MIN_DECIMALS, "PoolManager/too-few-token-decimals");
+        require(decimals <= MAX_DECIMALS, "PoolManager/too-many-token-decimals");
         require(isPoolActive(poolId), "PoolManager/invalid-pool");
-        require(tranche(poolId, trancheId) == address(0), "PoolManager/tranche-already-exists");
+        require(token(poolId, scId) == address(0), "PoolManager/share-class-already-exists");
 
-        // Hook can be address zero if the tranche_token is fully permissionless and has no custom logic
+        // Hook can be address zero if the share token is fully permissionless and has no custom logic
         require(hook == address(0) || _isValidHook(hook), "PoolManager/invalid-hook");
 
-        address[] memory trancheWards = new address[](2);
-        trancheWards[0] = address(this);
+        address[] memory tokenWards = new address[](2);
+        tokenWards[0] = address(this);
         // BalanceSheetManager needs this in order to mint shares
-        trancheWards[1] = address(balanceSheetManager);
+        tokenWards[1] = address(balanceSheetManager);
 
-        address token = trancheFactory.newTranche(name, symbol, decimals, salt, trancheWards);
+        address token_ = tokenFactory.newToken(name, symbol, decimals, salt, tokenWards);
 
         if (hook != address(0)) {
-            ITranche(token).file("hook", hook);
+            IShareToken(token_).file("hook", hook);
         }
 
-        pools[poolId].tranches[trancheId].token = token;
+        pools[poolId].shareClasses[scId].token = token_;
 
-        emit AddTranche(poolId, trancheId, token);
+        emit AddShareClass(poolId, scId, token_);
 
-        return token;
+        return token_;
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
-    function updateTrancheMetadata(uint64 poolId, bytes16 trancheId, string memory name, string memory symbol)
-        public
-        auth
-    {
-        ITranche tranche_ = ITranche(tranche(poolId, trancheId));
-        require(address(tranche_) != address(0), "PoolManager/unknown-token");
+    function updateShareMetadata(uint64 poolId, bytes16 scId, string memory name, string memory symbol) public auth {
+        IShareToken token_ = IShareToken(token(poolId, scId));
+        require(address(token_) != address(0), "PoolManager/unknown-token");
 
         require(
-            keccak256(bytes(tranche_.name())) != keccak256(bytes(name))
-                || keccak256(bytes(tranche_.symbol())) != keccak256(bytes(symbol)),
+            keccak256(bytes(token_.name())) != keccak256(bytes(name))
+                || keccak256(bytes(token_.symbol())) != keccak256(bytes(symbol)),
             "PoolManager/old-metadata"
         );
 
-        tranche_.file("name", name);
-        tranche_.file("symbol", symbol);
+        token_.file("name", name);
+        token_.file("symbol", symbol);
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
-    function updateTranchePrice(uint64 poolId, bytes16 trancheId, uint128 assetId, uint128 price, uint64 computedAt)
+    function updateSharePrice(uint64 poolId, bytes16 scId, uint128 assetId, uint128 price, uint64 computedAt)
         public
         auth
     {
-        TrancheDetails storage tranche_ = pools[poolId].tranches[trancheId];
-        require(tranche_.token != address(0), "PoolManager/tranche-does-not-exist");
+        ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
+        require(shareClass.token != address(0), "PoolManager/token-does-not-exist");
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
         require(
-            computedAt >= tranche_.prices[assetIdKey.asset][assetIdKey.tokenId].computedAt,
+            computedAt >= shareClass.prices[assetIdKey.asset][assetIdKey.tokenId].computedAt,
             "PoolManager/cannot-set-older-price"
         );
 
-        tranche_.prices[assetIdKey.asset][assetIdKey.tokenId] = TranchePrice(price, computedAt);
-        emit PriceUpdate(poolId, trancheId, assetIdKey.asset, assetIdKey.tokenId, price, computedAt);
+        shareClass.prices[assetIdKey.asset][assetIdKey.tokenId] = SharePrice(price, computedAt);
+        emit PriceUpdate(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, price, computedAt);
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
-    function updateRestriction(uint64 poolId, bytes16 trancheId, bytes memory update_) public auth {
-        ITranche tranche_ = ITranche(tranche(poolId, trancheId));
-        require(address(tranche_) != address(0), "PoolManager/unknown-token");
-        address hook = tranche_.hook();
+    function updateRestriction(uint64 poolId, bytes16 scId, bytes memory update_) public auth {
+        IShareToken token_ = IShareToken(token(poolId, scId));
+        require(address(token_) != address(0), "PoolManager/unknown-token");
+        address hook = token_.hook();
         require(hook != address(0), "PoolManager/invalid-hook");
-        IHook(hook).updateRestriction(address(tranche_), update_);
+        IHook(hook).updateRestriction(address(token_), update_);
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
-    function updateContract(uint64 poolId, bytes16 trancheId, address target, bytes memory update_) public auth {
+    function updateContract(uint64 poolId, bytes16 scId, address target, bytes memory update_) public auth {
         if (target == address(this)) {
-            update(poolId, trancheId, update_);
+            update(poolId, scId, update_);
         } else {
-            IUpdateContract(target).update(poolId, trancheId, update_);
+            IUpdateContract(target).update(poolId, scId, update_);
         }
 
-        emit UpdateContract(poolId, trancheId, target, update_);
+        emit UpdateContract(poolId, scId, target, update_);
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
-    function updateTrancheHook(uint64 poolId, bytes16 trancheId, address hook) public auth {
-        ITranche tranche_ = ITranche(tranche(poolId, trancheId));
-        require(address(tranche_) != address(0), "PoolManager/unknown-token");
-        require(hook != tranche_.hook(), "PoolManager/old-hook");
-        tranche_.file("hook", hook);
+    function updateTrancheHook(uint64 poolId, bytes16 scId, address hook) public auth {
+        IShareToken token_ = IShareToken(token(poolId, scId));
+        require(address(token_) != address(0), "PoolManager/unknown-token");
+        require(hook != token_.hook(), "PoolManager/old-hook");
+        token_.file("hook", hook);
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
-    function handleTransferTrancheTokens(uint64 poolId, bytes16 trancheId, address destinationAddress, uint128 amount)
+    function handleTransferTrancheTokens(uint64 poolId, bytes16 scId, address destinationAddress, uint128 amount)
         public
         auth
     {
-        ITranche tranche_ = ITranche(tranche(poolId, trancheId));
-        require(address(tranche_) != address(0), "PoolManager/unknown-token");
+        IShareToken token_ = IShareToken(token(poolId, scId));
+        require(address(token_) != address(0), "PoolManager/unknown-token");
 
-        tranche_.mint(destinationAddress, amount);
+        token_.mint(destinationAddress, amount);
     }
 
     // --- IUpdateContract implementation ---
     /// @inheritdoc IUpdateContract
     /// @notice The pool manager either deploys the vault if a factory address is provided or it simply links/unlinks
     /// the vault
-    function update(uint64 poolId, bytes16 trancheId, bytes memory payload) public auth {
+    function update(uint64 poolId, bytes16 scId, bytes memory payload) public auth {
         MessageLib.UpdateContractVaultUpdate memory m = MessageLib.deserializeUpdateContractVaultUpdate(payload);
 
         if (m.kind == uint8(VaultUpdateKind.DeployAndLink)) {
             address factory = address(bytes20(m.vaultOrFactory));
 
-            address vault = deployVault(poolId, trancheId, m.assetId, factory);
-            linkVault(poolId, trancheId, m.assetId, vault);
+            address vault = deployVault(poolId, scId, m.assetId, factory);
+            linkVault(poolId, scId, m.assetId, vault);
         } else {
             address vault = address(bytes20(m.vaultOrFactory));
 
@@ -308,9 +302,9 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
             require(_vaultDetails[vault].asset != address(0), "PoolManager/unknown-vault");
 
             if (m.kind == uint8(VaultUpdateKind.Link)) {
-                linkVault(poolId, trancheId, m.assetId, vault);
+                linkVault(poolId, scId, m.assetId, vault);
             } else if (m.kind == uint8(VaultUpdateKind.Unlink)) {
-                unlinkVault(poolId, trancheId, m.assetId, vault);
+                unlinkVault(poolId, scId, m.assetId, vault);
             } else {
                 revert("PoolManager/malformed-vault-update-msg");
             }
@@ -319,13 +313,9 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
     // --- Public functions ---
     /// @inheritdoc IPoolManager
-    function deployVault(uint64 poolId, bytes16 trancheId, uint128 assetId, address factory)
-        public
-        auth
-        returns (address)
-    {
-        TrancheDetails storage tranche_ = pools[poolId].tranches[trancheId];
-        require(tranche_.token != address(0), "PoolManager/tranche-does-not-exist");
+    function deployVault(uint64 poolId, bytes16 scId, uint128 assetId, address factory) public auth returns (address) {
+        ShareClassDetails storage tranche_ = pools[poolId].shareClasses[scId];
+        require(tranche_.token != address(0), "PoolManager/token-does-not-exist");
         require(vaultFactory[factory], "PoolManager/invalid-factory");
 
         // Rely investment manager on vault so it can mint tokens
@@ -334,7 +324,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         // Deploy vault
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
         address vault = IVaultFactory(factory).newVault(
-            poolId, trancheId, assetIdKey.asset, assetIdKey.tokenId, tranche_.token, address(escrow), vaultWards
+            poolId, scId, assetIdKey.asset, assetIdKey.tokenId, tranche_.token, address(escrow), vaultWards
         );
 
         // Check whether asset is an ERC20 token wrapper
@@ -347,14 +337,14 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         // NOTE - Reverting the three actions below is not easy. We SHOULD do that if we phase-out a manager
         _approveManagers(vault, tranche_.token, assetIdKey.asset, assetIdKey.tokenId);
 
-        emit DeployVault(poolId, trancheId, assetIdKey.asset, assetIdKey.tokenId, factory, vault);
+        emit DeployVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, factory, vault);
         return vault;
     }
 
     /// @inheritdoc IPoolManager
-    function linkVault(uint64 poolId, bytes16 trancheId, uint128 assetId, address vault) public auth {
-        TrancheDetails storage tranche_ = pools[poolId].tranches[trancheId];
-        require(tranche_.token != address(0), "PoolManager/tranche-does-not-exist");
+    function linkVault(uint64 poolId, bytes16 scId, uint128 assetId, address vault) public auth {
+        ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
+        require(shareClass.token != address(0), "PoolManager/token-does-not-exist");
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
@@ -363,13 +353,13 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
         _vaultDetails[vault].isLinked = true;
 
-        emit LinkVault(poolId, trancheId, assetIdKey.asset, assetIdKey.tokenId, vault);
+        emit LinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault);
     }
 
     /// @inheritdoc IPoolManager
-    function unlinkVault(uint64 poolId, bytes16 trancheId, uint128 assetId, address vault) public auth {
-        TrancheDetails storage tranche_ = pools[poolId].tranches[trancheId];
-        require(tranche_.token != address(0), "PoolManager/tranche-does-not-exist");
+    function unlinkVault(uint64 poolId, bytes16 scId, uint128 assetId, address vault) public auth {
+        ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
+        require(shareClass.token != address(0), "PoolManager/token-does-not-exist");
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
@@ -378,7 +368,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
         _vaultDetails[vault].isLinked = false;
 
-        emit UnlinkVault(poolId, trancheId, assetIdKey.asset, assetIdKey.tokenId, vault);
+        emit UnlinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault);
     }
 
     // --- Helpers ---
@@ -388,26 +378,26 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     }
 
     /// @inheritdoc IPoolManager
-    function tranche(uint64 poolId, bytes16 trancheId) public view returns (address) {
-        TrancheDetails storage tranche_ = pools[poolId].tranches[trancheId];
-        return tranche_.token;
+    function token(uint64 poolId, bytes16 scId) public view returns (address) {
+        ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
+        return shareClass.token;
     }
 
     /// @inheritdoc IPoolManager
-    function checkedTranche(uint64 poolId, bytes16 trancheId) public view returns (address) {
-        address token = tranche(poolId, trancheId);
-        require(token != address(0), "PoolManager/unknown-tranche");
-        return token;
+    function checkedToken(uint64 poolId, bytes16 scId) public view returns (address) {
+        address token_ = token(poolId, scId);
+        require(token_ != address(0), "PoolManager/unknown-token");
+        return token_;
     }
 
     /// @inheritdoc IPoolManager
-    function tranchePrice(uint64 poolId, bytes16 trancheId, uint128 assetId)
+    function sharePrice(uint64 poolId, bytes16 scId, uint128 assetId)
         public
         view
         returns (uint128 price, uint64 computedAt)
     {
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
-        TranchePrice memory value = pools[poolId].tranches[trancheId].prices[assetIdKey.asset][assetIdKey.tokenId];
+        SharePrice memory value = pools[poolId].shareClasses[scId].prices[assetIdKey.asset][assetIdKey.tokenId];
         require(value.computedAt > 0, "PoolManager/unknown-price");
         price = value.price;
         computedAt = value.computedAt;
@@ -420,7 +410,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     }
 
     /// @inheritdoc IPoolManager
-    function isLinked(uint64, /* poolId */ bytes16, /* trancheId */ address, /* asset */ address vault)
+    function isLinked(uint64, /* poolId */ bytes16, /* scId */ address, /* asset */ address vault)
         public
         view
         returns (bool)

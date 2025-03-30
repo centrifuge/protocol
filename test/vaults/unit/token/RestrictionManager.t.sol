@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Tranche} from "src/vaults/token/Tranche.sol";
+import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
@@ -10,12 +10,12 @@ import {MockRoot} from "test/common/mocks/MockRoot.sol";
 
 contract RestrictionManagerTest is Test {
     MockRoot root;
-    Tranche token;
+    CentrifugeToken token;
     RestrictionManager restrictionManager;
 
     function setUp() public {
         root = new MockRoot();
-        token = new Tranche(18);
+        token = new CentrifugeToken(18);
         restrictionManager = new RestrictionManager(address(root), address(this));
         token.file("hook", address(restrictionManager));
     }

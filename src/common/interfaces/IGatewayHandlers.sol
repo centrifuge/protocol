@@ -70,7 +70,7 @@ interface IPoolManagerGatewayHandler {
 
     /// @notice     New tranche details from an existing Centrifuge pool are added.
     /// @dev        The function can only be executed by the gateway contract.
-    function addTranche(
+    function addShareClass(
         uint64 poolId,
         bytes16 trancheId,
         string memory tokenName,
@@ -82,12 +82,12 @@ interface IPoolManagerGatewayHandler {
 
     /// @notice   Updates the tokenName and tokenSymbol of a tranche token
     /// @dev      The function can only be executed by the gateway contract.
-    function updateTrancheMetadata(uint64 poolId, bytes16 trancheId, string memory tokenName, string memory tokenSymbol)
+    function updateShareMetadata(uint64 poolId, bytes16 trancheId, string memory tokenName, string memory tokenSymbol)
         external;
 
     /// @notice  Updates the price of a tranche token
     /// @dev     The function can only be executed by the gateway contract.
-    function updateTranchePrice(uint64 poolId, bytes16 trancheId, uint128 assetId, uint128 price, uint64 computedAt)
+    function updateSharePrice(uint64 poolId, bytes16 trancheId, uint128 assetId, uint128 price, uint64 computedAt)
         external;
 
     /// @notice Updates the hook of a tranche token

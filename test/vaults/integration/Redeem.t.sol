@@ -15,10 +15,10 @@ contract RedeemTest is BaseTest {
 
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
 
         deposit(vault_, self, amount); // deposit funds first
-        centrifugeChain.updateTranchePrice(
+        centrifugeChain.updateSharePrice(
             vault.poolId(), vault.trancheId(), assetId, defaultPrice, uint64(block.timestamp)
         );
 
@@ -92,10 +92,10 @@ contract RedeemTest is BaseTest {
 
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
 
         deposit(vault_, self, amount); // deposit funds first
-        centrifugeChain.updateTranchePrice(
+        centrifugeChain.updateSharePrice(
             vault.poolId(), vault.trancheId(), assetId, defaultPrice, uint64(block.timestamp)
         );
 
@@ -140,7 +140,7 @@ contract RedeemTest is BaseTest {
 
         (address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
 
         deposit(vault_, investor, amount); // deposit funds first // deposit funds first
 
@@ -162,7 +162,7 @@ contract RedeemTest is BaseTest {
 
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
         deposit(vault_, self, amount * 2); // deposit funds first
 
         vm.expectRevert(bytes("AsyncRequests/no-pending-redeem-request"));
@@ -216,7 +216,7 @@ contract RedeemTest is BaseTest {
 
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
         deposit(vault_, investor, amount, false); // request and execute deposit, but don't claim
         assertEq(vault.maxMint(investor), amount);
         uint64 poolId = vault.poolId();
@@ -239,7 +239,7 @@ contract RedeemTest is BaseTest {
 
         // should work even if investor is frozen
         centrifugeChain.freeze(poolId, trancheId, investor); // freeze investor
-        assertTrue(!Tranche(address(vault.share())).checkTransferRestriction(investor, address(escrow), amount));
+        assertTrue(!CentrifugeToken(address(vault.share())).checkTransferRestriction(investor, address(escrow), amount));
 
         // half of the amount will be trabsferred from the investor's wallet & half of the amount will be taken from
         // escrow
@@ -264,7 +264,7 @@ contract RedeemTest is BaseTest {
 
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
         deposit(vault_, investor, amount, false); // request and execute deposit, but don't claim
         assertEq(vault.maxMint(investor), amount);
         uint64 poolId = vault.poolId();
@@ -299,7 +299,7 @@ contract RedeemTest is BaseTest {
 
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
         deposit(vault_, investor, amount, false); // request and execute deposit, but don't claim
         assertEq(vault.maxMint(investor), amount);
         uint64 poolId = vault.poolId();
@@ -311,7 +311,7 @@ contract RedeemTest is BaseTest {
 
         // should work even if investor is frozen
         centrifugeChain.freeze(poolId, trancheId, investor); // freeze investor
-        assertTrue(!Tranche(address(vault.share())).checkTransferRestriction(investor, address(escrow), amount));
+        assertTrue(!CentrifugeToken(address(vault.share())).checkTransferRestriction(investor, address(escrow), amount));
 
         // Test trigger partial redeem (maxMint > redeemAmount), where investor did not mint their tokens - user tokens
         // are still locked in escrow
@@ -340,11 +340,11 @@ contract RedeemTest is BaseTest {
     function testPartialRedemptionExecutions() public {
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
         ERC20 asset = ERC20(address(vault.asset()));
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
 
         // invest
         uint256 investmentAmount = 100000000; // 100 * 10**6
@@ -396,7 +396,7 @@ contract RedeemTest is BaseTest {
     }
 
     function partialRedeem(uint64 poolId, bytes16 trancheId, AsyncVault vault, ERC20 asset) public {
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
 
         uint128 assetId = poolManager.assetToId(address(asset), erc20TokenId);
         uint256 totalTranches = tranche.balanceOf(self);

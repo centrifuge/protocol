@@ -16,9 +16,9 @@ contract RedeemTest is BaseTest {
         );
         AsyncVault vault = AsyncVault(vault_);
         RestrictedRedemptions hook = RestrictedRedemptions(restrictedRedemptions);
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
 
-        centrifugeChain.updateTranchePrice(
+        centrifugeChain.updateSharePrice(
             vault.poolId(), vault.trancheId(), assetId, defaultPrice, uint64(block.timestamp)
         );
 

@@ -91,7 +91,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             poolManager.addPool(MessageLib.deserializeNotifyPool(message).poolId);
         } else if (kind == MessageType.NotifyShareClass) {
             MessageLib.NotifyShareClass memory m = MessageLib.deserializeNotifyShareClass(message);
-            poolManager.addTranche(
+            poolManager.addShareClass(
                 m.poolId, m.scId, m.name, m.symbol.toString(), m.decimals, m.salt, address(bytes20(m.hook))
             );
         } else if (kind == MessageType.UpdateShareClassPrice) {
@@ -99,7 +99,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             poolManager.updateTranchePrice(m.poolId, m.scId, m.assetId, m.price, m.timestamp);
         } else if (kind == MessageType.UpdateShareClassMetadata) {
             MessageLib.UpdateShareClassMetadata memory m = MessageLib.deserializeUpdateShareClassMetadata(message);
-            poolManager.updateTrancheMetadata(m.poolId, m.scId, m.name, m.symbol.toString());
+            poolManager.updateShareMetadata(m.poolId, m.scId, m.name, m.symbol.toString());
         } else if (kind == MessageType.UpdateShareClassHook) {
             MessageLib.UpdateShareClassHook memory m = MessageLib.deserializeUpdateShareClassHook(message);
             poolManager.updateTrancheHook(m.poolId, m.scId, address(bytes20(m.hook)));

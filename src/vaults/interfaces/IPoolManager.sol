@@ -6,26 +6,26 @@ import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 /// @dev Centrifuge pools
 struct Pool {
     uint256 createdAt;
-    mapping(bytes16 trancheId => TrancheDetails) tranches;
+    mapping(bytes16 trancheId => ShareClassDetails) shareClasses;
 }
 
-/// @dev Each Centrifuge pool is associated to 1 or more tranches
-struct TrancheDetails {
+/// @dev Each Centrifuge pool is associated to 1 or more shar classes
+struct ShareClassDetails {
     address token;
     /// @dev Each tranche can have multiple vaults deployed,
     ///      multiple vaults can be linked to the same asset.
     ///      A vault in this storage DOES NOT mean the vault can be used
     mapping(address asset => mapping(uint256 tokenId => address[])) vaults;
     /// @dev Each tranche has a price per asset
-    mapping(address asset => mapping(uint256 tokenId => TranchePrice)) prices;
+    mapping(address asset => mapping(uint256 tokenId => SharePrice)) prices;
 }
 
-struct TranchePrice {
+struct SharePrice {
     uint128 price;
     uint64 computedAt;
 }
 
-/// @dev Temporary storage that is only present between addTranche and deployTranche
+/// @dev Temporary storage that is only present between addShareClass and deployTranche
 struct UndeployedTranche {
     /// @dev The decimals of the leading pool asset. Vault shares have
     ///      to be denomatimated with the same precision.
@@ -70,7 +70,7 @@ interface IPoolManager is IRecoverable {
     );
     event File(bytes32 indexed what, address factory, bool status);
     event AddPool(uint64 indexed poolId);
-    event AddTranche(uint64 indexed poolId, bytes16 indexed trancheId, address token);
+    event AddShareClass(uint64 indexed poolId, bytes16 indexed trancheId, address token);
     event DeployVault(
         uint64 indexed poolId,
         bytes16 indexed trancheId,
@@ -132,7 +132,7 @@ interface IPoolManager is IRecoverable {
     function checkedAssetToId(address asset, uint256 tokenId) external view returns (uint128 assetId);
 
     /// @notice Updates a contract parameter
-    /// @param what Accepts a bytes32 representation of 'gateway', 'investmentManager', 'trancheFactory',
+    /// @param what Accepts a bytes32 representation of 'gateway', 'investmentManager', 'tokenFactory',
     ///                'vaultFactory', or 'gasService'
     function file(bytes32 what, address data) external;
 
@@ -174,13 +174,13 @@ interface IPoolManager is IRecoverable {
     function isPoolActive(uint64 poolId) external view returns (bool);
 
     /// @notice Returns the tranche token for a given pool and tranche id
-    function tranche(uint64 poolId, bytes16 trancheId) external view returns (address);
+    function token(uint64 poolId, bytes16 trancheId) external view returns (address);
 
     /// @notice Returns the tranche token for a given pool and tranche id. Ensures tranche exists
-    function checkedTranche(uint64 poolId, bytes16 trancheId) external view returns (address);
+    function checkedToken(uint64 poolId, bytes16 trancheId) external view returns (address);
 
     /// @notice Retuns the latest tranche token price for a given pool, tranche id, and asset
-    function tranchePrice(uint64 poolId, bytes16 trancheId, uint128 assetId)
+    function sharePrice(uint64 poolId, bytes16 trancheId, uint128 assetId)
         external
         view
         returns (uint128 price, uint64 computedAt);
