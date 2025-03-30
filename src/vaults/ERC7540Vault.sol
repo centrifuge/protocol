@@ -11,7 +11,7 @@ import {SignatureLib} from "src/misc/libraries/SignatureLib.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 
-import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IInvestmentManager} from "src/vaults/interfaces/IInvestmentManager.sol";
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/vaults/interfaces/IERC7575.sol";
@@ -19,7 +19,7 @@ import "src/vaults/interfaces/IERC7575.sol";
 /// @title  ERC7540Vault
 /// @notice Asynchronous Tokenized Vault standard implementation for Centrifuge pools
 ///
-/// @dev    Each vault issues shares of Centrifuge tranches as restricted ERC-20 tokens
+/// @dev    Each vault issues shares of Centrifuge share classes as restricted ERC-20 tokens
 ///         against asset deposits based on the current share price.
 ///
 ///         ERC-7540 is an extension of the ERC-4626 standard by 'requestDeposit' & 'requestRedeem' methods, where
@@ -143,7 +143,7 @@ contract ERC7540Vault is Auth, IERC7540Vault {
 
     /// @inheritdoc IERC7540Redeem
     function requestRedeem(uint256 shares, address controller, address owner) external returns (uint256) {
-        require(ITranche(share).balanceOf(owner) >= shares, "ERC7540Vault/insufficient-balance");
+        require(IShareToken(share).balanceOf(owner) >= shares, "ERC7540Vault/insufficient-balance");
 
         // If msg.sender is operator of owner, the transfer is executed as if
         // the sender is the owner, to bypass the allowance check
@@ -155,10 +155,10 @@ contract ERC7540Vault is Auth, IERC7540Vault {
         );
 
         address escrow = manager.escrow();
-        try ITranche(share).authTransferFrom(sender, owner, escrow, shares) returns (bool) {}
+        try IShareToken(share).authTransferFrom(sender, owner, escrow, shares) returns (bool) {}
         catch {
-            // Support tranche tokens that block authTransferFrom. In this case ERC20 approval needs to be set
-            require(ITranche(share).transferFrom(owner, escrow, shares), "ERC7540Vault/transfer-from-failed");
+            // Support tokens that block authTransferFrom. In this case ERC20 approval needs to be set
+            require(IShareToken(share).transferFrom(owner, escrow, shares), "ERC7540Vault/transfer-from-failed");
         }
 
         emit RedeemRequest(controller, owner, REQUEST_ID, msg.sender, shares);
@@ -448,7 +448,7 @@ contract ERC7540Vault is Auth, IERC7540Vault {
 
     /// @inheritdoc IERC7714
     function isPermissioned(address controller) external view returns (bool) {
-        return ITranche(share).checkTransferRestriction(address(0), controller, 0);
+        return IShareToken(share).checkTransferRestriction(address(0), controller, 0);
     }
 
     /// @notice Ensures msg.sender can operate on behalf of controller.

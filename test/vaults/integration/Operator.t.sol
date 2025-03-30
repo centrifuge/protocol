@@ -15,9 +15,9 @@ contract OperatorTest is BaseTest {
         address investor = makeAddr("investor");
         address operator = makeAddr("operator");
         ERC7540Vault vault = ERC7540Vault(vault_);
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
 
-        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
 
         erc20.mint(investor, amount);
 
@@ -71,7 +71,7 @@ contract OperatorTest is BaseTest {
         address operator = makeAddr("operator");
         ERC7540Vault vault = ERC7540Vault(vault_);
 
-        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
 
         erc20.mint(controller, amount);
 
@@ -149,7 +149,7 @@ contract OperatorTest is BaseTest {
         ERC7540Vault vault = ERC7540Vault(vault_);
 
         deposit(vault_, investor, amount); // deposit funds first
-        centrifugeChain.updateTranchePrice(
+        centrifugeChain.updateSharePrice(
             vault.poolId(), vault.trancheId(), assetId, defaultPrice, uint64(block.timestamp)
         );
 
@@ -196,7 +196,7 @@ contract OperatorTest is BaseTest {
         address operator = makeAddr("operator");
         ERC7540Vault vault = ERC7540Vault(vault_);
 
-        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
 
         erc20.mint(controller, amount);
 

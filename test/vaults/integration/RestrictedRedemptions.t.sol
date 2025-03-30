@@ -15,9 +15,9 @@ contract RedeemTest is BaseTest {
             deployVault(5, 6, restrictedRedemptions, "name", "symbol", bytes16(bytes("1")), address(erc20), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
         RestrictedRedemptions hook = RestrictedRedemptions(restrictedRedemptions);
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
 
-        centrifugeChain.updateTranchePrice(
+        centrifugeChain.updateSharePrice(
             vault.poolId(), vault.trancheId(), assetId, defaultPrice, uint64(block.timestamp)
         );
 

@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import "src/vaults/interfaces/IERC7575.sol";
 import "src/vaults/interfaces/IERC7540.sol";
-import {Tranche} from "src/vaults/token/Tranche.sol";
+import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 import {MockRoot} from "test/common/mocks/MockRoot.sol";
 import {MockRestrictionManager} from "test/vaults/mocks/MockRestrictionManager.sol";
 import "forge-std/Test.sol";
@@ -16,7 +16,7 @@ interface ERC20Like {
 }
 
 contract TrancheTest is Test, GasSnapshot {
-    Tranche token;
+    CentrifugeToken token;
     MockRestrictionManager restrictionManager;
 
     address self;
@@ -27,7 +27,7 @@ contract TrancheTest is Test, GasSnapshot {
 
     function setUp() public {
         self = address(this);
-        token = new Tranche(18);
+        token = new CentrifugeToken(18);
         token.file("name", "Some Token");
         token.file("symbol", "ST");
 
@@ -40,7 +40,7 @@ contract TrancheTest is Test, GasSnapshot {
         address hook = makeAddr("hook");
 
         // fail: unrecognized param
-        vm.expectRevert(bytes("Tranche/file-unrecognized-param"));
+        vm.expectRevert(bytes("CentrifugeToken/file-unrecognized-param"));
         token.file("random", hook);
 
         // success
@@ -54,7 +54,7 @@ contract TrancheTest is Test, GasSnapshot {
         token.deny(self);
 
         // auth fail
-        vm.expectRevert(bytes("Tranche/not-authorized"));
+        vm.expectRevert(bytes("CentrifugeToken/not-authorized"));
         token.file("hook", hook);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);

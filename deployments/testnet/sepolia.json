@@ -18,7 +18,7 @@
     "routerEscrow": "0xfb476d1f9eb2f7142d466676940c886ea433e15f",
     "restrictionManager": "0x63708a049c32f3fa106f527f2c260da95ef2dce1",
     "restrictedRedemptions": "0x9bfb806be142a8a7f5127b6aa32d1dae0e126db7",
-    "trancheFactory": "0xbd6b45641a902208b1b7ffb7382b7523d2df18f5",
+    "tokenFactory": "0xbd6b45641a902208b1b7ffb7382b7523d2df18f5",
     "investmentManager": "0x90a510b7fdbed2dc803ff454b1d374000d451463",
     "vaultFactory": "0x21836774f6a91089eaeaba9e2158bbde69903e4f",
     "poolManager": "0x8d7c151b2700da7bce648e1bf9a3b6eb551b32c2",

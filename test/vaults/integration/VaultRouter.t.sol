@@ -93,7 +93,7 @@ contract VaultRouterTest is BaseTest {
 
         assertEq(vault.maxMint(self), tranchePayout);
         assertEq(vault.maxDeposit(self), amount);
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
         assertEq(tranche.balanceOf(address(escrow)), tranchePayout);
 
         if (snap) {
@@ -164,7 +164,7 @@ contract VaultRouterTest is BaseTest {
 
         assertEq(vault.maxMint(self), tranchePayout);
         assertEq(vault.maxDeposit(self), amount);
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
         assertEq(tranche.balanceOf(address(escrow)), tranchePayout);
 
         // Any address should be able to call claimDeposit for an investor
@@ -208,7 +208,7 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: fuel}(vault_, amount, self, self);
 
         (uint128 tranchePayout) = fulfillDepositRequest(vault, assetId, amount, self);
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
         vaultRouter.claimDeposit(vault_, self, self);
         tranche.approve(address(vaultRouter), tranchePayout);
 
@@ -261,8 +261,8 @@ contract VaultRouterTest is BaseTest {
         assertEq(vault2.maxMint(self), tranchePayout2);
         assertEq(vault1.maxDeposit(self), amount1);
         assertEq(vault2.maxDeposit(self), amount2);
-        ITranche tranche1 = ITranche(address(vault1.share()));
-        ITranche tranche2 = ITranche(address(vault2.share()));
+        IShareToken tranche1 = IShareToken(address(vault1.share()));
+        IShareToken tranche2 = IShareToken(address(vault2.share()));
         assertEq(tranche1.balanceOf(address(escrow)), tranchePayout1);
         assertEq(tranche2.balanceOf(address(escrow)), tranchePayout2);
 
@@ -300,16 +300,16 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.claimDeposit(address(vault2), self, self);
 
         // redeem
-        ITranche(address(vault1.share())).approve(address(vaultRouter), tranchePayout1);
-        ITranche(address(vault2.share())).approve(address(vaultRouter), tranchePayout2);
+        IShareToken(address(vault1.share())).approve(address(vaultRouter), tranchePayout1);
+        IShareToken(address(vault2.share())).approve(address(vaultRouter), tranchePayout2);
         vaultRouter.requestRedeem{value: fuel}(address(vault1), tranchePayout1, self, self);
         vaultRouter.requestRedeem{value: fuel}(address(vault2), tranchePayout2, self, self);
         (uint128 assetPayout1) = fulfillRedeemRequest(vault1, assetId1, tranchePayout1, self);
         (uint128 assetPayout2) = fulfillRedeemRequest(vault2, assetId2, tranchePayout2, self);
-        assertApproxEqAbs(ITranche(address(vault1.share())).balanceOf(self), 0, 1);
-        assertApproxEqAbs(ITranche(address(vault2.share())).balanceOf(self), 0, 1);
-        assertApproxEqAbs(ITranche(address(vault1.share())).balanceOf(address(escrow)), 0, 1);
-        assertApproxEqAbs(ITranche(address(vault2.share())).balanceOf(address(escrow)), 0, 1);
+        assertApproxEqAbs(IShareToken(address(vault1.share())).balanceOf(self), 0, 1);
+        assertApproxEqAbs(IShareToken(address(vault2.share())).balanceOf(self), 0, 1);
+        assertApproxEqAbs(IShareToken(address(vault1.share())).balanceOf(address(escrow)), 0, 1);
+        assertApproxEqAbs(IShareToken(address(vault2.share())).balanceOf(address(escrow)), 0, 1);
         assertApproxEqAbs(erc20X.balanceOf(address(escrow)), assetPayout1, 1);
         assertApproxEqAbs(erc20Y.balanceOf(address(escrow)), assetPayout2, 1);
         assertApproxEqAbs(erc20X.balanceOf(self), 0, 1);
@@ -362,7 +362,7 @@ contract VaultRouterTest is BaseTest {
 
         assertEq(vault.maxMint(self), tranchePayout);
         assertEq(vault.maxDeposit(self), amount);
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
         assertEq(tranche.balanceOf(address(escrow)), tranchePayout);
     }
 
@@ -383,7 +383,7 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: fuel}(vault_, amount, self, self);
 
         (uint128 tranchePayout) = fulfillDepositRequest(vault, assetId, amount, self);
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
         tranche.approve(address(vaultRouter), tranchePayout);
 
         // multicall
@@ -426,8 +426,8 @@ contract VaultRouterTest is BaseTest {
         assertEq(vault2.maxMint(self), tranchePayout2);
         assertEq(vault1.maxDeposit(self), amount1);
         assertEq(vault2.maxDeposit(self), amount2);
-        ITranche tranche1 = ITranche(address(vault1.share()));
-        ITranche tranche2 = ITranche(address(vault2.share()));
+        IShareToken tranche1 = IShareToken(address(vault1.share()));
+        IShareToken tranche2 = IShareToken(address(vault2.share()));
         assertEq(tranche1.balanceOf(address(escrow)), tranchePayout1);
         assertEq(tranche2.balanceOf(address(escrow)), tranchePayout2);
     }
@@ -465,7 +465,7 @@ contract VaultRouterTest is BaseTest {
 
         assertEq(vault.maxMint(investor), tranchePayout);
         assertEq(vault.maxDeposit(investor), amount);
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
         assertEq(tranche.balanceOf(address(escrow)), tranchePayout);
     }
 
@@ -551,7 +551,7 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.executeLockedDepositRequest{value: fuel}(vault_, investor);
         (uint128 tranchePayout) = fulfillDepositRequest(vault, assetId, amount, investor);
 
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
         vaultRouter.claimDeposit(vault_, investor, investor);
 
         // Investors submits redemption  request

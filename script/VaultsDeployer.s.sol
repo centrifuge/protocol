@@ -8,7 +8,7 @@ import {Gateway} from "src/common/Gateway.sol";
 
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
 import {BalanceSheetManager} from "src/vaults/BalanceSheetManager.sol";
-import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
+import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
 import {RestrictedRedemptions} from "src/vaults/token/RestrictedRedemptions.sol";
@@ -29,7 +29,7 @@ contract VaultsDeployer is CommonDeployer {
     address public vaultFactory;
     address public restrictionManager;
     address public restrictedRedemptions;
-    address public trancheFactory;
+    address public tokenFactory;
 
     function deployVaults(uint16 chainId, ISafe adminSafe_, address deployer) public {
         deployCommon(chainId, adminSafe_, deployer);
@@ -38,14 +38,14 @@ contract VaultsDeployer is CommonDeployer {
         routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow2"))}(deployer);
         restrictionManager = address(new RestrictionManager{salt: SALT}(address(root), deployer));
         restrictedRedemptions = address(new RestrictedRedemptions{salt: SALT}(address(root), address(escrow), deployer));
-        trancheFactory = address(new TrancheFactory{salt: SALT}(address(root), deployer));
+        tokenFactory = address(new TokenFactory{salt: SALT}(address(root), deployer));
         investmentManager = new InvestmentManager(address(root), address(escrow));
         vaultFactory = address(new ERC7540VaultFactory(address(root), address(investmentManager)));
 
         address[] memory vaultFactories = new address[](1);
         vaultFactories[0] = vaultFactory;
 
-        poolManager = new PoolManager(address(escrow), trancheFactory, vaultFactories);
+        poolManager = new PoolManager(address(escrow), tokenFactory, vaultFactories);
         balanceSheetManager = new BalanceSheetManager(address(escrow));
         vaultRouter = new VaultRouter(address(routerEscrow), address(gateway), address(poolManager));
 
@@ -60,7 +60,7 @@ contract VaultsDeployer is CommonDeployer {
         register("routerEscrow", address(routerEscrow));
         register("restrictionManager", address(restrictionManager));
         register("restrictedRedemptions", address(restrictedRedemptions));
-        register("trancheFactory", address(trancheFactory));
+        register("tokenFactory", address(tokenFactory));
         register("investmentManager", address(investmentManager));
         register("vaultFactory", address(vaultFactory));
         register("poolManager", address(poolManager));
@@ -76,7 +76,7 @@ contract VaultsDeployer is CommonDeployer {
         // Rely on PoolManager
         escrow.rely(address(poolManager));
         IAuth(vaultFactory).rely(address(poolManager));
-        IAuth(trancheFactory).rely(address(poolManager));
+        IAuth(tokenFactory).rely(address(poolManager));
         IAuth(investmentManager).rely(address(poolManager));
         IAuth(restrictionManager).rely(address(poolManager));
         IAuth(restrictedRedemptions).rely(address(poolManager));
@@ -97,7 +97,7 @@ contract VaultsDeployer is CommonDeployer {
         escrow.rely(address(root));
         routerEscrow.rely(address(root));
         IAuth(vaultFactory).rely(address(root));
-        IAuth(trancheFactory).rely(address(root));
+        IAuth(tokenFactory).rely(address(root));
         IAuth(restrictionManager).rely(address(root));
         IAuth(restrictedRedemptions).rely(address(root));
 
@@ -147,7 +147,7 @@ contract VaultsDeployer is CommonDeployer {
         removeCommonDeployerAccess(deployer);
 
         IAuth(vaultFactory).deny(deployer);
-        IAuth(trancheFactory).deny(deployer);
+        IAuth(tokenFactory).deny(deployer);
         IAuth(restrictionManager).deny(deployer);
         IAuth(restrictedRedemptions).deny(deployer);
         investmentManager.deny(deployer);

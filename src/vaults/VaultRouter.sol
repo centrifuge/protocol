@@ -16,7 +16,7 @@ import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
 import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
-import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 /// @title  VaultRouter
 /// @notice This is a helper contract, designed to be the entrypoint for EOAs.
@@ -303,7 +303,7 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
     // --- View Methods ---
     /// @inheritdoc IVaultRouter
     function getVault(uint64 poolId, bytes16 trancheId, address asset) external view returns (address) {
-        return ITranche(IPoolManager(poolManager).tranche(poolId, trancheId)).vault(asset);
+        return IShareToken(IPoolManager(poolManager).token(poolId, trancheId)).vault(asset);
     }
 
     /// @inheritdoc IVaultRouter

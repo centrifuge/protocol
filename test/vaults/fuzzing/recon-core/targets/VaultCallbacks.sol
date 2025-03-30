@@ -11,7 +11,7 @@ import {vm} from "@chimera/Hevm.sol";
 // Src Deps | For cycling of values
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
 import {ERC20} from "src/misc/ERC20.sol";
-import {Tranche} from "src/vaults/token/Tranche.sol";
+import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
 
 /// @dev Separate the 5 Callbacks that go from Gateway to InvestmentManager

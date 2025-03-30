@@ -20,10 +20,10 @@ import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
 import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
-import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
+import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
-import {Tranche} from "src/vaults/token/Tranche.sol";
-import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
+import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
 import {VaultsDeployer} from "script/VaultsDeployer.s.sol";
 
@@ -132,7 +132,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         vm.label(address(escrow), "Escrow");
         vm.label(address(routerEscrow), "RouterEscrow");
         vm.label(address(guardian), "Guardian");
-        vm.label(address(poolManager.trancheFactory()), "TrancheFactory");
+        vm.label(address(poolManager.tokenFactory()), "TokenFactory");
         vm.label(address(vaultFactory), "ERC7540VaultFactory");
 
         // Exclude predeployed contracts from invariant tests by default
@@ -151,7 +151,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         excludeContract(address(escrow));
         excludeContract(address(routerEscrow));
         excludeContract(address(guardian));
-        excludeContract(address(poolManager.trancheFactory()));
+        excludeContract(address(poolManager.tokenFactory()));
         excludeContract(address(vaultFactory));
     }
 
@@ -173,12 +173,12 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
             assetId = poolManager.assetToId(asset, assetTokenId);
         }
 
-        if (poolManager.tranche(poolId, trancheId) == address(0)) {
+        if (poolManager.token(poolId, trancheId) == address(0)) {
             centrifugeChain.addPool(poolId);
-            centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, trancheDecimals, hook);
+            centrifugeChain.addShareClass(poolId, trancheId, tokenName, tokenSymbol, trancheDecimals, hook);
         }
 
-        poolManager.updateTranchePrice(poolId, trancheId, assetId, uint128(10 ** 18), uint64(block.timestamp));
+        poolManager.updateSharePrice(poolId, trancheId, assetId, uint128(10 ** 18), uint64(block.timestamp));
 
         // Trigger new vault deployment via UpdateContract
         bytes memory vaultUpdate = MessageLib.UpdateContractVaultUpdate({
@@ -187,7 +187,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
             kind: uint8(VaultUpdateKind.DeployAndLink)
         }).serialize();
         poolManager.update(poolId, trancheId, vaultUpdate);
-        vaultAddress = ITranche(poolManager.tranche(poolId, trancheId)).vault(asset);
+        vaultAddress = IShareToken(poolManager.token(poolId, trancheId)).vault(asset);
     }
 
     function deployVault(

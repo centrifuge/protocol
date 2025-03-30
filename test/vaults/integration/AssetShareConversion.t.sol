@@ -14,11 +14,11 @@ contract AssetShareConversionTest is BaseTest {
         (address vault_, uint128 assetId) =
             deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
-        ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
+        IShareToken tranche = IShareToken(address(ERC7540Vault(vault_).share()));
 
         assertEq(vault.priceLastUpdated(), block.timestamp);
         assertEq(vault.pricePerShare(), 1e6);
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1e18, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(poolId, trancheId, assetId, 1e18, uint64(block.timestamp));
         assertEq(vault.priceLastUpdated(), uint64(block.timestamp));
         assertEq(vault.pricePerShare(), 1e6);
 
@@ -36,7 +36,7 @@ contract AssetShareConversionTest is BaseTest {
             poolId, trancheId, bytes32(bytes20(self)), _assetId, uint128(investmentAmount), shares
         );
         vault.mint(shares, self);
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
 
         // assert share/asset conversion
         assertEq(tranche.totalSupply(), 100000000000000000000);
@@ -47,7 +47,7 @@ contract AssetShareConversionTest is BaseTest {
         assertEq(vault.pricePerShare(), 1e6);
 
         // assert share/asset conversion after price update
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1200000000000000000, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(poolId, trancheId, assetId, 1200000000000000000, uint64(block.timestamp));
 
         assertEq(vault.totalAssets(), 120000000);
         assertEq(vault.convertToShares(120000000), 100000000000000000000); // tranche tokens have 12 more decimals than
@@ -66,8 +66,8 @@ contract AssetShareConversionTest is BaseTest {
         (address vault_, uint128 assetId) =
             deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
-        ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1000000, uint64(block.timestamp));
+        IShareToken tranche = IShareToken(address(ERC7540Vault(vault_).share()));
+        centrifugeChain.updateSharePrice(poolId, trancheId, assetId, 1000000, uint64(block.timestamp));
 
         // invest
         uint256 investmentAmount = 100000000000000000000; // 100 * 10**18
@@ -83,7 +83,7 @@ contract AssetShareConversionTest is BaseTest {
             poolId, trancheId, bytes32(bytes20(self)), _assetId, uint128(investmentAmount), shares
         );
         vault.mint(shares, self);
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
 
         // assert share/asset conversion
         assertEq(tranche.totalSupply(), 100000000);
@@ -94,7 +94,7 @@ contract AssetShareConversionTest is BaseTest {
         assertEq(vault.pricePerShare(), 1e18);
 
         // assert share/asset conversion after price update
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1200000000000000000, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(poolId, trancheId, assetId, 1200000000000000000, uint64(block.timestamp));
 
         assertEq(vault.totalAssets(), 120000000000000000000);
         // tranche tokens have 12 less decimals than assets
@@ -113,11 +113,11 @@ contract AssetShareConversionTest is BaseTest {
         (address vault_, uint128 assetId) =
             deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
-        ITranche(address(ERC7540Vault(vault_).share()));
+        IShareToken(address(ERC7540Vault(vault_).share()));
 
         assertEq(vault.priceLastUpdated(), block.timestamp);
         assertEq(vault.pricePerShare(), 1e6);
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1.2e18, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(poolId, trancheId, assetId, 1.2e18, uint64(block.timestamp));
         assertEq(vault.priceLastUpdated(), uint64(block.timestamp));
         assertEq(vault.pricePerShare(), 1.2e6);
 

@@ -11,7 +11,7 @@ import {MessageLib} from "src/common/libraries/MessageLib.sol";
 // Src Deps | For cycling of values
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
 import {ERC20} from "src/misc/ERC20.sol";
-import {Tranche} from "src/vaults/token/Tranche.sol";
+import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
@@ -38,7 +38,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     // Basically the real complete setup
     function deployNewTokenPoolAndTranche(uint8 decimals, uint256 initialMintPerUsers)
         public
-        returns (address newToken, address newTranche, address newVault, uint128 newAssetId)
+        returns (address newToken, address newShareToken, address newVault, uint128 newAssetId)
     {
         // NOTE: TEMPORARY
         require(!hasDoneADeploy); // This bricks the function for this one for Medusa
@@ -75,7 +75,8 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
             string memory symbol = "T1";
 
             // TODO: Ask if we should customize decimals and permissions here
-            newTranche = poolManager_addTranche(POOL_ID, TRANCHE_ID, name, symbol, 18, address(restrictionManager));
+            newShareToken =
+                poolManager_addShareClass(POOL_ID, TRANCHE_ID, name, symbol, 18, address(restrictionManager));
         }
 
         newVault = poolManager_deployVault(POOL_ID, TRANCHE_ID, newAssetId);
@@ -98,7 +99,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
 
         vault = ERC7540Vault(newVault);
         token = ERC20(newToken);
-        trancheToken = Tranche(newTranche);
+        trancheToken = CentrifugeToken(newShareToken);
         restrictionManager = RestrictionManager(address(trancheToken.hook()));
 
         trancheId = TRANCHE_ID;
@@ -126,7 +127,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     }
 
     // Step 4
-    function poolManager_addTranche(
+    function poolManager_addShareClass(
         uint64 poolId,
         bytes16 trancheId,
         string memory tokenName,
@@ -134,13 +135,13 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         uint8 decimals,
         address hook
     ) public returns (address) {
-        address newTranche = poolManager.addTranche(
+        address newToken = poolManager.addShareClass(
             poolId, trancheId, tokenName, tokenSymbol, decimals, keccak256(abi.encodePacked(poolId, trancheId)), hook
         );
 
-        trancheTokens.push(newTranche);
+        trancheTokens.push(newToken);
 
-        return newTranche;
+        return newToken;
     }
 
     // Step 5
@@ -158,12 +159,12 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     }
 
     // TODO: Price is capped at u64 to test overflows
-    function poolManager_updateTranchePrice(uint64 price, uint64 computedAt) public {
-        poolManager.updateTranchePrice(poolId, trancheId, assetId, price, computedAt);
+    function poolManager_updateSharePrice(uint64 price, uint64 computedAt) public {
+        poolManager.updateSharePrice(poolId, trancheId, assetId, price, computedAt);
     }
 
-    function poolManager_updateTrancheMetadata(string memory tokenName, string memory tokenSymbol) public {
-        poolManager.updateTrancheMetadata(poolId, trancheId, tokenName, tokenSymbol);
+    function poolManager_updateShareMetadata(string memory tokenName, string memory tokenSymbol) public {
+        poolManager.updateShareMetadata(poolId, trancheId, tokenName, tokenSymbol);
     }
 
     function poolManager_freeze() public {
@@ -209,7 +210,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
 
     // Step 2 = poolManager_registerAsset - GatewayMockFunctions
     // Step 3 = poolManager_addPool - GatewayMockFunctions
-    // Step 4 = poolManager_addTranche - GatewayMockFunctions
+    // Step 4 = poolManager_addShareClass - GatewayMockFunctions
     // Step 5 = poolManager_deployVault - GatewayMockFunctions
 
     // A pool can belong to a tranche

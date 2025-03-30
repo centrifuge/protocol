@@ -8,7 +8,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {UpdateRestrictionType, MessageLib} from "src/common/libraries/MessageLib.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IHook, HookData} from "src/vaults/interfaces/token/IHook.sol";
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 import {IRestrictionManager} from "src/vaults/interfaces/token/IRestrictionManager.sol";
@@ -116,23 +116,23 @@ contract RestrictedRedemptions is Auth, IRestrictionManager, IHook {
         require(user != address(0), "RestrictedRedemptions/cannot-freeze-zero-address");
         require(!root.endorsed(user), "RestrictedRedemptions/endorsed-user-cannot-be-frozen");
 
-        uint128 hookData = uint128(ITranche(token).hookDataOf(user));
-        ITranche(token).setHookData(user, bytes16(hookData.setBit(FREEZE_BIT, true)));
+        uint128 hookData = uint128(IShareToken(token).hookDataOf(user));
+        IShareToken(token).setHookData(user, bytes16(hookData.setBit(FREEZE_BIT, true)));
 
         emit Freeze(token, user);
     }
 
     /// @inheritdoc IRestrictionManager
     function unfreeze(address token, address user) public auth {
-        uint128 hookData = uint128(ITranche(token).hookDataOf(user));
-        ITranche(token).setHookData(user, bytes16(hookData.setBit(FREEZE_BIT, false)));
+        uint128 hookData = uint128(IShareToken(token).hookDataOf(user));
+        IShareToken(token).setHookData(user, bytes16(hookData.setBit(FREEZE_BIT, false)));
 
         emit Unfreeze(token, user);
     }
 
     /// @inheritdoc IRestrictionManager
     function isFrozen(address token, address user) public view returns (bool) {
-        return uint128(ITranche(token).hookDataOf(user)).getBit(FREEZE_BIT);
+        return uint128(IShareToken(token).hookDataOf(user)).getBit(FREEZE_BIT);
     }
 
     // --- Managing members ---
@@ -143,14 +143,14 @@ contract RestrictedRedemptions is Auth, IRestrictionManager, IHook {
 
         uint128 hookData = uint128(validUntil) << 64;
         hookData.setBit(FREEZE_BIT, isFrozen(token, user));
-        ITranche(token).setHookData(user, bytes16(hookData));
+        IShareToken(token).setHookData(user, bytes16(hookData));
 
         emit UpdateMember(token, user, validUntil);
     }
 
     /// @inheritdoc IRestrictionManager
     function isMember(address token, address user) external view returns (bool isValid, uint64 validUntil) {
-        validUntil = abi.encodePacked(ITranche(token).hookDataOf(user)).toUint64(0);
+        validUntil = abi.encodePacked(IShareToken(token).hookDataOf(user)).toUint64(0);
         isValid = validUntil >= block.timestamp;
     }
 

@@ -68,7 +68,7 @@ contract MockCentrifugeChain is Test {
         );
     }
 
-    function addTranche(
+    function addShareClass(
         uint64 poolId,
         bytes16 trancheId,
         string memory tokenName,
@@ -90,7 +90,7 @@ contract MockCentrifugeChain is Test {
         );
     }
 
-    function addTranche(
+    function addShareClass(
         uint64 poolId,
         bytes16 trancheId,
         string memory tokenName,
@@ -121,7 +121,7 @@ contract MockCentrifugeChain is Test {
         );
     }
 
-    function updateTrancheMetadata(uint64 poolId, bytes16 trancheId, string memory tokenName, string memory tokenSymbol)
+    function updateShareMetadata(uint64 poolId, bytes16 trancheId, string memory tokenName, string memory tokenSymbol)
         public
     {
         execute(
@@ -140,7 +140,7 @@ contract MockCentrifugeChain is Test {
         );
     }
 
-    function updateTranchePrice(uint64 poolId, bytes16 trancheId, uint128 assetId, uint128 price, uint64 computedAt)
+    function updateSharePrice(uint64 poolId, bytes16 trancheId, uint128 assetId, uint128 price, uint64 computedAt)
         public
     {
         execute(

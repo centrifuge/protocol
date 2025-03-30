@@ -31,8 +31,8 @@ contract DepositTest is BaseTest {
 
         (address vault_, uint128 assetId) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
-        ITranche tranche = ITranche(address(vault.share()));
-        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
+        IShareToken tranche = IShareToken(address(vault.share()));
+        centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
 
         erc20.mint(self, amount);
 
@@ -172,7 +172,7 @@ contract DepositTest is BaseTest {
         (address vault_, uint128 assetId) =
             deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
 
         // invest
         uint256 investmentAmount = 100000000; // 100 * 10**6
@@ -212,7 +212,7 @@ contract DepositTest is BaseTest {
 
     //     //Deploy a pool
     //     ERC7540Vault vault = ERC7540Vault(deploySimpleVault());
-    //     ITranche tranche = ITranche(address(vault.share()));
+    //     IShareToken tranche = IShareToken(address(vault.share()));
 
     //     root.relyContract(address(tranche), self);
     //     tranche.mint(address(escrow), type(uint128).max); // mint buffer to the escrow. Mock funds from other
@@ -272,7 +272,7 @@ contract DepositTest is BaseTest {
 
     //     //Deploy a pool
     //     ERC7540Vault vault = ERC7540Vault(deploySimpleVault());
-    //     ITranche tranche = ITranche(address(vault.share()));
+    //     IShareToken tranche = IShareToken(address(vault.share()));
 
     //     root.relyContract(address(tranche), self);
     //     tranche.mint(address(escrow), type(uint128).max); // mint buffer to the escrow. Mock funds from other
@@ -322,9 +322,9 @@ contract DepositTest is BaseTest {
         (address vault_, uint128 assetId) = deploySimpleVault();
         address receiver = makeAddr("receiver");
         ERC7540Vault vault = ERC7540Vault(vault_);
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
 
-        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
 
         erc20.mint(self, amount);
 
@@ -374,9 +374,9 @@ contract DepositTest is BaseTest {
         (address vault_, uint128 assetId) = deploySimpleVault();
         address receiver = makeAddr("receiver");
         ERC7540Vault vault = ERC7540Vault(vault_);
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
 
-        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
 
         erc20.mint(self, amount);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max); // add user as member
@@ -432,7 +432,7 @@ contract DepositTest is BaseTest {
         (address vault_, uint128 assetId) =
             deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
 
         // invest
         uint256 investmentAmount = 100000000; // 100 * 10**6
@@ -466,7 +466,7 @@ contract DepositTest is BaseTest {
 
         // collect the tranche tokens
         vault.mint(firstTranchePayout + secondTranchePayout, self);
-        assertEq(ITranche(address(vault.share())).balanceOf(self), firstTranchePayout + secondTranchePayout);
+        assertEq(IShareToken(address(vault.share())).balanceOf(self), firstTranchePayout + secondTranchePayout);
 
         // redeem
         vault.requestRedeem(firstTranchePayout + secondTranchePayout, address(this), address(this));
@@ -498,8 +498,8 @@ contract DepositTest is BaseTest {
         (address vault_, uint128 assetId) =
             deployVault(poolId, 6, restrictionManager, "", "", trancheId, address(asset), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
-        ITranche tranche = ITranche(address(vault.share()));
-        centrifugeChain.updateTranchePrice(
+        IShareToken tranche = IShareToken(address(vault.share()));
+        centrifugeChain.updateSharePrice(
             poolId, trancheId, assetId, 1000000000000000000000000000, uint64(block.timestamp)
         );
 
@@ -574,7 +574,7 @@ contract DepositTest is BaseTest {
         ERC7540Vault vault = ERC7540Vault(vault_);
 
         // price = (100*10**18) /  (99 * 10**18) = 101.010101 * 10**18
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1010101010101010101, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(poolId, trancheId, assetId, 1010101010101010101, uint64(block.timestamp));
 
         // invest
         uint256 investmentAmount = 100000000; // 100 * 10**6
@@ -592,7 +592,7 @@ contract DepositTest is BaseTest {
         // 99 * 10**18 / 1.2 = 82500000000000000000
         uint128 shares = 82500000000000000000;
         centrifugeChain.isFulfilledDepositRequest(poolId, trancheId, bytes32(bytes20(self)), _assetId, assets, shares);
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1200000000000000000, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(poolId, trancheId, assetId, 1200000000000000000, uint64(block.timestamp));
 
         // assert deposit & mint values adjusted
         assertEq(vault.maxDeposit(self), assets);
@@ -616,7 +616,7 @@ contract DepositTest is BaseTest {
         ERC7540Vault vault = ERC7540Vault(vault_);
 
         // price = (100*10**18) /  (99 * 10**18) = 101.010101 * 10**18
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1010101010101010101, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(poolId, trancheId, assetId, 1010101010101010101, uint64(block.timestamp));
 
         // invest
         uint256 investmentAmount = 100000000000000000000; // 100 * 10**18
@@ -634,7 +634,7 @@ contract DepositTest is BaseTest {
         // 99 * 10**6 / 1.2 = 82500000
         uint128 shares = 82500000;
         centrifugeChain.isFulfilledDepositRequest(poolId, trancheId, bytes32(bytes20(self)), _assetId, assets, shares);
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1200000000000000000, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(poolId, trancheId, assetId, 1200000000000000000, uint64(block.timestamp));
 
         // assert deposit & mint values adjusted
         assertEq(vault.maxDeposit(self), assets);
@@ -653,7 +653,7 @@ contract DepositTest is BaseTest {
         ERC7540Vault vault = ERC7540Vault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, price, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(poolId, trancheId, assetId, price, uint64(block.timestamp));
         erc20.mint(self, amount);
         erc20.approve(vault_, amount);
         centrifugeChain.updateMember(poolId, trancheId, self, type(uint64).max);
@@ -704,7 +704,7 @@ contract DepositTest is BaseTest {
     function partialDeposit(uint64 poolId, bytes16 trancheId, ERC7540Vault vault, ERC20 asset) public {
         vm.assume(poolId >> 48 != THIS_CHAIN_ID);
 
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
 
         uint256 investmentAmount = 100000000; // 100 * 10**6
         centrifugeChain.updateMember(poolId, trancheId, self, type(uint64).max);
@@ -747,7 +747,7 @@ contract DepositTest is BaseTest {
 
         (address vault_, uint128 assetId) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
 
         assertEq(tranche.balanceOf(investor), 0);
 

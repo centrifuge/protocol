@@ -93,7 +93,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         bytes32 hook
     ) external auth {
         if (chainId == localCentrifugeId) {
-            poolManager.addTranche(poolId.raw(), scId.raw(), name, symbol, decimals, salt, address(bytes20(hook)));
+            poolManager.addShareClass(poolId.raw(), scId.raw(), name, symbol, decimals, salt, address(bytes20(hook)));
         } else {
             gateway.send(
                 chainId,
@@ -117,7 +117,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     {
         uint64 timestamp = block.timestamp.toUint64();
         if (chainId == localCentrifugeId) {
-            poolManager.updateTranchePrice(poolId.raw(), scId.raw(), assetId.raw(), sharePrice.raw(), timestamp);
+            poolManager.updateSharePrice(poolId.raw(), scId.raw(), assetId.raw(), sharePrice.raw(), timestamp);
         } else {
             gateway.send(
                 poolId.chainId(),

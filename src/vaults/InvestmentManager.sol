@@ -21,7 +21,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IInvestmentManager, InvestmentState} from "src/vaults/interfaces/IInvestmentManager.sol";
 import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
-import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
 
 /// @title  Investment Manager
@@ -43,7 +43,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
     IVaultMessageSender public sender;
     IPoolManager public poolManager;
 
-    mapping(uint64 poolId => mapping(bytes16 trancheId => mapping(uint128 assetId => address vault))) public vault;
+    mapping(uint64 poolId => mapping(bytes16 scId => mapping(uint128 assetId => address vault))) public vault;
 
     /// @inheritdoc IInvestmentManager
     mapping(address vault => mapping(address investor => InvestmentState)) public investments;
@@ -74,7 +74,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
 
     // --- IVaultManager ---
     /// @inheritdoc IVaultManager
-    function addVault(uint64 poolId, bytes16 trancheId, address vaultAddr, address asset_, uint128 assetId)
+    function addVault(uint64 poolId, bytes16 scId, address vaultAddr, address asset_, uint128 assetId)
         public
         override
         auth
@@ -83,17 +83,17 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         address token = vault_.share();
 
         require(vault_.asset() == asset_, "InvestmentManager/asset-mismatch");
-        require(vault[poolId][trancheId][assetId] == address(0), "InvestmentManager/vault-already-exists");
+        require(vault[poolId][scId][assetId] == address(0), "InvestmentManager/vault-already-exists");
 
-        vault[poolId][trancheId][assetId] = vaultAddr;
+        vault[poolId][scId][assetId] = vaultAddr;
 
         IAuth(token).rely(vaultAddr);
-        ITranche(token).updateVault(vault_.asset(), vaultAddr);
+        IShareToken(token).updateVault(vault_.asset(), vaultAddr);
         rely(vaultAddr);
     }
 
     /// @inheritdoc IVaultManager
-    function removeVault(uint64 poolId, bytes16 trancheId, address vaultAddr, address asset_, uint128 assetId)
+    function removeVault(uint64 poolId, bytes16 scId, address vaultAddr, address asset_, uint128 assetId)
         public
         override
         auth
@@ -102,12 +102,12 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         address token = vault_.share();
 
         require(vault_.asset() == asset_, "InvestmentManager/asset-mismatch");
-        require(vault[poolId][trancheId][assetId] != address(0), "InvestmentManager/vault-does-not-exist");
+        require(vault[poolId][scId][assetId] != address(0), "InvestmentManager/vault-does-not-exist");
 
-        delete vault[poolId][trancheId][assetId];
+        delete vault[poolId][scId][assetId];
 
         IAuth(token).deny(vaultAddr);
-        ITranche(token).updateVault(vault_.asset(), address(0));
+        IShareToken(token).updateVault(vault_.asset(), address(0));
         deny(vaultAddr);
     }
 
@@ -237,13 +237,13 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
     /// @inheritdoc IInvestmentManagerGatewayHandler
     function fulfillDepositRequest(
         uint64 poolId,
-        bytes16 trancheId,
+        bytes16 scId,
         address user,
         uint128 assetId,
         uint128 assets,
         uint128 shares
     ) public auth {
-        address vault_ = vault[poolId][trancheId][assetId];
+        address vault_ = vault[poolId][scId][assetId];
 
         InvestmentState storage state = investments[vault_][user];
         require(state.pendingDepositRequest != 0, "InvestmentManager/no-pending-deposit-request");
@@ -254,7 +254,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         if (state.pendingDepositRequest == 0) delete state.pendingCancelDepositRequest;
 
         // Mint to escrow. Recipient can claim by calling deposit / mint
-        ITranche tranche = ITranche(IERC7540Vault(vault_).share());
+        IShareToken tranche = IShareToken(IERC7540Vault(vault_).share());
         tranche.mint(address(escrow), shares);
 
         IERC7540Vault(vault_).onDepositClaimable(user, assets, shares);
@@ -263,13 +263,13 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
     /// @inheritdoc IInvestmentManagerGatewayHandler
     function fulfillRedeemRequest(
         uint64 poolId,
-        bytes16 trancheId,
+        bytes16 scId,
         address user,
         uint128 assetId,
         uint128 assets,
         uint128 shares
     ) public auth {
-        address vault_ = vault[poolId][trancheId][assetId];
+        address vault_ = vault[poolId][scId][assetId];
 
         InvestmentState storage state = investments[vault_][user];
         require(state.pendingRedeemRequest != 0, "InvestmentManager/no-pending-redeem-request");
@@ -283,7 +283,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         if (state.pendingRedeemRequest == 0) delete state.pendingCancelRedeemRequest;
 
         // Burn redeemed tranche tokens from escrow
-        ITranche tranche = ITranche(IERC7540Vault(vault_).share());
+        IShareToken tranche = IShareToken(IERC7540Vault(vault_).share());
         tranche.burn(address(escrow), shares);
 
         IERC7540Vault(vault_).onRedeemClaimable(user, assets, shares);
@@ -292,13 +292,13 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
     /// @inheritdoc IInvestmentManagerGatewayHandler
     function fulfillCancelDepositRequest(
         uint64 poolId,
-        bytes16 trancheId,
+        bytes16 scId,
         address user,
         uint128 assetId,
         uint128 assets,
         uint128 fulfillment
     ) public auth {
-        address vault_ = vault[poolId][trancheId][assetId];
+        address vault_ = vault[poolId][scId][assetId];
 
         InvestmentState storage state = investments[vault_][user];
         require(state.pendingCancelDepositRequest == true, "InvestmentManager/no-pending-cancel-deposit-request");
@@ -313,11 +313,11 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
     }
 
     /// @inheritdoc IInvestmentManagerGatewayHandler
-    function fulfillCancelRedeemRequest(uint64 poolId, bytes16 trancheId, address user, uint128 assetId, uint128 shares)
+    function fulfillCancelRedeemRequest(uint64 poolId, bytes16 scId, address user, uint128 assetId, uint128 shares)
         public
         auth
     {
-        address vault_ = vault[poolId][trancheId][assetId];
+        address vault_ = vault[poolId][scId][assetId];
         InvestmentState storage state = investments[vault_][user];
         require(state.pendingCancelRedeemRequest == true, "InvestmentManager/no-pending-cancel-redeem-request");
 
@@ -330,12 +330,12 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
     }
 
     /// @inheritdoc IInvestmentManagerGatewayHandler
-    function triggerRedeemRequest(uint64 poolId, bytes16 trancheId, address user, uint128 assetId, uint128 shares)
+    function triggerRedeemRequest(uint64 poolId, bytes16 scId, address user, uint128 assetId, uint128 shares)
         public
         auth
     {
         require(shares != 0, "InvestmentManager/tranche-token-amount-is-zero");
-        address vault_ = vault[poolId][trancheId][assetId];
+        address vault_ = vault[poolId][scId][assetId];
 
         // If there's any unclaimed deposits, claim those first
         InvestmentState storage state = investments[vault_][user];
@@ -358,7 +358,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         // from user to escrow (lock tranche tokens in escrow)
         if (tokensToTransfer != 0) {
             require(
-                ITranche(address(IERC7540Vault(vault_).share())).authTransferFrom(
+                IShareToken(address(IERC7540Vault(vault_).share())).authTransferFrom(
                     user, user, address(escrow), tokensToTransfer
                 ),
                 "InvestmentManager/transfer-failed"
@@ -366,7 +366,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
         }
 
         (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
-        emit TriggerRedeemRequest(poolId, trancheId, user, asset, tokenId, shares);
+        emit TriggerRedeemRequest(poolId, scId, user, asset, tokenId, shares);
         IERC7540Vault(vault_).onRedeemRequest(user, user, shares);
     }
 
@@ -375,7 +375,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
     function convertToShares(address vaultAddr, uint256 _assets) public view returns (uint256 shares) {
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-        (uint128 latestPrice,) = poolManager.tranchePrice(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
+        (uint128 latestPrice,) = poolManager.sharePrice(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
         shares = uint256(_calculateShares(_assets.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down));
     }
 
@@ -383,7 +383,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
     function convertToAssets(address vaultAddr, uint256 _shares) public view returns (uint256 assets) {
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-        (uint128 latestPrice,) = poolManager.tranchePrice(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
+        (uint128 latestPrice,) = poolManager.sharePrice(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
         assets = uint256(_calculateAssets(_shares.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down));
     }
 
@@ -451,7 +451,7 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
     function priceLastUpdated(address vaultAddr) public view returns (uint64 lastUpdated) {
         IERC7540Vault vault_ = IERC7540Vault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-        (, lastUpdated) = poolManager.tranchePrice(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
+        (, lastUpdated) = poolManager.sharePrice(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
     }
 
     // --- Vault claim functions ---
@@ -681,12 +681,12 @@ contract InvestmentManager is Auth, IInvestmentManager, IInvestmentManagerGatewa
     /// @dev    Checks transfer restrictions for the vault shares. Sender (from) and receiver (to) have to both pass
     ///         the restrictions for a successful share transfer.
     function _canTransfer(address vaultAddr, address from, address to, uint256 value) internal view returns (bool) {
-        ITranche share = ITranche(IERC7540Vault(vaultAddr).share());
+        IShareToken share = IShareToken(IERC7540Vault(vaultAddr).share());
         return share.checkTransferRestriction(from, to, value);
     }
 
     /// @inheritdoc IInvestmentManager
-    function vaultByAssetId(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (address) {
-        return vault[poolId][trancheId][assetId];
+    function vaultByAssetId(uint64 poolId, bytes16 scId, uint128 assetId) public view returns (address) {
+        return vault[poolId][scId][assetId];
     }
 }

@@ -302,6 +302,7 @@ interface IERC7540Vault is
     function poolId() external view returns (uint64);
 
     /// @notice Identifier of the tranche of the Centrifuge pool
+    /// @dev    Equivalent to the share class ID (`scId`)
     function trancheId() external view returns (bytes16);
 
     /// @notice Set msg.sender as operator of owner, to `approved` status

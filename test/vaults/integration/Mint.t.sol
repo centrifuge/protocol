@@ -11,7 +11,7 @@ contract MintTest is BaseTest {
         (address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
 
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken tranche = IShareToken(address(vault.share()));
         root.denyContract(address(tranche), self);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);

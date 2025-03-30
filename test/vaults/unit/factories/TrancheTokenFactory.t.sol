@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
-import {Tranche} from "src/vaults/token/Tranche.sol";
+import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
+import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 import {Root} from "src/common/Root.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
 import {BaseTest} from "test/vaults/BaseTest.sol";
@@ -26,7 +26,7 @@ contract FactoryTest is Test {
         root = address(new Root(48 hours, address(this)));
     }
 
-    function testTrancheFactoryIsDeterministicAcrossChains(uint64 poolId, bytes16 trancheId) public {
+    function testTokenFactoryIsDeterministicAcrossChains(uint64 poolId, bytes16 trancheId) public {
         if (vm.envOr("FORK_TESTS", false)) {
             vm.setEnv("DEPLOYMENT_SALT", "0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563");
             vm.selectFork(mainnetFork);
@@ -52,7 +52,7 @@ contract FactoryTest is Test {
         }
     }
 
-    function testTrancheFactoryShouldBeDeterministic(bytes32 salt) public {
+    function testTokenFactoryShouldBeDeterministic(bytes32 salt) public {
         address predictedAddress = address(
             uint160(
                 uint256(
@@ -63,7 +63,7 @@ contract FactoryTest is Test {
                             salt,
                             keccak256(
                                 abi.encodePacked(
-                                    type(TrancheFactory).creationCode, abi.encode(root), abi.encode(address(this))
+                                    type(TokenFactory).creationCode, abi.encode(root), abi.encode(address(this))
                                 )
                             )
                         )
@@ -71,8 +71,8 @@ contract FactoryTest is Test {
                 )
             )
         );
-        TrancheFactory trancheFactory = new TrancheFactory{salt: salt}(root, address(this));
-        assertEq(address(trancheFactory), predictedAddress);
+        TokenFactory tokenFactory = new TokenFactory{salt: salt}(root, address(this));
+        assertEq(address(tokenFactory), predictedAddress);
     }
 
     function testTrancheShouldBeDeterministic(
@@ -85,7 +85,7 @@ contract FactoryTest is Test {
         uint8 decimals
     ) public {
         decimals = uint8(bound(decimals, 0, 18));
-        TrancheFactory trancheFactory = new TrancheFactory{salt: factorySalt}(root, address(this));
+        TokenFactory tokenFactory = new TokenFactory{salt: factorySalt}(root, address(this));
 
         address predictedAddress = address(
             uint160(
@@ -93,23 +93,23 @@ contract FactoryTest is Test {
                     keccak256(
                         abi.encodePacked(
                             bytes1(0xff),
-                            address(trancheFactory),
+                            address(tokenFactory),
                             tokenSalt,
-                            keccak256(abi.encodePacked(type(Tranche).creationCode, abi.encode(decimals)))
+                            keccak256(abi.encodePacked(type(CentrifugeToken).creationCode, abi.encode(decimals)))
                         )
                     )
                 )
             )
         );
 
-        address[] memory trancheWards = new address[](2);
-        trancheWards[0] = address(investmentManager);
-        trancheWards[1] = address(poolManager);
+        address[] memory tokenWards = new address[](2);
+        tokenWards[0] = address(investmentManager);
+        tokenWards[1] = address(poolManager);
 
-        address token = trancheFactory.newTranche(name, symbol, decimals, tokenSalt, trancheWards);
+        address token = tokenFactory.newToken(name, symbol, decimals, tokenSalt, tokenWards);
 
         assertEq(address(token), predictedAddress);
-        assertEq(trancheFactory.getAddress(decimals, tokenSalt), address(token));
+        assertEq(tokenFactory.getAddress(decimals, tokenSalt), address(token));
     }
 
     function testDeployingDeterministicAddressTwiceReverts(
@@ -131,7 +131,7 @@ contract FactoryTest is Test {
                             salt,
                             keccak256(
                                 abi.encodePacked(
-                                    type(TrancheFactory).creationCode, abi.encode(root), abi.encode(address(this))
+                                    type(TokenFactory).creationCode, abi.encode(root), abi.encode(address(this))
                                 )
                             )
                         )
@@ -140,16 +140,16 @@ contract FactoryTest is Test {
             )
         );
 
-        address[] memory trancheWards = new address[](2);
-        trancheWards[0] = address(investmentManager);
-        trancheWards[1] = address(poolManager);
+        address[] memory tokenWards = new address[](2);
+        tokenWards[0] = address(investmentManager);
+        tokenWards[1] = address(poolManager);
 
-        TrancheFactory trancheFactory = new TrancheFactory{salt: salt}(root, address(this));
-        assertEq(address(trancheFactory), predictedAddress);
+        TokenFactory tokenFactory = new TokenFactory{salt: salt}(root, address(this));
+        assertEq(address(tokenFactory), predictedAddress);
 
-        trancheFactory.newTranche(name, symbol, decimals, bytes32(0), trancheWards);
+        tokenFactory.newToken(name, symbol, decimals, bytes32(0), tokenWards);
         vm.expectRevert();
-        trancheFactory.newTranche(name, symbol, decimals, bytes32(0), trancheWards);
+        tokenFactory.newToken(name, symbol, decimals, bytes32(0), tokenWards);
     }
 
     function _stringToBytes32(string memory source) internal pure returns (bytes32 result) {
