@@ -26,11 +26,9 @@ abstract contract PoolManagerFunctions is BaseTargetFunctions, Properties {
         incomingTransfers[address(trancheToken)] += amount;
     }
 
-    function poolManager_transferTrancheTokensToEVM(
-        uint16 destinationChainId,
-        bytes32 destinationAddress,
-        uint128 amount
-    ) public {
+    function poolManager_transferSharesToEVM(uint16 destinationChainId, bytes32 destinationAddress, uint128 amount)
+        public
+    {
         uint256 balB4 = trancheToken.balanceOf(actor);
 
         // Clamp
@@ -41,7 +39,7 @@ abstract contract PoolManagerFunctions is BaseTargetFunctions, Properties {
         // Exact approval
         trancheToken.approve(address(poolManager), amount);
 
-        poolManager.transferTrancheTokens(poolId, trancheId, destinationChainId, destinationAddress, amount);
+        poolManager.transferShares(poolId, trancheId, destinationChainId, destinationAddress, amount);
         // TF-11 burns tranche tokens from user, not tracked in escrow
 
         // Track minting for Global-3

@@ -147,19 +147,19 @@ interface IVaultRouter is IMulticall, IRecoverable {
     function claimCancelRedeemRequest(address vault, address receiver, address controller) external payable;
 
     // --- Transfer ---
-    /// @notice Check `IPoolManager.transferTrancheTokens`.
+    /// @notice Check `IPoolManager.transferShares`.
     /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
     ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
     ///
     /// @param  vault The vault for the corresponding tranche token
-    /// @param  chainId Check `IPoolManager.transferTrancheTokens.destinationId`
-    /// @param  recipient Check `IPoolManager.transferTrancheTokens.recipient`
-    /// @param  amount Check `IPoolManager.transferTrancheTokens.amount`
-    function transferTrancheTokens(address vault, uint16 chainId, bytes32 recipient, uint128 amount) external payable;
+    /// @param  chainId Check `IPoolManager.transferShares.destinationId`
+    /// @param  recipient Check `IPoolManager.transferShares.recipient`
+    /// @param  amount Check `IPoolManager.transferShares.amount`
+    function transferShares(address vault, uint16 chainId, bytes32 recipient, uint128 amount) external payable;
 
     /// @notice This is a more friendly version where the recipient is and EVM address
     /// @dev    The recipient address is padded to 32 bytes internally
-    function transferTrancheTokens(address vault, uint16 chainId, address recipient, uint128 amount) external payable;
+    function transferShares(address vault, uint16 chainId, address recipient, uint128 amount) external payable;
 
     // --- ERC20 permit ---
     /// @notice Check IERC20.permit

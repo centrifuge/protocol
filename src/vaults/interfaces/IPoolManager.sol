@@ -147,13 +147,8 @@ interface IPoolManager is IRecoverable {
     /// @param  destinationId The destination chain id
     /// @param  recipient A bytes32 representation of the recipient address
     /// @param  amount The amount of tokens to transfer
-    function transferTrancheTokens(
-        uint64 poolId,
-        bytes16 trancheId,
-        uint16 destinationId,
-        bytes32 recipient,
-        uint128 amount
-    ) external;
+    function transferShares(uint64 poolId, bytes16 trancheId, uint16 destinationId, bytes32 recipient, uint128 amount)
+        external;
 
     /// @notice     Registers an ERC-20 or ERC-6909 asset in another chain.
     /// @dev        `decimals()` MUST return a `uint8` value between 2 and 18.

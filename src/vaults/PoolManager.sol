@@ -314,8 +314,8 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     // --- Public functions ---
     /// @inheritdoc IPoolManager
     function deployVault(uint64 poolId, bytes16 scId, uint128 assetId, address factory) public auth returns (address) {
-        ShareClassDetails storage tranche_ = pools[poolId].shareClasses[scId];
-        require(tranche_.token != address(0), "PoolManager/token-does-not-exist");
+        ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
+        require(shareClass.token != address(0), "PoolManager/token-does-not-exist");
         require(vaultFactory[factory], "PoolManager/invalid-factory");
 
         // Rely investment manager on vault so it can mint tokens
@@ -324,7 +324,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         // Deploy vault
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
         address vault = IVaultFactory(factory).newVault(
-            poolId, scId, assetIdKey.asset, assetIdKey.tokenId, tranche_.token, address(escrow), vaultWards
+            poolId, scId, assetIdKey.asset, assetIdKey.tokenId, shareClass.token, address(escrow), vaultWards
         );
 
         // Check whether asset is an ERC20 token wrapper
@@ -335,7 +335,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         _vaultDetails[vault] = VaultDetails(assetId, assetIdKey.asset, assetIdKey.tokenId, isWrappedERC20, false);
 
         // NOTE - Reverting the three actions below is not easy. We SHOULD do that if we phase-out a manager
-        _approveManagers(vault, tranche_.token, assetIdKey.asset, assetIdKey.tokenId);
+        _approveManagers(vault, shareClass.token, assetIdKey.asset, assetIdKey.tokenId);
 
         emit DeployVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, factory, vault);
         return vault;
