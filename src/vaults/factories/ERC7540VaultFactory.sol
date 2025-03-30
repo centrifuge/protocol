@@ -19,14 +19,14 @@ contract ERC7540VaultFactory is Auth, IVaultFactory {
     /// @inheritdoc IVaultFactory
     function newVault(
         uint64 poolId,
-        bytes16 trancheId,
+        bytes16 scId,
         address asset,
         uint256 tokenId,
-        address tranche,
+        address token,
         address, /* escrow */
         address[] calldata wards_
     ) public auth returns (address) {
-        ERC7540Vault vault = new ERC7540Vault(poolId, trancheId, asset, tokenId, tranche, root, investmentManager);
+        ERC7540Vault vault = new ERC7540Vault(poolId, scId, asset, tokenId, token, root, investmentManager);
 
         vault.rely(root);
         vault.rely(investmentManager);

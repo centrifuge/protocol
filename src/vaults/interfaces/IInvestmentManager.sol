@@ -34,7 +34,7 @@ interface IInvestmentManager is IRecoverable, IVaultManager {
     event File(bytes32 indexed what, address data);
     event TriggerRedeemRequest(
         uint64 indexed poolId,
-        bytes16 indexed trancheId,
+        bytes16 indexed scId,
         address user,
         address indexed asset,
         uint256 tokenId,
@@ -227,9 +227,6 @@ interface IInvestmentManager is IRecoverable, IVaultManager {
         external
         returns (uint256 shares);
 
-    /// @notice Returns the address of the vault for a given pool, tranche and asset
-    function vaultByAssetId(uint64 poolId, bytes16 trancheId, uint128 assetId)
-        external
-        view
-        returns (address vaultAddr);
+    /// @notice Returns the address of the vault for a given pool, share class and asset
+    function vaultByAssetId(uint64 poolId, bytes16 scId, uint128 assetId) external view returns (address vaultAddr);
 }

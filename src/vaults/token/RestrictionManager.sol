@@ -35,7 +35,7 @@ contract RestrictionManager is Auth, IRestrictionManager, IHook {
         root = IRoot(root_);
     }
 
-    // --- Callback from tranche token ---
+    // --- Callback from share token ---
     /// @inheritdoc IHook
     function onERC20Transfer(address from, address to, uint256 value, HookData calldata hookData)
         external

@@ -36,7 +36,7 @@ import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 
 /// @title  Pool Manager
-/// @notice This contract manages which pools & tranches exist,
+/// @notice This contract manages which pools & share classes exist,
 ///         as well as managing allowed pool currencies, and incoming and outgoing transfers.
 contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGatewayHandler {
     using MessageLib for *;
@@ -102,7 +102,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
     // --- Outgoing message handling ---
     /// @inheritdoc IPoolManager
-    function transferTrancheTokens(uint64 poolId, bytes16 scId, uint16 destinationId, bytes32 recipient, uint128 amount)
+    function transferShares(uint64 poolId, bytes16 scId, uint16 destinationId, bytes32 recipient, uint128 amount)
         external
         auth
     {
@@ -309,8 +309,8 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     // --- Public functions ---
     /// @inheritdoc IPoolManager
     function deployVault(uint64 poolId, bytes16 scId, uint128 assetId, address factory) public auth returns (address) {
-        ShareClassDetails storage tranche_ = pools[poolId].shareClasses[scId];
-        require(tranche_.token != address(0), "PoolManager/token-does-not-exist");
+        ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
+        require(shareClass.token != address(0), "PoolManager/token-does-not-exist");
         require(vaultFactory[factory], "PoolManager/invalid-factory");
 
         // Rely investment manager on vault so it can mint tokens
@@ -319,7 +319,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         // Deploy vault
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
         address vault = IVaultFactory(factory).newVault(
-            poolId, scId, assetIdKey.asset, assetIdKey.tokenId, tranche_.token, address(escrow), vaultWards
+            poolId, scId, assetIdKey.asset, assetIdKey.tokenId, shareClass.token, address(escrow), vaultWards
         );
 
         // Check whether asset is an ERC20 token wrapper
@@ -331,8 +331,8 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
         address manager = IBaseVault(vault).manager();
         // NOTE - Reverting the three actions below is not easy. We SHOULD do that if we phase-out a manager
-        IAuth(tranche_.token).rely(manager);
-        escrow.approveMax(tranche_.token, manager);
+        IAuth(shareClass.token).rely(manager);
+        escrow.approveMax(shareClass.token, manager);
         escrow.approveMax(assetIdKey.asset, assetIdKey.tokenId, manager);
 
         emit DeployVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, factory, vault);
