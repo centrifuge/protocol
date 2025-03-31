@@ -28,17 +28,20 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
     }
 
     // === REQUEST === //
-    function vault_requestDeposit(uint256 assets) public {
+    function vault_requestDeposit(uint256 assets, uint256 toEntropy) public updateGhosts {
         assets = between(assets, 0, _getTokenAndBalanceForVault());
 
         token.approve(address(vault), assets);
-        address to = _getActor(); // NOTE: We transfer to self for now
+        address to = _getRandomActor(toEntropy); // transfer to an actor different from current
 
         // B4 Balances
         uint256 balanceB4 = token.balanceOf(_getActor());
         uint256 balanceOfEscrowB4 = token.balanceOf(address(escrow));
 
         bool hasReverted;
+
+        // NOTE: external calls above so need to prank directly here
+        vm.prank(_getActor());
         try vault.requestDeposit(assets, to, _getActor()) {
             // TF-1
             sumOfDepositRequests[address(token)] += assets;
@@ -49,7 +52,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
         }
 
         // If not member
-        (bool isMember,) = restrictionManager.isMember(address(trancheToken), _getActor());
+        (bool isMember,) = restrictionManager.isMember(address(trancheToken), to);
         if (!isMember) {
             t(hasReverted, "LP-1 Must Revert");
         }
@@ -85,8 +88,8 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
         }
     }
 
-    function vault_requestRedeem(uint256 shares) public {
-        address to = _getActor(); // TODO: donation / changes
+    function vault_requestRedeem(uint256 shares, uint256 toEntropy) public updateGhosts {
+        address to = _getRandomActor(toEntropy); // TODO: donation / changes
 
         // B4 Balances
         uint256 balanceB4 = trancheToken.balanceOf(_getActor());
@@ -95,6 +98,8 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
         trancheToken.approve(address(vault), shares);
 
         bool hasReverted;
+        // NOTE: external calls above so need to prank directly here
+        vm.prank(_getActor());
         try vault.requestRedeem(shares, to, _getActor()) {
             sumOfRedeemRequests[address(trancheToken)] += shares; // E-2
             requestRedeemShares[_getActor()][address(trancheToken)] += shares;
@@ -134,33 +139,35 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
 
     // === CANCEL === //
 
-    function vault_cancelDepositRequest() public {
+    function vault_cancelDepositRequest() public updateGhosts asActor {
         vault.cancelDepositRequest(REQUEST_ID, _getActor());
     }
 
-    function vault_cancelRedeemRequest() public {
+    function vault_cancelRedeemRequest() public updateGhosts asActor {
         vault.cancelRedeemRequest(REQUEST_ID, _getActor());
     }
 
-    function vault_claimCancelDepositRequest() public {
-        address to = _getActor(); // NOTE: We transfer to self for now
+    function vault_claimCancelDepositRequest(uint256 toEntropy) public updateGhosts asActor {
+        address to = _getRandomActor(toEntropy);
 
         uint256 assets = vault.claimCancelDepositRequest(REQUEST_ID, to, _getActor());
         sumOfClaimedDepositCancelations[address(token)] += assets;
     }
 
-    function vault_claimCancelRedeemRequest() public {
-        address to = _getActor(); // NOTE: We transfer to self for now
+    function vault_claimCancelRedeemRequest(uint256 toEntropy) public updateGhosts asActor {
+        address to = _getRandomActor(toEntropy);
 
         uint256 shares = vault.claimCancelRedeemRequest(REQUEST_ID, to, _getActor());
         sumOfClaimedRedeemCancelations[address(trancheToken)] += shares;
     }
 
-    function vault_deposit(uint256 assets) public {
+    function vault_deposit(uint256 assets) public updateGhosts {
         // Bal b4
         uint256 trancheUserB4 = trancheToken.balanceOf(_getActor());
         uint256 trancheEscrowB4 = trancheToken.balanceOf(address(escrow));
 
+        // NOTE: external calls above so need to prank directly here
+        vm.prank(_getActor());
         uint256 shares = vault.deposit(assets, address(this));
 
         // Processed Deposit | E-2 | Global-1
@@ -195,13 +202,15 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
 
     // TODO: See how these go
     // TODO: Receiver -> Not this
-    function vault_mint(uint256 shares) public {
-        address to = _getActor(); // TODO: donation / changes
+    function vault_mint(uint256 shares, uint256 toEntropy) public updateGhosts {
+        address to = _getRandomActor(toEntropy);
 
         // Bal b4
         uint256 trancheUserB4 = trancheToken.balanceOf(_getActor());
         uint256 trancheEscrowB4 = trancheToken.balanceOf(address(escrow));
 
+        // NOTE: external calls above so need to prank directly here
+        vm.prank(_getActor());
         vault.mint(shares, to);
 
         // Processed Deposit | E-2
@@ -229,13 +238,15 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
     }
 
     // TODO: Params
-    function vault_redeem(uint256 shares) public {
-        address to = _getActor(); // TODO: donation / changes
+    function vault_redeem(uint256 shares, uint256 toEntropy) public updateGhosts {
+        address to = _getRandomActor(toEntropy);
 
         // Bal b4
         uint256 tokenUserB4 = token.balanceOf(_getActor());
         uint256 tokenEscrowB4 = token.balanceOf(address(escrow));
 
+        // NOTE: external calls above so need to prank directly here
+        vm.prank(_getActor());
         uint256 assets = vault.redeem(shares, _getActor(), to);
 
         // E-1
@@ -267,13 +278,15 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
     }
 
     // TODO: Params
-    function vault_withdraw(uint256 assets) public {
-        address to = _getActor(); // TODO: donation / changes
+    function vault_withdraw(uint256 assets, uint256 toEntropy) public updateGhosts {
+        address to = _getRandomActor(toEntropy);
 
         // Bal b4
         uint256 tokenUserB4 = token.balanceOf(_getActor());
         uint256 tokenEscrowB4 = token.balanceOf(address(escrow));
 
+        // NOTE: external calls above so need to prank directly here
+        vm.prank(_getActor());
         vault.withdraw(assets, _getActor(), to);
 
         // E-1

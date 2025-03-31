@@ -47,8 +47,6 @@ abstract contract SharedStorage {
     // NOTE: TODO
     // ** INCOMPLETE - Deployment, Setup and Cycling of Assets, Tranches, Pools and Vaults **/
     // Step 1
-    // Make Currency
-    ERC20[] allTokens;
     /// TODO: Consider dropping
     mapping(address => uint128) tokenToCurrencyId;
     mapping(uint128 => address) currencyIdToToken;

@@ -39,7 +39,7 @@ abstract contract TargetFunctions is
      */
     function invariant_doesTokenGetDeployed() public view returns (bool) {
         if (RECON_TOGGLE_CANARY_TESTS) {
-            return allTokens.length < 10;
+            return _getAssets().length < 10;
         }
 
         return true;

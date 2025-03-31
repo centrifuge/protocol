@@ -16,7 +16,7 @@ abstract contract BeforeAfter is Ghosts {
     BeforeAfterVars internal _before;
     BeforeAfterVars internal _after;
 
-    modifier updateBeforeAfter() {
+    modifier updateGhosts() {
         __before();
         _;
         __after();

@@ -20,6 +20,7 @@ abstract contract TrancheTokenFunctions is BaseTargetFunctions, Properties {
 
         bool hasReverted;
 
+        vm.prank(_getActor());
         try trancheToken.transfer(to, value) {
             // NOTE: We're not checking for specifics!
         } catch {
@@ -43,17 +44,20 @@ abstract contract TrancheTokenFunctions is BaseTargetFunctions, Properties {
     }
 
     // NOTE: We need this for transferFrom to work
-    function trancheToken_approve(address spender, uint256 value) public {
+    function trancheToken_approve(address spender, uint256 value) public asActor {
         trancheToken.approve(spender, value);
     }
 
     // Check
-    function trancheToken_transferFrom(address from, address to, uint256 value) public {
+    function trancheToken_transferFrom(address to, uint256 value) public {
+        address from = _getActor();
         require(_canDonate(to), "never donate to escrow");
 
         value = between(value, 0, trancheToken.balanceOf(from));
 
         bool hasReverted;
+
+        vm.prank(from);
         try trancheToken.transferFrom(from, to, value) {
             // NOTE: We're not checking for specifics!
         } catch {
@@ -76,11 +80,12 @@ abstract contract TrancheTokenFunctions is BaseTargetFunctions, Properties {
         }
     }
 
-    function trancheToken_mint(address to, uint256 value) public {
+    function trancheToken_mint(address to, uint256 value) public notGovFuzzing {
         require(_canDonate(to), "never donate to escrow");
 
         bool hasReverted;
 
+        vm.prank(_getActor());
         try trancheToken.mint(to, value) {
             trancheMints[address(trancheToken)] += value;
         } catch {

@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import {BaseSetup} from "@chimera/BaseSetup.sol";
 import { vm } from "@chimera/Hevm.sol";
 import {ActorManager} from "@recon/ActorManager.sol";
+import {AssetManager} from "@recon/AssetManager.sol";
 import {console2} from "forge-std/console2.sol";
 
 import {Escrow} from "src/vaults/Escrow.sol";
@@ -24,7 +25,7 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 
 // Storage
 import {SharedStorage} from "./SharedStorage.sol";
-abstract contract Setup is BaseSetup, SharedStorage, ActorManager {
+abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager {
     // Dependencies
     ERC7540VaultFactory vaultFactory;
     TrancheFactory trancheFactory;

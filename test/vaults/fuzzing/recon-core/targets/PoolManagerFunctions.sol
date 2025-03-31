@@ -18,8 +18,10 @@ abstract contract PoolManagerFunctions is BaseTargetFunctions, Properties {
     // TODO: Clamp / Target specifics
     // TODO: Actors / Randomness
     // TODO: Overflow stuff
-    function poolManager_handleTransferTrancheTokens(uint128 amount) public {
-        poolManager.handleTransferTrancheTokens(poolId, trancheId, _getActor(), amount);
+    function poolManager_handleTransferTrancheTokens(uint128 amount, uint256 investorEntropy) public updateGhosts asActor {
+        address investor = _getRandomActor(investorEntropy);
+        poolManager.handleTransferTrancheTokens(poolId, trancheId, investor, amount);
+
         // TF-12 mint tranche tokens from user, not tracked in escrow
 
         // Track minting for Global-3
@@ -30,7 +32,7 @@ abstract contract PoolManagerFunctions is BaseTargetFunctions, Properties {
         uint32 destinationChainId,
         bytes32 destinationAddress,
         uint128 amount
-    ) public {
+    ) public updateGhosts asActor {
         uint256 balB4 = trancheToken.balanceOf(_getActor());
 
         // Clamp
