@@ -3,10 +3,9 @@ pragma solidity ^0.8.0;
 
 import {BaseSetup} from "@chimera/BaseSetup.sol";
 import {Asserts} from "@chimera/Asserts.sol";
+import { vm } from "@chimera/Hevm.sol";
 
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import "src/common/Gateway.sol";
-
+import {Gateway} from "src/common/Gateway.sol";
 import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
 
 // What happens if we add more adapters later?
@@ -23,6 +22,8 @@ import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
  * 1) Understand better
  *   2) Increase coverage
  */
+
+// TODO: This needs to be reworked for the new Gateway
 abstract contract Setup is BaseSetup, Asserts {
     /// TODO: Consider shared storage
     Gateway routerAggregator;
@@ -32,7 +33,7 @@ abstract contract Setup is BaseSetup, Asserts {
 
     uint256 RECON_ADAPTERS = 2;
 
-    IAdapter[] adapters;
+    address[] adapters;
 
     // todo: create some sort of a function that is usable
     bytes[] messages;
@@ -58,13 +59,29 @@ abstract contract Setup is BaseSetup, Asserts {
     }
 
     function setup() internal virtual override {
-        routerAggregator = new Gateway(IRoot(address(0)), IGasService(address(0)));
+        // routerAggregator = new Gateway(address(0), address(0));
 
-        // Given config, add adapters
-        for (uint256 i = 0; i < RECON_ADAPTERS; i++) {
-            adapters.push(new MockAdapter(routerAggregator));
-        }
+        // // Given config, add adapters
+        // for (uint256 i = 0; i < RECON_ADAPTERS; i++) {
+        //     adapters.push(address(new MockAdapter(address(routerAggregator))));
+        // }
 
-        routerAggregator.file("adapters", adapters);
+        // routerAggregator.file("adapters", adapters);
+    }
+
+    function setupFork() internal {
+        // These will be dynamically replaced by Gov Fuzzing
+        // vm.roll(20770509);
+        // vm.warp(1726578263);    
+
+        // // TODO: Replace with forked contracts
+        // // 1. Gateway
+        // routerAggregator = Gateway(payable(address(0x10000)));
+
+        // // 2. MockAdapters
+        // address adapter1 = address(0x20000);
+        // address adapter2 = address(0x30000);
+        // adapters.push(adapter1);
+        // adapters.push(adapter2);
     }
 }

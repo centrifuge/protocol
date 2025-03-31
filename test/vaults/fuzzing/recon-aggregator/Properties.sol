@@ -7,12 +7,10 @@ import {ArrayLib} from "src/misc/libraries/ArrayLib.sol";
 abstract contract Properties is Setup {
     using ArrayLib for uint16[8];
 
-    function invariant_noMessageReplay() public view returns (bool) {
+    function invariant_noMessageReplay() public {
         for (uint256 i = 0; i < messages.length; i++) {
             bytes32 message = keccak256(messages[i]);
-            if (messageReceivedCount[message] > messageSentCount[message] + messageRecoveredCount[message]) {
-                return false;
-            }
+            lte(messageReceivedCount[message], messageSentCount[message] + messageRecoveredCount[message], "messageReceivedCount > messageSentCount + messageRecoveredCount");
 
             // 1 > 0
             if (RECON_ADAPTERS > 1) {
@@ -21,33 +19,22 @@ abstract contract Properties is Setup {
 
                 // 1 router => 1 received == 1 message sent, 0 proofs sent
                 // 3 routers => 1 received == 1 message sent, 2 proofs sent
-                if (
-                    messageReceivedCount[message]
-                        > (RECON_ADAPTERS - 1) * proofSentCount[message] + messageRecoveredCount[message]
-                ) {
-                    return false;
-                }
+                lte(messageReceivedCount[message], (RECON_ADAPTERS - 1) * proofSentCount[message] + messageRecoveredCount[message], "messageReceivedCount > (RECON_ADAPTERS - 1) * proofSentCount[message] + messageRecoveredCount[message]");
             }
         }
-
-        return true;
     }
 
     // When a message is executed, the total confirmation count is decreased by quorum
-    function invariant_counter() public view returns (bool) {
+    function invariant_counter() public {
         /// @audit CLAMP
         /// NOTE: When routers is 1, the property breaks
         if (RECON_ADAPTERS > 1) {
             for (uint256 i = 0; i < messages.length; i++) {
                 bytes32 message = keccak256(messages[i]);
 
-                if (routerAggregator.votes(message).countNonZeroValues() >= RECON_ADAPTERS) {
-                    return false;
-                }
+                lt(routerAggregator.votes(message).countNonZeroValues(), RECON_ADAPTERS, "votes(message).countNonZeroValues() >= RECON_ADAPTERS");
             }
         }
-
-        return true;
     }
 
     /// If sentCount == receivedCount -> Message must not be pending -> Message must have been cleared

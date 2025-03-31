@@ -17,24 +17,22 @@ abstract contract RestrictionManagerFunctions is BaseTargetFunctions, Properties
      */
     // NOTE: Same idea that we cycle through values via modifier
 
-    // TODO: Actory Cycling
-    function restrictionManager_updateMemberBasic(uint64 validUntil) public {
-        restrictionManager.updateMember(address(trancheToken), actor, validUntil);
+    function restrictionManager_updateMemberBasic(uint64 validUntil) public notGovFuzzing updateGhosts asAdmin {
+        restrictionManager.updateMember(address(trancheToken), _getActor(), validUntil);
     }
 
     // TODO: We prob want to keep one generic
     // And one with limited actors
-    function restrictionManager_updateMember(address user, uint64 validUntil) public {
+    function restrictionManager_updateMember(address user, uint64 validUntil) public notGovFuzzing updateGhosts asAdmin {
         restrictionManager.updateMember(address(trancheToken), user, validUntil);
     }
 
-    // TODO: Actor Cycling
-    function restrictionManager_freeze(address /*user*/ ) public {
-        restrictionManager.freeze(address(trancheToken), actor);
+    function restrictionManager_freeze(address /*user*/ ) public notGovFuzzing updateGhosts asAdmin {
+        restrictionManager.freeze(address(trancheToken), _getActor());
     }
 
-    function restrictionManager_unfreeze(address /*user*/ ) public {
-        restrictionManager.unfreeze(address(trancheToken), actor);
+    function restrictionManager_unfreeze(address /*user*/ ) public notGovFuzzing updateGhosts asAdmin {
+        restrictionManager.unfreeze(address(trancheToken), _getActor());
     }
 
     /**
