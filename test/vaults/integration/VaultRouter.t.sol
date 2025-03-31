@@ -47,7 +47,7 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: 1 wei}(vault_, amount, self, self);
 
         vaultRouter.enable(vault_);
-        vm.expectRevert(bytes("AsyncManager/transfer-not-allowed"));
+        vm.expectRevert(bytes("AsyncRequests/transfer-not-allowed"));
         vaultRouter.requestDeposit{value: 1 wei}(vault_, amount, self, self);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
 

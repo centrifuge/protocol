@@ -19,7 +19,7 @@ import {JournalEntry} from "src/common/types/JournalEntry.sol";
 import {IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
-import {ISyncManager} from "src/vaults/interfaces/investments/ISyncManager.sol";
+import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 
 contract SyncDepositTest is BaseTest {
     using CastLib for *;
@@ -105,7 +105,7 @@ contract SyncDepositTest is BaseTest {
             scId,
             vault.asset(),
             vaultDetails.tokenId,
-            syncManager.escrow(),
+            syncRequests.escrow(),
             depositAssetAmount,
             pricePerUnit,
             timestamp,

@@ -212,8 +212,8 @@ abstract contract BaseVault is Auth, IBaseVault {
 abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     IAsyncRedeemManager public asyncRedeemManager;
 
-    constructor(address asyncManager_) {
-        asyncRedeemManager = IAsyncRedeemManager(asyncManager_);
+    constructor(address asyncRequests_) {
+        asyncRedeemManager = IAsyncRedeemManager(asyncRequests_);
     }
 
     // --- ERC-7540 methods ---
@@ -342,8 +342,8 @@ abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
 abstract contract BaseSyncDepositVault is BaseVault {
     ISyncDepositManager public syncDepositManager;
 
-    constructor(address syncManager_) {
-        syncDepositManager = ISyncDepositManager(syncManager_);
+    constructor(address syncRequests_) {
+        syncDepositManager = ISyncDepositManager(syncRequests_);
     }
 
     // --- ERC-4626 methods ---

@@ -37,7 +37,7 @@ abstract contract Properties is Setup, Asserts, AsyncVaultCentrifugeProperties {
 
         // Mint and Deposit
         return sumOfClaimedDeposits[address(trancheToken)]
-        // asyncManager_fulfilledDepositRequest
+        // asyncRequests_fulfilledDepositRequest
         <= sumOfFullfilledDeposits[address(trancheToken)];
     }
 
@@ -48,7 +48,7 @@ abstract contract Properties is Setup, Asserts, AsyncVaultCentrifugeProperties {
 
         // Redeem and Withdraw
         return sumOfClaimedRedemptions[address(token)]
-        // asyncManager_handleExecutedCollectRedeem
+        // asyncRequests_handleExecutedCollectRedeem
         <= mintedByCurrencyPayout[address(token)];
     }
 
@@ -81,7 +81,7 @@ abstract contract Properties is Setup, Asserts, AsyncVaultCentrifugeProperties {
 
         // NOTE: Skipping escrow which instead can have non-zero bal
 
-        systemAddresses[2] = address(asyncManager);
+        systemAddresses[2] = address(asyncRequests);
         systemAddresses[3] = address(poolManager);
         systemAddresses[4] = address(vault);
         systemAddresses[5] = address(token);
@@ -140,7 +140,7 @@ abstract contract Properties is Setup, Asserts, AsyncVaultCentrifugeProperties {
 
         // claimCancelDepositRequest
         return sumOfClaimedDepositCancelations[address(token)]
-        // asyncManager_fulfillCancelDepositRequest
+        // asyncRequests_fulfillCancelDepositRequest
         <= cancelDepositCurrencyPayout[address(token)];
     }
 
@@ -153,7 +153,7 @@ abstract contract Properties is Setup, Asserts, AsyncVaultCentrifugeProperties {
 
         // claimCancelRedeemRequest
         return sumOfClaimedRedeemCancelations[address(trancheToken)]
-        // asyncManager_fulfillCancelRedeemRequest
+        // asyncRequests_fulfillCancelRedeemRequest
         <= cancelRedeemTrancheTokenPayout[address(trancheToken)];
     }
 
@@ -186,7 +186,7 @@ abstract contract Properties is Setup, Asserts, AsyncVaultCentrifugeProperties {
     }
 
     function invariant_IM_1() public view returns (bool) {
-        if (address(asyncManager) == address(0)) {
+        if (address(asyncRequests) == address(0)) {
             return true;
         }
         if (address(vault) == address(0)) {
@@ -217,7 +217,7 @@ abstract contract Properties is Setup, Asserts, AsyncVaultCentrifugeProperties {
     }
 
     function invariant_IM_2() public view returns (bool) {
-        if (address(asyncManager) == address(0)) {
+        if (address(asyncRequests) == address(0)) {
             return true;
         }
         if (address(vault) == address(0)) {

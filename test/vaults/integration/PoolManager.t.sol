@@ -88,8 +88,8 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         // values set correctly
         assertEq(address(poolManager.escrow()), address(escrow));
-        assertEq(address(asyncManager.poolManager()), address(poolManager));
-        assertEq(address(syncManager.poolManager()), address(poolManager));
+        assertEq(address(asyncRequests.poolManager()), address(poolManager));
+        assertEq(address(syncRequests.poolManager()), address(poolManager));
         assertEq(address(messageDispatcher), address(poolManager.sender()));
 
         // permissions set correctly
@@ -530,11 +530,11 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         bytes16 trancheId = oldVault.trancheId();
         address asset = address(oldVault.asset());
 
-        AsyncVaultFactory newVaultFactory = new AsyncVaultFactory(address(root), address(asyncManager));
+        AsyncVaultFactory newVaultFactory = new AsyncVaultFactory(address(root), address(asyncRequests));
 
         // rewire factory contracts
         newVaultFactory.rely(address(poolManager));
-        asyncManager.rely(address(newVaultFactory));
+        asyncRequests.rely(address(newVaultFactory));
         poolManager.file("vaultFactory", address(newVaultFactory), true);
 
         // Remove old vault
@@ -633,15 +633,15 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
             // check vault state
             assertEq(vaultAddress, vault_, "vault address mismatch");
             AsyncVault vault = AsyncVault(vault_);
-            assertEq(address(vault.manager()), address(asyncManager), "investment manager mismatch");
+            assertEq(address(vault.manager()), address(asyncRequests), "investment manager mismatch");
             assertEq(vault.asset(), asset, "asset mismatch");
             assertEq(vault.poolId(), poolId, "poolId mismatch");
             assertEq(vault.trancheId(), trancheId, "trancheId mismatch");
             assertEq(address(vault.share()), tranche_, "tranche mismatch");
 
-            assertEq(vault.wards(address(asyncManager)), 1);
+            assertEq(vault.wards(address(asyncRequests)), 1);
             assertEq(vault.wards(address(this)), 0);
-            assertEq(asyncManager.wards(vaultAddress), 1);
+            assertEq(asyncRequests.wards(vaultAddress), 1);
         } else {
             assert(!poolManager.isLinked(poolId, trancheId, asset, vaultAddress));
             // Check Tranche permissions
@@ -649,7 +649,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
 
             // Check missing link
             assertEq(vault_, address(0), "Tranche link to vault requires linkVault");
-            assertEq(asyncManager.wards(vaultAddress), 0, "Vault auth on asyncManager set up in linkVault");
+            assertEq(asyncRequests.wards(vaultAddress), 0, "Vault auth on asyncRequests set up in linkVault");
         }
     }
 

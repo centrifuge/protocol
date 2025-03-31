@@ -6,7 +6,7 @@ import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
 import {BaseVault, AsyncRedeemVault} from "src/vaults/BaseVaults.sol";
-import {IAsyncManager} from "src/vaults/interfaces/investments/IAsyncManager.sol";
+import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 
@@ -140,8 +140,8 @@ contract AsyncVault is AsyncRedeemVault, IAsyncVault {
     }
 
     /// @dev Strongly-typed accessor to the generic async redeem manager
-    function asyncManager() public view returns (IAsyncManager) {
-        return IAsyncManager(address(IAsyncRedeemVault(address(this)).asyncRedeemManager()));
+    function asyncManager() public view returns (IAsyncRequests) {
+        return IAsyncRequests(address(IAsyncRedeemVault(address(this)).asyncRedeemManager()));
     }
 
     /// @dev Preview functions for ERC-7540 vaults revert

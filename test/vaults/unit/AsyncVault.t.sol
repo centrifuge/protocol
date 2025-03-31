@@ -17,7 +17,7 @@ contract AsyncVaultTest is BaseTest {
         uint128 assetId,
         address nonWard
     ) public {
-        vm.assume(nonWard != address(root) && nonWard != address(this) && nonWard != address(asyncManager));
+        vm.assume(nonWard != address(root) && nonWard != address(this) && nonWard != address(asyncRequests));
         vm.assume(assetId > 0);
         vm.assume(bytes(tokenName).length <= 128);
         vm.assume(bytes(tokenSymbol).length <= 32);
@@ -26,7 +26,7 @@ contract AsyncVaultTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
 
         // values set correctly
-        assertEq(address(vault.manager()), address(asyncManager));
+        assertEq(address(vault.manager()), address(asyncRequests));
         assertEq(vault.asset(), address(erc20));
         assertEq(vault.poolId(), poolId);
         assertEq(vault.trancheId(), trancheId);
@@ -37,7 +37,7 @@ contract AsyncVaultTest is BaseTest {
 
         // permissions set correctly
         assertEq(vault.wards(address(root)), 1);
-        assertEq(vault.wards(address(asyncManager)), 1);
+        assertEq(vault.wards(address(asyncRequests)), 1);
         assertEq(vault.wards(nonWard), 0);
     }
 
@@ -70,7 +70,7 @@ contract AsyncVaultTest is BaseTest {
         vm.expectRevert(MathLib.Uint128_Overflow.selector);
         vault.convertToAssets(amount);
 
-        vm.expectRevert(bytes("AsyncManager/exceeds-max-deposit"));
+        vm.expectRevert(bytes("AsyncRequests/exceeds-max-deposit"));
         vault.deposit(amount, randomUser, self);
 
         vm.expectRevert(MathLib.Uint128_Overflow.selector);
@@ -79,7 +79,7 @@ contract AsyncVaultTest is BaseTest {
         vm.expectRevert(MathLib.Uint128_Overflow.selector);
         vault.withdraw(amount, randomUser, self);
 
-        vm.expectRevert(bytes("AsyncManager/exceeds-max-redeem"));
+        vm.expectRevert(bytes("AsyncRequests/exceeds-max-redeem"));
         vault.redeem(amount, randomUser, self);
 
         erc20.mint(address(this), amount);

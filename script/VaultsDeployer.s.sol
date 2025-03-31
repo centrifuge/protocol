@@ -6,14 +6,14 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {ISafe} from "src/common/Guardian.sol";
 import {Gateway} from "src/common/Gateway.sol";
 
-import {AsyncManager} from "src/vaults/AsyncManager.sol";
+import {AsyncRequests} from "src/vaults/AsyncRequests.sol";
 import {BalanceSheetManager} from "src/vaults/BalanceSheetManager.sol";
 import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
 import {RestrictedRedemptions} from "src/vaults/token/RestrictedRedemptions.sol";
-import {SyncManager} from "src/vaults/SyncManager.sol";
+import {SyncRequests} from "src/vaults/SyncRequests.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
@@ -24,8 +24,8 @@ import {CommonDeployer} from "script/CommonDeployer.s.sol";
 
 contract VaultsDeployer is CommonDeployer {
     BalanceSheetManager public balanceSheetManager;
-    AsyncManager public asyncManager;
-    SyncManager public syncManager;
+    AsyncRequests public asyncRequests;
+    SyncRequests public syncRequests;
     PoolManager public poolManager;
     Escrow public escrow;
     Escrow public routerEscrow;
@@ -44,11 +44,11 @@ contract VaultsDeployer is CommonDeployer {
         restrictionManager = address(new RestrictionManager{salt: SALT}(address(root), deployer));
         restrictedRedemptions = address(new RestrictedRedemptions{salt: SALT}(address(root), address(escrow), deployer));
         trancheFactory = address(new TrancheFactory{salt: SALT}(address(root), deployer));
-        asyncManager = new AsyncManager(address(root), address(escrow));
-        syncManager = new SyncManager(address(root), address(escrow));
-        asyncVaultFactory = address(new AsyncVaultFactory(address(root), address(asyncManager)));
+        asyncRequests = new AsyncRequests(address(root), address(escrow));
+        syncRequests = new SyncRequests(address(root), address(escrow));
+        asyncVaultFactory = address(new AsyncVaultFactory(address(root), address(asyncRequests)));
         syncDepositVaultFactory =
-            address(new SyncDepositVaultFactory(address(root), address(syncManager), address(asyncManager)));
+            address(new SyncDepositVaultFactory(address(root), address(syncRequests), address(asyncRequests)));
         address[] memory vaultFactories = new address[](2);
         vaultFactories[0] = asyncVaultFactory;
         vaultFactories[1] = syncDepositVaultFactory;
@@ -69,8 +69,8 @@ contract VaultsDeployer is CommonDeployer {
         register("restrictionManager", address(restrictionManager));
         register("restrictedRedemptions", address(restrictedRedemptions));
         register("trancheFactory", address(trancheFactory));
-        register("asyncManager", address(asyncManager));
-        register("syncManager", address(syncManager));
+        register("asyncRequests", address(asyncRequests));
+        register("syncRequests", address(syncRequests));
         register("asyncVaultFactory", address(asyncVaultFactory));
         register("syncDepositVaultFactory", address(syncDepositVaultFactory));
         register("poolManager", address(poolManager));
@@ -88,18 +88,18 @@ contract VaultsDeployer is CommonDeployer {
         IAuth(asyncVaultFactory).rely(address(poolManager));
         IAuth(syncDepositVaultFactory).rely(address(poolManager));
         IAuth(trancheFactory).rely(address(poolManager));
-        IAuth(asyncManager).rely(address(poolManager));
-        IAuth(syncManager).rely(address(poolManager));
+        IAuth(asyncRequests).rely(address(poolManager));
+        IAuth(syncRequests).rely(address(poolManager));
         IAuth(restrictionManager).rely(address(poolManager));
         IAuth(restrictedRedemptions).rely(address(poolManager));
         messageDispatcher.rely(address(poolManager));
 
         // Rely on async investment manager
-        messageDispatcher.rely(address(asyncManager));
+        messageDispatcher.rely(address(asyncRequests));
 
         // Rely on sync investment manager
-        balanceSheetManager.rely(address(syncManager));
-        asyncManager.rely(address(syncManager));
+        balanceSheetManager.rely(address(syncRequests));
+        asyncRequests.rely(address(syncRequests));
 
         // Rely on BalanceSheetManager
         messageDispatcher.rely(address(balanceSheetManager));
@@ -108,8 +108,8 @@ contract VaultsDeployer is CommonDeployer {
         // Rely on Root
         vaultRouter.rely(address(root));
         poolManager.rely(address(root));
-        asyncManager.rely(address(root));
-        syncManager.rely(address(root));
+        asyncRequests.rely(address(root));
+        syncRequests.rely(address(root));
         balanceSheetManager.rely(address(root));
         escrow.rely(address(root));
         routerEscrow.rely(address(root));
@@ -120,21 +120,21 @@ contract VaultsDeployer is CommonDeployer {
         IAuth(restrictedRedemptions).rely(address(root));
 
         // Rely on vaultGateway
-        asyncManager.rely(address(gateway));
+        asyncRequests.rely(address(gateway));
         poolManager.rely(address(gateway));
 
         // Rely on others
         routerEscrow.rely(address(vaultRouter));
-        syncManager.rely(address(syncDepositVaultFactory));
+        syncRequests.rely(address(syncDepositVaultFactory));
 
         // Rely on messageProcessor
         poolManager.rely(address(messageProcessor));
-        asyncManager.rely(address(messageProcessor));
+        asyncRequests.rely(address(messageProcessor));
         balanceSheetManager.rely(address(messageProcessor));
 
         // Rely on messageDispatcher
         poolManager.rely(address(messageDispatcher));
-        asyncManager.rely(address(messageDispatcher));
+        asyncRequests.rely(address(messageDispatcher));
         balanceSheetManager.rely(address(messageDispatcher));
 
         // Rely on VaultRouter
@@ -144,22 +144,22 @@ contract VaultsDeployer is CommonDeployer {
 
     function _vaultsFile() public {
         messageDispatcher.file("poolManager", address(poolManager));
-        messageDispatcher.file("investmentManager", address(asyncManager));
-        messageDispatcher.file("balanceSheetManager", address(asyncManager));
+        messageDispatcher.file("investmentManager", address(asyncRequests));
+        messageDispatcher.file("balanceSheetManager", address(asyncRequests));
 
         messageProcessor.file("poolManager", address(poolManager));
-        messageProcessor.file("investmentManager", address(asyncManager));
-        messageProcessor.file("balanceSheetManager", address(asyncManager));
+        messageProcessor.file("investmentManager", address(asyncRequests));
+        messageProcessor.file("balanceSheetManager", address(asyncRequests));
 
         poolManager.file("balanceSheetManager", address(balanceSheetManager));
         poolManager.file("sender", address(messageDispatcher));
 
-        asyncManager.file("poolManager", address(poolManager));
-        asyncManager.file("gateway", address(gateway));
-        asyncManager.file("sender", address(messageDispatcher));
+        asyncRequests.file("poolManager", address(poolManager));
+        asyncRequests.file("gateway", address(gateway));
+        asyncRequests.file("sender", address(messageDispatcher));
 
-        syncManager.file("poolManager", address(poolManager));
-        syncManager.file("balanceSheetManager", address(balanceSheetManager));
+        syncRequests.file("poolManager", address(poolManager));
+        syncRequests.file("balanceSheetManager", address(balanceSheetManager));
 
         balanceSheetManager.file("poolManager", address(poolManager));
         balanceSheetManager.file("gateway", address(gateway));
@@ -174,8 +174,8 @@ contract VaultsDeployer is CommonDeployer {
         IAuth(trancheFactory).deny(deployer);
         IAuth(restrictionManager).deny(deployer);
         IAuth(restrictedRedemptions).deny(deployer);
-        asyncManager.deny(deployer);
-        syncManager.deny(deployer);
+        asyncRequests.deny(deployer);
+        syncRequests.deny(deployer);
         poolManager.deny(deployer);
         escrow.deny(deployer);
         routerEscrow.deny(deployer);

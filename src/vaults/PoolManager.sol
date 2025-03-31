@@ -22,8 +22,8 @@ import {IBaseVault, IAsyncRedeemVault} from "src/vaults/interfaces/IERC7540.sol"
 import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
-import {ISyncManager} from "src/vaults/interfaces/investments/ISyncManager.sol";
-import {IAsyncManager} from "src/vaults/interfaces/investments/IAsyncManager.sol";
+import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
+import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {ITrancheFactory} from "src/vaults/interfaces/factories/ITrancheFactory.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";

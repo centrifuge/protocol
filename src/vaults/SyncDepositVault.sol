@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {BaseVault, AsyncRedeemVault, BaseSyncDepositVault} from "src/vaults/BaseVaults.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
-import {ISyncManager} from "src/vaults/interfaces/investments/ISyncManager.sol";
+import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 

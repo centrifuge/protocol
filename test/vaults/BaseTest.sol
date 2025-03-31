@@ -16,7 +16,7 @@ import {newAssetId} from "src/common/types/AssetId.sol";
 import {newPoolId} from "src/common/types/PoolId.sol";
 
 // core contracts
-import {AsyncManager} from "src/vaults/AsyncManager.sol";
+import {AsyncRequests} from "src/vaults/AsyncRequests.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
@@ -117,8 +117,8 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
         // Label contracts
         vm.label(address(root), "Root");
-        vm.label(address(asyncManager), "AsyncManager");
-        vm.label(address(syncManager), "SyncManager");
+        vm.label(address(asyncRequests), "AsyncRequests");
+        vm.label(address(asyncRequests), "SyncRequests");
         vm.label(address(poolManager), "PoolManager");
         vm.label(address(balanceSheetManager), "BalanceSheetManager");
         vm.label(address(gateway), "Gateway");
@@ -142,8 +142,8 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
         // Exclude predeployed contracts from invariant tests by default
         excludeContract(address(root));
-        excludeContract(address(asyncManager));
-        excludeContract(address(syncManager));
+        excludeContract(address(asyncRequests));
+        excludeContract(address(syncRequests));
         excludeContract(address(balanceSheetManager));
         excludeContract(address(poolManager));
         excludeContract(address(gateway));

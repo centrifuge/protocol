@@ -142,7 +142,7 @@ contract VaultRouterTest is BaseTest {
         vm.expectRevert("Gateway/cannot-topup-with-nothing");
         vaultRouter.cancelDepositRequest{value: 0}(vault_);
 
-        vm.expectRevert("AsyncManager/no-pending-deposit-request");
+        vm.expectRevert("AsyncRequests/no-pending-deposit-request");
         vaultRouter.cancelDepositRequest{value: fuel}(vault_);
 
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
@@ -182,7 +182,7 @@ contract VaultRouterTest is BaseTest {
         vm.expectRevert("VaultRouter/invalid-sender");
         vaultRouter.claimCancelDepositRequest(vault_, nonMember, self);
 
-        vm.expectRevert("AsyncManager/transfer-not-allowed");
+        vm.expectRevert("AsyncRequests/transfer-not-allowed");
         vaultRouter.claimCancelDepositRequest(vault_, nonMember, self);
 
         vaultRouter.claimCancelDepositRequest(vault_, self, self);
@@ -522,7 +522,7 @@ contract VaultRouterTest is BaseTest {
 
         uint256 gasLimit = vaultRouter.estimate(CHAIN_ID, "irrelevant_payload");
 
-        vm.expectRevert(bytes("AsyncManager/transfer-not-allowed"));
+        vm.expectRevert(bytes("AsyncRequests/transfer-not-allowed"));
         vaultRouter.executeLockedDepositRequest{value: gasLimit}(vault_, self);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
 

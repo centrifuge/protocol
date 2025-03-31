@@ -27,7 +27,7 @@ import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol
 import {IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
-import {ISyncManager} from "src/vaults/interfaces/investments/ISyncManager.sol";
+import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 import {PriceConversionLib} from "src/vaults/libraries/PriceConversionLib.sol";
@@ -36,7 +36,7 @@ import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 /// @title  Sync Investment Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
-contract SyncManager is BaseInvestmentManager, ISyncManager {
+contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     using BytesLib for bytes;
     using MathLib for *;
     using CastLib for *;
@@ -55,7 +55,7 @@ contract SyncManager is BaseInvestmentManager, ISyncManager {
     function file(bytes32 what, address data) external override(IBaseInvestmentManager, BaseInvestmentManager) auth {
         if (what == "poolManager") poolManager = IPoolManager(data);
         else if (what == "balanceSheetManager") balanceSheetManager = IBalanceSheetManager(data);
-        else revert("SyncManager/file-unrecognized-param");
+        else revert("SyncRequests/file-unrecognized-param");
         emit File(what, data);
     }
 
@@ -68,8 +68,8 @@ contract SyncManager is BaseInvestmentManager, ISyncManager {
     {
         SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
 
-        require(vault_.asset() == asset_, "SyncManager/asset-mismatch");
-        require(vault[poolId][trancheId][assetId] == address(0), "SyncManager/vault-already-exists");
+        require(vault_.asset() == asset_, "SyncRequests/asset-mismatch");
+        require(vault[poolId][trancheId][assetId] == address(0), "SyncRequests/vault-already-exists");
 
         address token = vault_.share();
         vault[poolId][trancheId][assetId] = vaultAddr;
@@ -93,8 +93,8 @@ contract SyncManager is BaseInvestmentManager, ISyncManager {
         SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
         address token = vault_.share();
 
-        require(vault_.asset() == asset_, "SyncManager/asset-mismatch");
-        require(vault[poolId][trancheId][assetId] != address(0), "SyncManager/vault-does-not-exist");
+        require(vault_.asset() == asset_, "SyncRequests/asset-mismatch");
+        require(vault[poolId][trancheId][assetId] != address(0), "SyncRequests/vault-does-not-exist");
 
         delete vault[poolId][trancheId][assetId];
 
@@ -204,7 +204,7 @@ contract SyncManager is BaseInvestmentManager, ISyncManager {
     {
         return super.supportsInterface(interfaceId) || interfaceId == type(IVaultManager).interfaceId
             || interfaceId == type(IDepositManager).interfaceId || interfaceId == type(ISyncDepositManager).interfaceId
-            || interfaceId == type(ISyncManager).interfaceId;
+            || interfaceId == type(ISyncRequests).interfaceId;
     }
 
     /// --- Internal methods ---

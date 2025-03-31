@@ -114,13 +114,13 @@ abstract contract SharedStorage {
      *     // It's not supposed to work this way in reality
      *     // TODO: MUST REMOVE
      *     See:
-     *         - asyncManager_fulfillCancelRedeemRequest
-     *         - asyncManager_fulfillRedeemRequest // NOTE: Used by E_1
+     *         - asyncRequests_fulfillCancelRedeemRequest
+     *         - asyncRequests_fulfillRedeemRequest // NOTE: Used by E_1
      */
     mapping(address => uint256) mintedByCurrencyPayout;
     /**
      * See:
-     *         - asyncManager_fulfillDepositRequest
+     *         - asyncRequests_fulfillDepositRequest
      */
     mapping(address => uint256) sumOfFullfilledDeposits;
 
@@ -133,13 +133,13 @@ abstract contract SharedStorage {
     /**
      * See:
      *         - vault_requestRedeem
-     *         - asyncManager_triggerRedeemRequest
+     *         - asyncRequests_triggerRedeemRequest
      */
     mapping(address => uint256) sumOfRedeemRequests;
 
     /**
      * See:
-     *         - asyncManager_fulfillRedeemRequest
+     *         - asyncRequests_fulfillRedeemRequest
      */
     mapping(address => uint256) sumOfClaimedRequests;
 

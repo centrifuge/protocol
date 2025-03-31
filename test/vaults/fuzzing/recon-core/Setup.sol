@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {BaseSetup} from "@chimera/BaseSetup.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
-import {AsyncManager} from "src/vaults/AsyncManager.sol";
+import {AsyncRequests} from "src/vaults/AsyncRequests.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {Root} from "src/common/Root.sol";
@@ -28,7 +28,7 @@ abstract contract Setup is BaseSetup, SharedStorage {
 
     // Handled //
     Escrow public escrow; // NOTE: Restriction Manager will query it
-    AsyncManager asyncManager;
+    AsyncRequests asyncRequests;
     PoolManager poolManager;
 
     // TODO: CYCLE / Make it work for variable values
@@ -68,23 +68,23 @@ abstract contract Setup is BaseSetup, SharedStorage {
 
         root.endorse(address(escrow));
 
-        asyncManager = new AsyncManager(address(root), address(escrow));
-        vaultFactory = new AsyncVaultFactory(address(this), address(asyncManager));
+        asyncRequests = new AsyncRequests(address(root), address(escrow));
+        vaultFactory = new AsyncVaultFactory(address(this), address(asyncRequests));
 
         address[] memory vaultFactories = new address[](1);
         vaultFactories[0] = address(vaultFactory);
 
         poolManager = new PoolManager(address(escrow), address(trancheFactory), vaultFactories);
 
-        asyncManager.file("gateway", address(this));
-        asyncManager.file("poolManager", address(poolManager));
-        asyncManager.rely(address(poolManager));
-        asyncManager.rely(address(vaultFactory));
+        asyncRequests.file("gateway", address(this));
+        asyncRequests.file("poolManager", address(poolManager));
+        asyncRequests.rely(address(poolManager));
+        asyncRequests.rely(address(vaultFactory));
 
         restrictionManager.rely(address(poolManager));
 
         // Setup Escrow Permissions
-        escrow.rely(address(asyncManager));
+        escrow.rely(address(asyncRequests));
         escrow.rely(address(poolManager));
 
         // Permissions on factories
@@ -157,7 +157,7 @@ abstract contract Setup is BaseSetup, SharedStorage {
             /*bool pendingCancelDepositRequest*/
             ,
             /*bool pendingCancelRedeemRequest*/
-        ) = asyncManager.investments(address(vault), address(actor));
+        ) = asyncRequests.investments(address(vault), address(actor));
 
         return (depositPrice, redeemPrice);
     }
