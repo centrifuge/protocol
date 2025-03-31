@@ -18,6 +18,7 @@ import {JournalEntry} from "src/common/types/JournalEntry.sol";
 
 import {IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
+import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {ISyncManager} from "src/vaults/interfaces/investments/ISyncManager.sol";
 
 contract SyncDepositTest is BaseTest {
@@ -70,7 +71,7 @@ contract SyncDepositTest is BaseTest {
         centrifugeChain.updateMember(syncVault.poolId(), syncVault.trancheId(), self, type(uint64).max);
         assertEq(syncVault.isPermissioned(self), true);
 
-        _assertDepositEvents(syncVault, shares.toUint128(), assetId);
+        _assertDepositEvents(syncVault, shares.toUint128());
         syncVault.deposit(amount, self);
         assertEq(erc20.balanceOf(self), 0, "Mismatch in sync deposited amount");
         assertEq(tranche.balanceOf(self), shares, "Mismatch in amount of sync received shares");
@@ -81,29 +82,42 @@ contract SyncDepositTest is BaseTest {
         assertEq(asyncVault.pendingRedeemRequest(0, self), amount / 2);
     }
 
-    function _assertDepositEvents(SyncDepositVault vault, uint128 shares, uint128 assetId_) internal {
+    function _assertDepositEvents(SyncDepositVault vault, uint128 shares) internal {
         PoolId poolId = PoolId.wrap(vault.poolId());
         ShareClassId scId = ShareClassId.wrap(vault.trancheId());
-        AssetId assetId = AssetId.wrap(assetId_);
-        D18 price_ = d18(price);
+        D18 pricePerShare = d18(price);
+        D18 pricePerUnit = d18(1);
         uint256 timestamp = uint256(block.timestamp);
-        JournalEntry[] memory entries = new JournalEntry[](0);
+        uint128 depositAssetAmount = vault.previewMint(shares).toUint128();
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault));
+        JournalEntry[] memory journalEntries = new JournalEntry[](0);
 
-        bytes memory updateSharesMsg = MessageLib.UpdateShares(
-            poolId.chainId(), scId.raw(), self.toBytes32(), price_, shares, timestamp, true
-        ).serialize();
-        bytes memory updateHoldingMsg = MessageLib.UpdateHolding(
-            poolId.raw(), scId.raw(), assetId.raw(), self.toBytes32(), 0, price_, timestamp, false, entries, entries
-        ).serialize();
-
-        console.logBytes(updateSharesMsg);
-
-        // FIXME(wischli): Why bytes mismatch?
         vm.expectEmit(false, false, false, false);
-        emit IGateway.SendMessage(updateSharesMsg);
+        emit IGateway.SendMessage(bytes(""));
         vm.expectEmit();
-        emit IBalanceSheetManager.Issue(poolId, scId, self, price_, shares);
+        emit IBalanceSheetManager.Issue(poolId, scId, self, pricePerShare, shares);
+
         vm.expectEmit(false, false, false, false);
-        emit IGateway.SendMessage(updateHoldingMsg);
+        emit IGateway.SendMessage(bytes(""));
+        vm.expectEmit();
+        emit IBalanceSheetManager.Deposit(
+            poolId,
+            scId,
+            vault.asset(),
+            vaultDetails.tokenId,
+            syncManager.escrow(),
+            depositAssetAmount,
+            pricePerUnit,
+            timestamp,
+            journalEntries,
+            journalEntries
+        );
+
+        vm.expectEmit(false, false, false, false);
+        emit IGateway.SendMessage(bytes(""));
+        vm.expectEmit();
+        emit IBalanceSheetManager.UpdateValue(
+            poolId, scId, vault.asset(), vaultDetails.tokenId, pricePerUnit, timestamp
+        );
     }
 }

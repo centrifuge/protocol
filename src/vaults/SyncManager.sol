@@ -17,6 +17,7 @@ import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {JournalEntry, Meta} from "src/common/types/JournalEntry.sol";
 
 import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
@@ -116,7 +117,7 @@ contract SyncManager is BaseInvestmentManager, ISyncManager {
     {
         assets = previewMint(vaultAddr, owner, shares);
 
-        _issueShares(vaultAddr, receiver, shares.toUint128());
+        _issueShares(vaultAddr, shares.toUint128(), receiver, 0);
     }
 
     /// @inheritdoc IDepositManager
@@ -128,7 +129,7 @@ contract SyncManager is BaseInvestmentManager, ISyncManager {
         require(maxDeposit(vaultAddr, owner) >= assets, ExceedsMaxDeposit());
         shares = previewDeposit(vaultAddr, owner, assets);
 
-        _issueShares(vaultAddr, receiver, shares.toUint128());
+        _issueShares(vaultAddr, shares.toUint128(), receiver, assets.toUint128());
     }
 
     /// @inheritdoc IDepositManager
@@ -219,8 +220,8 @@ contract SyncManager is BaseInvestmentManager, ISyncManager {
 
     /// --- Internal methods ---
     /// @dev Issues shares to the receiver and instruct the Balance Sheet Manager to react on the issuance and the
-    /// updated holding value
-    function _issueShares(address vaultAddr, address receiver, uint128 shares) internal {
+    /// updated holding
+    function _issueShares(address vaultAddr, uint128 shares, address receiver, uint128 depositAssetAmount) internal {
         SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
 
         uint64 poolId_ = vault_.poolId();
@@ -231,10 +232,40 @@ contract SyncManager is BaseInvestmentManager, ISyncManager {
         PoolId poolId = PoolId.wrap(poolId_);
         ShareClassId scId = ShareClassId.wrap(scId_);
 
-        // Mint shares for receiver notify CP about issued shares
-        balanceSheetManager.issue(poolId, scId, receiver, pricePerShare, shares.toUint128(), false);
+        // Mint shares for receiver & notify CP about issued shares
+        balanceSheetManager.issue(poolId, scId, receiver, pricePerShare, shares, false);
+
+        _updateHoldings(poolId, scId, vaultDetails, depositAssetAmount);
+    }
+
+    /// @dev Instructs the balance sheet manager to update holdings and the corresponding value.
+    ///      NOTE: Only exists as separate function due to stack-too-deep
+    function _updateHoldings(
+        PoolId poolId,
+        ShareClassId scId,
+        VaultDetails memory vaultDetails,
+        uint128 depositAssetAmount
+    ) internal {
+        // TODO(follow-up PR): Remove hardcoding
+        D18 pricePerAssetInPoolCurrency = d18(1);
+        JournalEntry[] memory journalEntries = new JournalEntry[](0);
+        Meta memory depositMeta = Meta(journalEntries, journalEntries);
+
+        // Notify CP about updated holdings
+        balanceSheetManager.deposit(
+            poolId,
+            scId,
+            vaultDetails.asset,
+            vaultDetails.tokenId,
+            escrow,
+            depositAssetAmount,
+            pricePerAssetInPoolCurrency,
+            depositMeta
+        );
 
         // Notify CP about updated holding value
-        balanceSheetManager.updateValue(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, pricePerShare);
+        balanceSheetManager.updateValue(
+            poolId, scId, vaultDetails.asset, vaultDetails.tokenId, pricePerAssetInPoolCurrency
+        );
     }
 }
