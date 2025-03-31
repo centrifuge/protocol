@@ -27,9 +27,7 @@ enum VaultKind {
     /// @dev not yet supported
     Sync,
     /// @dev Refers to SyncDepositAsyncRedeemVault
-    SyncDepositAsyncRedeem,
-    /// @dev Not yet supported
-    AsyncDepositSyncRedeem
+    SyncDepositAsyncRedeem
 }
 
 abstract contract BaseVault is Auth, IBaseVault {

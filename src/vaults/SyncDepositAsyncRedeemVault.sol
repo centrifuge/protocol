@@ -13,7 +13,7 @@ import "src/vaults/interfaces/IERC7575.sol";
 ///
 /// @dev    Each vault issues shares of Centrifuge tranches as restricted ERC-20 or ERC-6909 tokens
 ///         against asset deposits based on the current share price.
-contract SyncDepositAsyncRedeemVault is AsyncRedeemVault, SyncDepositVault {
+contract SyncDepositAsyncRedeemVault is SyncDepositVault, AsyncRedeemVault {
     constructor(
         uint64 poolId_,
         bytes16 trancheId_,
