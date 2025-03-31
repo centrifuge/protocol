@@ -76,3 +76,42 @@ contract SyncInvestmentManagerTest is BaseTest {
         assertEq(syncInvestmentManager.maxPriceAge(vault), maxPriceAge);
     }
 }
+
+contract SyncInvestmentManagerUnauthorizedTest is BaseTest {
+    function testFileUnauthorized(address caller) public {
+        _expectUnauthorized(caller);
+        syncInvestmentManager.file(bytes32(0), address(0));
+    }
+
+    function testAddVaultUnauthorized(address caller) public {
+        _expectUnauthorized(caller);
+        syncInvestmentManager.addVault(0, bytes16(0), address(0), address(0), 0);
+    }
+
+    function testRemoveVaultUnauthorized(address caller) public {
+        _expectUnauthorized(caller);
+        syncInvestmentManager.removeVault(0, bytes16(0), address(0), address(0), 0);
+    }
+
+    function testDepositUnauthorized(address caller) public {
+        _expectUnauthorized(caller);
+        syncInvestmentManager.deposit(address(0), 0, address(0), address(0));
+    }
+
+    function testMintUnauthorized(address caller) public {
+        _expectUnauthorized(caller);
+        syncInvestmentManager.mint(address(0), 0, address(0), address(0));
+    }
+
+    function testUpdateUnauthorized(address caller) public {
+        _expectUnauthorized(caller);
+        syncInvestmentManager.update(0, bytes16(0), bytes(""));
+    }
+
+    function _expectUnauthorized(address caller) internal {
+        vm.assume(caller != address(root) && caller != address(poolManager) && caller != address(this));
+
+        vm.prank(caller);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+    }
+}

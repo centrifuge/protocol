@@ -100,6 +100,7 @@ contract SyncInvestmentManager is BaseInvestmentManager, ISyncInvestmentManager 
     /// @inheritdoc IDepositManager
     function mint(address vaultAddr, uint256 shares, address receiver, address owner)
         external
+        auth
         returns (uint256 assets)
     {
         assets = previewMint(vaultAddr, owner, shares);
@@ -110,6 +111,7 @@ contract SyncInvestmentManager is BaseInvestmentManager, ISyncInvestmentManager 
     /// @inheritdoc IDepositManager
     function deposit(address vaultAddr, uint256 assets, address receiver, address owner)
         external
+        auth
         returns (uint256 shares)
     {
         require(maxDeposit(vaultAddr, owner) >= assets, ExceedsMaxDeposit());
