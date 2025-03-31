@@ -60,7 +60,7 @@ contract LocalhostDeployer is FullDeployer {
             scId,
             assetId,
             bytes32(bytes20(address(poolManager))),
-            bytes32(bytes20(address(vaultFactory))),
+            bytes32(bytes20(address(asyncVaultFactory))),
             VaultUpdateKind.DeployAndLink
         );
 

@@ -16,15 +16,18 @@ import {newAssetId} from "src/common/types/AssetId.sol";
 import {newPoolId} from "src/common/types/PoolId.sol";
 
 // core contracts
-import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
+import {AsyncRequests} from "src/vaults/AsyncRequests.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
-import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
+import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
-import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
+import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
+import {VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
+
+// scripts
 import {VaultsDeployer} from "script/VaultsDeployer.s.sol";
 
 // mocks
@@ -114,7 +117,8 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
         // Label contracts
         vm.label(address(root), "Root");
-        vm.label(address(investmentManager), "InvestmentManager");
+        vm.label(address(asyncRequests), "AsyncRequests");
+        vm.label(address(asyncRequests), "SyncRequests");
         vm.label(address(poolManager), "PoolManager");
         vm.label(address(balanceSheetManager), "BalanceSheetManager");
         vm.label(address(gateway), "Gateway");
@@ -133,11 +137,13 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         vm.label(address(routerEscrow), "RouterEscrow");
         vm.label(address(guardian), "Guardian");
         vm.label(address(poolManager.trancheFactory()), "TrancheFactory");
-        vm.label(address(vaultFactory), "ERC7540VaultFactory");
+        vm.label(address(asyncVaultFactory), "AsyncVaultFactory");
+        vm.label(address(syncDepositVaultFactory), "SyncDepositVaultFactory");
 
         // Exclude predeployed contracts from invariant tests by default
         excludeContract(address(root));
-        excludeContract(address(investmentManager));
+        excludeContract(address(asyncRequests));
+        excludeContract(address(syncRequests));
         excludeContract(address(balanceSheetManager));
         excludeContract(address(poolManager));
         excludeContract(address(gateway));
@@ -152,11 +158,13 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         excludeContract(address(routerEscrow));
         excludeContract(address(guardian));
         excludeContract(address(poolManager.trancheFactory()));
-        excludeContract(address(vaultFactory));
+        excludeContract(address(asyncVaultFactory));
+        excludeContract(address(syncDepositVaultFactory));
     }
 
     // helpers
     function deployVault(
+        VaultKind vaultKind,
         uint64 poolId,
         uint8 trancheDecimals,
         address hook,
@@ -181,8 +189,9 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         poolManager.updateTranchePrice(poolId, trancheId, assetId, uint128(10 ** 18), uint64(block.timestamp));
 
         // Trigger new vault deployment via UpdateContract
+        bytes32 vaultFactory = _vaultKindToVaultFactory(vaultKind);
         bytes memory vaultUpdate = MessageLib.UpdateContractVaultUpdate({
-            vaultOrFactory: bytes32(bytes20(vaultFactory)),
+            vaultOrFactory: vaultFactory,
             assetId: assetId,
             kind: uint8(VaultUpdateKind.DeployAndLink)
         }).serialize();
@@ -191,6 +200,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     }
 
     function deployVault(
+        VaultKind vaultKind,
         uint64 poolId,
         uint8 decimals,
         string memory tokenName,
@@ -198,6 +208,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         bytes16 trancheId
     ) public returns (address vaultAddress, uint128 assetId) {
         return deployVault(
+            vaultKind,
             poolId,
             decimals,
             restrictionManager,
@@ -210,8 +221,9 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         );
     }
 
-    function deploySimpleVault() public returns (address vaultAddress, uint128 assetId) {
+    function deploySimpleVault(VaultKind vaultKind) public returns (address vaultAddress, uint128 assetId) {
         return deployVault(
+            vaultKind,
             POOL_A,
             6,
             restrictionManager,
@@ -229,7 +241,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     }
 
     function deposit(address _vault, address _investor, uint256 amount, bool claimDeposit) public {
-        ERC7540Vault vault = ERC7540Vault(_vault);
+        AsyncVault vault = AsyncVault(_vault);
         erc20.mint(_investor, amount);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), _investor, type(uint64).max);
         vm.startPrank(_investor);
@@ -299,6 +311,20 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         }
         uint256 randomnumber = uint256(keccak256(abi.encodePacked(block.timestamp, self, nonce))) % (maxValue - 1);
         return randomnumber + 1;
+    }
+
+    function _vaultKindToVaultFactory(VaultKind vaultKind) internal view returns (bytes32 vaultFactoryBytes) {
+        address vaultFactory;
+
+        if (vaultKind == VaultKind.Async) {
+            vaultFactory = asyncVaultFactory;
+        } else if (vaultKind == VaultKind.SyncDepositAsyncRedeem) {
+            vaultFactory = syncDepositVaultFactory;
+        } else {
+            revert("BaseTest/unsupported-vault-kind");
+        }
+
+        return bytes32(bytes20(vaultFactory));
     }
 
     // assumptions

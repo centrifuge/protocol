@@ -58,7 +58,8 @@ enum UpdateContractType {
     /// @dev Placeholder for null update restriction type
     Invalid,
     VaultUpdate,
-    Permission
+    Permission,
+    MaxPriceAge
 }
 
 /// @dev Used internally in the VaultUpdateMessage (not represent a submessage)
@@ -626,6 +627,29 @@ library MessageLib {
 
     function serialize(UpdateContractPermission memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(UpdateContractType.Permission, t.who, t.allowed);
+    }
+
+    //---------------------------------------
+    //   UpdateContract.MaxPriceAge (submsg)
+    //---------------------------------------
+
+    struct UpdateContractMaxPriceAge {
+        bytes32 vault;
+        uint64 maxPriceAge;
+    }
+
+    function deserializeUpdateContractMaxPriceAge(bytes memory data)
+        internal
+        pure
+        returns (UpdateContractMaxPriceAge memory)
+    {
+        require(updateContractType(data) == UpdateContractType.MaxPriceAge, UnknownMessageType());
+
+        return UpdateContractMaxPriceAge({vault: data.toBytes32(1), maxPriceAge: data.toUint64(33)});
+    }
+
+    function serialize(UpdateContractMaxPriceAge memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(UpdateContractType.MaxPriceAge, t.vault, t.maxPriceAge);
     }
 
     //---------------------------------------

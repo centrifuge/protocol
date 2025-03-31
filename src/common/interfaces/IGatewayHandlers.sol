@@ -116,8 +116,9 @@ interface IPoolManagerGatewayHandler {
     function updateContract(uint64 poolId, bytes16 trancheId, address target, bytes memory update) external;
 }
 
-/// @notice Interface for CV methods related to investment called by the gateway
+/// @notice Interface for CV methods related to async investments called by the gateway
 interface IInvestmentManagerGatewayHandler {
+    // --- Deposits ---
     /// @notice Fulfills pending deposit requests after successful epoch execution on CP.
     ///         The amount of shares that can be claimed by the user is minted and moved to the escrow contract.
     ///         The MaxMint bookkeeping value is updated.
@@ -125,21 +126,6 @@ interface IInvestmentManagerGatewayHandler {
     /// @dev    The shares in the escrow are reserved for the user and are transferred to the user on deposit
     ///         and mint calls.
     function fulfillDepositRequest(
-        uint64 poolId,
-        bytes16 trancheId,
-        address user,
-        uint128 assetId,
-        uint128 assets,
-        uint128 shares
-    ) external;
-
-    /// @notice Fulfills pending redeem requests after successful epoch execution on CP.
-    ///         The amount of redeemed shares is burned. The amount of assets that can be claimed by the user in
-    ///         return is locked in the escrow contract. The MaxWithdraw bookkeeping value is updated.
-    ///         The request fulfillment can be partial.
-    /// @dev    The assets in the escrow are reserved for the user and are transferred to the user on redeem
-    ///         and withdraw calls.
-    function fulfillRedeemRequest(
         uint64 poolId,
         bytes16 trancheId,
         address user,
@@ -207,6 +193,22 @@ interface IInvestmentManagerGatewayHandler {
         uint128 fulfillment
     ) external;
 
+    // --- Redeems ---
+    /// @notice Fulfills pending redeem requests after successful epoch execution on CP.
+    ///         The amount of redeemed shares is burned. The amount of assets that can be claimed by the user in
+    ///         return is locked in the escrow contract. The MaxWithdraw bookkeeping value is updated.
+    ///         The request fulfillment can be partial.
+    /// @dev    The assets in the escrow are reserved for the user and are transferred to the user on redeem
+    ///         and withdraw calls.
+    function fulfillRedeemRequest(
+        uint64 poolId,
+        bytes16 trancheId,
+        address user,
+        uint128 assetId,
+        uint128 assets,
+        uint128 shares
+    ) external;
+
     /// @notice Fulfills redeem request cancellation after successful epoch execution on CP.
     ///         The amount of shares that can be claimed by the user is locked in the escrow contract.
     ///         Updates claimableCancelRedeemRequest bookkeeping value. The cancellation order execution can also be
@@ -219,7 +221,8 @@ interface IInvestmentManagerGatewayHandler {
     /// @notice Triggers a redeem request on behalf of the user through Centrifuge governance.
     ///         This function is required for legal/compliance reasons and rare scenarios, like share contract
     ///         migrations.
-    ///         Once the next epoch is executed on Centrifuge, vaults can proceed with asset payouts in case the orders
+    ///         Once the next epoch is executed on the corresponding CP instance, vaults can proceed with asset payouts
+    /// in case the orders
     ///         got fulfilled.
     /// @dev    The user share amount required to fulfill the redeem request has to be locked in escrow,
     ///         even though the asset payout can only happen after epoch execution.

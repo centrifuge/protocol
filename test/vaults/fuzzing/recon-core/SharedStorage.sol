@@ -69,8 +69,8 @@ abstract contract SharedStorage {
     mapping(address => uint256) sumOfDepositRequests;
     /**
      * See:
-     *         - invariant_erc7540_9_r
-     *         - invariant_erc7540_9_w
+     *         - invariant_asyncVault_9_r
+     *         - invariant_asyncVault_9_w
      *         - vault_redeem
      *         - vault_withdraw
      */
@@ -114,13 +114,13 @@ abstract contract SharedStorage {
      *     // It's not supposed to work this way in reality
      *     // TODO: MUST REMOVE
      *     See:
-     *         - investmentManager_fulfillCancelRedeemRequest
-     *         - investmentManager_fulfillRedeemRequest // NOTE: Used by E_1
+     *         - asyncRequests_fulfillCancelRedeemRequest
+     *         - asyncRequests_fulfillRedeemRequest // NOTE: Used by E_1
      */
     mapping(address => uint256) mintedByCurrencyPayout;
     /**
      * See:
-     *         - investmentManager_fulfillDepositRequest
+     *         - asyncRequests_fulfillDepositRequest
      */
     mapping(address => uint256) sumOfFullfilledDeposits;
 
@@ -133,13 +133,13 @@ abstract contract SharedStorage {
     /**
      * See:
      *         - vault_requestRedeem
-     *         - investmentManager_triggerRedeemRequest
+     *         - asyncRequests_triggerRedeemRequest
      */
     mapping(address => uint256) sumOfRedeemRequests;
 
     /**
      * See:
-     *         - investmentManager_fulfillRedeemRequest
+     *         - asyncRequests_fulfillRedeemRequest
      */
     mapping(address => uint256) sumOfClaimedRequests;
 

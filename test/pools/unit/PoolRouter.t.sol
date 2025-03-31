@@ -49,13 +49,7 @@ contract TestCommon is Test {
             abi.encode(true)
         );
 
-        vm.mockCall(
-            address(accounting), abi.encodeWithSelector(accounting.generateJournalId.selector, POOL_A), abi.encode(1)
-        );
-
-        vm.mockCall(
-            address(accounting), abi.encodeWithSelector(accounting.unlock.selector, POOL_A, 1), abi.encode(true)
-        );
+        vm.mockCall(address(accounting), abi.encodeWithSelector(accounting.unlock.selector, POOL_A), abi.encode(true));
 
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.startBatch.selector), abi.encode());
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endBatch.selector), abi.encode());

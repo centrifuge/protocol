@@ -258,6 +258,16 @@ contract TestMessageLibIdentities is Test {
         // This message is a submessage and has not static message length defined
     }
 
+    function testUpdateContractMaxPriceAge() public pure {
+        MessageLib.UpdateContractMaxPriceAge memory a =
+            MessageLib.UpdateContractMaxPriceAge({vault: bytes32("address"), maxPriceAge: 42});
+        MessageLib.UpdateContractMaxPriceAge memory b = MessageLib.deserializeUpdateContractMaxPriceAge(a.serialize());
+
+        assertEq(a.vault, b.vault);
+        assertEq(a.maxPriceAge, b.maxPriceAge);
+        // This message is a submessage and has not static message length defined
+    }
+
     function testDepositRequest() public pure {
         MessageLib.DepositRequest memory a = MessageLib.DepositRequest({
             poolId: 1,

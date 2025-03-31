@@ -8,7 +8,7 @@ import {vm} from "@chimera/Hevm.sol";
 
 // Dependencies
 import {ERC20} from "src/misc/ERC20.sol";
-import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
+import {AsyncVault} from "src/vaults/AsyncVault.sol";
 
 // Component
 import {TrancheTokenFunctions} from "./targets/TrancheTokenFunctions.sol";
