@@ -101,6 +101,7 @@ contract VaultsDeployer is CommonDeployer {
 
         // Rely on sync investment manager
         balanceSheetManager.rely(address(syncManager));
+        asyncManager.rely(address(syncManager));
 
         // Rely on BalanceSheetManager
         messageDispatcher.rely(address(balanceSheetManager));

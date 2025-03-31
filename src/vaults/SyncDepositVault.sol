@@ -16,7 +16,7 @@ import "src/vaults/interfaces/IERC7575.sol";
 contract SyncDepositVault is AbstractSyncDepositVault, AsyncRedeemVault {
     constructor(
         uint64 poolId_,
-        bytes16 trancheId_, 
+        bytes16 trancheId_,
         address asset_,
         uint256 tokenId_,
         address share_,

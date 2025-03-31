@@ -20,7 +20,8 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
-import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
+import {IAsyncRedeemVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
 import {IAsyncRedeemManager, AsyncRedeemState} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
@@ -65,16 +66,21 @@ contract SyncManager is BaseInvestmentManager, ISyncManager {
         auth
     {
         SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
-        address token = vault_.share();
 
         require(vault_.asset() == asset_, "SyncManager/asset-mismatch");
         require(vault[poolId][trancheId][assetId] == address(0), "SyncManager/vault-already-exists");
 
+        address token = vault_.share();
         vault[poolId][trancheId][assetId] = vaultAddr;
 
         IAuth(token).rely(vaultAddr);
         ITranche(token).updateVault(vault_.asset(), vaultAddr);
         rely(vaultAddr);
+
+        (VaultKind vaultKind_, address secondaryManager) = vaultKind(vaultAddr);
+        if (vaultKind_ == VaultKind.SyncDepositAsyncRedeem) {
+            IVaultManager(secondaryManager).addVault(poolId, trancheId, vaultAddr, asset_, assetId);
+        }
     }
 
     /// @inheritdoc IVaultManager
@@ -94,6 +100,11 @@ contract SyncManager is BaseInvestmentManager, ISyncManager {
         IAuth(token).deny(vaultAddr);
         ITranche(token).updateVault(vault_.asset(), address(0));
         deny(vaultAddr);
+
+        (VaultKind vaultKind_, address secondaryManager) = vaultKind(vaultAddr);
+        if (vaultKind_ == VaultKind.SyncDepositAsyncRedeem) {
+            IVaultManager(secondaryManager).removeVault(poolId, trancheId, vaultAddr, asset_, assetId);
+        }
     }
 
     // --- IDepositManager ---
@@ -173,6 +184,15 @@ contract SyncManager is BaseInvestmentManager, ISyncManager {
         emit MaxPriceAgeUpdate(vaultAddr, m.maxPriceAge);
     }
 
+    /// @inheritdoc IVaultManager
+    function vaultKind(address vaultAddr) public view returns (VaultKind, address) {
+        if (IERC165(vaultAddr).supportsInterface(type(IAsyncRedeemVault).interfaceId)) {
+            return (VaultKind.SyncDepositAsyncRedeem, address(IAsyncRedeemVault(vaultAddr).asyncRedeemManager()));
+        } else {
+            return (VaultKind.Sync, address(0));
+        }
+    }
+
     /// --- IERC165 ---
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId)
@@ -197,6 +217,7 @@ contract SyncManager is BaseInvestmentManager, ISyncManager {
         return price;
     }
 
+    /// --- Internal methods ---
     /// @dev Issues shares to the receiver and instruct the Balance Sheet Manager to react on the issuance and the
     /// updated holding value
     function _issueShares(address vaultAddr, address receiver, uint128 shares) internal {

@@ -21,15 +21,6 @@ import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInv
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 
-enum VaultKind {
-    /// @dev Refers to AsyncVault
-    Async,
-    /// @dev not yet supported
-    Sync,
-    /// @dev Refers to SyncDepositVault
-    SyncDepositAsyncRedeem
-}
-
 abstract contract BaseVault is Auth, IBaseVault {
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
     uint256 internal constant REQUEST_ID = 0;

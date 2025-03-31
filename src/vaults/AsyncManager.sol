@@ -27,7 +27,7 @@ import {IAsyncDepositManager} from "src/vaults/interfaces/investments/IAsyncDepo
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
 import {IRedeemManager} from "src/vaults/interfaces/investments/IRedeemManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
-import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
+import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
 import {PriceConversionLib} from "src/vaults/libraries/PriceConversionLib.sol";
@@ -599,6 +599,11 @@ contract AsyncManager is BaseInvestmentManager, IAsyncManager {
             || interfaceId == type(IAsyncManager).interfaceId
             || interfaceId == type(IInvestmentManagerGatewayHandler).interfaceId
             || interfaceId == type(IAsyncRedeemManager).interfaceId || interfaceId == type(IMessageHandler).interfaceId;
+    }
+
+    /// @inheritdoc IVaultManager
+    function vaultKind(address) public pure returns (VaultKind, address) {
+        return (VaultKind.Async, address(0));
     }
 
     // --- Helpers ---

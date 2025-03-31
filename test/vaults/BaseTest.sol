@@ -25,7 +25,7 @@ import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
-import {VaultKind} from "src/vaults/BaseVaults.sol";
+import {VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 
 // scripts
 import {VaultsDeployer} from "script/VaultsDeployer.s.sol";

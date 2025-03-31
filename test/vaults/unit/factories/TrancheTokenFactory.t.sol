@@ -6,7 +6,7 @@ import {Root} from "src/common/Root.sol";
 import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
-import {VaultKind} from "src/vaults/BaseVaults.sol";
+import {VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 
 import {BaseTest} from "test/vaults/BaseTest.sol";
 import "forge-std/Test.sol";

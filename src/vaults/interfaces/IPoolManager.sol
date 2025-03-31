@@ -196,16 +196,4 @@ interface IPoolManager is IRecoverable {
 
     /// @notice Checks whether a given asset-vault pair is eligible for investing into a tranche of a pool
     function isLinked(uint64 poolId, bytes16 trancheId, address asset, address vault) external view returns (bool);
-
-    /// @notice checks whether a given vault is partially (a)sync, i.e. sync deposit with async redeem or vice versa.
-    ///
-    /// @param vault The address of the vault to be checked for
-    /// @param manager The manager of the vault returned by IBaseVault(vault).manager()
-    /// @return isPartial Whether the vault is partially (a)sync
-    /// @return otherManager The other manager which is not IBaseVault(vault).manager(), i.e. for SyncDepositAsyncRedeem
-    /// vaults, it is the async redeem manager
-    function isPartiallySyncVault(address vault, IBaseInvestmentManager manager)
-        external
-        view
-        returns (bool isPartial, address otherManager);
 }

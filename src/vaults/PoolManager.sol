@@ -19,7 +19,7 @@ import {newAssetId} from "src/common/types/AssetId.sol";
 
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 import {IBaseVault, IAsyncRedeemVault} from "src/vaults/interfaces/IERC7540.sol";
-import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
+import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {ISyncManager} from "src/vaults/interfaces/investments/ISyncManager.sol";
@@ -361,12 +361,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         IBaseInvestmentManager manager = IBaseVault(vault).manager();
         IVaultManager(address(manager)).addVault(poolId, trancheId, vault, assetIdKey.asset, assetId);
 
-        // For sync deposit & async redeem vault, also add vault to async manager (base manager is sync one)
-        (bool isSyncDepositVault, address asyncRedeemManager) = isPartiallySyncVault(vault, manager);
-        if (isSyncDepositVault) {
-            IVaultManager(asyncRedeemManager).addVault(poolId, trancheId, vault, assetIdKey.asset, assetId);
-        }
-
         _vaultDetails[vault].isLinked = true;
 
         emit LinkVault(poolId, trancheId, assetIdKey.asset, assetIdKey.tokenId, vault);
@@ -381,12 +375,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
         IBaseInvestmentManager manager = IBaseVault(vault).manager();
         IVaultManager(address(manager)).removeVault(poolId, trancheId, vault, assetIdKey.asset, assetId);
-
-        // For sync deposit & async redeem vault, also add vault to async manager (base manager is sync one)
-        (bool isSyncDepositVault, address asyncRedeemManager) = isPartiallySyncVault(vault, manager);
-        if (isSyncDepositVault) {
-            IVaultManager(asyncRedeemManager).removeVault(poolId, trancheId, vault, assetIdKey.asset, assetId);
-        }
 
         _vaultDetails[vault].isLinked = false;
 
@@ -458,31 +446,16 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         require(assetId != 0, "PoolManager/unknown-asset");
     }
 
-    /// @inheritdoc IPoolManager
-    function isPartiallySyncVault(address vault, IBaseInvestmentManager manager)
-        public
-        view
-        returns (bool isPartial, address otherManager)
-    {
-        if (
-            manager.supportsInterface(type(ISyncManager).interfaceId)
-                && IERC165(vault).supportsInterface(type(IAsyncRedeemVault).interfaceId)
-        ) {
-            isPartial = true;
-            otherManager = address(IAsyncRedeemVault(vault).asyncRedeemManager());
-        }
-    }
-
-    /// @dev Sets up permissions for the base vault manager and potentially a side manager (in case of partially sync
-    /// vault)
+    /// @dev Sets up permissions for the base vault manager and potentially a secondar manager (in case of partially
+    /// sync vault)
     function _approveManagers(address vault, address trancheToken, address asset, uint256 tokenId) internal {
-        IBaseInvestmentManager manager = IBaseVault(vault).manager();
-        _approveManager(address(manager), trancheToken, asset, tokenId);
+        address manager = address(IBaseVault(vault).manager());
+        _approveManager(manager, trancheToken, asset, tokenId);
 
         // For sync deposit & async redeem vault, also repeat above for async manager (base manager is sync one)
-        (bool isSyncDepositVault, address asyncRedeemManager) = isPartiallySyncVault(vault, manager);
-        if (isSyncDepositVault) {
-            _approveManager(asyncRedeemManager, trancheToken, asset, tokenId);
+        (VaultKind vaultKind, address secondaryVaultManager) = IVaultManager(manager).vaultKind(vault);
+        if (vaultKind == VaultKind.SyncDepositAsyncRedeem) {
+            _approveManager(secondaryVaultManager, trancheToken, asset, tokenId);
         }
     }
 
