@@ -938,7 +938,7 @@ library MessageLib {
         bytes memory debits = t.debits.toBytes();
         bytes memory credits = t.credits.toBytes();
 
-        return abi.encodePacked(
+        bytes memory partial1 = abi.encodePacked(
             MessageType.UpdateHoldingAmount,
             t.poolId,
             t.scId,
@@ -947,12 +947,11 @@ library MessageLib {
             t.amount,
             t.pricePerUnit,
             t.timestamp,
-            t.isIncrease,
-            uint16(debits.length),
-            debits,
-            uint16(credits.length),
-            credits
+            t.isIncrease
         );
+
+        // partial1 extracted to avoid stack too deep issue
+        return abi.encodePacked(partial1, uint16(debits.length), debits, uint16(credits.length), credits);
     }
 
     //---------------------------------------
@@ -1099,7 +1098,7 @@ library MessageLib {
         bytes memory debits = t.debits.toBytes();
         bytes memory credits = t.credits.toBytes();
 
-        return abi.encodePacked(
+        bytes memory partial1 = abi.encodePacked(
             MessageType.TriggerUpdateHoldingAmount,
             t.poolId,
             t.scId,
@@ -1108,12 +1107,11 @@ library MessageLib {
             t.amount,
             t.pricePerUnit,
             t.isIncrease,
-            t.asAllowance,
-            uint16(debits.length),
-            debits,
-            uint16(credits.length),
-            credits
+            t.asAllowance
         );
+
+        // partial1 extracted to avoid stack too deep issue
+        return abi.encodePacked(partial1, uint16(debits.length), debits, uint16(credits.length), credits);
     }
 
     //---------------------------------------
