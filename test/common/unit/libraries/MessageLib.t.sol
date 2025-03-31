@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
-import {JournalEntry} from "src/common/types/JournalEntry.sol";
+import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 
 import "forge-std/Test.sol";

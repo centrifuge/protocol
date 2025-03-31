@@ -13,7 +13,7 @@ import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
-import {JournalEntry, Meta} from "src/common/types/JournalEntry.sol";
+import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 import {IVaultMessageSender} from "../common/interfaces/IGatewaySenders.sol";
 import {IBalanceSheetManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {PoolId} from "src/common/types/PoolId.sol";

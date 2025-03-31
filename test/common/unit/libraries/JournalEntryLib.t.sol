@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {JournalEntry, JournalEntryLib} from "src/common/types/JournalEntry.sol";
+import {JournalEntry, JournalEntryLib} from "src/common/libraries/JournalEntryLib.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 
 import "forge-std/Test.sol";

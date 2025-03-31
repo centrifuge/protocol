@@ -22,7 +22,7 @@ import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 import {IPoolRouter} from "src/pools/interfaces/IPoolRouter.sol";
 import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 import {PoolRouter} from "src/pools/PoolRouter.sol";
-import {JournalEntry} from "src/common/types/JournalEntry.sol";
+import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
 contract TestCommon is Test {
     uint16 constant CHAIN_A = 23;

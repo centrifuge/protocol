@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
-import {JournalEntry, JournalEntryLib} from "src/common/types/JournalEntry.sol";
+import {JournalEntry, JournalEntryLib} from "src/common/libraries/JournalEntryLib.sol";
 
 enum MessageType {
     /// @dev Placeholder for null message type

@@ -7,7 +7,7 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
-import {Meta, JournalEntry} from "src/common/types/JournalEntry.sol";
+import {Meta, JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";

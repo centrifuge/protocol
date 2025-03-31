@@ -18,7 +18,7 @@ import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
 
 import {PoolsDeployer, ISafe} from "script/PoolsDeployer.s.sol";
 import {AccountType} from "src/pools/interfaces/IPoolRouter.sol";
-import {JournalEntry} from "src/common/types/JournalEntry.sol";
+import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
 import {MockVaults} from "test/pools/mocks/MockVaults.sol";
 import {ShareClassIdTest} from "../unit/types/ShareClassId.t.sol";

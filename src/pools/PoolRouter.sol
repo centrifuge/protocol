@@ -17,7 +17,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {JournalEntry} from "src/common/types/JournalEntry.sol";
+import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
 import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";

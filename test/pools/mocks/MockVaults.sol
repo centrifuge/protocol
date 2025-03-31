@@ -12,7 +12,7 @@ import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {JournalEntry} from "src/common/types/JournalEntry.sol";
+import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
