@@ -40,6 +40,7 @@ contract TestJournalEntry is Test {
 
         assertEq(encoded, encodedEntry);
 
+        // Ensure that the result is the same as using abi.encodePacked
         assertEq(abi.encodePacked(AMOUNT, ACCOUNT), encodedEntry);
     }
 
