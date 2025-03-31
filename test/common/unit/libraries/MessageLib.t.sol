@@ -5,8 +5,6 @@ import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {JournalEntry} from "src/common/types/JournalEntry.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 
-import {D18, d18} from "src/misc/types/D18.sol";
-
 import "forge-std/Test.sol";
 
 // The following tests check that the function composition of deserializing and serializing equals to the identity:
