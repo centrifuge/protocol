@@ -36,21 +36,19 @@ contract VaultsDeployer is CommonDeployer {
     address public restrictedRedemptions;
     address public trancheFactory;
 
-    function deployVaults(uint16 chainId, ISafe adminSafe_) public {
-        deployCommon(chainId, adminSafe_);
+    function deployVaults(uint16 chainId, ISafe adminSafe_, address deployer) public {
+        deployCommon(chainId, adminSafe_, deployer);
 
-        escrow = new Escrow{salt: SALT}(address(this));
-        routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow2"))}(address(this));
-        restrictionManager = address(new RestrictionManager{salt: SALT}(address(root), address(this)));
-        restrictedRedemptions =
-            address(new RestrictedRedemptions{salt: SALT}(address(root), address(escrow), address(this)));
-        trancheFactory = address(new TrancheFactory{salt: SALT}(address(root), address(this)));
+        escrow = new Escrow{salt: SALT}(deployer);
+        routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow2"))}(deployer);
+        restrictionManager = address(new RestrictionManager{salt: SALT}(address(root), deployer));
+        restrictedRedemptions = address(new RestrictedRedemptions{salt: SALT}(address(root), address(escrow), deployer));
+        trancheFactory = address(new TrancheFactory{salt: SALT}(address(root), deployer));
         asyncManager = new AsyncManager(address(root), address(escrow));
         syncManager = new SyncManager(address(root), address(escrow));
         asyncVaultFactory = address(new AsyncVaultFactory(address(root), address(asyncManager)));
         syncDepositVaultFactory =
             address(new SyncDepositVaultFactory(address(root), address(syncManager), address(asyncManager)));
-
         address[] memory vaultFactories = new address[](2);
         vaultFactories[0] = asyncVaultFactory;
         vaultFactories[1] = syncDepositVaultFactory;
@@ -168,8 +166,8 @@ contract VaultsDeployer is CommonDeployer {
         balanceSheetManager.file("sender", address(messageDispatcher));
     }
 
-    function removeVaultsDeployerAccess() public {
-        removeCommonDeployerAccess();
+    function removeVaultsDeployerAccess(address deployer) public {
+        removeCommonDeployerAccess(deployer);
 
         IAuth(asyncVaultFactory).deny(msg.sender);
         IAuth(syncDepositVaultFactory).deny(msg.sender);

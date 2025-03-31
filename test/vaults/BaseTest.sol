@@ -83,7 +83,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         ISafe adminSafe = new MockSafe(pausers, 1);
 
         // deploy core contracts
-        deployVaults(THIS_CHAIN_ID, adminSafe);
+        deployVaults(THIS_CHAIN_ID, adminSafe, address(this));
 
         // deploy mock adapters
 
@@ -100,7 +100,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         testAdapters.push(adapter3);
 
         // wire contracts
-        wire(adapter1);
+        wire(adapter1, address(this));
         // remove deployer access
         // removeVaultsDeployerAccess(address(adapter)); // need auth permissions in tests
 
