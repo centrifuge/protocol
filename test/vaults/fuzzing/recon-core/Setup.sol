@@ -5,6 +5,7 @@ import {BaseSetup} from "@chimera/BaseSetup.sol";
 import { vm } from "@chimera/Hevm.sol";
 import {ActorManager} from "@recon/ActorManager.sol";
 import {AssetManager} from "@recon/AssetManager.sol";
+import {MockERC20} from "@recon/MockERC20.sol";
 import {console2} from "forge-std/console2.sol";
 
 import {Escrow} from "src/vaults/Escrow.sol";
@@ -37,7 +38,6 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
 
     // TODO: CYCLE / Make it work for variable values
     ERC7540Vault vault;
-    ERC20 token;
     Tranche trancheToken;
     RestrictionManager restrictionManager;
 
@@ -180,12 +180,13 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         // Pool specific contracts
         vault = ERC7540Vault(address(0x1d01Ef1997d44206d839b78bA6813f60F1B3A970));
         trancheToken = Tranche(address(0x8c213ee79581Ff4984583C6a801e5263418C4b86));
-        token = ERC20(address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48));
+        // TODO: replaced with getAsset(), need a better way to do this for forked setup
+        // token = ERC20(address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48));
 
         // Pool specific values
         poolId = 4139607887;
         trancheId = 0x97aa65f23e7be09fcd62d0554d2e9273;
-        currencyId = poolManager.assetToId(address(token));
+        currencyId = poolManager.assetToId(address(_getAsset()));
 
         // remove previously set actors
         _removeActor(address(this)); // remove default actor
@@ -201,18 +202,18 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         // Transfer underlying asset from whale to actors
         address[] memory actors = _getActors();
         address whale = address(0x37305B1cD40574E4C5Ce33f8e8306Be057fD7341); // USDC whale for testing
-        uint256 whaleBalance = token.balanceOf(whale); // TODO: replace with whale address
+        uint256 whaleBalance = MockERC20(address(_getAsset())).balanceOf(whale); // TODO: replace with whale address
         uint256 initialActorBalance = whaleBalance / actors.length;
         
         for (uint256 i = 0; i < actors.length; i++) { 
             vm.prank(whale);
-            token.transfer(actors[i], initialActorBalance);
+            MockERC20(address(_getAsset())).transfer(actors[i], initialActorBalance);
         }
 
         // NOTE: used for invariants that depend on comparing ghost variables to state values
         // state values are taken from the forked contracts so won't initially be in sync with the ghost variables, this allows us to sync them
         totalSupplyAtFork = trancheToken.totalSupply();
-        tokenBalanceOfEscrowAtFork = token.balanceOf(address(escrow));
+        tokenBalanceOfEscrowAtFork = MockERC20(address(_getAsset())).balanceOf(address(escrow));
         trancheTokenBalanceOfEscrowAtFork = trancheToken.balanceOf(address(escrow));
     }
 

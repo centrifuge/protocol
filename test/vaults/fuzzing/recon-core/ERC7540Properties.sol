@@ -293,7 +293,7 @@ abstract contract ERC7540Properties is Setup, Asserts {
         try IERC7540Vault(erc7540Target).withdraw(maxWithdraw, _getActor(), _getActor()) {
             // Success here
             // E-1
-            sumOfClaimedRedemptions[address(token)] += maxWithdraw;
+            sumOfClaimedRedemptions[address(_getAsset())] += maxWithdraw;
             return;
         } catch {
             t(false, "Property: 7540-9 max withdraw reverts");
@@ -312,7 +312,7 @@ abstract contract ERC7540Properties is Setup, Asserts {
         vm.prank(_getActor());
         try IERC7540Vault(erc7540Target).redeem(maxRedeem, _getActor(), _getActor()) returns (uint256 assets) {
             // E-1
-            sumOfClaimedRedemptions[address(token)] += assets;
+            sumOfClaimedRedemptions[address(_getAsset())] += assets;
             return;
         } catch {
             t(false, "Property: 7540-9 max redeem reverts");

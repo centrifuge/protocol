@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {Asserts} from "@chimera/Asserts.sol";
+import {MockERC20} from "@recon/MockERC20.sol";
 import {console2} from "forge-std/console2.sol";
 
 import {BeforeAfter} from "./BeforeAfter.sol";
@@ -39,7 +40,7 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
     function invariant_global_2() trancheTokenIsSet public {
         // Redeem and Withdraw
         // investmentManager_handleExecutedCollectRedeem
-        lte(sumOfClaimedRedemptions[address(token)], mintedByCurrencyPayout[address(token)], "sumOfClaimedRedemptions !<= mintedByCurrencyPayout");
+        lte(sumOfClaimedRedemptions[_getAsset()], mintedByCurrencyPayout[_getAsset()], "sumOfClaimedRedemptions !<= mintedByCurrencyPayout");
     }
 
     function invariant_global_2_inductive() trancheTokenIsSet public {
@@ -80,7 +81,7 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
         // NOTE: Skipping root and gateway when not gov fuzzing since we mocked them
         for (uint256 i; i < SYSTEM_ADDRESSES_LENGTH; i++) {
             emit DebugNumber(i); // Number to index
-            eq(token.balanceOf(systemAddresses[i]), 0, "token.balanceOf(systemAddresses[i]) > 0");
+            eq(MockERC20(_getAsset()).balanceOf(systemAddresses[i]), 0, "token.balanceOf(systemAddresses[i]) > 0");
         }
     }
 
@@ -88,7 +89,7 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
     function invariant_global_5() trancheTokenIsSet public {
         // claimCancelDepositRequest
         // investmentManager_fulfillCancelDepositRequest
-        lte(sumOfClaimedDepositCancelations[address(token)], cancelDepositCurrencyPayout[address(token)], "sumOfClaimedDepositCancelations !<= cancelDepositCurrencyPayout");
+        lte(sumOfClaimedDepositCancelations[_getAsset()], cancelDepositCurrencyPayout[_getAsset()], "sumOfClaimedDepositCancelations !<= cancelDepositCurrencyPayout");
     }
 
     // Inductive implementation of invariant_global_5
@@ -210,16 +211,16 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
         // functions permanently reverting
         
         uint256 ghostBalOfEscrow;
-        uint256 balOfEscrow = token.balanceOf(address(escrow)) - tokenBalanceOfEscrowAtFork; // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
+        uint256 balOfEscrow = MockERC20(_getAsset()).balanceOf(address(escrow)) - tokenBalanceOfEscrowAtFork; // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
         unchecked {
             // Deposit Requests + Transfers In
             /// @audit Minted by Asset Payouts by Investors
             (
-                ghostBalOfEscrow = mintedByCurrencyPayout[address(token)] + sumOfDepositRequests[address(token)]
-                    + sumOfTransfersIn[address(token)]
+                ghostBalOfEscrow = mintedByCurrencyPayout[_getAsset()] + sumOfDepositRequests[_getAsset()]
+                    + sumOfTransfersIn[_getAsset()]
                 // Minus Claimed Redemptions and TransfersOut
-                - sumOfClaimedRedemptions[address(token)] - sumOfClaimedDepositCancelations[address(token)]
-                    - sumOfTransfersOut[address(token)]
+                - sumOfClaimedRedemptions[_getAsset()] - sumOfClaimedDepositCancelations[_getAsset()]
+                    - sumOfTransfersOut[_getAsset()]
             );
         }
         eq(balOfEscrow, ghostBalOfEscrow, "balOfEscrow != ghostBalOfEscrow");
@@ -263,7 +264,7 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
         //     return; // Canary for actor swaps
         // }
 
-        uint256 balOfEscrow = token.balanceOf(address(escrow));
+        uint256 balOfEscrow = MockERC20(_getAsset()).balanceOf(address(escrow));
 
         // Use acc to track max amount withdrawn for each actor
         address[] memory actors = _getActors();
@@ -323,7 +324,7 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
         systemAddresses[2] = address(investmentManager);
         systemAddresses[3] = address(poolManager);
         systemAddresses[4] = address(vault);
-        systemAddresses[5] = address(token);
+        systemAddresses[5] = address(_getAsset());
         systemAddresses[6] = address(trancheToken);
         systemAddresses[7] = address(restrictionManager);
 

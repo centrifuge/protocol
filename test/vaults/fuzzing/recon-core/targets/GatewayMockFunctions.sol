@@ -98,14 +98,21 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         // Second Step is to store permutations
         // Which means we have to switch on all permutations on all checks
 
+        // approve and mint initial amount to all actors
+        address[] memory approvals = new address[](2);
+        approvals[0] = address(poolManager);
+        approvals[1] = address(vault);
+        _finalizeAssetDeployment(_getActors(), approvals, initialMintPerUsers);
+
         vault = ERC7540Vault(newVault);
-        token = ERC20(newToken);
         trancheToken = Tranche(newTranche);
         restrictionManager = RestrictionManager(address(trancheToken.hook()));
 
         trancheId = TRANCHE_ID;
         poolId = POOL_ID;
         currencyId = CURRENCY_ID;
+
+        // investmentManager.rely(address(vault));
 
         // NOTE: Iplicit return
     }
@@ -120,11 +127,6 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         // Only if success full
         tokenToCurrencyId[currencyAddress] = currencyId;
         currencyIdToToken[currencyId] = currencyAddress;
-    }
-
-    // Step 5
-    function poolManager_allowAsset(uint64 poolId, uint128 currencyId) public notGovFuzzing asAdmin {
-        poolManager.allowAsset(poolId, currencyId);
     }
 
     // Step 3
@@ -148,6 +150,37 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         trancheTokens.push(newTranche);
 
         return newTranche;
+    }
+
+    // Step 5
+    function poolManager_allowAsset(uint64 poolId, uint128 currencyId) public notGovFuzzing asAdmin {
+        poolManager.allowAsset(poolId, currencyId);
+    }
+
+    // Step 2 = poolManager_addAsset - GatewayMockFunctions
+    // Step 3 = poolManager_addPool - GatewayMockFunctions
+    // Step 4 = poolManager_addTranche - GatewayMockFunctions
+
+    // Step 5 = poolManager_allowAsset - GatewayMockFunctions
+
+    // Step 7 is copied from step 5, ignore
+
+    // A pool can belong to a tranche
+    // A Vault can belong to a tranche and a currency
+
+    // Step 7 is copied from step 5, ignore
+
+    // Step 8, deploy the pool
+    function deployVault(uint64 poolId, bytes16 trancheId, address currency) public notGovFuzzing {
+        address newVault = poolManager.deployVault(poolId, trancheId, currency, address(vaultFactory));
+        poolManager.linkVault(poolId, trancheId, currency, newVault);
+
+        vaults.push(newVault);
+    }
+
+    // Extra 9 - Remove liquidity Pool
+    function removeVault(uint64 poolId, bytes16 trancheId, address currency) public notGovFuzzing {
+        poolManager.unlinkVault(poolId, trancheId, currency, vaults[0]);
     }
 
     // Step 10
@@ -197,32 +230,6 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
 
     function root_cancelRely(address target) public notGovFuzzing asAdmin {
         root.cancelRely(target);
-    }
-
-    // Step 2 = poolManager_addAsset - GatewayMockFunctions
-    // Step 3 = poolManager_addPool - GatewayMockFunctions
-    // Step 4 = poolManager_addTranche - GatewayMockFunctions
-
-    // Step 5 = poolManager_allowAsset - GatewayMockFunctions
-
-    // Step 7 is copied from step 5, ignore
-
-    // A pool can belong to a tranche
-    // A Vault can belong to a tranche and a currency
-
-    // Step 7 is copied from step 5, ignore
-
-    // Step 8, deploy the pool
-    function deployVault(uint64 poolId, bytes16 trancheId, address currency) public notGovFuzzing {
-        address newVault = poolManager.deployVault(poolId, trancheId, currency, address(vaultFactory));
-        poolManager.linkVault(poolId, trancheId, currency, newVault);
-
-        vaults.push(newVault);
-    }
-
-    // Extra 9 - Remove liquidity Pool
-    function removeVault(uint64 poolId, bytes16 trancheId, address currency) public notGovFuzzing {
-        poolManager.unlinkVault(poolId, trancheId, currency, vaults[0]);
     }
 }
 

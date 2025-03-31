@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
 pragma solidity ^0.8.0;
 
+import {MockERC20} from "@recon/MockERC20.sol";
+
 import {Setup} from "./Setup.sol";
 import {InvestmentState} from "src/vaults/interfaces/IInvestmentManager.sol";
 import {Ghosts} from "./Ghosts.sol";
@@ -50,7 +52,7 @@ abstract contract BeforeAfter is Ghosts {
                 pendingCancelRedeemRequest
             );
         }
-        _before.escrowTokenBalance = token.balanceOf(address(escrow));
+        _before.escrowTokenBalance = MockERC20(_getAsset()).balanceOf(address(escrow));
         _before.escrowTrancheTokenBalance = trancheToken.balanceOf(address(escrow));
     }
 
@@ -82,7 +84,7 @@ abstract contract BeforeAfter is Ghosts {
                 pendingCancelRedeemRequest
             );
         }
-        _after.escrowTokenBalance = token.balanceOf(address(escrow));
+        _after.escrowTokenBalance = MockERC20(_getAsset()).balanceOf(address(escrow));
         _after.escrowTrancheTokenBalance = trancheToken.balanceOf(address(escrow));
     }
 }

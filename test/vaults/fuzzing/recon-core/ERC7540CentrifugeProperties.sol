@@ -29,7 +29,7 @@ abstract contract ERC7540CentrifugeProperties is Setup, Asserts, ERC7540Properti
         if (address(restrictionManager) == address(0)) {
             return false;
         }
-        if (address(token) == address(0)) {
+        if (_getAsset() == address(0)) {
             return false;
         }
 

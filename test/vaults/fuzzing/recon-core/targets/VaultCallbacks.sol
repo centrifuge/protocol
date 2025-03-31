@@ -4,15 +4,17 @@
 pragma solidity 0.8.28;
 
 // Recon Deps
-import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
-import {Properties} from "../Properties.sol";
 import {vm} from "@chimera/Hevm.sol";
+import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
+import {MockERC20} from "@recon/MockERC20.sol";
 
 // Src Deps | For cycling of values
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
+
+import {Properties} from "../Properties.sol";
 
 /// @dev Separate the 5 Callbacks that go from Gateway to InvestmentManager
 /**
@@ -122,8 +124,8 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
 
         // TODO: Re check
         // // TODO: test_invariant_erc7540_10_w_recon
-        token.mint(address(escrow), currencyPayout);
-        mintedByCurrencyPayout[address(token)] += currencyPayout;
+        MockERC20(_getAsset()).mint(address(escrow), currencyPayout);
+        mintedByCurrencyPayout[_getAsset()] += currencyPayout;
         // /// @audit We mint payout here which has to be paid by the borrowers
         // // END TODO test_invariant_erc7540_10_w_recon
 
@@ -193,7 +195,7 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
         );
         /// @audit Reduced by: currencyPayout
 
-        cancelDepositCurrencyPayout[address(token)] += currencyPayout;
+        cancelDepositCurrencyPayout[_getAsset()] += currencyPayout;
 
         __globals();
     }
