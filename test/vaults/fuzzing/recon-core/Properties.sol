@@ -3,9 +3,9 @@ pragma solidity 0.8.28;
 
 import {Asserts} from "@chimera/Asserts.sol";
 import {Setup} from "./Setup.sol";
-import {ERC7540CentrifugeProperties} from "./ERC7540CentrifugeProperties.sol";
+import {AsyncVaultCentrifugeProperties} from "./AsyncVaultCentrifugeProperties.sol";
 
-abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
+abstract contract Properties is Setup, Asserts, AsyncVaultCentrifugeProperties {
     // == SENTINEL == //
     /// Sentinel properties are used to flag that coverage was reached
     // These can be useful during development, but may also be kept at latest stages
@@ -37,7 +37,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
 
         // Mint and Deposit
         return sumOfClaimedDeposits[address(trancheToken)]
-        // asyncInvestmentManager_fulfilledDepositRequest
+        // asyncManager_fulfilledDepositRequest
         <= sumOfFullfilledDeposits[address(trancheToken)];
     }
 
@@ -48,7 +48,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
 
         // Redeem and Withdraw
         return sumOfClaimedRedemptions[address(token)]
-        // asyncInvestmentManager_handleExecutedCollectRedeem
+        // asyncManager_handleExecutedCollectRedeem
         <= mintedByCurrencyPayout[address(token)];
     }
 
@@ -81,7 +81,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
 
         // NOTE: Skipping escrow which instead can have non-zero bal
 
-        systemAddresses[2] = address(asyncInvestmentManager);
+        systemAddresses[2] = address(asyncManager);
         systemAddresses[3] = address(poolManager);
         systemAddresses[4] = address(vault);
         systemAddresses[5] = address(token);
@@ -140,7 +140,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
 
         // claimCancelDepositRequest
         return sumOfClaimedDepositCancelations[address(token)]
-        // asyncInvestmentManager_fulfillCancelDepositRequest
+        // asyncManager_fulfillCancelDepositRequest
         <= cancelDepositCurrencyPayout[address(token)];
     }
 
@@ -153,7 +153,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
 
         // claimCancelRedeemRequest
         return sumOfClaimedRedeemCancelations[address(trancheToken)]
-        // asyncInvestmentManager_fulfillCancelRedeemRequest
+        // asyncManager_fulfillCancelRedeemRequest
         <= cancelRedeemTrancheTokenPayout[address(trancheToken)];
     }
 
@@ -186,7 +186,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
     }
 
     function invariant_IM_1() public view returns (bool) {
-        if (address(asyncInvestmentManager) == address(0)) {
+        if (address(asyncManager) == address(0)) {
             return true;
         }
         if (address(vault) == address(0)) {
@@ -217,7 +217,7 @@ abstract contract Properties is Setup, Asserts, ERC7540CentrifugeProperties {
     }
 
     function invariant_IM_2() public view returns (bool) {
-        if (address(asyncInvestmentManager) == address(0)) {
+        if (address(asyncManager) == address(0)) {
             return true;
         }
         if (address(vault) == address(0)) {

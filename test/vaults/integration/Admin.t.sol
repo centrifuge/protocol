@@ -217,41 +217,40 @@ contract AdminTest is BaseTest {
         vm.warp(block.timestamp + DELAY + 1 hours);
         root.executeScheduledRely(address(this));
 
-        assertEq(asyncInvestmentManager.wards(address(this)), 1);
-        root.denyContract(address(asyncInvestmentManager), address(this));
-        assertEq(asyncInvestmentManager.wards(address(this)), 0);
+        assertEq(asyncManager.wards(address(this)), 1);
+        root.denyContract(address(asyncManager), address(this));
+        assertEq(asyncManager.wards(address(this)), 0);
 
-        root.relyContract(address(asyncInvestmentManager), address(this));
-        assertEq(asyncInvestmentManager.wards(address(this)), 1);
+        root.relyContract(address(asyncManager), address(this));
+        assertEq(asyncManager.wards(address(this)), 1);
     }
 
     //------ Token Recovery tests ------///
     function testRecoverTokens() public {
         deploySimpleVault(VaultKind.Async);
         address clumsyUser = vm.addr(0x1234);
-        address vault_ = asyncInvestmentManager.vault(
-            POOL_A, bytes16(bytes("1")), poolManager.assetToId(address(erc20), erc20TokenId)
-        );
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        address vault_ =
+            asyncManager.vault(POOL_A, bytes16(bytes("1")), poolManager.assetToId(address(erc20), erc20TokenId));
+        AsyncVault vault = AsyncVault(vault_);
         address asset_ = vault.asset();
         ERC20 asset = ERC20(asset_);
         deal(asset_, clumsyUser, 300);
         vm.startPrank(clumsyUser);
         asset.transfer(vault_, 100);
         asset.transfer(address(poolManager), 100);
-        asset.transfer(address(asyncInvestmentManager), 100);
+        asset.transfer(address(asyncManager), 100);
         vm.stopPrank();
         assertEq(asset.balanceOf(vault_), 100);
         assertEq(asset.balanceOf(address(poolManager)), 100);
-        assertEq(asset.balanceOf(address(asyncInvestmentManager)), 100);
+        assertEq(asset.balanceOf(address(asyncManager)), 100);
         assertEq(asset.balanceOf(clumsyUser), 0);
         centrifugeChain.recoverTokens(vault_, asset_, erc20TokenId, clumsyUser, 100);
         centrifugeChain.recoverTokens(address(poolManager), asset_, erc20TokenId, clumsyUser, 100);
-        centrifugeChain.recoverTokens(address(asyncInvestmentManager), asset_, erc20TokenId, clumsyUser, 100);
+        centrifugeChain.recoverTokens(address(asyncManager), asset_, erc20TokenId, clumsyUser, 100);
         assertEq(asset.balanceOf(clumsyUser), 300);
         assertEq(asset.balanceOf(vault_), 0);
         assertEq(asset.balanceOf(address(poolManager)), 0);
-        assertEq(asset.balanceOf(address(asyncInvestmentManager)), 0);
+        assertEq(asset.balanceOf(address(asyncManager)), 0);
     }
 
     //Endorsements

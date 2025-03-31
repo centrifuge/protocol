@@ -30,7 +30,7 @@ struct AsyncInvestmentState {
     bool pendingCancelRedeemRequest;
 }
 
-interface IAsyncInvestmentManager is IAsyncDepositManager, IAsyncRedeemManager, IInvestmentManagerGatewayHandler {
+interface IAsyncManager is IAsyncDepositManager, IAsyncRedeemManager, IInvestmentManagerGatewayHandler {
     /// @notice Returns the investment state
     function investments(address vaultAddr, address investor)
         external

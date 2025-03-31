@@ -97,7 +97,7 @@ contract FactoryTest is Test {
     }
 
     function testTrancheShouldBeDeterministic(
-        address asyncInvestmentManager,
+        address asyncManager,
         address poolManager,
         string memory name,
         string memory symbol,
@@ -124,7 +124,7 @@ contract FactoryTest is Test {
         );
 
         address[] memory trancheWards = new address[](2);
-        trancheWards[0] = address(asyncInvestmentManager);
+        trancheWards[0] = address(asyncManager);
         trancheWards[1] = address(poolManager);
 
         address token = trancheFactory.newTranche(name, symbol, decimals, tokenSalt, trancheWards);
@@ -135,7 +135,7 @@ contract FactoryTest is Test {
 
     function testDeployingDeterministicAddressTwiceReverts(
         bytes32 salt,
-        address asyncInvestmentManager,
+        address asyncManager,
         address poolManager,
         string memory name,
         string memory symbol,
@@ -162,7 +162,7 @@ contract FactoryTest is Test {
         );
 
         address[] memory trancheWards = new address[](2);
-        trancheWards[0] = address(asyncInvestmentManager);
+        trancheWards[0] = address(asyncManager);
         trancheWards[1] = address(poolManager);
 
         TrancheFactory trancheFactory = new TrancheFactory{salt: salt}(root, address(this));

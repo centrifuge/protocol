@@ -65,8 +65,8 @@ max_test_rejects = 65_536 # default value
   ]
 
 [profile.smt.model_checker.contracts]
-  "src/vaults/ERC7540Vault.sol" = ["ERC7540Vault"]
-  "src/vaults/AsyncInvestmentManager.sol" = ["InvestmentManager"]
+  "src/vaults/AsyncVault.sol" = ["AsyncVault"]
+  "src/vaults/AsyncManager.sol" = ["InvestmentManager"]
   "src/vaults/PoolManager.sol" = ["PoolManager"]
   "src/vaults/Escrow.sol" = ["Escrow"]
   "src/vaults/Root.sol" = ["Root"]

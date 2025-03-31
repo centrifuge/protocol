@@ -25,16 +25,16 @@ import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol
 import {IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
 import {IAsyncRedeemManager, AsyncRedeemState} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
-import {ISyncInvestmentManager} from "src/vaults/interfaces/investments/ISyncInvestmentManager.sol";
+import {ISyncManager} from "src/vaults/interfaces/investments/ISyncManager.sol";
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 import {PriceConversionLib} from "src/vaults/libraries/PriceConversionLib.sol";
-import {SyncDepositAsyncRedeemVault} from "src/vaults/SyncDepositAsyncRedeemVault.sol";
+import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 
 /// @title  Sync Investment Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
-contract SyncInvestmentManager is BaseInvestmentManager, ISyncInvestmentManager {
+contract SyncManager is BaseInvestmentManager, ISyncManager {
     using BytesLib for bytes;
     using MathLib for *;
     using CastLib for *;
@@ -53,7 +53,7 @@ contract SyncInvestmentManager is BaseInvestmentManager, ISyncInvestmentManager 
     function file(bytes32 what, address data) external override(IBaseInvestmentManager, BaseInvestmentManager) auth {
         if (what == "poolManager") poolManager = IPoolManager(data);
         else if (what == "balanceSheetManager") balanceSheetManager = IBalanceSheetManager(data);
-        else revert("SyncInvestmentManager/file-unrecognized-param");
+        else revert("SyncManager/file-unrecognized-param");
         emit File(what, data);
     }
 
@@ -64,11 +64,11 @@ contract SyncInvestmentManager is BaseInvestmentManager, ISyncInvestmentManager 
         override
         auth
     {
-        SyncDepositAsyncRedeemVault vault_ = SyncDepositAsyncRedeemVault(vaultAddr);
+        SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
         address token = vault_.share();
 
-        require(vault_.asset() == asset_, "SyncInvestmentManager/asset-mismatch");
-        require(vault[poolId][trancheId][assetId] == address(0), "SyncInvestmentManager/vault-already-exists");
+        require(vault_.asset() == asset_, "SyncManager/asset-mismatch");
+        require(vault[poolId][trancheId][assetId] == address(0), "SyncManager/vault-already-exists");
 
         vault[poolId][trancheId][assetId] = vaultAddr;
 
@@ -83,11 +83,11 @@ contract SyncInvestmentManager is BaseInvestmentManager, ISyncInvestmentManager 
         override
         auth
     {
-        SyncDepositAsyncRedeemVault vault_ = SyncDepositAsyncRedeemVault(vaultAddr);
+        SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
         address token = vault_.share();
 
-        require(vault_.asset() == asset_, "SyncInvestmentManager/asset-mismatch");
-        require(vault[poolId][trancheId][assetId] != address(0), "SyncInvestmentManager/vault-does-not-exist");
+        require(vault_.asset() == asset_, "SyncManager/asset-mismatch");
+        require(vault[poolId][trancheId][assetId] != address(0), "SyncManager/vault-does-not-exist");
 
         delete vault[poolId][trancheId][assetId];
 
@@ -138,7 +138,7 @@ contract SyncInvestmentManager is BaseInvestmentManager, ISyncInvestmentManager 
         view
         returns (uint256 assets)
     {
-        SyncDepositAsyncRedeemVault vault_ = SyncDepositAsyncRedeemVault(vaultAddr);
+        SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
         uint128 assetId = poolManager.vaultDetails(vaultAddr).assetId;
 
         uint128 latestPrice = _pricePerShare(vaultAddr, vault_.poolId(), vault_.trancheId(), assetId);
@@ -151,7 +151,7 @@ contract SyncInvestmentManager is BaseInvestmentManager, ISyncInvestmentManager 
         view
         returns (uint256 shares)
     {
-        SyncDepositAsyncRedeemVault vault_ = SyncDepositAsyncRedeemVault(vaultAddr);
+        SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
         uint128 assetId = poolManager.vaultDetails(vaultAddr).assetId;
 
         uint128 latestPrice = _pricePerShare(vaultAddr, vault_.poolId(), vault_.trancheId(), assetId);
@@ -183,7 +183,7 @@ contract SyncInvestmentManager is BaseInvestmentManager, ISyncInvestmentManager 
     {
         return super.supportsInterface(interfaceId) || interfaceId == type(IVaultManager).interfaceId
             || interfaceId == type(IDepositManager).interfaceId || interfaceId == type(ISyncDepositManager).interfaceId
-            || interfaceId == type(ISyncInvestmentManager).interfaceId;
+            || interfaceId == type(ISyncManager).interfaceId;
     }
 
     /// @dev Retrieve the latest price for the share class token
@@ -200,7 +200,7 @@ contract SyncInvestmentManager is BaseInvestmentManager, ISyncInvestmentManager 
     /// @dev Issues shares to the receiver and instruct the Balance Sheet Manager to react on the issuance and the
     /// updated holding value
     function _issueShares(address vaultAddr, address receiver, uint128 shares) internal {
-        SyncDepositAsyncRedeemVault vault_ = SyncDepositAsyncRedeemVault(vaultAddr);
+        SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
 
         uint64 poolId_ = vault_.poolId();
         bytes16 scId_ = vault_.trancheId();

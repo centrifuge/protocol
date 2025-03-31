@@ -44,7 +44,7 @@ contract VaultRouterTest is BaseTest {
 
     function testGetVault() public {
         (address vault_,) = deploySimpleVault(VaultKind.Async);
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
         assertEq(vaultRouter.getVault(vault.poolId(), vault.trancheId(), address(erc20)), vault_);
@@ -61,14 +61,14 @@ contract VaultRouterTest is BaseTest {
     function testRequestDeposit() public {
         (address vault_,) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
         uint256 amount = 100 * 10 ** 18;
         erc20.mint(self, amount);
         erc20.approve(address(vault_), amount);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
         uint256 gas = estimateGas();
 
-        vm.expectRevert("ERC7540Vault/invalid-owner");
+        vm.expectRevert("AsyncVault/invalid-owner");
         vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
         vaultRouter.enable(vault_);
 
@@ -123,7 +123,7 @@ contract VaultRouterTest is BaseTest {
     function testCancelDepositRequest() public {
         (address vault_,) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
 
         uint256 amount = 100 * 10 ** 18;
         assertEq(erc20.balanceOf(address(routerEscrow)), 0);
@@ -142,7 +142,7 @@ contract VaultRouterTest is BaseTest {
         vm.expectRevert("Gateway/cannot-topup-with-nothing");
         vaultRouter.cancelDepositRequest{value: 0}(vault_);
 
-        vm.expectRevert("AsyncInvestmentManager/no-pending-deposit-request");
+        vm.expectRevert("AsyncManager/no-pending-deposit-request");
         vaultRouter.cancelDepositRequest{value: fuel}(vault_);
 
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
@@ -156,7 +156,7 @@ contract VaultRouterTest is BaseTest {
     function testClaimCancelDepositRequest() public {
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
 
         uint256 amount = 100 * 10 ** 18;
 
@@ -182,7 +182,7 @@ contract VaultRouterTest is BaseTest {
         vm.expectRevert("VaultRouter/invalid-sender");
         vaultRouter.claimCancelDepositRequest(vault_, nonMember, self);
 
-        vm.expectRevert("AsyncInvestmentManager/transfer-not-allowed");
+        vm.expectRevert("AsyncManager/transfer-not-allowed");
         vaultRouter.claimCancelDepositRequest(vault_, nonMember, self);
 
         vaultRouter.claimCancelDepositRequest(vault_, self, self);
@@ -194,7 +194,7 @@ contract VaultRouterTest is BaseTest {
         // Deposit first
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
         uint256 amount = 100 * 10 ** 18;
         erc20.mint(self, amount);
         erc20.approve(address(vault_), amount);
@@ -226,7 +226,7 @@ contract VaultRouterTest is BaseTest {
         // Deposit first
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
         uint256 amount = 100 * 10 ** 18;
         erc20.mint(self, amount);
         erc20.approve(address(vault_), amount);
@@ -262,7 +262,7 @@ contract VaultRouterTest is BaseTest {
         // Deposit first
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
         uint256 amount = 100 * 10 ** 18;
         erc20.mint(self, amount);
         erc20.approve(address(vault_), amount);
@@ -332,8 +332,8 @@ contract VaultRouterTest is BaseTest {
     function testTransferTrancheTokensToAddressDestination() public {
         (address vault_,) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
-        ERC7540Vault vault = ERC7540Vault(vault_);
-        ERC20 share = ERC20(IERC7540Vault(vault_).share());
+        AsyncVault vault = AsyncVault(vault_);
+        ERC20 share = ERC20(IAsyncVault(vault_).share());
 
         uint256 amount = 100 * 10 ** 18;
         address destinationAddress = makeAddr("destinationAddress");
@@ -363,8 +363,8 @@ contract VaultRouterTest is BaseTest {
     function testTransferTrancheTokensToBytes32Destination() public {
         (address vault_,) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
-        ERC7540Vault vault = ERC7540Vault(vault_);
-        ERC20 share = ERC20(IERC7540Vault(vault_).share());
+        AsyncVault vault = AsyncVault(vault_);
+        ERC20 share = ERC20(IAsyncVault(vault_).share());
 
         uint256 amount = 100 * 10 ** 18;
         address destinationAddress = makeAddr("destinationAddress");
@@ -435,13 +435,13 @@ contract VaultRouterTest is BaseTest {
         (address vault_,) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
 
-        assertFalse(ERC7540Vault(vault_).isOperator(self, address(vaultRouter)));
+        assertFalse(AsyncVault(vault_).isOperator(self, address(vaultRouter)));
         assertEq(vaultRouter.isEnabled(vault_, self), false);
         vaultRouter.enable(vault_);
-        assertTrue(ERC7540Vault(vault_).isOperator(self, address(vaultRouter)));
+        assertTrue(AsyncVault(vault_).isOperator(self, address(vaultRouter)));
         assertEq(vaultRouter.isEnabled(vault_, self), true);
         vaultRouter.disable(vault_);
-        assertFalse(ERC7540Vault(vault_).isOperator(self, address(vaultRouter)));
+        assertFalse(AsyncVault(vault_).isOperator(self, address(vaultRouter)));
         assertEq(vaultRouter.isEnabled(vault_, self), false);
     }
 
@@ -508,7 +508,7 @@ contract VaultRouterTest is BaseTest {
         uint256 amount = 100 * 10 ** 18;
         (address vault_,) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
 
         vm.deal(self, 1 ether);
         erc20.mint(self, amount);
@@ -522,7 +522,7 @@ contract VaultRouterTest is BaseTest {
 
         uint256 gasLimit = vaultRouter.estimate(CHAIN_ID, "irrelevant_payload");
 
-        vm.expectRevert(bytes("AsyncInvestmentManager/transfer-not-allowed"));
+        vm.expectRevert(bytes("AsyncManager/transfer-not-allowed"));
         vaultRouter.executeLockedDepositRequest{value: gasLimit}(vault_, self);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
 

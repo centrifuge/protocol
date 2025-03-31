@@ -14,8 +14,8 @@ contract AssetShareConversionTest is BaseTest {
         (address vault_, uint128 assetId) = deployVault(
             VaultKind.Async, poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0
         );
-        ERC7540Vault vault = ERC7540Vault(vault_);
-        ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
+        AsyncVault vault = AsyncVault(vault_);
+        ITranche tranche = ITranche(address(AsyncVault(vault_).share()));
 
         assertEq(vault.priceLastUpdated(), block.timestamp);
         assertEq(vault.pricePerShare(), 1e6);
@@ -67,8 +67,8 @@ contract AssetShareConversionTest is BaseTest {
         (address vault_, uint128 assetId) = deployVault(
             VaultKind.Async, poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0
         );
-        ERC7540Vault vault = ERC7540Vault(vault_);
-        ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
+        AsyncVault vault = AsyncVault(vault_);
+        ITranche tranche = ITranche(address(AsyncVault(vault_).share()));
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1000000, uint64(block.timestamp));
 
         // invest
@@ -115,8 +115,8 @@ contract AssetShareConversionTest is BaseTest {
         (address vault_, uint128 assetId) = deployVault(
             VaultKind.Async, poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0
         );
-        ERC7540Vault vault = ERC7540Vault(vault_);
-        ITranche(address(ERC7540Vault(vault_).share()));
+        AsyncVault vault = AsyncVault(vault_);
+        ITranche(address(AsyncVault(vault_).share()));
 
         assertEq(vault.priceLastUpdated(), block.timestamp);
         assertEq(vault.pricePerShare(), 1e6);

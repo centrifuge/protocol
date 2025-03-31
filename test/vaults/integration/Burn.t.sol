@@ -10,7 +10,7 @@ contract BurnTest is BaseTest {
         amount = uint128(bound(amount, 2, MAX_UINT128));
 
         (address vault_,) = deploySimpleVault(VaultKind.Async);
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
 
         ITranche tranche = ITranche(address(vault.share()));
         root.relyContract(address(tranche), self); // give self auth permissions

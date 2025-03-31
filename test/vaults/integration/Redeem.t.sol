@@ -14,7 +14,7 @@ contract RedeemTest is BaseTest {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
 
         deposit(vault_, self, amount); // deposit funds first
@@ -23,7 +23,7 @@ contract RedeemTest is BaseTest {
         );
 
         // will fail - zero deposit not allowed
-        vm.expectRevert(bytes("AsyncInvestmentManager/zero-amount-not-allowed"));
+        vm.expectRevert(bytes("AsyncManager/zero-amount-not-allowed"));
         vault.requestRedeem(0, self, self);
 
         // will fail - investment asset not allowed
@@ -35,7 +35,7 @@ contract RedeemTest is BaseTest {
         uint128 assets = uint128((amount * 10 ** 18) / defaultPrice);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
-        vm.expectRevert(bytes("AsyncInvestmentManager/no-pending-redeem-request"));
+        vm.expectRevert(bytes("AsyncManager/no-pending-redeem-request"));
         centrifugeChain.isFulfilledRedeemRequest(
             poolId, trancheId, bytes32(bytes20(self)), assetId, assets, uint128(amount)
         );
@@ -48,7 +48,7 @@ contract RedeemTest is BaseTest {
         assertEq(vault.claimableRedeemRequest(0, self), 0);
 
         // fail: no tokens left
-        vm.expectRevert(bytes("ERC7540Vault/insufficient-balance"));
+        vm.expectRevert(bytes("AsyncVault/insufficient-balance"));
         vault.requestRedeem(amount, address(this), address(this));
 
         // trigger executed collectRedeem
@@ -81,9 +81,9 @@ contract RedeemTest is BaseTest {
         assertTrue(vault.maxRedeem(self) <= 1);
 
         // withdrawing or redeeming more should revert
-        vm.expectRevert(bytes("AsyncInvestmentManager/exceeds-redeem-limits"));
+        vm.expectRevert(bytes("AsyncManager/exceeds-redeem-limits"));
         vault.withdraw(2, investor, self);
-        vm.expectRevert(bytes("AsyncInvestmentManager/exceeds-max-redeem"));
+        vm.expectRevert(bytes("AsyncManager/exceeds-max-redeem"));
         vault.redeem(2, investor, self);
     }
 
@@ -91,7 +91,7 @@ contract RedeemTest is BaseTest {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
 
         deposit(vault_, self, amount); // deposit funds first
@@ -139,7 +139,7 @@ contract RedeemTest is BaseTest {
         vm.assume(amountAssumption(amount));
 
         (address vault_,) = deploySimpleVault(VaultKind.Async);
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
 
         deposit(vault_, investor, amount); // deposit funds first // deposit funds first
@@ -161,11 +161,11 @@ contract RedeemTest is BaseTest {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         deposit(vault_, self, amount * 2); // deposit funds first
 
-        vm.expectRevert(bytes("AsyncInvestmentManager/no-pending-redeem-request"));
+        vm.expectRevert(bytes("AsyncManager/no-pending-redeem-request"));
         vault.cancelRedeemRequest(0, self);
 
         vault.requestRedeem(amount, address(this), address(this));
@@ -173,7 +173,7 @@ contract RedeemTest is BaseTest {
         // will fail - user not member
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, uint64(block.timestamp));
         vm.warp(block.timestamp + 1);
-        vm.expectRevert(bytes("AsyncInvestmentManager/transfer-not-allowed"));
+        vm.expectRevert(bytes("AsyncManager/transfer-not-allowed"));
         vault.cancelRedeemRequest(0, self);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
 
@@ -192,10 +192,10 @@ contract RedeemTest is BaseTest {
         assertEq(vault.pendingCancelRedeemRequest(0, self), true);
 
         // Cannot cancel twice
-        vm.expectRevert(bytes("AsyncInvestmentManager/cancellation-is-pending"));
+        vm.expectRevert(bytes("AsyncManager/cancellation-is-pending"));
         vault.cancelRedeemRequest(0, self);
 
-        vm.expectRevert(bytes("AsyncInvestmentManager/cancellation-is-pending"));
+        vm.expectRevert(bytes("AsyncManager/cancellation-is-pending"));
         vault.requestRedeem(amount, address(this), address(this));
 
         centrifugeChain.isFulfilledCancelRedeemRequest(
@@ -215,7 +215,7 @@ contract RedeemTest is BaseTest {
         amount = uint128(bound(amount, 2, (MAX_UINT128 - 1)));
 
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         deposit(vault_, investor, amount, false); // request and execute deposit, but don't claim
         assertEq(vault.maxMint(investor), amount);
@@ -234,7 +234,7 @@ contract RedeemTest is BaseTest {
         centrifugeChain.triggerIncreaseRedeemOrder(poolId, trancheId, investor, assetId, uint128(amount + 1));
 
         //Fail - Tranche token amount zero
-        vm.expectRevert(bytes("AsyncInvestmentManager/tranche-token-amount-is-zero"));
+        vm.expectRevert(bytes("AsyncManager/tranche-token-amount-is-zero"));
         centrifugeChain.triggerIncreaseRedeemOrder(poolId, trancheId, investor, assetId, 0);
 
         // should work even if investor is frozen
@@ -253,7 +253,7 @@ contract RedeemTest is BaseTest {
             vault.poolId(), vault.trancheId(), bytes32(bytes20(investor)), assetId, uint128(amount), uint128(amount)
         );
 
-        vm.expectRevert(bytes("AsyncInvestmentManager/exceeds-max-redeem"));
+        vm.expectRevert(bytes("AsyncManager/exceeds-max-redeem"));
         vm.prank(investor);
         vault.redeem(amount, investor, investor);
     }
@@ -263,7 +263,7 @@ contract RedeemTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         deposit(vault_, investor, amount, false); // request and execute deposit, but don't claim
         assertEq(vault.maxMint(investor), amount);
@@ -298,7 +298,7 @@ contract RedeemTest is BaseTest {
         amount = uint128(bound(amount, 2, (MAX_UINT128 - 1)));
 
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         deposit(vault_, investor, amount, false); // request and execute deposit, but don't claim
         assertEq(vault.maxMint(investor), amount);
@@ -332,14 +332,14 @@ contract RedeemTest is BaseTest {
             vault.poolId(), vault.trancheId(), bytes32(bytes20(investor)), assetId, uint128(amount), uint128(amount)
         );
 
-        vm.expectRevert(bytes("AsyncInvestmentManager/exceeds-max-redeem"));
+        vm.expectRevert(bytes("AsyncManager/exceeds-max-redeem"));
         vm.prank(investor);
         vault.redeem(amount, investor, investor);
     }
 
     function testPartialRedemptionExecutions() public {
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
@@ -349,7 +349,7 @@ contract RedeemTest is BaseTest {
         // invest
         uint256 investmentAmount = 100000000; // 100 * 10**6
         centrifugeChain.updateMember(poolId, trancheId, self, type(uint64).max);
-        asset.approve(address(asyncInvestmentManager), investmentAmount);
+        asset.approve(address(asyncManager), investmentAmount);
         asset.mint(self, investmentAmount);
         erc20.approve(address(vault), investmentAmount);
         vault.requestDeposit(investmentAmount, self, self);
@@ -359,7 +359,7 @@ contract RedeemTest is BaseTest {
             poolId, trancheId, bytes32(bytes20(self)), assetId, uint128(investmentAmount), shares
         );
 
-        (,, uint256 depositPrice,,,,,,,) = asyncInvestmentManager.investments(address(vault), self);
+        (,, uint256 depositPrice,,,,,,,) = asyncManager.investments(address(vault), self);
         assertEq(depositPrice, 1000000000000000000);
 
         // assert deposit & mint values adjusted
@@ -382,7 +382,7 @@ contract RedeemTest is BaseTest {
 
         centrifugeChain.isFulfilledRedeemRequest(poolId, trancheId, bytes32(bytes20(self)), assetId, assets, shares / 2);
 
-        (,,, uint256 redeemPrice,,,,,,) = asyncInvestmentManager.investments(address(vault), self);
+        (,,, uint256 redeemPrice,,,,,,) = asyncManager.investments(address(vault), self);
         assertEq(redeemPrice, 1500000000000000000);
 
         // trigger second executed collectRedeem at a price of 1.0
@@ -391,11 +391,11 @@ contract RedeemTest is BaseTest {
 
         centrifugeChain.isFulfilledRedeemRequest(poolId, trancheId, bytes32(bytes20(self)), assetId, assets, shares / 2);
 
-        (,,, redeemPrice,,,,,,) = asyncInvestmentManager.investments(address(vault), self);
+        (,,, redeemPrice,,,,,,) = asyncManager.investments(address(vault), self);
         assertEq(redeemPrice, 1250000000000000000);
     }
 
-    function partialRedeem(uint64 poolId, bytes16 trancheId, ERC7540Vault vault, ERC20 asset) public {
+    function partialRedeem(uint64 poolId, bytes16 trancheId, AsyncVault vault, ERC20 asset) public {
         ITranche tranche = ITranche(address(vault.share()));
 
         uint128 assetId = poolManager.assetToId(address(asset), erc20TokenId);
@@ -416,7 +416,7 @@ contract RedeemTest is BaseTest {
 
         assertEq(vault.maxRedeem(self), firstTrancheRedeem);
 
-        (,,, uint256 redeemPrice,,,,,,) = asyncInvestmentManager.investments(address(vault), self);
+        (,,, uint256 redeemPrice,,,,,,) = asyncManager.investments(address(vault), self);
         assertEq(redeemPrice, 1100000000000000000);
 
         // second trigger executed collectRedeem of the second 25 tranches at a price of 1.3
@@ -425,7 +425,7 @@ contract RedeemTest is BaseTest {
             poolId, trancheId, bytes32(bytes20(self)), assetId, secondCurrencyPayout, secondTrancheRedeem
         );
 
-        (,,, redeemPrice,,,,,,) = asyncInvestmentManager.investments(address(vault), self);
+        (,,, redeemPrice,,,,,,) = asyncManager.investments(address(vault), self);
         assertEq(redeemPrice, 1200000000000000000);
 
         assertApproxEqAbs(vault.maxWithdraw(self), firstCurrencyPayout + secondCurrencyPayout, 2);

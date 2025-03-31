@@ -5,7 +5,7 @@ import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 
-interface ISyncInvestmentManager is ISyncDepositManager, IUpdateContract {
+interface ISyncManager is ISyncDepositManager, IUpdateContract {
     error PriceTooOld();
     error ExceedsMaxDeposit();
     error AssetNotAllowed();

@@ -14,7 +14,7 @@ contract OperatorTest is BaseTest {
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         address investor = makeAddr("investor");
         address operator = makeAddr("operator");
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
 
         centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
@@ -26,11 +26,11 @@ contract OperatorTest is BaseTest {
         erc20.approve(vault_, amount);
 
         vm.prank(operator);
-        vm.expectRevert(bytes("ERC7540Vault/invalid-owner"));
+        vm.expectRevert(bytes("AsyncVault/invalid-owner"));
         vault.requestDeposit(amount, investor, investor);
 
         vm.prank(investor);
-        vm.expectRevert(bytes("ERC7540Vault/cannot-set-self-as-operator"));
+        vm.expectRevert(bytes("AsyncVault/cannot-set-self-as-operator"));
         vault.setOperator(investor, true);
 
         assertEq(vault.isOperator(investor, operator), false);
@@ -56,7 +56,7 @@ contract OperatorTest is BaseTest {
         vault.setOperator(operator, false);
 
         vm.prank(operator);
-        vm.expectRevert(bytes("ERC7540Vault/invalid-owner"));
+        vm.expectRevert(bytes("AsyncVault/invalid-owner"));
         vault.requestDeposit(amount, investor, investor);
     }
 
@@ -69,7 +69,7 @@ contract OperatorTest is BaseTest {
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         (address controller, uint256 controllerPk) = makeAddrAndKey("controller");
         address operator = makeAddr("operator");
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
 
         centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
 
@@ -80,7 +80,7 @@ contract OperatorTest is BaseTest {
         erc20.approve(vault_, amount);
 
         vm.prank(operator);
-        vm.expectRevert(bytes("ERC7540Vault/invalid-owner"));
+        vm.expectRevert(bytes("AsyncVault/invalid-owner"));
         vault.requestDeposit(amount, controller, controller);
 
         uint256 deadline = type(uint64).max;
@@ -105,7 +105,7 @@ contract OperatorTest is BaseTest {
         );
         bytes memory signature = abi.encodePacked(r, s, v);
         vm.prank(controller);
-        vm.expectRevert(bytes("ERC7540Vault/cannot-set-self-as-operator"));
+        vm.expectRevert(bytes("AsyncVault/cannot-set-self-as-operator"));
         vault.authorizeOperator(controller, controller, true, bytes32("nonce"), deadline, signature);
 
         (v, r, s) = vm.sign(
@@ -146,7 +146,7 @@ contract OperatorTest is BaseTest {
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         address investor = makeAddr("investor");
         address operator = makeAddr("operator");
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
 
         deposit(vault_, investor, amount); // deposit funds first
         centrifugeChain.updateTranchePrice(
@@ -194,7 +194,7 @@ contract OperatorTest is BaseTest {
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         (address controller, uint256 controllerPk) = makeAddrAndKey("controller");
         address operator = makeAddr("operator");
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
 
         centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
 
@@ -205,7 +205,7 @@ contract OperatorTest is BaseTest {
         erc20.approve(vault_, amount);
 
         vm.prank(operator);
-        vm.expectRevert(bytes("ERC7540Vault/invalid-owner"));
+        vm.expectRevert(bytes("AsyncVault/invalid-owner"));
         vault.requestDeposit(amount, controller, controller);
 
         uint256 deadline = type(uint64).max;
@@ -232,7 +232,7 @@ contract OperatorTest is BaseTest {
 
         assertEq(vault.authorizations(controller, nonce), true);
 
-        vm.expectRevert(bytes("ERC7540Vault/authorization-used"));
+        vm.expectRevert(bytes("AsyncVault/authorization-used"));
         vm.prank(operator);
         vault.authorizeOperator(controller, operator, true, nonce, deadline, signature);
         assertEq(vault.isOperator(controller, operator), false);

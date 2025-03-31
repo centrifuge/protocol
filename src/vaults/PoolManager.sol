@@ -22,8 +22,8 @@ import {IBaseVault, IAsyncRedeemVault} from "src/vaults/interfaces/IERC7540.sol"
 import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
-import {ISyncInvestmentManager} from "src/vaults/interfaces/investments/ISyncInvestmentManager.sol";
-import {IAsyncInvestmentManager} from "src/vaults/interfaces/investments/IAsyncInvestmentManager.sol";
+import {ISyncManager} from "src/vaults/interfaces/investments/ISyncManager.sol";
+import {IAsyncManager} from "src/vaults/interfaces/investments/IAsyncManager.sol";
 import {ITrancheFactory} from "src/vaults/interfaces/factories/ITrancheFactory.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
@@ -362,8 +362,8 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         IVaultManager(address(manager)).addVault(poolId, trancheId, vault, assetIdKey.asset, assetId);
 
         // For sync deposit & async redeem vault, also add vault to async manager (base manager is sync one)
-        (bool isSyncDepositAsyncRedeemVault, address asyncRedeemManager) = isPartiallySyncVault(vault, manager);
-        if (isSyncDepositAsyncRedeemVault) {
+        (bool isSyncDepositVault, address asyncRedeemManager) = isPartiallySyncVault(vault, manager);
+        if (isSyncDepositVault) {
             IVaultManager(asyncRedeemManager).addVault(poolId, trancheId, vault, assetIdKey.asset, assetId);
         }
 
@@ -383,8 +383,8 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         IVaultManager(address(manager)).removeVault(poolId, trancheId, vault, assetIdKey.asset, assetId);
 
         // For sync deposit & async redeem vault, also add vault to async manager (base manager is sync one)
-        (bool isSyncDepositAsyncRedeemVault, address asyncRedeemManager) = isPartiallySyncVault(vault, manager);
-        if (isSyncDepositAsyncRedeemVault) {
+        (bool isSyncDepositVault, address asyncRedeemManager) = isPartiallySyncVault(vault, manager);
+        if (isSyncDepositVault) {
             IVaultManager(asyncRedeemManager).removeVault(poolId, trancheId, vault, assetIdKey.asset, assetId);
         }
 
@@ -465,11 +465,11 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         returns (bool isPartial, address otherManager)
     {
         if (
-            manager.supportsInterface(type(ISyncInvestmentManager).interfaceId)
+            manager.supportsInterface(type(ISyncManager).interfaceId)
                 && IERC165(vault).supportsInterface(type(IAsyncRedeemVault).interfaceId)
         ) {
             isPartial = true;
-            otherManager = address(IAsyncRedeemVault(vault).asyncManager());
+            otherManager = address(IAsyncRedeemVault(vault).asyncRedeemManager());
         }
     }
 
@@ -480,8 +480,8 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         _approveManager(address(manager), trancheToken, asset, tokenId);
 
         // For sync deposit & async redeem vault, also repeat above for async manager (base manager is sync one)
-        (bool isSyncDepositAsyncRedeemVault, address asyncRedeemManager) = isPartiallySyncVault(vault, manager);
-        if (isSyncDepositAsyncRedeemVault) {
+        (bool isSyncDepositVault, address asyncRedeemManager) = isPartiallySyncVault(vault, manager);
+        if (isSyncDepositVault) {
             _approveManager(asyncRedeemManager, trancheToken, asset, tokenId);
         }
     }

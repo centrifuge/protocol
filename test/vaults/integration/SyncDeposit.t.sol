@@ -17,8 +17,8 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {JournalEntry} from "src/common/types/JournalEntry.sol";
 
 import {IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
-import {SyncDepositAsyncRedeemVault} from "src/vaults/SyncDepositAsyncRedeemVault.sol";
-import {ISyncInvestmentManager} from "src/vaults/interfaces/investments/ISyncInvestmentManager.sol";
+import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
+import {ISyncManager} from "src/vaults/interfaces/investments/ISyncManager.sol";
 
 contract SyncDepositTest is BaseTest {
     using CastLib for *;
@@ -37,7 +37,7 @@ contract SyncDepositTest is BaseTest {
 
         // Deploy sync vault
         (address syncVault_, uint128 assetId) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
-        SyncDepositAsyncRedeemVault syncVault = SyncDepositAsyncRedeemVault(syncVault_);
+        SyncDepositVault syncVault = SyncDepositVault(syncVault_);
         ITranche tranche = ITranche(address(syncVault.share()));
         centrifugeChain.updateTranchePrice(
             syncVault.poolId(), syncVault.trancheId(), assetId, price, uint64(block.timestamp)
@@ -45,9 +45,9 @@ contract SyncDepositTest is BaseTest {
 
         // Retrieve async vault
         address asyncVault_ =
-            syncVault.asyncManager().vaultByAssetId(syncVault.poolId(), syncVault.trancheId(), assetId);
+            syncVault.asyncRedeemManager().vaultByAssetId(syncVault.poolId(), syncVault.trancheId(), assetId);
         assertNotEq(syncVault_, address(0), "Failed to retrieve async vault");
-        ERC7540Vault asyncVault = ERC7540Vault(asyncVault_);
+        AsyncVault asyncVault = AsyncVault(asyncVault_);
 
         // Check price and max amounts
         uint256 shares = syncVault.previewDeposit(amount);
@@ -81,7 +81,7 @@ contract SyncDepositTest is BaseTest {
         assertEq(asyncVault.pendingRedeemRequest(0, self), amount / 2);
     }
 
-    function _assertDepositEvents(SyncDepositAsyncRedeemVault vault, uint128 shares, uint128 assetId_) internal {
+    function _assertDepositEvents(SyncDepositVault vault, uint128 shares, uint128 assetId_) internal {
         PoolId poolId = PoolId.wrap(vault.poolId());
         ShareClassId scId = ShareClassId.wrap(vault.trancheId());
         AssetId assetId = AssetId.wrap(assetId_);

@@ -320,10 +320,10 @@ interface IAsyncRedeemVault is IERC7540Redeem, IERC7540CancelRedeem, IBaseVault 
     function onCancelRedeemClaimable(address owner, uint256 shares) external;
 
     /// @notice Retrieve the asynchronous redeem manager
-    function asyncManager() external view returns (IAsyncRedeemManager);
+    function asyncRedeemManager() external view returns (IAsyncRedeemManager);
 }
 
-interface IERC7540Vault is IERC7540Deposit, IERC7540CancelDeposit, IAsyncRedeemVault {
+interface IAsyncVault is IERC7540Deposit, IERC7540CancelDeposit, IAsyncRedeemVault {
     event DepositClaimable(address indexed controller, uint256 indexed requestId, uint256 assets, uint256 shares);
     event CancelDepositClaimable(address indexed controller, uint256 indexed requestId, uint256 assets);
 

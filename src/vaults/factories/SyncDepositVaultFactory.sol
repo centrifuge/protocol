@@ -3,20 +3,20 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 
-import {SyncDepositAsyncRedeemVault} from "src/vaults/SyncDepositAsyncRedeemVault.sol";
+import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 
 /// @title  Sync Vault Factory
 /// @dev    Utility for deploying new vault contracts
-contract SyncDepositAsyncRedeemVaultFactory is Auth, IVaultFactory {
+contract SyncDepositVaultFactory is Auth, IVaultFactory {
     address public immutable root;
-    address public immutable syncInvestmentManager;
-    address public immutable asyncInvestmentManager;
+    address public immutable syncManager;
+    address public immutable asyncManager;
 
-    constructor(address root_, address syncInvestmentManager_, address asyncInvestmentManager_) Auth(msg.sender) {
+    constructor(address root_, address syncManager_, address asyncManager_) Auth(msg.sender) {
         root = root_;
-        syncInvestmentManager = syncInvestmentManager_;
-        asyncInvestmentManager = asyncInvestmentManager_;
+        syncManager = syncManager_;
+        asyncManager = asyncManager_;
     }
 
     /// @inheritdoc IVaultFactory
@@ -29,13 +29,12 @@ contract SyncDepositAsyncRedeemVaultFactory is Auth, IVaultFactory {
         address, /* escrow */
         address[] calldata wards_
     ) public auth returns (address) {
-        SyncDepositAsyncRedeemVault vault = new SyncDepositAsyncRedeemVault(
-            poolId, trancheId, asset, tokenId, tranche, root, syncInvestmentManager, asyncInvestmentManager
-        );
+        SyncDepositVault vault =
+            new SyncDepositVault(poolId, trancheId, asset, tokenId, tranche, root, syncManager, asyncManager);
 
         vault.rely(root);
-        vault.rely(syncInvestmentManager);
-        vault.rely(asyncInvestmentManager);
+        vault.rely(syncManager);
+        vault.rely(asyncManager);
 
         uint256 wardsCount = wards_.length;
         for (uint256 i; i < wardsCount; i++) {
