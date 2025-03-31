@@ -13,7 +13,7 @@ contract RedeemTest is BaseTest {
     function testRedeem(uint256 amount) public {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
-        (address vault_, uint128 assetId) = deploySimpleVault();
+        (, address vault_, uint128 assetId) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
 
@@ -90,7 +90,7 @@ contract RedeemTest is BaseTest {
     function testWithdraw(uint256 amount) public {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
-        (address vault_, uint128 assetId) = deploySimpleVault();
+        (, address vault_, uint128 assetId) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
 
@@ -138,7 +138,7 @@ contract RedeemTest is BaseTest {
         uint256 amount = redemption1 + redemption2;
         vm.assume(amountAssumption(amount));
 
-        (address vault_,) = deploySimpleVault();
+        (, address vault_,) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
 
@@ -160,7 +160,7 @@ contract RedeemTest is BaseTest {
     function testCancelRedeemOrder(uint256 amount) public {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
-        (address vault_, uint128 assetId) = deploySimpleVault();
+        (, address vault_, uint128 assetId) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         deposit(vault_, self, amount * 2); // deposit funds first
@@ -214,7 +214,7 @@ contract RedeemTest is BaseTest {
     function testTriggerRedeemRequestTokens(uint128 amount) public {
         amount = uint128(bound(amount, 2, (MAX_UINT128 - 1)));
 
-        (address vault_, uint128 assetId) = deploySimpleVault();
+        (, address vault_, uint128 assetId) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         deposit(vault_, investor, amount, false); // request and execute deposit, but don't claim
@@ -262,7 +262,7 @@ contract RedeemTest is BaseTest {
         amount = uint128(bound(amount, 2, (MAX_UINT128 - 1)));
         vm.assume(amount % 2 == 0);
 
-        (address vault_, uint128 assetId) = deploySimpleVault();
+        (, address vault_, uint128 assetId) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         deposit(vault_, investor, amount, false); // request and execute deposit, but don't claim
@@ -297,7 +297,7 @@ contract RedeemTest is BaseTest {
     function testTriggerRedeemRequestTokensUnmintedTokensInEscrow(uint128 amount) public {
         amount = uint128(bound(amount, 2, (MAX_UINT128 - 1)));
 
-        (address vault_, uint128 assetId) = deploySimpleVault();
+        (, address vault_, uint128 assetId) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         deposit(vault_, investor, amount, false); // request and execute deposit, but don't claim
@@ -338,7 +338,7 @@ contract RedeemTest is BaseTest {
     }
 
     function testPartialRedemptionExecutions() public {
-        (address vault_, uint128 assetId) = deploySimpleVault();
+        (, address vault_, uint128 assetId) = deploySimpleVault();
         ERC7540Vault vault = ERC7540Vault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         uint64 poolId = vault.poolId();
@@ -395,7 +395,7 @@ contract RedeemTest is BaseTest {
         assertEq(redeemPrice, 1250000000000000000);
     }
 
-    function partialRedeem(uint64 poolId, bytes16 trancheId, ERC7540Vault vault, ERC20 asset) public {
+    function partialRedeem(bytes16 trancheId, ERC7540Vault vault, ERC20 asset) public {
         ITranche tranche = ITranche(address(vault.share()));
 
         uint128 assetId = poolManager.assetToId(address(asset), erc20TokenId);
@@ -411,7 +411,7 @@ contract RedeemTest is BaseTest {
         uint128 firstCurrencyPayout = 27500000; // (25000000000000000000/10**18) * 10**6 * 1.1
 
         centrifugeChain.isFulfilledRedeemRequest(
-            poolId, trancheId, bytes32(bytes20(self)), assetId, firstCurrencyPayout, firstTrancheRedeem
+            vault.poolId(), trancheId, bytes32(bytes20(self)), assetId, firstCurrencyPayout, firstTrancheRedeem
         );
 
         assertEq(vault.maxRedeem(self), firstTrancheRedeem);
@@ -422,7 +422,7 @@ contract RedeemTest is BaseTest {
         // second trigger executed collectRedeem of the second 25 tranches at a price of 1.3
         uint128 secondCurrencyPayout = 32500000; // (25000000000000000000/10**18) * 10**6 * 1.3
         centrifugeChain.isFulfilledRedeemRequest(
-            poolId, trancheId, bytes32(bytes20(self)), assetId, secondCurrencyPayout, secondTrancheRedeem
+            vault.poolId(), trancheId, bytes32(bytes20(self)), assetId, secondCurrencyPayout, secondTrancheRedeem
         );
 
         (,,, redeemPrice,,,,,,) = investmentManager.investments(address(vault), self);

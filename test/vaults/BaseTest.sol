@@ -61,7 +61,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     uint16 public constant OTHER_CHAIN_ID = 1;
     uint16 public constant THIS_CHAIN_ID = OTHER_CHAIN_ID + 100;
     uint32 public constant BLOCK_CHAIN_ID = 23;
-    uint32 immutable POOL_A = 1;
+    uint32 public immutable POOL_A = 1;
     uint256 public erc20TokenId = 0;
     uint256 public defaultErc6909TokenId = 16;
     uint128 public defaultAssetId = newAssetId(THIS_CHAIN_ID, 1).raw();
@@ -158,7 +158,6 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
     // helpers
     function deployVault(
-        uint32 poolId_,
         uint8 trancheDecimals,
         address hook,
         string memory tokenName,
@@ -167,8 +166,8 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         address asset,
         uint256 assetTokenId,
         uint16 /* TODO: destinationChain */
-    ) public returns (address vaultAddress, uint128 assetId) {
-        uint64 poolId = newPoolId(THIS_CHAIN_ID, poolId_).raw();
+    ) public returns (uint64 poolId, address vaultAddress, uint128 assetId) {
+        poolId = newPoolId(THIS_CHAIN_ID, POOL_A).raw();
 
         if (poolManager.assetToId(asset, assetTokenId) == 0) {
             assetId = poolManager.registerAsset(asset, assetTokenId, OTHER_CHAIN_ID);
@@ -193,15 +192,11 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         vaultAddress = ITranche(poolManager.tranche(poolId, trancheId)).vault(asset);
     }
 
-    function deployVault(
-        uint32 poolId,
-        uint8 decimals,
-        string memory tokenName,
-        string memory tokenSymbol,
-        bytes16 trancheId
-    ) public returns (address vaultAddress, uint128 assetId) {
+    function deployVault(uint8 decimals, string memory tokenName, string memory tokenSymbol, bytes16 trancheId)
+        public
+        returns (uint64 poolId, address vaultAddress, uint128 assetId)
+    {
         return deployVault(
-            poolId,
             decimals,
             restrictionManager,
             tokenName,
@@ -213,17 +208,9 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         );
     }
 
-    function deploySimpleVault() public returns (address vaultAddress, uint128 assetId) {
+    function deploySimpleVault() public returns (uint64 poolId, address vaultAddress, uint128 assetId) {
         return deployVault(
-            POOL_A,
-            6,
-            restrictionManager,
-            "name",
-            "symbol",
-            bytes16(bytes("1")),
-            address(erc20),
-            erc20TokenId,
-            OTHER_CHAIN_ID
+            6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(erc20), erc20TokenId, OTHER_CHAIN_ID
         );
     }
 

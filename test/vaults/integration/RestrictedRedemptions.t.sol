@@ -11,8 +11,8 @@ contract RedeemTest is BaseTest {
     function testRestrictedRedemptions(uint256 amount) public {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
-        (address vault_, uint128 assetId) =
-            deployVault(5, 6, restrictedRedemptions, "name", "symbol", bytes16(bytes("1")), address(erc20), 0, 0);
+        (, address vault_, uint128 assetId) =
+            deployVault(6, restrictedRedemptions, "name", "symbol", bytes16(bytes("1")), address(erc20), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
         RestrictedRedemptions hook = RestrictedRedemptions(restrictedRedemptions);
         ITranche tranche = ITranche(address(vault.share()));
