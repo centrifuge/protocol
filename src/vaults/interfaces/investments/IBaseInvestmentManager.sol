@@ -25,10 +25,4 @@ interface IBaseInvestmentManager is IRecoverable, IERC165 {
 
     /// @notice Returns the timestamp of the last share price update for a vaultAddr.
     function priceLastUpdated(address vaultAddr) external view returns (uint64 lastUpdated);
-
-    /// @notice Returns the address of the vault for a given pool, tranche and asset
-    function vaultByAssetId(uint64 poolId, bytes16 trancheId, uint128 assetId)
-        external
-        view
-        returns (address vaultAddr);
 }

@@ -10,4 +10,10 @@ interface IVaultManager {
 
     /// @notice Removes `vault` from `who`'s authorized callers
     function removeVault(uint64 poolId, bytes16 trancheId, address vault, address asset, uint128 assetId) external;
+
+    /// @notice Returns the address of the vault for a given pool, tranche and asset
+    function vaultByAssetId(uint64 poolId, bytes16 trancheId, uint128 assetId)
+        external
+        view
+        returns (address vaultAddr);
 }

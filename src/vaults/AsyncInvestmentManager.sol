@@ -49,6 +49,7 @@ contract AsyncInvestmentManager is BaseInvestmentManager, IAsyncInvestmentManage
     IVaultMessageSender public sender;
 
     mapping(address vault => mapping(address investor => AsyncInvestmentState)) public investments;
+    mapping(uint64 poolId => mapping(bytes16 trancheId => mapping(uint128 assetId => address vault))) public vault;
 
     constructor(address root_, address escrow_) BaseInvestmentManager(root_, escrow_) {}
 
@@ -584,6 +585,11 @@ contract AsyncInvestmentManager is BaseInvestmentManager, IAsyncInvestmentManage
     /// @inheritdoc IAsyncRedeemManager
     function claimableCancelRedeemRequest(address vaultAddr, address user) public view returns (uint256 shares) {
         shares = investments[vaultAddr][user].claimableCancelRedeemRequest;
+    }
+
+    /// @inheritdoc IVaultManager
+    function vaultByAssetId(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (address) {
+        return vault[poolId][trancheId][assetId];
     }
 
     /// @inheritdoc IERC165

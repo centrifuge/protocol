@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {IInvestmentManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 
-import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {IAsyncDepositManager} from "src/vaults/interfaces/investments/IAsyncDepositManager.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 
@@ -31,12 +30,7 @@ struct AsyncInvestmentState {
     bool pendingCancelRedeemRequest;
 }
 
-interface IAsyncInvestmentManager is
-    IVaultManager,
-    IAsyncDepositManager,
-    IAsyncRedeemManager,
-    IInvestmentManagerGatewayHandler
-{
+interface IAsyncInvestmentManager is IAsyncDepositManager, IAsyncRedeemManager, IInvestmentManagerGatewayHandler {
     /// @notice Returns the investment state
     function investments(address vaultAddr, address investor)
         external

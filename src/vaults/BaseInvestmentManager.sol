@@ -23,8 +23,6 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
 
     IPoolManager public poolManager;
 
-    mapping(uint64 poolId => mapping(bytes16 trancheId => mapping(uint128 assetId => address vault))) public vault;
-
     constructor(address root_, address escrow_) Auth(msg.sender) {
         root = root_;
         escrow = escrow_;
@@ -72,11 +70,6 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
         (, lastUpdated) = poolManager.tranchePrice(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
-    }
-
-    /// @inheritdoc IBaseInvestmentManager
-    function vaultByAssetId(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (address) {
-        return vault[poolId][trancheId][assetId];
     }
 
     /// @inheritdoc IERC165
