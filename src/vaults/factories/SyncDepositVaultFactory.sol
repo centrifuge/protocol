@@ -34,7 +34,6 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
 
         vault.rely(root);
         vault.rely(syncRequests);
-        vault.rely(asyncRequests);
 
         uint256 wardsCount = wards_.length;
         for (uint256 i; i < wardsCount; i++) {
