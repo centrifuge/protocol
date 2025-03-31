@@ -112,7 +112,7 @@ contract AsyncVault is AsyncRedeemVault, IAsyncVault {
     function deposit(uint256 assets, address receiver, address controller) public returns (uint256 shares) {
         _validateController(controller);
         shares = asyncManager().deposit(address(this), assets, receiver, controller);
-        emit Deposit(receiver, controller, assets, shares);
+        emit Deposit(controller, receiver, assets, shares);
     }
 
     /// @inheritdoc IERC7575
@@ -131,7 +131,7 @@ contract AsyncVault is AsyncRedeemVault, IAsyncVault {
     function mint(uint256 shares, address receiver, address controller) public returns (uint256 assets) {
         _validateController(controller);
         assets = asyncManager().mint(address(this), shares, receiver, controller);
-        emit Deposit(receiver, controller, assets, shares);
+        emit Deposit(controller, receiver, assets, shares);
     }
 
     /// @inheritdoc IERC7575
