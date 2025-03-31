@@ -446,7 +446,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         require(assetId != 0, "PoolManager/unknown-asset");
     }
 
-    /// @dev Sets up permissions for the base vault manager and potentially a secondar manager (in case of partially
+    /// @dev Sets up permissions for the base vault manager and potentially a secondary manager (in case of partially
     /// sync vault)
     function _approveManagers(address vault, address trancheToken, address asset, uint256 tokenId) internal {
         address manager = address(IBaseVault(vault).manager());

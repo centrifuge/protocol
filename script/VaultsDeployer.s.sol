@@ -169,16 +169,16 @@ contract VaultsDeployer is CommonDeployer {
     function removeVaultsDeployerAccess(address deployer) public {
         removeCommonDeployerAccess(deployer);
 
-        IAuth(asyncVaultFactory).deny(msg.sender);
-        IAuth(syncDepositVaultFactory).deny(msg.sender);
-        IAuth(trancheFactory).deny(msg.sender);
-        IAuth(restrictionManager).deny(msg.sender);
-        IAuth(restrictedRedemptions).deny(msg.sender);
-        asyncManager.deny(msg.sender);
-        syncManager.deny(msg.sender);
-        poolManager.deny(msg.sender);
-        escrow.deny(msg.sender);
-        routerEscrow.deny(msg.sender);
-        vaultRouter.deny(msg.sender);
+        IAuth(asyncVaultFactory).deny(deployer);
+        IAuth(syncDepositVaultFactory).deny(deployer);
+        IAuth(trancheFactory).deny(deployer);
+        IAuth(restrictionManager).deny(deployer);
+        IAuth(restrictedRedemptions).deny(deployer);
+        asyncManager.deny(deployer);
+        syncManager.deny(deployer);
+        poolManager.deny(deployer);
+        escrow.deny(deployer);
+        routerEscrow.deny(deployer);
+        vaultRouter.deny(deployer);
     }
 }

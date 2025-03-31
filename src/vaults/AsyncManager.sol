@@ -593,12 +593,16 @@ contract AsyncManager is BaseInvestmentManager, IAsyncManager {
         override(BaseInvestmentManager, IERC165)
         returns (bool)
     {
-        return super.supportsInterface(interfaceId) || interfaceId == type(IVaultManager).interfaceId
-            || interfaceId == type(IDepositManager).interfaceId || interfaceId == type(IAsyncDepositManager).interfaceId
-            || interfaceId == type(IRedeemManager).interfaceId || interfaceId == type(IAsyncRedeemManager).interfaceId
+        // forgefmt: disable-next-item
+        return super.supportsInterface(interfaceId) 
+            || interfaceId == type(IVaultManager).interfaceId
+            || interfaceId == type(IDepositManager).interfaceId
+            || interfaceId == type(IAsyncDepositManager).interfaceId
+            || interfaceId == type(IRedeemManager).interfaceId
+            || interfaceId == type(IAsyncRedeemManager).interfaceId
             || interfaceId == type(IAsyncManager).interfaceId
             || interfaceId == type(IInvestmentManagerGatewayHandler).interfaceId
-            || interfaceId == type(IAsyncRedeemManager).interfaceId || interfaceId == type(IMessageHandler).interfaceId;
+            || interfaceId == type(IMessageHandler).interfaceId;
     }
 
     /// @inheritdoc IVaultManager

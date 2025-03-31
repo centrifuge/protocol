@@ -339,7 +339,7 @@ abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     }
 }
 
-abstract contract AbstractSyncDepositVault is BaseVault {
+abstract contract BaseSyncDepositVault is BaseVault {
     ISyncDepositManager public syncDepositManager;
 
     constructor(address syncManager_) {

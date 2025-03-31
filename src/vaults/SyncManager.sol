@@ -25,7 +25,7 @@ import {IAsyncRedeemVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
-import {IAsyncRedeemManager, AsyncRedeemState} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
+import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {ISyncManager} from "src/vaults/interfaces/investments/ISyncManager.sol";
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
@@ -207,17 +207,6 @@ contract SyncManager is BaseInvestmentManager, ISyncManager {
             || interfaceId == type(ISyncManager).interfaceId;
     }
 
-    /// @dev Retrieve the latest price for the share class token
-    function _pricePerShare(address vaultAddr, uint64 poolId, bytes16 trancheId, uint128 assetId)
-        internal
-        view
-        returns (uint128 latestPrice)
-    {
-        (uint128 price, uint64 computedAt) = poolManager.tranchePrice(poolId, trancheId, assetId);
-        require(block.timestamp - computedAt <= maxPriceAge[vaultAddr], PriceTooOld());
-        return price;
-    }
-
     /// --- Internal methods ---
     /// @dev Issues shares to the receiver and instruct the Balance Sheet Manager to react on the issuance and the
     /// updated holding
@@ -267,5 +256,16 @@ contract SyncManager is BaseInvestmentManager, ISyncManager {
         balanceSheetManager.updateValue(
             poolId, scId, vaultDetails.asset, vaultDetails.tokenId, pricePerAssetInPoolCurrency
         );
+    }
+
+    /// @dev Retrieve the latest price for the share class token
+    function _pricePerShare(address vaultAddr, uint64 poolId, bytes16 trancheId, uint128 assetId)
+        internal
+        view
+        returns (uint128 latestPrice)
+    {
+        (uint128 price, uint64 computedAt) = poolManager.tranchePrice(poolId, trancheId, assetId);
+        require(block.timestamp - computedAt <= maxPriceAge[vaultAddr], PriceTooOld());
+        return price;
     }
 }

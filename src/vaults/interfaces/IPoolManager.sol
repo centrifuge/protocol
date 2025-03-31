@@ -3,8 +3,6 @@ pragma solidity 0.8.28;
 
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 
-import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
-
 /// @dev Centrifuge pools
 struct Pool {
     uint256 createdAt;
