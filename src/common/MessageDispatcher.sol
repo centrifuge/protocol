@@ -335,7 +335,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         address provider,
         uint128 amount,
         D18 pricePerUnit,
-        uint64 timestamp,
         bool isIncrease,
         Meta calldata meta
     ) external auth {
@@ -353,7 +352,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     who: provider.toBytes32(),
                     amount: amount,
                     pricePerUnit: pricePerUnit.raw(),
-                    timestamp: timestamp,
+                    timestamp: uint64(block.timestamp),
                     isIncrease: isIncrease,
                     debits: meta.debits,
                     credits: meta.credits
@@ -363,13 +362,10 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendUpdateHoldingValue(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        D18 pricePerUnit,
-        uint64 timestamp
-    ) external auth {
+    function sendUpdateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePerUnit)
+        external
+        auth
+    {
         if (poolId.chainId() == localCentrifugeId) {
             poolRouter.updateHoldingValue(poolId, scId, assetId, pricePerUnit);
         } else {
@@ -380,7 +376,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     scId: scId.raw(),
                     assetId: assetId.raw(),
                     pricePerUnit: pricePerUnit.raw(),
-                    timestamp: timestamp
+                    timestamp: uint64(block.timestamp)
                 }).serialize()
             );
         }
@@ -393,7 +389,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         address receiver,
         D18 pricePerShare,
         uint128 shares,
-        uint64 timestamp,
         bool isIssuance
     ) external auth {
         if (poolId.chainId() == localCentrifugeId) {
@@ -411,7 +406,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     who: receiver.toBytes32(),
                     pricePerShare: pricePerShare.raw(),
                     shares: shares,
-                    timestamp: timestamp,
+                    timestamp: uint64(block.timestamp),
                     isIssuance: isIssuance
                 }).serialize()
             );

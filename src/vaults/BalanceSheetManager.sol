@@ -141,7 +141,7 @@ contract BalanceSheetManager is
         auth
     {
         uint128 assetId = poolManager.checkedAssetToId(asset, tokenId);
-        sender.sendUpdateHoldingValue(poolId, scId, AssetId.wrap(assetId), pricePerUnit, uint64(block.timestamp));
+        sender.sendUpdateHoldingValue(poolId, scId, AssetId.wrap(assetId), pricePerUnit);
         emit UpdateValue(poolId, scId, asset, tokenId, pricePerUnit, uint64(block.timestamp));
     }
 
@@ -232,7 +232,7 @@ contract BalanceSheetManager is
             ITranche(token).mint(address(to), shares);
         }
 
-        sender.sendUpdateShares(poolId, scId, to, pricePerShare, shares, uint64(block.timestamp), true);
+        sender.sendUpdateShares(poolId, scId, to, pricePerShare, shares, true);
         emit Issue(poolId, scId, to, pricePerShare, shares);
     }
 
@@ -240,7 +240,7 @@ contract BalanceSheetManager is
         address token = poolManager.checkedTranche(poolId.raw(), scId.raw());
         ITranche(token).burn(address(from), shares);
 
-        sender.sendUpdateShares(poolId, scId, from, pricePerShare, shares, uint64(block.timestamp), false);
+        sender.sendUpdateShares(poolId, scId, from, pricePerShare, shares, false);
         emit Revoke(poolId, scId, from, pricePerShare, shares);
     }
 
@@ -275,9 +275,7 @@ contract BalanceSheetManager is
             }
         }
 
-        sender.sendUpdateHoldingAmount(
-            poolId, scId, assetId, receiver, amount, pricePerUnit, uint64(block.timestamp), true, m
-        );
+        sender.sendUpdateHoldingAmount(poolId, scId, assetId, receiver, amount, pricePerUnit, true, m);
 
         emit Withdraw(
             poolId, scId, asset, tokenId, receiver, amount, pricePerUnit, uint64(block.timestamp), m.debits, m.credits
@@ -305,9 +303,7 @@ contract BalanceSheetManager is
         }
 
         escrow.deposit(asset, tokenId, poolId.raw(), scId.raw(), amount);
-        sender.sendUpdateHoldingAmount(
-            poolId, scId, assetId, provider, amount, pricePerUnit, uint64(block.timestamp), false, m
-        );
+        sender.sendUpdateHoldingAmount(poolId, scId, assetId, provider, amount, pricePerUnit, false, m);
 
         emit Deposit(
             poolId, scId, asset, tokenId, provider, amount, pricePerUnit, uint64(block.timestamp), m.debits, m.credits
