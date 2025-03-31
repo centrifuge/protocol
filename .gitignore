@@ -16,3 +16,4 @@ lcov.info
 ## Recon Separate Configs
 /medusa-core
 /medusa-aggregator
+/.cursor
