@@ -9,19 +9,11 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 
 contract ERC7540VaultTest is BaseTest {
     // Deployment
-    function testDeployment(
-        string memory tokenName,
-        string memory tokenSymbol,
-        bytes16 trancheId,
-        uint128 assetId,
-        address nonWard
-    ) public {
+    function testDeployment(bytes16 trancheId, uint128 assetId, address nonWard) public {
         vm.assume(nonWard != address(root) && nonWard != address(this) && nonWard != address(investmentManager));
         vm.assume(assetId > 0);
-        vm.assume(bytes(tokenName).length <= 128);
-        vm.assume(bytes(tokenSymbol).length <= 32);
 
-        (uint64 poolId, address vault_,) = deployVault(erc20.decimals(), tokenName, tokenSymbol, trancheId);
+        (uint64 poolId, address vault_,) = deployVault(erc20.decimals(), trancheId);
         ERC7540Vault vault = ERC7540Vault(vault_);
 
         // values set correctly
@@ -30,8 +22,6 @@ contract ERC7540VaultTest is BaseTest {
         assertEq(vault.trancheId(), trancheId);
         address token = poolManager.tranche(poolId, trancheId);
         assertEq(address(vault.share()), token);
-        // assertEq(tokenName, ERC20(token).name());
-        // assertEq(tokenSymbol, ERC20(token).symbol());
 
         // permissions set correctly
         assertEq(vault.wards(address(root)), 1);

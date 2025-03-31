@@ -160,8 +160,6 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     function deployVault(
         uint8 trancheDecimals,
         address hook,
-        string memory tokenName,
-        string memory tokenSymbol,
         bytes16 trancheId,
         address asset,
         uint256 assetTokenId,
@@ -177,41 +175,33 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
         if (poolManager.tranche(poolId, trancheId) == address(0)) {
             centrifugeChain.addPool(poolId);
-            centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, trancheDecimals, hook);
+            centrifugeChain.addTranche(poolId, trancheId, "name", "symbol", trancheDecimals, hook);
         }
 
         poolManager.updateTranchePrice(poolId, trancheId, assetId, uint128(10 ** 18), uint64(block.timestamp));
 
         // Trigger new vault deployment via UpdateContract
-        bytes memory vaultUpdate = MessageLib.UpdateContractVaultUpdate({
-            vaultOrFactory: bytes32(bytes20(vaultFactory)),
-            assetId: assetId,
-            kind: uint8(VaultUpdateKind.DeployAndLink)
-        }).serialize();
-        poolManager.update(poolId, trancheId, vaultUpdate);
+        poolManager.update(
+            poolId,
+            trancheId,
+            MessageLib.UpdateContractVaultUpdate({
+                vaultOrFactory: bytes32(bytes20(vaultFactory)),
+                assetId: assetId,
+                kind: uint8(VaultUpdateKind.DeployAndLink)
+            }).serialize()
+        );
         vaultAddress = ITranche(poolManager.tranche(poolId, trancheId)).vault(asset);
     }
 
-    function deployVault(uint8 decimals, string memory tokenName, string memory tokenSymbol, bytes16 trancheId)
+    function deployVault(uint8 decimals, bytes16 trancheId)
         public
         returns (uint64 poolId, address vaultAddress, uint128 assetId)
     {
-        return deployVault(
-            decimals,
-            restrictionManager,
-            tokenName,
-            tokenSymbol,
-            trancheId,
-            address(erc20),
-            erc20TokenId,
-            OTHER_CHAIN_ID
-        );
+        return deployVault(decimals, restrictionManager, trancheId, address(erc20), erc20TokenId, OTHER_CHAIN_ID);
     }
 
     function deploySimpleVault() public returns (uint64 poolId, address vaultAddress, uint128 assetId) {
-        return deployVault(
-            6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(erc20), erc20TokenId, OTHER_CHAIN_ID
-        );
+        return deployVault(6, restrictionManager, bytes16(bytes("1")), address(erc20), erc20TokenId, OTHER_CHAIN_ID);
     }
 
     function deposit(address _vault, address _investor, uint256 amount) public {

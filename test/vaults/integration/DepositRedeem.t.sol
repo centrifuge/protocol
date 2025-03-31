@@ -10,7 +10,7 @@ contract DepositRedeem is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0);
+            deployVault(TRANCHE_TOKEN_DECIMALS, restrictionManager, trancheId, address(asset), 0, 0);
         ERC7540Vault vault = ERC7540Vault(vault_);
 
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
