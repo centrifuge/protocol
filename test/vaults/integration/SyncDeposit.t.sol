@@ -14,7 +14,7 @@ import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
-import {JournalEntry} from "src/common/types/JournalEntry.sol";
+import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
 import {IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
@@ -108,7 +108,7 @@ contract SyncDepositTest is BaseTest {
             syncRequests.escrow(),
             depositAssetAmount,
             pricePerUnit,
-            timestamp,
+            uint64(timestamp),
             journalEntries,
             journalEntries
         );
@@ -117,7 +117,7 @@ contract SyncDepositTest is BaseTest {
         emit IGateway.SendMessage(bytes(""));
         vm.expectEmit();
         emit IBalanceSheetManager.UpdateValue(
-            poolId, scId, vault.asset(), vaultDetails.tokenId, pricePerUnit, timestamp
+            poolId, scId, vault.asset(), vaultDetails.tokenId, pricePerUnit, uint64(timestamp)
         );
     }
 }

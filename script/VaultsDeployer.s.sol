@@ -177,6 +177,7 @@ contract VaultsDeployer is CommonDeployer {
         asyncRequests.deny(deployer);
         syncRequests.deny(deployer);
         poolManager.deny(deployer);
+        balanceSheetManager.deny(deployer);
         escrow.deny(deployer);
         routerEscrow.deny(deployer);
         vaultRouter.deny(deployer);

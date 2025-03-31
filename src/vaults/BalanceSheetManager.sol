@@ -13,7 +13,7 @@ import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
-import {JournalEntry, Meta} from "src/common/types/JournalEntry.sol";
+import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 import {IVaultMessageSender} from "../common/interfaces/IGatewaySenders.sol";
 import {IBalanceSheetManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
@@ -77,10 +77,11 @@ contract BalanceSheetManager is
 
         PoolId poolId = PoolId.wrap(poolId_);
         ShareClassId scId = ShareClassId.wrap(scId_);
+        address who = address(bytes20(m.who));
 
-        permission[poolId][scId][m.who] = m.allowed;
+        permission[poolId][scId][who] = m.allowed;
 
-        emit Permission(poolId, scId, m.who, m.allowed);
+        emit Permission(poolId, scId, who, m.allowed);
     }
 
     /// --- External ---
@@ -140,8 +141,8 @@ contract BalanceSheetManager is
         auth
     {
         uint128 assetId = poolManager.checkedAssetToId(asset, tokenId);
-        sender.sendUpdateHoldingValue(poolId, scId, AssetId.wrap(assetId), pricePerUnit, block.timestamp);
-        emit UpdateValue(poolId, scId, asset, tokenId, pricePerUnit, block.timestamp);
+        sender.sendUpdateHoldingValue(poolId, scId, AssetId.wrap(assetId), pricePerUnit);
+        emit UpdateValue(poolId, scId, asset, tokenId, pricePerUnit, uint64(block.timestamp));
     }
 
     /// @inheritdoc IBalanceSheetManager
@@ -162,8 +163,8 @@ contract BalanceSheetManager is
 
     /// @inheritdoc IBalanceSheetManager
     function journalEntry(PoolId poolId, ShareClassId scId, Meta calldata m) external authOrPermission(poolId, scId) {
-        // @dev we do not need to ensure the meta here. Could be part of a batch and must not be balanced
-        sender.sendJournalEntry(poolId, scId, m.debits, m.credits);
+        // We do not need to ensure the meta here. Could be part of a batch and does not have to be balanced
+        sender.sendJournalEntry(poolId, m.debits, m.credits);
         emit UpdateEntry(poolId, scId, m.debits, m.credits);
     }
 
@@ -231,7 +232,7 @@ contract BalanceSheetManager is
             ITranche(token).mint(address(to), shares);
         }
 
-        sender.sendIssueShares(poolId, scId, to, pricePerShare, shares, block.timestamp);
+        sender.sendUpdateShares(poolId, scId, to, pricePerShare, shares, true);
         emit Issue(poolId, scId, to, pricePerShare, shares);
     }
 
@@ -239,7 +240,7 @@ contract BalanceSheetManager is
         address token = poolManager.checkedTranche(poolId.raw(), scId.raw());
         ITranche(token).burn(address(from), shares);
 
-        sender.sendRevokeShares(poolId, scId, from, pricePerShare, shares, block.timestamp);
+        sender.sendUpdateShares(poolId, scId, from, pricePerShare, shares, false);
         emit Revoke(poolId, scId, from, pricePerShare, shares);
     }
 
@@ -253,9 +254,9 @@ contract BalanceSheetManager is
         uint128 amount,
         D18 pricePerUnit,
         bool asAllowance,
-        Meta memory m
+        Meta calldata m
     ) internal {
-        _ensureEntries(pricePerUnit.mulUint128(amount), m);
+        _ensureBalancedEntries(pricePerUnit.mulUint128(amount), m);
         escrow.withdraw(asset, tokenId, poolId.raw(), scId.raw(), amount);
 
         if (tokenId == 0) {
@@ -274,12 +275,10 @@ contract BalanceSheetManager is
             }
         }
 
-        sender.sendDecreaseHolding(
-            poolId, scId, assetId, receiver, amount, pricePerUnit, block.timestamp, m.debits, m.credits
-        );
+        sender.sendUpdateHoldingAmount(poolId, scId, assetId, receiver, amount, pricePerUnit, true, m);
 
         emit Withdraw(
-            poolId, scId, asset, tokenId, receiver, amount, pricePerUnit, block.timestamp, m.debits, m.credits
+            poolId, scId, asset, tokenId, receiver, amount, pricePerUnit, uint64(block.timestamp), m.debits, m.credits
         );
     }
 
@@ -292,9 +291,9 @@ contract BalanceSheetManager is
         address provider,
         uint128 amount,
         D18 pricePerUnit,
-        Meta memory m
+        Meta calldata m
     ) internal {
-        _ensureEntries(pricePerUnit.mulUint128(amount), m);
+        _ensureBalancedEntries(pricePerUnit.mulUint128(amount), m);
         escrow.pendingDepositIncrease(asset, tokenId, poolId.raw(), scId.raw(), amount);
 
         if (tokenId == 0) {
@@ -304,14 +303,14 @@ contract BalanceSheetManager is
         }
 
         escrow.deposit(asset, tokenId, poolId.raw(), scId.raw(), amount);
-        sender.sendIncreaseHolding(
-            poolId, scId, assetId, provider, amount, pricePerUnit, block.timestamp, m.debits, m.credits
-        );
+        sender.sendUpdateHoldingAmount(poolId, scId, assetId, provider, amount, pricePerUnit, false, m);
 
-        emit Deposit(poolId, scId, asset, tokenId, provider, amount, pricePerUnit, block.timestamp, m.debits, m.credits);
+        emit Deposit(
+            poolId, scId, asset, tokenId, provider, amount, pricePerUnit, uint64(block.timestamp), m.debits, m.credits
+        );
     }
 
-    function _ensureEntries(uint128 amount, Meta memory m) internal pure {
+    function _ensureBalancedEntries(uint128 amount, Meta calldata m) internal pure {
         uint128 totalDebits;
         uint128 totalCredits;
 
@@ -323,6 +322,6 @@ contract BalanceSheetManager is
             totalCredits += m.credits[i].amount;
         }
 
-        require(totalDebits <= amount && totalDebits <= amount, EntriesUnbalanced());
+        require(totalDebits <= amount && totalCredits <= amount, EntriesUnbalanced());
     }
 }

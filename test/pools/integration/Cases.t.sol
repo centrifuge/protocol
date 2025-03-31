@@ -18,7 +18,7 @@ import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
 
 import {PoolsDeployer, ISafe} from "script/PoolsDeployer.s.sol";
 import {AccountType} from "src/pools/interfaces/IPoolRouter.sol";
-import {JournalEntry} from "src/common/types/JournalEntry.sol";
+import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
 import {MockVaults} from "test/pools/mocks/MockVaults.sol";
 import {ShareClassIdTest} from "../unit/types/ShareClassId.t.sol";
@@ -286,7 +286,7 @@ contract TestCases is PoolsDeployer, Test {
         credits[j++] = JournalEntry(1250, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EQUITY)));
         credits[j++] = JournalEntry(130, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.LOSS)));
 
-        cv.updateJournal(poolId, scId, debits, credits);
+        cv.updateJournal(poolId, debits, credits);
     }
 
     function testCalUpdateHolding() public {
@@ -299,7 +299,7 @@ contract TestCases is PoolsDeployer, Test {
         credits[i++] =
             JournalEntry(130 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.GAIN)));
 
-        cv.updateHolding(poolId, scId, USDC_C2, 1000 * assetDecimals, D18.wrap(1e18), true, debits, credits);
+        cv.updateHoldingAmount(poolId, scId, USDC_C2, 1000 * assetDecimals, D18.wrap(1e18), true, debits, credits);
         assertEq(holdings.amount(poolId, scId, USDC_C2), 1000 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 1000 * poolDecimals);
         assertEq(
@@ -327,7 +327,7 @@ contract TestCases is PoolsDeployer, Test {
         credits[k++] =
             JournalEntry(12 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.LOSS)));
 
-        cv.updateHolding(poolId, scId, USDC_C2, 500 * assetDecimals, D18.wrap(1e18), false, debits, credits);
+        cv.updateHoldingAmount(poolId, scId, USDC_C2, 500 * assetDecimals, D18.wrap(1e18), false, debits, credits);
 
         assertEq(holdings.amount(poolId, scId, USDC_C2), 500 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 500 * poolDecimals);

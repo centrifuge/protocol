@@ -22,7 +22,7 @@ import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 import {IPoolRouter} from "src/pools/interfaces/IPoolRouter.sol";
 import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 import {PoolRouter} from "src/pools/PoolRouter.sol";
-import {JournalEntry} from "src/common/types/JournalEntry.sol";
+import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
 contract TestCommon is Test {
     uint16 constant CHAIN_A = 23;
@@ -124,12 +124,6 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.createHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), false, 0);
-
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.increaseHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
-
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.decreaseHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
 
         vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.updateHolding(ShareClassId.wrap(0), AssetId.wrap(0));

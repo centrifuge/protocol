@@ -17,7 +17,7 @@ import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {JournalEntry, Meta} from "src/common/types/JournalEntry.sol";
+import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 
 import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";

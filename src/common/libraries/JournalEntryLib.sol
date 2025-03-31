@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {D18, d18} from "src/misc/types/D18.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 struct JournalEntry {
     uint128 amount;
@@ -15,13 +16,15 @@ struct Meta {
 }
 
 library JournalEntryLib {
+    using BytesLib for bytes;
+
     /**
      * @dev Packs an array of JournalEntry into a tight bytes array of length (entries.length * 20).
      *      Each entry = 20 bytes:
      *         - amount (uint128) is stored in 16 bytes (big-endian)
      *         - accountId (uint32) in 4 bytes (big-endian)
      */
-    function encodePacked(JournalEntry[] memory entries) internal pure returns (bytes memory) {
+    function toBytes(JournalEntry[] memory entries) internal pure returns (bytes memory) {
         // Each entry = 20 bytes
         bytes memory packed = new bytes(entries.length * 20);
 
@@ -64,17 +67,8 @@ library JournalEntryLib {
         for (uint256 i = 0; i < count; i++) {
             uint256 offset = _start + i * 20;
 
-            // 1) Decode amount (uint128) from 16 bytes big-endian
-            uint128 amount;
-            for (uint256 j = 0; j < 16; j++) {
-                amount = (amount << 8) | uint128(uint8(_bytes[offset + j]));
-            }
-
-            // 2) Decode accountId (uint32) from 4 bytes big-endian
-            uint32 accountId;
-            for (uint256 j = 0; j < 4; j++) {
-                accountId = (accountId << 8) | uint32(uint8(_bytes[offset + 16 + j]));
-            }
+            uint128 amount = _bytes.toUint128(offset);
+            uint32 accountId = _bytes.toUint32(offset + 16);
 
             entries[i] = JournalEntry({amount: amount, accountId: AccountId.wrap(accountId)});
         }

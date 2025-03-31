@@ -161,14 +161,6 @@ interface IPoolRouter {
         external
         payable;
 
-    /// @notice Increase the amount of a holding.
-    /// @param valuation Used to transform between payment assets and pool currency
-    function increaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount) external payable;
-
-    /// @notice Decrease the amount of a holding.
-    /// @param valuation Used to transform between payment assets and pool currency
-    function decreaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount) external payable;
-
     /// @notice Updates the pool currency value of this holding based of the associated valuation.
     function updateHolding(ShareClassId scId, AssetId assetId) external payable;
 
