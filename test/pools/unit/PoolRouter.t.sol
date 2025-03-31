@@ -132,12 +132,6 @@ contract TestMainMethodsChecks is TestCommon {
         poolRouter.createHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), false, 0);
 
         vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.increaseHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
-
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.decreaseHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), 0);
-
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.updateHolding(ShareClassId.wrap(0), AssetId.wrap(0));
 
         vm.expectRevert(IPoolRouter.PoolLocked.selector);

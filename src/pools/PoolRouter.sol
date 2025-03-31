@@ -218,7 +218,14 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
             approvedAssetAmount
         );
 
-        increaseHolding(scId, paymentAssetId, valuation, approvedAssetAmount);
+        uint128 valueChange = holdings.increase(unlockedPoolId, scId, paymentAssetId, valuation, approvedAssetAmount);
+
+        accounting.addCredit(
+            holdings.accountId(unlockedPoolId, scId, paymentAssetId, uint8(AccountType.EQUITY)), valueChange
+        );
+        accounting.addDebit(
+            holdings.accountId(unlockedPoolId, scId, paymentAssetId, uint8(AccountType.ASSET)), valueChange
+        );
     }
 
     /// @inheritdoc IPoolRouter
@@ -257,7 +264,14 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
             payoutAssetAmount
         );
 
-        decreaseHolding(scId, payoutAssetId, valuation, payoutAssetAmount);
+        uint128 valueChange = holdings.decrease(unlockedPoolId, scId, payoutAssetId, valuation, payoutAssetAmount);
+
+        accounting.addCredit(
+            holdings.accountId(unlockedPoolId, scId, payoutAssetId, uint8(AccountType.ASSET)), valueChange
+        );
+        accounting.addDebit(
+            holdings.accountId(unlockedPoolId, scId, payoutAssetId, uint8(AccountType.EQUITY)), valueChange
+        );
     }
 
     /// @inheritdoc IPoolRouter
@@ -318,26 +332,6 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         createAccount(accounts[5], false);
 
         holdings.create(unlockedPoolId, scId, assetId, valuation, isLiability, accounts);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function increaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount) public payable {
-        _protectedAndUnlocked();
-
-        uint128 valueChange = holdings.increase(unlockedPoolId, scId, assetId, valuation, amount);
-
-        accounting.addCredit(holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.EQUITY)), valueChange);
-        accounting.addDebit(holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.ASSET)), valueChange);
-    }
-
-    /// @inheritdoc IPoolRouter
-    function decreaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount) public payable {
-        _protectedAndUnlocked();
-
-        uint128 valueChange = holdings.decrease(unlockedPoolId, scId, assetId, valuation, amount);
-
-        accounting.addCredit(holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.ASSET)), valueChange);
-        accounting.addDebit(holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.EQUITY)), valueChange);
     }
 
     /// @inheritdoc IPoolRouter
