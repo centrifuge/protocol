@@ -16,7 +16,7 @@ abstract contract TrancheTokenFunctions is BaseTargetFunctions, Properties {
         require(_canDonate(to), "never donate to escrow");
 
         // Clamp
-        value = between(value, 0, trancheToken.balanceOf(actor));
+        value = between(value, 0, trancheToken.balanceOf(_getActor()));
 
         bool hasReverted;
 
@@ -30,7 +30,7 @@ abstract contract TrancheTokenFunctions is BaseTargetFunctions, Properties {
         // TT-1 Always revert if one of them is frozen
         if (
             restrictionManager.isFrozen(address(trancheToken), to) == true
-                || restrictionManager.isFrozen(address(trancheToken), actor) == true
+                || restrictionManager.isFrozen(address(trancheToken), _getActor()) == true
         ) {
             t(hasReverted, "TT-1 Must Revert");
         }

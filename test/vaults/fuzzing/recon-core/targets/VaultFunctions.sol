@@ -22,7 +22,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
     /// @dev Get the balance of the current token and actor
     function _getTokenAndBalanceForVault() internal view returns (uint256) {
         // Token
-        uint256 amt = token.balanceOf(actor);
+        uint256 amt = token.balanceOf(_getActor());
 
         return amt;
     }
@@ -32,42 +32,42 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
         assets = between(assets, 0, _getTokenAndBalanceForVault());
 
         token.approve(address(vault), assets);
-        address to = actor; // NOTE: We transfer to self for now
+        address to = _getActor(); // NOTE: We transfer to self for now
 
         // B4 Balances
-        uint256 balanceB4 = token.balanceOf(actor);
+        uint256 balanceB4 = token.balanceOf(_getActor());
         uint256 balanceOfEscrowB4 = token.balanceOf(address(escrow));
 
         bool hasReverted;
-        try vault.requestDeposit(assets, to, actor) {
+        try vault.requestDeposit(assets, to, _getActor()) {
             // TF-1
             sumOfDepositRequests[address(token)] += assets;
 
-            requestDepositAssets[actor][address(token)] += assets;
+            requestDepositAssets[_getActor()][address(token)] += assets;
         } catch {
             hasReverted = true;
         }
 
         // If not member
-        (bool isMember,) = restrictionManager.isMember(address(trancheToken), actor);
+        (bool isMember,) = restrictionManager.isMember(address(trancheToken), _getActor());
         if (!isMember) {
             t(hasReverted, "LP-1 Must Revert");
         }
 
         if (
-            restrictionManager.isFrozen(address(trancheToken), actor) == true
+            restrictionManager.isFrozen(address(trancheToken), _getActor()) == true
                 || restrictionManager.isFrozen(address(trancheToken), to) == true
         ) {
             t(hasReverted, "LP-2 Must Revert");
         }
 
         if (!poolManager.isAllowedAsset(poolId, address(token))) {
-            // TODO: Ensure this works via actor switch
+            // TODO: Ensure this works via _getActor() switch
             t(hasReverted, "LP-3 Must Revert");
         }
 
         // After Balances and Checks
-        uint256 balanceAfter = token.balanceOf(actor);
+        uint256 balanceAfter = token.balanceOf(_getActor());
         uint256 balanceOfEscrowAfter = token.balanceOf(address(escrow));
 
         // NOTE: We only enforce the check if the tx didn't revert
@@ -86,31 +86,31 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
     }
 
     function vault_requestRedeem(uint256 shares) public {
-        address to = actor; // TODO: donation / changes
+        address to = _getActor(); // TODO: donation / changes
 
         // B4 Balances
-        uint256 balanceB4 = trancheToken.balanceOf(actor);
+        uint256 balanceB4 = trancheToken.balanceOf(_getActor());
         uint256 balanceOfEscrowB4 = trancheToken.balanceOf(address(escrow));
 
         trancheToken.approve(address(vault), shares);
 
         bool hasReverted;
-        try vault.requestRedeem(shares, to, actor) {
+        try vault.requestRedeem(shares, to, _getActor()) {
             sumOfRedeemRequests[address(trancheToken)] += shares; // E-2
-            requestRedeemShares[actor][address(trancheToken)] += shares;
+            requestRedeemShares[_getActor()][address(trancheToken)] += shares;
         } catch {
             hasReverted = true;
         }
 
         if (
-            restrictionManager.isFrozen(address(trancheToken), actor) == true
+            restrictionManager.isFrozen(address(trancheToken), _getActor()) == true
                 || restrictionManager.isFrozen(address(trancheToken), to) == true
         ) {
             t(hasReverted, "LP-2 Must Revert");
         }
 
         // After Balances and Checks
-        uint256 balanceAfter = trancheToken.balanceOf(actor);
+        uint256 balanceAfter = trancheToken.balanceOf(_getActor());
         uint256 balanceOfEscrowAfter = trancheToken.balanceOf(address(escrow));
 
         // NOTE: We only enforce the check if the tx didn't revert
@@ -135,30 +135,30 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
     // === CANCEL === //
 
     function vault_cancelDepositRequest() public {
-        vault.cancelDepositRequest(REQUEST_ID, actor);
+        vault.cancelDepositRequest(REQUEST_ID, _getActor());
     }
 
     function vault_cancelRedeemRequest() public {
-        vault.cancelRedeemRequest(REQUEST_ID, actor);
+        vault.cancelRedeemRequest(REQUEST_ID, _getActor());
     }
 
     function vault_claimCancelDepositRequest() public {
-        address to = actor; // NOTE: We transfer to self for now
+        address to = _getActor(); // NOTE: We transfer to self for now
 
-        uint256 assets = vault.claimCancelDepositRequest(REQUEST_ID, to, actor);
+        uint256 assets = vault.claimCancelDepositRequest(REQUEST_ID, to, _getActor());
         sumOfClaimedDepositCancelations[address(token)] += assets;
     }
 
     function vault_claimCancelRedeemRequest() public {
-        address to = actor; // NOTE: We transfer to self for now
+        address to = _getActor(); // NOTE: We transfer to self for now
 
-        uint256 shares = vault.claimCancelRedeemRequest(REQUEST_ID, to, actor);
+        uint256 shares = vault.claimCancelRedeemRequest(REQUEST_ID, to, _getActor());
         sumOfClaimedRedeemCancelations[address(trancheToken)] += shares;
     }
 
     function vault_deposit(uint256 assets) public {
         // Bal b4
-        uint256 trancheUserB4 = trancheToken.balanceOf(actor);
+        uint256 trancheUserB4 = trancheToken.balanceOf(_getActor());
         uint256 trancheEscrowB4 = trancheToken.balanceOf(address(escrow));
 
         uint256 shares = vault.deposit(assets, address(this));
@@ -167,7 +167,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
         sumOfClaimedDeposits[address(trancheToken)] += shares;
 
         // Bal after
-        uint256 trancheUserAfter = trancheToken.balanceOf(actor);
+        uint256 trancheUserAfter = trancheToken.balanceOf(_getActor());
         uint256 trancheEscrowAfter = trancheToken.balanceOf(address(escrow));
 
         // Extra check | // TODO: This math will prob overflow
@@ -196,10 +196,10 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
     // TODO: See how these go
     // TODO: Receiver -> Not this
     function vault_mint(uint256 shares) public {
-        address to = actor; // TODO: donation / changes
+        address to = _getActor(); // TODO: donation / changes
 
         // Bal b4
-        uint256 trancheUserB4 = trancheToken.balanceOf(actor);
+        uint256 trancheUserB4 = trancheToken.balanceOf(_getActor());
         uint256 trancheEscrowB4 = trancheToken.balanceOf(address(escrow));
 
         vault.mint(shares, to);
@@ -208,7 +208,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
         sumOfClaimedDeposits[address(trancheToken)] += shares;
 
         // Bal after
-        uint256 trancheUserAfter = trancheToken.balanceOf(actor);
+        uint256 trancheUserAfter = trancheToken.balanceOf(_getActor());
         uint256 trancheEscrowAfter = trancheToken.balanceOf(address(escrow));
 
         // Extra check | // TODO: This math will prob overflow
@@ -230,19 +230,19 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
 
     // TODO: Params
     function vault_redeem(uint256 shares) public {
-        address to = actor; // TODO: donation / changes
+        address to = _getActor(); // TODO: donation / changes
 
         // Bal b4
-        uint256 tokenUserB4 = token.balanceOf(actor);
+        uint256 tokenUserB4 = token.balanceOf(_getActor());
         uint256 tokenEscrowB4 = token.balanceOf(address(escrow));
 
-        uint256 assets = vault.redeem(shares, actor, to);
+        uint256 assets = vault.redeem(shares, _getActor(), to);
 
         // E-1
         sumOfClaimedRedemptions[address(token)] += assets;
 
         // Bal after
-        uint256 tokenUserAfter = token.balanceOf(actor);
+        uint256 tokenUserAfter = token.balanceOf(_getActor());
         uint256 tokenEscrowAfter = token.balanceOf(address(escrow));
 
         // Extra check | // TODO: This math will prob overflow
@@ -268,19 +268,19 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
 
     // TODO: Params
     function vault_withdraw(uint256 assets) public {
-        address to = actor; // TODO: donation / changes
+        address to = _getActor(); // TODO: donation / changes
 
         // Bal b4
-        uint256 tokenUserB4 = token.balanceOf(actor);
+        uint256 tokenUserB4 = token.balanceOf(_getActor());
         uint256 tokenEscrowB4 = token.balanceOf(address(escrow));
 
-        vault.withdraw(assets, actor, to);
+        vault.withdraw(assets, _getActor(), to);
 
         // E-1
         sumOfClaimedRedemptions[address(token)] += assets;
 
         // Bal after
-        uint256 tokenUserAfter = token.balanceOf(actor);
+        uint256 tokenUserAfter = token.balanceOf(_getActor());
         uint256 tokenEscrowAfter = token.balanceOf(address(escrow));
 
         // Extra check | // TODO: This math will prob overflow

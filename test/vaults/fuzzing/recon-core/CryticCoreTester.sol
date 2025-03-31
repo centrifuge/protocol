@@ -1,11 +1,12 @@
-// SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity ^0.8.0;
 
-import {TargetFunctions} from "./TargetFunctions.sol";
 import {CryticAsserts} from "@chimera/CryticAsserts.sol";
 
+import {TargetFunctions} from "./TargetFunctions.sol";
+
 // echidna . --contract CryticCoreTester --config echidna.yaml
-// medusa fuzz
+// medusa fuzz --config medusa-core.json
 contract CryticCoreTester is TargetFunctions, CryticAsserts {
     constructor() payable {
         setup();

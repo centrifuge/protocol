@@ -159,7 +159,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
      */
     function poolManager_updateMember(uint64 validUntil) public {
         poolManager.updateRestriction(
-            poolId, trancheId, MessageLib.UpdateRestrictionMember(actor.toBytes32(), validUntil).serialize()
+            poolId, trancheId, MessageLib.UpdateRestrictionMember(_getActor().toBytes32(), validUntil).serialize()
         );
     }
 
@@ -174,13 +174,13 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
 
     function poolManager_freeze() public {
         poolManager.updateRestriction(
-            poolId, trancheId, MessageLib.UpdateRestrictionFreeze(actor.toBytes32()).serialize()
+            poolId, trancheId, MessageLib.UpdateRestrictionFreeze(_getActor().toBytes32()).serialize()
         );
     }
 
     function poolManager_unfreeze() public {
         poolManager.updateRestriction(
-            poolId, trancheId, MessageLib.UpdateRestrictionUnfreeze(actor.toBytes32()).serialize()
+            poolId, trancheId, MessageLib.UpdateRestrictionUnfreeze(_getActor().toBytes32()).serialize()
         );
     }
 
@@ -204,7 +204,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         allTokens.push(newToken);
 
         // TODO: If you have multi actors add them here
-        newToken.mint(actor, initialMintPerUsers);
+        newToken.mint(_getActor(), initialMintPerUsers);
 
         return address(newToken);
     }

@@ -45,7 +45,7 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
                 /*bool pendingCancelDepositRequest*/
                 ,
                 /*bool pendingCancelRedeemRequest*/
-            ) = investmentManager.investments(address(vault), address(actor));
+            ) = investmentManager.investments(address(vault), address(_getActor()));
 
             /// @audit DANGEROUS TODO: Clamp so we ensure we never give remaining above what was sent, fully trusted
             /// value
@@ -62,7 +62,7 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
         }
 
         investmentManager.fulfillDepositRequest(
-            poolId, trancheId, actor, currencyId, currencyPayout, trancheTokenPayout
+            poolId, trancheId, _getActor(), currencyId, currencyPayout, trancheTokenPayout
         );
 
         // E-2 | Global-1
@@ -97,7 +97,7 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
                 /*bool pendingCancelDepositRequest*/
                 ,
                 /*bool pendingCancelRedeemRequest*/
-            ) = investmentManager.investments(address(vault), address(actor));
+            ) = investmentManager.investments(address(vault), address(_getActor()));
 
             /// @audit DANGEROUS TODO: Clamp so we ensure we never give remaining above what was sent, fully trusted
             /// value
@@ -122,7 +122,7 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
         // /// @audit We mint payout here which has to be paid by the borrowers
         // // END TODO test_invariant_erc7540_10_w_recon
 
-        investmentManager.fulfillRedeemRequest(poolId, trancheId, actor, currencyId, currencyPayout, trancheTokenPayout);
+        investmentManager.fulfillRedeemRequest(poolId, trancheId, _getActor(), currencyId, currencyPayout, trancheTokenPayout);
 
         sumOfClaimedRequests[address(trancheToken)] += trancheTokenPayout;
 
@@ -140,8 +140,8 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
     /// @dev NOTE: Tranche -> decreaseByAmount is linear!
     function investmentManager_fulfillCancelDepositRequest(uint128 currencyPayout) public {
         /// === CLAMP `currencyPayout` === ///
-        // Require that the actor has done the request
-        require(vault.pendingCancelDepositRequest(0, actor));
+        // Require that the _getActor() has done the request
+        require(vault.pendingCancelDepositRequest(0, _getActor()));
         {
             (
                 /*uint128 maxMint*/
@@ -162,7 +162,7 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
                 /*bool pendingCancelDepositRequest*/
                 ,
                 /*bool pendingCancelRedeemRequest*/
-            ) = investmentManager.investments(address(vault), address(actor));
+            ) = investmentManager.investments(address(vault), address(_getActor()));
 
             /// @audit DANGEROUS TODO: Clamp so we ensure we never give remaining above what was sent, fully trusted
             /// value
@@ -182,7 +182,7 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
 
         // TODO: Would they set the order to a higher value?
         investmentManager.fulfillCancelDepositRequest(
-            poolId, trancheId, actor, currencyId, currencyPayout, currencyPayout
+            poolId, trancheId, _getActor(), currencyId, currencyPayout, currencyPayout
         );
         /// @audit Reduced by: currencyPayout
 
@@ -197,7 +197,7 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
         // Require that the actor has done the request
 
         /// === CLAMP `trancheTokenPayout` === ///
-        require(vault.pendingCancelRedeemRequest(0, actor));
+        require(vault.pendingCancelRedeemRequest(0, _getActor()));
 
         {
             (
@@ -219,7 +219,7 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
                 /*bool pendingCancelDepositRequest*/
                 ,
                 /*bool pendingCancelRedeemRequest*/
-            ) = investmentManager.investments(address(vault), address(actor));
+            ) = investmentManager.investments(address(vault), address(_getActor()));
 
             /// @audit DANGEROUS TODO: Clamp so we ensure we never give remaining above what was sent, fully trusted
             /// value
@@ -234,7 +234,7 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
             }
         }
 
-        investmentManager.fulfillCancelRedeemRequest(poolId, trancheId, actor, currencyId, trancheTokenPayout);
+        investmentManager.fulfillCancelRedeemRequest(poolId, trancheId, _getActor(), currencyId, trancheTokenPayout);
         /// @audit trancheTokenPayout
 
         cancelRedeemTrancheTokenPayout[address(trancheToken)] += trancheTokenPayout;
@@ -245,11 +245,11 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
     // NOTE: TODO: We should remove this and consider a separate test, if we go by the FSM
     // FSM -> depps
     // function investmentManager_triggerRedeemRequest(uint128 trancheTokenAmount) public {
-    //     uint256 balB4 = trancheToken.balanceOf(actor);
+    //     uint256 balB4 = trancheToken.balanceOf(_getActor());
 
-    //     investmentManager.triggerRedeemRequest(poolId, trancheId, actor, currencyId, trancheTokenAmount);
+    //     investmentManager.triggerRedeemRequest(poolId, trancheId, _getActor(), currencyId, trancheTokenAmount);
 
-    //     uint256 balAfter = trancheToken.balanceOf(actor);
+    //     uint256 balAfter = trancheToken.balanceOf(_getActor());
 
     //     // E-2 /// @audit TODO: Forcefully moves tokens from user to here only if a transfer happened
     //     sumOfRedeemRequests[(address(trancheToken))] += balB4 - balAfter;

@@ -19,7 +19,7 @@ abstract contract RestrictionManagerFunctions is BaseTargetFunctions, Properties
 
     // TODO: Actory Cycling
     function restrictionManager_updateMemberBasic(uint64 validUntil) public {
-        restrictionManager.updateMember(address(trancheToken), actor, validUntil);
+        restrictionManager.updateMember(address(trancheToken), _getActor(), validUntil);
     }
 
     // TODO: We prob want to keep one generic
@@ -30,11 +30,11 @@ abstract contract RestrictionManagerFunctions is BaseTargetFunctions, Properties
 
     // TODO: Actor Cycling
     function restrictionManager_freeze(address /*user*/ ) public {
-        restrictionManager.freeze(address(trancheToken), actor);
+        restrictionManager.freeze(address(trancheToken), _getActor());
     }
 
     function restrictionManager_unfreeze(address /*user*/ ) public {
-        restrictionManager.unfreeze(address(trancheToken), actor);
+        restrictionManager.unfreeze(address(trancheToken), _getActor());
     }
 
     /**
