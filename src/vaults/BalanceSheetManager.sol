@@ -163,7 +163,7 @@ contract BalanceSheetManager is
 
     /// @inheritdoc IBalanceSheetManager
     function journalEntry(PoolId poolId, ShareClassId scId, Meta calldata m) external authOrPermission(poolId, scId) {
-        // We do not need to ensure the meta here. Could be part of a batch and must not be balanced
+        // We do not need to ensure the meta here. Could be part of a batch and does not have to be balanced
         sender.sendJournalEntry(poolId, m.debits, m.credits);
         emit UpdateEntry(poolId, scId, m.debits, m.credits);
     }
@@ -256,7 +256,7 @@ contract BalanceSheetManager is
         bool asAllowance,
         Meta calldata m
     ) internal {
-        _ensureEntries(pricePerUnit.mulUint128(amount), m);
+        _ensureBalancedEntries(pricePerUnit.mulUint128(amount), m);
         escrow.withdraw(asset, tokenId, poolId.raw(), scId.raw(), amount);
 
         if (tokenId == 0) {
@@ -293,7 +293,7 @@ contract BalanceSheetManager is
         D18 pricePerUnit,
         Meta calldata m
     ) internal {
-        _ensureEntries(pricePerUnit.mulUint128(amount), m);
+        _ensureBalancedEntries(pricePerUnit.mulUint128(amount), m);
         escrow.pendingDepositIncrease(asset, tokenId, poolId.raw(), scId.raw(), amount);
 
         if (tokenId == 0) {
@@ -310,7 +310,7 @@ contract BalanceSheetManager is
         );
     }
 
-    function _ensureEntries(uint128 amount, Meta calldata m) internal pure {
+    function _ensureBalancedEntries(uint128 amount, Meta calldata m) internal pure {
         uint128 totalDebits;
         uint128 totalCredits;
 
