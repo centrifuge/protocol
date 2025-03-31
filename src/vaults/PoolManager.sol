@@ -18,7 +18,12 @@ import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {newAssetId} from "src/common/types/AssetId.sol";
 
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
-import {IBaseVault, IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
+import {IBaseVault, IAsyncRedeemVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
+import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
+import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
+import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {ITrancheFactory} from "src/vaults/interfaces/factories/ITrancheFactory.sol";
 import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
@@ -339,11 +344,8 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         bool isWrappedERC20 = success && data.length == 32;
         _vaultDetails[vault] = VaultDetails(assetId, assetIdKey.asset, assetIdKey.tokenId, isWrappedERC20, false);
 
-        address manager = IBaseVault(vault).manager();
         // NOTE - Reverting the three actions below is not easy. We SHOULD do that if we phase-out a manager
-        IAuth(tranche_.token).rely(manager);
-        escrow.approveMax(tranche_.token, manager);
-        escrow.approveMax(assetIdKey.asset, assetIdKey.tokenId, manager);
+        _approveManagers(vault, tranche_.token, assetIdKey.asset, assetIdKey.tokenId);
 
         emit DeployVault(poolId, trancheId, assetIdKey.asset, assetIdKey.tokenId, factory, vault);
         return vault;
@@ -354,9 +356,11 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         TrancheDetails storage tranche_ = pools[poolId].tranches[trancheId];
         require(tranche_.token != address(0), "PoolManager/tranche-does-not-exist");
 
-        address manager = IBaseVault(vault).manager();
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
-        IVaultManager(manager).addVault(poolId, trancheId, vault, assetIdKey.asset, assetId);
+
+        IBaseInvestmentManager manager = IBaseVault(vault).manager();
+        IVaultManager(address(manager)).addVault(poolId, trancheId, vault, assetIdKey.asset, assetId);
+
         _vaultDetails[vault].isLinked = true;
 
         emit LinkVault(poolId, trancheId, assetIdKey.asset, assetIdKey.tokenId, vault);
@@ -367,9 +371,11 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         TrancheDetails storage tranche_ = pools[poolId].tranches[trancheId];
         require(tranche_.token != address(0), "PoolManager/tranche-does-not-exist");
 
-        address manager = IBaseVault(vault).manager();
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
-        IVaultManager(manager).removeVault(poolId, trancheId, vault, assetIdKey.asset, assetId);
+
+        IBaseInvestmentManager manager = IBaseVault(vault).manager();
+        IVaultManager(address(manager)).removeVault(poolId, trancheId, vault, assetIdKey.asset, assetId);
+
         _vaultDetails[vault].isLinked = false;
 
         emit UnlinkVault(poolId, trancheId, assetIdKey.asset, assetIdKey.tokenId, vault);
@@ -438,6 +444,26 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     function checkedAssetToId(address asset, uint256 tokenId) public view returns (uint128 assetId) {
         assetId = assetToId[asset][tokenId];
         require(assetId != 0, "PoolManager/unknown-asset");
+    }
+
+    /// @dev Sets up permissions for the base vault manager and potentially a secondary manager (in case of partially
+    /// sync vault)
+    function _approveManagers(address vault, address trancheToken, address asset, uint256 tokenId) internal {
+        address manager = address(IBaseVault(vault).manager());
+        _approveManager(manager, trancheToken, asset, tokenId);
+
+        // For sync deposit & async redeem vault, also repeat above for async manager (base manager is sync one)
+        (VaultKind vaultKind, address secondaryVaultManager) = IVaultManager(manager).vaultKind(vault);
+        if (vaultKind == VaultKind.SyncDepositAsyncRedeem) {
+            _approveManager(secondaryVaultManager, trancheToken, asset, tokenId);
+        }
+    }
+
+    /// @dev Sets up permissions for a vault manager
+    function _approveManager(address manager, address trancheToken, address asset, uint256 tokenId) internal {
+        IAuth(trancheToken).rely(manager);
+        escrow.approveMax(trancheToken, manager);
+        escrow.approveMax(asset, tokenId, manager);
     }
 
     function _safeGetAssetDecimals(address asset, uint256 tokenId) private view returns (uint8) {

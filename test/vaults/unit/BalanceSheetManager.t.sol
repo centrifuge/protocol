@@ -73,7 +73,8 @@ contract BalanceSheetManagerTest is BaseTest {
     // Deployment
     function testDeployment(address nonWard) public {
         vm.assume(
-            nonWard != address(root) && nonWard != address(vaultFactory) && nonWard != address(gateway)
+            nonWard != address(root) && nonWard != address(asyncVaultFactory)
+                && nonWard != address(syncDepositVaultFactory) && nonWard != address(gateway)
                 && nonWard != address(messageProcessor) && nonWard != address(messageDispatcher) && nonWard != address(this)
         );
 

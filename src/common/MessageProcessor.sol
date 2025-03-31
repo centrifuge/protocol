@@ -15,10 +15,10 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
 import {JournalEntry, Meta} from "src/common/types/JournalEntry.sol";
 import {
-    IInvestmentManagerGatewayHandler,
     IPoolManagerGatewayHandler,
     IPoolRouterGatewayHandler,
-    IBalanceSheetManagerGatewayHandler
+    IBalanceSheetManagerGatewayHandler,
+    IInvestmentManagerGatewayHandler
 } from "src/common/interfaces/IGatewayHandlers.sol";
 import {IVaultMessageSender, IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
