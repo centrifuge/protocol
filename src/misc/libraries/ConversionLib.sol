@@ -19,11 +19,7 @@ library ConversionLib {
         return price.mulUint256(MathLib.mulDiv(baseAmount, 10 ** quoteDecimals, 10 ** baseDecimals));
     }
 
-    function convertIntoPrice(uint128 amount, uint8 decimals)
-    external
-    pure
-    returns (D18 price)
-    {
+    function convertIntoPrice(uint128 amount, uint8 decimals) external pure returns (D18 price) {
         uint128 denom = (10 ** uint256(decimals)).toUint128();
         return d18(amount, denom);
     }

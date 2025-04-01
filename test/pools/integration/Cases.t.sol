@@ -395,6 +395,5 @@ contract TestCases is PoolsDeployer, Test {
         assertEq(m1.assetId, EUR.raw());
         assertEq(m1.price, expectedPrice.raw());
         assertEq(m1.timestamp, block.timestamp.toUint64());
-
     }
 }
