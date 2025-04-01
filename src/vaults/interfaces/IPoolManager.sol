@@ -87,7 +87,7 @@ interface IPoolManager is IRecoverable {
         uint256 price,
         uint64 computedAt
     );
-    event TransferShareTokens(
+    event TransferShares(
         uint64 indexed poolId,
         bytes16 indexed scId,
         address indexed sender,
@@ -145,7 +145,7 @@ interface IPoolManager is IRecoverable {
     /// @param  destinationId The destination chain id
     /// @param  recipient A bytes32 representation of the recipient address
     /// @param  amount The amount of tokens to transfer
-    function transferShareTokens(uint64 poolId, bytes16 scId, uint16 destinationId, bytes32 recipient, uint128 amount)
+    function transferShares(uint64 poolId, bytes16 scId, uint16 destinationId, bytes32 recipient, uint128 amount)
         external;
 
     /// @notice     Registers an ERC-20 or ERC-6909 asset in another chain.

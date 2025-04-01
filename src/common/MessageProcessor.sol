@@ -105,7 +105,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             poolManager.updateShareHook(m.poolId, m.scId, address(bytes20(m.hook)));
         } else if (kind == MessageType.TransferShares) {
             MessageLib.TransferShares memory m = MessageLib.deserializeTransferShares(message);
-            poolManager.handleTransferShareTokens(m.poolId, m.scId, address(bytes20(m.recipient)), m.amount);
+            poolManager.handleTransferShares(m.poolId, m.scId, address(bytes20(m.recipient)), m.amount);
         } else if (kind == MessageType.UpdateRestriction) {
             MessageLib.UpdateRestriction memory m = MessageLib.deserializeUpdateRestriction(message);
             poolManager.updateRestriction(m.poolId, m.scId, m.payload);

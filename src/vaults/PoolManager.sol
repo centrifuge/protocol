@@ -107,7 +107,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
     // --- Outgoing message handling ---
     /// @inheritdoc IPoolManager
-    function transferShareTokens(uint64 poolId, bytes16 scId, uint16 destinationId, bytes32 recipient, uint128 amount)
+    function transferShares(uint64 poolId, bytes16 scId, uint16 destinationId, bytes32 recipient, uint128 amount)
         external
         auth
     {
@@ -117,7 +117,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
         sender.sendTransferShares(destinationId, poolId, scId, recipient, amount);
 
-        emit TransferShareTokens(poolId, scId, msg.sender, destinationId, recipient, amount);
+        emit TransferShares(poolId, scId, msg.sender, destinationId, recipient, amount);
     }
 
     // @inheritdoc IPoolManagerGatewayHandler
@@ -272,7 +272,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
-    function handleTransferShareTokens(uint64 poolId, bytes16 scId, address destinationAddress, uint128 amount)
+    function handleTransferShares(uint64 poolId, bytes16 scId, address destinationAddress, uint128 amount)
         public
         auth
     {

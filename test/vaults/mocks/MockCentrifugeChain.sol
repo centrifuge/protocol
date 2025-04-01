@@ -164,9 +164,7 @@ contract MockCentrifugeChain is Test {
         );
     }
 
-    function incomingTransferShareTokens(uint64 poolId, bytes16 scId, address destinationAddress, uint128 amount)
-        public
-    {
+    function incomingTransferShares(uint64 poolId, bytes16 scId, address destinationAddress, uint128 amount) public {
         execute(
             MessageLib.TransferShares({
                 poolId: poolId,

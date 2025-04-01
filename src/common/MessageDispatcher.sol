@@ -241,7 +241,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         auth
     {
         if (chainId == localCentrifugeId) {
-            poolManager.handleTransferShareTokens(poolId, scId, address(bytes20(recipient)), amount);
+            poolManager.handleTransferShares(poolId, scId, address(bytes20(recipient)), amount);
         } else {
             gateway.send(
                 chainId,

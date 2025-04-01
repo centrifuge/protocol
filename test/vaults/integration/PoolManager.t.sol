@@ -252,7 +252,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         }
     }
 
-    function testTransferShareTokensToCentrifuge(uint128 amount) public {
+    function testTransferSharesToCentrifuge(uint128 amount) public {
         vm.assume(amount > 0);
         uint64 validUntil = uint64(block.timestamp + 7 days);
         bytes32 centChainAddress = makeAddr("centChainAddress").toBytes32();
@@ -263,18 +263,18 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         // fund this account with amount
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), address(this), validUntil);
 
-        centrifugeChain.incomingTransferShareTokens(vault.poolId(), vault.trancheId(), address(this), amount);
+        centrifugeChain.incomingTransferShares(vault.poolId(), vault.trancheId(), address(this), amount);
         assertEq(token.balanceOf(address(this)), amount); // Verify the address(this) has the expected amount
 
         // fails for invalid share class token
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
         vm.expectRevert(bytes("PoolManager/unknown-token"));
-        poolManager.transferShareTokens(poolId + 1, scId, 0, centChainAddress, amount);
+        poolManager.transferShares(poolId + 1, scId, 0, centChainAddress, amount);
 
         // send the transfer from EVM -> Cent Chain
         token.approve(address(poolManager), amount);
-        poolManager.transferShareTokens(poolId, scId, 0, centChainAddress, amount);
+        poolManager.transferShares(poolId, scId, 0, centChainAddress, amount);
         assertEq(token.balanceOf(address(this)), 0);
 
         // Finally, verify the connector called `adapter.send`
@@ -282,13 +282,13 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assertEq(adapter1.sent(message), 1);
     }
 
-    function testTransferShareTokensUnauthorized() public {
+    function testTransferSharesUnauthorized() public {
         vm.prank(makeAddr("unauthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolManager.transferShareTokens(0, bytes16(0), 0, 0, 0);
+        poolManager.transferShares(0, bytes16(0), 0, 0, 0);
     }
 
-    function testTransferShareTokensFromCentrifuge(uint128 amount) public {
+    function testTransferSharesFromCentrifuge(uint128 amount) public {
         vm.assume(amount > 0);
         uint64 validUntil = uint64(block.timestamp + 7 days);
         address destinationAddress = makeAddr("destinationAddress");
@@ -300,18 +300,18 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         IShareToken token = IShareToken(address(vault.share()));
 
         vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
-        centrifugeChain.incomingTransferShareTokens(poolId, scId, destinationAddress, amount);
+        centrifugeChain.incomingTransferShares(poolId, scId, destinationAddress, amount);
         centrifugeChain.updateMember(poolId, scId, destinationAddress, validUntil);
 
         vm.expectRevert(bytes("PoolManager/unknown-token"));
-        centrifugeChain.incomingTransferShareTokens(poolId + 1, scId, destinationAddress, amount);
+        centrifugeChain.incomingTransferShares(poolId + 1, scId, destinationAddress, amount);
 
         assertTrue(token.checkTransferRestriction(address(0), destinationAddress, 0));
-        centrifugeChain.incomingTransferShareTokens(poolId, scId, destinationAddress, amount);
+        centrifugeChain.incomingTransferShares(poolId, scId, destinationAddress, amount);
         assertEq(token.balanceOf(destinationAddress), amount);
     }
 
-    function testTransferShareTokensToEVM(uint128 amount) public {
+    function testTransferSharesToEVM(uint128 amount) public {
         uint64 validUntil = uint64(block.timestamp + 7 days);
         address destinationAddress = makeAddr("destinationAddress");
         vm.assume(amount > 0);
@@ -326,18 +326,18 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assertTrue(token.checkTransferRestriction(address(0), destinationAddress, 0));
 
         // Fund this address with samount
-        centrifugeChain.incomingTransferShareTokens(vault.poolId(), vault.trancheId(), address(this), amount);
+        centrifugeChain.incomingTransferShares(vault.poolId(), vault.trancheId(), address(this), amount);
         assertEq(token.balanceOf(address(this)), amount);
 
         // fails for invalid share class token
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
         vm.expectRevert(bytes("PoolManager/unknown-token"));
-        poolManager.transferShareTokens(poolId + 1, scId, OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount);
+        poolManager.transferShares(poolId + 1, scId, OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount);
 
         // Approve and transfer amount from this address to destinationAddress
         token.approve(address(poolManager), amount);
-        poolManager.transferShareTokens(
+        poolManager.transferShares(
             vault.poolId(), vault.trancheId(), OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount
         );
         assertEq(token.balanceOf(address(this)), 0);
@@ -547,7 +547,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assert(oldVault_ != newVault);
     }
 
-    function testPoolManagerCannotTransferShareTokensOnAccountRestrictions(uint128 amount) public {
+    function testPoolManagerCannotTransferSharesOnAccountRestrictions(uint128 amount) public {
         uint64 validUntil = uint64(block.timestamp + 7 days);
         address destinationAddress = makeAddr("destinationAddress");
         vm.assume(amount > 0);
@@ -563,7 +563,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assertTrue(token.checkTransferRestriction(address(0), destinationAddress, 0));
 
         // Fund this address with amount
-        centrifugeChain.incomingTransferShareTokens(vault.poolId(), vault.trancheId(), address(this), amount);
+        centrifugeChain.incomingTransferShares(vault.poolId(), vault.trancheId(), address(this), amount);
         assertEq(token.balanceOf(address(this)), amount);
 
         // fails for invalid share class token
@@ -574,11 +574,11 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assertFalse(token.checkTransferRestriction(address(this), destinationAddress, 0));
 
         vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
-        poolManager.transferShareTokens(poolId, scId, OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount);
+        poolManager.transferShares(poolId, scId, OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount);
         assertEq(token.balanceOf(address(this)), amount);
 
         centrifugeChain.unfreeze(poolId, scId, address(this));
-        poolManager.transferShareTokens(poolId, scId, OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount);
+        poolManager.transferShares(poolId, scId, OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount);
         assertEq(token.balanceOf(address(escrow)), 0);
     }
 

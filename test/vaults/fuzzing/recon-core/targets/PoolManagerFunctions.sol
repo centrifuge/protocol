@@ -18,15 +18,15 @@ abstract contract PoolManagerFunctions is BaseTargetFunctions, Properties {
     // TODO: Clamp / Target specifics
     // TODO: Actors / Randomness
     // TODO: Overflow stuff
-    function poolManager_handleTransferShareTokens(uint128 amount) public {
-        poolManager.handleTransferShareTokens(poolId, scId, actor, amount);
+    function poolManager_handleTransferShares(uint128 amount) public {
+        poolManager.handleTransferShares(poolId, scId, actor, amount);
         // TF-12 mint share class tokens from user, not tracked in escrow
 
         // Track minting for Global-3
         incomingTransfers[address(token)] += amount;
     }
 
-    function poolManager_transferShareTokensToEVM(uint16 destinationChainId, bytes32 destinationAddress, uint128 amount)
+    function poolManager_transferSharesToEVM(uint16 destinationChainId, bytes32 destinationAddress, uint128 amount)
         public
     {
         uint256 balB4 = token.balanceOf(actor);
@@ -39,7 +39,7 @@ abstract contract PoolManagerFunctions is BaseTargetFunctions, Properties {
         // Exact approval
         token.approve(address(poolManager), amount);
 
-        poolManager.transferShareTokens(poolId, scId, destinationChainId, destinationAddress, amount);
+        poolManager.transferShares(poolId, scId, destinationChainId, destinationAddress, amount);
         // TF-11 burns share class tokens from user, not tracked in escrow
 
         // Track minting for Global-3
