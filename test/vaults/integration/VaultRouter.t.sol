@@ -14,7 +14,6 @@ import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
 import {MockReentrantERC20Wrapper1, MockReentrantERC20Wrapper2} from "test/vaults/mocks/MockReentrantERC20Wrapper.sol";
 
 contract VaultRouterTest is BaseTest {
-    uint16 constant CHAIN_ID = 1;
     uint256 constant GAS_BUFFER = 10 gwei;
     /// @dev Payload is not taken into account during gas estimation
     bytes constant PAYLOAD_FOR_GAS_ESTIMATION = "irrelevant_value";
@@ -80,9 +79,9 @@ contract VaultRouterTest is BaseTest {
             assertEq(
                 payCalls[1],
                 adapter.estimate(
-                    CHAIN_ID,
+                    OTHER_CHAIN_ID,
                     PAYLOAD_FOR_GAS_ESTIMATION,
-                    mockedGasService.estimate(CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION)
+                    mockedGasService.estimate(OTHER_CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION)
                 ),
                 "payload gas mismatch"
             );
@@ -757,6 +756,6 @@ contract VaultRouterTest is BaseTest {
     }
 
     function estimateGas() internal view returns (uint256 total) {
-        (, total) = gateway.estimate(CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
+        (, total) = gateway.estimate(OTHER_CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
     }
 }

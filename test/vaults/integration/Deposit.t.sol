@@ -151,14 +151,14 @@ contract DepositTest is BaseTest {
         vm.deal(address(this), 1 ether);
 
         (, uint256 gasPerMessage) = gateway.estimate(OTHER_CHAIN_ID, "PAYLOAD_IS_IRRELEVANT");
-        gateway.subsidizePool{value: gasPerMessage}(PoolId.wrap(POOL_A));
+        gateway.subsidizePool{value: gasPerMessage}(POOL_A);
 
-        assertEq(gateway.subsidy(PoolId.wrap(POOL_A)), gasPerMessage);
+        assertEq(gateway.subsidy(POOL_A), gasPerMessage);
 
         // One outgoing requestDeposit message
         _testDepositMint(amount, false);
 
-        assertEq(gateway.subsidy(PoolId.wrap(POOL_A)), 0);
+        assertEq(gateway.subsidy(POOL_A), 0);
     }
 
     function testPartialDepositExecutions() public {

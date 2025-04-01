@@ -24,35 +24,27 @@ contract BalanceSheetManagerTest is BaseTest {
     uint128 defaultAmount;
     D18 defaultPricePerShare;
     AssetId assetId;
-    PoolId defaultTypedPoolId;
     ShareClassId defaultTypedShareClassId;
 
     function setUp() public override {
         super.setUp();
         defaultAmount = 100;
         defaultPricePerShare = d18(1, 1);
-        defaultTypedPoolId = newPoolId(OTHER_CHAIN_ID, POOL_A);
         defaultTypedShareClassId = ShareClassId.wrap(defaultShareClassId);
 
         assetId = AssetId.wrap(poolManager.registerAsset(address(erc20), erc20TokenId, OTHER_CHAIN_ID));
-        poolManager.addPool(defaultTypedPoolId.raw());
+        poolManager.addPool(POOL_A.raw());
         poolManager.addTranche(
-            defaultTypedPoolId.raw(),
-            defaultShareClassId,
-            "testShareClass",
-            "tsc",
-            defaultDecimals,
-            bytes32(""),
-            restrictionManager
+            POOL_A.raw(), defaultShareClassId, "testShareClass", "tsc", defaultDecimals, bytes32(""), restrictionManager
         );
         poolManager.updateRestriction(
-            defaultTypedPoolId.raw(),
+            POOL_A.raw(),
             defaultShareClassId,
             MessageLib.UpdateRestrictionMember({user: address(this).toBytes32(), validUntil: MAX_UINT64}).serialize()
         );
         // In order for allowances to work during issuance, the balanceSheetManager must be allowed to transfer
         poolManager.updateRestriction(
-            defaultTypedPoolId.raw(),
+            POOL_A.raw(),
             defaultShareClassId,
             MessageLib.UpdateRestrictionMember({user: address(balanceSheetManager).toBytes32(), validUntil: MAX_UINT64})
                 .serialize()
@@ -145,7 +137,7 @@ contract BalanceSheetManagerTest is BaseTest {
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheetManager.deposit(
-            defaultTypedPoolId,
+            POOL_A,
             defaultTypedShareClassId,
             address(erc20),
             erc20TokenId,
@@ -156,16 +148,16 @@ contract BalanceSheetManagerTest is BaseTest {
         );
 
         vm.expectEmit();
-        emit IBalanceSheetManager.Permission(defaultTypedPoolId, defaultTypedShareClassId, randomUser, true);
+        emit IBalanceSheetManager.Permission(POOL_A, defaultTypedShareClassId, randomUser, true);
 
         balanceSheetManager.update(
-            defaultTypedPoolId.raw(),
+            POOL_A.raw(),
             defaultShareClassId,
             MessageLib.UpdateContractPermission({who: randomUser, allowed: true}).serialize()
         );
 
         balanceSheetManager.deposit(
-            defaultTypedPoolId,
+            POOL_A,
             defaultTypedShareClassId,
             address(erc20),
             erc20TokenId,
@@ -176,10 +168,10 @@ contract BalanceSheetManagerTest is BaseTest {
         );
 
         vm.expectEmit();
-        emit IBalanceSheetManager.Permission(defaultTypedPoolId, defaultTypedShareClassId, randomUser, false);
+        emit IBalanceSheetManager.Permission(POOL_A, defaultTypedShareClassId, randomUser, false);
 
         balanceSheetManager.update(
-            defaultTypedPoolId.raw(),
+            POOL_A.raw(),
             defaultShareClassId,
             MessageLib.UpdateContractPermission({who: randomUser, allowed: false}).serialize()
         );
@@ -187,7 +179,7 @@ contract BalanceSheetManagerTest is BaseTest {
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheetManager.deposit(
-            defaultTypedPoolId,
+            POOL_A,
             defaultTypedShareClassId,
             address(erc20),
             erc20TokenId,
@@ -203,7 +195,7 @@ contract BalanceSheetManagerTest is BaseTest {
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheetManager.deposit(
-            defaultTypedPoolId,
+            POOL_A,
             defaultTypedShareClassId,
             address(erc20),
             erc20TokenId,
@@ -215,7 +207,7 @@ contract BalanceSheetManagerTest is BaseTest {
 
         vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
         balanceSheetManager.deposit(
-            defaultTypedPoolId,
+            POOL_A,
             defaultTypedShareClassId,
             address(erc20),
             erc20TokenId,
@@ -229,7 +221,7 @@ contract BalanceSheetManagerTest is BaseTest {
         erc20.approve(address(balanceSheetManager), defaultAmount);
         vm.expectEmit();
         emit IBalanceSheetManager.Deposit(
-            defaultTypedPoolId,
+            POOL_A,
             defaultTypedShareClassId,
             address(erc20),
             erc20TokenId,
@@ -241,7 +233,7 @@ contract BalanceSheetManagerTest is BaseTest {
             _defaultMeta().credits
         );
         balanceSheetManager.deposit(
-            defaultTypedPoolId,
+            POOL_A,
             defaultTypedShareClassId,
             address(erc20),
             erc20TokenId,
@@ -260,7 +252,7 @@ contract BalanceSheetManagerTest is BaseTest {
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheetManager.withdraw(
-            defaultTypedPoolId,
+            POOL_A,
             defaultTypedShareClassId,
             address(erc20),
             erc20TokenId,
@@ -275,7 +267,7 @@ contract BalanceSheetManagerTest is BaseTest {
 
         vm.expectEmit();
         emit IBalanceSheetManager.Withdraw(
-            defaultTypedPoolId,
+            POOL_A,
             defaultTypedShareClassId,
             address(erc20),
             erc20TokenId,
@@ -287,7 +279,7 @@ contract BalanceSheetManagerTest is BaseTest {
             _defaultMeta().credits
         );
         balanceSheetManager.withdraw(
-            defaultTypedPoolId,
+            POOL_A,
             defaultTypedShareClassId,
             address(erc20),
             erc20TokenId,
@@ -307,7 +299,7 @@ contract BalanceSheetManagerTest is BaseTest {
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheetManager.withdraw(
-            defaultTypedPoolId,
+            POOL_A,
             defaultTypedShareClassId,
             address(erc20),
             erc20TokenId,
@@ -321,7 +313,7 @@ contract BalanceSheetManagerTest is BaseTest {
         assertEq(erc20.balanceOf(address(this)), 0);
 
         balanceSheetManager.withdraw(
-            defaultTypedPoolId,
+            POOL_A,
             defaultTypedShareClassId,
             address(erc20),
             erc20TokenId,
@@ -340,18 +332,18 @@ contract BalanceSheetManagerTest is BaseTest {
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheetManager.issue(
-            defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount, false
+            POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount, false
         );
 
-        IERC20 token = IERC20(poolManager.tranche(defaultTypedPoolId.raw(), defaultShareClassId));
+        IERC20 token = IERC20(poolManager.tranche(POOL_A.raw(), defaultShareClassId));
         assertEq(token.balanceOf(address(this)), 0);
 
         vm.expectEmit();
         emit IBalanceSheetManager.Issue(
-            defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount
+            POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount
         );
         balanceSheetManager.issue(
-            defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount, false
+            POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount, false
         );
 
         assertEq(token.balanceOf(address(this)), defaultAmount);
@@ -361,14 +353,14 @@ contract BalanceSheetManagerTest is BaseTest {
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheetManager.issue(
-            defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount, true
+            POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount, true
         );
 
-        IERC20 token = IERC20(poolManager.tranche(defaultTypedPoolId.raw(), defaultShareClassId));
+        IERC20 token = IERC20(poolManager.tranche(POOL_A.raw(), defaultShareClassId));
         assertEq(token.balanceOf(address(this)), 0);
 
         balanceSheetManager.issue(
-            defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount, true
+            POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount, true
         );
 
         token.transferFrom(address(balanceSheetManager), address(this), defaultAmount);
@@ -377,28 +369,22 @@ contract BalanceSheetManagerTest is BaseTest {
 
     function testRevoke() public {
         testIssue();
-        IERC20 token = IERC20(poolManager.tranche(defaultTypedPoolId.raw(), defaultShareClassId));
+        IERC20 token = IERC20(poolManager.tranche(POOL_A.raw(), defaultShareClassId));
         assertEq(token.balanceOf(address(this)), defaultAmount);
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheetManager.revoke(
-            defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount
-        );
+        balanceSheetManager.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount);
 
         vm.expectRevert(IERC20.InsufficientAllowance.selector);
-        balanceSheetManager.revoke(
-            defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount
-        );
+        balanceSheetManager.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount);
 
         token.approve(address(balanceSheetManager), defaultAmount);
         vm.expectEmit();
         emit IBalanceSheetManager.Revoke(
-            defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount
+            POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount
         );
-        balanceSheetManager.revoke(
-            defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount
-        );
+        balanceSheetManager.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount);
 
         assertEq(token.balanceOf(address(this)), 0);
     }
@@ -408,11 +394,11 @@ contract BalanceSheetManagerTest is BaseTest {
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheetManager.journalEntry(defaultTypedPoolId, defaultTypedShareClassId, meta);
+        balanceSheetManager.journalEntry(POOL_A, defaultTypedShareClassId, meta);
 
         vm.expectEmit();
-        emit IBalanceSheetManager.UpdateEntry(defaultTypedPoolId, defaultTypedShareClassId, meta.debits, meta.credits);
-        balanceSheetManager.journalEntry(defaultTypedPoolId, defaultTypedShareClassId, meta);
+        emit IBalanceSheetManager.UpdateEntry(POOL_A, defaultTypedShareClassId, meta.debits, meta.credits);
+        balanceSheetManager.journalEntry(POOL_A, defaultTypedShareClassId, meta);
     }
 
     function testUpdateValue() public {
@@ -420,13 +406,13 @@ contract BalanceSheetManagerTest is BaseTest {
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheetManager.updateValue(defaultTypedPoolId, defaultTypedShareClassId, asset, tokenId, d18(1, 3));
+        balanceSheetManager.updateValue(POOL_A, defaultTypedShareClassId, asset, tokenId, d18(1, 3));
 
         vm.expectEmit();
         emit IBalanceSheetManager.UpdateValue(
-            defaultTypedPoolId, defaultTypedShareClassId, asset, tokenId, d18(1, 3), block.timestamp
+            POOL_A, defaultTypedShareClassId, asset, tokenId, d18(1, 3), block.timestamp
         );
-        balanceSheetManager.updateValue(defaultTypedPoolId, defaultTypedShareClassId, asset, tokenId, d18(1, 3));
+        balanceSheetManager.updateValue(POOL_A, defaultTypedShareClassId, asset, tokenId, d18(1, 3));
     }
 
     function testEnsureEntries() public {
@@ -434,7 +420,7 @@ contract BalanceSheetManagerTest is BaseTest {
         erc20.approve(address(balanceSheetManager), defaultAmount);
         vm.expectRevert(IBalanceSheetManager.EntriesUnbalanced.selector);
         balanceSheetManager.deposit(
-            defaultTypedPoolId,
+            POOL_A,
             defaultTypedShareClassId,
             address(erc20),
             erc20TokenId,

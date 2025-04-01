@@ -34,7 +34,7 @@ contract FactoryTest is Test {
             testSetup1.setUp();
             testSetup1.deployVault(18, testSetup1.restrictionManager(), trancheId, address(testSetup1.erc20()), 0, 0);
             address tranche1 =
-                PoolManagerLike(address(testSetup1.poolManager())).getTranche(testSetup1.POOL_A(), trancheId);
+                PoolManagerLike(address(testSetup1.poolManager())).getTranche(testSetup1.POOL_A().raw(), trancheId);
             address root1 = address(testSetup1.root());
 
             vm.selectFork(polygonFork);
@@ -42,7 +42,7 @@ contract FactoryTest is Test {
             testSetup2.setUp();
             testSetup2.deployVault(18, testSetup2.restrictionManager(), trancheId, address(testSetup2.erc20()), 0, 0);
             address tranche2 =
-                PoolManagerLike(address(testSetup2.poolManager())).getTranche(testSetup2.POOL_A(), trancheId);
+                PoolManagerLike(address(testSetup2.poolManager())).getTranche(testSetup2.POOL_A().raw(), trancheId);
             address root2 = address(testSetup2.root());
 
             assertEq(address(root1), address(root2));

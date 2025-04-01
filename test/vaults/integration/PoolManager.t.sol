@@ -267,11 +267,11 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
         vm.expectRevert(bytes("PoolManager/unknown-token"));
-        poolManager.transferTrancheTokens(poolId + 1, trancheId, 0, centChainAddress, amount);
+        poolManager.transferTrancheTokens(poolId + 1, trancheId, OTHER_CHAIN_ID, centChainAddress, amount);
 
         // send the transfer from EVM -> Cent Chain
         tranche.approve(address(poolManager), amount);
-        poolManager.transferTrancheTokens(poolId, trancheId, 0, centChainAddress, amount);
+        poolManager.transferTrancheTokens(poolId, trancheId, OTHER_CHAIN_ID, centChainAddress, amount);
         assertEq(tranche.balanceOf(address(this)), 0);
 
         // Finally, verify the connector called `adapter.send`
@@ -921,7 +921,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         emit IGateway.SendMessage(bytes(""));
         emit IGateway.SendMessage(bytes(""));
         poolManager.registerAsset(address(erc20), 0, OTHER_CHAIN_ID);
-        poolManager.registerAsset(address(erc20), 0, OTHER_CHAIN_ID + 1);
+        poolManager.registerAsset(address(erc20), 0, OTHER_CHAIN_ID);
     }
 
     function testRegisterAsset_decimalsMissing() public {

@@ -61,7 +61,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     uint16 public constant OTHER_CHAIN_ID = 1;
     uint16 public constant THIS_CHAIN_ID = OTHER_CHAIN_ID + 100;
     uint32 public constant BLOCK_CHAIN_ID = 23;
-    uint32 public immutable POOL_A = 1;
+    PoolId public immutable POOL_A = newPoolId(OTHER_CHAIN_ID, 1);
     uint256 public erc20TokenId = 0;
     uint256 public defaultErc6909TokenId = 16;
     uint128 public defaultAssetId = newAssetId(THIS_CHAIN_ID, 1).raw();
@@ -163,24 +163,24 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         uint256 assetTokenId,
         uint16 /* TODO: destinationChain */
     ) public returns (uint64 poolId, address vaultAddress, uint128 assetId) {
-        poolId = newPoolId(OTHER_CHAIN_ID, POOL_A).raw();
-
         if (poolManager.assetToId(asset, assetTokenId) == 0) {
             assetId = poolManager.registerAsset(asset, assetTokenId, OTHER_CHAIN_ID);
         } else {
             assetId = poolManager.assetToId(asset, assetTokenId);
         }
 
-        if (poolManager.tranche(poolId, trancheId) == address(0)) {
-            centrifugeChain.addPool(poolId);
-            centrifugeChain.addTranche(poolId, trancheId, "name", "symbol", trancheDecimals, hook);
+        if (poolManager.tranche(POOL_A.raw(), trancheId) == address(0)) {
+            if (poolManager.pools(POOL_A.raw()) == 0) {
+                centrifugeChain.addPool(POOL_A.raw());
+            }
+            centrifugeChain.addTranche(POOL_A.raw(), trancheId, "name", "symbol", trancheDecimals, hook);
         }
 
-        poolManager.updateTranchePrice(poolId, trancheId, assetId, uint128(10 ** 18), uint64(block.timestamp));
+        poolManager.updateTranchePrice(POOL_A.raw(), trancheId, assetId, uint128(10 ** 18), uint64(block.timestamp));
 
         // Trigger new vault deployment via UpdateContract
         poolManager.update(
-            poolId,
+            POOL_A.raw(),
             trancheId,
             MessageLib.UpdateContractVaultUpdate({
                 vaultOrFactory: bytes32(bytes20(vaultFactory)),
@@ -188,7 +188,8 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
                 kind: uint8(VaultUpdateKind.DeployAndLink)
             }).serialize()
         );
-        vaultAddress = ITranche(poolManager.tranche(poolId, trancheId)).vault(asset);
+        vaultAddress = ITranche(poolManager.tranche(POOL_A.raw(), trancheId)).vault(asset);
+        poolId = POOL_A.raw();
     }
 
     function deployVault(uint8 decimals, bytes16 trancheId)
