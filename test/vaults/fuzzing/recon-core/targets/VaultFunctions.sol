@@ -5,6 +5,7 @@ pragma solidity 0.8.28;
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {vm} from "@chimera/Hevm.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
+import {console2} from "forge-std/console2.sol";
 
 // Dependencies
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
@@ -241,21 +242,22 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
     // TODO: Params
     function vault_redeem(uint256 shares, uint256 toEntropy) public updateGhosts {
         address to = _getRandomActor(toEntropy);
+        address vaultAsset = address(vault.asset());
 
         // Bal b4
-        uint256 balanceUserB4 = MockERC20(_getAsset()).balanceOf(_getActor());
-        uint256 balanceEscrowB4 = MockERC20(_getAsset()).balanceOf(address(escrow));
-
+        uint256 balanceUserB4 = MockERC20(vaultAsset).balanceOf(to);
+        uint256 balanceEscrowB4 = MockERC20(vaultAsset).balanceOf(address(escrow));
+        
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
-        uint256 assets = vault.redeem(shares, _getActor(), to);
+        uint256 assets = vault.redeem(shares, to, _getActor());
 
         // E-1
-        sumOfClaimedRedemptions[address(MockERC20(_getAsset()))] += assets;
+        sumOfClaimedRedemptions[address(MockERC20(vaultAsset))] += assets;
 
         // Bal after
-        uint256 balanceUserAfter = MockERC20(_getAsset()).balanceOf(_getActor());
-        uint256 balanceEscrowAfter = MockERC20(_getAsset()).balanceOf(address(escrow));
+        uint256 balanceUserAfter = MockERC20(vaultAsset).balanceOf(to);
+        uint256 balanceEscrowAfter = MockERC20(vaultAsset).balanceOf(address(escrow));
 
         // Extra check | // TODO: This math will prob overflow
         // NOTE: Unchecked so we get broken property and debug faster
@@ -263,7 +265,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
             uint256 deltaUser = balanceUserAfter - balanceUserB4;
 
             // TODO: NOTE FOT extra, verifies the transfer amount matches the returned amount
-            t(deltaUser == assets, "FoT-1");
+            eq(deltaUser, assets, "FoT-1");
 
             uint256 deltaEscrow = balanceEscrowB4 - balanceEscrowAfter;
             emit DebugNumber(deltaUser);
