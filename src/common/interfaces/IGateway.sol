@@ -135,7 +135,7 @@ interface IGateway is IMessageHandler, IMessageSender {
     /// @param  payload Used in gas cost calculations.
     /// @dev    Currenly the payload is not taken into consideration.
     /// @return perAdapter An array of cost values per adapter. Each value is how much it's going to cost
-    ///         for a message / proof to be passed through one router and executed on Centrifuge Chain
+    ///         for a message / proof to be passed through one router and executed on the recipient chain
     /// @return total Total cost for sending one message and corresponding proofs on through all adapters
     function estimate(uint16 chainId, bytes calldata payload)
         external

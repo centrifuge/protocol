@@ -8,7 +8,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
-import {MessageType, MessageCategory, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IRoot, IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";

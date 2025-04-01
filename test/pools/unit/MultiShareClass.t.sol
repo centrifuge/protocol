@@ -308,6 +308,36 @@ contract MultiShareClassSimpleTest is MultiShareClassBaseTest {
     function testPreviewShareClassId(uint32 index) public view {
         assertEq(shareClass.previewShareClassId(poolId, index).raw(), bytes16(uint128(poolId.raw() + index)));
     }
+
+    function testIncreaseShareClassIssuance(uint128 navPerShare_, uint128 amount) public {
+        vm.assume(navPerShare_ > 0);
+        amount = uint128(bound(amount, 0, type(uint128).max / navPerShare_ - 1));
+        D18 navPerShare = d18(navPerShare_);
+
+        vm.expectEmit();
+        emit IShareClassManager.IssuedShares(poolId, scId, 1, navPerShare, navPerShare.mulUint128(amount), amount);
+        shareClass.increaseShareClassIssuance(poolId, scId, navPerShare, amount);
+
+        (uint128 totalIssuance, D18 navPerShareMetric) = shareClass.metrics(scId);
+        assertEq(totalIssuance, amount);
+        assertEq(navPerShareMetric.inner(), 0, "navPerShare metric should not be updated");
+    }
+
+    function testDecreaseShareClassIssuance(uint128 navPerShare_, uint128 amount) public {
+        vm.assume(navPerShare_ > 0);
+        amount = uint128(bound(amount, 0, type(uint128).max / navPerShare_ - 1));
+        D18 navPerShare = d18(navPerShare_);
+
+        shareClass.increaseShareClassIssuance(poolId, scId, navPerShare, amount);
+
+        vm.expectEmit();
+        emit IShareClassManager.RevokedShares(poolId, scId, 1, navPerShare, 0, amount, 0);
+        shareClass.decreaseShareClassIssuance(poolId, scId, navPerShare, amount);
+
+        (uint128 totalIssuance, D18 navPerShareMetric) = shareClass.metrics(scId);
+        assertEq(totalIssuance, 0, "TotalIssuance should be reset");
+        assertEq(navPerShareMetric.inner(), 0, "navPerShare metric should not be updated");
+    }
 }
 
 ///@dev Contains all deposit related tests which are expected to succeed and don't make use of transient storage
@@ -1407,6 +1437,21 @@ contract MultiShareClassRevertsTest is MultiShareClassBaseTest {
     function testUpdateMetadataWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.updateMetadata(poolId, wrongShareClassId, "", "", SC_SALT, bytes(""));
+    }
+
+    function testIncreaseIssuanceWrongShareClassId() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
+        shareClass.increaseShareClassIssuance(poolId, wrongShareClassId, d18(0), 0);
+    }
+
+    function testDecreaseIssuanceWrongShareClassId() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
+        shareClass.decreaseShareClassIssuance(poolId, wrongShareClassId, d18(0), 0);
+    }
+
+    function testDecreaseOverFlow() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.DecreaseMoreThanIssued.selector));
+        shareClass.decreaseShareClassIssuance(poolId, scId, d18(0), 1);
     }
 
     function testIssueSharesBeforeApproval() public {

@@ -12,8 +12,8 @@ contract RedeemTest is BaseTest {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
         (, address vault_, uint128 assetId) =
-            deployVault(6, restrictedRedemptions, bytes16(bytes("1")), address(erc20), 0, 0);
-        ERC7540Vault vault = ERC7540Vault(vault_);
+            deployVault(VaultKind.Async, 6, restrictedRedemptions, bytes16(bytes("1")), address(erc20), 0, 0);
+        AsyncVault vault = AsyncVault(vault_);
         RestrictedRedemptions hook = RestrictedRedemptions(restrictedRedemptions);
         ITranche tranche = ITranche(address(vault.share()));
 
@@ -45,7 +45,7 @@ contract RedeemTest is BaseTest {
         tranche.transfer(investor2, amount / 2);
 
         // Not everyone can redeem
-        vm.expectRevert(bytes("InvestmentManager/transfer-not-allowed"));
+        vm.expectRevert(bytes("AsyncRequests/transfer-not-allowed"));
         vm.prank(investor);
         vault.requestRedeem(amount / 2, investor, investor);
 

@@ -7,7 +7,7 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
-import {Meta, JournalEntry} from "src/common/types/JournalEntry.sol";
+import {Meta, JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -65,7 +65,8 @@ contract BalanceSheetManagerTest is BaseTest {
     // Deployment
     function testDeployment(address nonWard) public {
         vm.assume(
-            nonWard != address(root) && nonWard != address(vaultFactory) && nonWard != address(gateway)
+            nonWard != address(root) && nonWard != address(asyncVaultFactory)
+                && nonWard != address(syncDepositVaultFactory) && nonWard != address(gateway)
                 && nonWard != address(messageProcessor) && nonWard != address(messageDispatcher) && nonWard != address(this)
         );
 
@@ -153,7 +154,7 @@ contract BalanceSheetManagerTest is BaseTest {
         balanceSheetManager.update(
             POOL_A.raw(),
             defaultShareClassId,
-            MessageLib.UpdateContractPermission({who: randomUser, allowed: true}).serialize()
+            MessageLib.UpdateContractPermission({who: bytes20(randomUser), allowed: true}).serialize()
         );
 
         balanceSheetManager.deposit(
@@ -173,7 +174,7 @@ contract BalanceSheetManagerTest is BaseTest {
         balanceSheetManager.update(
             POOL_A.raw(),
             defaultShareClassId,
-            MessageLib.UpdateContractPermission({who: randomUser, allowed: false}).serialize()
+            MessageLib.UpdateContractPermission({who: bytes20(randomUser), allowed: false}).serialize()
         );
 
         vm.prank(randomUser);
@@ -228,7 +229,7 @@ contract BalanceSheetManagerTest is BaseTest {
             address(this),
             defaultAmount,
             d18(100, 5),
-            block.timestamp,
+            uint64(block.timestamp),
             _defaultMeta().debits,
             _defaultMeta().credits
         );
@@ -274,7 +275,7 @@ contract BalanceSheetManagerTest is BaseTest {
             address(this),
             defaultAmount,
             d18(100, 5),
-            block.timestamp,
+            uint64(block.timestamp),
             _defaultMeta().debits,
             _defaultMeta().credits
         );
@@ -410,7 +411,7 @@ contract BalanceSheetManagerTest is BaseTest {
 
         vm.expectEmit();
         emit IBalanceSheetManager.UpdateValue(
-            POOL_A, defaultTypedShareClassId, asset, tokenId, d18(1, 3), block.timestamp
+            POOL_A, defaultTypedShareClassId, asset, tokenId, d18(1, 3), uint64(block.timestamp)
         );
         balanceSheetManager.updateValue(POOL_A, defaultTypedShareClassId, asset, tokenId, d18(1, 3));
     }

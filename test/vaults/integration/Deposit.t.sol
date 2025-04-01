@@ -28,15 +28,15 @@ contract DepositTest is BaseTest {
 
         uint128 price = 2 * 10 ** 18;
 
-        (, address vault_, uint128 assetId) = deploySimpleVault();
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
 
         erc20.mint(self, amount);
 
         // will fail - user not member: can not send funds
-        vm.expectRevert(bytes("InvestmentManager/transfer-not-allowed"));
+        vm.expectRevert(bytes("AsyncRequests/transfer-not-allowed"));
         vault.requestDeposit(amount, self, self);
 
         assertEq(vault.isPermissioned(self), false);
@@ -44,7 +44,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.isPermissioned(self), true);
 
         // will fail - user not member: can not receive tranche
-        vm.expectRevert(bytes("InvestmentManager/transfer-not-allowed"));
+        vm.expectRevert(bytes("AsyncRequests/transfer-not-allowed"));
         vault.requestDeposit(amount, nonMember, self);
 
         // will fail - user did not give asset allowance to vault
@@ -52,18 +52,18 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(amount, self, self);
 
         // will fail - zero deposit not allowed
-        vm.expectRevert(bytes("InvestmentManager/zero-amount-not-allowed"));
+        vm.expectRevert(bytes("AsyncRequests/zero-amount-not-allowed"));
         vault.requestDeposit(0, self, self);
 
         // will fail - owner != msg.sender not allowed
-        vm.expectRevert(bytes("ERC7540Vault/invalid-owner"));
+        vm.expectRevert(bytes("AsyncVault/invalid-owner"));
         vault.requestDeposit(amount, self, nonMember);
 
         // will fail - cannot fulfill if there is no pending request
         uint128 shares = uint128((amount * 10 ** 18) / price); // tranchePrice = 2$
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
-        vm.expectRevert(bytes("InvestmentManager/no-pending-deposit-request"));
+        vm.expectRevert(bytes("AsyncRequests/no-pending-deposit-request"));
         centrifugeChain.isFulfilledDepositRequest(
             poolId, trancheId, bytes32(bytes20(self)), assetId, uint128(amount), shares
         );
@@ -71,7 +71,7 @@ contract DepositTest is BaseTest {
         // success
         erc20.approve(vault_, amount);
         if (snap) {
-            snapStart("ERC7540Vault_requestDeposit");
+            snapStart("AsyncVault_requestDeposit");
         }
         vault.requestDeposit(amount, self, self);
         if (snap) {
@@ -79,7 +79,7 @@ contract DepositTest is BaseTest {
         }
 
         // fail: no asset left
-        vm.expectRevert(bytes("ERC7540Vault/insufficient-balance"));
+        vm.expectRevert(bytes("AsyncVault/insufficient-balance"));
         vault.requestDeposit(amount, self, self);
 
         // ensure funds are locked in escrow
@@ -91,7 +91,7 @@ contract DepositTest is BaseTest {
         // trigger executed collectInvest
         assertApproxEqAbs(shares, amount / 2, 2);
         if (snap) {
-            snapStart("InvestmentManager_fulfillDepositRequest");
+            snapStart("AsyncRequests_fulfillDepositRequest");
         }
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), assetId, uint128(amount), shares
@@ -118,7 +118,7 @@ contract DepositTest is BaseTest {
         vm.assume(randomUser != self);
         // deposit 50% of the amount
         vm.startPrank(randomUser); // try to claim deposit on behalf of user and set the wrong user as receiver
-        vm.expectRevert(bytes("ERC7540Vault/invalid-controller"));
+        vm.expectRevert(bytes("AsyncVault/invalid-controller"));
         vault.deposit(amount / 2, randomUser, self);
         vm.stopPrank();
 
@@ -136,9 +136,9 @@ contract DepositTest is BaseTest {
         assertTrue(vault.maxMint(self) <= 1);
 
         // minting or depositing more should revert
-        vm.expectRevert(bytes("InvestmentManager/exceeds-deposit-limits"));
+        vm.expectRevert(bytes("AsyncRequests/exceeds-deposit-limits"));
         vault.mint(1, self);
-        vm.expectRevert(bytes("InvestmentManager/exceeds-max-deposit"));
+        vm.expectRevert(bytes("AsyncRequests/exceeds-max-deposit"));
         vault.deposit(2, self, self);
 
         // remainder is rounding difference
@@ -166,9 +166,10 @@ contract DepositTest is BaseTest {
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(TRANCHE_TOKEN_DECIMALS, restrictionManager, bytes16(bytes("")), address(asset), 0, 0);
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        (uint64 poolId, address vault_, uint128 assetId) = deployVault(
+            VaultKind.Async, TRANCHE_TOKEN_DECIMALS, restrictionManager, bytes16(bytes("1")), address(asset), 0, 0
+        );
+        AsyncVault vault = AsyncVault(vault_);
         centrifugeChain.updateTranchePrice(
             poolId, vault.trancheId(), assetId, 1000000000000000000, uint64(block.timestamp)
         );
@@ -188,7 +189,7 @@ contract DepositTest is BaseTest {
             poolId, vault.trancheId(), bytes32(bytes20(self)), _assetId, assets, firstTranchePayout
         );
 
-        (,, uint256 depositPrice,,,,,,,) = investmentManager.investments(address(vault), self);
+        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
         assertEq(depositPrice, 1400000000000000000);
 
         // second trigger executed collectInvest of the second 50% at a price of 1.2
@@ -197,7 +198,7 @@ contract DepositTest is BaseTest {
             poolId, vault.trancheId(), bytes32(bytes20(self)), _assetId, assets, secondTranchePayout
         );
 
-        (,, depositPrice,,,,,,,) = investmentManager.investments(address(vault), self);
+        (,, depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
         assertEq(depositPrice, 1292307679384615384);
 
         // assert deposit & mint values adjusted
@@ -210,7 +211,7 @@ contract DepositTest is BaseTest {
     //     tokenAmount = bound(tokenAmount, 1 * 10 ** 6, type(uint128).max / 10 ** 12);
 
     //     //Deploy a pool
-    //     ERC7540Vault vault = ERC7540Vault(deploySimpleVault());
+    //     AsyncVault vault = AsyncVault(deploySimpleVault(VaultKind.Async));
     //     ITranche tranche = ITranche(address(vault.share()));
 
     //     root.relyContract(address(tranche), self);
@@ -270,7 +271,7 @@ contract DepositTest is BaseTest {
     //     tokenAmount = bound(tokenAmount, 1 * 10 ** 6, type(uint128).max / 10 ** 12);
 
     //     //Deploy a pool
-    //     ERC7540Vault vault = ERC7540Vault(deploySimpleVault());
+    //     AsyncVault vault = AsyncVault(deploySimpleVault(VaultKind.Async));
     //     ITranche tranche = ITranche(address(vault.share()));
 
     //     root.relyContract(address(tranche), self);
@@ -318,9 +319,9 @@ contract DepositTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (, address vault_, uint128 assetId) = deploySimpleVault();
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         address receiver = makeAddr("receiver");
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
 
         centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
@@ -370,9 +371,9 @@ contract DepositTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (, address vault_, uint128 assetId) = deploySimpleVault();
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         address receiver = makeAddr("receiver");
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
 
         centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
@@ -400,7 +401,7 @@ contract DepositTest is BaseTest {
         address router = makeAddr("router");
 
         vm.startPrank(router);
-        vm.expectRevert(bytes("ERC7540Vault/invalid-controller")); // fail without endorsement
+        vm.expectRevert(bytes("AsyncVault/invalid-controller")); // fail without endorsement
         vault.deposit(amount, receiver, address(this));
         vm.stopPrank();
 
@@ -408,7 +409,7 @@ contract DepositTest is BaseTest {
         root.endorse(router);
 
         vm.startPrank(router);
-        vm.expectRevert(bytes("ERC7540Vault/cannot-set-self-as-operator"));
+        vm.expectRevert(bytes("AsyncVault/cannot-set-self-as-operator"));
         vault.setEndorsedOperator(address(router), true);
 
         vault.setEndorsedOperator(address(this), true);
@@ -426,9 +427,10 @@ contract DepositTest is BaseTest {
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(TRANCHE_TOKEN_DECIMALS, restrictionManager, bytes16(bytes("1")), address(asset), 0, 0);
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        (uint64 poolId, address vault_, uint128 assetId) = deployVault(
+            VaultKind.Async, TRANCHE_TOKEN_DECIMALS, restrictionManager, bytes16(bytes("1")), address(asset), 0, 0
+        );
+        AsyncVault vault = AsyncVault(vault_);
         centrifugeChain.updateTranchePrice(
             poolId, vault.trancheId(), assetId, 1000000000000000000, uint64(block.timestamp)
         );
@@ -453,7 +455,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), firstTranchePayout);
 
         // deposit price should be ~1.2*10**18
-        (,, uint256 depositPrice,,,,,,,) = investmentManager.investments(address(vault), self);
+        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
         assertEq(depositPrice, 1200000000000000000);
 
         // trigger executed collectInvest of the second 50% at a price of 1.4
@@ -488,7 +490,7 @@ contract DepositTest is BaseTest {
         );
 
         // redeem price should now be ~1.5*10**18.
-        (,,, uint256 redeemPrice,,,,,,) = investmentManager.investments(address(vault), self);
+        (,,, uint256 redeemPrice,,,,,,) = asyncRequests.investments(address(vault), self);
         assertEq(redeemPrice, 1492615384615384615);
     }
 
@@ -498,8 +500,8 @@ contract DepositTest is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", 18);
         (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(6, restrictionManager, trancheId, address(asset), 0, 0);
-        ERC7540Vault vault = ERC7540Vault(vault_);
+            deployVault(VaultKind.Async, 6, restrictionManager, trancheId, address(asset), 0, 0);
+        AsyncVault vault = AsyncVault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         centrifugeChain.updateTranchePrice(
             poolId, trancheId, assetId, 1000000000000000000000000000, uint64(block.timestamp)
@@ -525,7 +527,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), firstTranchePayout);
 
         // deposit price should be ~1.2*10**18
-        (,, uint256 depositPrice,,,,,,,) = investmentManager.investments(address(vault), self);
+        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
         assertEq(depositPrice, 1200000019200000307);
 
         // trigger executed collectInvest of the second 50% at a price of 1.4
@@ -555,7 +557,7 @@ contract DepositTest is BaseTest {
         );
 
         // redeem price should now be ~1.5*10**18.
-        (,,, uint256 redeemPrice,,,,,,) = investmentManager.investments(address(vault), self);
+        (,,, uint256 redeemPrice,,,,,,) = asyncRequests.investments(address(vault), self);
         assertEq(redeemPrice, 1492615411252828877);
 
         // collect the asset
@@ -570,8 +572,8 @@ contract DepositTest is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(TRANCHE_TOKEN_DECIMALS, restrictionManager, trancheId, address(asset), 0, 0);
-        ERC7540Vault vault = ERC7540Vault(vault_);
+            deployVault(VaultKind.Async, TRANCHE_TOKEN_DECIMALS, restrictionManager, trancheId, address(asset), 0, 0);
+        AsyncVault vault = AsyncVault(vault_);
 
         // price = (100*10**18) /  (99 * 10**18) = 101.010101 * 10**18
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1010101010101010101, uint64(block.timestamp));
@@ -599,7 +601,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), shares);
 
         // lp price is set to the deposit price
-        (,, uint256 depositPrice,,,,,,,) = investmentManager.investments(address(vault), self);
+        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
         assertEq(depositPrice, 1200000000000000000);
     }
 
@@ -610,8 +612,8 @@ contract DepositTest is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(TRANCHE_TOKEN_DECIMALS, restrictionManager, trancheId, address(asset), 0, 0);
-        ERC7540Vault vault = ERC7540Vault(vault_);
+            deployVault(VaultKind.Async, TRANCHE_TOKEN_DECIMALS, restrictionManager, trancheId, address(asset), 0, 0);
+        AsyncVault vault = AsyncVault(vault_);
 
         // price = (100*10**18) /  (99 * 10**18) = 101.010101 * 10**18
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1010101010101010101, uint64(block.timestamp));
@@ -639,7 +641,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), shares);
 
         // lp price is set to the deposit price
-        (,, uint256 depositPrice,,,,,,,) = investmentManager.investments(address(vault), self);
+        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
         assertEq(depositPrice, 1200000000000000000);
     }
 
@@ -647,8 +649,8 @@ contract DepositTest is BaseTest {
         amount = uint128(bound(amount, 2, MAX_UINT128));
 
         uint128 price = 2 * 10 ** 18;
-        (, address vault_, uint128 assetId) = deploySimpleVault();
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, price, uint64(block.timestamp));
@@ -661,7 +663,7 @@ contract DepositTest is BaseTest {
         assertEq(erc20.balanceOf(address(escrow)), amount);
         assertEq(erc20.balanceOf(address(self)), 0);
 
-        vm.expectRevert(bytes("InvestmentManager/no-pending-cancel-deposit-request"));
+        vm.expectRevert(bytes("AsyncRequests/no-pending-cancel-deposit-request"));
         centrifugeChain.isFulfilledCancelDepositRequest(poolId, trancheId, self.toBytes32(), assetId, uint128(amount));
 
         // check message was send out to centchain
@@ -676,12 +678,12 @@ contract DepositTest is BaseTest {
         assertEq(vault.pendingCancelDepositRequest(0, self), true);
 
         // Cannot cancel twice
-        vm.expectRevert(bytes("InvestmentManager/cancellation-is-pending"));
+        vm.expectRevert(bytes("AsyncRequests/cancellation-is-pending"));
         vault.cancelDepositRequest(0, self);
 
         erc20.mint(self, amount);
         erc20.approve(vault_, amount);
-        vm.expectRevert(bytes("InvestmentManager/cancellation-is-pending"));
+        vm.expectRevert(bytes("AsyncRequests/cancellation-is-pending"));
         vault.requestDeposit(amount, self, self);
         erc20.burn(self, amount);
 
@@ -699,7 +701,7 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(amount, self, self);
     }
 
-    function partialDeposit(bytes16 trancheId, ERC7540Vault vault, ERC20 asset) public {
+    function partialDeposit(bytes16 trancheId, AsyncVault vault, ERC20 asset) public {
         ITranche tranche = ITranche(address(vault.share()));
 
         uint256 investmentAmount = 100000000; // 100 * 10**6
@@ -716,7 +718,7 @@ contract DepositTest is BaseTest {
             vault.poolId(), trancheId, bytes32(bytes20(self)), _assetId, assets, firstTranchePayout
         );
 
-        (,, uint256 depositPrice,,,,,,,) = investmentManager.investments(address(vault), self);
+        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
         assertEq(depositPrice, 1400000000000000000);
 
         // second trigger executed collectInvest of the second 50% at a price of 1.2
@@ -725,7 +727,7 @@ contract DepositTest is BaseTest {
             vault.poolId(), trancheId, bytes32(bytes20(self)), _assetId, assets, secondTranchePayout
         );
 
-        (,, depositPrice,,,,,,,) = investmentManager.investments(address(vault), self);
+        (,, depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
         assertEq(depositPrice, 1292307679384615384);
 
         // assert deposit & mint values adjusted
@@ -741,8 +743,8 @@ contract DepositTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128));
         vm.assume(amount % 2 == 0);
 
-        (, address vault_, uint128 assetId) = deploySimpleVault();
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
 
         assertEq(tranche.balanceOf(investor), 0);
@@ -758,7 +760,7 @@ contract DepositTest is BaseTest {
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId(), vault.trancheId(), investor.toBytes32(), assetId, uint128(amount), uint128(amount)
         );
-        vm.expectRevert(bytes("InvestmentManager/exceeds-max-deposit"));
+        vm.expectRevert(bytes("AsyncRequests/exceeds-max-deposit"));
         vault.deposit(amount, investor);
 
         vm.prank(investor);

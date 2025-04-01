@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-interface IERC7540VaultFactory {
+interface IAsyncVaultFactory {
     /// @notice Deploys new vault for `poolId`, `trancheId` and `asset`.
     ///
     /// @param poolId Id of the pool. Id is one of the already supported pools.

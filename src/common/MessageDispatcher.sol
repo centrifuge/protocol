@@ -7,13 +7,13 @@ import {Auth} from "src/misc/Auth.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 
-import {MessageCategory, MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
-import {JournalEntry, Meta} from "src/common/types/JournalEntry.sol";
+import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 import {
     IInvestmentManagerGatewayHandler,
     IPoolManagerGatewayHandler,
@@ -381,146 +381,104 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendIncreaseHolding(
+    function sendUpdateHoldingAmount(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
         address provider,
         uint128 amount,
         D18 pricePerUnit,
-        uint256 timestamp,
-        JournalEntry[] calldata debits,
-        JournalEntry[] calldata credits
+        bool isIncrease,
+        Meta calldata meta
     ) external auth {
-        MessageLib.UpdateHolding memory data = MessageLib.UpdateHolding({
-            poolId: poolId.raw(),
-            scId: scId.raw(),
-            assetId: assetId.raw(),
-            who: provider.toBytes32(),
-            amount: amount,
-            pricePerUnit: pricePerUnit,
-            timestamp: timestamp,
-            isIncrease: true,
-            debits: debits,
-            credits: credits
-        });
-
-        gateway.send(poolId.chainId(), data.serialize());
+        if (poolId.chainId() == localCentrifugeId) {
+            poolRouter.updateHoldingAmount(
+                poolId, scId, assetId, amount, pricePerUnit, isIncrease, meta.debits, meta.credits
+            );
+        } else {
+            gateway.send(
+                poolId.chainId(),
+                MessageLib.UpdateHoldingAmount({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    assetId: assetId.raw(),
+                    who: provider.toBytes32(),
+                    amount: amount,
+                    pricePerUnit: pricePerUnit.raw(),
+                    timestamp: uint64(block.timestamp),
+                    isIncrease: isIncrease,
+                    debits: meta.debits,
+                    credits: meta.credits
+                }).serialize()
+            );
+        }
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendDecreaseHolding(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        address receiver,
-        uint128 amount,
-        D18 pricePerUnit,
-        uint256 timestamp,
-        JournalEntry[] calldata debits,
-        JournalEntry[] calldata credits
-    ) external auth {
-        MessageLib.UpdateHolding memory data = MessageLib.UpdateHolding({
-            poolId: poolId.raw(),
-            scId: scId.raw(),
-            assetId: assetId.raw(),
-            who: receiver.toBytes32(),
-            amount: amount,
-            pricePerUnit: pricePerUnit,
-            timestamp: timestamp,
-            isIncrease: false,
-            debits: debits,
-            credits: credits
-        });
-
-        gateway.send(poolId.chainId(), data.serialize());
+    function sendUpdateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePerUnit)
+        external
+        auth
+    {
+        if (poolId.chainId() == localCentrifugeId) {
+            poolRouter.updateHoldingValue(poolId, scId, assetId, pricePerUnit);
+        } else {
+            gateway.send(
+                poolId.chainId(),
+                MessageLib.UpdateHoldingValue({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    assetId: assetId.raw(),
+                    pricePerUnit: pricePerUnit.raw(),
+                    timestamp: uint64(block.timestamp)
+                }).serialize()
+            );
+        }
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendUpdateHoldingValue(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        D18 pricePerUnit,
-        uint256 timestamp
-    ) external auth {
-        JournalEntry[] memory debits = new JournalEntry[](0);
-        JournalEntry[] memory credits = new JournalEntry[](0);
-
-        MessageLib.UpdateHolding memory data = MessageLib.UpdateHolding({
-            poolId: poolId.raw(),
-            scId: scId.raw(),
-            assetId: assetId.raw(),
-            who: bytes32(0),
-            amount: 0,
-            pricePerUnit: pricePerUnit,
-            timestamp: timestamp,
-            isIncrease: false,
-            debits: debits,
-            credits: credits
-        });
-
-        gateway.send(poolId.chainId(), data.serialize());
-    }
-
-    /// @inheritdoc IVaultMessageSender
-    function sendIssueShares(
+    function sendUpdateShares(
         PoolId poolId,
         ShareClassId scId,
         address receiver,
         D18 pricePerShare,
         uint128 shares,
-        uint256 timestamp
+        bool isIssuance
     ) external auth {
-        gateway.send(
-            poolId.chainId(),
-            MessageLib.UpdateShares({
-                poolId: poolId.raw(),
-                scId: scId.raw(),
-                who: receiver.toBytes32(),
-                pricePerShare: pricePerShare,
-                shares: shares,
-                timestamp: timestamp,
-                isIssuance: true
-            }).serialize()
-        );
+        if (poolId.chainId() == localCentrifugeId) {
+            if (isIssuance) {
+                poolRouter.increaseShareIssuance(poolId, scId, pricePerShare, shares);
+            } else {
+                poolRouter.decreaseShareIssuance(poolId, scId, pricePerShare, shares);
+            }
+        } else {
+            gateway.send(
+                poolId.chainId(),
+                MessageLib.UpdateShares({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    who: receiver.toBytes32(),
+                    pricePerShare: pricePerShare.raw(),
+                    shares: shares,
+                    timestamp: uint64(block.timestamp),
+                    isIssuance: isIssuance
+                }).serialize()
+            );
+        }
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendRevokeShares(
-        PoolId poolId,
-        ShareClassId scId,
-        address provider,
-        D18 pricePerShare,
-        uint128 shares,
-        uint256 timestamp
-    ) external auth {
-        gateway.send(
-            poolId.chainId(),
-            MessageLib.UpdateShares({
-                poolId: poolId.raw(),
-                scId: scId.raw(),
-                who: provider.toBytes32(),
-                pricePerShare: pricePerShare,
-                shares: shares,
-                timestamp: timestamp,
-                isIssuance: false
-            }).serialize()
-        );
-    }
-
-    /// @inheritdoc IVaultMessageSender
-    function sendJournalEntry(
-        PoolId poolId,
-        ShareClassId scId,
-        JournalEntry[] calldata debits,
-        JournalEntry[] calldata credits
-    ) external auth {
-        gateway.send(
-            poolId.chainId(),
-            MessageLib.UpdateJournal({poolId: poolId.raw(), scId: scId.raw(), debits: debits, credits: credits})
-                .serialize()
-        );
+    function sendJournalEntry(PoolId poolId, JournalEntry[] calldata debits, JournalEntry[] calldata credits)
+        external
+        auth
+    {
+        if (poolId.chainId() == localCentrifugeId) {
+            poolRouter.updateJournal(poolId, debits, credits);
+        } else {
+            gateway.send(
+                poolId.chainId(),
+                MessageLib.UpdateJournal({poolId: poolId.raw(), debits: debits, credits: credits}).serialize()
+            );
+        }
     }
 
     /// @inheritdoc IVaultMessageSender

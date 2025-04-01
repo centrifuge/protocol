@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {D18, d18} from "src/misc/types/D18.sol";
 
-import {JournalEntry, Meta} from "src/common/types/JournalEntry.sol";
+import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -23,7 +23,7 @@ interface IBalanceSheetManager {
         address receiver,
         uint128 amount,
         D18 pricePerUnit,
-        uint256 timestamp,
+        uint64 timestamp,
         JournalEntry[] debits,
         JournalEntry[] credits
     );
@@ -35,7 +35,7 @@ interface IBalanceSheetManager {
         address provider,
         uint128 amount,
         D18 pricePerUnit,
-        uint256 timestamp,
+        uint64 timestamp,
         JournalEntry[] debits,
         JournalEntry[] credits
     );
@@ -48,7 +48,7 @@ interface IBalanceSheetManager {
         address asset,
         uint256 tokenId,
         D18 pricePerUnit,
-        uint256 timestamp
+        uint64 timestamp
     );
 
     // Overloaded increase

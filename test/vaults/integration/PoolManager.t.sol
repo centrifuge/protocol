@@ -16,7 +16,8 @@ import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
 import {IRestrictionManager} from "src/vaults/interfaces/token/IRestrictionManager.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
-import {IBaseVault, IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
+import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 
 contract PoolManagerTestHelper is BaseTest {
@@ -80,14 +81,16 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         );
 
         address[] memory vaultFactories = new address[](1);
-        vaultFactories[0] = address(vaultFactory);
+        vaultFactories[0] = address(asyncVaultFactory);
 
         // redeploying within test to increase coverage
         new PoolManager(address(escrow), trancheFactory, vaultFactories);
 
         // values set correctly
         assertEq(address(poolManager.escrow()), address(escrow));
-        assertEq(address(investmentManager.poolManager()), address(poolManager));
+        assertEq(address(asyncRequests.poolManager()), address(poolManager));
+        assertEq(address(syncRequests.poolManager()), address(poolManager));
+        assertEq(address(messageDispatcher), address(poolManager.sender()));
 
         // permissions set correctly
         assertEq(poolManager.wards(address(root)), 1);
@@ -114,7 +117,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assertEq(poolManager.vaultFactory(newVaultFactory), false);
         poolManager.file("vaultFactory", newVaultFactory, true);
         assertEq(poolManager.vaultFactory(newVaultFactory), true);
-        assertEq(poolManager.vaultFactory(vaultFactory), true);
+        assertEq(poolManager.vaultFactory(asyncVaultFactory), true);
 
         vm.expectEmit();
         emit IPoolManager.File("vaultFactory", newVaultFactory, false);
@@ -253,9 +256,9 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         vm.assume(amount > 0);
         uint64 validUntil = uint64(block.timestamp + 7 days);
         bytes32 centChainAddress = makeAddr("centChainAddress").toBytes32();
-        (, address vault_,) = deploySimpleVault();
-        ERC7540Vault vault = ERC7540Vault(vault_);
-        ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
+        ITranche tranche = ITranche(address(AsyncVault(vault_).share()));
 
         // fund this account with amount
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), address(this), validUntil);
@@ -289,8 +292,8 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         vm.assume(amount > 0);
         uint64 validUntil = uint64(block.timestamp + 7 days);
         address destinationAddress = makeAddr("destinationAddress");
-        (, address vault_,) = deploySimpleVault();
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
 
@@ -313,9 +316,9 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         address destinationAddress = makeAddr("destinationAddress");
         vm.assume(amount > 0);
 
-        (, address vault_,) = deploySimpleVault();
-        ERC7540Vault vault = ERC7540Vault(vault_);
-        ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
+        ITranche tranche = ITranche(address(AsyncVault(vault_).share()));
 
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), destinationAddress, validUntil);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), address(this), validUntil);
@@ -342,9 +345,9 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
     function testUpdateMember(uint64 validUntil) public {
         validUntil = uint64(bound(validUntil, block.timestamp, type(uint64).max));
-        (, address vault_,) = deploySimpleVault();
-        ERC7540Vault vault = ERC7540Vault(vault_);
-        ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
+        ITranche tranche = ITranche(address(AsyncVault(vault_).share()));
 
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
@@ -365,11 +368,11 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
     }
 
     function testFreezeAndUnfreeze() public {
-        (, address vault_,) = deploySimpleVault();
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
-        ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
+        ITranche tranche = ITranche(address(AsyncVault(vault_).share()));
         uint64 validUntil = uint64(block.timestamp + 7 days);
         address secondUser = makeAddr("secondUser");
 
@@ -400,11 +403,11 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
     }
 
     function testUpdateTrancheMetadata() public {
-        (, address vault_,) = deploySimpleVault();
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
-        ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
+        ITranche tranche = ITranche(address(AsyncVault(vault_).share()));
 
         string memory updatedTokenName = "newName";
         string memory updatedTokenSymbol = "newSymbol";
@@ -428,11 +431,11 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
     }
 
     function testUpdateTrancheHook() public {
-        (, address vault_,) = deploySimpleVault();
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
-        ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
+        ITranche tranche = ITranche(address(AsyncVault(vault_).share()));
 
         address newHook = makeAddr("NewHook");
 
@@ -453,11 +456,11 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
     }
 
     function testUpdateRestriction() public {
-        (, address vault_,) = deploySimpleVault();
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
-        ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
+        ITranche tranche = ITranche(address(AsyncVault(vault_).share()));
 
         bytes memory update = MessageLib.UpdateRestrictionFreeze(makeAddr("User").toBytes32()).serialize();
 
@@ -520,21 +523,22 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
     }
 
     function testVaultMigration() public {
-        (uint64 poolId, address oldVault_, uint128 assetId) = deploySimpleVault();
+        (, address oldVault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
 
-        ERC7540Vault oldVault = ERC7540Vault(oldVault_);
+        AsyncVault oldVault = AsyncVault(oldVault_);
+        uint64 poolId = oldVault.poolId();
         bytes16 trancheId = oldVault.trancheId();
         address asset = address(oldVault.asset());
 
-        ERC7540VaultFactory newVaultFactory = new ERC7540VaultFactory(address(root), address(investmentManager));
+        AsyncVaultFactory newVaultFactory = new AsyncVaultFactory(address(root), address(asyncRequests));
 
         // rewire factory contracts
         newVaultFactory.rely(address(poolManager));
-        investmentManager.rely(address(newVaultFactory));
+        asyncRequests.rely(address(newVaultFactory));
         poolManager.file("vaultFactory", address(newVaultFactory), true);
 
         // Remove old vault
-        address vaultManager = IBaseVault(oldVault_).manager();
+        address vaultManager = address(IBaseVault(oldVault_).manager());
         IVaultManager(vaultManager).removeVault(poolId, trancheId, oldVault_, asset, assetId);
         assertEq(Tranche(poolManager.tranche(poolId, trancheId)).vault(asset), address(0));
 
@@ -548,9 +552,9 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         address destinationAddress = makeAddr("destinationAddress");
         vm.assume(amount > 0);
 
-        (, address vault_,) = deploySimpleVault();
-        ERC7540Vault vault = ERC7540Vault(vault_);
-        ITranche tranche = ITranche(address(ERC7540Vault(vault_).share()));
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
+        ITranche tranche = ITranche(address(AsyncVault(vault_).share()));
         tranche.approve(address(poolManager), amount);
 
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), destinationAddress, validUntil);
@@ -610,7 +614,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         private
         view
     {
-        address vaultManager = IBaseVault(vaultAddress).manager();
+        address vaultManager = address(IBaseVault(vaultAddress).manager());
         address tranche_ = poolManager.tranche(poolId, trancheId);
         address vault_ = ITranche(tranche_).vault(asset);
 
@@ -628,16 +632,16 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
 
             // check vault state
             assertEq(vaultAddress, vault_, "vault address mismatch");
-            ERC7540Vault vault = ERC7540Vault(vault_);
-            assertEq(address(vault.manager()), address(investmentManager), "investment manager mismatch");
+            AsyncVault vault = AsyncVault(vault_);
+            assertEq(address(vault.manager()), address(asyncRequests), "investment manager mismatch");
             assertEq(vault.asset(), asset, "asset mismatch");
             assertEq(vault.poolId(), poolId, "poolId mismatch");
             assertEq(vault.trancheId(), trancheId, "trancheId mismatch");
             assertEq(address(vault.share()), tranche_, "tranche mismatch");
 
-            assertEq(vault.wards(address(investmentManager)), 1);
+            assertEq(vault.wards(address(asyncRequests)), 1);
             assertEq(vault.wards(address(this)), 0);
-            assertEq(investmentManager.wards(vaultAddress), 1);
+            assertEq(asyncRequests.wards(vaultAddress), 1);
         } else {
             assert(!poolManager.isLinked(poolId, trancheId, asset, vaultAddress));
             // Check Tranche permissions
@@ -645,7 +649,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
 
             // Check missing link
             assertEq(vault_, address(0), "Tranche link to vault requires linkVault");
-            assertEq(investmentManager.wards(vaultAddress), 0, "Vault auth on investmentManager set up in linkVault");
+            assertEq(asyncRequests.wards(vaultAddress), 0, "Vault auth on asyncRequests set up in linkVault");
         }
     }
 
@@ -668,7 +672,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
     }
 
     function _assertAllowance(address vaultAddress, address asset, uint256 tokenId) private view {
-        address vaultManager = IBaseVault(vaultAddress).manager();
+        address vaultManager = address(IBaseVault(vaultAddress).manager());
         address escrow_ = address(poolManager.escrow());
         address tranche_ = poolManager.tranche(poolId, trancheId);
 
@@ -710,8 +714,8 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         // Check event except for vault address which cannot be known
         (uint128 assetId) = poolManager.registerAsset(asset, erc20TokenId, OTHER_CHAIN_ID);
         vm.expectEmit(true, true, true, false);
-        emit IPoolManager.DeployVault(poolId, trancheId, asset, erc20TokenId, vaultFactory, address(0));
-        address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, vaultFactory);
+        emit IPoolManager.DeployVault(poolId, trancheId, asset, erc20TokenId, asyncVaultFactory, address(0));
+        address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, asyncVaultFactory);
 
         _assertDeployedVault(vaultAddress, assetId, asset, erc20TokenId, false);
     }
@@ -728,7 +732,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         address asset = address(erc20);
 
         (uint128 assetId) = poolManager.registerAsset(asset, erc20TokenId, OTHER_CHAIN_ID);
-        address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, vaultFactory);
+        address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, asyncVaultFactory);
 
         vm.expectEmit(true, true, true, false);
         emit IPoolManager.LinkVault(poolId, trancheId, asset, erc20TokenId, vaultAddress);
@@ -752,8 +756,8 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         // Check event except for vault address which cannot be known
         (uint128 assetId) = poolManager.registerAsset(asset, tokenId, OTHER_CHAIN_ID);
         vm.expectEmit(true, true, true, false);
-        emit IPoolManager.DeployVault(poolId, trancheId, asset, tokenId, vaultFactory, address(0));
-        address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, vaultFactory);
+        emit IPoolManager.DeployVault(poolId, trancheId, asset, tokenId, asyncVaultFactory, address(0));
+        address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, asyncVaultFactory);
 
         _assertDeployedVault(vaultAddress, assetId, asset, tokenId, false);
     }
@@ -771,7 +775,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         address asset = address(new MockERC6909());
 
         (uint128 assetId) = poolManager.registerAsset(asset, tokenId, OTHER_CHAIN_ID);
-        address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, vaultFactory);
+        address vaultAddress = poolManager.deployVault(poolId, trancheId, assetId, asyncVaultFactory);
 
         vm.expectEmit(true, true, true, false);
         emit IPoolManager.LinkVault(poolId, trancheId, asset, tokenId, vaultAddress);
@@ -782,7 +786,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
 
     function testDeploVaultInvalidTranche(uint64 poolId, bytes16 trancheId) public {
         vm.expectRevert("PoolManager/tranche-does-not-exist");
-        poolManager.deployVault(poolId, trancheId, defaultAssetId, vaultFactory);
+        poolManager.deployVault(poolId, trancheId, defaultAssetId, asyncVaultFactory);
     }
 
     function testDeploVaultInvalidVaultFactory(
@@ -990,7 +994,7 @@ contract PoolManagerUpdateContract is BaseTest, PoolManagerTestHelper {
     ) public {
         setUpPoolAndTranche(poolId_, decimals_, tokenName_, tokenSymbol_, trancheId_);
         registerAssetErc20();
-        bytes memory vaultUpdate = _serializedUpdateContractNewVault(vaultFactory);
+        bytes memory vaultUpdate = _serializedUpdateContractNewVault(asyncVaultFactory);
 
         vm.expectEmit();
         emit IPoolManager.UpdateContract(poolId, trancheId, address(poolManager), vaultUpdate);
@@ -1006,7 +1010,7 @@ contract PoolManagerUpdateContract is BaseTest, PoolManagerTestHelper {
     ) public {
         setUpPoolAndTranche(poolId_, decimals_, tokenName_, tokenSymbol_, trancheId_);
         registerAssetErc20();
-        bytes memory vaultUpdate = _serializedUpdateContractNewVault(vaultFactory);
+        bytes memory vaultUpdate = _serializedUpdateContractNewVault(asyncVaultFactory);
         UpdateContractMock mock = new UpdateContractMock(address(poolManager));
         IAuth(address(poolManager)).rely(address(mock));
 
@@ -1051,7 +1055,7 @@ contract PoolManagerUpdateContract is BaseTest, PoolManagerTestHelper {
 
     function testUpdateContractInvalidTranche(uint64 poolId) public {
         centrifugeChain.addPool(poolId);
-        bytes memory vaultUpdate = _serializedUpdateContractNewVault(vaultFactory);
+        bytes memory vaultUpdate = _serializedUpdateContractNewVault(asyncVaultFactory);
 
         vm.expectRevert("PoolManager/tranche-does-not-exist");
         poolManager.updateContract(poolId, trancheId, address(poolManager), vaultUpdate);

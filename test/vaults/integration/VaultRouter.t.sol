@@ -33,8 +33,8 @@ contract VaultRouterTest is BaseTest {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
         amount = uint128(bound(amount, 4, MAX_UINT128));
 
-        (, address vault_, uint128 assetId) = deploySimpleVault();
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
         erc20.mint(self, amount);
@@ -42,11 +42,11 @@ contract VaultRouterTest is BaseTest {
         vm.expectRevert(bytes("Gateway/cannot-topup-with-nothing"));
         vaultRouter.requestDeposit(vault_, amount, self, self);
 
-        vm.expectRevert(bytes("ERC7540Vault/invalid-owner"));
+        vm.expectRevert(bytes("AsyncVault/invalid-owner"));
         vaultRouter.requestDeposit{value: 1 wei}(vault_, amount, self, self);
 
         vaultRouter.enable(vault_);
-        vm.expectRevert(bytes("InvestmentManager/transfer-not-allowed"));
+        vm.expectRevert(bytes("AsyncRequests/transfer-not-allowed"));
         vaultRouter.requestDeposit{value: 1 wei}(vault_, amount, self, self);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
 
@@ -109,12 +109,12 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testEnableDisableVaults() public {
-        (, address vault_,) = deploySimpleVault();
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
         root.veto(address(vaultRouter));
-        vm.expectRevert(bytes("ERC7540Vault/not-endorsed"));
+        vm.expectRevert(bytes("AsyncVault/not-endorsed"));
         vaultRouter.enable(vault_);
         assertEq(vault.isOperator(address(this), address(vaultRouter)), false);
         assertEq(vaultRouter.isEnabled(vault_, address(this)), false);
@@ -125,7 +125,7 @@ contract VaultRouterTest is BaseTest {
         assertEq(vaultRouter.isEnabled(vault_, address(this)), true);
 
         root.veto(address(vaultRouter));
-        vm.expectRevert(bytes("ERC7540Vault/not-endorsed"));
+        vm.expectRevert(bytes("AsyncVault/not-endorsed"));
         vaultRouter.disable(vault_);
         assertEq(vault.isOperator(address(this), address(vaultRouter)), true);
         assertEq(vaultRouter.isEnabled(vault_, address(this)), true);
@@ -140,8 +140,8 @@ contract VaultRouterTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128));
         vm.assume(amount % 2 == 0);
 
-        (, address vault_, uint128 assetId) = deploySimpleVault();
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
         erc20.mint(self, amount);
@@ -189,8 +189,8 @@ contract VaultRouterTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128));
 
         // deposit
-        (, address vault_, uint128 assetId) = deploySimpleVault();
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
         erc20.mint(self, amount);
         erc20.approve(vault_, amount);
@@ -242,7 +242,7 @@ contract VaultRouterTest is BaseTest {
         vm.assume(amount2 % 2 == 0);
 
         uint256 fuel = estimateGas();
-        (ERC20 erc20X, ERC20 erc20Y, ERC7540Vault vault1, ERC7540Vault vault2) = setUpMultipleVaults(amount1, amount2);
+        (ERC20 erc20X, ERC20 erc20Y, AsyncVault vault1, AsyncVault vault2) = setUpMultipleVaults(amount1, amount2);
 
         vaultRouter.enable(address(vault1));
         vaultRouter.enable(address(vault2));
@@ -283,7 +283,7 @@ contract VaultRouterTest is BaseTest {
 
         uint256 fuel = estimateGas();
         // deposit
-        (ERC20 erc20X, ERC20 erc20Y, ERC7540Vault vault1, ERC7540Vault vault2) = setUpMultipleVaults(amount1, amount2);
+        (ERC20 erc20X, ERC20 erc20Y, AsyncVault vault1, AsyncVault vault2) = setUpMultipleVaults(amount1, amount2);
 
         vaultRouter.enable(address(vault1));
         vaultRouter.enable(address(vault2));
@@ -335,8 +335,8 @@ contract VaultRouterTest is BaseTest {
     function _testMulticallingApproveVaultAndExecuteLockedDepositRequest(uint256 amount, bool snap) internal {
         amount = uint128(bound(amount, 4, MAX_UINT128));
 
-        (, address vault_, uint128 assetId) = deploySimpleVault();
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
         erc20.mint(self, amount);
@@ -370,8 +370,8 @@ contract VaultRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         // deposit
-        (, address vault_, uint128 assetId) = deploySimpleVault();
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
         erc20.mint(self, amount);
         erc20.approve(vault_, amount);
@@ -404,7 +404,7 @@ contract VaultRouterTest is BaseTest {
         amount2 = uint128(bound(amount2, 4, MAX_UINT128));
         vm.assume(amount2 % 2 == 0);
 
-        (ERC20 erc20X, ERC20 erc20Y, ERC7540Vault vault1, ERC7540Vault vault2) = setUpMultipleVaults(amount1, amount2);
+        (ERC20 erc20X, ERC20 erc20Y, AsyncVault vault1, AsyncVault vault2) = setUpMultipleVaults(amount1, amount2);
 
         vaultRouter.enable(address(vault1));
         vaultRouter.enable(address(vault2));
@@ -437,8 +437,8 @@ contract VaultRouterTest is BaseTest {
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
         (, address vault_, uint128 assetId) =
-            deployVault(6, restrictionManager, bytes16(bytes("1")), address(wrapper), 0, 0);
-        ERC7540Vault vault = ERC7540Vault(vault_);
+            deployVault(VaultKind.Async, 6, restrictionManager, bytes16(bytes("1")), address(wrapper), 0, 0);
+        AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
         address investor = makeAddr("investor");
@@ -473,8 +473,9 @@ contract VaultRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        (, address vault_,) = deployVault(6, restrictionManager, bytes16(bytes("1")), address(wrapper), 0, 0);
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        (, address vault_,) =
+            deployVault(VaultKind.Async, 6, restrictionManager, bytes16(bytes("1")), address(wrapper), 0, 0);
+        AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
         address investor = makeAddr("investor");
@@ -502,8 +503,9 @@ contract VaultRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        (, address vault_,) = deployVault(6, restrictionManager, bytes16(bytes("1")), address(wrapper), 0, 0);
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        (, address vault_,) =
+            deployVault(VaultKind.Async, 6, restrictionManager, bytes16(bytes("1")), address(wrapper), 0, 0);
+        AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
         address investor = makeAddr("investor");
@@ -528,8 +530,8 @@ contract VaultRouterTest is BaseTest {
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
         (, address vault_, uint128 assetId) =
-            deployVault(6, restrictionManager, bytes16(bytes("1")), address(wrapper), 0, 0);
-        ERC7540Vault vault = ERC7540Vault(vault_);
+            deployVault(VaultKind.Async, 6, restrictionManager, bytes16(bytes("1")), address(wrapper), 0, 0);
+        AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
         address investor = makeAddr("investor");
@@ -582,7 +584,8 @@ contract VaultRouterTest is BaseTest {
         address routerEscrowAddress = address(routerEscrow);
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        (, address vault_,) = deployVault(6, restrictionManager, bytes16(bytes("1")), address(wrapper), 0, 0);
+        (, address vault_,) =
+            deployVault(VaultKind.Async, 6, restrictionManager, bytes16(bytes("1")), address(wrapper), 0, 0);
         vm.label(vault_, "vault");
 
         erc20.mint(self, underlyingAmount);
@@ -655,8 +658,8 @@ contract VaultRouterTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128));
         vm.assume(amount % 2 == 0);
 
-        (, address vault_,) = deploySimpleVault();
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
         erc20.mint(self, amount);
@@ -686,7 +689,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     // --- helpers ---
-    function fulfillDepositRequest(ERC7540Vault vault, uint128 assetId, uint256 amount, address user)
+    function fulfillDepositRequest(AsyncVault vault, uint128 assetId, uint256 amount, address user)
         public
         returns (uint128 tranchePayout)
     {
@@ -698,7 +701,7 @@ contract VaultRouterTest is BaseTest {
         );
     }
 
-    function fulfillRedeemRequest(ERC7540Vault vault, uint128 assetId, uint256 amount, address user)
+    function fulfillRedeemRequest(AsyncVault vault, uint128 assetId, uint256 amount, address user)
         public
         returns (uint128 assetPayout)
     {
@@ -712,16 +715,18 @@ contract VaultRouterTest is BaseTest {
 
     function setUpMultipleVaults(uint256 amount1, uint256 amount2)
         public
-        returns (ERC20 erc20X, ERC20 erc20Y, ERC7540Vault vault1, ERC7540Vault vault2)
+        returns (ERC20 erc20X, ERC20 erc20Y, AsyncVault vault1, AsyncVault vault2)
     {
         erc20X = _newErc20("X's Dollar", "USDX", 6);
         erc20Y = _newErc20("Y's Dollar", "USDY", 6);
         vm.label(address(erc20X), "erc20X");
         vm.label(address(erc20Y), "erc20Y");
-        (, address vault1_,) = deployVault(6, restrictionManager, bytes16(bytes("1")), address(erc20X), 0, 0);
-        (, address vault2_,) = deployVault(6, restrictionManager, bytes16(bytes("2")), address(erc20Y), 0, 0);
-        vault1 = ERC7540Vault(vault1_);
-        vault2 = ERC7540Vault(vault2_);
+        (, address vault1_,) =
+            deployVault(VaultKind.Async, 6, restrictionManager, bytes16(bytes("1")), address(erc20X), 0, 0);
+        (, address vault2_,) =
+            deployVault(VaultKind.Async, 6, restrictionManager, bytes16(bytes("2")), address(erc20Y), 0, 0);
+        vault1 = AsyncVault(vault1_);
+        vault2 = AsyncVault(vault2_);
         vm.label(vault1_, "vault1");
         vm.label(vault2_, "vault2");
 
@@ -740,7 +745,8 @@ contract VaultRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         MockReentrantERC20Wrapper1 wrapper = new MockReentrantERC20Wrapper1(address(erc20), address(vaultRouter));
-        (, address vault_,) = deployVault(6, restrictionManager, bytes16(bytes("1")), address(wrapper), 0, 0);
+        (, address vault_,) =
+            deployVault(VaultKind.Async, 6, restrictionManager, bytes16(bytes("1")), address(wrapper), 0, 0);
         vm.label(vault_, "vault");
 
         address investor = makeAddr("investor");
