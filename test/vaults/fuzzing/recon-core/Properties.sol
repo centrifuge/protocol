@@ -40,7 +40,7 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
     function invariant_global_2() trancheTokenIsSet public {
         // Redeem and Withdraw
         // investmentManager_handleExecutedCollectRedeem
-        lte(sumOfClaimedRedemptions[_getAsset()], mintedByCurrencyPayout[_getAsset()], "sumOfClaimedRedemptions !<= mintedByCurrencyPayout");
+        lte(sumOfClaimedRedemptions[address(vault.asset())], mintedByCurrencyPayout[address(vault.asset())], "sumOfClaimedRedemptions !<= mintedByCurrencyPayout");
     }
 
     function invariant_global_2_inductive() trancheTokenIsSet public {
