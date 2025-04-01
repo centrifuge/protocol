@@ -311,8 +311,8 @@ contract MultiShareClassSimpleTest is MultiShareClassBaseTest {
 
     function testUpdateShareClass() public {
         vm.expectEmit();
-        emit IShareClassManager.UpdatedShareClass(poolId, scId, 0, d18(2,1), 0, "SOME_TEST_BYTES");
-        shareClass.updateShareClass(poolId, scId, d18(2,1), "SOME_TEST_BYTES");
+        emit IShareClassManager.UpdatedShareClass(poolId, scId, 0, d18(2, 1), 0, "SOME_TEST_BYTES");
+        shareClass.updateShareClass(poolId, scId, d18(2, 1), "SOME_TEST_BYTES");
     }
 }
 

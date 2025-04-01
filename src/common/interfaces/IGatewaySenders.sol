@@ -29,8 +29,7 @@ interface IPoolMessageSender is ILocalCentrifugeId {
         bytes32 hook
     ) external;
 
-    function sendNotifySharePrice(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePerShare)
-        external;
+    function sendNotifySharePrice(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePerShare) external;
 
     /// @notice Creates and send the message
     function sendFulfilledDepositRequest(

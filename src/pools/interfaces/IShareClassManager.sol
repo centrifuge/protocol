@@ -88,7 +88,12 @@ interface IShareClassManager {
     );
     event Updated(PoolId indexed poolId, bytes data);
     event UpdatedShareClass(
-        PoolId indexed poolId, ShareClassId indexed scId, uint128 nav, D18 navPerShare, uint128 totalIssuance, bytes data
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
+        uint128 nav,
+        D18 navPerShare,
+        uint128 totalIssuance,
+        bytes data
     );
     event AddedShareClass(PoolId indexed poolId, ShareClassId indexed scId, uint32 indexed index);
 

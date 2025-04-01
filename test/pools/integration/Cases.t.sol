@@ -364,30 +364,37 @@ contract TestCases is PoolsDeployer, Test {
         assertEq(totalIssuance2, 55);
     }
 
-    function testNotifySharePrice(uint8 num, uint8 den) public {
-        vm.assume(num != 0 && den != 0);
-
+    function testNotifySharePrice() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation();
         D18 sharePrice = d18(100, 1);
-        D18 assetPerPool = d18(num, den);
+        D18 assetPerPool = d18(1, 3);
         D18 expectedPrice = assetPerPool.reciprocal() * sharePrice;
+        assertEq(expectedPrice.raw(), 300000000000000000300);
+        /// @dev assert we have the rounding error here catched
+        expectedPrice = d18(300000000000000000000);
 
-        (bytes[] memory cs, uint256 c) = (new bytes[](3), 0);
+        (bytes[] memory cs, uint256 c) = (new bytes[](4), 0);
         cs[c++] = abi.encodeWithSelector(poolRouter.setTransientPrice.selector, EUR.addr(), assetPerPool);
-        cs[c++] = abi.encodeWithSelector(poolRouter.updateSharePrice.selector, scId, sharePrice);
+        cs[c++] = abi.encodeWithSelector(poolRouter.updateSharePrice.selector, scId, sharePrice, "");
         cs[c++] = abi.encodeWithSelector(poolRouter.notifySharePrice.selector, scId, EUR);
+        cs[c++] = abi.encodeWithSelector(poolRouter.notifySharePrice.selector, scId, USDC_C2);
 
         vm.prank(FM);
         poolRouter.execute{value: GAS}(poolId, cs);
 
-        cv.assertLastMsg(
-            MessageLib.NotifySharePrice({
-                poolId: poolId.raw(),
-                scId: scId.raw(),
-                assetId: EUR.raw(),
-                price: expectedPrice.raw(),
-                timestamp: block.timestamp.toUint64()
-            }).serialize()
-        );
+        MessageLib.NotifySharePrice memory m0 = MessageLib.deserializeNotifySharePrice(cv.popMessage());
+        assertEq(m0.poolId, poolId.raw());
+        assertEq(m0.scId, scId.raw());
+        assertEq(m0.assetId, USDC_C2.raw());
+        assertEq(m0.price, sharePrice.raw()); // @dev USDC_C2 uses idenity valuation and hence the price is the same
+        assertEq(m0.timestamp, block.timestamp.toUint64());
+
+        MessageLib.NotifySharePrice memory m1 = MessageLib.deserializeNotifySharePrice(cv.popMessage());
+        assertEq(m1.poolId, poolId.raw());
+        assertEq(m1.scId, scId.raw());
+        assertEq(m1.assetId, EUR.raw());
+        assertEq(m1.price, expectedPrice.raw());
+        assertEq(m1.timestamp, block.timestamp.toUint64());
+
     }
 }

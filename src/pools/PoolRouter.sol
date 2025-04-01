@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {D18, d18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {ConversionLib} from "src/misc/libraries/ConversionLib.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {Multicall, IMulticall} from "src/misc/Multicall.sol";
@@ -184,13 +185,13 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         _protectedAndUnlocked();
         IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
         AssetId poolCurrency = poolRegistry.currency(unlockedPoolId);
-        // @dev we assume price parity between the pool currency and the asset
+
+        // @dev we assume symetric prices are provided by holdings valuation
         IERC7726 valuation = holdings.valuation(unlockedPoolId, scId, assetId);
-        (, D18 pricePerUnit) = scm.shareClassPrice(unlockedPoolId, scId);
+        (, D18 pricePerShare) = scm.shareClassPrice(unlockedPoolId, scId);
 
-        uint128 amoutPoolPerUnitAsset = valuation.getQuote(assetRegistry.unitAmount(assetId), assetId.addr(), poolCurrency.addr()).toUint128();
-        D18 pricePerAssetUnit = d18(amoutPoolPerUnitAsset, assetRegistry.unitAmount(poolCurrency)).reciprocal() * pricePerUnit;
-
+        uint128 baseAmount = valuation.getQuote(assetRegistry.unitAmount(poolCurrency), poolCurrency.addr(), assetId.addr()).toUint128();
+        D18 pricePerAssetUnit =  pricePerShare * ConversionLib.convertIntoPrice(baseAmount, assetRegistry.decimals(assetId));
         sender.sendNotifySharePrice(unlockedPoolId, scId, assetId, pricePerAssetUnit);
     }
 
