@@ -37,9 +37,9 @@ interface IGuardian {
 
     /// @notice Initiate message recovery on another chain
     /// @dev    Only supports EVM targets today
-    function initiateMessageRecovery(uint16 chainId, bytes32 hash, address adapter) external;
+    function initiateMessageRecovery(uint16 chainId, bytes32 hash, IAdapter adapter) external;
 
     /// @notice Dispute message recovery on another chain
     /// @dev    Only supports EVM targets today
-    function disputeMessageRecovery(uint16 chainId, bytes32 hash, address adapter) external;
+    function disputeMessageRecovery(uint16 chainId, bytes32 hash, IAdapter adapter) external;
 }

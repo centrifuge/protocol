@@ -63,13 +63,13 @@ contract Guardian is IGuardian {
     }
 
     /// @inheritdoc IGuardian
-    function initiateMessageRecovery(uint16 chainId, bytes32 hash, address adapter) external onlySafe {
-        messageDispatcher.sendInitiateMessageRecovery(chainId, hash, bytes32(bytes20(adapter)));
+    function initiateMessageRecovery(uint16 chainId, bytes32 hash, IAdapter adapter) external onlySafe {
+        messageDispatcher.sendInitiateMessageRecovery(chainId, hash, bytes32(bytes20(address(adapter))));
     }
 
     /// @inheritdoc IGuardian
-    function disputeMessageRecovery(uint16 chainId, bytes32 hash, address adapter) external onlySafe {
-        messageDispatcher.sendDisputeMessageRecovery(chainId, hash, bytes32(bytes20(adapter)));
+    function disputeMessageRecovery(uint16 chainId, bytes32 hash, IAdapter adapter) external onlySafe {
+        messageDispatcher.sendDisputeMessageRecovery(chainId, hash, bytes32(bytes20(address(adapter))));
     }
 
     // --- Helpers ---
