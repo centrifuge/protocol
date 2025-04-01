@@ -37,7 +37,7 @@ if ! cast call $contract_address 'share()(address)' --rpc-url $RPC_URL &> /dev/n
     exit 1
 fi
 poolId=$(cast call $contract_address 'poolId()(uint64)' --rpc-url $RPC_URL | awk '{print $1}')
-shareClassId=$(cast call $contract_address 'shareClassId()(bytes16)' --rpc-url $RPC_URL | cut -c 1-34)
+scId=$(cast call $contract_address 'trancheId()(bytes16)' --rpc-url $RPC_URL | cut -c 1-34)
 asset=$(cast call $contract_address 'asset()(address)' --rpc-url $RPC_URL)
 share=$(cast call $contract_address 'share()(address)' --rpc-url $RPC_URL)
 root=$(cast call $contract_address 'root()(address)' --rpc-url $RPC_URL)
@@ -45,7 +45,7 @@ investmentManager=$(cast call $contract_address 'manager()(address)' --rpc-url $
 poolManager=$(cast call $investmentManager 'poolManager()(address)' --rpc-url $RPC_URL)
 decimals=$(cast call $share 'decimals()(uint8)' --rpc-url $RPC_URL)
 echo "poolId: $poolId"
-echo "scId: $scId"
+echo "shareClassId: $scId"
 echo "asset: $asset"
 echo "share: $share"
 echo "root: $root"
