@@ -111,16 +111,16 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IPoolMessageSender
-    function sendNotifySharePrice(uint16 chainId, PoolId poolId, ShareClassId scId, AssetId assetId, D18 sharePrice)
+    function sendNotifySharePrice(PoolId poolId, ShareClassId scId, AssetId assetId, D18 sharePrice)
         external
         auth
     {
         uint64 timestamp = block.timestamp.toUint64();
-        if (chainId == localCentrifugeId) {
+        if (assetId.chainId() == localCentrifugeId) {
             poolManager.updateTranchePrice(poolId.raw(), scId.raw(), assetId.raw(), sharePrice.raw(), timestamp);
         } else {
             gateway.send(
-                poolId.chainId(),
+                assetId.chainId(),
                 MessageLib.NotifySharePrice({
                     poolId: poolId.raw(),
                     scId: scId.raw(),

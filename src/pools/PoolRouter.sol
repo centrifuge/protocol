@@ -157,7 +157,6 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     function setTransientPrice(AssetId assetId, D18 price) public payable {
         address poolCurrency = poolRegistry.currency(unlockedPoolId).addr();
         transientValuation.setPrice(assetId.addr(), poolCurrency, price);
-        transientValuation.setPrice(poolCurrency, assetId.addr(), price.reciprocal());
     }
 
     /// @inheritdoc IPoolRouter
