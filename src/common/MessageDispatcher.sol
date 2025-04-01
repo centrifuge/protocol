@@ -111,18 +111,35 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IPoolMessageSender
-    function sendNotifySharePrice(PoolId poolId, ShareClassId scId, AssetId assetId, D18 sharePrice) external auth {
+    function sendNotifySharePrice(PoolId poolId, ShareClassId scId, D18 sharePrice) external auth {
         uint64 timestamp = block.timestamp.toUint64();
         if (assetId.chainId() == localCentrifugeId) {
-            poolManager.updateTranchePrice(poolId.raw(), scId.raw(), assetId.raw(), sharePrice.raw(), timestamp);
+            poolManager.updateTranchePrice(poolId.raw(), scId.raw(), sharePrice.raw(), timestamp);
         } else {
             gateway.send(
                 assetId.chainId(),
                 MessageLib.NotifySharePrice({
                     poolId: poolId.raw(),
                     scId: scId.raw(),
-                    assetId: assetId.raw(),
                     price: sharePrice.raw(),
+                    timestamp: timestamp
+                }).serialize()
+            );
+        }
+    }
+
+    function sendNotifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId, D18 assetPrice) external auth {
+        uint64 timestamp = block.timestamp.toUint64();
+        if (assetId.chainId() == localCentrifugeId) {
+            poolManager.updateAssetPrice(poolId.raw(), scId.raw(), assetId.raw(), assetPrice.raw(), timestamp);
+        } else {
+            gateway.send(
+                assetId.chainId(),
+                MessageLib.NotifyAssetPrice({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    assetId: assetId.raw(),
+                    price: assetPrice.raw(),
                     timestamp: timestamp
                 }).serialize()
             );

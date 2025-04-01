@@ -16,13 +16,16 @@ struct TrancheDetails {
     ///      multiple vaults can be linked to the same asset.
     ///      A vault in this storage DOES NOT mean the vault can be used
     mapping(address asset => mapping(uint256 tokenId => address[])) vaults;
-    /// @dev Each tranche has a price per asset
-    mapping(address asset => mapping(uint256 tokenId => TranchePrice)) prices;
+    /// @dev Each tranche has individual price per pool unit in asset denomination (POOL_UNIT/ASSET_UNIT)
+    mapping(address asset => mapping(uint256 tokenId => Price)) prices;
+    /// @dev Each tranche has individual price per tranche unit in pool denomination (TRANCHE_UNIT/POOL_UNIT)
+    Price latestPrice;
 }
 
-struct TranchePrice {
+struct Price {
     uint128 price;
     uint64 computedAt;
+    uint64 maxAge;
 }
 
 /// @dev Temporary storage that is only present between addTranche and deployTranche
