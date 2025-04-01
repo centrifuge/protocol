@@ -93,8 +93,8 @@ contract VaultRouterTest is BaseTest {
 
         assertEq(vault.maxMint(self), sharePayout);
         assertEq(vault.maxDeposit(self), amount);
-        IShareToken token = IShareToken(address(vault.share()));
-        assertEq(token.balanceOf(address(escrow)), sharePayout);
+        IShareToken shareToken = IShareToken(address(vault.share()));
+        assertEq(shareToken.balanceOf(address(escrow)), sharePayout);
 
         if (snap) {
             snapStart("VaultRouter_claimDeposit");
@@ -103,9 +103,9 @@ contract VaultRouterTest is BaseTest {
         if (snap) {
             snapEnd();
         }
-        assertApproxEqAbs(token.balanceOf(self), sharePayout, 1);
-        assertApproxEqAbs(token.balanceOf(self), sharePayout, 1);
-        assertApproxEqAbs(token.balanceOf(address(escrow)), 0, 1);
+        assertApproxEqAbs(shareToken.balanceOf(self), sharePayout, 1);
+        assertApproxEqAbs(shareToken.balanceOf(self), sharePayout, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(escrow)), 0, 1);
         assertApproxEqAbs(erc20.balanceOf(address(escrow)), amount, 1);
     }
 
@@ -164,14 +164,14 @@ contract VaultRouterTest is BaseTest {
 
         assertEq(vault.maxMint(self), sharePayout);
         assertEq(vault.maxDeposit(self), amount);
-        IShareToken token = IShareToken(address(vault.share()));
-        assertEq(token.balanceOf(address(escrow)), sharePayout);
+        IShareToken shareToken = IShareToken(address(vault.share()));
+        assertEq(shareToken.balanceOf(address(escrow)), sharePayout);
 
         // Any address should be able to call claimDeposit for an investor
         vm.prank(randomUser);
         vaultRouter.claimDeposit(vault_, self, self);
-        assertApproxEqAbs(token.balanceOf(self), sharePayout, 1);
-        assertApproxEqAbs(token.balanceOf(address(escrow)), 0, 1);
+        assertApproxEqAbs(shareToken.balanceOf(self), sharePayout, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(escrow)), 0, 1);
         assertApproxEqAbs(erc20.balanceOf(address(escrow)), amount, 1);
     }
 
@@ -208,9 +208,9 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: fuel}(vault_, amount, self, self);
 
         (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, self);
-        IShareToken token = IShareToken(address(vault.share()));
+        IShareToken shareToken = IShareToken(address(vault.share()));
         vaultRouter.claimDeposit(vault_, self, self);
-        token.approve(address(vaultRouter), sharePayout);
+        shareToken.approve(address(vaultRouter), sharePayout);
 
         address nonOwner = makeAddr("NonOwner");
         vm.deal(nonOwner, 10 ether);
@@ -227,8 +227,8 @@ contract VaultRouterTest is BaseTest {
             snapEnd();
         }
         (uint128 assetPayout) = fulfillRedeemRequest(vault, assetId, sharePayout, self);
-        assertApproxEqAbs(token.balanceOf(self), 0, 1);
-        assertApproxEqAbs(token.balanceOf(address(escrow)), 0, 1);
+        assertApproxEqAbs(shareToken.balanceOf(self), 0, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(escrow)), 0, 1);
         assertApproxEqAbs(erc20.balanceOf(address(escrow)), assetPayout, 1);
         assertApproxEqAbs(erc20.balanceOf(self), 0, 1);
         vaultRouter.claimRedeem(vault_, self, self);
@@ -261,17 +261,17 @@ contract VaultRouterTest is BaseTest {
         assertEq(vault2.maxMint(self), sharePayout2);
         assertEq(vault1.maxDeposit(self), amount1);
         assertEq(vault2.maxDeposit(self), amount2);
-        IShareToken token1 = IShareToken(address(vault1.share()));
-        IShareToken token2 = IShareToken(address(vault2.share()));
-        assertEq(token1.balanceOf(address(escrow)), sharePayout1);
-        assertEq(token2.balanceOf(address(escrow)), sharePayout2);
+        IShareToken shareToken1 = IShareToken(address(vault1.share()));
+        IShareToken shareToken2 = IShareToken(address(vault2.share()));
+        assertEq(shareToken1.balanceOf(address(escrow)), sharePayout1);
+        assertEq(shareToken2.balanceOf(address(escrow)), sharePayout2);
 
         vaultRouter.claimDeposit(address(vault1), self, self);
         vaultRouter.claimDeposit(address(vault2), self, self);
-        assertApproxEqAbs(token1.balanceOf(self), sharePayout1, 1);
-        assertApproxEqAbs(token2.balanceOf(self), sharePayout2, 1);
-        assertApproxEqAbs(token1.balanceOf(address(escrow)), 0, 1);
-        assertApproxEqAbs(token2.balanceOf(address(escrow)), 0, 1);
+        assertApproxEqAbs(shareToken1.balanceOf(self), sharePayout1, 1);
+        assertApproxEqAbs(shareToken2.balanceOf(self), sharePayout2, 1);
+        assertApproxEqAbs(shareToken1.balanceOf(address(escrow)), 0, 1);
+        assertApproxEqAbs(shareToken2.balanceOf(address(escrow)), 0, 1);
         assertApproxEqAbs(erc20X.balanceOf(address(escrow)), amount1, 1);
         assertApproxEqAbs(erc20Y.balanceOf(address(escrow)), amount2, 1);
     }
@@ -362,8 +362,8 @@ contract VaultRouterTest is BaseTest {
 
         assertEq(vault.maxMint(self), sharePayout);
         assertEq(vault.maxDeposit(self), amount);
-        IShareToken token = IShareToken(address(vault.share()));
-        assertEq(token.balanceOf(address(escrow)), sharePayout);
+        IShareToken shareToken = IShareToken(address(vault.share()));
+        assertEq(shareToken.balanceOf(address(escrow)), sharePayout);
     }
 
     function testMulticallingDepositClaimAndRequestRedeem(uint256 amount) public {
@@ -383,8 +383,8 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: fuel}(vault_, amount, self, self);
 
         (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, self);
-        IShareToken token = IShareToken(address(vault.share()));
-        token.approve(address(vaultRouter), sharePayout);
+        IShareToken shareToken = IShareToken(address(vault.share()));
+        shareToken.approve(address(vaultRouter), sharePayout);
 
         // multicall
         bytes[] memory calls = new bytes[](2);
@@ -393,8 +393,8 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.multicall{value: fuel}(calls);
 
         (uint128 assetPayout) = fulfillRedeemRequest(vault, assetId, sharePayout, self);
-        assertApproxEqAbs(token.balanceOf(self), 0, 1);
-        assertApproxEqAbs(token.balanceOf(address(escrow)), 0, 1);
+        assertApproxEqAbs(shareToken.balanceOf(self), 0, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(escrow)), 0, 1);
         assertApproxEqAbs(erc20.balanceOf(address(escrow)), assetPayout, 1);
         assertApproxEqAbs(erc20.balanceOf(self), 0, 1);
     }
@@ -426,10 +426,10 @@ contract VaultRouterTest is BaseTest {
         assertEq(vault2.maxMint(self), sharePayout2);
         assertEq(vault1.maxDeposit(self), amount1);
         assertEq(vault2.maxDeposit(self), amount2);
-        IShareToken token1 = IShareToken(address(vault1.share()));
-        IShareToken token2 = IShareToken(address(vault2.share()));
-        assertEq(token1.balanceOf(address(escrow)), sharePayout1);
-        assertEq(token2.balanceOf(address(escrow)), sharePayout2);
+        IShareToken shareToken1 = IShareToken(address(vault1.share()));
+        IShareToken shareToken2 = IShareToken(address(vault2.share()));
+        assertEq(shareToken1.balanceOf(address(escrow)), sharePayout1);
+        assertEq(shareToken2.balanceOf(address(escrow)), sharePayout2);
     }
 
     function testLockAndExecuteDepositRequest(uint256 amount) public {
@@ -466,8 +466,8 @@ contract VaultRouterTest is BaseTest {
 
         assertEq(vault.maxMint(investor), sharePayout);
         assertEq(vault.maxDeposit(investor), amount);
-        IShareToken token = IShareToken(address(vault.share()));
-        assertEq(token.balanceOf(address(escrow)), sharePayout);
+        IShareToken shareToken = IShareToken(address(vault.share()));
+        assertEq(shareToken.balanceOf(address(escrow)), sharePayout);
     }
 
     function testWrapAndUnwrap(uint256 amount) public {
@@ -555,13 +555,13 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.executeLockedDepositRequest{value: fuel}(vault_, investor);
         (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, investor);
 
-        IShareToken token = IShareToken(address(vault.share()));
+        IShareToken shareToken = IShareToken(address(vault.share()));
         vaultRouter.claimDeposit(vault_, investor, investor);
 
         // Investors submits redemption  request
         vm.deal(investor, 10 ether);
         vm.startPrank(investor);
-        token.approve(address(vaultRouter), sharePayout);
+        shareToken.approve(address(vaultRouter), sharePayout);
         vaultRouter.requestRedeem{value: fuel}(vault_, sharePayout, investor, investor);
         vm.stopPrank();
 

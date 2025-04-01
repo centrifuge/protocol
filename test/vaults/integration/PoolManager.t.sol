@@ -217,11 +217,11 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         centrifugeChain.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, salt, address(1));
 
         centrifugeChain.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, salt, hook);
-        CentrifugeToken token = CentrifugeToken(poolManager.token(poolId, scId));
-        assertEq(tokenName, token.name());
-        assertEq(tokenSymbol, token.symbol());
-        assertEq(decimals, token.decimals());
-        assertEq(hook, token.hook());
+        CentrifugeToken shareToken = CentrifugeToken(poolManager.shareToken(poolId, scId));
+        assertEq(tokenName, shareToken.name());
+        assertEq(tokenSymbol, shareToken.symbol());
+        assertEq(decimals, shareToken.decimals());
+        assertEq(hook, shareToken.hook());
 
         vm.expectRevert(bytes("PoolManager/share-class-already-exists"));
         centrifugeChain.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, salt, hook);
@@ -245,10 +245,10 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         for (uint256 i = 0; i < scIds.length; i++) {
             centrifugeChain.addShareClass(poolId, scIds[i], tokenName, tokenSymbol, decimals, hook);
-            CentrifugeToken token = CentrifugeToken(poolManager.token(poolId, scIds[i]));
-            assertEq(tokenName, token.name());
-            assertEq(tokenSymbol, token.symbol());
-            assertEq(decimals, token.decimals());
+            CentrifugeToken shareToken = CentrifugeToken(poolManager.shareToken(poolId, scIds[i]));
+            assertEq(tokenName, shareToken.name());
+            assertEq(tokenSymbol, shareToken.symbol());
+            assertEq(decimals, shareToken.decimals());
         }
     }
 
@@ -258,13 +258,13 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         bytes32 centChainAddress = makeAddr("centChainAddress").toBytes32();
         (address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
-        IShareToken token = IShareToken(address(AsyncVault(vault_).share()));
+        IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
 
         // fund this account with amount
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), address(this), validUntil);
 
         centrifugeChain.incomingTransferShares(vault.poolId(), vault.trancheId(), address(this), amount);
-        assertEq(token.balanceOf(address(this)), amount); // Verify the address(this) has the expected amount
+        assertEq(shareToken.balanceOf(address(this)), amount); // Verify the address(this) has the expected amount
 
         // fails for invalid share class token
         uint64 poolId = vault.poolId();
@@ -273,9 +273,9 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.transferShares(poolId + 1, scId, 0, centChainAddress, amount);
 
         // send the transfer from EVM -> Cent Chain
-        token.approve(address(poolManager), amount);
+        shareToken.approve(address(poolManager), amount);
         poolManager.transferShares(poolId, scId, 0, centChainAddress, amount);
-        assertEq(token.balanceOf(address(this)), 0);
+        assertEq(shareToken.balanceOf(address(this)), 0);
 
         // Finally, verify the connector called `adapter.send`
         bytes memory message = MessageLib.TransferShares(poolId, scId, centChainAddress, amount).serialize();
@@ -297,7 +297,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
 
-        IShareToken token = IShareToken(address(vault.share()));
+        IShareToken shareToken = IShareToken(address(vault.share()));
 
         vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         centrifugeChain.incomingTransferShares(poolId, scId, destinationAddress, amount);
@@ -306,9 +306,9 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         vm.expectRevert(bytes("PoolManager/unknown-token"));
         centrifugeChain.incomingTransferShares(poolId + 1, scId, destinationAddress, amount);
 
-        assertTrue(token.checkTransferRestriction(address(0), destinationAddress, 0));
+        assertTrue(shareToken.checkTransferRestriction(address(0), destinationAddress, 0));
         centrifugeChain.incomingTransferShares(poolId, scId, destinationAddress, amount);
-        assertEq(token.balanceOf(destinationAddress), amount);
+        assertEq(shareToken.balanceOf(destinationAddress), amount);
     }
 
     function testTransferSharesToEVM(uint128 amount) public {
@@ -318,16 +318,16 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         (address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
-        IShareToken token = IShareToken(address(AsyncVault(vault_).share()));
+        IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
 
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), destinationAddress, validUntil);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), address(this), validUntil);
-        assertTrue(token.checkTransferRestriction(address(0), address(this), 0));
-        assertTrue(token.checkTransferRestriction(address(0), destinationAddress, 0));
+        assertTrue(shareToken.checkTransferRestriction(address(0), address(this), 0));
+        assertTrue(shareToken.checkTransferRestriction(address(0), destinationAddress, 0));
 
         // Fund this address with samount
         centrifugeChain.incomingTransferShares(vault.poolId(), vault.trancheId(), address(this), amount);
-        assertEq(token.balanceOf(address(this)), amount);
+        assertEq(shareToken.balanceOf(address(this)), amount);
 
         // fails for invalid share class token
         uint64 poolId = vault.poolId();
@@ -336,32 +336,32 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.transferShares(poolId + 1, scId, OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount);
 
         // Approve and transfer amount from this address to destinationAddress
-        token.approve(address(poolManager), amount);
+        shareToken.approve(address(poolManager), amount);
         poolManager.transferShares(
             vault.poolId(), vault.trancheId(), OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount
         );
-        assertEq(token.balanceOf(address(this)), 0);
+        assertEq(shareToken.balanceOf(address(this)), 0);
     }
 
     function testUpdateMember(uint64 validUntil) public {
         validUntil = uint64(bound(validUntil, block.timestamp, type(uint64).max));
         (address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
-        IShareToken token = IShareToken(address(AsyncVault(vault_).share()));
+        IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
 
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
-        IRestrictedTransfers hook = IRestrictedTransfers(token.hook());
+        IRestrictedTransfers hook = IRestrictedTransfers(shareToken.hook());
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
-        hook.updateMember(address(token), randomUser, validUntil);
+        hook.updateMember(address(shareToken), randomUser, validUntil);
 
         vm.expectRevert(bytes("PoolManager/unknown-token"));
         centrifugeChain.updateMember(100, bytes16(bytes("100")), randomUser, validUntil); // use random poolId &
             // shareId
 
         centrifugeChain.updateMember(poolId, scId, randomUser, validUntil);
-        assertTrue(token.checkTransferRestriction(address(0), randomUser, 0));
+        assertTrue(shareToken.checkTransferRestriction(address(0), randomUser, 0));
 
         vm.expectRevert(bytes("RestrictedTransfers/endorsed-user-cannot-be-updated"));
         centrifugeChain.updateMember(poolId, scId, address(escrow), validUntil);
@@ -372,7 +372,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         AsyncVault vault = AsyncVault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
-        IShareToken token = IShareToken(address(AsyncVault(vault_).share()));
+        IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
         uint64 validUntil = uint64(block.timestamp + 7 days);
         address secondUser = makeAddr("secondUser");
 
@@ -387,19 +387,19 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         centrifugeChain.updateMember(poolId, scId, randomUser, validUntil);
         centrifugeChain.updateMember(poolId, scId, secondUser, validUntil);
-        assertTrue(token.checkTransferRestriction(randomUser, secondUser, 0));
+        assertTrue(shareToken.checkTransferRestriction(randomUser, secondUser, 0));
 
         centrifugeChain.freeze(poolId, scId, randomUser);
-        assertFalse(token.checkTransferRestriction(randomUser, secondUser, 0));
+        assertFalse(shareToken.checkTransferRestriction(randomUser, secondUser, 0));
 
         centrifugeChain.unfreeze(poolId, scId, randomUser);
-        assertTrue(token.checkTransferRestriction(randomUser, secondUser, 0));
+        assertTrue(shareToken.checkTransferRestriction(randomUser, secondUser, 0));
 
         centrifugeChain.freeze(poolId, scId, secondUser);
-        assertFalse(token.checkTransferRestriction(randomUser, secondUser, 0));
+        assertFalse(shareToken.checkTransferRestriction(randomUser, secondUser, 0));
 
         centrifugeChain.unfreeze(poolId, scId, secondUser);
-        assertTrue(token.checkTransferRestriction(randomUser, secondUser, 0));
+        assertTrue(shareToken.checkTransferRestriction(randomUser, secondUser, 0));
     }
 
     function testUpdateShareMetadata() public {
@@ -407,7 +407,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         AsyncVault vault = AsyncVault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
-        IShareToken token = IShareToken(address(AsyncVault(vault_).share()));
+        IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
 
         string memory updatedTokenName = "newName";
         string memory updatedTokenSymbol = "newSymbol";
@@ -419,12 +419,12 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         vm.prank(randomUser);
         poolManager.updateShareMetadata(poolId, scId, updatedTokenName, updatedTokenSymbol);
 
-        assertEq(token.name(), "name");
-        assertEq(token.symbol(), "symbol");
+        assertEq(shareToken.name(), "name");
+        assertEq(shareToken.symbol(), "symbol");
 
         centrifugeChain.updateShareMetadata(poolId, scId, updatedTokenName, updatedTokenSymbol);
-        assertEq(token.name(), updatedTokenName);
-        assertEq(token.symbol(), updatedTokenSymbol);
+        assertEq(shareToken.name(), updatedTokenName);
+        assertEq(shareToken.symbol(), updatedTokenSymbol);
 
         vm.expectRevert(bytes("PoolManager/old-metadata"));
         centrifugeChain.updateShareMetadata(poolId, scId, updatedTokenName, updatedTokenSymbol);
@@ -435,7 +435,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         AsyncVault vault = AsyncVault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
-        IShareToken token = IShareToken(address(AsyncVault(vault_).share()));
+        IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
 
         address newHook = makeAddr("NewHook");
 
@@ -446,10 +446,10 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         vm.prank(randomUser);
         poolManager.updateShareHook(poolId, scId, newHook);
 
-        assertEq(token.hook(), restrictedTransfers);
+        assertEq(shareToken.hook(), restrictedTransfers);
 
         centrifugeChain.updateShareHook(poolId, scId, newHook);
-        assertEq(token.hook(), newHook);
+        assertEq(shareToken.hook(), newHook);
 
         vm.expectRevert(bytes("PoolManager/old-hook"));
         centrifugeChain.updateShareHook(poolId, scId, newHook);
@@ -460,7 +460,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         AsyncVault vault = AsyncVault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
-        IShareToken token = IShareToken(address(AsyncVault(vault_).share()));
+        IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
 
         bytes memory update = MessageLib.UpdateRestrictionFreeze(makeAddr("User").toBytes32()).serialize();
 
@@ -471,7 +471,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         vm.prank(randomUser);
         poolManager.updateRestriction(poolId, scId, update);
 
-        address hook = token.hook();
+        address hook = shareToken.hook();
         poolManager.updateShareHook(poolId, scId, address(0));
 
         vm.expectRevert(bytes("PoolManager/invalid-hook"));
@@ -540,7 +540,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         // Remove old vault
         address vaultManager = address(IBaseVault(oldVault_).manager());
         IVaultManager(vaultManager).removeVault(poolId, scId, oldVault_, asset, assetId);
-        assertEq(CentrifugeToken(poolManager.token(poolId, scId)).vault(asset), address(0));
+        assertEq(CentrifugeToken(poolManager.shareToken(poolId, scId)).vault(asset), address(0));
 
         // Deploy new vault
         address newVault = poolManager.deployVault(poolId, scId, assetId, address(newVaultFactory));
@@ -554,32 +554,32 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         (address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
-        IShareToken token = IShareToken(address(AsyncVault(vault_).share()));
-        token.approve(address(poolManager), amount);
+        IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
+        shareToken.approve(address(poolManager), amount);
 
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), destinationAddress, validUntil);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), address(this), validUntil);
-        assertTrue(token.checkTransferRestriction(address(0), address(this), 0));
-        assertTrue(token.checkTransferRestriction(address(0), destinationAddress, 0));
+        assertTrue(shareToken.checkTransferRestriction(address(0), address(this), 0));
+        assertTrue(shareToken.checkTransferRestriction(address(0), destinationAddress, 0));
 
         // Fund this address with amount
         centrifugeChain.incomingTransferShares(vault.poolId(), vault.trancheId(), address(this), amount);
-        assertEq(token.balanceOf(address(this)), amount);
+        assertEq(shareToken.balanceOf(address(this)), amount);
 
         // fails for invalid share class token
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
 
         centrifugeChain.freeze(poolId, scId, address(this));
-        assertFalse(token.checkTransferRestriction(address(this), destinationAddress, 0));
+        assertFalse(shareToken.checkTransferRestriction(address(this), destinationAddress, 0));
 
         vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         poolManager.transferShares(poolId, scId, OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount);
-        assertEq(token.balanceOf(address(this)), amount);
+        assertEq(shareToken.balanceOf(address(this)), amount);
 
         centrifugeChain.unfreeze(poolId, scId, address(this));
         poolManager.transferShares(poolId, scId, OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount);
-        assertEq(token.balanceOf(address(escrow)), 0);
+        assertEq(shareToken.balanceOf(address(escrow)), 0);
     }
 
     function testLinkVaultInvalidShare(uint64 poolId, bytes16 scId) public {
@@ -615,7 +615,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         view
     {
         address vaultManager = address(IBaseVault(vaultAddress).manager());
-        address token_ = poolManager.token(poolId, scId);
+        address token_ = poolManager.shareToken(poolId, scId);
         address vault_ = IShareToken(token_).vault(asset);
 
         assert(poolManager.isPoolActive(poolId));
@@ -654,27 +654,27 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
     }
 
     function _assertShareSetup(address vaultAddress, bool isLinked) private view {
-        address token_ = poolManager.token(poolId, scId);
-        CentrifugeToken token = CentrifugeToken(token_);
+        address token_ = poolManager.shareToken(poolId, scId);
+        CentrifugeToken shareToken = CentrifugeToken(token_);
 
-        assertEq(token.wards(address(poolManager)), 1);
-        assertEq(token.wards(address(this)), 0);
+        assertEq(shareToken.wards(address(poolManager)), 1);
+        assertEq(shareToken.wards(address(this)), 0);
 
-        assertEq(token.name(), tokenName, "share class token name mismatch");
-        assertEq(token.symbol(), tokenSymbol, "share class token symbol mismatch");
-        assertEq(token.decimals(), decimals, "share class token decimals mismatch");
+        assertEq(shareToken.name(), tokenName, "share class token name mismatch");
+        assertEq(shareToken.symbol(), tokenSymbol, "share class token symbol mismatch");
+        assertEq(shareToken.decimals(), decimals, "share class token decimals mismatch");
 
         if (isLinked) {
-            assertEq(token.wards(vaultAddress), 1);
+            assertEq(shareToken.wards(vaultAddress), 1);
         } else {
-            assertEq(token.wards(vaultAddress), 0, "Vault auth on Share set up in linkVault");
+            assertEq(shareToken.wards(vaultAddress), 0, "Vault auth on Share set up in linkVault");
         }
     }
 
     function _assertAllowance(address vaultAddress, address asset, uint256 tokenId) private view {
         address vaultManager = address(IBaseVault(vaultAddress).manager());
         address escrow_ = address(poolManager.escrow());
-        address token_ = poolManager.token(poolId, scId);
+        address token_ = poolManager.shareToken(poolId, scId);
 
         assertEq(IERC20(token_).allowance(escrow_, vaultManager), type(uint256).max, "Share token allowance missing");
 

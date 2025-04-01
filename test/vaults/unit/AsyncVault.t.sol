@@ -30,7 +30,7 @@ contract AsyncVaultTest is BaseTest {
         assertEq(vault.asset(), address(erc20));
         assertEq(vault.poolId(), poolId);
         assertEq(vault.trancheId(), scId);
-        address token = poolManager.token(poolId, scId);
+        address token = poolManager.shareToken(poolId, scId);
         assertEq(address(vault.share()), token);
         // assertEq(tokenName, ERC20(token).name());
         // assertEq(tokenSymbol, ERC20(token).symbol());

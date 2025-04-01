@@ -97,11 +97,11 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     }
 
     /// @inheritdoc IRecoverable
-    function recoverTokens(address token_, uint256 tokenId, address to, uint256 amount) external auth {
+    function recoverTokens(address token, uint256 tokenId, address to, uint256 amount) external auth {
         if (tokenId == 0) {
-            SafeTransferLib.safeTransfer(token_, to, amount);
+            SafeTransferLib.safeTransfer(token, to, amount);
         } else {
-            IERC6909(token_).transfer(to, tokenId, amount);
+            IERC6909(token).transfer(to, tokenId, amount);
         }
     }
 
@@ -111,9 +111,9 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         external
         auth
     {
-        IShareToken shareClass = IShareToken(token(poolId, scId));
-        require(address(shareClass) != address(0), "PoolManager/unknown-token");
-        shareClass.burn(msg.sender, amount);
+        IShareToken shareToken_ = IShareToken(shareToken(poolId, scId));
+        require(address(shareToken_) != address(0), "PoolManager/unknown-token");
+        shareToken_.burn(msg.sender, amount);
 
         sender.sendTransferShares(destinationId, poolId, scId, receiver, amount);
 
@@ -187,7 +187,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         require(decimals >= MIN_DECIMALS, "PoolManager/too-few-token-decimals");
         require(decimals <= MAX_DECIMALS, "PoolManager/too-many-token-decimals");
         require(isPoolActive(poolId), "PoolManager/invalid-pool");
-        require(token(poolId, scId) == address(0), "PoolManager/share-class-already-exists");
+        require(shareToken(poolId, scId) == address(0), "PoolManager/share-class-already-exists");
 
         // Hook can be address zero if the share token is fully permissionless and has no custom logic
         require(hook == address(0) || _isValidHook(hook), "PoolManager/invalid-hook");
@@ -197,32 +197,32 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         // BalanceSheetManager needs this in order to mint shares
         tokenWards[1] = address(balanceSheetManager);
 
-        address token_ = tokenFactory.newToken(name, symbol, decimals, salt, tokenWards);
+        address shareToken_ = tokenFactory.newToken(name, symbol, decimals, salt, tokenWards);
 
         if (hook != address(0)) {
-            IShareToken(token_).file("hook", hook);
+            IShareToken(shareToken_).file("hook", hook);
         }
 
-        pools[poolId].shareClasses[scId].token = token_;
+        pools[poolId].shareClasses[scId].shareToken = shareToken_;
 
-        emit AddShareClass(poolId, scId, token_);
+        emit AddShareClass(poolId, scId, shareToken_);
 
-        return token_;
+        return shareToken_;
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
     function updateShareMetadata(uint64 poolId, bytes16 scId, string memory name, string memory symbol) public auth {
-        IShareToken token_ = IShareToken(token(poolId, scId));
-        require(address(token_) != address(0), "PoolManager/unknown-token");
+        IShareToken shareToken_ = IShareToken(shareToken(poolId, scId));
+        require(address(shareToken_) != address(0), "PoolManager/unknown-token");
 
         require(
-            keccak256(bytes(token_.name())) != keccak256(bytes(name))
-                || keccak256(bytes(token_.symbol())) != keccak256(bytes(symbol)),
+            keccak256(bytes(shareToken_.name())) != keccak256(bytes(name))
+                || keccak256(bytes(shareToken_.symbol())) != keccak256(bytes(symbol)),
             "PoolManager/old-metadata"
         );
 
-        token_.file("name", name);
-        token_.file("symbol", symbol);
+        shareToken_.file("name", name);
+        shareToken_.file("symbol", symbol);
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
@@ -231,7 +231,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         auth
     {
         ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
-        require(shareClass.token != address(0), "PoolManager/share-token-does-not-exist");
+        require(shareClass.shareToken != address(0), "PoolManager/share-token-does-not-exist");
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
         require(
@@ -245,11 +245,11 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
     /// @inheritdoc IPoolManagerGatewayHandler
     function updateRestriction(uint64 poolId, bytes16 scId, bytes memory update_) public auth {
-        IShareToken token_ = IShareToken(token(poolId, scId));
-        require(address(token_) != address(0), "PoolManager/unknown-token");
-        address hook = token_.hook();
+        IShareToken shareToken_ = IShareToken(shareToken(poolId, scId));
+        require(address(shareToken_) != address(0), "PoolManager/unknown-token");
+        address hook = shareToken_.hook();
         require(hook != address(0), "PoolManager/invalid-hook");
-        IHook(hook).updateRestriction(address(token_), update_);
+        IHook(hook).updateRestriction(address(shareToken_), update_);
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
@@ -265,10 +265,10 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
     /// @inheritdoc IPoolManagerGatewayHandler
     function updateShareHook(uint64 poolId, bytes16 scId, address hook) public auth {
-        IShareToken token_ = IShareToken(token(poolId, scId));
-        require(address(token_) != address(0), "PoolManager/unknown-token");
-        require(hook != token_.hook(), "PoolManager/old-hook");
-        token_.file("hook", hook);
+        IShareToken shareToken_ = IShareToken(shareToken(poolId, scId));
+        require(address(shareToken_) != address(0), "PoolManager/unknown-token");
+        require(hook != shareToken_.hook(), "PoolManager/old-hook");
+        shareToken_.file("hook", hook);
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
@@ -276,10 +276,10 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         public
         auth
     {
-        IShareToken token_ = IShareToken(token(poolId, scId));
-        require(address(token_) != address(0), "PoolManager/unknown-token");
+        IShareToken shareToken_ = IShareToken(shareToken(poolId, scId));
+        require(address(shareToken_) != address(0), "PoolManager/unknown-token");
 
-        token_.mint(destinationAddress, amount);
+        shareToken_.mint(destinationAddress, amount);
     }
 
     // --- IUpdateContract implementation ---
@@ -315,7 +315,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     /// @inheritdoc IPoolManager
     function deployVault(uint64 poolId, bytes16 scId, uint128 assetId, address factory) public auth returns (address) {
         ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
-        require(shareClass.token != address(0), "PoolManager/share-token-does-not-exist");
+        require(shareClass.shareToken != address(0), "PoolManager/share-token-does-not-exist");
         require(vaultFactory[factory], "PoolManager/invalid-factory");
 
         // Rely investment manager on vault so it can mint tokens
@@ -324,7 +324,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         // Deploy vault
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
         address vault = IVaultFactory(factory).newVault(
-            poolId, scId, assetIdKey.asset, assetIdKey.tokenId, shareClass.token, address(escrow), vaultWards
+            poolId, scId, assetIdKey.asset, assetIdKey.tokenId, shareClass.shareToken, address(escrow), vaultWards
         );
 
         // Check whether asset is an ERC20 token wrapper
@@ -335,7 +335,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         _vaultDetails[vault] = VaultDetails(assetId, assetIdKey.asset, assetIdKey.tokenId, isWrappedERC20, false);
 
         // NOTE - Reverting the three actions below is not easy. We SHOULD do that if we phase-out a manager
-        _approveManagers(vault, shareClass.token, assetIdKey.asset, assetIdKey.tokenId);
+        _approveManagers(vault, shareClass.shareToken, assetIdKey.asset, assetIdKey.tokenId);
 
         emit DeployVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, factory, vault);
         return vault;
@@ -344,7 +344,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     /// @inheritdoc IPoolManager
     function linkVault(uint64 poolId, bytes16 scId, uint128 assetId, address vault) public auth {
         ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
-        require(shareClass.token != address(0), "PoolManager/share-token-does-not-exist");
+        require(shareClass.shareToken != address(0), "PoolManager/share-token-does-not-exist");
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
@@ -359,7 +359,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     /// @inheritdoc IPoolManager
     function unlinkVault(uint64 poolId, bytes16 scId, uint128 assetId, address vault) public auth {
         ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
-        require(shareClass.token != address(0), "PoolManager/share-token-does-not-exist");
+        require(shareClass.shareToken != address(0), "PoolManager/share-token-does-not-exist");
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
@@ -378,16 +378,16 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     }
 
     /// @inheritdoc IPoolManager
-    function token(uint64 poolId, bytes16 scId) public view returns (address) {
+    function shareToken(uint64 poolId, bytes16 scId) public view returns (address) {
         ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
-        return shareClass.token;
+        return shareClass.shareToken;
     }
 
     /// @inheritdoc IPoolManager
-    function checkedToken(uint64 poolId, bytes16 scId) public view returns (address) {
-        address token_ = token(poolId, scId);
-        require(token_ != address(0), "PoolManager/unknown-token");
-        return token_;
+    function checkedShareToken(uint64 poolId, bytes16 scId) public view returns (address) {
+        address shareToken_ = shareToken(poolId, scId);
+        require(shareToken_ != address(0), "PoolManager/unknown-token");
+        return shareToken_;
     }
 
     /// @inheritdoc IPoolManager
@@ -438,21 +438,21 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
     /// @dev Sets up permissions for the base vault manager and potentially a secondary manager (in case of partially
     /// sync vault)
-    function _approveManagers(address vault, address token_, address asset, uint256 tokenId) internal {
+    function _approveManagers(address vault, address shareToken_, address asset, uint256 tokenId) internal {
         address manager = address(IBaseVault(vault).manager());
-        _approveManager(manager, token_, asset, tokenId);
+        _approveManager(manager, shareToken_, asset, tokenId);
 
         // For sync deposit & async redeem vault, also repeat above for async manager (base manager is sync one)
         (VaultKind vaultKind, address secondaryVaultManager) = IVaultManager(manager).vaultKind(vault);
         if (vaultKind == VaultKind.SyncDepositAsyncRedeem) {
-            _approveManager(secondaryVaultManager, token_, asset, tokenId);
+            _approveManager(secondaryVaultManager, shareToken_, asset, tokenId);
         }
     }
 
     /// @dev Sets up permissions for a vault manager
-    function _approveManager(address manager, address token_, address asset, uint256 tokenId) internal {
-        IAuth(token_).rely(manager);
-        escrow.approveMax(token_, manager);
+    function _approveManager(address manager, address shareToken_, address asset, uint256 tokenId) internal {
+        IAuth(shareToken_).rely(manager);
+        escrow.approveMax(shareToken_, manager);
         escrow.approveMax(asset, tokenId, manager);
     }
 

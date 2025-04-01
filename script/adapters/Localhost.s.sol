@@ -78,7 +78,7 @@ contract LocalhostDeployer is FullDeployer {
         //poolRouter.execute{value: 0.001 ether}(poolId, cs);
 
         // Submit deposit request
-        IShareToken shareToken = IShareToken(poolManager.token(poolId.raw(), scId.raw()));
+        IShareToken shareToken = IShareToken(poolManager.shareToken(poolId.raw(), scId.raw()));
         IAsyncVault vault = IAsyncVault(shareToken.vault(address(token)));
 
         uint256 investAmount = 1_000_000e6;

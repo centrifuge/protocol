@@ -39,7 +39,7 @@ contract SyncDepositTest is BaseTest {
         // Deploy sync vault
         (address syncVault_, uint128 assetId) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
         SyncDepositVault syncVault = SyncDepositVault(syncVault_);
-        IShareToken token = IShareToken(address(syncVault.share()));
+        IShareToken shareToken = IShareToken(address(syncVault.share()));
         centrifugeChain.updateSharePrice(
             syncVault.poolId(), syncVault.trancheId(), assetId, price, uint64(block.timestamp)
         );
@@ -74,7 +74,7 @@ contract SyncDepositTest is BaseTest {
         _assertDepositEvents(syncVault, shares.toUint128());
         syncVault.deposit(amount, self);
         assertEq(erc20.balanceOf(self), 0, "Mismatch in sync deposited amount");
-        assertEq(token.balanceOf(self), shares, "Mismatch in amount of sync received shares");
+        assertEq(shareToken.balanceOf(self), shares, "Mismatch in amount of sync received shares");
 
         // Can now request redemption through async syncVault
         assertEq(asyncVault.pendingRedeemRequest(0, self), 0);

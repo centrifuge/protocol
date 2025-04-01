@@ -28,7 +28,7 @@ contract DepositRedeem is BaseTest {
     function partialDeposit(uint64 poolId, bytes16 scId, AsyncVault vault, ERC20 asset) public {
         vm.assume(poolId >> 48 != THIS_CHAIN_ID);
 
-        IShareToken token = IShareToken(address(vault.share()));
+        IShareToken shareToken = IShareToken(address(vault.share()));
 
         uint256 investmentAmount = 100000000; // 100 * 10**6
         centrifugeChain.updateMember(poolId, scId, self, type(uint64).max);
@@ -62,16 +62,16 @@ contract DepositRedeem is BaseTest {
 
         // collect the share class tokens
         vault.mint(firstSharePayout + secondSharePayout, self);
-        assertEq(token.balanceOf(self), firstSharePayout + secondSharePayout);
+        assertEq(shareToken.balanceOf(self), firstSharePayout + secondSharePayout);
     }
 
     function partialRedeem(uint64 poolId, bytes16 scId, AsyncVault vault, ERC20 asset) public {
         vm.assume(poolId >> 48 != THIS_CHAIN_ID);
 
-        IShareToken token = IShareToken(address(vault.share()));
+        IShareToken shareToken = IShareToken(address(vault.share()));
 
         uint128 assetId = poolManager.assetToId(address(asset), erc20TokenId);
-        uint256 totalShares = token.balanceOf(self);
+        uint256 totalShares = shareToken.balanceOf(self);
         uint256 redeemAmount = 50000000000000000000;
         assertTrue(redeemAmount <= totalShares);
         vault.requestRedeem(redeemAmount, self, self);
@@ -104,7 +104,7 @@ contract DepositRedeem is BaseTest {
 
         // collect the asset
         vault.redeem(redeemAmount, self, self);
-        assertEq(token.balanceOf(self), totalShares - redeemAmount);
+        assertEq(shareToken.balanceOf(self), totalShares - redeemAmount);
         assertEq(asset.balanceOf(self), firstCurrencyPayout + secondCurrencyPayout);
     }
 }

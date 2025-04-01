@@ -181,7 +181,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
             assetId = poolManager.assetToId(asset, assetTokenId);
         }
 
-        if (poolManager.token(poolId, scId) == address(0)) {
+        if (poolManager.shareToken(poolId, scId) == address(0)) {
             centrifugeChain.addPool(poolId);
             centrifugeChain.addShareClass(poolId, scId, tokenName, tokenSymbol, shareTokenDecimals, hook);
         }
@@ -196,7 +196,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
             kind: uint8(VaultUpdateKind.DeployAndLink)
         }).serialize();
         poolManager.update(poolId, scId, vaultUpdate);
-        vaultAddress = IShareToken(poolManager.token(poolId, scId)).vault(asset);
+        vaultAddress = IShareToken(poolManager.shareToken(poolId, scId)).vault(asset);
     }
 
     function deployVault(

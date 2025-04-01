@@ -15,7 +15,7 @@ contract AssetShareConversionTest is BaseTest {
             VaultKind.Async, poolId, SHARE_TOKEN_DECIMALS, restrictedTransfers, "", "", scId, address(asset), 0, 0
         );
         AsyncVault vault = AsyncVault(vault_);
-        IShareToken token = IShareToken(address(AsyncVault(vault_).share()));
+        IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
 
         assertEq(vault.priceLastUpdated(), block.timestamp);
         assertEq(vault.pricePerShare(), 1e6);
@@ -40,7 +40,7 @@ contract AssetShareConversionTest is BaseTest {
         centrifugeChain.updateSharePrice(poolId, scId, assetId, 1000000000000000000, uint64(block.timestamp));
 
         // assert share/asset conversion
-        assertEq(token.totalSupply(), 100000000000000000000);
+        assertEq(shareToken.totalSupply(), 100000000000000000000);
         assertEq(vault.totalAssets(), 100000000);
         assertEq(vault.convertToShares(100000000), 100000000000000000000); // share class tokens have 12 more decimals
             // than
@@ -70,7 +70,7 @@ contract AssetShareConversionTest is BaseTest {
             VaultKind.Async, poolId, SHARE_TOKEN_DECIMALS, restrictedTransfers, "", "", scId, address(asset), 0, 0
         );
         AsyncVault vault = AsyncVault(vault_);
-        IShareToken token = IShareToken(address(AsyncVault(vault_).share()));
+        IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
         centrifugeChain.updateSharePrice(poolId, scId, assetId, 1000000, uint64(block.timestamp));
 
         // invest
@@ -90,7 +90,7 @@ contract AssetShareConversionTest is BaseTest {
         centrifugeChain.updateSharePrice(poolId, scId, assetId, 1000000000000000000, uint64(block.timestamp));
 
         // assert share/asset conversion
-        assertEq(token.totalSupply(), 100000000);
+        assertEq(shareToken.totalSupply(), 100000000);
         assertEq(vault.totalAssets(), 100000000000000000000);
         // share class tokens have 12 less decimals than asset
         assertEq(vault.convertToShares(100000000000000000000), 100000000);

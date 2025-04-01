@@ -11,7 +11,7 @@ struct Pool {
 
 /// @dev Each Centrifuge pool is associated to 1 or more shar classes
 struct ShareClassDetails {
-    address token;
+    address shareToken;
     /// @dev Each share class can have multiple vaults deployed,
     ///      multiple vaults can be linked to the same asset.
     ///      A vault in this storage DOES NOT mean the vault can be used
@@ -165,10 +165,10 @@ interface IPoolManager is IRecoverable {
     function isPoolActive(uint64 poolId) external view returns (bool);
 
     /// @notice Returns the share class token for a given pool and share class id
-    function token(uint64 poolId, bytes16 scId) external view returns (address);
+    function shareToken(uint64 poolId, bytes16 scId) external view returns (address);
 
     /// @notice Returns the share class token for a given pool and share class id. Ensures share class exists
-    function checkedToken(uint64 poolId, bytes16 scId) external view returns (address);
+    function checkedShareToken(uint64 poolId, bytes16 scId) external view returns (address);
 
     /// @notice Retuns the latest share class token price for a given pool, share class id, and asset
     function sharePrice(uint64 poolId, bytes16 scId, uint128 assetId)

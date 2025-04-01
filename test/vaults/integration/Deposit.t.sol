@@ -31,7 +31,7 @@ contract DepositTest is BaseTest {
 
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
-        IShareToken token = IShareToken(address(vault.share()));
+        IShareToken shareToken = IShareToken(address(vault.share()));
         centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
 
         erc20.mint(self, amount);
@@ -107,7 +107,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.pendingDepositRequest(0, self), 0);
         assertEq(vault.claimableDepositRequest(0, self), amount);
         // assert share class tokens minted
-        assertEq(token.balanceOf(address(escrow)), shares);
+        assertEq(shareToken.balanceOf(address(escrow)), shares);
 
         // check maxDeposit and maxMint are 0 for non-members
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, uint64(block.timestamp));
@@ -125,15 +125,15 @@ contract DepositTest is BaseTest {
 
         vault.deposit(amount / 2, self, self); // deposit half the amount
         // Allow 2 difference because of rounding
-        assertApproxEqAbs(token.balanceOf(self), shares / 2, 2);
-        assertApproxEqAbs(token.balanceOf(address(escrow)), shares - shares / 2, 2);
+        assertApproxEqAbs(shareToken.balanceOf(self), shares / 2, 2);
+        assertApproxEqAbs(shareToken.balanceOf(address(escrow)), shares - shares / 2, 2);
         assertApproxEqAbs(vault.maxMint(self), shares - shares / 2, 2);
         assertApproxEqAbs(vault.maxDeposit(self), amount - amount / 2, 2);
 
         // mint the rest
         vault.mint(vault.maxMint(self), self);
-        assertEq(token.balanceOf(self), shares - vault.maxMint(self));
-        assertTrue(token.balanceOf(address(escrow)) <= 1);
+        assertEq(shareToken.balanceOf(self), shares - vault.maxMint(self));
+        assertTrue(shareToken.balanceOf(address(escrow)) <= 1);
         assertTrue(vault.maxMint(self) <= 1);
 
         // minting or depositing more should revert
@@ -213,10 +213,10 @@ contract DepositTest is BaseTest {
 
     //     //Deploy a pool
     //     AsyncVault vault = AsyncVault(deploySimpleVault(VaultKind.Async));
-    //     IShareToken token = IShareToken(address(vault.share()));
+    //     IShareToken shareToken = IShareToken(address(vault.share()));
 
     //     root.relyContract(address(token), self);
-    //     token.mint(address(escrow), type(uint128).max); // mint buffer to the escrow. Mock funds from other
+    //     shareToken.mint(address(escrow), type(uint128).max); // mint buffer to the escrow. Mock funds from other
     // users
 
     //     // fund user & request deposit
@@ -264,7 +264,7 @@ contract DepositTest is BaseTest {
     //     }
 
     //     assertEq(vault.maxDeposit(self), 0);
-    //     assertApproxEqAbs(token.balanceOf(self), tokenAmount, 1);
+    //     assertApproxEqAbs(shareToken.balanceOf(self), tokenAmount, 1);
     // }
 
     // function testMintFairRounding(uint256 totalAmount, uint256 tokenAmount) public {
@@ -273,10 +273,10 @@ contract DepositTest is BaseTest {
 
     //     //Deploy a pool
     //     AsyncVault vault = AsyncVault(deploySimpleVault(VaultKind.Async));
-    //     IShareToken token = IShareToken(address(vault.share()));
+    //     IShareToken shareToken = IShareToken(address(vault.share()));
 
     //     root.relyContract(address(token), self);
-    //     token.mint(address(escrow), type(uint128).max); // mint buffer to the escrow. Mock funds from other
+    //     shareToken.mint(address(escrow), type(uint128).max); // mint buffer to the escrow. Mock funds from other
     // users
 
     //     // fund user & request deposit
@@ -311,7 +311,7 @@ contract DepositTest is BaseTest {
     //     }
 
     //     assertEq(vault.maxMint(self), 0);
-    //     assertLe(token.balanceOf(self), tokenAmount);
+    //     assertLe(shareToken.balanceOf(self), tokenAmount);
     // }
 
     function testDepositMintToReceiver(uint256 amount) public {
@@ -323,7 +323,7 @@ contract DepositTest is BaseTest {
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         address receiver = makeAddr("receiver");
         AsyncVault vault = AsyncVault(vault_);
-        IShareToken token = IShareToken(address(vault.share()));
+        IShareToken shareToken = IShareToken(address(vault.share()));
 
         centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
 
@@ -344,7 +344,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), shares); // max deposit
         assertEq(vault.maxDeposit(self), amount); // max deposit
         // assert share class tokens minted
-        assertEq(token.balanceOf(address(escrow)), shares);
+        assertEq(shareToken.balanceOf(address(escrow)), shares);
 
         // deposit 1/2 funds to receiver
         vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
@@ -360,9 +360,9 @@ contract DepositTest is BaseTest {
         vault.deposit(amount / 2, receiver, self); // mint half the amount
         vault.mint(vault.maxMint(self), receiver); // mint half the amount
 
-        assertApproxEqAbs(token.balanceOf(receiver), shares, 1);
-        assertApproxEqAbs(token.balanceOf(receiver), shares, 1);
-        assertApproxEqAbs(token.balanceOf(address(escrow)), 0, 1);
+        assertApproxEqAbs(shareToken.balanceOf(receiver), shares, 1);
+        assertApproxEqAbs(shareToken.balanceOf(receiver), shares, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(escrow)), 0, 1);
         assertApproxEqAbs(erc20.balanceOf(address(escrow)), amount, 1);
     }
 
@@ -375,7 +375,7 @@ contract DepositTest is BaseTest {
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         address receiver = makeAddr("receiver");
         AsyncVault vault = AsyncVault(vault_);
-        IShareToken token = IShareToken(address(vault.share()));
+        IShareToken shareToken = IShareToken(address(vault.share()));
 
         centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
 
@@ -395,7 +395,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), sharePayout); // max deposit
         assertEq(vault.maxDeposit(self), amount); // max deposit
         // assert share class tokens minted
-        assertEq(token.balanceOf(address(escrow)), sharePayout);
+        assertEq(shareToken.balanceOf(address(escrow)), sharePayout);
 
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), receiver, type(uint64).max); // add receiver
 
@@ -417,9 +417,9 @@ contract DepositTest is BaseTest {
         vault.deposit(amount, receiver, address(this));
         vm.stopPrank();
 
-        assertApproxEqAbs(token.balanceOf(receiver), sharePayout, 1);
-        assertApproxEqAbs(token.balanceOf(receiver), sharePayout, 1);
-        assertApproxEqAbs(token.balanceOf(address(escrow)), 0, 1);
+        assertApproxEqAbs(shareToken.balanceOf(receiver), sharePayout, 1);
+        assertApproxEqAbs(shareToken.balanceOf(receiver), sharePayout, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(escrow)), 0, 1);
         assertApproxEqAbs(erc20.balanceOf(address(escrow)), amount, 1);
     }
 
@@ -500,7 +500,7 @@ contract DepositTest is BaseTest {
         (address vault_, uint128 assetId) =
             deployVault(VaultKind.Async, poolId, 6, restrictedTransfers, "", "", scId, address(asset), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
-        IShareToken token = IShareToken(address(vault.share()));
+        IShareToken shareToken = IShareToken(address(vault.share()));
         centrifugeChain.updateSharePrice(poolId, scId, assetId, 1000000000000000000000000000, uint64(block.timestamp));
 
         // invest
@@ -535,7 +535,7 @@ contract DepositTest is BaseTest {
 
         // collect the share class tokens
         vault.mint(firstSharePayout + secondSharePayout, self);
-        assertEq(token.balanceOf(self), firstSharePayout + secondSharePayout);
+        assertEq(shareToken.balanceOf(self), firstSharePayout + secondSharePayout);
 
         // redeem
         vault.requestRedeem(firstSharePayout + secondSharePayout, address(this), address(this));
@@ -706,7 +706,7 @@ contract DepositTest is BaseTest {
     function partialDeposit(uint64 poolId, bytes16 scId, AsyncVault vault, ERC20 asset) public {
         vm.assume(poolId >> 48 != THIS_CHAIN_ID);
 
-        IShareToken token = IShareToken(address(vault.share()));
+        IShareToken shareToken = IShareToken(address(vault.share()));
 
         uint256 investmentAmount = 100000000; // 100 * 10**6
         centrifugeChain.updateMember(poolId, scId, self, type(uint64).max);
@@ -740,7 +740,7 @@ contract DepositTest is BaseTest {
 
         // collect the share class tokens
         vault.mint(firstSharePayout + secondSharePayout, self);
-        assertEq(token.balanceOf(self), firstSharePayout + secondSharePayout);
+        assertEq(shareToken.balanceOf(self), firstSharePayout + secondSharePayout);
     }
 
     function testDepositAsInvestorDirectly(uint256 amount) public {
@@ -749,9 +749,9 @@ contract DepositTest is BaseTest {
 
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
-        IShareToken token = IShareToken(address(vault.share()));
+        IShareToken shareToken = IShareToken(address(vault.share()));
 
-        assertEq(token.balanceOf(investor), 0);
+        assertEq(shareToken.balanceOf(investor), 0);
 
         erc20.mint(investor, amount);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max); // add user as
@@ -770,7 +770,7 @@ contract DepositTest is BaseTest {
         vm.prank(investor);
         uint256 shares = vault.deposit(amount, investor);
 
-        assertEq(token.balanceOf(investor), amount);
+        assertEq(shareToken.balanceOf(investor), amount);
         assertEq(shares, amount);
     }
 }

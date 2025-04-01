@@ -234,8 +234,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         if (state.pendingDepositRequest == 0) delete state.pendingCancelDepositRequest;
 
         // Mint to escrow. Recipient can claim by calling deposit / mint
-        IShareToken token = IShareToken(IAsyncVault(vault_).share());
-        token.mint(address(escrow), shares);
+        IShareToken shareToken = IShareToken(IAsyncVault(vault_).share());
+        shareToken.mint(address(escrow), shares);
 
         IAsyncVault(vault_).onDepositClaimable(user, assets, shares);
     }
@@ -264,8 +264,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         if (state.pendingRedeemRequest == 0) delete state.pendingCancelRedeemRequest;
 
         // Burn redeemed share class tokens from escrow
-        IShareToken token = IShareToken(IAsyncVault(vault_).share());
-        token.burn(address(escrow), shares);
+        IShareToken shareToken = IShareToken(IAsyncVault(vault_).share());
+        shareToken.burn(address(escrow), shares);
 
         IAsyncVault(vault_).onRedeemClaimable(user, assets, shares);
     }

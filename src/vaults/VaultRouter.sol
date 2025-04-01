@@ -299,7 +299,7 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
     // --- View Methods ---
     /// @inheritdoc IVaultRouter
     function getVault(uint64 poolId, bytes16 scId, address asset) external view returns (address) {
-        return IShareToken(IPoolManager(poolManager).token(poolId, scId)).vault(asset);
+        return IShareToken(IPoolManager(poolManager).shareToken(poolId, scId)).vault(asset);
     }
 
     /// @inheritdoc IVaultRouter

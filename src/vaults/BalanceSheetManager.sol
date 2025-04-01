@@ -223,7 +223,7 @@ contract BalanceSheetManager is
     function _issue(PoolId poolId, ShareClassId scId, address to, D18 pricePerShare, uint128 shares, bool asAllowance)
         internal
     {
-        address token = poolManager.checkedToken(poolId.raw(), scId.raw());
+        address token = poolManager.checkedShareToken(poolId.raw(), scId.raw());
 
         if (asAllowance) {
             IShareToken(token).mint(address(this), shares);
@@ -237,7 +237,7 @@ contract BalanceSheetManager is
     }
 
     function _revoke(PoolId poolId, ShareClassId scId, address from, D18 pricePerShare, uint128 shares) internal {
-        address token = poolManager.checkedToken(poolId.raw(), scId.raw());
+        address token = poolManager.checkedShareToken(poolId.raw(), scId.raw());
         IShareToken(token).burn(address(from), shares);
 
         sender.sendUpdateShares(poolId, scId, from, pricePerShare, shares, false);
