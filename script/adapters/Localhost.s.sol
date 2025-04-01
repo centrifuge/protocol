@@ -75,7 +75,7 @@ contract LocalhostDeployer is FullDeployer {
         // cs[c++] = abi.encodeWithSelector(poolRouter.updateSharePrice.selector, scId, navPerShare);
         // cs[c++] = abi.encodeWithSelector(poolRouter.notifySharePrice.selector, scId, assetId);
 
-        poolRouter.execute{value: 0.001 ether}(poolId, cs);
+        //poolRouter.execute{value: 0.001 ether}(poolId, cs);
 
         // Submit deposit request
         IShareToken shareToken = IShareToken(poolManager.token(poolId.raw(), scId.raw()));

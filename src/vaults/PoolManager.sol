@@ -107,7 +107,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
     // --- Outgoing message handling ---
     /// @inheritdoc IPoolManager
-    function transferShares(uint64 poolId, bytes16 scId, uint16 destinationId, bytes32 recipient, uint128 amount)
+    function transferShares(uint64 poolId, bytes16 scId, uint16 destinationId, bytes32 receiver, uint128 amount)
         external
         auth
     {

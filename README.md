@@ -24,7 +24,7 @@ Centrifuge Vaults enable seamless deployment of Centrifuge pools on any EVM-comp
 
 ![Architecture](https://cloudflare-ipfs.com/ipfs/QmW7N8beQ6TF5efwqkMndouxGub2J1jqsEhv5gXDbyqA2K)
 
-Investors can invest in multiple share classes for each RWA pool. Each of these share classes is a separate deployment of an [ERC-7540](https://eips.ethereum.org/EIPS/eip-7540) Vault and a Share Class Class Token.
+Investors can invest in multiple share classes for each RWA pool. Each of these share classes is a separate deployment of an [ERC-7540](https://eips.ethereum.org/EIPS/eip-7540) Vault and a Share Token.
 - [**AsyncVault**](https://github.com/centrifuge/protocol-v3/blob/main/src/vaults/AsyncVault.sol): An [ERC-7540](https://eips.ethereum.org/EIPS/eip-7540) (extension of [ERC-4626](https://ethereum.org/en/developers/docs/standards/tokens/erc-4626/)) compatible contract that enables investors to deposit and withdraw stablecoins to invest in share classes of pools.
 - [**Share Class Token**](https://github.com/centrifuge/protocol-v3/blob/main/src/vaults/token/ShareToken.sol): An [ERC-20](https://ethereum.org/en/developers/docs/standards/tokens/erc-20/) token for the share class, linked to a [`RestrictedTransfers`](https://github.com/centrifuge/protocol-v3/blob/main/src/vaults/token/RestrictedTransfers.sol) that manages transfer restrictions. Prices for share class tokens are computed on Centrifuge.
 
