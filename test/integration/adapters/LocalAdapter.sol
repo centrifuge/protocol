@@ -10,13 +10,13 @@ import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 /// An adapter that sends the message to the another MessageHandler and acts as MessageHandler too.
 contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
-    uint16 sourceChainId;
+    uint16 localId;
     IMessageHandler public gateway;
     IMessageHandler public endpoint;
 
-    constructor(uint16 chainId_, IMessageHandler gateway_, address deployer) Auth(deployer) {
+    constructor(uint16 localId_, IMessageHandler gateway_, address deployer) Auth(deployer) {
         gateway = gateway_;
-        sourceChainId = chainId_;
+        localId = localId_;
     }
 
     function setEndpoint(IMessageHandler endpoint_) public {
@@ -24,18 +24,20 @@ contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
     }
 
     /// @inheritdoc IMessageHandler
-    function handle(uint16 chainId, bytes calldata message) external {
+    function handle(uint16 remoteId, bytes calldata message) external {
         // Local messages must be bypassed
-        assertEq(sourceChainId, chainId, "Expected same chain");
+        assertNotEq(localId, remoteId, "Local messages must be bypassed");
 
-        gateway.handle(chainId, message);
+        gateway.handle(remoteId, message);
     }
 
     /// @inheritdoc IAdapter
-    function send(uint16 destinationChainId, bytes calldata payload, uint256, address) external payable {
+    function send(uint16 destinationId, bytes calldata payload, uint256, address) external payable {
         // Local messages must be bypassed
-        assertNotEq(destinationChainId, sourceChainId, "Local messages must by bypassed");
-        endpoint.handle(destinationChainId, payload);
+        assertNotEq(destinationId, localId, "Local messages must be bypassed");
+
+        // The other handler will receive the message as comming from this
+        endpoint.handle(localId, payload);
     }
 
     /// @inheritdoc IAdapter

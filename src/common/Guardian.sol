@@ -5,15 +5,15 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
-import {IMessageDispatcher} from "src/common/MessageDispatcher.sol";
+import {IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 contract Guardian is IGuardian {
     IRoot public immutable root;
     ISafe public immutable safe;
 
-    IMessageDispatcher public messageDispatcher;
+    IRootMessageSender public messageDispatcher;
 
-    constructor(ISafe safe_, IRoot root_, IMessageDispatcher messageDispatcher_) {
+    constructor(ISafe safe_, IRoot root_, IRootMessageSender messageDispatcher_) {
         root = root_;
         safe = safe_;
         messageDispatcher = messageDispatcher_;
@@ -64,12 +64,12 @@ contract Guardian is IGuardian {
 
     /// @inheritdoc IGuardian
     function initiateMessageRecovery(uint16 chainId, bytes32 hash, address adapter) external onlySafe {
-        messageDispatcher.sendInitiateMessageRecovery(chainId, bytes32(bytes20(hash)), bytes32(bytes20(adapter)));
+        messageDispatcher.sendInitiateMessageRecovery(chainId, hash, bytes32(bytes20(adapter)));
     }
 
     /// @inheritdoc IGuardian
     function disputeMessageRecovery(uint16 chainId, bytes32 hash, address adapter) external onlySafe {
-        messageDispatcher.sendDisputeMessageRecovery(chainId, bytes32(bytes20(hash)), bytes32(bytes20(adapter)));
+        messageDispatcher.sendDisputeMessageRecovery(chainId, hash, bytes32(bytes20(adapter)));
     }
 
     // --- Helpers ---

@@ -34,14 +34,14 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
 
     IEscrow public immutable escrow;
     IGateway public immutable gateway;
-    uint16 public immutable localChainId;
+    uint16 public immutable localCentrifugeId;
     IPoolManager public immutable poolManager;
 
     /// @inheritdoc IVaultRouter
     mapping(address controller => mapping(address vault => uint256 amount)) public lockedRequests;
 
-    constructor(uint16 localChainId_, address escrow_, address gateway_, address poolManager_) Auth(msg.sender) {
-        localChainId = localChainId_;
+    constructor(uint16 localCentrifugeId_, address escrow_, address gateway_, address poolManager_) Auth(msg.sender) {
+        localCentrifugeId = localCentrifugeId_;
         escrow = IEscrow(escrow_);
         gateway = IGateway(gateway_);
         poolManager = IPoolManager(poolManager_);
@@ -310,7 +310,7 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
 
     /// @inheritdoc IVaultRouter
     function estimate(uint16 chainId, bytes calldata payload) external view returns (uint256 amount) {
-        if (chainId == localChainId) return 0;
+        if (chainId == localCentrifugeId) return 0;
         (, amount) = IGateway(gateway).estimate(chainId, payload);
     }
 

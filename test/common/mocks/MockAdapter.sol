@@ -12,14 +12,16 @@ import "test/common/mocks/Mock.sol";
 contract MockAdapter is Auth, Mock, IAdapter {
     IMessageHandler public immutable gateway;
 
+    uint16 centrifugeId;
     mapping(bytes => uint256) public sent;
 
-    constructor(IMessageHandler gateway_) Auth(msg.sender) {
+    constructor(uint16 centrifugeId_, IMessageHandler gateway_) Auth(msg.sender) {
+        centrifugeId = centrifugeId_;
         gateway = gateway_;
     }
 
     function execute(bytes memory _message) external {
-        gateway.handle(1, _message);
+        gateway.handle(centrifugeId, _message);
     }
 
     function send(uint16, bytes calldata message, uint256, address) public payable {
@@ -31,8 +33,4 @@ contract MockAdapter is Auth, Mock, IAdapter {
     function estimate(uint16, bytes calldata, uint256 baseCost) public view returns (uint256 estimation) {
         estimation = values_uint256_return["estimate"] + baseCost;
     }
-
-    // Added to be ignored in coverage report
-
-    function test() public {}
 }

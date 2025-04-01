@@ -22,8 +22,8 @@ contract TestEndToEnd is Test {
     ISafe immutable safeAdminA = ISafe(makeAddr("SafeAdminA"));
     ISafe immutable safeAdminB = ISafe(makeAddr("SafeAdminB"));
 
-    uint16 constant CHAIN_A = 5;
-    uint16 constant CHAIN_B = 6;
+    uint16 constant CENTRIFUGE_ID_A = 5;
+    uint16 constant CENTRIFUGE_ID_B = 6;
     uint64 constant GAS = 100 wei;
 
     address immutable DEPLOYER = address(this);
@@ -33,8 +33,8 @@ contract TestEndToEnd is Test {
     FullDeployer deployB = new FullDeployer();
 
     function setUp() public {
-        LocalAdapter adapterA = _deployChain(deployA, CHAIN_A, safeAdminA);
-        LocalAdapter adapterB = _deployChain(deployB, CHAIN_B, safeAdminB);
+        LocalAdapter adapterA = _deployChain(deployA, CENTRIFUGE_ID_A, CENTRIFUGE_ID_B, safeAdminA);
+        LocalAdapter adapterB = _deployChain(deployB, CENTRIFUGE_ID_B, CENTRIFUGE_ID_A, safeAdminB);
 
         // We connect both deploys through the adapters
         adapterA.setEndpoint(adapterB);
@@ -47,11 +47,14 @@ contract TestEndToEnd is Test {
         vm.chainId(0xDEAD);
     }
 
-    function _deployChain(FullDeployer deploy, uint16 chainId, ISafe safeAdmin) public returns (LocalAdapter adapter) {
-        deploy.deployFull(chainId, safeAdmin, address(deploy));
+    function _deployChain(FullDeployer deploy, uint16 localCentrifugeId, uint16 remoteCentrifugeId, ISafe safeAdmin)
+        public
+        returns (LocalAdapter adapter)
+    {
+        deploy.deployFull(localCentrifugeId, safeAdmin, address(deploy));
 
-        adapter = new LocalAdapter(chainId, deploy.gateway(), address(deploy));
-        deploy.wire(chainId, adapter, address(deploy));
+        adapter = new LocalAdapter(localCentrifugeId, deploy.gateway(), address(deploy));
+        deploy.wire(remoteCentrifugeId, adapter, address(deploy));
 
         vm.startPrank(address(deploy));
         deploy.gasService().file("messageGasLimit", GAS);

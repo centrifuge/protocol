@@ -83,6 +83,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         gateway.rely(address(guardian));
         gateway.rely(address(messageDispatcher));
         messageProcessor.rely(address(gateway));
+        messageDispatcher.rely(address(guardian));
     }
 
     function _commonFile() private {

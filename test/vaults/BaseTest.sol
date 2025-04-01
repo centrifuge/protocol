@@ -67,7 +67,6 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     uint128 public defaultAssetId = newAssetId(THIS_CHAIN_ID, 1).raw();
     uint128 public defaultPrice = 1 * 10 ** 18;
     uint8 public defaultDecimals = 8;
-    uint32 public defaultPoolId = 5;
     bytes16 public defaultShareClassId = bytes16(bytes("1"));
 
     function setUp() public virtual {
@@ -84,9 +83,9 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
         // deploy mock adapters
 
-        adapter1 = new MockAdapter(gateway);
-        adapter2 = new MockAdapter(gateway);
-        adapter3 = new MockAdapter(gateway);
+        adapter1 = new MockAdapter(OTHER_CHAIN_ID, gateway);
+        adapter2 = new MockAdapter(OTHER_CHAIN_ID, gateway);
+        adapter3 = new MockAdapter(OTHER_CHAIN_ID, gateway);
 
         adapter1.setReturn("estimate", uint256(1 gwei));
         adapter2.setReturn("estimate", uint256(1.25 gwei));
@@ -97,7 +96,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         testAdapters.push(adapter3);
 
         // wire contracts
-        wire(THIS_CHAIN_ID, adapter1, address(this));
+        wire(OTHER_CHAIN_ID, adapter1, address(this));
         // remove deployer access
         // removeVaultsDeployerAccess(address(adapter)); // need auth permissions in tests
 
@@ -106,7 +105,6 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         erc20 = _newErc20("X's Dollar", "USDX", 6);
         erc6909 = new MockERC6909();
 
-        gateway.file("adapters", THIS_CHAIN_ID, testAdapters);
         gateway.file("adapters", OTHER_CHAIN_ID, testAdapters);
         gateway.file("gasService", address(mockedGasService));
 
@@ -165,7 +163,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         uint256 assetTokenId,
         uint16 /* TODO: destinationChain */
     ) public returns (uint64 poolId, address vaultAddress, uint128 assetId) {
-        poolId = newPoolId(THIS_CHAIN_ID, POOL_A).raw();
+        poolId = newPoolId(OTHER_CHAIN_ID, POOL_A).raw();
 
         if (poolManager.assetToId(asset, assetTokenId) == 0) {
             assetId = poolManager.registerAsset(asset, assetTokenId, OTHER_CHAIN_ID);

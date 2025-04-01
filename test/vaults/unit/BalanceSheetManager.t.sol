@@ -31,13 +31,13 @@ contract BalanceSheetManagerTest is BaseTest {
         super.setUp();
         defaultAmount = 100;
         defaultPricePerShare = d18(1, 1);
-        defaultTypedPoolId = PoolId.wrap(defaultPoolId);
+        defaultTypedPoolId = newPoolId(OTHER_CHAIN_ID, POOL_A);
         defaultTypedShareClassId = ShareClassId.wrap(defaultShareClassId);
 
         assetId = AssetId.wrap(poolManager.registerAsset(address(erc20), erc20TokenId, OTHER_CHAIN_ID));
-        poolManager.addPool(defaultPoolId);
+        poolManager.addPool(defaultTypedPoolId.raw());
         poolManager.addTranche(
-            defaultPoolId,
+            defaultTypedPoolId.raw(),
             defaultShareClassId,
             "testShareClass",
             "tsc",
@@ -46,13 +46,13 @@ contract BalanceSheetManagerTest is BaseTest {
             restrictionManager
         );
         poolManager.updateRestriction(
-            defaultPoolId,
+            defaultTypedPoolId.raw(),
             defaultShareClassId,
             MessageLib.UpdateRestrictionMember({user: address(this).toBytes32(), validUntil: MAX_UINT64}).serialize()
         );
         // In order for allowances to work during issuance, the balanceSheetManager must be allowed to transfer
         poolManager.updateRestriction(
-            defaultPoolId,
+            defaultTypedPoolId.raw(),
             defaultShareClassId,
             MessageLib.UpdateRestrictionMember({user: address(balanceSheetManager).toBytes32(), validUntil: MAX_UINT64})
                 .serialize()
@@ -159,7 +159,7 @@ contract BalanceSheetManagerTest is BaseTest {
         emit IBalanceSheetManager.Permission(defaultTypedPoolId, defaultTypedShareClassId, randomUser, true);
 
         balanceSheetManager.update(
-            defaultPoolId,
+            defaultTypedPoolId.raw(),
             defaultShareClassId,
             MessageLib.UpdateContractPermission({who: randomUser, allowed: true}).serialize()
         );
@@ -179,7 +179,7 @@ contract BalanceSheetManagerTest is BaseTest {
         emit IBalanceSheetManager.Permission(defaultTypedPoolId, defaultTypedShareClassId, randomUser, false);
 
         balanceSheetManager.update(
-            defaultPoolId,
+            defaultTypedPoolId.raw(),
             defaultShareClassId,
             MessageLib.UpdateContractPermission({who: randomUser, allowed: false}).serialize()
         );
@@ -343,7 +343,7 @@ contract BalanceSheetManagerTest is BaseTest {
             defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount, false
         );
 
-        IERC20 token = IERC20(poolManager.tranche(defaultPoolId, defaultShareClassId));
+        IERC20 token = IERC20(poolManager.tranche(defaultTypedPoolId.raw(), defaultShareClassId));
         assertEq(token.balanceOf(address(this)), 0);
 
         vm.expectEmit();
@@ -364,7 +364,7 @@ contract BalanceSheetManagerTest is BaseTest {
             defaultTypedPoolId, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount, true
         );
 
-        IERC20 token = IERC20(poolManager.tranche(defaultPoolId, defaultShareClassId));
+        IERC20 token = IERC20(poolManager.tranche(defaultTypedPoolId.raw(), defaultShareClassId));
         assertEq(token.balanceOf(address(this)), 0);
 
         balanceSheetManager.issue(
@@ -377,7 +377,7 @@ contract BalanceSheetManagerTest is BaseTest {
 
     function testRevoke() public {
         testIssue();
-        IERC20 token = IERC20(poolManager.tranche(defaultPoolId, defaultShareClassId));
+        IERC20 token = IERC20(poolManager.tranche(defaultTypedPoolId.raw(), defaultShareClassId));
         assertEq(token.balanceOf(address(this)), defaultAmount);
 
         vm.prank(randomUser);

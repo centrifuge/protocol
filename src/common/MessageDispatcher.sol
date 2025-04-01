@@ -20,13 +20,13 @@ import {
     IPoolRouterGatewayHandler,
     IBalanceSheetManagerGatewayHandler
 } from "src/common/interfaces/IGatewayHandlers.sol";
-import {IVaultMessageSender, IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {IVaultMessageSender, IPoolMessageSender, IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 
-interface IMessageDispatcher is IVaultMessageSender, IPoolMessageSender {
+interface IMessageDispatcher is IRootMessageSender, IVaultMessageSender, IPoolMessageSender {
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 indexed what, address addr);
 
@@ -238,25 +238,25 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
-    /// @inheritdoc IPoolMessageSender
+    /// @inheritdoc IRootMessageSender
     function sendScheduleUpgrade(uint16 chainId, bytes32 target) external auth {
         require(chainId != localCentrifugeId, LocalExecutionNotAllowed());
         gateway.send(chainId, MessageLib.ScheduleUpgrade({target: target}).serialize());
     }
 
-    /// @inheritdoc IPoolMessageSender
+    /// @inheritdoc IRootMessageSender
     function sendCancelUpgrade(uint16 chainId, bytes32 target) external auth {
         require(chainId != localCentrifugeId, LocalExecutionNotAllowed());
         gateway.send(chainId, MessageLib.CancelUpgrade({target: target}).serialize());
     }
 
-    /// @inheritdoc IPoolMessageSender
+    /// @inheritdoc IRootMessageSender
     function sendInitiateMessageRecovery(uint16 chainId, bytes32 hash, bytes32 adapter) external auth {
         require(chainId != localCentrifugeId, LocalExecutionNotAllowed());
         gateway.send(chainId, MessageLib.InitiateMessageRecovery({hash: hash, adapter: adapter}).serialize());
     }
 
-    /// @inheritdoc IPoolMessageSender
+    /// @inheritdoc IRootMessageSender
     function sendDisputeMessageRecovery(uint16 chainId, bytes32 hash, bytes32 adapter) external auth {
         require(chainId != localCentrifugeId, LocalExecutionNotAllowed());
         gateway.send(chainId, MessageLib.DisputeMessageRecovery({hash: hash, adapter: adapter}).serialize());
