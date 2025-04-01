@@ -21,6 +21,10 @@ contract TransientValuation is BaseValuation, ReentrancyProtection, ITransientVa
     function setPrice(address base, address quote, D18 price) external protected {
         bytes32 slot = keccak256(abi.encode(base, quote));
         slot.tstore(uint256(price.inner()));
+
+        // @dev we assume symmetric prices
+        slot = keccak256(abi.encode(quote, base));
+        slot.tstore(uint256(price.reciprocal().inner()));
     }
 
     /// @inheritdoc IERC7726
