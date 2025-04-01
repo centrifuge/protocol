@@ -438,7 +438,7 @@ contract VaultRouterTest is BaseTest {
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
         (address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, 5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0
+            VaultKind.Async, 5, 6, restrictedTransfers, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0
         );
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
@@ -476,7 +476,7 @@ contract VaultRouterTest is BaseTest {
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
         (address vault_,) = deployVault(
-            VaultKind.Async, 5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0
+            VaultKind.Async, 5, 6, restrictedTransfers, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0
         );
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
@@ -507,7 +507,7 @@ contract VaultRouterTest is BaseTest {
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
         (address vault_,) = deployVault(
-            VaultKind.Async, 5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0
+            VaultKind.Async, 5, 6, restrictedTransfers, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0
         );
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
@@ -534,7 +534,7 @@ contract VaultRouterTest is BaseTest {
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
         (address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, 5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0
+            VaultKind.Async, 5, 6, restrictedTransfers, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0
         );
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
@@ -590,7 +590,7 @@ contract VaultRouterTest is BaseTest {
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
         (address vault_,) = deployVault(
-            VaultKind.Async, 5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0
+            VaultKind.Async, 5, 6, restrictedTransfers, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0
         );
         vm.label(vault_, "vault");
 
@@ -728,10 +728,10 @@ contract VaultRouterTest is BaseTest {
         vm.label(address(erc20X), "erc20X");
         vm.label(address(erc20Y), "erc20Y");
         (address vault1_,) = deployVault(
-            VaultKind.Async, 5, 6, restrictionManager, "name1", "symbol1", bytes16(bytes("1")), address(erc20X), 0, 0
+            VaultKind.Async, 5, 6, restrictedTransfers, "name1", "symbol1", bytes16(bytes("1")), address(erc20X), 0, 0
         );
         (address vault2_,) = deployVault(
-            VaultKind.Async, 4, 6, restrictionManager, "name2", "symbol2", bytes16(bytes("2")), address(erc20Y), 0, 0
+            VaultKind.Async, 4, 6, restrictedTransfers, "name2", "symbol2", bytes16(bytes("2")), address(erc20Y), 0, 0
         );
         vault1 = AsyncVault(vault1_);
         vault2 = AsyncVault(vault2_);
@@ -754,7 +754,7 @@ contract VaultRouterTest is BaseTest {
 
         MockReentrantERC20Wrapper1 wrapper = new MockReentrantERC20Wrapper1(address(erc20), address(vaultRouter));
         (address vault_,) = deployVault(
-            VaultKind.Async, 5, 6, restrictionManager, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0
+            VaultKind.Async, 5, 6, restrictedTransfers, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0
         );
         vm.label(vault_, "vault");
 

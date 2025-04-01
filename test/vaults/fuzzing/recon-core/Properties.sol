@@ -85,7 +85,7 @@ abstract contract Properties is Setup, Asserts, AsyncVaultCentrifugeProperties {
         systemAddresses[4] = address(vault);
         systemAddresses[5] = address(assetErc20);
         systemAddresses[6] = address(token);
-        systemAddresses[7] = address(restrictionManager);
+        systemAddresses[7] = address(restrictedTransfers);
 
         return systemAddresses;
     }

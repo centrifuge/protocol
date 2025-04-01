@@ -143,9 +143,9 @@ interface IPoolManager is IRecoverable {
     /// @param  poolId The centrifuge pool id
     /// @param  scId The share class id
     /// @param  destinationId The destination chain id
-    /// @param  recipient A bytes32 representation of the recipient address
+    /// @param  receiver A bytes32 representation of the receiver address
     /// @param  amount The amount of tokens to transfer
-    function transferShares(uint64 poolId, bytes16 scId, uint16 destinationId, bytes32 recipient, uint128 amount)
+    function transferShares(uint64 poolId, bytes16 scId, uint16 destinationId, bytes32 receiver, uint128 amount)
         external;
 
     /// @notice     Registers an ERC-20 or ERC-6909 asset in another chain.

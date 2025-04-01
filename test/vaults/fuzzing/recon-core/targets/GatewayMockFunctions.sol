@@ -75,7 +75,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
             string memory symbol = "T1";
 
             // TODO: Ask if we should customize decimals and permissions here
-            newShareToken = poolManager_addShareClass(POOL_ID, SHARE_ID, name, symbol, 18, address(restrictionManager));
+            newShareToken = poolManager_addShareClass(POOL_ID, SHARE_ID, name, symbol, 18, address(restrictedTransfers));
         }
 
         newVault = poolManager_deployVault(POOL_ID, SHARE_ID, newAssetId);
@@ -99,7 +99,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         vault = AsyncVault(newVault);
         assetErc20 = ERC20(newToken);
         token = CentrifugeToken(newShareToken);
-        restrictionManager = RestrictedTransfers(address(token.hook()));
+        restrictedTransfers = RestrictedTransfers(address(token.hook()));
 
         scId = SHARE_ID;
         poolId = POOL_ID;

@@ -169,7 +169,7 @@ contract MockCentrifugeChain is Test {
             MessageLib.TransferShares({
                 poolId: poolId,
                 scId: scId,
-                recipient: destinationAddress.toBytes32(),
+                receiver: destinationAddress.toBytes32(),
                 amount: amount
             }).serialize()
         );

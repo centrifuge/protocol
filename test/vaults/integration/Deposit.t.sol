@@ -170,7 +170,7 @@ contract DepositTest is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         (address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, poolId, SHARE_TOKEN_DECIMALS, restrictionManager, "", "", scId, address(asset), 0, 0
+            VaultKind.Async, poolId, SHARE_TOKEN_DECIMALS, restrictedTransfers, "", "", scId, address(asset), 0, 0
         );
         AsyncVault vault = AsyncVault(vault_);
         centrifugeChain.updateSharePrice(poolId, scId, assetId, 1000000000000000000, uint64(block.timestamp));
@@ -431,7 +431,7 @@ contract DepositTest is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         (address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, poolId, SHARE_TOKEN_DECIMALS, restrictionManager, "", "", scId, address(asset), 0, 0
+            VaultKind.Async, poolId, SHARE_TOKEN_DECIMALS, restrictedTransfers, "", "", scId, address(asset), 0, 0
         );
         AsyncVault vault = AsyncVault(vault_);
         centrifugeChain.updateSharePrice(poolId, scId, assetId, 1000000000000000000, uint64(block.timestamp));
@@ -498,7 +498,7 @@ contract DepositTest is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", 18);
         (address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, poolId, 6, restrictionManager, "", "", scId, address(asset), 0, 0);
+            deployVault(VaultKind.Async, poolId, 6, restrictedTransfers, "", "", scId, address(asset), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken token = IShareToken(address(vault.share()));
         centrifugeChain.updateSharePrice(poolId, scId, assetId, 1000000000000000000000000000, uint64(block.timestamp));
@@ -570,7 +570,7 @@ contract DepositTest is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         (address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, poolId, SHARE_TOKEN_DECIMALS, restrictionManager, "", "", scId, address(asset), 0, 0
+            VaultKind.Async, poolId, SHARE_TOKEN_DECIMALS, restrictedTransfers, "", "", scId, address(asset), 0, 0
         );
         AsyncVault vault = AsyncVault(vault_);
 
@@ -613,7 +613,7 @@ contract DepositTest is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         (address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, poolId, SHARE_TOKEN_DECIMALS, restrictionManager, "", "", scId, address(asset), 0, 0
+            VaultKind.Async, poolId, SHARE_TOKEN_DECIMALS, restrictedTransfers, "", "", scId, address(asset), 0, 0
         );
         AsyncVault vault = AsyncVault(vault_);
 

@@ -20,7 +20,7 @@ interface ERC20Like {
 
 contract ShareTokenTest is Test, GasSnapshot {
     CentrifugeToken token;
-    MockRestrictedTransfers restrictionManager;
+    MockRestrictedTransfers restrictedTransfers;
 
     address self;
     address escrow = makeAddr("escrow");
@@ -34,8 +34,8 @@ contract ShareTokenTest is Test, GasSnapshot {
         token.file("name", "Some Token");
         token.file("symbol", "ST");
 
-        restrictionManager = new MockRestrictedTransfers(address(new MockRoot()), address(this));
-        token.file("hook", address(restrictionManager));
+        restrictedTransfers = new MockRestrictedTransfers(address(new MockRoot()), address(this));
+        token.file("hook", address(restrictedTransfers));
     }
 
     // --- Admnistration ---
@@ -103,30 +103,30 @@ contract ShareTokenTest is Test, GasSnapshot {
     function _testTransferFrom(uint256 amount, bool snap) internal {
         amount = bound(amount, 0, type(uint128).max / 2);
 
-        restrictionManager.updateMember(address(token), self, uint64(validUntil));
+        restrictedTransfers.updateMember(address(token), self, uint64(validUntil));
         token.mint(self, amount * 2);
 
         vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.transferFrom(self, targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
-        restrictionManager.updateMember(address(token), targetUser, uint64(validUntil));
-        (bool _isMember, uint64 _validUntil) = restrictionManager.isMember(address(token), targetUser);
+        restrictedTransfers.updateMember(address(token), targetUser, uint64(validUntil));
+        (bool _isMember, uint64 _validUntil) = restrictedTransfers.isMember(address(token), targetUser);
         assertTrue(_isMember);
         assertEq(_validUntil, validUntil);
 
-        restrictionManager.freeze(address(token), self);
+        restrictedTransfers.freeze(address(token), self);
         vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.transferFrom(self, targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
-        restrictionManager.unfreeze(address(token), self);
-        restrictionManager.freeze(address(token), targetUser);
+        restrictedTransfers.unfreeze(address(token), self);
+        restrictedTransfers.freeze(address(token), targetUser);
         vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.transferFrom(self, targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
-        restrictionManager.unfreeze(address(token), targetUser);
+        restrictedTransfers.unfreeze(address(token), targetUser);
         if (snap) {
             snapStart("Share_transferFrom");
         }
@@ -145,10 +145,10 @@ contract ShareTokenTest is Test, GasSnapshot {
     function testTransferFromTokensWithApproval(uint256 amount) public {
         amount = bound(amount, 1, type(uint128).max);
         address sender = makeAddr("sender");
-        restrictionManager.updateMember(address(token), sender, uint64(validUntil));
+        restrictedTransfers.updateMember(address(token), sender, uint64(validUntil));
         token.mint(sender, amount);
 
-        restrictionManager.updateMember(address(token), targetUser, uint64(validUntil));
+        restrictedTransfers.updateMember(address(token), targetUser, uint64(validUntil));
 
         vm.expectRevert(IERC20.InsufficientAllowance.selector);
         token.transferFrom(sender, targetUser, amount);
@@ -164,24 +164,24 @@ contract ShareTokenTest is Test, GasSnapshot {
     function testTransfer(uint256 amount) public {
         amount = bound(amount, 0, type(uint128).max / 2);
 
-        restrictionManager.updateMember(address(token), self, uint64(validUntil));
+        restrictedTransfers.updateMember(address(token), self, uint64(validUntil));
         token.mint(self, amount * 2);
 
         vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.transfer(targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
-        restrictionManager.updateMember(address(token), targetUser, uint64(validUntil));
-        (bool _isMember, uint64 _validUntil) = restrictionManager.isMember(address(token), targetUser);
+        restrictedTransfers.updateMember(address(token), targetUser, uint64(validUntil));
+        (bool _isMember, uint64 _validUntil) = restrictedTransfers.isMember(address(token), targetUser);
         assertTrue(_isMember);
         assertEq(_validUntil, validUntil);
 
-        restrictionManager.freeze(address(token), self);
+        restrictedTransfers.freeze(address(token), self);
         vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.transfer(targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
-        restrictionManager.unfreeze(address(token), self);
+        restrictedTransfers.unfreeze(address(token), self);
         token.transfer(targetUser, amount);
         assertEq(token.balanceOf(targetUser), amount);
         afterTransferAssumptions(self, targetUser, amount);
@@ -195,7 +195,7 @@ contract ShareTokenTest is Test, GasSnapshot {
     function testAuthTransferFrom(uint256 amount) public {
         amount = bound(amount, 0, type(uint128).max);
         address sourceUser = makeAddr("sourceUser");
-        restrictionManager.updateMember(address(token), sourceUser, uint64(validUntil));
+        restrictedTransfers.updateMember(address(token), sourceUser, uint64(validUntil));
         token.mint(sourceUser, amount);
 
         vm.prank(address(2));
@@ -217,8 +217,8 @@ contract ShareTokenTest is Test, GasSnapshot {
         vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.mint(targetUser, amount);
 
-        restrictionManager.updateMember(address(token), targetUser, uint64(validUntil));
-        (bool _isMember, uint64 _validUntil) = restrictionManager.isMember(address(token), targetUser);
+        restrictedTransfers.updateMember(address(token), targetUser, uint64(validUntil));
+        (bool _isMember, uint64 _validUntil) = restrictedTransfers.isMember(address(token), targetUser);
         assertTrue(_isMember);
         assertEq(_validUntil, validUntil);
 
@@ -233,8 +233,8 @@ contract ShareTokenTest is Test, GasSnapshot {
     }
 
     function afterTransferAssumptions(address from, address to, uint256 value) internal view {
-        assertEq(restrictionManager.values_address("onERC20Transfer_from"), from);
-        assertEq(restrictionManager.values_address("onERC20Transfer_to"), to);
-        assertEq(restrictionManager.values_uint256("onERC20Transfer_value"), value);
+        assertEq(restrictedTransfers.values_address("onERC20Transfer_from"), from);
+        assertEq(restrictedTransfers.values_address("onERC20Transfer_to"), to);
+        assertEq(restrictedTransfers.values_uint256("onERC20Transfer_value"), value);
     }
 }

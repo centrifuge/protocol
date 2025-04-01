@@ -43,7 +43,7 @@ contract BalanceSheetManagerTest is BaseTest {
             "tsc",
             defaultDecimals,
             bytes32(""),
-            restrictionManager
+            restrictedTransfers
         );
         poolManager.updateRestriction(
             defaultPoolId,

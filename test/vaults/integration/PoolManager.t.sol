@@ -446,7 +446,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         vm.prank(randomUser);
         poolManager.updateShareHook(poolId, scId, newHook);
 
-        assertEq(token.hook(), restrictionManager);
+        assertEq(token.hook(), restrictedTransfers);
 
         centrifugeChain.updateShareHook(poolId, scId, newHook);
         assertEq(token.hook(), newHook);

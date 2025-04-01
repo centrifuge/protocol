@@ -59,7 +59,7 @@ contract LocalhostDeployer is FullDeployer {
         );
         cs[c++] = abi.encodeWithSelector(poolRouter.notifyPool.selector, centrifugeChainId);
         cs[c++] = abi.encodeWithSelector(
-            poolRouter.notifyShareClass.selector, centrifugeChainId, scId, bytes32(bytes20(restrictedRedemptions))
+            poolRouter.notifyShareClass.selector, centrifugeChainId, scId, bytes32(bytes20(freelyTransferable))
         );
         cs[c++] =
             abi.encodeWithSelector(poolRouter.createHolding.selector, scId, assetId, identityValuation, false, 0x01);

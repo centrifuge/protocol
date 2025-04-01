@@ -26,7 +26,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, CallTestAndU
         if (address(token) == address(0)) {
             return false;
         }
-        if (address(restrictionManager) == address(0)) {
+        if (address(restrictedTransfers) == address(0)) {
             return false;
         }
         if (address(assetErc20) == address(0)) {

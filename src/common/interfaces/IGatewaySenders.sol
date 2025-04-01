@@ -80,7 +80,7 @@ interface IPoolMessageSender is ILocalCentrifugeId {
 /// @notice Interface for dispatch-only gateway
 interface IVaultMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
-    function sendTransferShares(uint16 chainId, uint64 poolId, bytes16 scId, bytes32 recipient, uint128 amount)
+    function sendTransferShares(uint16 chainId, uint64 poolId, bytes16 scId, bytes32 receiver, uint128 amount)
         external;
 
     /// @notice Creates and send the message

@@ -18,23 +18,23 @@ abstract contract RestrictedTransfersFunctions is BaseTargetFunctions, Propertie
     // NOTE: Same idea that we cycle through values via modifier
 
     // TODO: Actory Cycling
-    function restrictionManager_updateMemberBasic(uint64 validUntil) public {
-        restrictionManager.updateMember(address(token), actor, validUntil);
+    function restrictedTransfers_updateMemberBasic(uint64 validUntil) public {
+        restrictedTransfers.updateMember(address(token), actor, validUntil);
     }
 
     // TODO: We prob want to keep one generic
     // And one with limited actors
-    function restrictionManager_updateMember(address user, uint64 validUntil) public {
-        restrictionManager.updateMember(address(token), user, validUntil);
+    function restrictedTransfers_updateMember(address user, uint64 validUntil) public {
+        restrictedTransfers.updateMember(address(token), user, validUntil);
     }
 
     // TODO: Actor Cycling
-    function restrictionManager_freeze(address /*user*/ ) public {
-        restrictionManager.freeze(address(token), actor);
+    function restrictedTransfers_freeze(address /*user*/ ) public {
+        restrictedTransfers.freeze(address(token), actor);
     }
 
-    function restrictionManager_unfreeze(address /*user*/ ) public {
-        restrictionManager.unfreeze(address(token), actor);
+    function restrictedTransfers_unfreeze(address /*user*/ ) public {
+        restrictedTransfers.unfreeze(address(token), actor);
     }
 
     /**

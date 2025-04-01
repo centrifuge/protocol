@@ -12,7 +12,7 @@ contract DepositRedeem is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         (address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, poolId, SHARE_TOKEN_DECIMALS, restrictionManager, "", "", scId, address(asset), 0, 0
+            VaultKind.Async, poolId, SHARE_TOKEN_DECIMALS, restrictedTransfers, "", "", scId, address(asset), 0, 0
         );
         AsyncVault vault = AsyncVault(vault_);
 

@@ -29,14 +29,14 @@ abstract contract ShareTokenFunctions is BaseTargetFunctions, Properties {
 
         // TT-1 Always revert if one of them is frozen
         if (
-            restrictionManager.isFrozen(address(token), to) == true
-                || restrictionManager.isFrozen(address(token), actor) == true
+            restrictedTransfers.isFrozen(address(token), to) == true
+                || restrictedTransfers.isFrozen(address(token), actor) == true
         ) {
             t(hasReverted, "TT-1 Must Revert");
         }
 
         // Not a member | NOTE: Non member actor and from can move tokens?
-        (bool isMember,) = restrictionManager.isMember(address(token), to);
+        (bool isMember,) = restrictedTransfers.isMember(address(token), to);
         if (!isMember) {
             t(hasReverted, "TT-3 Must Revert");
         }
@@ -63,14 +63,14 @@ abstract contract ShareTokenFunctions is BaseTargetFunctions, Properties {
 
         // TT-1 Always revert if one of them is frozen
         if (
-            restrictionManager.isFrozen(address(token), to) == true
-                || restrictionManager.isFrozen(address(token), from) == true
+            restrictedTransfers.isFrozen(address(token), to) == true
+                || restrictedTransfers.isFrozen(address(token), from) == true
         ) {
             t(hasReverted, "TT-1 Must Revert");
         }
 
         // Not a member | NOTE: Non member actor and from can move tokens?
-        (bool isMember,) = restrictionManager.isMember(address(token), to);
+        (bool isMember,) = restrictedTransfers.isMember(address(token), to);
         if (!isMember) {
             t(hasReverted, "TT-3 Must Revert");
         }
@@ -87,12 +87,12 @@ abstract contract ShareTokenFunctions is BaseTargetFunctions, Properties {
             hasReverted = true;
         }
 
-        if (restrictionManager.isFrozen(address(token), to) == true) {
+        if (restrictedTransfers.isFrozen(address(token), to) == true) {
             t(hasReverted, "TT-1 Must Revert");
         }
 
         // Not a member
-        (bool isMember,) = restrictionManager.isMember(address(token), to);
+        (bool isMember,) = restrictedTransfers.isMember(address(token), to);
         if (!isMember) {
             t(hasReverted, "TT-3 Must Revert");
         }

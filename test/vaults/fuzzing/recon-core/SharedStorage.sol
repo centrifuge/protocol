@@ -78,8 +78,8 @@ abstract contract SharedStorage {
 
     /**
      * See:
-     *         - poolManager_handleTransfer(bytes32 recipient, uint128 amount)
-     *         - poolManager_handleTransfer(address recipient, uint128 amount)
+     *         - poolManager_handleTransfer(bytes32 receiver, uint128 amount)
+     *         - poolManager_handleTransfer(address receiver, uint128 amount)
      *
      *         - poolManager_transfer
      */

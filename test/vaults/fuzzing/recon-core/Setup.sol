@@ -36,7 +36,7 @@ abstract contract Setup is BaseSetup, SharedStorage {
     ERC20 assetErc20;
     CentrifugeToken token;
     address actor = address(this); // TODO: Generalize
-    RestrictedTransfers restrictionManager;
+    RestrictedTransfers restrictedTransfers;
 
     bytes16 scId;
     uint64 poolId;
@@ -64,7 +64,7 @@ abstract contract Setup is BaseSetup, SharedStorage {
         tokenFactory = new TokenFactory(address(this), address(this));
         escrow = new Escrow(address(address(this)));
         root = new Root(48 hours, address(this));
-        restrictionManager = new RestrictedTransfers(address(root), address(this));
+        restrictedTransfers = new RestrictedTransfers(address(root), address(this));
 
         root.endorse(address(escrow));
 
@@ -81,7 +81,7 @@ abstract contract Setup is BaseSetup, SharedStorage {
         asyncRequests.rely(address(poolManager));
         asyncRequests.rely(address(vaultFactory));
 
-        restrictionManager.rely(address(poolManager));
+        restrictedTransfers.rely(address(poolManager));
 
         // Setup Escrow Permissions
         escrow.rely(address(asyncRequests));

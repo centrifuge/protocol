@@ -153,13 +153,13 @@ interface IVaultRouter is IMulticall, IRecoverable {
     ///
     /// @param  vault The vault for the corresponding share class token
     /// @param  chainId Check `IPoolManager.transferShares.destinationId`
-    /// @param  recipient Check `IPoolManager.transferShares.recipient`
+    /// @param  receiver Check `IPoolManager.transferShares.receiver`
     /// @param  amount Check `IPoolManager.transferShares.amount`
-    function transferShares(address vault, uint16 chainId, bytes32 recipient, uint128 amount) external payable;
+    function transferShares(address vault, uint16 chainId, bytes32 receiver, uint128 amount) external payable;
 
-    /// @notice This is a more friendly version where the recipient is and EVM address
-    /// @dev    The recipient address is padded to 32 bytes internally
-    function transferShares(address vault, uint16 chainId, address recipient, uint128 amount) external payable;
+    /// @notice This is a more friendly version where the receiver is and EVM address
+    /// @dev    The receiver address is padded to 32 bytes internally
+    function transferShares(address vault, uint16 chainId, address receiver, uint128 amount) external payable;
 
     // --- ERC20 permit ---
     /// @notice Check IERC20.permit

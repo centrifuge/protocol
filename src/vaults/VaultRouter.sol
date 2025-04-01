@@ -242,26 +242,22 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
 
     // --- Transfer ---
     /// @inheritdoc IVaultRouter
-    function transferShares(address vault, uint16 chainId, bytes32 recipient, uint128 amount)
-        public
-        payable
-        protected
-    {
+    function transferShares(address vault, uint16 chainId, bytes32 receiver, uint128 amount) public payable protected {
         SafeTransferLib.safeTransferFrom(IAsyncVault(vault).share(), msg.sender, address(this), amount);
         _approveMax(IAsyncVault(vault).share(), 0, address(poolManager));
         _pay();
         IPoolManager(poolManager).transferShares(
-            IAsyncVault(vault).poolId(), IAsyncVault(vault).trancheId(), chainId, recipient, amount
+            IAsyncVault(vault).poolId(), IAsyncVault(vault).trancheId(), chainId, receiver, amount
         );
     }
 
     /// @inheritdoc IVaultRouter
-    function transferShares(address vault, uint16 chainId, address recipient, uint128 amount)
+    function transferShares(address vault, uint16 chainId, address receiver, uint128 amount)
         external
         payable
         protected
     {
-        transferShares(vault, chainId, recipient.toBytes32(), amount);
+        transferShares(vault, chainId, receiver.toBytes32(), amount);
     }
 
     // --- Register Asset ---

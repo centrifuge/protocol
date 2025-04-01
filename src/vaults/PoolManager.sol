@@ -115,9 +115,9 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         require(address(shareClass) != address(0), "PoolManager/unknown-token");
         shareClass.burn(msg.sender, amount);
 
-        sender.sendTransferShares(destinationId, poolId, scId, recipient, amount);
+        sender.sendTransferShares(destinationId, poolId, scId, receiver, amount);
 
-        emit TransferShares(poolId, scId, msg.sender, destinationId, recipient, amount);
+        emit TransferShares(poolId, scId, msg.sender, destinationId, receiver, amount);
     }
 
     // @inheritdoc IPoolManagerGatewayHandler

@@ -49,14 +49,14 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
         }
 
         // If not member
-        (bool isMember,) = restrictionManager.isMember(address(token), actor);
+        (bool isMember,) = restrictedTransfers.isMember(address(token), actor);
         if (!isMember) {
             t(hasReverted, "LP-1 Must Revert");
         }
 
         if (
-            restrictionManager.isFrozen(address(token), actor) == true
-                || restrictionManager.isFrozen(address(token), to) == true
+            restrictedTransfers.isFrozen(address(token), actor) == true
+                || restrictedTransfers.isFrozen(address(token), to) == true
         ) {
             t(hasReverted, "LP-2 Must Revert");
         }
@@ -98,8 +98,8 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
         }
 
         if (
-            restrictionManager.isFrozen(address(token), actor) == true
-                || restrictionManager.isFrozen(address(token), to) == true
+            restrictedTransfers.isFrozen(address(token), actor) == true
+                || restrictedTransfers.isFrozen(address(token), to) == true
         ) {
             t(hasReverted, "LP-2 Must Revert");
         }
