@@ -22,15 +22,15 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
     /// @inheritdoc IVaultFactory
     function newVault(
         uint64 poolId,
-        bytes16 trancheId,
+        bytes16 scId,
         address asset,
         uint256 tokenId,
-        address tranche,
+        address token,
         address, /* escrow */
         address[] calldata wards_
     ) public auth returns (address) {
         SyncDepositVault vault =
-            new SyncDepositVault(poolId, trancheId, asset, tokenId, tranche, root, syncRequests, asyncRequests);
+            new SyncDepositVault(poolId, scId, asset, tokenId, token, root, syncRequests, asyncRequests);
 
         vault.rely(root);
         vault.rely(syncRequests);

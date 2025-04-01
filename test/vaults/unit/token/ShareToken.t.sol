@@ -1,23 +1,26 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "src/vaults/interfaces/IERC7575.sol";
-import "src/vaults/interfaces/IERC7540.sol";
-import {Tranche} from "src/vaults/token/Tranche.sol";
-import {MockRoot} from "test/common/mocks/MockRoot.sol";
-import {MockRestrictionManager} from "test/vaults/mocks/MockRestrictionManager.sol";
-import "forge-std/Test.sol";
-import {GasSnapshot} from "forge-gas-snapshot/GasSnapshot.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
+
+import {MockRoot} from "test/common/mocks/MockRoot.sol";
+
+import "src/vaults/interfaces/IERC7575.sol";
+import "src/vaults/interfaces/IERC7540.sol";
+import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
+
+import "forge-std/Test.sol";
+import {GasSnapshot} from "forge-gas-snapshot/GasSnapshot.sol";
+import {MockRestrictedTransfers} from "test/vaults/mocks/MockRestrictedTransfers.sol";
 
 interface ERC20Like {
     function balanceOf(address) external view returns (uint256);
 }
 
-contract TrancheTest is Test, GasSnapshot {
-    Tranche token;
-    MockRestrictionManager restrictionManager;
+contract ShareTokenTest is Test, GasSnapshot {
+    CentrifugeToken token;
+    MockRestrictedTransfers restrictedTransfers;
 
     address self;
     address escrow = makeAddr("escrow");
@@ -27,12 +30,12 @@ contract TrancheTest is Test, GasSnapshot {
 
     function setUp() public {
         self = address(this);
-        token = new Tranche(18);
+        token = new CentrifugeToken(18);
         token.file("name", "Some Token");
         token.file("symbol", "ST");
 
-        restrictionManager = new MockRestrictionManager(address(new MockRoot()), address(this));
-        token.file("hook", address(restrictionManager));
+        restrictedTransfers = new MockRestrictedTransfers(address(new MockRoot()), address(this));
+        token.file("hook", address(restrictedTransfers));
     }
 
     // --- Admnistration ---
@@ -40,7 +43,7 @@ contract TrancheTest is Test, GasSnapshot {
         address hook = makeAddr("hook");
 
         // fail: unrecognized param
-        vm.expectRevert(bytes("Tranche/file-unrecognized-param"));
+        vm.expectRevert(bytes("CentrifugeToken/file-unrecognized-param"));
         token.file("random", hook);
 
         // success
@@ -54,7 +57,7 @@ contract TrancheTest is Test, GasSnapshot {
         token.deny(self);
 
         // auth fail
-        vm.expectRevert(bytes("Tranche/not-authorized"));
+        vm.expectRevert(bytes("CentrifugeToken/not-authorized"));
         token.file("hook", hook);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -83,14 +86,14 @@ contract TrancheTest is Test, GasSnapshot {
         assertEq(token.messageForTransferRestriction(1), "transfer-blocked");
     }
 
-    // --- RestrictionManager ---
+    // --- RestrictedTransfers ---
     // transferFrom
     /// forge-config: default.isolate = true
     function testTransferFrom() public {
         _testTransferFrom(1, true);
     }
 
-    // --- RestrictionManager ---
+    // --- RestrictedTransfers ---
     // transferFrom
     /// forge-config: default.isolate = true
     function testTransferFromFuzz(uint256 amount) public {
@@ -100,32 +103,32 @@ contract TrancheTest is Test, GasSnapshot {
     function _testTransferFrom(uint256 amount, bool snap) internal {
         amount = bound(amount, 0, type(uint128).max / 2);
 
-        restrictionManager.updateMember(address(token), self, uint64(validUntil));
+        restrictedTransfers.updateMember(address(token), self, uint64(validUntil));
         token.mint(self, amount * 2);
 
-        vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
+        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.transferFrom(self, targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
-        restrictionManager.updateMember(address(token), targetUser, uint64(validUntil));
-        (bool _isMember, uint64 _validUntil) = restrictionManager.isMember(address(token), targetUser);
+        restrictedTransfers.updateMember(address(token), targetUser, uint64(validUntil));
+        (bool _isMember, uint64 _validUntil) = restrictedTransfers.isMember(address(token), targetUser);
         assertTrue(_isMember);
         assertEq(_validUntil, validUntil);
 
-        restrictionManager.freeze(address(token), self);
-        vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
+        restrictedTransfers.freeze(address(token), self);
+        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.transferFrom(self, targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
-        restrictionManager.unfreeze(address(token), self);
-        restrictionManager.freeze(address(token), targetUser);
-        vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
+        restrictedTransfers.unfreeze(address(token), self);
+        restrictedTransfers.freeze(address(token), targetUser);
+        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.transferFrom(self, targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
-        restrictionManager.unfreeze(address(token), targetUser);
+        restrictedTransfers.unfreeze(address(token), targetUser);
         if (snap) {
-            snapStart("Tranche_transferFrom");
+            snapStart("Share_transferFrom");
         }
         token.transferFrom(self, targetUser, amount);
         if (snap) {
@@ -135,17 +138,17 @@ contract TrancheTest is Test, GasSnapshot {
         afterTransferAssumptions(self, targetUser, amount);
 
         vm.warp(validUntil + 1);
-        vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
+        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.transferFrom(self, targetUser, amount);
     }
 
     function testTransferFromTokensWithApproval(uint256 amount) public {
         amount = bound(amount, 1, type(uint128).max);
         address sender = makeAddr("sender");
-        restrictionManager.updateMember(address(token), sender, uint64(validUntil));
+        restrictedTransfers.updateMember(address(token), sender, uint64(validUntil));
         token.mint(sender, amount);
 
-        restrictionManager.updateMember(address(token), targetUser, uint64(validUntil));
+        restrictedTransfers.updateMember(address(token), targetUser, uint64(validUntil));
 
         vm.expectRevert(IERC20.InsufficientAllowance.selector);
         token.transferFrom(sender, targetUser, amount);
@@ -161,30 +164,30 @@ contract TrancheTest is Test, GasSnapshot {
     function testTransfer(uint256 amount) public {
         amount = bound(amount, 0, type(uint128).max / 2);
 
-        restrictionManager.updateMember(address(token), self, uint64(validUntil));
+        restrictedTransfers.updateMember(address(token), self, uint64(validUntil));
         token.mint(self, amount * 2);
 
-        vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
+        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.transfer(targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
-        restrictionManager.updateMember(address(token), targetUser, uint64(validUntil));
-        (bool _isMember, uint64 _validUntil) = restrictionManager.isMember(address(token), targetUser);
+        restrictedTransfers.updateMember(address(token), targetUser, uint64(validUntil));
+        (bool _isMember, uint64 _validUntil) = restrictedTransfers.isMember(address(token), targetUser);
         assertTrue(_isMember);
         assertEq(_validUntil, validUntil);
 
-        restrictionManager.freeze(address(token), self);
-        vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
+        restrictedTransfers.freeze(address(token), self);
+        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.transfer(targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
-        restrictionManager.unfreeze(address(token), self);
+        restrictedTransfers.unfreeze(address(token), self);
         token.transfer(targetUser, amount);
         assertEq(token.balanceOf(targetUser), amount);
         afterTransferAssumptions(self, targetUser, amount);
 
         vm.warp(validUntil + 1);
-        vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
+        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.transfer(targetUser, amount);
     }
 
@@ -192,7 +195,7 @@ contract TrancheTest is Test, GasSnapshot {
     function testAuthTransferFrom(uint256 amount) public {
         amount = bound(amount, 0, type(uint128).max);
         address sourceUser = makeAddr("sourceUser");
-        restrictionManager.updateMember(address(token), sourceUser, uint64(validUntil));
+        restrictedTransfers.updateMember(address(token), sourceUser, uint64(validUntil));
         token.mint(sourceUser, amount);
 
         vm.prank(address(2));
@@ -211,11 +214,11 @@ contract TrancheTest is Test, GasSnapshot {
         amount = bound(amount, 0, type(uint128).max / 2);
 
         // mint fails -> self not a member
-        vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
+        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.mint(targetUser, amount);
 
-        restrictionManager.updateMember(address(token), targetUser, uint64(validUntil));
-        (bool _isMember, uint64 _validUntil) = restrictionManager.isMember(address(token), targetUser);
+        restrictedTransfers.updateMember(address(token), targetUser, uint64(validUntil));
+        (bool _isMember, uint64 _validUntil) = restrictedTransfers.isMember(address(token), targetUser);
         assertTrue(_isMember);
         assertEq(_validUntil, validUntil);
 
@@ -225,13 +228,13 @@ contract TrancheTest is Test, GasSnapshot {
 
         vm.warp(validUntil + 1);
 
-        vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
+        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.mint(targetUser, amount);
     }
 
     function afterTransferAssumptions(address from, address to, uint256 value) internal view {
-        assertEq(restrictionManager.values_address("onERC20Transfer_from"), from);
-        assertEq(restrictionManager.values_address("onERC20Transfer_to"), to);
-        assertEq(restrictionManager.values_uint256("onERC20Transfer_value"), value);
+        assertEq(restrictedTransfers.values_address("onERC20Transfer_from"), from);
+        assertEq(restrictedTransfers.values_address("onERC20Transfer_to"), to);
+        assertEq(restrictedTransfers.values_uint256("onERC20Transfer_value"), value);
     }
 }

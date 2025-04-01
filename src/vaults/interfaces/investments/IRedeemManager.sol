@@ -6,7 +6,7 @@ import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInv
 interface IRedeemManager is IBaseInvestmentManager {
     event TriggerRedeemRequest(
         uint64 indexed poolId,
-        bytes16 indexed trancheId,
+        bytes16 indexed scId,
         address user,
         address indexed asset,
         uint256 tokenId,

@@ -8,10 +8,10 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {UpdateRestrictionType, MessageLib} from "src/common/libraries/MessageLib.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IHook, HookData} from "src/vaults/interfaces/token/IHook.sol";
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
-import {IRestrictionManager} from "src/vaults/interfaces/token/IRestrictionManager.sol";
+import {IRestrictedTransfers} from "src/vaults/interfaces/token/IRestrictedTransfers.sol";
 
 /// @title  Restriction Manager
 /// @notice Hook implementation that:
@@ -21,7 +21,7 @@ import {IRestrictionManager} from "src/vaults/interfaces/token/IRestrictionManag
 ///
 /// @dev    The first 8 bytes (uint64) of hookData is used for the memberlist valid until date,
 ///         the last bit is used to denote whether the account is frozen.
-contract RestrictionManager is Auth, IRestrictionManager, IHook {
+contract RestrictedTransfers is Auth, IRestrictedTransfers, IHook {
     using BitmapLib for *;
     using BytesLib for bytes;
     using MessageLib for *;
@@ -35,14 +35,14 @@ contract RestrictionManager is Auth, IRestrictionManager, IHook {
         root = IRoot(root_);
     }
 
-    // --- Callback from tranche token ---
+    // --- Callback from share token ---
     /// @inheritdoc IHook
     function onERC20Transfer(address from, address to, uint256 value, HookData calldata hookData)
         external
         virtual
         returns (bytes4)
     {
-        require(checkERC20Transfer(from, to, value, hookData), "RestrictionManager/transfer-blocked");
+        require(checkERC20Transfer(from, to, value, hookData), "RestrictedTransfers/transfer-blocked");
         return IHook.onERC20Transfer.selector;
     }
 
@@ -103,50 +103,50 @@ contract RestrictionManager is Auth, IRestrictionManager, IHook {
             MessageLib.UpdateRestrictionUnfreeze memory m = payload.deserializeUpdateRestrictionUnfreeze();
             unfreeze(token, address(bytes20(m.user)));
         } else {
-            revert("RestrictionManager/invalid-update");
+            revert("RestrictedTransfers/invalid-update");
         }
     }
 
-    /// @inheritdoc IRestrictionManager
+    /// @inheritdoc IRestrictedTransfers
     function freeze(address token, address user) public auth {
-        require(user != address(0), "RestrictionManager/cannot-freeze-zero-address");
-        require(!root.endorsed(user), "RestrictionManager/endorsed-user-cannot-be-frozen");
+        require(user != address(0), "RestrictedTransfers/cannot-freeze-zero-address");
+        require(!root.endorsed(user), "RestrictedTransfers/endorsed-user-cannot-be-frozen");
 
-        uint128 hookData = uint128(ITranche(token).hookDataOf(user));
-        ITranche(token).setHookData(user, bytes16(hookData.setBit(FREEZE_BIT, true)));
+        uint128 hookData = uint128(IShareToken(token).hookDataOf(user));
+        IShareToken(token).setHookData(user, bytes16(hookData.setBit(FREEZE_BIT, true)));
 
         emit Freeze(token, user);
     }
 
-    /// @inheritdoc IRestrictionManager
+    /// @inheritdoc IRestrictedTransfers
     function unfreeze(address token, address user) public auth {
-        uint128 hookData = uint128(ITranche(token).hookDataOf(user));
-        ITranche(token).setHookData(user, bytes16(hookData.setBit(FREEZE_BIT, false)));
+        uint128 hookData = uint128(IShareToken(token).hookDataOf(user));
+        IShareToken(token).setHookData(user, bytes16(hookData.setBit(FREEZE_BIT, false)));
 
         emit Unfreeze(token, user);
     }
 
-    /// @inheritdoc IRestrictionManager
+    /// @inheritdoc IRestrictedTransfers
     function isFrozen(address token, address user) public view returns (bool) {
-        return uint128(ITranche(token).hookDataOf(user)).getBit(FREEZE_BIT);
+        return uint128(IShareToken(token).hookDataOf(user)).getBit(FREEZE_BIT);
     }
 
     // --- Managing members ---
-    /// @inheritdoc IRestrictionManager
+    /// @inheritdoc IRestrictedTransfers
     function updateMember(address token, address user, uint64 validUntil) public auth {
-        require(block.timestamp <= validUntil, "RestrictionManager/invalid-valid-until");
-        require(!root.endorsed(user), "RestrictionManager/endorsed-user-cannot-be-updated");
+        require(block.timestamp <= validUntil, "RestrictedTransfers/invalid-valid-until");
+        require(!root.endorsed(user), "RestrictedTransfers/endorsed-user-cannot-be-updated");
 
         uint128 hookData = uint128(validUntil) << 64;
         hookData.setBit(FREEZE_BIT, isFrozen(token, user));
-        ITranche(token).setHookData(user, bytes16(hookData));
+        IShareToken(token).setHookData(user, bytes16(hookData));
 
         emit UpdateMember(token, user, validUntil);
     }
 
-    /// @inheritdoc IRestrictionManager
+    /// @inheritdoc IRestrictedTransfers
     function isMember(address token, address user) external view returns (bool isValid, uint64 validUntil) {
-        validUntil = abi.encodePacked(ITranche(token).hookDataOf(user)).toUint64(0);
+        validUntil = abi.encodePacked(IShareToken(token).hookDataOf(user)).toUint64(0);
         isValid = validUntil >= block.timestamp;
     }
 

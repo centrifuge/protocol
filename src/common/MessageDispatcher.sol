@@ -91,7 +91,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         bytes32 hook
     ) external auth {
         if (chainId == localCentrifugeId) {
-            poolManager.addTranche(poolId.raw(), scId.raw(), name, symbol, decimals, salt, address(bytes20(hook)));
+            poolManager.addShareClass(poolId.raw(), scId.raw(), name, symbol, decimals, salt, address(bytes20(hook)));
         } else {
             gateway.send(
                 chainId,
@@ -236,17 +236,16 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendTransferShares(uint16 chainId, uint64 poolId, bytes16 scId, bytes32 recipient, uint128 amount)
+    function sendTransferShares(uint16 chainId, uint64 poolId, bytes16 scId, bytes32 receiver, uint128 amount)
         external
         auth
     {
         if (chainId == localCentrifugeId) {
-            poolManager.handleTransferTrancheTokens(poolId, scId, address(bytes20(recipient)), amount);
+            poolManager.handleTransferShares(poolId, scId, address(bytes20(receiver)), amount);
         } else {
             gateway.send(
                 chainId,
-                MessageLib.TransferShares({poolId: poolId, scId: scId, recipient: recipient, amount: amount}).serialize(
-                )
+                MessageLib.TransferShares({poolId: poolId, scId: scId, receiver: receiver, amount: amount}).serialize()
             );
         }
     }
