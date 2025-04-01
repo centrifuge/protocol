@@ -88,8 +88,8 @@ contract VaultsDeployer is CommonDeployer {
         IAuth(asyncVaultFactory).rely(address(poolManager));
         IAuth(syncDepositVaultFactory).rely(address(poolManager));
         IAuth(tokenFactory).rely(address(poolManager));
-        IAuth(asyncRequests).rely(address(poolManager));
-        IAuth(syncRequests).rely(address(poolManager));
+        asyncRequests.rely(address(poolManager));
+        syncRequests.rely(address(poolManager));
         IAuth(restrictedTransfers).rely(address(poolManager));
         IAuth(freelyTransferable).rely(address(poolManager));
         messageDispatcher.rely(address(poolManager));
