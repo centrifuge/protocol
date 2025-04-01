@@ -572,7 +572,9 @@ contract GatewayTest is Test {
 
         // Initiate recovery
         _send(
-            adapter2, MessageLib.InitiateMessageRecovery(keccak256(message), address(adapter1).toBytes32()).serialize()
+            adapter2,
+            MessageLib.InitiateMessageRecovery(keccak256(message), address(adapter1).toBytes32(), REMOTE_CENTRIFUGE_ID)
+                .serialize()
         );
 
         vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
@@ -591,7 +593,9 @@ contract GatewayTest is Test {
 
         vm.expectRevert(bytes("Gateway/no-recovery-with-one-adapter-allowed"));
         _send(
-            adapter1, MessageLib.InitiateMessageRecovery(keccak256(message), address(adapter1).toBytes32()).serialize()
+            adapter1,
+            MessageLib.InitiateMessageRecovery(keccak256(message), address(adapter1).toBytes32(), REMOTE_CENTRIFUGE_ID)
+                .serialize()
         );
     }
 
@@ -612,7 +616,11 @@ contract GatewayTest is Test {
         gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter3, proof);
 
         // Initiate recovery
-        _send(adapter1, MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
+        _send(
+            adapter1,
+            MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32(), REMOTE_CENTRIFUGE_ID)
+                .serialize()
+        );
 
         vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
         gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter3, proof);
@@ -635,7 +643,11 @@ contract GatewayTest is Test {
         assertEq(handler.received(message), 0);
 
         // Initiate recovery
-        _send(adapter1, MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
+        _send(
+            adapter1,
+            MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32(), REMOTE_CENTRIFUGE_ID)
+                .serialize()
+        );
 
         vm.warp(block.timestamp + gateway.RECOVERY_CHALLENGE_PERIOD());
 
@@ -657,13 +669,21 @@ contract GatewayTest is Test {
         assertEq(handler.received(message), 0);
 
         // Initiate recovery
-        _send(adapter1, MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
+        _send(
+            adapter1,
+            MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32(), REMOTE_CENTRIFUGE_ID)
+                .serialize()
+        );
 
         vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
         gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter3, proof);
 
         // Dispute recovery
-        _send(adapter2, MessageLib.DisputeMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
+        _send(
+            adapter2,
+            MessageLib.DisputeMessageRecovery(keccak256(proof), address(adapter3).toBytes32(), REMOTE_CENTRIFUGE_ID)
+                .serialize()
+        );
 
         // Check that recovery is not possible anymore
         vm.expectRevert(bytes("Gateway/message-recovery-not-initiated"));
@@ -674,7 +694,8 @@ contract GatewayTest is Test {
     function testRecursiveRecoveryMessageFails() public {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeMockAdapters);
 
-        bytes memory message = MessageLib.DisputeMessageRecovery(keccak256(""), bytes32(0)).serialize();
+        bytes memory message =
+            MessageLib.DisputeMessageRecovery(keccak256(""), bytes32(0), REMOTE_CENTRIFUGE_ID).serialize();
         bytes memory proof = _formatMessageProof(message);
 
         _send(adapter2, proof);
@@ -682,7 +703,9 @@ contract GatewayTest is Test {
         assertEq(handler.received(message), 0);
 
         _send(
-            adapter2, MessageLib.InitiateMessageRecovery(keccak256(message), address(adapter1).toBytes32()).serialize()
+            adapter2,
+            MessageLib.InitiateMessageRecovery(keccak256(message), address(adapter1).toBytes32(), REMOTE_CENTRIFUGE_ID)
+                .serialize()
         );
 
         vm.warp(block.timestamp + gateway.RECOVERY_CHALLENGE_PERIOD());

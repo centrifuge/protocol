@@ -21,11 +21,11 @@ interface IRootMessageSender {
     function sendCancelUpgrade(uint16 chainId, bytes32 target) external;
 
     /// @notice Creates and send the message
-    function sendInitiateMessageRecovery(uint16 chainId, bytes32 hash, uint16 adapterChainId, bytes32 adapter)
+    function sendInitiateMessageRecovery(uint16 chainId, uint16 adapterChainId, bytes32 adapter, bytes32 hash)
         external;
 
     /// @notice Creates and send the message
-    function sendDisputeMessageRecovery(uint16 chainId, bytes32 hash, uint16 adapterChainId, bytes32 adapter)
+    function sendDisputeMessageRecovery(uint16 chainId, uint16 adapterChainId, bytes32 adapter, bytes32 hash)
         external;
 }
 

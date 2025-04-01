@@ -259,26 +259,32 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IRootMessageSender
-    function sendInitiateMessageRecovery(uint16 chainId, bytes32 hash, uint16 adapterChainId, bytes32 adapter)
+    function sendInitiateMessageRecovery(uint16 chainId, uint16 adapterChainId, bytes32 adapter, bytes32 hash)
         external
         auth
     {
         if (chainId == localCentrifugeId) {
             gateway.initiateMessageRecovery(adapterChainId, IAdapter(address(bytes20(adapter))), hash);
         } else {
-            gateway.send(chainId, MessageLib.InitiateMessageRecovery({hash: hash, adapter: adapter}).serialize());
+            gateway.send(
+                chainId,
+                MessageLib.InitiateMessageRecovery({hash: hash, adapter: adapter, domainId: adapterChainId}).serialize()
+            );
         }
     }
 
     /// @inheritdoc IRootMessageSender
-    function sendDisputeMessageRecovery(uint16 chainId, bytes32 hash, uint16 adapterChainId, bytes32 adapter)
+    function sendDisputeMessageRecovery(uint16 chainId, uint16 adapterChainId, bytes32 adapter, bytes32 hash)
         external
         auth
     {
         if (chainId == localCentrifugeId) {
             gateway.disputeMessageRecovery(adapterChainId, IAdapter(address(bytes20(adapter))), hash);
         } else {
-            gateway.send(chainId, MessageLib.DisputeMessageRecovery({hash: hash, adapter: adapter}).serialize());
+            gateway.send(
+                chainId,
+                MessageLib.DisputeMessageRecovery({hash: hash, adapter: adapter, domainId: adapterChainId}).serialize()
+            );
         }
     }
 

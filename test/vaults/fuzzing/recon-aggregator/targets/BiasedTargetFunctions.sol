@@ -78,7 +78,8 @@ abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
         MockAdapter(address(adapters[calledRouterId])).execute(
             MessageLib.InitiateMessageRecovery({
                 hash: keccak256(message),
-                adapter: bytes32(bytes20(address(adapters[recoverRouterId])))
+                adapter: bytes32(bytes20(address(adapters[recoverRouterId]))),
+                domainId: 0
             }).serialize()
         );
     }

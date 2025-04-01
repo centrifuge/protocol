@@ -169,7 +169,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
         if (code == uint8(MessageType.InitiateMessageRecovery) || code == uint8(MessageType.DisputeMessageRecovery)) {
             require(!isRecovery, "Gateway/no-recursion");
             require(adapters[chainId].length > 1, "Gateway/no-recovery-with-one-adapter-allowed");
-            return _handleRecovery(chainId, payload);
+            return _handleRecovery(payload);
         }
 
         bool isMessageProof = code == uint8(MessageType.MessageProof);
@@ -225,15 +225,15 @@ contract Gateway is Auth, IGateway, IRecoverable {
         }
     }
 
-    function _handleRecovery(uint16 chainId, bytes memory message) internal {
+    function _handleRecovery(bytes memory message) internal {
         MessageType kind = message.messageType();
 
         if (kind == MessageType.InitiateMessageRecovery) {
             MessageLib.InitiateMessageRecovery memory m = message.deserializeInitiateMessageRecovery();
-            return _initiateMessageRecovery(chainId, IAdapter(address(bytes20(m.adapter))), m.hash);
+            return _initiateMessageRecovery(m.domainId, IAdapter(address(bytes20(m.adapter))), m.hash);
         } else if (kind == MessageType.DisputeMessageRecovery) {
             MessageLib.DisputeMessageRecovery memory m = message.deserializeDisputeMessageRecovery();
-            return _disputeMessageRecovery(chainId, IAdapter(address(bytes20(m.adapter))), m.hash);
+            return _disputeMessageRecovery(m.domainId, IAdapter(address(bytes20(m.adapter))), m.hash);
         }
     }
 
