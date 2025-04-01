@@ -9,16 +9,17 @@ import {FullDeployer, PoolsDeployer, VaultsDeployer} from "script/FullDeployer.s
 // Script to deploy CP and CP with an Wormhole Adapter.
 contract WormholeDeployer is FullDeployer {
     function run() public {
-        uint16 centrifugeChainId = uint16(vm.envUint("CENTRIFUGE_CHAIN_ID"));
+        uint16 localCentrifugeId = uint16(vm.envUint("CENTRIFUGE_ID"));
+        uint16 remoteCentrifugeId = uint16(vm.envUint("REMOTE_CENTRIFUGE_ID"));
         address relayer = address(vm.envAddress("WORMHOLE_RELAYER"));
         uint16 localChainId = uint16(vm.envUint("WORMHOLE_LOCAL_CHAIN_ID"));
 
         vm.startBroadcast();
 
-        deployFull(centrifugeChainId, ISafe(vm.envAddress("ADMIN")), msg.sender);
+        deployFull(localCentrifugeId, ISafe(vm.envAddress("ADMIN")), msg.sender);
 
         WormholeAdapter adapter = new WormholeAdapter(gateway, relayer, localChainId, msg.sender);
-        wire(centrifugeChainId, adapter, msg.sender);
+        wire(remoteCentrifugeId, adapter, msg.sender);
 
         removeFullDeployerAccess(msg.sender);
 
