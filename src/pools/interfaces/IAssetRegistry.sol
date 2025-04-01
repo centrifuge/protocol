@@ -34,5 +34,5 @@ interface IAssetRegistry is IERC6909MetadataExt, IERC6909Fungible {
     /// @notice Provides one in the decimals of the asset
     ///
     /// @param assetId The relevant asset
-    function unitAmount(AssetId assetId) external returns (uint128);
+    function unitAmount(AssetId assetId) external view returns (uint128);
 }

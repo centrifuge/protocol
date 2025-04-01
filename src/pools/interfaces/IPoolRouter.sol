@@ -169,7 +169,7 @@ interface IPoolRouter {
     /// the IShareClassManager.shareClassPrice() method
     /// @param scId The share class identifier
     /// @param pricePerShare The new price per share
-    function updateSharePrice(ShareClassId scId, D18 pricePerShare) external payable;
+    function updateSharePrice(ShareClassId scId, D18 pricePerShare, bytes calldata data) external payable;
 
     /// @notice Create a new holding associated to the asset in a share class.
     /// It will generate and register the different accounts used for holdings.
