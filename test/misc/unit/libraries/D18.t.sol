@@ -121,4 +121,18 @@ contract D18Test is Test {
 
         assertEq(divD8(numerator, denominator).inner(), numerator.inner() * 1e18 / denominator.inner());
     }
+
+    function testEqD8() public pure {
+        D18 a = d18(5234);
+
+        assert(eq(a, a));
+        assert(!eq(a, d18(5235)));
+    }
+
+    function testRawD8() public pure {
+        uint128 a_ = 3245252;
+        D18 a = d18(a_);
+
+        assertEq(raw(a), a_);
+    }
 }

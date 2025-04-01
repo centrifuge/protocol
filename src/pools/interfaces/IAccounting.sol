@@ -53,10 +53,9 @@ interface IAccounting {
     /// @param value Amount being credited
     function addCredit(AccountId account, uint128 value) external;
 
-    /// @notice Sets the pool ID and transaction ID for the coming transaction.
+    /// @notice Unlocks a pool for journal entries
     /// @param poolId The pool to unlock
-    /// @param journalId The id to use for this set of debits/credits
-    function unlock(PoolId poolId, uint256 journalId) external;
+    function unlock(PoolId poolId) external;
 
     /// @notice Closes the transaction and checks if the entries are balanced.
     function lock() external;
@@ -78,10 +77,4 @@ interface IAccounting {
     /// @param account The account to get the value of
     /// @return The value of the account. Will be a negative value for positive balances of credit-normal accounts
     function accountValue(PoolId poolId, AccountId account) external returns (int128);
-
-    /// @notice generates a new journal id for the given pool
-    function generateJournalId(PoolId poolId) external returns (uint256);
-
-    /// @notice gets the current journal id
-    function journalId() external returns (uint256);
 }

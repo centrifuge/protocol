@@ -3,13 +3,13 @@ pragma solidity 0.8.28;
 
 import {BaseSetup} from "@chimera/BaseSetup.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
-import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
+import {AsyncRequests} from "src/vaults/AsyncRequests.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
-import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
+import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {Root} from "src/common/Root.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 
-import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
+import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
 
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
@@ -23,16 +23,16 @@ import {SharedStorage} from "./SharedStorage.sol";
 
 abstract contract Setup is BaseSetup, SharedStorage {
     // Dependencies
-    ERC7540VaultFactory vaultFactory;
+    AsyncVaultFactory vaultFactory;
     TrancheFactory trancheFactory;
 
     // Handled //
     Escrow public escrow; // NOTE: Restriction Manager will query it
-    InvestmentManager investmentManager;
+    AsyncRequests asyncRequests;
     PoolManager poolManager;
 
     // TODO: CYCLE / Make it work for variable values
-    ERC7540Vault vault;
+    AsyncVault vault;
     ERC20 token;
     Tranche trancheToken;
     address actor = address(this); // TODO: Generalize
@@ -68,23 +68,23 @@ abstract contract Setup is BaseSetup, SharedStorage {
 
         root.endorse(address(escrow));
 
-        investmentManager = new InvestmentManager(address(root), address(escrow));
-        vaultFactory = new ERC7540VaultFactory(address(this), address(investmentManager));
+        asyncRequests = new AsyncRequests(address(root), address(escrow));
+        vaultFactory = new AsyncVaultFactory(address(this), address(asyncRequests));
 
         address[] memory vaultFactories = new address[](1);
         vaultFactories[0] = address(vaultFactory);
 
         poolManager = new PoolManager(address(escrow), address(trancheFactory), vaultFactories);
 
-        investmentManager.file("gateway", address(this));
-        investmentManager.file("poolManager", address(poolManager));
-        investmentManager.rely(address(poolManager));
-        investmentManager.rely(address(vaultFactory));
+        asyncRequests.file("gateway", address(this));
+        asyncRequests.file("poolManager", address(poolManager));
+        asyncRequests.rely(address(poolManager));
+        asyncRequests.rely(address(vaultFactory));
 
         restrictionManager.rely(address(poolManager));
 
         // Setup Escrow Permissions
-        escrow.rely(address(investmentManager));
+        escrow.rely(address(asyncRequests));
         escrow.rely(address(poolManager));
 
         // Permissions on factories
@@ -157,7 +157,7 @@ abstract contract Setup is BaseSetup, SharedStorage {
             /*bool pendingCancelDepositRequest*/
             ,
             /*bool pendingCancelRedeemRequest*/
-        ) = investmentManager.investments(address(vault), address(actor));
+        ) = asyncRequests.investments(address(vault), address(actor));
 
         return (depositPrice, redeemPrice);
     }

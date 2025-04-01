@@ -314,6 +314,41 @@ contract MultiShareClassSimpleTest is MultiShareClassBaseTest {
         emit IShareClassManager.UpdatedShareClass(poolId, scId, 0, d18(2, 1), 0, "SOME_TEST_BYTES");
         shareClass.updateShareClass(poolId, scId, d18(2, 1), "SOME_TEST_BYTES");
     }
+
+    function testIncreaseShareClassIssuance(uint128 navPerShare_, uint128 amount) public {
+        vm.assume(navPerShare_ > 0);
+        amount = uint128(bound(amount, 0, type(uint128).max / navPerShare_ - 1));
+        D18 navPerShare = d18(navPerShare_);
+        (uint128 totalIssuance,) = shareClass.metrics(scId);
+
+        vm.expectEmit();
+        emit IShareClassManager.IssuedShares(poolId, scId, 1, navPerShare.mulUint128(amount), navPerShare, totalIssuance + amount, amount);
+        shareClass.increaseShareClassIssuance(poolId, scId, navPerShare, amount);
+
+        (uint128 totalIssuance_, D18 navPerShareMetric) = shareClass.metrics(scId);
+        assertEq(totalIssuance_, amount);
+        assertEq(navPerShareMetric.inner(), 0, "navPerShare metric should not be updated");
+    }
+
+    function testDecreaseShareClassIssuance(uint128 navPerShare_, uint128 amount) public {
+        vm.assume(navPerShare_ > 0);
+        amount = uint128(bound(amount, 0, type(uint128).max / navPerShare_ - 1));
+        D18 navPerShare = d18(navPerShare_);
+
+        shareClass.increaseShareClassIssuance(poolId, scId, navPerShare, amount);
+        (uint128 totalIssuance,) = shareClass.shareClassPrice(poolId, scId);
+        uint128 newIssuance = totalIssuance - amount;
+
+        vm.expectEmit();
+        emit IShareClassManager.RevokedShares(
+            poolId, scId, 1, navPerShare.mulUint128(newIssuance), navPerShare, newIssuance, amount, 0
+        );
+        shareClass.decreaseShareClassIssuance(poolId, scId, navPerShare, amount);
+
+        (uint128 totalIssuance_, D18 navPerShareMetric) = shareClass.shareClassPrice(poolId, scId);
+        assertEq(totalIssuance_, 0, "TotalIssuance should be reset");
+        assertEq(navPerShareMetric.inner(), 0, "navPerShare metric should not be updated");
+    }
 }
 
 ///@dev Contains all deposit related tests which are expected to succeed and don't make use of transient storage
@@ -1416,6 +1451,21 @@ contract MultiShareClassRevertsTest is MultiShareClassBaseTest {
     function testUpdateMetadataWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.updateMetadata(poolId, wrongShareClassId, "", "", SC_SALT, bytes(""));
+    }
+
+    function testIncreaseIssuanceWrongShareClassId() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
+        shareClass.increaseShareClassIssuance(poolId, wrongShareClassId, d18(0), 0);
+    }
+
+    function testDecreaseIssuanceWrongShareClassId() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
+        shareClass.decreaseShareClassIssuance(poolId, wrongShareClassId, d18(0), 0);
+    }
+
+    function testDecreaseOverFlow() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.DecreaseMoreThanIssued.selector));
+        shareClass.decreaseShareClassIssuance(poolId, scId, d18(0), 1);
     }
 
     function testIssueSharesBeforeApproval() public {

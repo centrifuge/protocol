@@ -6,6 +6,20 @@ import {Auth} from "src/misc/Auth.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
+import {TransientStorage} from "src/misc/libraries/TransientStorage.sol";
+
+/// @notice In a transaction there can be multiple journal entries for different pools,
+/// which can be interleaved. We want entries for the same pool to share the same journal ID.
+/// So we're keeping a journal ID per pool in transient storage.
+library TransientJournal {
+    function journalId(PoolId poolId) internal view returns (uint256) {
+        return TransientStorage.tloadUint256(keccak256(abi.encode("journalId", poolId)));
+    }
+
+    function setJournalId(PoolId poolId, uint256 value) internal {
+        TransientStorage.tstore(keccak256(abi.encode("journalId", poolId)), value);
+    }
+}
 
 contract Accounting is Auth, IAccounting {
     mapping(PoolId => mapping(AccountId => Account)) public accounts;
@@ -13,9 +27,6 @@ contract Accounting is Auth, IAccounting {
     uint128 public transient debited;
     uint128 public transient credited;
     PoolId internal transient _currentPoolId;
-    /// @inheritdoc IAccounting
-    uint256 public transient journalId;
-
     mapping(PoolId => uint64) internal _poolJournalIdCounter;
 
     constructor(address deployer) Auth(deployer) {}
@@ -47,19 +58,23 @@ contract Accounting is Auth, IAccounting {
     }
 
     /// @inheritdoc IAccounting
-    function unlock(PoolId poolId, uint256 journalId_) external auth {
+    function unlock(PoolId poolId) external auth {
         require(PoolId.unwrap(_currentPoolId) == 0, AccountingAlreadyUnlocked());
         debited = 0;
         credited = 0;
-        journalId = journalId_;
         _currentPoolId = poolId;
-        emit StartJournalId(poolId, journalId_);
+        
+        if (TransientJournal.journalId(poolId) == 0) {
+            TransientJournal.setJournalId(poolId, _generateJournalId(poolId));
+        }
+        emit StartJournalId(poolId, TransientJournal.journalId(poolId));
     }
 
     /// @inheritdoc IAccounting
     function lock() external auth {
         require(debited == credited, Unbalanced());
-        emit EndJournalId(_currentPoolId, journalId);
+
+        emit EndJournalId(_currentPoolId, TransientJournal.journalId(_currentPoolId));
         _currentPoolId = PoolId.wrap(0);
     }
 
@@ -89,9 +104,7 @@ contract Accounting is Auth, IAccounting {
         }
     }
 
-    /// @inheritdoc IAccounting
-    function generateJournalId(PoolId poolId) external auth returns (uint256) {
-        journalId = uint256((uint128(poolId.raw()) << 64) | ++_poolJournalIdCounter[poolId]);
-        return journalId;
+    function _generateJournalId(PoolId poolId) internal returns (uint256) {
+        return uint256((uint128(poolId.raw()) << 64) | ++_poolJournalIdCounter[poolId]);
     }
 }

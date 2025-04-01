@@ -26,7 +26,7 @@ contract TransientValuation is BaseValuation, ReentrancyProtection, ITransientVa
         if (base == quote) {
             return;
         }
-        
+
         // @dev we assume symmetric prices
         slot = keccak256(abi.encode(quote, base));
         slot.tstore(uint256(price.reciprocal().inner()));

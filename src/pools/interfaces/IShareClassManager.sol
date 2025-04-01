@@ -104,6 +104,7 @@ interface IShareClassManager {
     error ClaimDepositRequired();
     error ClaimRedeemRequired();
     error EpochNotFound();
+    error DecreaseMoreThanIssued();
 
     /// Functions
 

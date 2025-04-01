@@ -8,8 +8,8 @@ contract MintTest is BaseTest {
     function testMint(uint256 amount) public {
         amount = uint128(bound(amount, 2, MAX_UINT128));
 
-        (address vault_,) = deploySimpleVault();
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        (address vault_,) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
 
         ITranche tranche = ITranche(address(vault.share()));
         root.denyContract(address(tranche), self);

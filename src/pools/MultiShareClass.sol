@@ -547,7 +547,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
     /// @inheritdoc IShareClassManager
     function decreaseShareClassIssuance(PoolId poolId, ShareClassId shareClassId_, D18 navPerShare, uint128 amount) external auth {
         require(exists(poolId, shareClassId_), ShareClassNotFound());
-        require(metrics[shareClassId_].totalIssuance >= amount, "Issuance too low");
+        require(metrics[shareClassId_].totalIssuance >= amount, DecreaseMoreThanIssued());
 
         uint128 newIssuance = metrics[shareClassId_].totalIssuance - amount;
         metrics[shareClassId_].totalIssuance = newIssuance;

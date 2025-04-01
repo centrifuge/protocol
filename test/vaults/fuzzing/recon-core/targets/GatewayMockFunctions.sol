@@ -9,7 +9,7 @@ import {vm} from "@chimera/Hevm.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
 // Src Deps | For cycling of values
-import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
+import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
@@ -96,7 +96,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         // Second Step is to store permutations
         // Which means we have to switch on all permutations on all checks
 
-        vault = ERC7540Vault(newVault);
+        vault = AsyncVault(newVault);
         token = ERC20(newToken);
         trancheToken = Tranche(newTranche);
         restrictionManager = RestrictionManager(address(trancheToken.hook()));
