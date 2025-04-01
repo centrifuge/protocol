@@ -11,7 +11,7 @@ import {ERC20} from "src/misc/ERC20.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 
 // Only for Share
-abstract contract RestrictionManagerFunctions is BaseTargetFunctions, Properties {
+abstract contract RestrictedTransfersFunctions is BaseTargetFunctions, Properties {
     /**
      * RESTRICTION MANAGER
      */

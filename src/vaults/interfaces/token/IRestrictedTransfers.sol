@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-interface IRestrictionManager {
+interface IRestrictedTransfers {
     // --- Events ---
     event UpdateMember(address indexed token, address indexed user, uint64 validUntil);
     event Freeze(address indexed token, address indexed user);

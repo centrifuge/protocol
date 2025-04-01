@@ -24,7 +24,7 @@ import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
+import {RestrictedTransfers} from "src/vaults/token/RestrictedTransfers.sol";
 import {VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 
 // scripts

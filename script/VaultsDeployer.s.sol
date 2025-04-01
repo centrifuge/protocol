@@ -11,8 +11,8 @@ import {BalanceSheetManager} from "src/vaults/BalanceSheetManager.sol";
 import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
-import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
-import {RestrictedRedemptions} from "src/vaults/token/RestrictedRedemptions.sol";
+import {RestrictedTransfers} from "src/vaults/token/RestrictedTransfers.sol";
+import {FreelyTransferable} from "src/vaults/token/FreelyTransferable.sol";
 import {SyncRequests} from "src/vaults/SyncRequests.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
@@ -41,8 +41,8 @@ contract VaultsDeployer is CommonDeployer {
 
         escrow = new Escrow{salt: SALT}(deployer);
         routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow2"))}(deployer);
-        restrictionManager = address(new RestrictionManager{salt: SALT}(address(root), deployer));
-        restrictedRedemptions = address(new RestrictedRedemptions{salt: SALT}(address(root), address(escrow), deployer));
+        restrictionManager = address(new RestrictedTransfers{salt: SALT}(address(root), deployer));
+        restrictedRedemptions = address(new FreelyTransferable{salt: SALT}(address(root), address(escrow), deployer));
         tokenFactory = address(new TokenFactory{salt: SALT}(address(root), deployer));
         asyncRequests = new AsyncRequests(address(root), address(escrow));
         syncRequests = new SyncRequests(address(root), address(escrow));

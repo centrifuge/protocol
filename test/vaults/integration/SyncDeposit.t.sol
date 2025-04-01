@@ -64,7 +64,7 @@ contract SyncDepositTest is BaseTest {
         erc20.approve(address(syncVault), amount);
 
         // Will fail - user not member: can not send funds
-        vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
+        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         syncVault.deposit(amount, self);
 
         assertEq(syncVault.isPermissioned(self), false);

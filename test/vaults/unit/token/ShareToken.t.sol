@@ -12,7 +12,7 @@ import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 
 import "forge-std/Test.sol";
 import {GasSnapshot} from "forge-gas-snapshot/GasSnapshot.sol";
-import {MockRestrictionManager} from "test/vaults/mocks/MockRestrictionManager.sol";
+import {MockRestrictedTransfers} from "test/vaults/mocks/MockRestrictedTransfers.sol";
 
 interface ERC20Like {
     function balanceOf(address) external view returns (uint256);
@@ -20,7 +20,7 @@ interface ERC20Like {
 
 contract ShareTokenTest is Test, GasSnapshot {
     CentrifugeToken token;
-    MockRestrictionManager restrictionManager;
+    MockRestrictedTransfers restrictionManager;
 
     address self;
     address escrow = makeAddr("escrow");
@@ -34,7 +34,7 @@ contract ShareTokenTest is Test, GasSnapshot {
         token.file("name", "Some Token");
         token.file("symbol", "ST");
 
-        restrictionManager = new MockRestrictionManager(address(new MockRoot()), address(this));
+        restrictionManager = new MockRestrictedTransfers(address(new MockRoot()), address(this));
         token.file("hook", address(restrictionManager));
     }
 
@@ -86,14 +86,14 @@ contract ShareTokenTest is Test, GasSnapshot {
         assertEq(token.messageForTransferRestriction(1), "transfer-blocked");
     }
 
-    // --- RestrictionManager ---
+    // --- RestrictedTransfers ---
     // transferFrom
     /// forge-config: default.isolate = true
     function testTransferFrom() public {
         _testTransferFrom(1, true);
     }
 
-    // --- RestrictionManager ---
+    // --- RestrictedTransfers ---
     // transferFrom
     /// forge-config: default.isolate = true
     function testTransferFromFuzz(uint256 amount) public {
@@ -106,7 +106,7 @@ contract ShareTokenTest is Test, GasSnapshot {
         restrictionManager.updateMember(address(token), self, uint64(validUntil));
         token.mint(self, amount * 2);
 
-        vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
+        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.transferFrom(self, targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
@@ -116,13 +116,13 @@ contract ShareTokenTest is Test, GasSnapshot {
         assertEq(_validUntil, validUntil);
 
         restrictionManager.freeze(address(token), self);
-        vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
+        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.transferFrom(self, targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
         restrictionManager.unfreeze(address(token), self);
         restrictionManager.freeze(address(token), targetUser);
-        vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
+        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.transferFrom(self, targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
@@ -138,7 +138,7 @@ contract ShareTokenTest is Test, GasSnapshot {
         afterTransferAssumptions(self, targetUser, amount);
 
         vm.warp(validUntil + 1);
-        vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
+        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.transferFrom(self, targetUser, amount);
     }
 
@@ -167,7 +167,7 @@ contract ShareTokenTest is Test, GasSnapshot {
         restrictionManager.updateMember(address(token), self, uint64(validUntil));
         token.mint(self, amount * 2);
 
-        vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
+        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.transfer(targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
@@ -177,7 +177,7 @@ contract ShareTokenTest is Test, GasSnapshot {
         assertEq(_validUntil, validUntil);
 
         restrictionManager.freeze(address(token), self);
-        vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
+        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.transfer(targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
@@ -187,7 +187,7 @@ contract ShareTokenTest is Test, GasSnapshot {
         afterTransferAssumptions(self, targetUser, amount);
 
         vm.warp(validUntil + 1);
-        vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
+        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.transfer(targetUser, amount);
     }
 
@@ -214,7 +214,7 @@ contract ShareTokenTest is Test, GasSnapshot {
         amount = bound(amount, 0, type(uint128).max / 2);
 
         // mint fails -> self not a member
-        vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
+        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.mint(targetUser, amount);
 
         restrictionManager.updateMember(address(token), targetUser, uint64(validUntil));
@@ -228,7 +228,7 @@ contract ShareTokenTest is Test, GasSnapshot {
 
         vm.warp(validUntil + 1);
 
-        vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
+        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         token.mint(targetUser, amount);
     }
 

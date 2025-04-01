@@ -73,7 +73,7 @@ max_test_rejects = 65_536 # default value
   "src/vaults/Root.sol" = ["Root"]
   "src/vaults/token/ERC20.sol" = ["ERC20"]
   "src/vaults/token/ShareToken.sol" = ["ShareToken"]
-  "src/vaults/token/RestrictionManager.sol" = ["RestrictionManager"]
+  "src/vaults/token/RestrictedTransfers.sol" = ["RestrictedTransfers"]
   "src/vaults/admin/Guardian.sol" = ["Guardian"]
 
 [doc]

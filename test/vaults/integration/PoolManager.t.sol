@@ -14,7 +14,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
-import {IRestrictionManager} from "src/vaults/interfaces/token/IRestrictionManager.sol";
+import {IRestrictedTransfers} from "src/vaults/interfaces/token/IRestrictedTransfers.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
@@ -299,7 +299,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         IShareToken token = IShareToken(address(vault.share()));
 
-        vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
+        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         centrifugeChain.incomingTransferShareTokens(poolId, scId, destinationAddress, amount);
         centrifugeChain.updateMember(poolId, scId, destinationAddress, validUntil);
 
@@ -351,7 +351,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
-        IRestrictionManager hook = IRestrictionManager(token.hook());
+        IRestrictedTransfers hook = IRestrictedTransfers(token.hook());
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
         hook.updateMember(address(token), randomUser, validUntil);
@@ -363,7 +363,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         centrifugeChain.updateMember(poolId, scId, randomUser, validUntil);
         assertTrue(token.checkTransferRestriction(address(0), randomUser, 0));
 
-        vm.expectRevert(bytes("RestrictionManager/endorsed-user-cannot-be-updated"));
+        vm.expectRevert(bytes("RestrictedTransfers/endorsed-user-cannot-be-updated"));
         centrifugeChain.updateMember(poolId, scId, address(escrow), validUntil);
     }
 
@@ -376,7 +376,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         uint64 validUntil = uint64(block.timestamp + 7 days);
         address secondUser = makeAddr("secondUser");
 
-        vm.expectRevert(bytes("RestrictionManager/endorsed-user-cannot-be-frozen"));
+        vm.expectRevert(bytes("RestrictedTransfers/endorsed-user-cannot-be-frozen"));
         centrifugeChain.freeze(poolId, scId, address(escrow));
 
         vm.expectRevert(bytes("PoolManager/unknown-token"));
@@ -573,7 +573,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         centrifugeChain.freeze(poolId, scId, address(this));
         assertFalse(token.checkTransferRestriction(address(this), destinationAddress, 0));
 
-        vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
+        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         poolManager.transferShares(poolId, scId, OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount);
         assertEq(token.balanceOf(address(this)), amount);
 

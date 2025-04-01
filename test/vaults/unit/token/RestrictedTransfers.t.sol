@@ -3,32 +3,32 @@ pragma solidity 0.8.28;
 
 import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
-import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
+import {RestrictedTransfers} from "src/vaults/token/RestrictedTransfers.sol";
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 import "forge-std/Test.sol";
 import {MockRoot} from "test/common/mocks/MockRoot.sol";
 
-contract RestrictionManagerTest is Test {
+contract RestrictedTransfersTest is Test {
     MockRoot root;
     CentrifugeToken token;
-    RestrictionManager restrictionManager;
+    RestrictedTransfers restrictionManager;
 
     function setUp() public {
         root = new MockRoot();
         token = new CentrifugeToken(18);
-        restrictionManager = new RestrictionManager(address(root), address(this));
+        restrictionManager = new RestrictedTransfers(address(root), address(this));
         token.file("hook", address(restrictionManager));
     }
 
     function testHandleInvalidMessage() public {
-        vm.expectRevert(bytes("RestrictionManager/invalid-update"));
+        vm.expectRevert(bytes("RestrictedTransfers/invalid-update"));
         restrictionManager.updateRestriction(address(token), abi.encodePacked(uint8(0)));
     }
 
     function testAddMember(uint64 validUntil) public {
         vm.assume(validUntil >= block.timestamp);
 
-        vm.expectRevert("RestrictionManager/invalid-valid-until");
+        vm.expectRevert("RestrictedTransfers/invalid-valid-until");
         restrictionManager.updateMember(address(token), address(this), uint64(block.timestamp - 1));
 
         restrictionManager.updateMember(address(token), address(this), validUntil);
@@ -52,7 +52,7 @@ contract RestrictionManagerTest is Test {
     }
 
     function testFreezingZeroAddress() public {
-        vm.expectRevert("RestrictionManager/cannot-freeze-zero-address");
+        vm.expectRevert("RestrictedTransfers/cannot-freeze-zero-address");
         restrictionManager.freeze(address(token), address(0));
         assertEq(restrictionManager.isFrozen(address(token), address(0)), false);
     }

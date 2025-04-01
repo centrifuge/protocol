@@ -12,7 +12,7 @@ import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 
-import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
+import {RestrictedTransfers} from "src/vaults/token/RestrictedTransfers.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 
 // Mocks
@@ -36,7 +36,7 @@ abstract contract Setup is BaseSetup, SharedStorage {
     ERC20 assetErc20;
     CentrifugeToken token;
     address actor = address(this); // TODO: Generalize
-    RestrictionManager restrictionManager;
+    RestrictedTransfers restrictionManager;
 
     bytes16 scId;
     uint64 poolId;
@@ -64,7 +64,7 @@ abstract contract Setup is BaseSetup, SharedStorage {
         tokenFactory = new TokenFactory(address(this), address(this));
         escrow = new Escrow(address(address(this)));
         root = new Root(48 hours, address(this));
-        restrictionManager = new RestrictionManager(address(root), address(this));
+        restrictionManager = new RestrictedTransfers(address(root), address(this));
 
         root.endorse(address(escrow));
 

@@ -3,19 +3,19 @@ pragma solidity 0.8.28;
 
 import "test/vaults/BaseTest.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {RestrictedRedemptions} from "src/vaults/token/RestrictedRedemptions.sol";
+import {FreelyTransferable} from "src/vaults/token/FreelyTransferable.sol";
 
 contract RedeemTest is BaseTest {
     using CastLib for *;
 
-    function testRestrictedRedemptions(uint256 amount) public {
+    function testFreelyTransferable(uint256 amount) public {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
         (address vault_, uint128 assetId) = deployVault(
             VaultKind.Async, 5, 6, restrictedRedemptions, "name", "symbol", bytes16(bytes("1")), address(erc20), 0, 0
         );
         AsyncVault vault = AsyncVault(vault_);
-        RestrictedRedemptions hook = RestrictedRedemptions(restrictedRedemptions);
+        FreelyTransferable hook = FreelyTransferable(restrictedRedemptions);
         IShareToken token = IShareToken(address(vault.share()));
 
         centrifugeChain.updateSharePrice(
