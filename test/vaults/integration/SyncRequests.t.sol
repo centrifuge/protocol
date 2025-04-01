@@ -11,7 +11,7 @@ import {SyncRequests} from "src/vaults/SyncRequests.sol";
 import "test/vaults/BaseTest.sol";
 
 contract SyncRequestsBaseTest is BaseTest {
-    function _assumeUnauthorizedCaller(address nonWard) internal {
+    function _assumeUnauthorizedCaller(address nonWard) internal view {
         vm.assume(
             nonWard != address(root) && nonWard != address(poolManager) && nonWard != address(syncDepositVaultFactory)
                 && nonWard != address(this)
