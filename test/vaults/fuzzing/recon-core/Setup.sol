@@ -12,20 +12,19 @@ import {Escrow} from "src/vaults/Escrow.sol";
 import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
-import {Root} from "src/common/Root.sol";
-
 import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
 import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
-
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 
-// Mocks
+import {Root} from "src/common/Root.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 
 // Storage
 import {SharedStorage} from "./SharedStorage.sol";
+import {MockMessageProcessor} from "./mocks/MockMessageProcessor.sol";
+
 abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager {
     // Dependencies
     ERC7540VaultFactory vaultFactory;
@@ -35,7 +34,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
     Escrow public escrow; // NOTE: Restriction Manager will query it
     InvestmentManager investmentManager;
     PoolManager poolManager;
-
+    MockMessageProcessor messageProcessor;
     // TODO: CYCLE / Make it work for variable values
     ERC7540Vault vault;
     Tranche trancheToken;
@@ -122,7 +121,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         escrow = new Escrow(address(address(this)));
         root = new Root(48 hours, address(this));
         restrictionManager = new RestrictionManager(address(root), address(this));
-
+        messageProcessor = new MockMessageProcessor();
 
         root.endorse(address(escrow));
 
@@ -141,6 +140,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
 
         investmentManager.file("gateway", address(this));
         investmentManager.file("poolManager", address(poolManager));
+        investmentManager.file("sender", address(messageProcessor));
         investmentManager.rely(address(poolManager));
         investmentManager.rely(address(vaultFactory));
 

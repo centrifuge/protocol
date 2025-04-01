@@ -80,7 +80,9 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
             newTranche = poolManager_addTranche(POOL_ID, TRANCHE_ID, name, symbol, 18, address(restrictionManager));
         }
 
-        newVault = poolManager_deployVault(POOL_ID, TRANCHE_ID, address(newToken));
+        newVault = deployVault(POOL_ID, TRANCHE_ID, address(newToken));
+        investmentManager.rely(address(newVault));
+
 
         // NOTE: Add to storage! So this will be called by other functions
         // NOTE: This sets the actors
@@ -111,8 +113,6 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         trancheId = TRANCHE_ID;
         poolId = POOL_ID;
         currencyId = CURRENCY_ID;
-
-        // investmentManager.rely(address(vault));
 
         // NOTE: Iplicit return
     }
@@ -171,11 +171,13 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     // Step 7 is copied from step 5, ignore
 
     // Step 8, deploy the pool
-    function deployVault(uint64 poolId, bytes16 trancheId, address currency) public notGovFuzzing {
+    function deployVault(uint64 poolId, bytes16 trancheId, address currency) public notGovFuzzing returns (address) {
         address newVault = poolManager.deployVault(poolId, trancheId, currency, address(vaultFactory));
         poolManager.linkVault(poolId, trancheId, currency, newVault);
 
         vaults.push(newVault);
+
+        return newVault;
     }
 
     // Extra 9 - Remove liquidity Pool

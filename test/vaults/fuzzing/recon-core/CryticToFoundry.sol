@@ -12,4 +12,14 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     function setUp() public {
         setup();
     }
+
+    function test_recon_deposit() public {
+        deployNewTokenPoolAndTranche(18, type(uint88).max);
+
+        poolManager_updateTranchePrice(1e18, 1);
+        poolManager_updateMember(type(uint64).max);
+        vault_requestDeposit(1e18, 1);
+
+        // investmentManager_fulfillDepositRequest(1e18, 1e18, 0, 1);
+    }
 }
