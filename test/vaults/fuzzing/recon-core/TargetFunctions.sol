@@ -17,6 +17,7 @@ import {RestrictionManagerFunctions} from "./targets/RestrictionManagerFunctions
 import {VaultFunctions} from "./targets/VaultFunctions.sol";
 import {PoolManagerFunctions} from "./targets/PoolManagerFunctions.sol";
 import {VaultCallbacks} from "./targets/VaultCallbacks.sol";
+import {ManagerTargets} from "./targets/ManagerTargets.sol";
 
 abstract contract TargetFunctions is
     BaseTargetFunctions,
@@ -26,7 +27,8 @@ abstract contract TargetFunctions is
     RestrictionManagerFunctions,
     VaultFunctions,
     PoolManagerFunctions,
-    VaultCallbacks
+    VaultCallbacks, 
+    ManagerTargets
 {
     /**
      * TODO: Port Over tranche, liquidity pool stuff
