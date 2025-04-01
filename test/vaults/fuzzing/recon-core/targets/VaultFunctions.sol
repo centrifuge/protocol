@@ -33,7 +33,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
         assets = between(assets, 0, _getTokenAndBalanceForVault());
 
         MockERC20(_getAsset()).approve(address(vault), assets);
-        address to = _getRandomActor(toEntropy); // transfer to an actor different from current
+        address to = _getRandomActor(toEntropy); // request for any of the actors
 
         // B4 Balances
         uint256 balanceB4 = MockERC20(_getAsset()).balanceOf(_getActor());
@@ -169,7 +169,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
 
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
-        uint256 shares = vault.deposit(assets, address(this));
+        uint256 shares = vault.deposit(assets, _getActor());
 
         // Processed Deposit | E-2 | Global-1
         sumOfClaimedDeposits[address(trancheToken)] += shares;

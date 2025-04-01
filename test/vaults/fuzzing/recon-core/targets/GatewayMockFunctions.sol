@@ -114,7 +114,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         poolId = POOL_ID;
         currencyId = CURRENCY_ID;
 
-        // NOTE: Iplicit return
+        // NOTE: Implicit return
     }
 
     // Create a Asset
@@ -181,8 +181,9 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     }
 
     // Extra 9 - Remove liquidity Pool
-    function removeVault(uint64 poolId, bytes16 trancheId, address currency) public notGovFuzzing {
-        poolManager.unlinkVault(poolId, trancheId, currency, vaults[0]);
+    /// @dev clamped to only remove the first vault
+    function removeVault() public notGovFuzzing {
+        poolManager.unlinkVault(POOL_ID, TRANCHE_ID, _getAsset(), vaults[0]);
     }
 
     // Step 10

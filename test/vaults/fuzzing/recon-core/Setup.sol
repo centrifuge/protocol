@@ -136,7 +136,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
 
         poolManager = new PoolManager(address(escrow), address(trancheFactory), vaultFactories);
         poolManager.file("gateway", address(this));
-
+        poolManager.file("sender", address(messageProcessor));
 
         investmentManager.file("gateway", address(this));
         investmentManager.file("poolManager", address(poolManager));
