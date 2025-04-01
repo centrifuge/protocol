@@ -230,14 +230,22 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
         if (kind == MessageType.InitiateMessageRecovery) {
             MessageLib.InitiateMessageRecovery memory m = message.deserializeInitiateMessageRecovery();
-            IAdapter adapter = IAdapter(address(bytes20(m.adapter)));
-            require(_activeAdapters[chainId][adapter].id != 0, "Gateway/invalid-adapter");
-            recoveries[chainId][adapter][m.hash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
-            emit InitiateMessageRecovery(chainId, m.hash, adapter);
+            return _initiateMessageRecovery(chainId, IAdapter(address(bytes20(m.adapter))), m.hash);
         } else if (kind == MessageType.DisputeMessageRecovery) {
             MessageLib.DisputeMessageRecovery memory m = message.deserializeDisputeMessageRecovery();
             return _disputeMessageRecovery(chainId, IAdapter(address(bytes20(m.adapter))), m.hash);
         }
+    }
+
+    /// @inheritdoc IGateway
+    function initiateMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) external auth {
+        _initiateMessageRecovery(chainId, adapter, messageHash);
+    }
+
+    function _initiateMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) internal {
+        require(_activeAdapters[chainId][adapter].id != 0, "Gateway/invalid-adapter");
+        recoveries[chainId][adapter][messageHash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
+        emit InitiateMessageRecovery(chainId, messageHash, adapter);
     }
 
     /// @inheritdoc IGateway

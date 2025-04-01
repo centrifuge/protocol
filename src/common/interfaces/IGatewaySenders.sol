@@ -21,10 +21,12 @@ interface IRootMessageSender {
     function sendCancelUpgrade(uint16 chainId, bytes32 target) external;
 
     /// @notice Creates and send the message
-    function sendInitiateMessageRecovery(uint16 chainId, bytes32 hash, bytes32 adapter) external;
+    function sendInitiateMessageRecovery(uint16 chainId, bytes32 hash, uint16 adapterChainId, bytes32 adapter)
+        external;
 
     /// @notice Creates and send the message
-    function sendDisputeMessageRecovery(uint16 chainId, bytes32 hash, bytes32 adapter) external;
+    function sendDisputeMessageRecovery(uint16 chainId, bytes32 hash, uint16 adapterChainId, bytes32 adapter)
+        external;
 }
 
 /// @notice Interface for dispatch-only gateway

@@ -52,7 +52,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         gateway = new Gateway(root, gasService);
 
         messageProcessor = new MessageProcessor(root, gasService, deployer);
-        messageDispatcher = new MessageDispatcher(chainId, gateway, deployer);
+        messageDispatcher = new MessageDispatcher(chainId, root, gateway, deployer);
 
         adminSafe = adminSafe_;
         guardian = new Guardian(adminSafe, root, messageDispatcher);

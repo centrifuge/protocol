@@ -297,11 +297,11 @@ contract AdminTest is BaseTest {
 
         vm.prank(makeAddr("unauthorized"));
         vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
-        guardian.disputeMessageRecovery(OTHER_CHAIN_ID, keccak256(proof), adapter3);
+        guardian.disputeMessageRecovery(THIS_CHAIN_ID, keccak256(proof), OTHER_CHAIN_ID, adapter3);
 
         // Dispute recovery
         vm.prank(address(adminSafe));
-        guardian.disputeMessageRecovery(OTHER_CHAIN_ID, keccak256(proof), adapter3);
+        guardian.disputeMessageRecovery(THIS_CHAIN_ID, keccak256(proof), OTHER_CHAIN_ID, adapter3);
 
         // Check that recovery is not possible anymore
         vm.expectRevert(bytes("Gateway/message-recovery-not-initiated"));

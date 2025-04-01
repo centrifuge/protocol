@@ -75,7 +75,14 @@ interface IGateway is IMessageHandler, IMessageSender {
     /// @notice Finalize batching messages and send the resulting batch message
     function endBatch() external;
 
+    /// @notice Initialize the recovery of a message.
+    /// @param  chainId Chain where the adapter is configured for
+    /// @param  adapter Adapter that the recovery was targeting
+    /// @param  messageHash Hash of the message being disputed
+    function initiateMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) external;
+
     /// @notice Cancel the recovery of a message.
+    /// @param  chainId Chain where the adapter is configured for
     /// @param  adapter Adapter that the recovery was targeting
     /// @param  messageHash Hash of the message being disputed
     function disputeMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) external;
@@ -86,6 +93,7 @@ interface IGateway is IMessageHandler, IMessageSender {
     ///
     ///         Only 1 recovery can be outstanding per message hash. If multiple adapters fail at the same time,
     ///         these will need to be recovered serially (increasing the challenge period for each failed adapter).
+    /// @param  chainId Chain where the adapter is configured for
     /// @param  adapter Adapter's address that the recovery is targeting
     /// @param  message Hash of the message to be recovered
     function executeMessageRecovery(uint16 chainId, IAdapter adapter, bytes calldata message) external;

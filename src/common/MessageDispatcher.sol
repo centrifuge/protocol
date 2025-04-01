@@ -9,7 +9,7 @@ import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 
 import {MessageCategory, MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
@@ -48,7 +48,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     using BytesLib for bytes;
     using CastLib for *;
 
-    IMessageSender public immutable gateway;
+    IRoot public immutable root;
+    IGateway public immutable gateway;
 
     IPoolRouterGatewayHandler public poolRouter;
     IPoolManagerGatewayHandler public poolManager;
@@ -57,8 +58,9 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     uint16 public localCentrifugeId;
 
-    constructor(uint16 centrifugeChainId_, IMessageSender gateway_, address deployer) Auth(deployer) {
+    constructor(uint16 centrifugeChainId_, IRoot root_, IGateway gateway_, address deployer) Auth(deployer) {
         localCentrifugeId = centrifugeChainId_;
+        root = root_;
         gateway = gateway_;
     }
 
@@ -240,26 +242,44 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     /// @inheritdoc IRootMessageSender
     function sendScheduleUpgrade(uint16 chainId, bytes32 target) external auth {
-        require(chainId != localCentrifugeId, LocalExecutionNotAllowed());
-        gateway.send(chainId, MessageLib.ScheduleUpgrade({target: target}).serialize());
+        if (chainId == localCentrifugeId) {
+            root.scheduleRely(address(bytes20(target)));
+        } else {
+            gateway.send(chainId, MessageLib.ScheduleUpgrade({target: target}).serialize());
+        }
     }
 
     /// @inheritdoc IRootMessageSender
     function sendCancelUpgrade(uint16 chainId, bytes32 target) external auth {
-        require(chainId != localCentrifugeId, LocalExecutionNotAllowed());
-        gateway.send(chainId, MessageLib.CancelUpgrade({target: target}).serialize());
+        if (chainId == localCentrifugeId) {
+            root.cancelRely(address(bytes20(target)));
+        } else {
+            gateway.send(chainId, MessageLib.CancelUpgrade({target: target}).serialize());
+        }
     }
 
     /// @inheritdoc IRootMessageSender
-    function sendInitiateMessageRecovery(uint16 chainId, bytes32 hash, bytes32 adapter) external auth {
-        require(chainId != localCentrifugeId, LocalExecutionNotAllowed());
-        gateway.send(chainId, MessageLib.InitiateMessageRecovery({hash: hash, adapter: adapter}).serialize());
+    function sendInitiateMessageRecovery(uint16 chainId, bytes32 hash, uint16 adapterChainId, bytes32 adapter)
+        external
+        auth
+    {
+        if (chainId == localCentrifugeId) {
+            gateway.initiateMessageRecovery(adapterChainId, IAdapter(address(bytes20(adapter))), hash);
+        } else {
+            gateway.send(chainId, MessageLib.InitiateMessageRecovery({hash: hash, adapter: adapter}).serialize());
+        }
     }
 
     /// @inheritdoc IRootMessageSender
-    function sendDisputeMessageRecovery(uint16 chainId, bytes32 hash, bytes32 adapter) external auth {
-        require(chainId != localCentrifugeId, LocalExecutionNotAllowed());
-        gateway.send(chainId, MessageLib.DisputeMessageRecovery({hash: hash, adapter: adapter}).serialize());
+    function sendDisputeMessageRecovery(uint16 chainId, bytes32 hash, uint16 adapterChainId, bytes32 adapter)
+        external
+        auth
+    {
+        if (chainId == localCentrifugeId) {
+            gateway.disputeMessageRecovery(adapterChainId, IAdapter(address(bytes20(adapter))), hash);
+        } else {
+            gateway.send(chainId, MessageLib.DisputeMessageRecovery({hash: hash, adapter: adapter}).serialize());
+        }
     }
 
     /// @inheritdoc IVaultMessageSender
