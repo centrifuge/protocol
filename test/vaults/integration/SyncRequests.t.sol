@@ -15,7 +15,10 @@ contract SyncRequestsTest is BaseTest {
 
     // Deployment
     function testDeployment(address nonWard) public {
-        vm.assume(nonWard != address(root) && nonWard != address(poolManager) && nonWard != address(this));
+        vm.assume(
+            nonWard != address(root) && nonWard != address(poolManager) && nonWard != address(syncDepositVaultFactory)
+                && nonWard != address(syncRequests) && nonWard != address(this)
+        );
 
         // redeploying within test to increase coverage
         new SyncRequests(address(root), address(escrow));
@@ -109,7 +112,10 @@ contract SyncRequestsUnauthorizedTest is BaseTest {
     }
 
     function _expectUnauthorized(address caller) internal {
-        vm.assume(caller != address(root) && caller != address(poolManager) && caller != address(this));
+        vm.assume(
+            caller != address(root) && caller != address(poolManager) && caller != address(syncDepositVaultFactory)
+                && caller != address(syncRequests) && caller != address(this)
+        );
 
         vm.prank(caller);
         vm.expectRevert(IAuth.NotAuthorized.selector);
