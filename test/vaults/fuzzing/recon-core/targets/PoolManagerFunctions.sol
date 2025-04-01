@@ -26,7 +26,7 @@ abstract contract PoolManagerFunctions is BaseTargetFunctions, Properties {
         incomingTransfers[address(token)] += amount;
     }
 
-    function poolManager_transferSharesToEVM(uint16 destinationChainId, bytes32 destinationAddress, uint128 amount)
+    function poolManager_transferShareTokensToEVM(uint16 destinationChainId, bytes32 destinationAddress, uint128 amount)
         public
     {
         uint256 balB4 = token.balanceOf(actor);
@@ -39,7 +39,7 @@ abstract contract PoolManagerFunctions is BaseTargetFunctions, Properties {
         // Exact approval
         token.approve(address(poolManager), amount);
 
-        poolManager.transferShares(poolId, scId, destinationChainId, destinationAddress, amount);
+        poolManager.transferShareTokens(poolId, scId, destinationChainId, destinationAddress, amount);
         // TF-11 burns share class tokens from user, not tracked in escrow
 
         // Track minting for Global-3

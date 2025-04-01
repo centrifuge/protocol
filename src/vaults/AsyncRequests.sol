@@ -315,7 +315,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         public
         auth
     {
-        require(shares != 0, "AsyncRequests/share-class-token-amount-is-zero");
+        require(shares != 0, "AsyncRequests/share-token-amount-is-zero");
         address vault_ = vault[poolId][scId][assetId];
 
         // If there's any unclaimed deposits, claim those first
@@ -392,7 +392,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         if (sharesDown > 0) {
             require(
                 IERC20(IAsyncVault(vaultAddr).share()).transferFrom(address(escrow), receiver, sharesDown),
-                "AsyncRequests/token-tokens-transfer-failed"
+                "AsyncRequests/share-tokens-transfer-failed"
             );
         }
     }
@@ -507,7 +507,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         if (shares > 0) {
             require(
                 IERC20(IAsyncVault(vaultAddr).share()).transferFrom(address(escrow), receiver, shares),
-                "AsyncRequests/token-tokens-transfer-failed"
+                "AsyncRequests/share-tokens-transfer-failed"
             );
         }
     }

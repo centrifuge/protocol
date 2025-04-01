@@ -107,7 +107,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
     // --- Outgoing message handling ---
     /// @inheritdoc IPoolManager
-    function transferShares(uint64 poolId, bytes16 scId, uint16 destinationId, bytes32 recipient, uint128 amount)
+    function transferShareTokens(uint64 poolId, bytes16 scId, uint16 destinationId, bytes32 recipient, uint128 amount)
         external
         auth
     {
@@ -231,7 +231,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         auth
     {
         ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
-        require(shareClass.token != address(0), "PoolManager/token-does-not-exist");
+        require(shareClass.token != address(0), "PoolManager/share-token-does-not-exist");
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
         require(
@@ -315,7 +315,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     /// @inheritdoc IPoolManager
     function deployVault(uint64 poolId, bytes16 scId, uint128 assetId, address factory) public auth returns (address) {
         ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
-        require(shareClass.token != address(0), "PoolManager/token-does-not-exist");
+        require(shareClass.token != address(0), "PoolManager/share-token-does-not-exist");
         require(vaultFactory[factory], "PoolManager/invalid-factory");
 
         // Rely investment manager on vault so it can mint tokens
@@ -344,7 +344,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     /// @inheritdoc IPoolManager
     function linkVault(uint64 poolId, bytes16 scId, uint128 assetId, address vault) public auth {
         ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
-        require(shareClass.token != address(0), "PoolManager/token-does-not-exist");
+        require(shareClass.token != address(0), "PoolManager/share-token-does-not-exist");
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
@@ -359,7 +359,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     /// @inheritdoc IPoolManager
     function unlinkVault(uint64 poolId, bytes16 scId, uint128 assetId, address vault) public auth {
         ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
-        require(shareClass.token != address(0), "PoolManager/token-does-not-exist");
+        require(shareClass.token != address(0), "PoolManager/share-token-does-not-exist");
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 

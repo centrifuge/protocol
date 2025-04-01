@@ -270,11 +270,11 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
         vm.expectRevert(bytes("PoolManager/unknown-token"));
-        poolManager.transferShares(poolId + 1, scId, 0, centChainAddress, amount);
+        poolManager.transferShareTokens(poolId + 1, scId, 0, centChainAddress, amount);
 
         // send the transfer from EVM -> Cent Chain
         token.approve(address(poolManager), amount);
-        poolManager.transferShares(poolId, scId, 0, centChainAddress, amount);
+        poolManager.transferShareTokens(poolId, scId, 0, centChainAddress, amount);
         assertEq(token.balanceOf(address(this)), 0);
 
         // Finally, verify the connector called `adapter.send`
@@ -285,7 +285,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
     function testTransferShareTokensUnauthorized() public {
         vm.prank(makeAddr("unauthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolManager.transferShares(0, bytes16(0), 0, 0, 0);
+        poolManager.transferShareTokens(0, bytes16(0), 0, 0, 0);
     }
 
     function testTransferShareTokensFromCentrifuge(uint128 amount) public {
@@ -333,11 +333,11 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
         vm.expectRevert(bytes("PoolManager/unknown-token"));
-        poolManager.transferShares(poolId + 1, scId, OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount);
+        poolManager.transferShareTokens(poolId + 1, scId, OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount);
 
         // Approve and transfer amount from this address to destinationAddress
         token.approve(address(poolManager), amount);
-        poolManager.transferShares(
+        poolManager.transferShareTokens(
             vault.poolId(), vault.trancheId(), OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount
         );
         assertEq(token.balanceOf(address(this)), 0);
@@ -498,7 +498,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         address hook = address(new MockHook());
 
-        vm.expectRevert(bytes("PoolManager/token-does-not-exist"));
+        vm.expectRevert(bytes("PoolManager/share-token-does-not-exist"));
         centrifugeChain.updateSharePrice(poolId, scId, assetId, price, uint64(block.timestamp));
 
         centrifugeChain.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, hook);
@@ -574,21 +574,21 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assertFalse(token.checkTransferRestriction(address(this), destinationAddress, 0));
 
         vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
-        poolManager.transferShares(poolId, scId, OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount);
+        poolManager.transferShareTokens(poolId, scId, OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount);
         assertEq(token.balanceOf(address(this)), amount);
 
         centrifugeChain.unfreeze(poolId, scId, address(this));
-        poolManager.transferShares(poolId, scId, OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount);
+        poolManager.transferShareTokens(poolId, scId, OTHER_CHAIN_ID, destinationAddress.toBytes32(), amount);
         assertEq(token.balanceOf(address(escrow)), 0);
     }
 
     function testLinkVaultInvalidShare(uint64 poolId, bytes16 scId) public {
-        vm.expectRevert("PoolManager/token-does-not-exist");
+        vm.expectRevert("PoolManager/share-token-does-not-exist");
         poolManager.linkVault(poolId, scId, defaultAssetId, address(0));
     }
 
     function testUnlinkVaultInvalidShare(uint64 poolId, bytes16 scId) public {
-        vm.expectRevert("PoolManager/token-does-not-exist");
+        vm.expectRevert("PoolManager/share-token-does-not-exist");
         poolManager.unlinkVault(poolId, scId, defaultAssetId, address(0));
     }
 
@@ -783,7 +783,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
     }
 
     function testDeploVaultInvalidShare(uint64 poolId, bytes16 scId) public {
-        vm.expectRevert("PoolManager/token-does-not-exist");
+        vm.expectRevert("PoolManager/share-token-does-not-exist");
         poolManager.deployVault(poolId, scId, defaultAssetId, asyncVaultFactory);
     }
 
@@ -1055,7 +1055,7 @@ contract PoolManagerUpdateContract is BaseTest, PoolManagerTestHelper {
         centrifugeChain.addPool(poolId);
         bytes memory vaultUpdate = _serializedUpdateContractNewVault(asyncVaultFactory);
 
-        vm.expectRevert("PoolManager/token-does-not-exist");
+        vm.expectRevert("PoolManager/share-token-does-not-exist");
         poolManager.updateContract(poolId, scId, address(poolManager), vaultUpdate);
     }
 

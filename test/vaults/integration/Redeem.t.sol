@@ -232,7 +232,7 @@ contract RedeemTest is BaseTest {
         centrifugeChain.triggerIncreaseRedeemOrder(poolId, scId, investor, assetId, uint128(amount + 1));
 
         //Fail - Share token amount zero
-        vm.expectRevert(bytes("AsyncRequests/share-class-token-amount-is-zero"));
+        vm.expectRevert(bytes("AsyncRequests/share-token-amount-is-zero"));
         centrifugeChain.triggerIncreaseRedeemOrder(poolId, scId, investor, assetId, 0);
 
         // should work even if investor is frozen

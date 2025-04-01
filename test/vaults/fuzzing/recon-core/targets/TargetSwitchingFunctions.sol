@@ -24,7 +24,7 @@ abstract contract TargetSwitchingFunctions is BaseTargetFunctions, Properties {
     function changePool() public {
         // Given Pool, swap to new pool
         // Pool is easy
-        // But given a Pool, we need to set a Share and a Currency
+        // But given a Pool, we need to set a Share Class and a Currency
         // So we check if they exist, and use them
 
         // If they don't, we still switch

@@ -27,7 +27,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     using MessageLib for *;
 
     // Deploy new Asset
-    // Add Asset to Pool -> Also deploy Share
+    // Add Asset to Pool -> Also deploy Share Class
 
     bool hasDoneADeploy;
 

@@ -348,13 +348,13 @@ contract VaultRouterTest is BaseTest {
         uint256 fuel = estimateGas();
 
         vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        vaultRouter.transferShares{value: 0}(vault_, OTHER_CHAIN_ID, destinationAddress, uint128(amount));
+        vaultRouter.transferShareTokens{value: 0}(vault_, OTHER_CHAIN_ID, destinationAddress, uint128(amount));
 
         vm.expectRevert("Gateway/not-enough-gas-funds");
-        vaultRouter.transferShares{value: fuel - 1}(vault_, OTHER_CHAIN_ID, destinationAddress, uint128(amount));
+        vaultRouter.transferShareTokens{value: fuel - 1}(vault_, OTHER_CHAIN_ID, destinationAddress, uint128(amount));
 
-        snapStart("VaultRouter_transferShares");
-        vaultRouter.transferShares{value: fuel}(vault_, OTHER_CHAIN_ID, destinationAddress, uint128(amount));
+        snapStart("VaultRouter_transferShareTokens");
+        vaultRouter.transferShareTokens{value: fuel}(vault_, OTHER_CHAIN_ID, destinationAddress, uint128(amount));
         snapEnd();
         assertEq(share.balanceOf(address(vaultRouter)), 0);
         assertEq(share.balanceOf(address(this)), 0);
@@ -381,14 +381,16 @@ contract VaultRouterTest is BaseTest {
         uint256 fuel = estimateGas();
 
         vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        vaultRouter.transferShares{value: 0}(vault_, OTHER_CHAIN_ID, destinationAddressAsBytes32, uint128(amount));
+        vaultRouter.transferShareTokens{value: 0}(vault_, OTHER_CHAIN_ID, destinationAddressAsBytes32, uint128(amount));
 
         vm.expectRevert("Gateway/not-enough-gas-funds");
-        vaultRouter.transferShares{value: fuel - 1}(
+        vaultRouter.transferShareTokens{value: fuel - 1}(
             vault_, OTHER_CHAIN_ID, destinationAddressAsBytes32, uint128(amount)
         );
 
-        vaultRouter.transferShares{value: fuel}(vault_, OTHER_CHAIN_ID, destinationAddressAsBytes32, uint128(amount));
+        vaultRouter.transferShareTokens{value: fuel}(
+            vault_, OTHER_CHAIN_ID, destinationAddressAsBytes32, uint128(amount)
+        );
         assertEq(share.balanceOf(address(vaultRouter)), 0);
         assertEq(share.balanceOf(address(this)), 0);
     }
