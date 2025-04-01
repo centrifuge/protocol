@@ -81,7 +81,7 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
         // NOTE: Skipping root and gateway when not gov fuzzing since we mocked them
         for (uint256 i; i < SYSTEM_ADDRESSES_LENGTH; i++) {
             emit DebugNumber(i); // Number to index
-            eq(MockERC20(_getAsset()).balanceOf(systemAddresses[i]), 0, "token.balanceOf(systemAddresses[i]) > 0");
+            eq(MockERC20(address(vault.asset())).balanceOf(systemAddresses[i]), 0, "token.balanceOf(systemAddresses[i]) > 0");
         }
     }
 
@@ -89,7 +89,7 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
     function invariant_global_5() trancheTokenIsSet public {
         // claimCancelDepositRequest
         // investmentManager_fulfillCancelDepositRequest
-        lte(sumOfClaimedDepositCancelations[_getAsset()], cancelDepositCurrencyPayout[_getAsset()], "sumOfClaimedDepositCancelations !<= cancelDepositCurrencyPayout");
+        lte(sumOfClaimedDepositCancelations[address(vault.asset())], cancelDepositCurrencyPayout[address(vault.asset())], "sumOfClaimedDepositCancelations !<= cancelDepositCurrencyPayout");
     }
 
     // Inductive implementation of invariant_global_5
@@ -211,16 +211,16 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
         // functions permanently reverting
         
         uint256 ghostBalOfEscrow;
-        uint256 balOfEscrow = MockERC20(_getAsset()).balanceOf(address(escrow)) - tokenBalanceOfEscrowAtFork; // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
+        uint256 balOfEscrow = MockERC20(address(vault.asset())).balanceOf(address(escrow)) - tokenBalanceOfEscrowAtFork; // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
         unchecked {
             // Deposit Requests + Transfers In
             /// @audit Minted by Asset Payouts by Investors
             (
-                ghostBalOfEscrow = mintedByCurrencyPayout[_getAsset()] + sumOfDepositRequests[_getAsset()]
-                    + sumOfTransfersIn[_getAsset()]
+                ghostBalOfEscrow = mintedByCurrencyPayout[address(vault.asset())] + sumOfDepositRequests[address(vault.asset())]
+                    + sumOfTransfersIn[address(vault.asset())]
                 // Minus Claimed Redemptions and TransfersOut
-                - sumOfClaimedRedemptions[_getAsset()] - sumOfClaimedDepositCancelations[_getAsset()]
-                    - sumOfTransfersOut[_getAsset()]
+                - sumOfClaimedRedemptions[address(vault.asset())] - sumOfClaimedDepositCancelations[address(vault.asset())]
+                    - sumOfTransfersOut[address(vault.asset())]
             );
         }
         eq(balOfEscrow, ghostBalOfEscrow, "balOfEscrow != ghostBalOfEscrow");
@@ -264,7 +264,7 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
         //     return; // Canary for actor swaps
         // }
 
-        uint256 balOfEscrow = MockERC20(_getAsset()).balanceOf(address(escrow));
+        uint256 balOfEscrow = MockERC20(address(vault.asset())).balanceOf(address(escrow));
 
         // Use acc to track max amount withdrawn for each actor
         address[] memory actors = _getActors();
@@ -324,7 +324,7 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
         systemAddresses[2] = address(investmentManager);
         systemAddresses[3] = address(poolManager);
         systemAddresses[4] = address(vault);
-        systemAddresses[5] = address(_getAsset());
+        systemAddresses[5] = address(vault.asset());
         systemAddresses[6] = address(trancheToken);
         systemAddresses[7] = address(restrictionManager);
 
