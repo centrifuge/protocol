@@ -33,12 +33,12 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
     function vault_requestDeposit(uint256 assets, uint256 toEntropy) public updateGhosts {
         assets = between(assets, 0, _getTokenAndBalanceForVault());
 
-        MockERC20(_getAsset()).approve(address(vault), assets);
+        MockERC20(address(vault.asset())).approve(address(vault), assets);
         address to = _getRandomActor(toEntropy); // request for any of the actors
 
         // B4 Balances
-        uint256 balanceB4 = MockERC20(_getAsset()).balanceOf(_getActor());
-        uint256 balanceOfEscrowB4 = MockERC20(_getAsset()).balanceOf(address(escrow));
+        uint256 balanceB4 = MockERC20(address(vault.asset())).balanceOf(_getActor());
+        uint256 balanceOfEscrowB4 = MockERC20(address(vault.asset())).balanceOf(address(escrow));
 
         bool hasReverted;
 
@@ -46,9 +46,9 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
         vm.prank(_getActor());
         try vault.requestDeposit(assets, to, _getActor()) {
             // TF-1
-            sumOfDepositRequests[address(MockERC20(_getAsset()))] += assets;
+            sumOfDepositRequests[address(MockERC20(vault.asset()))] += assets;
 
-            requestDepositAssets[_getActor()][address(MockERC20(_getAsset()))] += assets;
+            requestDepositAssets[_getActor()][address(MockERC20(vault.asset()))] += assets;
         } catch {
             hasReverted = true;
         }
@@ -66,14 +66,13 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
             t(hasReverted, "LP-2 Must Revert");
         }
 
-        if (!poolManager.isAllowedAsset(poolId, _getAsset())) {
-            // TODO: Ensure this works via _getActor() switch
+        if (!poolManager.isAllowedAsset(poolId, address(vault.asset()))) {
             t(hasReverted, "LP-3 Must Revert");
         }
 
         // After Balances and Checks
-        uint256 balanceAfter = MockERC20(_getAsset()).balanceOf(_getActor());
-        uint256 balanceOfEscrowAfter = MockERC20(_getAsset()).balanceOf(address(escrow));
+        uint256 balanceAfter = MockERC20(address(vault.asset())).balanceOf(_getActor());
+        uint256 balanceOfEscrowAfter = MockERC20(address(vault.asset())).balanceOf(address(escrow));
 
         // NOTE: We only enforce the check if the tx didn't revert
         if (!hasReverted) {

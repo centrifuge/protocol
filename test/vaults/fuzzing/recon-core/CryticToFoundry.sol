@@ -13,16 +13,18 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         setup();
     }
 
-    function test_recon_deposit() public {
-        deployNewTokenPoolAndTranche(18, type(uint88).max);
+    // forge test --match-test test_vault_requestDeposit_4 -vvv 
+    function test_vault_requestDeposit_4() public {
 
-        poolManager_updateTranchePrice(1e18, 1);
-        poolManager_updateMember(type(uint64).max);
-        vault_requestDeposit(1e18, 1);
+        deployNewTokenPoolAndTranche(2,0);
 
-        switch_actor(1);
-        investmentManager_fulfillDepositRequest(1e18, 1e18, 0, 1);
+        poolManager_disallowAsset();
 
-        vault_deposit(1e18);
+        restrictionManager_updateMemberBasic(1525277064);
+
+        poolManager_updateTranchePrice(0,1);
+
+        vault_requestDeposit(1,0);
+
     }
 }
