@@ -48,6 +48,7 @@ abstract contract ManagerTargets is
 
     /// @dev Mint to arbitrary address, uses owner by default, even though MockERC20 doesn't check
     function asset_mint(address to, uint128 amt) public updateGhosts asAdmin {
+        require(to != address(escrow), "Cannot mint to escrow");
         MockERC20(_getAsset()).mint(to, amt);
     }
 }
