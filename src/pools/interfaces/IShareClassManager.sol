@@ -193,7 +193,8 @@ interface IShareClassManager {
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     /// @param depositAssetId Identifier of the deposit asset for which shares should be issued
-    /// @param navPerShare Total value of assets of the pool and share class per share
+    /// @param navPerShare The nav per share value of the share class (in the pool currency denomination. Conversion to
+    /// asset price is done onchain based on the valuation of the asset)
     function issueShares(PoolId poolId, ShareClassId scId, AssetId depositAssetId, D18 navPerShare) external;
 
     /// @notice Take back shares for the given identifier based on the provided NAV per share.
@@ -201,7 +202,8 @@ interface IShareClassManager {
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     /// @param payoutAssetId Identifier of the payout asset
-    /// @param navPerShare Total value of assets of the pool and share class per share
+    /// @param navPerShare The nav per share value of the share class (in the pool currency denomination. Conversion to
+    /// asset price is done onchain based on the valuation of the asset)
     /// @param valuation Source of truth for quotas, e.g. the price of a share class token amount to pool amount
     /// @return payoutAssetAmount Converted amount of payout asset based on number of revoked shares
     /// @return payoutPoolAmount Converted amount of pool currency based on number of revoked shares
@@ -242,10 +244,10 @@ interface IShareClassManager {
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
-    /// @param navPerShare New NAV per share
+    /// @param navPerShare Externally provided NAV per share
     /// @param data Additional data for the update
     /// @return issuance Total issuance of the share class
-    /// @return navPerShare Price per share of the share class
+    /// @return navPerShare The new NAV per share
     function updateShareClass(PoolId poolId, ShareClassId scId, D18 navPerShare, bytes calldata data)
         external
         returns (uint128, D18);

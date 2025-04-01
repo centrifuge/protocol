@@ -45,7 +45,7 @@ contract AssetRegistry is ERC6909Fungible, IAssetRegistry {
         uint8 decimals_ = asset[assetId].decimals;
         require(decimals_ > 0, AssetNotFound());
 
-        return (10 ** uint256(decimals_)).toUint128();
+        return (10 ** decimals_).toUint128();
     }
 
     /// @inheritdoc IAssetRegistry

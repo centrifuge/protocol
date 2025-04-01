@@ -322,7 +322,9 @@ contract MultiShareClassSimpleTest is MultiShareClassBaseTest {
         (uint128 totalIssuance,) = shareClass.metrics(scId);
 
         vm.expectEmit();
-        emit IShareClassManager.IssuedShares(poolId, scId, 1, navPerShare.mulUint128(amount), navPerShare, totalIssuance + amount, amount);
+        emit IShareClassManager.IssuedShares(
+            poolId, scId, 1, navPerShare.mulUint128(amount), navPerShare, totalIssuance + amount, amount
+        );
         shareClass.increaseShareClassIssuance(poolId, scId, navPerShare, amount);
 
         (uint128 totalIssuance_, D18 navPerShareMetric) = shareClass.metrics(scId);

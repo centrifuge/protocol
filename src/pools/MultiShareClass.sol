@@ -290,7 +290,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
         require(endEpochId < epochId[poolId], EpochNotFound());
 
         ShareClassMetrics memory m = metrics[shareClassId_];
-        (uint128 totalIssuance, D18 _navPerShare) = (m.totalIssuance, m.navPerShare);
+        (uint128 totalIssuance, D18 navPerShare_) = (m.totalIssuance, m.navPerShare);
 
         // First issuance starts at epoch 0, subsequent ones at latest pointer plus one
         uint32 startEpochId = epochPointers[shareClassId_][depositAssetId].latestIssuance + 1;
@@ -312,7 +312,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
         }
 
         epochPointers[shareClassId_][depositAssetId].latestIssuance = endEpochId;
-        metrics[shareClassId_] = ShareClassMetrics(totalIssuance, _navPerShare);
+        metrics[shareClassId_] = ShareClassMetrics(totalIssuance, navPerShare_);
     }
 
     /// @inheritdoc IShareClassManager
@@ -344,7 +344,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
         require(endEpochId < epochId[poolId], EpochNotFound());
 
         ShareClassMetrics memory m = metrics[shareClassId_];
-        (uint128 totalIssuance, D18 _navPerShare) = (m.totalIssuance, m.navPerShare);
+        (uint128 totalIssuance, D18 navPerShare_) = (m.totalIssuance, m.navPerShare);
         address poolCurrency = poolRegistry.currency(poolId).addr();
 
         // First issuance starts at epoch 0, subsequent ones at latest pointer plus one
@@ -376,7 +376,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
         }
 
         epochPointers[shareClassId_][payoutAssetId].latestRevocation = endEpochId;
-        metrics[shareClassId_] = ShareClassMetrics(totalIssuance, _navPerShare);
+        metrics[shareClassId_] = ShareClassMetrics(totalIssuance, navPerShare_);
     }
 
     /// @inheritdoc IShareClassManager

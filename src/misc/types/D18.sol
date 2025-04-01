@@ -45,9 +45,7 @@ function inner(D18 d1) pure returns (uint128) {
 function reciprocal(D18 d) pure returns (D18) {
     uint128 val = D18.unwrap(d);
     require(val != 0, "reciprocal of zero");
-    // 1 D18 = 1e18 in raw form, so we do (1e18 * 1e18) / val
-    uint256 inverted = MathLib.mulDiv(1e18, 1e18, val);
-    return D18.wrap(inverted.toUint128());
+    return d18(1e18, val);
 }
 
 /// @dev Multiplies a decimal by an integer. i.e:
