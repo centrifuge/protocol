@@ -48,7 +48,7 @@ contract AdminTest is BaseTest {
         guardian.unpause();
     }
 
-    function testOutgoingTrancheTokenTransferWhilePausedFails(
+    function testOutgoingShareTokenTransferWhilePausedFails(
         string memory tokenName,
         string memory tokenSymbol,
         uint8 decimals,
@@ -58,7 +58,7 @@ contract AdminTest is BaseTest {
         // TODO: Set-up correct tests once CC is removed from tests and we test new architecture
     }
 
-    function testIncomingTrancheTokenTransferWhilePausedFails(
+    function testIncomingShareTokenTransferWhilePausedFails(
         string memory tokenName,
         string memory tokenSymbol,
         uint8 decimals,

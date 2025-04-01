@@ -12,27 +12,27 @@ contract BurnTest is BaseTest {
         (address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
 
-        IShareToken tranche = IShareToken(address(vault.share()));
-        root.relyContract(address(tranche), self); // give self auth permissions
+        IShareToken token = IShareToken(address(vault.share()));
+        root.relyContract(address(token), self); // give self auth permissions
         // add investor as member
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
 
-        tranche.mint(investor, amount);
-        root.denyContract(address(tranche), self); // remove auth permissions from self
+        token.mint(investor, amount);
+        root.denyContract(address(token), self); // remove auth permissions from self
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        tranche.burn(investor, amount);
+        token.burn(investor, amount);
 
-        root.relyContract(address(tranche), self); // give self auth permissions
+        root.relyContract(address(token), self); // give self auth permissions
         vm.expectRevert(IERC20.InsufficientAllowance.selector);
-        tranche.burn(investor, amount);
+        token.burn(investor, amount);
 
         // success
         vm.prank(investor);
-        tranche.approve(self, amount); // approve to burn tokens
-        tranche.burn(investor, amount);
+        token.approve(self, amount); // approve to burn tokens
+        token.burn(investor, amount);
 
-        assertEq(tranche.balanceOf(investor), 0);
-        assertEq(tranche.balanceOf(investor), tranche.balanceOf(investor));
+        assertEq(token.balanceOf(investor), 0);
+        assertEq(token.balanceOf(investor), token.balanceOf(investor));
     }
 }

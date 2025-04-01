@@ -15,7 +15,7 @@ contract OperatorTest is BaseTest {
         address investor = makeAddr("investor");
         address operator = makeAddr("operator");
         AsyncVault vault = AsyncVault(vault_);
-        IShareToken tranche = IShareToken(address(vault.share()));
+        IShareToken token = IShareToken(address(vault.share()));
 
         centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
 
@@ -50,7 +50,7 @@ contract OperatorTest is BaseTest {
         vm.prank(operator);
         vault.deposit(amount, investor, investor);
         assertEq(vault.pendingDepositRequest(0, investor), 0);
-        assertEq(tranche.balanceOf(investor), amount);
+        assertEq(token.balanceOf(investor), amount);
 
         vm.prank(investor);
         vault.setOperator(operator, false);

@@ -193,10 +193,10 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     /// @inheritdoc IAsyncRedeemManager
     function cancelRedeemRequest(address vaultAddr, address controller, address source) public auth {
         IAsyncVault vault_ = IAsyncVault(vaultAddr);
-        uint256 approximateTranchesPayout = pendingRedeemRequest(vaultAddr, controller);
-        require(approximateTranchesPayout > 0, "AsyncRequests/no-pending-redeem-request");
+        uint256 approximateSharesPayout = pendingRedeemRequest(vaultAddr, controller);
+        require(approximateSharesPayout > 0, "AsyncRequests/no-pending-redeem-request");
         require(
-            _canTransfer(vaultAddr, address(0), controller, approximateTranchesPayout),
+            _canTransfer(vaultAddr, address(0), controller, approximateSharesPayout),
             "AsyncRequests/transfer-not-allowed"
         );
 
@@ -234,8 +234,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         if (state.pendingDepositRequest == 0) delete state.pendingCancelDepositRequest;
 
         // Mint to escrow. Recipient can claim by calling deposit / mint
-        IShareToken shareToken = IShareToken(IAsyncVault(vault_).share());
-        shareToken.mint(address(escrow), shares);
+        IShareToken token = IShareToken(IAsyncVault(vault_).share());
+        token.mint(address(escrow), shares);
 
         IAsyncVault(vault_).onDepositClaimable(user, assets, shares);
     }
@@ -263,9 +263,9 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
         if (state.pendingRedeemRequest == 0) delete state.pendingCancelRedeemRequest;
 
-        // Burn redeemed shareToken tokens from escrow
-        IShareToken shareToken = IShareToken(IAsyncVault(vault_).share());
-        shareToken.burn(address(escrow), shares);
+        // Burn redeemed share class tokens from escrow
+        IShareToken token = IShareToken(IAsyncVault(vault_).share());
+        token.burn(address(escrow), shares);
 
         IAsyncVault(vault_).onRedeemClaimable(user, assets, shares);
     }
@@ -315,7 +315,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         public
         auth
     {
-        require(shares != 0, "AsyncRequests/shareToken-token-amount-is-zero");
+        require(shares != 0, "AsyncRequests/share-class-token-amount-is-zero");
         address vault_ = vault[poolId][scId][assetId];
 
         // If there's any unclaimed deposits, claim those first
@@ -333,8 +333,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
         require(_processRedeemRequest(vault_, shares, user, msg.sender, true), "AsyncRequests/failed-redeem-request");
 
-        // Transfer the shareToken token amount that was not covered by tokens still in escrow for claims,
-        // from user to escrow (lock shareToken tokens in escrow)
+        // Transfer the token token amount that was not covered by tokens still in escrow for claims,
+        // from user to escrow (lock share class tokens in escrow)
         if (tokensToTransfer != 0) {
             require(
                 IShareToken(address(IAsyncVault(vault_).share())).authTransferFrom(
@@ -392,7 +392,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         if (sharesDown > 0) {
             require(
                 IERC20(IAsyncVault(vaultAddr).share()).transferFrom(address(escrow), receiver, sharesDown),
-                "AsyncRequests/shareToken-tokens-transfer-failed"
+                "AsyncRequests/token-tokens-transfer-failed"
             );
         }
     }
@@ -507,7 +507,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         if (shares > 0) {
             require(
                 IERC20(IAsyncVault(vaultAddr).share()).transferFrom(address(escrow), receiver, shares),
-                "AsyncRequests/shareToken-tokens-transfer-failed"
+                "AsyncRequests/token-tokens-transfer-failed"
             );
         }
     }

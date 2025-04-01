@@ -16,7 +16,7 @@ contract RedeemTest is BaseTest {
         );
         AsyncVault vault = AsyncVault(vault_);
         RestrictedRedemptions hook = RestrictedRedemptions(restrictedRedemptions);
-        IShareToken tranche = IShareToken(address(vault.share()));
+        IShareToken token = IShareToken(address(vault.share()));
 
         centrifugeChain.updateSharePrice(
             vault.poolId(), vault.trancheId(), assetId, defaultPrice, uint64(block.timestamp)
@@ -28,7 +28,7 @@ contract RedeemTest is BaseTest {
 
         vm.startPrank(investor);
         erc20.approve(vault_, amount);
-        (bool isMember,) = hook.isMember(address(tranche), investor);
+        (bool isMember,) = hook.isMember(address(token), investor);
         assertEq(isMember, false);
         vault.requestDeposit(amount, investor, investor);
         vm.stopPrank();
@@ -43,7 +43,7 @@ contract RedeemTest is BaseTest {
         // Can transfer to anyone
         address investor2 = makeAddr("Investor2");
         vm.prank(investor);
-        tranche.transfer(investor2, amount / 2);
+        token.transfer(investor2, amount / 2);
 
         // Not everyone can redeem
         vm.expectRevert(bytes("AsyncRequests/transfer-not-allowed"));
@@ -51,7 +51,7 @@ contract RedeemTest is BaseTest {
         vault.requestRedeem(amount / 2, investor, investor);
 
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
-        (isMember,) = hook.isMember(address(tranche), investor);
+        (isMember,) = hook.isMember(address(token), investor);
         assertEq(isMember, true);
 
         vm.prank(investor);

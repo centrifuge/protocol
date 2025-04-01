@@ -27,7 +27,7 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
         address, /* escrow */
         address[] calldata wards_
     ) public auth returns (address) {
-        AsyncVault vault = new AsyncVault(poolId, trancheId, asset, tokenId, token, root, investmentManager);
+        AsyncVault vault = new AsyncVault(poolId, scId, asset, tokenId, token, root, investmentManager);
 
         vault.rely(root);
         vault.rely(investmentManager);

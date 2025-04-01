@@ -5,10 +5,10 @@ import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 import {ITokenFactory} from "src/vaults/interfaces/factories/ITokenFactory.sol";
 import {Auth} from "src/misc/Auth.sol";
 
-/// @title  Tranche Token Factory
-/// @dev    Utility for deploying new tranche token contracts
+/// @title  Share Token Factory
+/// @dev    Utility for deploying new share class token contracts
 ///         Ensures the addresses are deployed at a deterministic address
-///         based on the pool id and tranche id.
+///         based on the pool id and share class id.
 contract TokenFactory is Auth, ITokenFactory {
     address public immutable root;
 

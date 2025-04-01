@@ -62,18 +62,18 @@ abstract contract BaseVault is Auth, IBaseVault {
 
     constructor(
         uint64 poolId_,
-        bytes16 trancheId_,
+        bytes16 scId_,
         address asset_,
         uint256 tokenId_,
-        address share_,
+        address token_,
         address root_,
         address manager_
     ) Auth(msg.sender) {
         poolId = poolId_;
-        trancheId = trancheId_;
+        trancheId = scId_;
         asset = asset_;
         tokenId = tokenId_;
-        share = share_;
+        share = token_;
         _shareDecimals = IERC20Metadata(share).decimals();
         root = IRoot(root_);
         manager = IBaseInvestmentManager(manager_);

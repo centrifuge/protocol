@@ -11,20 +11,20 @@ contract MintTest is BaseTest {
         (address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
 
-        IShareToken tranche = IShareToken(address(vault.share()));
-        root.denyContract(address(tranche), self);
+        IShareToken token = IShareToken(address(vault.share()));
+        root.denyContract(address(token), self);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        tranche.mint(investor, amount);
+        token.mint(investor, amount);
 
-        root.relyContract(address(tranche), self); // give self auth permissions
+        root.relyContract(address(token), self); // give self auth permissions
         vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
-        tranche.mint(investor, amount);
+        token.mint(investor, amount);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
 
         // success
-        tranche.mint(investor, amount);
-        assertEq(tranche.balanceOf(investor), amount);
-        assertEq(tranche.balanceOf(investor), tranche.balanceOf(investor));
+        token.mint(investor, amount);
+        assertEq(token.balanceOf(investor), amount);
+        assertEq(token.balanceOf(investor), token.balanceOf(investor));
     }
 }

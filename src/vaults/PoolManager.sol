@@ -25,7 +25,7 @@ import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedee
 import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {ITokenFactory} from "src/vaults/interfaces/factories/ITokenFactory.sol";
-import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 import {
@@ -33,7 +33,7 @@ import {
     Pool,
     ShareClassDetails,
     SharePrice,
-    UndeployedTranche,
+    UndeployedShare,
     VaultDetails,
     IPoolManager
 } from "src/vaults/interfaces/IPoolManager.sol";
@@ -117,7 +117,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
         sender.sendTransferShares(destinationId, poolId, scId, recipient, amount);
 
-        emit TransferTrancheTokens(poolId, scId, msg.sender, destinationId, recipient, amount);
+        emit TransferShareTokens(poolId, scId, msg.sender, destinationId, recipient, amount);
     }
 
     // @inheritdoc IPoolManagerGatewayHandler
@@ -264,7 +264,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
-    function updateTrancheHook(uint64 poolId, bytes16 scId, address hook) public auth {
+    function updateShareHook(uint64 poolId, bytes16 scId, address hook) public auth {
         IShareToken token_ = IShareToken(token(poolId, scId));
         require(address(token_) != address(0), "PoolManager/unknown-token");
         require(hook != token_.hook(), "PoolManager/old-hook");
@@ -272,7 +272,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
-    function handleTransferTrancheTokens(uint64 poolId, bytes16 scId, address destinationAddress, uint128 amount)
+    function handleTransferShareTokens(uint64 poolId, bytes16 scId, address destinationAddress, uint128 amount)
         public
         auth
     {
@@ -349,7 +349,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
         IBaseInvestmentManager manager = IBaseVault(vault).manager();
-        IVaultManager(address(manager)).addVault(poolId, trancheId, vault, assetIdKey.asset, assetId);
+        IVaultManager(address(manager)).addVault(poolId, scId, vault, assetIdKey.asset, assetId);
 
         _vaultDetails[vault].isLinked = true;
 
@@ -364,7 +364,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
         IBaseInvestmentManager manager = IBaseVault(vault).manager();
-        IVaultManager(address(manager)).removeVault(poolId, trancheId, vault, assetIdKey.asset, assetId);
+        IVaultManager(address(manager)).removeVault(poolId, scId, vault, assetIdKey.asset, assetId);
 
         _vaultDetails[vault].isLinked = false;
 
@@ -438,21 +438,21 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
     /// @dev Sets up permissions for the base vault manager and potentially a secondary manager (in case of partially
     /// sync vault)
-    function _approveManagers(address vault, address trancheToken, address asset, uint256 tokenId) internal {
+    function _approveManagers(address vault, address token_, address asset, uint256 tokenId) internal {
         address manager = address(IBaseVault(vault).manager());
-        _approveManager(manager, trancheToken, asset, tokenId);
+        _approveManager(manager, token_, asset, tokenId);
 
         // For sync deposit & async redeem vault, also repeat above for async manager (base manager is sync one)
         (VaultKind vaultKind, address secondaryVaultManager) = IVaultManager(manager).vaultKind(vault);
         if (vaultKind == VaultKind.SyncDepositAsyncRedeem) {
-            _approveManager(secondaryVaultManager, trancheToken, asset, tokenId);
+            _approveManager(secondaryVaultManager, token_, asset, tokenId);
         }
     }
 
     /// @dev Sets up permissions for a vault manager
-    function _approveManager(address manager, address trancheToken, address asset, uint256 tokenId) internal {
-        IAuth(trancheToken).rely(manager);
-        escrow.approveMax(trancheToken, manager);
+    function _approveManager(address manager, address token_, address asset, uint256 tokenId) internal {
+        IAuth(token_).rely(manager);
+        escrow.approveMax(token_, manager);
         escrow.approveMax(asset, tokenId, manager);
     }
 

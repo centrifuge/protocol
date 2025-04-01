@@ -20,11 +20,8 @@ interface IVaultManager {
     /// @notice Removes `vault` from `who`'s authorized callers
     function removeVault(uint64 poolId, bytes16 scId, address vault, address asset, uint128 assetId) external;
 
-    /// @notice Returns the address of the vault for a given pool, tranche and asset
-    function vaultByAssetId(uint64 poolId, bytes16 scId, uint128 assetId)
-        external
-        view
-        returns (address vaultAddr);
+    /// @notice Returns the address of the vault for a given pool, share class and asset
+    function vaultByAssetId(uint64 poolId, bytes16 scId, uint128 assetId) external view returns (address vaultAddr);
 
     /// @notice Checks whether the vault is partially (a)synchronous and if so returns the address of the secondary
     /// manager.

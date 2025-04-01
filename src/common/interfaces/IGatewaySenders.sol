@@ -109,7 +109,7 @@ interface IVaultMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
     function sendUpdateHoldingAmount(
         PoolId poolId,
-        ShareClassId shareClassId,
+        ShareClassId scId,
         AssetId assetId,
         address provider,
         uint128 amount,
@@ -123,7 +123,7 @@ interface IVaultMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
     function sendUpdateShares(
         PoolId poolId,
-        ShareClassId shareClassId,
+        ShareClassId scId,
         address receiver,
         D18 pricePerShare,
         uint128 shares,

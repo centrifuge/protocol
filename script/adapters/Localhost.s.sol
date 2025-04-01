@@ -12,7 +12,7 @@ import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IERC7540Vault} from "src/vaults/interfaces/IERC7540.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
 
 import {FullDeployer, PoolsDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
 
@@ -71,14 +71,15 @@ contract LocalhostDeployer is FullDeployer {
             bytes32(bytes20(address(asyncVaultFactory))),
             VaultUpdateKind.DeployAndLink
         );
-        cs[c++] = abi.encodeWithSelector(poolRouter.updateSharePrice.selector, scId, navPerShare);
-        cs[c++] = abi.encodeWithSelector(poolRouter.notifySharePrice.selector, scId, assetId);
+        // TODO(follow-up): Enable after merging #184
+        // cs[c++] = abi.encodeWithSelector(poolRouter.updateSharePrice.selector, scId, navPerShare);
+        // cs[c++] = abi.encodeWithSelector(poolRouter.notifySharePrice.selector, scId, assetId);
 
         poolRouter.execute{value: 0.001 ether}(poolId, cs);
 
         // Submit deposit request
         IShareToken shareToken = IShareToken(poolManager.token(poolId.raw(), scId.raw()));
-        IERC7540Vault vault = IERC7540Vault(shareToken.vault(address(token)));
+        IAsyncVault vault = IAsyncVault(shareToken.vault(address(token)));
 
         uint256 investAmount = 1_000_000e6;
         token.approve(address(vault), investAmount);

@@ -19,7 +19,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 // Based on
 // `Gateway.handle(bytes calldata message)`
 /**
- * - deployNewTokenPoolAndTranche Core function that deploys a Liquidity Pool
+ * - deployNewTokenPoolAndShare Core function that deploys a Liquidity Pool
  *     - poolManager_registerAsset
  */
 abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
@@ -27,22 +27,22 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     using MessageLib for *;
 
     // Deploy new Asset
-    // Add Asset to Pool -> Also deploy Tranche
+    // Add Asset to Pool -> Also deploy Share
 
     bool hasDoneADeploy;
 
     // Pool ID = Pool ID
     // Asset ID
-    // Tranche ID
+    // Share ID
 
     // Basically the real complete setup
-    function deployNewTokenPoolAndTranche(uint8 decimals, uint256 initialMintPerUsers)
+    function deployNewTokenPoolAndShare(uint8 decimals, uint256 initialMintPerUsers)
         public
         returns (address newToken, address newShareToken, address newVault, uint128 newAssetId)
     {
         // NOTE: TEMPORARY
         require(!hasDoneADeploy); // This bricks the function for this one for Medusa
-        // Meaning we only deploy one token, one Pool, one tranche
+        // Meaning we only deploy one token, one Pool, one share class
 
         if (RECON_USE_SINGLE_DEPLOY) {
             hasDoneADeploy = true;
@@ -71,15 +71,14 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
 
         {
             // TODO: QA: Custom Names
-            string memory name = "Tranche";
+            string memory name = "Share";
             string memory symbol = "T1";
 
             // TODO: Ask if we should customize decimals and permissions here
-            newShareToken =
-                poolManager_addShareClass(POOL_ID, TRANCHE_ID, name, symbol, 18, address(restrictionManager));
+            newShareToken = poolManager_addShareClass(POOL_ID, SHARE_ID, name, symbol, 18, address(restrictionManager));
         }
 
-        newVault = poolManager_deployVault(POOL_ID, TRANCHE_ID, newAssetId);
+        newVault = poolManager_deployVault(POOL_ID, SHARE_ID, newAssetId);
 
         // NOTE: Add to storage! So this will be called by other functions
         // NOTE: This sets the actors
@@ -98,11 +97,11 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         // Which means we have to switch on all permutations on all checks
 
         vault = AsyncVault(newVault);
-        token = ERC20(newToken);
-        trancheToken = CentrifugeToken(newShareToken);
-        restrictionManager = RestrictionManager(address(trancheToken.hook()));
+        assetErc20 = ERC20(newToken);
+        token = CentrifugeToken(newShareToken);
+        restrictionManager = RestrictionManager(address(token.hook()));
 
-        trancheId = TRANCHE_ID;
+        scId = SHARE_ID;
         poolId = POOL_ID;
         assetId = newAssetId;
 
@@ -129,24 +128,24 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     // Step 4
     function poolManager_addShareClass(
         uint64 poolId,
-        bytes16 trancheId,
+        bytes16 scId,
         string memory tokenName,
         string memory tokenSymbol,
         uint8 decimals,
         address hook
     ) public returns (address) {
         address newToken = poolManager.addShareClass(
-            poolId, trancheId, tokenName, tokenSymbol, decimals, keccak256(abi.encodePacked(poolId, trancheId)), hook
+            poolId, scId, tokenName, tokenSymbol, decimals, keccak256(abi.encodePacked(poolId, scId)), hook
         );
 
-        trancheTokens.push(newToken);
+        shareClassTokens.push(newToken);
 
         return newToken;
     }
 
     // Step 5
-    function poolManager_deployVault(uint64 poolId, bytes16 trancheId, uint128 assetId) public returns (address) {
-        return poolManager.deployVault(poolId, trancheId, assetId, address(vaultFactory));
+    function poolManager_deployVault(uint64 poolId, bytes16 scId, uint128 assetId) public returns (address) {
+        return poolManager.deployVault(poolId, scId, assetId, address(vaultFactory));
     }
 
     /**
@@ -154,29 +153,25 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
      */
     function poolManager_updateMember(uint64 validUntil) public {
         poolManager.updateRestriction(
-            poolId, trancheId, MessageLib.UpdateRestrictionMember(actor.toBytes32(), validUntil).serialize()
+            poolId, scId, MessageLib.UpdateRestrictionMember(actor.toBytes32(), validUntil).serialize()
         );
     }
 
     // TODO: Price is capped at u64 to test overflows
     function poolManager_updateSharePrice(uint64 price, uint64 computedAt) public {
-        poolManager.updateSharePrice(poolId, trancheId, assetId, price, computedAt);
+        poolManager.updateSharePrice(poolId, scId, assetId, price, computedAt);
     }
 
     function poolManager_updateShareMetadata(string memory tokenName, string memory tokenSymbol) public {
-        poolManager.updateShareMetadata(poolId, trancheId, tokenName, tokenSymbol);
+        poolManager.updateShareMetadata(poolId, scId, tokenName, tokenSymbol);
     }
 
     function poolManager_freeze() public {
-        poolManager.updateRestriction(
-            poolId, trancheId, MessageLib.UpdateRestrictionFreeze(actor.toBytes32()).serialize()
-        );
+        poolManager.updateRestriction(poolId, scId, MessageLib.UpdateRestrictionFreeze(actor.toBytes32()).serialize());
     }
 
     function poolManager_unfreeze() public {
-        poolManager.updateRestriction(
-            poolId, trancheId, MessageLib.UpdateRestrictionUnfreeze(actor.toBytes32()).serialize()
-        );
+        poolManager.updateRestriction(poolId, scId, MessageLib.UpdateRestrictionUnfreeze(actor.toBytes32()).serialize());
     }
 
     // TODO: Rely / Permissions
@@ -213,20 +208,20 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     // Step 4 = poolManager_addShareClass - GatewayMockFunctions
     // Step 5 = poolManager_deployVault - GatewayMockFunctions
 
-    // A pool can belong to a tranche
-    // A Vault can belong to a tranche and a currency
+    // A pool can belong to a share class
+    // A Vault can belong to a share class and a currency
 
     // Step 6 deploy the pool
-    function deployVault(uint64 poolId, bytes16 trancheId, uint128 assetId) public {
-        address newVault = poolManager.deployVault(poolId, trancheId, assetId, address(vaultFactory));
-        poolManager.linkVault(poolId, trancheId, assetId, newVault);
+    function deployVault(uint64 poolId, bytes16 scId, uint128 assetId) public {
+        address newVault = poolManager.deployVault(poolId, scId, assetId, address(vaultFactory));
+        poolManager.linkVault(poolId, scId, assetId, newVault);
 
         vaults.push(newVault);
     }
 
     // Extra 7 - Remove liquidity Pool
-    function removeVault(uint64 poolId, bytes16 trancheId, uint128 assetId) public {
-        poolManager.unlinkVault(poolId, trancheId, assetId, vaults[0]);
+    function removeVault(uint64 poolId, bytes16 scId, uint128 assetId) public {
+        poolManager.unlinkVault(poolId, scId, assetId, vaults[0]);
     }
 }
 

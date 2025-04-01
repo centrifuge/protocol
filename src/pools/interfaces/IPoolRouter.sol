@@ -68,7 +68,7 @@ interface IPoolRouter {
     /// @notice Creates a new pool. `msg.sender` will be the admin of the created pool.
     /// @param currency The pool currency. Usually an AssetId identifying by a ISO4217 code.
     /// @param shareClassManager The share class manager used for this pool.
-    /// @return The id of the new pool.
+    /// @return PoolId The id of the new pool.
     function createPool(address admin, AssetId currency, IShareClassManager shareClassManager)
         external
         payable

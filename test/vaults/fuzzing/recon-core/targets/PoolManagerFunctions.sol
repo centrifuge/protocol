@@ -10,26 +10,26 @@ import {vm} from "@chimera/Hevm.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 
-// Only for Tranche
+// Only for Share
 abstract contract PoolManagerFunctions is BaseTargetFunctions, Properties {
-    // TODO: Live comparison of TotalSupply of tranche token
+    // TODO: Live comparison of TotalSupply of share class token
     // With our current storage value
 
     // TODO: Clamp / Target specifics
     // TODO: Actors / Randomness
     // TODO: Overflow stuff
-    function poolManager_handleTransferTrancheTokens(uint128 amount) public {
-        poolManager.handleTransferTrancheTokens(poolId, trancheId, actor, amount);
-        // TF-12 mint tranche tokens from user, not tracked in escrow
+    function poolManager_handleTransferShareTokens(uint128 amount) public {
+        poolManager.handleTransferShareTokens(poolId, scId, actor, amount);
+        // TF-12 mint share class tokens from user, not tracked in escrow
 
         // Track minting for Global-3
-        incomingTransfers[address(trancheToken)] += amount;
+        incomingTransfers[address(token)] += amount;
     }
 
     function poolManager_transferSharesToEVM(uint16 destinationChainId, bytes32 destinationAddress, uint128 amount)
         public
     {
-        uint256 balB4 = trancheToken.balanceOf(actor);
+        uint256 balB4 = token.balanceOf(actor);
 
         // Clamp
         if (amount > balB4) {
@@ -37,15 +37,15 @@ abstract contract PoolManagerFunctions is BaseTargetFunctions, Properties {
         }
 
         // Exact approval
-        trancheToken.approve(address(poolManager), amount);
+        token.approve(address(poolManager), amount);
 
-        poolManager.transferShares(poolId, trancheId, destinationChainId, destinationAddress, amount);
-        // TF-11 burns tranche tokens from user, not tracked in escrow
+        poolManager.transferShares(poolId, scId, destinationChainId, destinationAddress, amount);
+        // TF-11 burns share class tokens from user, not tracked in escrow
 
         // Track minting for Global-3
-        outGoingTransfers[address(trancheToken)] += amount;
+        outGoingTransfers[address(token)] += amount;
 
-        uint256 balAfterActor = trancheToken.balanceOf(actor);
+        uint256 balAfterActor = token.balanceOf(actor);
 
         t(balAfterActor <= balB4, "PM-3-A");
         t(balB4 - balAfterActor == amount, "PM-3-A");

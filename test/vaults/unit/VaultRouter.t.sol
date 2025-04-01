@@ -329,7 +329,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     /// forge-config: default.isolate = true
-    function testTransferTrancheTokensToAddressDestination() public {
+    function testTransferShareTokensToAddressDestination() public {
         (address vault_,) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
         AsyncVault vault = AsyncVault(vault_);
@@ -360,7 +360,7 @@ contract VaultRouterTest is BaseTest {
         assertEq(share.balanceOf(address(this)), 0);
     }
 
-    function testTransferTrancheTokensToBytes32Destination() public {
+    function testTransferShareTokensToBytes32Destination() public {
         (address vault_,) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
         AsyncVault vault = AsyncVault(vault_);

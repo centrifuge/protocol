@@ -12,7 +12,7 @@ import {BaseTest} from "test/vaults/BaseTest.sol";
 import "forge-std/Test.sol";
 
 interface PoolManagerLike {
-    function getTranche(uint64 poolId, bytes16 trancheId) external view returns (address);
+    function getShare(uint64 poolId, bytes16 scId) external view returns (address);
 }
 
 contract FactoryTest is Test {
@@ -29,7 +29,7 @@ contract FactoryTest is Test {
         root = address(new Root(48 hours, address(this)));
     }
 
-    function testTokenFactoryIsDeterministicAcrossChains(uint64 poolId, bytes16 trancheId) public {
+    function testTokenFactoryIsDeterministicAcrossChains(uint64 poolId, bytes16 scId) public {
         if (vm.envOr("FORK_TESTS", false)) {
             vm.setEnv("DEPLOYMENT_SALT", "0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563");
             vm.selectFork(mainnetFork);
@@ -42,12 +42,12 @@ contract FactoryTest is Test {
                 testSetup1.restrictionManager(),
                 "",
                 "",
-                trancheId,
+                scId,
                 address(testSetup1.erc20()),
                 0,
                 0
             );
-            address tranche1 = PoolManagerLike(address(testSetup1.poolManager())).getTranche(poolId, trancheId);
+            address token1 = PoolManagerLike(address(testSetup1.poolManager())).getShare(poolId, scId);
             address root1 = address(testSetup1.root());
 
             vm.selectFork(polygonFork);
@@ -60,16 +60,16 @@ contract FactoryTest is Test {
                 testSetup2.restrictionManager(),
                 "",
                 "",
-                trancheId,
+                scId,
                 address(testSetup2.erc20()),
                 0,
                 0
             );
-            address tranche2 = PoolManagerLike(address(testSetup2.poolManager())).getTranche(poolId, trancheId);
+            address token2 = PoolManagerLike(address(testSetup2.poolManager())).getShare(poolId, scId);
             address root2 = address(testSetup2.root());
 
             assertEq(address(root1), address(root2));
-            assertEq(tranche1, tranche2);
+            assertEq(token1, token2);
         }
     }
 
@@ -96,7 +96,7 @@ contract FactoryTest is Test {
         assertEq(address(tokenFactory), predictedAddress);
     }
 
-    function testTrancheShouldBeDeterministic(
+    function testShareShouldBeDeterministic(
         address asyncRequests,
         address poolManager,
         string memory name,

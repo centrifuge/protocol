@@ -33,12 +33,12 @@ abstract contract Setup is BaseSetup, SharedStorage {
 
     // TODO: CYCLE / Make it work for variable values
     AsyncVault vault;
-    ERC20 token;
-    CentrifugeToken trancheToken;
+    ERC20 assetErc20;
+    CentrifugeToken token;
     address actor = address(this); // TODO: Generalize
     RestrictionManager restrictionManager;
 
-    bytes16 trancheId;
+    bytes16 scId;
     uint64 poolId;
     uint128 assetId;
 

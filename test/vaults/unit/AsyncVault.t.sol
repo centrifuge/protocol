@@ -13,7 +13,7 @@ contract AsyncVaultTest is BaseTest {
         uint64 poolId,
         string memory tokenName,
         string memory tokenSymbol,
-        bytes16 trancheId,
+        bytes16 scId,
         uint128 assetId,
         address nonWard
     ) public {
@@ -22,15 +22,15 @@ contract AsyncVaultTest is BaseTest {
         vm.assume(bytes(tokenName).length <= 128);
         vm.assume(bytes(tokenSymbol).length <= 32);
 
-        (address vault_,) = deployVault(VaultKind.Async, poolId, erc20.decimals(), tokenName, tokenSymbol, trancheId);
+        (address vault_,) = deployVault(VaultKind.Async, poolId, erc20.decimals(), tokenName, tokenSymbol, scId);
         AsyncVault vault = AsyncVault(vault_);
 
         // values set correctly
         assertEq(address(vault.manager()), address(asyncRequests));
         assertEq(vault.asset(), address(erc20));
         assertEq(vault.poolId(), poolId);
-        assertEq(vault.trancheId(), trancheId);
-        address token = poolManager.token(poolId, trancheId);
+        assertEq(vault.trancheId(), scId);
+        address token = poolManager.token(poolId, scId);
         assertEq(address(vault.share()), token);
         // assertEq(tokenName, ERC20(token).name());
         // assertEq(tokenSymbol, ERC20(token).symbol());
@@ -58,7 +58,7 @@ contract AsyncVaultTest is BaseTest {
 
     // --- uint128 type checks ---
     /// @dev Make sure all function calls would fail when overflow uint128
-    /// @dev requestRedeem is not checked because the tranche token supply is already capped at uint128
+    /// @dev requestRedeem is not checked because the share class token supply is already capped at uint128
     function testAssertUint128(uint256 amount) public {
         vm.assume(amount > MAX_UINT128); // amount has to overflow UINT128
         (address vault_,) = deploySimpleVault(VaultKind.Async);

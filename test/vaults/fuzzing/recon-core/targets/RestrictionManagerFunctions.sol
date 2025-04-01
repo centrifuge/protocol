@@ -10,7 +10,7 @@ import {vm} from "@chimera/Hevm.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 
-// Only for Tranche
+// Only for Share
 abstract contract RestrictionManagerFunctions is BaseTargetFunctions, Properties {
     /**
      * RESTRICTION MANAGER
@@ -19,22 +19,22 @@ abstract contract RestrictionManagerFunctions is BaseTargetFunctions, Properties
 
     // TODO: Actory Cycling
     function restrictionManager_updateMemberBasic(uint64 validUntil) public {
-        restrictionManager.updateMember(address(trancheToken), actor, validUntil);
+        restrictionManager.updateMember(address(token), actor, validUntil);
     }
 
     // TODO: We prob want to keep one generic
     // And one with limited actors
     function restrictionManager_updateMember(address user, uint64 validUntil) public {
-        restrictionManager.updateMember(address(trancheToken), user, validUntil);
+        restrictionManager.updateMember(address(token), user, validUntil);
     }
 
     // TODO: Actor Cycling
     function restrictionManager_freeze(address /*user*/ ) public {
-        restrictionManager.freeze(address(trancheToken), actor);
+        restrictionManager.freeze(address(token), actor);
     }
 
     function restrictionManager_unfreeze(address /*user*/ ) public {
-        restrictionManager.unfreeze(address(trancheToken), actor);
+        restrictionManager.unfreeze(address(token), actor);
     }
 
     /**

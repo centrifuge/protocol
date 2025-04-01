@@ -13,7 +13,7 @@ import "src/vaults/interfaces/IERC7575.sol";
 /// @title  AsyncVault
 /// @notice Asynchronous Tokenized Vault standard implementation for Centrifuge pools
 ///
-/// @dev    Each vault issues shares of Centrifuge tranches as restricted ERC-20 or ERC-6909 tokens
+/// @dev    Each vault issues shares of Centrifuge share class tokens as restricted ERC-20 or ERC-6909 tokens
 ///         against asset deposits based on the current share price.
 ///
 ///         ERC-7540 is an extension of the ERC-4626 standard by 'requestDeposit' & 'requestRedeem' methods, where
@@ -23,13 +23,13 @@ import "src/vaults/interfaces/IERC7575.sol";
 contract AsyncVault is AsyncRedeemVault, IAsyncVault {
     constructor(
         uint64 poolId_,
-        bytes16 trancheId_,
+        bytes16 scId_,
         address asset_,
         uint256 tokenId_,
-        address share_,
+        address token_,
         address root_,
         address manager_
-    ) BaseVault(poolId_, trancheId_, asset_, tokenId_, share_, root_, manager_) AsyncRedeemVault(manager_) {}
+    ) BaseVault(poolId_, scId_, asset_, tokenId_, token_, root_, manager_) AsyncRedeemVault(manager_) {}
 
     // --- ERC-7540 methods ---
     /// @inheritdoc IERC7540Deposit

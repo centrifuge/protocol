@@ -50,7 +50,7 @@ interface IVaultRouter is IMulticall, IRecoverable {
     ///                 1. The DAO signs the legal agreements for the pool => no onchain action,
     ///                    but only after this the issuer can call update_member to add them as a whitelisted investor
     ///                 2. Call `requestDeposit` to lock funds
-    ///                 3. After the pool has fulfilled their request, call `deposit` to claim their tranche tokens
+    ///                 3. After the pool has fulfilled their request, call `deposit` to claim their share class tokens
     ///
     ///
     ///             With the new router function the steps are as follows:
@@ -151,7 +151,7 @@ interface IVaultRouter is IMulticall, IRecoverable {
     /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
     ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
     ///
-    /// @param  vault The vault for the corresponding tranche token
+    /// @param  vault The vault for the corresponding share class token
     /// @param  chainId Check `IPoolManager.transferShares.destinationId`
     /// @param  recipient Check `IPoolManager.transferShares.recipient`
     /// @param  amount Check `IPoolManager.transferShares.amount`
@@ -185,7 +185,7 @@ interface IVaultRouter is IMulticall, IRecoverable {
 
     // --- View Methods ---
     /// @notice Check IPoolManager.getVault
-    function getVault(uint64 poolId, bytes16 trancheId, address asset) external view returns (address);
+    function getVault(uint64 poolId, bytes16 scId, address asset) external view returns (address);
 
     /// @notice Check IGateway.estimate
     /// @param chainId destination chain

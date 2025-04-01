@@ -96,16 +96,16 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.UpdateShareClassPrice) {
             MessageLib.UpdateShareClassPrice memory m = MessageLib.deserializeUpdateShareClassPrice(message);
-            poolManager.updateTranchePrice(m.poolId, m.scId, m.assetId, m.price, m.timestamp);
+            poolManager.updateSharePrice(m.poolId, m.scId, m.assetId, m.price, m.timestamp);
         } else if (kind == MessageType.UpdateShareClassMetadata) {
             MessageLib.UpdateShareClassMetadata memory m = MessageLib.deserializeUpdateShareClassMetadata(message);
             poolManager.updateShareMetadata(m.poolId, m.scId, m.name, m.symbol.toString());
         } else if (kind == MessageType.UpdateShareClassHook) {
             MessageLib.UpdateShareClassHook memory m = MessageLib.deserializeUpdateShareClassHook(message);
-            poolManager.updateTrancheHook(m.poolId, m.scId, address(bytes20(m.hook)));
+            poolManager.updateShareHook(m.poolId, m.scId, address(bytes20(m.hook)));
         } else if (kind == MessageType.TransferShares) {
             MessageLib.TransferShares memory m = MessageLib.deserializeTransferShares(message);
-            poolManager.handleTransferTrancheTokens(m.poolId, m.scId, address(bytes20(m.recipient)), m.amount);
+            poolManager.handleTransferShareTokens(m.poolId, m.scId, address(bytes20(m.recipient)), m.amount);
         } else if (kind == MessageType.UpdateRestriction) {
             MessageLib.UpdateRestriction memory m = MessageLib.deserializeUpdateRestriction(message);
             poolManager.updateRestriction(m.poolId, m.scId, m.payload);

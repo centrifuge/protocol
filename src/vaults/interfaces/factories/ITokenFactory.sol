@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 interface ITokenFactory {
-    /// @notice Used to deploy new tranche tokens.
+    /// @notice Used to deploy new share class tokens.
     /// @dev    In order to have the same address on different EVMs `salt` should be used
     ///         during creationg process.
     /// @param name Name of the new token.

@@ -11,7 +11,7 @@ import {ERC20} from "src/misc/ERC20.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 
 // Component
-import {TrancheTokenFunctions} from "./targets/TrancheTokenFunctions.sol";
+import {ShareTokenFunctions} from "./targets/ShareTokenFunctions.sol";
 import {GatewayMockFunctions} from "./targets/GatewayMockFunctions.sol";
 import {RestrictionManagerFunctions} from "./targets/RestrictionManagerFunctions.sol";
 import {VaultFunctions} from "./targets/VaultFunctions.sol";
@@ -21,7 +21,7 @@ import {VaultCallbacks} from "./targets/VaultCallbacks.sol";
 abstract contract TargetFunctions is
     BaseTargetFunctions,
     Properties,
-    TrancheTokenFunctions,
+    ShareTokenFunctions,
     GatewayMockFunctions,
     RestrictionManagerFunctions,
     VaultFunctions,
@@ -29,7 +29,7 @@ abstract contract TargetFunctions is
     VaultCallbacks
 {
     /**
-     * TODO: Port Over tranche, liquidity pool stuff
+     * TODO: Port Over share class, liquidity pool stuff
      *
      *
      */
@@ -45,9 +45,9 @@ abstract contract TargetFunctions is
         return true;
     }
 
-    function invariant_doesTranchesGetDeployed() public view returns (bool) {
+    function invariant_doesSharesGetDeployed() public view returns (bool) {
         if (RECON_TOGGLE_CANARY_TESTS) {
-            return trancheTokens.length < 10;
+            return shareClassTokens.length < 10;
         }
 
         return true;

@@ -22,7 +22,7 @@ import {Escrow} from "src/vaults/Escrow.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
-import {CentrifugeToken} from "src/vaults/token/CentrifugeToken.sol";
+import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
 import {VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
@@ -166,11 +166,11 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     function deployVault(
         VaultKind vaultKind,
         uint64 poolId,
-        uint8 trancheDecimals,
+        uint8 shareTokenDecimals,
         address hook,
         string memory tokenName,
         string memory tokenSymbol,
-        bytes16 trancheId,
+        bytes16 scId,
         address asset,
         uint256 assetTokenId,
         uint16 destinationChain
@@ -181,12 +181,12 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
             assetId = poolManager.assetToId(asset, assetTokenId);
         }
 
-        if (poolManager.token(poolId, trancheId) == address(0)) {
+        if (poolManager.token(poolId, scId) == address(0)) {
             centrifugeChain.addPool(poolId);
-            centrifugeChain.addShareClass(poolId, trancheId, tokenName, tokenSymbol, trancheDecimals, hook);
+            centrifugeChain.addShareClass(poolId, scId, tokenName, tokenSymbol, shareTokenDecimals, hook);
         }
 
-        poolManager.updateSharePrice(poolId, trancheId, assetId, uint128(10 ** 18), uint64(block.timestamp));
+        poolManager.updateSharePrice(poolId, scId, assetId, uint128(10 ** 18), uint64(block.timestamp));
 
         // Trigger new vault deployment via UpdateContract
         bytes32 vaultFactory = _vaultKindToVaultFactory(vaultKind);
@@ -195,8 +195,8 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
             assetId: assetId,
             kind: uint8(VaultUpdateKind.DeployAndLink)
         }).serialize();
-        poolManager.update(poolId, trancheId, vaultUpdate);
-        vaultAddress = IShareToken(poolManager.token(poolId, trancheId)).vault(asset);
+        poolManager.update(poolId, scId, vaultUpdate);
+        vaultAddress = IShareToken(poolManager.token(poolId, scId)).vault(asset);
     }
 
     function deployVault(
@@ -205,7 +205,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         uint8 decimals,
         string memory tokenName,
         string memory tokenSymbol,
-        bytes16 trancheId
+        bytes16 scId
     ) public returns (address vaultAddress, uint128 assetId) {
         return deployVault(
             vaultKind,
@@ -214,7 +214,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
             restrictionManager,
             tokenName,
             tokenSymbol,
-            trancheId,
+            scId,
             address(erc20),
             erc20TokenId,
             OTHER_CHAIN_ID
