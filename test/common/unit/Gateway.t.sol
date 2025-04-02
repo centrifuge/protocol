@@ -2,21 +2,59 @@
 pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
+import "test/common/mocks/Mock.sol";
+
 import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 
 import {ERC20} from "src/misc/ERC20.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {Gateway, IRoot, IGasService} from "src/common/Gateway.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 
 import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
 import {MockRoot} from "test/common/mocks/MockRoot.sol";
-import {MockManager} from "test/common/mocks/MockManager.sol";
 import {MockGasService} from "test/common/mocks/MockGasService.sol";
+
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
+
+contract MockProcessor is Mock, IMessageHandler, IMessageProperties {
+    using MessageLib for *;
+
+    mapping(bytes => uint256) public received;
+
+    function handle(uint16, bytes memory message) public {
+        values_bytes["handle_message"] = message;
+        received[message]++;
+    }
+
+    function isMessageRecovery(bytes calldata message) external pure returns (bool) {
+        uint8 code = message.messageCode();
+        return code == uint8(MessageType.InitiateMessageRecovery) || code == uint8(MessageType.DisputeMessageRecovery);
+    }
+
+    function messageLength(bytes calldata message) external pure returns (uint16) {
+        return message.messageLength();
+    }
+
+    function messagePoolId(bytes calldata message) external pure returns (PoolId) {
+        return message.messagePoolId();
+    }
+
+    function messageProofHash(bytes calldata message) external pure returns (bytes32) {
+        return (message.messageCode() == uint8(MessageType.MessageProof))
+            ? message.deserializeMessageProof().hash
+            : bytes32(0);
+    }
+
+    function createMessageProof(bytes calldata message) external pure returns (bytes memory) {
+        return MessageLib.MessageProof({hash: keccak256(message)}).serialize();
+    }
+}
 
 contract GatewayTest is Test {
     using CastLib for *;
@@ -36,7 +74,7 @@ contract GatewayTest is Test {
     address self;
 
     MockRoot root;
-    MockManager handler;
+    MockProcessor handler;
     MockGasService gasService;
     MockAdapter adapter1;
     MockAdapter adapter2;
@@ -52,10 +90,10 @@ contract GatewayTest is Test {
     function setUp() public {
         self = address(this);
         root = new MockRoot();
-        handler = new MockManager();
+        handler = new MockProcessor();
         gasService = new MockGasService();
         gateway = new Gateway(IRoot(address(root)), IGasService(address(gasService)));
-        gateway.file("handler", address(handler));
+        gateway.file("processor", address(handler));
 
         adapter1 = new MockAdapter(REMOTE_CENTRIFUGE_ID, gateway);
         vm.label(address(adapter1), "MockAdapter1");
@@ -104,12 +142,12 @@ contract GatewayTest is Test {
         vm.expectRevert(bytes("Gateway/file-unrecognized-param"));
         gateway.file("random", self);
 
-        assertEq(address(gateway.handler()), address(handler));
+        assertEq(address(gateway.processor()), address(handler));
         assertEq(address(gateway.gasService()), address(gasService));
 
         // success
-        gateway.file("handler", self);
-        assertEq(address(gateway.handler()), self);
+        gateway.file("processor", self);
+        assertEq(address(gateway.processor()), self);
         gateway.file("gasService", self);
         assertEq(address(gateway.gasService()), self);
 
@@ -117,7 +155,7 @@ contract GatewayTest is Test {
         gateway.deny(self);
         // auth fail
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.file("handler", self);
+        gateway.file("processor", self);
     }
 
     // --- Permissions ---
@@ -535,11 +573,14 @@ contract GatewayTest is Test {
         gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter1, message);
 
         // Initiate recovery
+        gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter1, keccak256(message));
+        /* TODO: move to integration tests
         _send(
             adapter2,
-            MessageLib.InitiateMessageRecovery(keccak256(message), address(adapter1).toBytes32(), REMOTE_CENTRIFUGE_ID)
+        MessageLib.InitiateMessageRecovery(keccak256(message), address(adapter1).toBytes32(), REMOTE_CENTRIFUGE_ID)
                 .serialize()
         );
+        */
 
         vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
         gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter1, message);
@@ -567,11 +608,14 @@ contract GatewayTest is Test {
         gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter3, proof);
 
         // Initiate recovery
+        gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter3, keccak256(proof));
+        /* TODO: move to integration tests
         _send(
             adapter1,
-            MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32(), REMOTE_CENTRIFUGE_ID)
+        MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32(), REMOTE_CENTRIFUGE_ID)
                 .serialize()
         );
+        */
 
         vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
         gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter3, proof);
@@ -594,11 +638,14 @@ contract GatewayTest is Test {
         assertEq(handler.received(message), 0);
 
         // Initiate recovery
+        gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter3, keccak256(proof));
+        /* // TODO: move to integration tests
         _send(
             adapter1,
-            MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32(), REMOTE_CENTRIFUGE_ID)
+        MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32(), REMOTE_CENTRIFUGE_ID)
                 .serialize()
         );
+        */
 
         vm.warp(block.timestamp + gateway.RECOVERY_CHALLENGE_PERIOD());
 
@@ -620,21 +667,27 @@ contract GatewayTest is Test {
         assertEq(handler.received(message), 0);
 
         // Initiate recovery
+        gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter3, keccak256(proof));
+        /* TODO: move to integration tests
         _send(
             adapter1,
-            MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32(), REMOTE_CENTRIFUGE_ID)
+        MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32(), REMOTE_CENTRIFUGE_ID)
                 .serialize()
         );
+        */
 
         vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
         gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter3, proof);
 
         // Dispute recovery
+        gateway.disputeMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter3, keccak256(proof));
+        /* TODO: move to integration tests
         _send(
             adapter2,
-            MessageLib.DisputeMessageRecovery(keccak256(proof), address(adapter3).toBytes32(), REMOTE_CENTRIFUGE_ID)
+        MessageLib.DisputeMessageRecovery(keccak256(proof), address(adapter3).toBytes32(), REMOTE_CENTRIFUGE_ID)
                 .serialize()
         );
+        */
 
         // Check that recovery is not possible anymore
         vm.expectRevert(bytes("Gateway/message-recovery-not-initiated"));
@@ -653,11 +706,14 @@ contract GatewayTest is Test {
         _send(adapter3, proof);
         assertEq(handler.received(message), 0);
 
+        gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter1, keccak256(message));
+        /* TODO: move to integration tests
         _send(
             adapter2,
-            MessageLib.InitiateMessageRecovery(keccak256(message), address(adapter1).toBytes32(), REMOTE_CENTRIFUGE_ID)
+        MessageLib.InitiateMessageRecovery(keccak256(message), address(adapter1).toBytes32(), REMOTE_CENTRIFUGE_ID)
                 .serialize()
         );
+        */
 
         vm.warp(block.timestamp + gateway.RECOVERY_CHALLENGE_PERIOD());
 
