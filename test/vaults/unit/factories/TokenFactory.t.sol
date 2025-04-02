@@ -29,7 +29,7 @@ contract FactoryTest is Test {
         root = address(new Root(48 hours, address(this)));
     }
 
-    function testTokenFactoryIsDeterministicAcrossChains(uint64 poolId, bytes16 scId) public {
+    function testTokenFactoryIsDeterministicAcrossChains(bytes16 scId) public {
         if (vm.envOr("FORK_TESTS", false)) {
             vm.setEnv("DEPLOYMENT_SALT", "0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563");
             vm.selectFork(mainnetFork);
