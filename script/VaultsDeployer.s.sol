@@ -96,6 +96,7 @@ contract VaultsDeployer is CommonDeployer {
 
         // Rely on async investment manager
         messageDispatcher.rely(address(asyncRequests));
+        gateway.rely(address(asyncRequests));
 
         // Rely on sync investment manager
         balanceSheetManager.rely(address(syncRequests));
@@ -119,7 +120,7 @@ contract VaultsDeployer is CommonDeployer {
         IAuth(restrictedTransfers).rely(address(root));
         IAuth(freelyTransferable).rely(address(root));
 
-        // Rely on vaultGateway
+        // Rely on gateway
         asyncRequests.rely(address(gateway));
         poolManager.rely(address(gateway));
 
