@@ -35,7 +35,7 @@ class Holdings<wards = PoolManager> <<(C, lightskyblue)>> {
 
 class PoolRegistry<wards = PoolManager> {
     + registerPool(admin, currencyId, shareClassManagerAddress) -> poolId
-    + updateShareClassManager(poolId, scm)
+    + updateDependency(poolId, what, dependency)
     + updateCurrency(poolId, currency)
     + updateAdmin(poolId, admin, bool)
     + allowInvestorAsset(poolId, asset, bool)

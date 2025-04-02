@@ -16,29 +16,26 @@ contract PoolRegistry is Auth, IPoolRegistry {
 
     mapping(PoolId => bytes) public metadata;
     mapping(PoolId => AssetId) public currency;
-    mapping(PoolId => IShareClassManager) public shareClassManager;
     mapping(PoolId => mapping(address => bool)) public isAdmin;
+    mapping(PoolId => mapping(bytes32 => address)) public dependency;
 
     constructor(address deployer) Auth(deployer) {}
 
     /// @inheritdoc IPoolRegistry
-    function registerPool(
-        address admin_,
-        uint16 centrifugeChainId,
-        AssetId currency_,
-        IShareClassManager shareClassManager_
-    ) external auth returns (PoolId poolId) {
+    function registerPool(address admin_, uint16 centrifugeChainId, AssetId currency_)
+        external
+        auth
+        returns (PoolId poolId)
+    {
         require(admin_ != address(0), EmptyAdmin());
         require(!currency_.isNull(), EmptyCurrency());
-        require(address(shareClassManager_) != address(0), EmptyShareClassManager());
 
         poolId = newPoolId(centrifugeChainId, ++latestId);
 
         isAdmin[poolId][admin_] = true;
         currency[poolId] = currency_;
-        shareClassManager[poolId] = shareClassManager_;
 
-        emit NewPool(poolId, admin_, shareClassManager_, currency_);
+        emit NewPool(poolId, admin_, currency_);
     }
 
     /// @inheritdoc IPoolRegistry
@@ -61,13 +58,12 @@ contract PoolRegistry is Auth, IPoolRegistry {
     }
 
     /// @inheritdoc IPoolRegistry
-    function updateShareClassManager(PoolId poolId, IShareClassManager shareClassManager_) external auth {
+    function updateDependency(PoolId poolId, bytes32 what, address dependency_) external auth {
         require(exists(poolId), NonExistingPool(poolId));
-        require(address(shareClassManager_) != address(0), EmptyShareClassManager());
 
-        shareClassManager[poolId] = shareClassManager_;
+        dependency[poolId][what] = dependency_;
 
-        emit UpdatedShareClassManager(poolId, shareClassManager_);
+        emit UpdatedDependency(poolId, what, dependency_);
     }
 
     /// @inheritdoc IPoolRegistry
@@ -81,6 +77,6 @@ contract PoolRegistry is Auth, IPoolRegistry {
     }
 
     function exists(PoolId poolId) public view returns (bool) {
-        return address(shareClassManager[poolId]) != address(0);
+        return !currency[poolId].isNull();
     }
 }
