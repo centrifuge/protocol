@@ -40,7 +40,7 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
     function deployNewTokenPoolAndShare(uint8 decimals, uint256 initialMintPerUsers)
         public
         notGovFuzzing
-        returns (address newToken, address newShareToken, address newVault, uint128 newAssetId)
+        returns (address newToken, address newShareToken, address newVault, uint128 newAssetId, bytes16 scId)
     {
         // NOTE: TEMPORARY
         require(!hasDoneADeploy); // This bricks the function for this one for Medusa
@@ -77,7 +77,7 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
             string memory symbol = "T1";
 
             // TODO: Ask if we should customize decimals and permissions here
-            newShareToken = poolManager_addShareClass(POOL_ID, SHARE_ID, name, symbol, 18, address(restrictedTransfers));
+            (newShareToken,) = poolManager_addShareClass(POOL_ID, SHARE_ID, name, symbol, 18, address(restrictedTransfers));
         }
 
         newVault = deployVault(POOL_ID, SHARE_ID, newAssetId);
@@ -143,14 +143,14 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
         string memory tokenSymbol,
         uint8 decimals,
         address hook
-    ) public notGovFuzzing asAdmin returns (address) {
+    ) public notGovFuzzing asAdmin returns (address, bytes16) {
         address newToken = poolManager.addShareClass(
             poolId, scId, tokenName, tokenSymbol, decimals, keccak256(abi.encodePacked(poolId, scId)), hook
         );
 
         shareClassTokens.push(newToken);
 
-        return newToken;
+        return (newToken, scId);
     }
 
     // Step 5
@@ -178,7 +178,7 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
      */
     function poolManager_updateMember(uint64 validUntil) public {
         poolManager.updateRestriction(
-            poolId, scId, MessageLib.UpdateRestrictionMember(actor.toBytes32(), validUntil).serialize()
+            poolId, scId, MessageLib.UpdateRestrictionMember(_getActor().toBytes32(), validUntil).serialize()
         );
     }
 
@@ -192,11 +192,11 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
     }
 
     function poolManager_freeze() public {
-        poolManager.updateRestriction(poolId, scId, MessageLib.UpdateRestrictionFreeze(actor.toBytes32()).serialize());
+        poolManager.updateRestriction(poolId, scId, MessageLib.UpdateRestrictionFreeze(_getActor().toBytes32()).serialize());
     }
 
     function poolManager_unfreeze() public {
-        poolManager.updateRestriction(poolId, scId, MessageLib.UpdateRestrictionUnfreeze(actor.toBytes32()).serialize());
+        poolManager.updateRestriction(poolId, scId, MessageLib.UpdateRestrictionUnfreeze(_getActor().toBytes32()).serialize());
     }
 
     // TODO: Rely / Permissions

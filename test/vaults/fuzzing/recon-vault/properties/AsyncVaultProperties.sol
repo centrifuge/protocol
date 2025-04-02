@@ -60,19 +60,19 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
     /// @dev 7540-5	max* never reverts
     function asyncVault_5(address asyncVaultTarget) public virtual {
         // max* never reverts
-        try IAsyncVault(asyncVaultTarget).maxDeposit(actor) {}
+        try IAsyncVault(asyncVaultTarget).maxDeposit(_getActor()) {}
         catch {
             t(false, "Property: 7540-5 maxDeposit reverts");
         }
-        try IAsyncVault(asyncVaultTarget).maxMint(actor) {}
+        try IAsyncVault(asyncVaultTarget).maxMint(_getActor()) {}
         catch {
             t(false, "Property: 7540-5 maxMint reverts");
         }
-        try IAsyncVault(asyncVaultTarget).maxRedeem(actor) {}
+        try IAsyncVault(asyncVaultTarget).maxRedeem(_getActor()) {}
         catch {
             t(false, "Property: 7540-5 maxRedeem reverts");
         }
-        try IAsyncVault(asyncVaultTarget).maxWithdraw(actor) {}
+        try IAsyncVault(asyncVaultTarget).maxWithdraw(_getActor()) {}
         catch {
             t(false, "Property: 7540-5 maxWithdraw reverts");
         }
@@ -86,7 +86,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
             return; // Skip
         }
 
-        uint256 maxDep = IAsyncVault(asyncVaultTarget).maxDeposit(actor);
+        uint256 maxDep = IAsyncVault(asyncVaultTarget).maxDeposit(_getActor());
 
         /// @audit No Revert is proven by asyncVault_5
 
@@ -95,7 +95,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
             return; // Needs to be greater than 0, skip
         }
 
-        try IAsyncVault(asyncVaultTarget).deposit(maxDep + amt, actor) {
+        try IAsyncVault(asyncVaultTarget).deposit(maxDep + amt, _getActor()) {
             t(false, "Property: 7540-6 depositing more than max does not revert");
         } catch {
             // We want this to be hit
@@ -112,14 +112,14 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
             return;
         }
 
-        uint256 maxDep = IAsyncVault(asyncVaultTarget).maxMint(actor);
+        uint256 maxDep = IAsyncVault(asyncVaultTarget).maxMint(_getActor());
 
         uint256 sum = maxDep + amt;
         if (sum == 0) {
             return; // Needs to be greater than 0, skip
         }
 
-        try IAsyncVault(asyncVaultTarget).mint(maxDep + amt, actor) {
+        try IAsyncVault(asyncVaultTarget).mint(maxDep + amt, _getActor()) {
             t(false, "Property: 7540-6 minting more than max does not revert");
         } catch {
             // We want this to be hit
@@ -136,14 +136,14 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
             return;
         }
 
-        uint256 maxDep = IAsyncVault(asyncVaultTarget).maxWithdraw(actor);
+        uint256 maxDep = IAsyncVault(asyncVaultTarget).maxWithdraw(_getActor());
 
         uint256 sum = maxDep + amt;
         if (sum == 0) {
             return; // Needs to be greater than 0
         }
 
-        try IAsyncVault(asyncVaultTarget).withdraw(maxDep + amt, actor, actor) {
+        try IAsyncVault(asyncVaultTarget).withdraw(maxDep + amt, _getActor(), _getActor()) {
             t(false, "Property: 7540-6 withdrawing more than max does not revert");
         } catch {
             // We want this to be hit
@@ -160,14 +160,14 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
             return;
         }
 
-        uint256 maxDep = IAsyncVault(asyncVaultTarget).maxRedeem(actor);
+        uint256 maxDep = IAsyncVault(asyncVaultTarget).maxRedeem(_getActor());
 
         uint256 sum = maxDep + amt;
         if (sum == 0) {
             return; // Needs to be greater than 0
         }
 
-        try IAsyncVault(asyncVaultTarget).redeem(maxDep + amt, actor, actor) {
+        try IAsyncVault(asyncVaultTarget).redeem(maxDep + amt, _getActor(), _getActor()) {
             t(false, "Property: 7540-6 redeeming more than max does not revert");
         } catch {
             // We want this to be hit
@@ -185,7 +185,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
             return; // Skip
         }
 
-        uint256 actualBal = token.balanceOf(actor);
+        uint256 actualBal = token.balanceOf(_getActor());
         uint256 balWeWillUse = actualBal + shares;
 
         if (balWeWillUse == 0) {
@@ -197,7 +197,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
         token.approve(address(asyncVaultTarget), type(uint256).max);
 
         uint256 hasReverted;
-        try IAsyncVault(asyncVaultTarget).requestRedeem(balWeWillUse, actor, actor) {
+        try IAsyncVault(asyncVaultTarget).requestRedeem(balWeWillUse, _getActor(), _getActor()) {
             hasReverted = 2; // Coverage
             t(false, "Property: 7540-7 requestRedeem does not revert for shares > balance");
         } catch {
@@ -229,13 +229,13 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
     /// @dev 7540-9 if max[method] > 0, then [method] (max) should not revert
     function asyncVault_9_deposit(address asyncVaultTarget) public virtual {
         // Per asyncVault_5
-        uint256 maxDeposit = IAsyncVault(asyncVaultTarget).maxDeposit(actor);
+        uint256 maxDeposit = IAsyncVault(asyncVaultTarget).maxDeposit(_getActor());
 
         if (maxDeposit == 0) {
             return; // Skip
         }
 
-        try IAsyncVault(asyncVaultTarget).deposit(maxDeposit, actor) {
+        try IAsyncVault(asyncVaultTarget).deposit(maxDeposit, _getActor()) {
             // Success here
             return;
         } catch {
@@ -244,13 +244,13 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
     }
 
     function asyncVault_9_mint(address asyncVaultTarget) public virtual {
-        uint256 maxMint = IAsyncVault(asyncVaultTarget).maxMint(actor);
+        uint256 maxMint = IAsyncVault(asyncVaultTarget).maxMint(_getActor());
 
         if (maxMint == 0) {
             return; // Skip
         }
 
-        try IAsyncVault(asyncVaultTarget).mint(maxMint, actor) {
+        try IAsyncVault(asyncVaultTarget).mint(maxMint, _getActor()) {
             // Success here
         } catch {
             t(false, "Property: 7540-9 max mint reverts");
@@ -258,13 +258,13 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
     }
 
     function asyncVault_9_withdraw(address asyncVaultTarget) public virtual {
-        uint256 maxWithdraw = IAsyncVault(asyncVaultTarget).maxWithdraw(actor);
+        uint256 maxWithdraw = IAsyncVault(asyncVaultTarget).maxWithdraw(_getActor());
 
         if (maxWithdraw == 0) {
             return; // Skip
         }
 
-        try IAsyncVault(asyncVaultTarget).withdraw(maxWithdraw, actor, actor) {
+        try IAsyncVault(asyncVaultTarget).withdraw(maxWithdraw, _getActor(), _getActor()) {
             // Success here
             // E-1
             sumOfClaimedRedemptions[address(assetErc20)] += maxWithdraw;
@@ -275,13 +275,13 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
 
     function asyncVault_9_redeem(address asyncVaultTarget) public virtual {
         // Per asyncVault_5
-        uint256 maxRedeem = IAsyncVault(asyncVaultTarget).maxRedeem(actor);
+        uint256 maxRedeem = IAsyncVault(asyncVaultTarget).maxRedeem(_getActor());
 
         if (maxRedeem == 0) {
             return; // Skip
         }
 
-        try IAsyncVault(asyncVaultTarget).redeem(maxRedeem, actor, actor) returns (uint256 assets) {
+        try IAsyncVault(asyncVaultTarget).redeem(maxRedeem, _getActor(), _getActor()) returns (uint256 assets) {
             // E-1
             sumOfClaimedRedemptions[address(assetErc20)] += assets;
         } catch {

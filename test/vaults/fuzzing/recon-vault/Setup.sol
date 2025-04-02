@@ -28,23 +28,24 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 // Storage
 import {SharedStorage} from "./helpers/SharedStorage.sol";
 import {MockMessageProcessor} from "./mocks/MockMessageProcessor.sol";
+import {MockMessageDispatcher} from "./mocks/MockMessageDispatcher.sol";
 
 abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager {
     // Dependencies
     AsyncVaultFactory vaultFactory;
     TokenFactory tokenFactory;
 
-    // Handled //
     Escrow public escrow; // NOTE: Restriction Manager will query it
     AsyncRequests asyncRequests;
     PoolManager poolManager;
-    MockMessageProcessor messageProcessor;
-    // TODO: CYCLE / Make it work for variable values
+    MockMessageDispatcher messageDispatcher;
+
     AsyncVault vault;
     ERC20 assetErc20;
     CentrifugeToken token;
-    address actor = address(this); // TODO: Generalize
     RestrictedTransfers restrictedTransfers;
+    IRoot root;
+
 
     bytes16 scId;
     uint64 poolId;
@@ -58,7 +59,8 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
     bool forked;
     // MOCKS
     address centrifugeChain;
-    IRoot root;
+    uint16 CENTIFUGE_CHAIN_ID = 1;
+
 
     // LP request ID is always 0
     uint256 REQUEST_ID = 0;
@@ -134,24 +136,24 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         escrow = new Escrow(address(address(this)));
         root = new Root(48 hours, address(this));
         restrictedTransfers = new RestrictedTransfers(address(root), address(this));
-        messageProcessor = new MockMessageProcessor();
 
         root.endorse(address(escrow));
-
 
         asyncRequests = new AsyncRequests(address(root), address(escrow));
         vaultFactory = new AsyncVaultFactory(address(this), address(asyncRequests));
 
         address[] memory vaultFactories = new address[](1);
         vaultFactories[0] = address(vaultFactory);
-
-
         poolManager = new PoolManager(address(escrow), address(tokenFactory), vaultFactories);
+        messageDispatcher = new MockMessageDispatcher(poolManager, asyncRequests, root, CENTIFUGE_CHAIN_ID);  
 
         asyncRequests.file("poolManager", address(poolManager));
-        asyncRequests.file("sender", address(messageProcessor));
+        asyncRequests.file("sender", address(messageDispatcher));
+        poolManager.file("sender", address(messageDispatcher));
         asyncRequests.rely(address(poolManager));
         asyncRequests.rely(address(vaultFactory));
+        asyncRequests.rely(address(messageDispatcher));
+        poolManager.rely(address(messageDispatcher));
 
         restrictedTransfers.rely(address(poolManager));
 

@@ -20,7 +20,7 @@ abstract contract RestrictedTransfersTargets is BaseTargetFunctions, Properties 
 
     // TODO: Actory Cycling
     function restrictedTransfers_updateMemberBasic(uint64 validUntil) public {
-        restrictedTransfers.updateMember(address(token), actor, validUntil);
+        restrictedTransfers.updateMember(address(token), _getActor(), validUntil);
     }
 
     // TODO: We prob want to keep one generic
@@ -31,11 +31,11 @@ abstract contract RestrictedTransfersTargets is BaseTargetFunctions, Properties 
 
     // TODO: Actor Cycling
     function restrictedTransfers_freeze(address /*user*/ ) public {
-        restrictedTransfers.freeze(address(token), actor);
+        restrictedTransfers.freeze(address(token), _getActor());
     }
 
     function restrictedTransfers_unfreeze(address /*user*/ ) public {
-        restrictedTransfers.unfreeze(address(token), actor);
+        restrictedTransfers.unfreeze(address(token), _getActor());
     }
 
     /**

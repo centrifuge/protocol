@@ -17,7 +17,7 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
         require(_canDonate(to), "never donate to escrow");
 
         // Clamp
-        value = between(value, 0, token.balanceOf(actor));
+        value = between(value, 0, token.balanceOf(_getActor()));
 
         bool hasReverted;
 
@@ -32,7 +32,7 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
         // TT-1 Always revert if one of them is frozen
         if (
             restrictedTransfers.isFrozen(address(token), to) == true
-                || restrictedTransfers.isFrozen(address(token), actor) == true
+                || restrictedTransfers.isFrozen(address(token), _getActor()) == true
         ) {
             t(hasReverted, "TT-1 Must Revert");
         }
