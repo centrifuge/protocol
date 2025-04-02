@@ -40,21 +40,21 @@ contract VaultsDeployer is CommonDeployer {
         deployCommon(chainId, adminSafe_, deployer);
 
         escrow =
-            Escrow(create3(_getSalt("SALT_ESCROW"), abi.encodePacked(type(Escrow).creationCode, abi.encode(deployer))));
+            Escrow(create3(_envSalt("ESCROW_SALT"), abi.encodePacked(type(Escrow).creationCode, abi.encode(deployer))));
         routerEscrow =
-            Escrow(create3(bytes32("routerEscrow"), abi.encodePacked(type(Escrow).creationCode, abi.encode(deployer))));
+            Escrow(create3(_getSalt("routerEscrow"), abi.encodePacked(type(Escrow).creationCode, abi.encode(deployer))));
         restrictedTransfers = create3(
-            bytes32("restrictedTransfers"),
+            _getSalt("restrictedTransfers"),
             abi.encodePacked(type(RestrictedTransfers).creationCode, abi.encode(address(root), deployer))
         );
         freelyTransferable = create3(
-            bytes32("freelyTransferable"),
+            _getSalt("freelyTransferable"),
             abi.encodePacked(
                 type(FreelyTransferable).creationCode, abi.encode(address(root), address(escrow), deployer)
             )
         );
         tokenFactory = create3(
-            bytes32("tokenFactory"),
+            _getSalt("tokenFactory"),
             abi.encodePacked(type(TokenFactory).creationCode, abi.encode(address(root), deployer))
         );
         asyncRequests = new AsyncRequests(address(root), address(escrow));
