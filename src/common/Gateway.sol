@@ -276,6 +276,8 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     /// @inheritdoc IMessageSender
     function send(uint16 chainId, bytes calldata message) external pauseable auth {
+        require(message.length > 0, "Gateway/empty-message");
+
         if (isBatching) {
             pendingBatch = true;
 
