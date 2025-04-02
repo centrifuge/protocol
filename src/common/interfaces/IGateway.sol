@@ -111,6 +111,7 @@ interface IGateway is IMessageHandler, IMessageSender {
     /// @dev    Quorum shows the amount of votes needed in order for a message to be dispatched further.
     ///         The quorum is taken from the first adapter.
     ///         Current quorum is the amount of all adapters.
+    /// @param  chainId Chain where the adapter is configured for
     /// return  Needed amount
     function quorum(uint16 chainId) external view returns (uint8);
 
@@ -120,12 +121,14 @@ interface IGateway is IMessageHandler, IMessageSender {
     ///         Currently it uses sessionId of the previous set and
     ///         increments it by 1. The idea of an activeSessionId is
     ///         to invalidate any incoming messages from previously used adapters.
+    /// @param  chainId Chain where the adapter is configured for
     function activeSessionId(uint16 chainId) external view returns (uint64);
 
     /// @notice Counts how many times each incoming messages has been received per adapter.
     /// @dev    It supports parallel messages ( duplicates ). That means that the incoming messages could be
     ///         the result of two or more independ request from the user of the same type.
     ///         i.e. Same user would like to deposit same underlying asset with the same amount more then once.
+    /// @param  chainId Chain where the adapter is configured for
     /// @param  messageHash The hash value of the incoming message.
     function votes(uint16 chainId, bytes32 messageHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory);
 
@@ -143,12 +146,15 @@ interface IGateway is IMessageHandler, IMessageSender {
         returns (uint256[] memory perAdapter, uint256 total);
 
     /// @notice Returns the address of the adapter at the given id.
+    /// @param  chainId Chain where the adapter is configured for
     function adapters(uint16 chainId, uint256 id) external view returns (IAdapter);
 
     /// @notice Returns the number of adapters.
+    /// @param  chainId Chain where the adapter is configured for
     function adapterCount(uint16 chainId) external view returns (uint256);
 
     /// @notice Returns the timestamp when the given recovery can be executed.
+    /// @param  chainId Chain where the adapter is configured for
     function recoveries(uint16 chainId, IAdapter adapter, bytes32 messageHash)
         external
         view

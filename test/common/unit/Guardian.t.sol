@@ -14,6 +14,6 @@ contract GuardianTest is Test {
         Guardian guardian = new Guardian(adminSafe, root, messageDispatcher);
         assertEq(address(guardian.safe()), address(adminSafe));
         assertEq(address(guardian.root()), address(root));
-        assertEq(address(guardian.messageDispatcher()), address(messageDispatcher));
+        assertEq(address(guardian.sender()), address(messageDispatcher));
     }
 }

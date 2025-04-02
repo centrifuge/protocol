@@ -11,12 +11,12 @@ contract Guardian is IGuardian {
     IRoot public immutable root;
     ISafe public immutable safe;
 
-    IRootMessageSender public messageDispatcher;
+    IRootMessageSender public sender;
 
     constructor(ISafe safe_, IRoot root_, IRootMessageSender messageDispatcher_) {
         root = root_;
         safe = safe_;
-        messageDispatcher = messageDispatcher_;
+        sender = messageDispatcher_;
     }
 
     modifier onlySafe() {
@@ -29,7 +29,13 @@ contract Guardian is IGuardian {
         _;
     }
 
-    // TODO: add file method for messageDispatcher
+    /// @inheritdoc IGuardian
+    function file(bytes32 what, address data) external onlySafeOrOwner {
+        if (what == "sender") sender = IRootMessageSender(data);
+        else revert FileUnrecognizedParam();
+
+        emit File(what, data);
+    }
 
     // --- Admin actions ---
     /// @inheritdoc IGuardian
@@ -54,12 +60,12 @@ contract Guardian is IGuardian {
 
     /// @inheritdoc IGuardian
     function scheduleUpgrade(uint16 chainId, address target) external onlySafe {
-        messageDispatcher.sendScheduleUpgrade(chainId, bytes32(bytes20(target)));
+        sender.sendScheduleUpgrade(chainId, bytes32(bytes20(target)));
     }
 
     /// @inheritdoc IGuardian
     function cancelUpgrade(uint16 chainId, address target) external onlySafe {
-        messageDispatcher.sendCancelUpgrade(chainId, bytes32(bytes20(target)));
+        sender.sendCancelUpgrade(chainId, bytes32(bytes20(target)));
     }
 
     /// @inheritdoc IGuardian
@@ -67,7 +73,7 @@ contract Guardian is IGuardian {
         external
         onlySafe
     {
-        messageDispatcher.sendInitiateMessageRecovery(chainId, adapterChainId, bytes32(bytes20(address(adapter))), hash);
+        sender.sendInitiateMessageRecovery(chainId, adapterChainId, bytes32(bytes20(address(adapter))), hash);
     }
 
     /// @inheritdoc IGuardian
@@ -75,7 +81,7 @@ contract Guardian is IGuardian {
         external
         onlySafe
     {
-        messageDispatcher.sendDisputeMessageRecovery(chainId, adapterChainId, bytes32(bytes20(address(adapter))), hash);
+        sender.sendDisputeMessageRecovery(chainId, adapterChainId, bytes32(bytes20(address(adapter))), hash);
     }
 
     // --- Helpers ---

@@ -11,6 +11,18 @@ interface IGuardian {
     error NotTheAuthorizedSafe();
     error NotTheAuthorizedSafeOrItsOwner();
 
+    /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
+    error FileUnrecognizedParam();
+
+    /// @notice Emitted when a call to `file()` was performed.
+    event File(bytes32 indexed what, address addr);
+
+    /// @notice Updates a contract parameter.
+    /// @param what Name of the parameter to update.
+    /// Accepts a `bytes32` representation of 'sender' string value.
+    /// @param data New value given to the `what` parameter
+    function file(bytes32 what, address data) external;
+
     /// @notice Pause the protocol
     /// @dev callable by both safe and owners
     function pause() external;

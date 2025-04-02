@@ -230,10 +230,10 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
         if (kind == MessageType.InitiateMessageRecovery) {
             MessageLib.InitiateMessageRecovery memory m = message.deserializeInitiateMessageRecovery();
-            return _initiateMessageRecovery(m.domainId, IAdapter(address(bytes20(m.adapter))), m.hash);
+            _initiateMessageRecovery(m.domainId, IAdapter(address(bytes20(m.adapter))), m.hash);
         } else if (kind == MessageType.DisputeMessageRecovery) {
             MessageLib.DisputeMessageRecovery memory m = message.deserializeDisputeMessageRecovery();
-            return _disputeMessageRecovery(m.domainId, IAdapter(address(bytes20(m.adapter))), m.hash);
+            _disputeMessageRecovery(m.domainId, IAdapter(address(bytes20(m.adapter))), m.hash);
         }
     }
 
