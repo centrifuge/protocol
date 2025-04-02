@@ -586,19 +586,6 @@ contract GatewayTest is Test {
         assertEq(handler.received(message), 1);
     }
 
-    function testCannotRecoverWithOneAdapter() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneMockAdapter);
-
-        bytes memory message = MessageLib.NotifyPool(1).serialize();
-
-        vm.expectRevert(bytes("Gateway/no-recovery-with-one-adapter-allowed"));
-        _send(
-            adapter1,
-            MessageLib.InitiateMessageRecovery(keccak256(message), address(adapter1).toBytes32(), REMOTE_CENTRIFUGE_ID)
-                .serialize()
-        );
-    }
-
     function testRecoverFailedProof() public {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeMockAdapters);
 
