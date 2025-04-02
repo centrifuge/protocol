@@ -54,27 +54,6 @@ contract SyncRequestsTest is BaseTest {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         syncRequests.file("poolManager", randomUser);
     }
-
-    function testUpdateMaxGasPrice(uint64 maxPriceAge) public {
-        vm.assume(maxPriceAge > 0);
-        address vault = makeAddr("vault");
-        assertEq(syncRequests.maxPriceAge(vault), 0);
-
-        bytes memory updateMaxPriceAge =
-            MessageLib.UpdateContractMaxPriceAge({vault: bytes32(bytes20(vault)), maxPriceAge: maxPriceAge}).serialize();
-        bytes memory updateContract = MessageLib.UpdateContract({
-            poolId: 0,
-            scId: bytes16(0),
-            target: bytes32(bytes20(address(syncRequests))),
-            payload: updateMaxPriceAge
-        }).serialize();
-
-        vm.expectEmit();
-        emit ISyncRequests.MaxPriceAgeUpdate(vault, maxPriceAge);
-        messageProcessor.handle(THIS_CHAIN_ID, updateContract);
-
-        assertEq(syncRequests.maxPriceAge(vault), maxPriceAge);
-    }
 }
 
 contract SyncRequestsUnauthorizedTest is BaseTest {
@@ -101,11 +80,6 @@ contract SyncRequestsUnauthorizedTest is BaseTest {
     function testMintUnauthorized(address caller) public {
         _expectUnauthorized(caller);
         syncRequests.mint(address(0), 0, address(0), address(0));
-    }
-
-    function testUpdateUnauthorized(address caller) public {
-        _expectUnauthorized(caller);
-        syncRequests.update(0, bytes16(0), bytes(""));
     }
 
     function _expectUnauthorized(address caller) internal {

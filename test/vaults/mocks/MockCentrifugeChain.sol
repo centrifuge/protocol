@@ -147,6 +147,14 @@ contract MockCentrifugeChain is Test {
             MessageLib.NotifySharePrice({
                 poolId: poolId,
                 scId: trancheId,
+                price: price,
+                timestamp: computedAt
+            }).serialize()
+        );
+        execute(
+            MessageLib.NotifyAssetPrice({
+                poolId: poolId,
+                scId: trancheId,
                 assetId: assetId,
                 price: price,
                 timestamp: computedAt

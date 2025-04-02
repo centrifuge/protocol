@@ -49,7 +49,7 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
     function convertToShares(address vaultAddr, uint256 _assets) public view returns (uint256 shares) {
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-        (uint128 latestPrice,) = poolManager.tranchePrice(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
+        uint128 latestPrice = poolManager.pricePerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId).raw();
         shares = uint256(
             PriceConversionLib.calculateShares(_assets.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down)
         );
@@ -59,7 +59,7 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
     function convertToAssets(address vaultAddr, uint256 _shares) public view returns (uint256 assets) {
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-        (uint128 latestPrice,) = poolManager.tranchePrice(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
+        uint128 latestPrice = poolManager.pricePerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId).raw();
         assets = uint256(
             PriceConversionLib.calculateAssets(_shares.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down)
         );
@@ -67,9 +67,10 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
 
     /// @inheritdoc IBaseInvestmentManager
     function priceLastUpdated(address vaultAddr) public view returns (uint64 lastUpdated) {
-        IBaseVault vault_ = IBaseVault(vaultAddr);
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-        (, lastUpdated) = poolManager.tranchePrice(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
+        // IBaseVault vault_ = IBaseVault(vaultAddr);
+        // VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
+        //TODO FIX(, lastUpdated) = poolManager.pricePerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
+        lastUpdated = 0;
     }
 
     /// @inheritdoc IERC165

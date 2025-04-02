@@ -181,7 +181,16 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     }
 
     /// @inheritdoc IPoolRouter
-    function notifySharePrice(ShareClassId scId, AssetId assetId) public payable {
+    function notifySharePrice(uint16 chainId, ShareClassId scId) public payable {
+        _protectedAndUnlocked();
+        IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
+        (, D18 pricePerShare) = scm.shareClassPrice(unlockedPoolId, scId);
+
+        sender.sendNotifySharePrice(chainId, unlockedPoolId, scId, pricePerShare);
+    }
+
+    /// @inheritdoc IPoolRouter
+    function notifyAssetPrice(ShareClassId scId, AssetId assetId) public payable {
         _protectedAndUnlocked();
         IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
         AssetId poolCurrency = poolRegistry.currency(unlockedPoolId);
@@ -194,7 +203,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
             valuation.getQuote(assetRegistry.unitAmount(poolCurrency), poolCurrency.addr(), assetId.addr()).toUint128();
         D18 pricePerAssetUnit =
             pricePerShare * ConversionLib.convertIntoPrice(baseAmount, assetRegistry.decimals(assetId));
-        sender.sendNotifySharePrice(unlockedPoolId, scId, assetId, pricePerAssetUnit);
+        sender.sendNotifyAssetPrice(unlockedPoolId, scId, assetId, pricePerAssetUnit);
     }
 
     /// @inheritdoc IPoolRouter

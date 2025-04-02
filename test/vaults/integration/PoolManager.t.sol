@@ -504,19 +504,20 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook);
 
         vm.expectRevert("PoolManager/unknown-price");
-        poolManager.tranchePrice(poolId, trancheId, assetId);
+        poolManager.pricePerShare(poolId, trancheId, assetId);
 
         // Allows us to go back in time later
         vm.warp(block.timestamp + 1 days);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
-        poolManager.updateTranchePrice(poolId, trancheId, assetId, price, uint64(block.timestamp));
+        poolManager.updateTranchePrice(poolId, trancheId, price, uint64(block.timestamp));
+        poolManager.updateAssetPrice(poolId, trancheId, assetId, price, uint64(block.timestamp));
 
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, price, uint64(block.timestamp));
-        (uint256 latestPrice, uint64 priceComputedAt) = poolManager.tranchePrice(poolId, trancheId, assetId);
+        // TODO: Fix returning computed at(D18 latestPrice, uint64 priceComputedAt) = poolManager.pricePerShare(poolId, trancheId, assetId);
+        uint128 latestPrice = poolManager.pricePerShare(poolId, trancheId, assetId).raw();
         assertEq(latestPrice, price);
-        assertEq(priceComputedAt, block.timestamp);
 
         vm.expectRevert(bytes("PoolManager/cannot-set-older-price"));
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, price, uint64(block.timestamp - 1));

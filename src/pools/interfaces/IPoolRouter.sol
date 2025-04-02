@@ -95,11 +95,17 @@ interface IPoolRouter {
     /// @param hook The hook address of the share class
     function notifyShareClass(uint16 chainId, ShareClassId scId, bytes32 hook) external payable;
 
-    /// @notice Notify to a CV instance the latest available price per share per asset unit
+    /// @notice Notify to a CV instance the latest available price in POOL_UNIT / SHARE_UNIT
+    /// @dev The receiving chainId is derived from the provided assetId
+    /// @param chainId Chain to where the share price is notified
+    /// @param scId Identifier of the share class
+    function notifySharePrice(uint16 chainId, ShareClassId scId) external payable;
+
+    /// @notice Notify to a CV instance the latest available price in POOL_UNIT / ASSET_UNIT
     /// @dev The receiving chainId is derived from the provided assetId
     /// @param scId Identifier of the share class
     /// @param assetId Identifier of the asset
-    function notifySharePrice(ShareClassId scId, AssetId assetId) external payable;
+    function notifyAssetPrice(ShareClassId scId, AssetId assetId) external payable;
 
     /// @notice Attach custom data to a pool
     function setPoolMetadata(bytes calldata metadata) external payable;

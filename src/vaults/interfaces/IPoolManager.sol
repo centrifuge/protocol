@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {D18, d18} from "src/misc/types/D18.sol";
+
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 
 /// @dev Centrifuge pools
@@ -18,8 +20,8 @@ struct TrancheDetails {
     mapping(address asset => mapping(uint256 tokenId => address[])) vaults;
     /// @dev Each tranche has individual price per pool unit in asset denomination (POOL_UNIT/ASSET_UNIT)
     mapping(address asset => mapping(uint256 tokenId => Price)) prices;
-    /// @dev Each tranche has individual price per tranche unit in pool denomination (TRANCHE_UNIT/POOL_UNIT)
-    Price latestPrice;
+    /// @dev Each tranche has individual price per tranche unit in pool denomination (POOL_UNIT/TRANCHE_UNIT)
+    Price price;
 }
 
 struct Price {
@@ -27,6 +29,20 @@ struct Price {
     uint64 computedAt;
     uint64 maxAge;
 }
+
+function isValid(Price memory price) view returns (bool) {
+    if (price.computedAt != 0 && price.price != 0) {
+        return block.timestamp < price.computedAt + price.maxAge;
+    } else {
+        return false;
+    }
+}
+
+function asPrice(Price memory price) pure returns (D18) {
+    return d18(price.price);
+}
+
+using {isValid, asPrice} for Price global;
 
 /// @dev Temporary storage that is only present between addTranche and deployTranche
 struct UndeployedTranche {
@@ -90,6 +106,7 @@ interface IPoolManager is IRecoverable {
         uint256 price,
         uint64 computedAt
     );
+    event PriceUpdate(uint64 indexed poolId, bytes16 indexed trancheId, uint256 price, uint64 computedAt);
     event TransferTrancheTokens(
         uint64 indexed poolId,
         bytes16 indexed trancheId,
@@ -104,6 +121,10 @@ interface IPoolManager is IRecoverable {
     );
     event UnlinkVault(
         uint64 indexed poolId, bytes16 indexed trancheId, address indexed asset, uint256 tokenId, address vault
+    );
+    event MaxPriceAgeUpdate(uint64 indexed poolId, bytes16 indexed trancheId, uint64 maxPriceAge);
+    event MaxPriceAgeUpdate(
+        uint64 indexed poolId, bytes16 indexed trancheId, address indexed asset, uint256 tokenId, uint64 maxPriceAge
     );
 
     /// @notice Returns the asset address and tokenId associated with a given asset id.
@@ -182,12 +203,6 @@ interface IPoolManager is IRecoverable {
     /// @notice Returns the tranche token for a given pool and tranche id. Ensures tranche exists
     function checkedTranche(uint64 poolId, bytes16 trancheId) external view returns (address);
 
-    /// @notice Retuns the latest tranche token price for a given pool, tranche id, and asset
-    function tranchePrice(uint64 poolId, bytes16 trancheId, uint128 assetId)
-        external
-        view
-        returns (uint128 price, uint64 computedAt);
-
     /// @notice Function to get the details of a vault
     /// @dev    Reverts if vault does not exist
     ///
@@ -197,4 +212,34 @@ interface IPoolManager is IRecoverable {
 
     /// @notice Checks whether a given asset-vault pair is eligible for investing into a tranche of a pool
     function isLinked(uint64 poolId, bytes16 trancheId, address asset, address vault) external view returns (bool);
+
+    /// @notice Returns the price per share for a given pool, tranche, asset, and token id
+    /// @dev   Reverts if the pool or tranche or asset does not exist. Provided price is defined as
+    /// SHARE_UNIT/ASSET_UNIT. DOES NOT check if price is valid.
+    function pricePerShare(uint64 poolId, bytes16 trancheId, uint128 assetId) external view returns (D18 price);
+
+    /// @notice Returns the price per share for a given pool, tranche, asset, and token id
+    /// @dev   Reverts if the pool or tranche or asset does not exist. Provided price is defined as
+    /// SHARE_UNIT/ASSET_UNIT. Reverts if price is invalid - i.e. expried.
+    function checkedPricePerShare(uint64 poolId, bytes16 trancheId, uint128 assetId) external view returns (D18 price);
+
+    /// @notice Returns the price per share for a given pool, tranche
+    /// @dev   Reverts if the pool or tranche does not exist. Provided price is defined as SHARE_UNIT/POOL_UNIT. DOES
+    /// NOT check if price is valid.
+    function pricePerShare(uint64 poolId, bytes16 trancheId)  external view returns (D18 price);
+
+    /// @notice Returns the price per share for a given pool, tranche
+    /// @dev   Reverts if the pool or tranche does not exist. Provided price is defined as SHARE_UNIT/POOL_UNIT. Reverts
+    /// if price is invalid.
+    function checkedPricePerShare(uint64 poolId, bytes16 trancheId) external view returns (D18 price);
+
+    /// @notice Returns the price per asset for a given pool, tranche, asset, and token id
+    /// @dev   Reverts if the pool or tranche or asset does not exist. Provided price is defined as
+    /// POOL_UNIT/ASSET_UNIT. DOES NOT check if price is valid.
+    function pricePerAsset(uint64 poolId, bytes16 trancheId, uint128 assetId)  external view returns (D18 price);
+
+    /// @notice Returns the price per asset for a given pool, tranche, asset, and token id
+    /// @dev   Reverts if the pool or tranche or asset does not exist. Provided price is defined as
+    /// POOL_UNIT/ASSET_UNIT. Reverts if price is invalid.
+    function checkedPricePerAsset(uint64 poolId, bytes16 trancheId, uint128 assetId) external view returns (D18 price);
 }

@@ -44,7 +44,6 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
     IBalanceSheetManager public balanceSheetManager;
 
-    mapping(address vaultAddr => uint64) public maxPriceAge;
     // TODO(follow-up PR): Support multiple vaults
     mapping(uint64 poolId => mapping(bytes16 trancheId => mapping(uint128 assetId => address vault))) public vault;
 
@@ -175,16 +174,6 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         return vault[poolId][trancheId][assetId];
     }
 
-    /// --- IUpdateContract ---
-    function update(uint64, bytes16, bytes calldata payload) external auth {
-        MessageLib.UpdateContractMaxPriceAge memory m = MessageLib.deserializeUpdateContractMaxPriceAge(payload);
-
-        address vaultAddr = address(bytes20(m.vault));
-        maxPriceAge[vaultAddr] = m.maxPriceAge;
-
-        emit MaxPriceAgeUpdate(vaultAddr, m.maxPriceAge);
-    }
-
     /// @inheritdoc IVaultManager
     function vaultKind(address vaultAddr) public view returns (VaultKind, address) {
         if (IERC165(vaultAddr).supportsInterface(type(IAsyncRedeemVault).interfaceId)) {
@@ -264,8 +253,6 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         view
         returns (uint128 latestPrice)
     {
-        (uint128 price, uint64 computedAt) = poolManager.tranchePrice(poolId, trancheId, assetId);
-        require(block.timestamp - computedAt <= maxPriceAge[vaultAddr], PriceTooOld());
-        return price;
+        latestPrice = poolManager.checkedPricePerShare(poolId, trancheId, assetId).raw();
     }
 }

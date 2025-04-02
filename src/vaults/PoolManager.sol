@@ -9,6 +9,7 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {D18} from "src/misc/types/D18.sol";
 
 import {VaultUpdateKind, MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
@@ -32,7 +33,7 @@ import {
     AssetIdKey,
     Pool,
     TrancheDetails,
-    TranchePrice,
+    Price,
     UndeployedTranche,
     VaultDetails,
     IPoolManager
@@ -232,35 +233,32 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
-    function updateTranchePrice(uint64 poolId, bytes16 trancheId, uint128 price, uint64 computedAt)
+    function updateTranchePrice(uint64 poolId, bytes16 trancheId, uint128 price, uint64 computedAt) public auth {
+        TrancheDetails storage tranche_ = pools[poolId].tranches[trancheId];
+        require(tranche_.token != address(0), "PoolManager/tranche-does-not-exist");
+
+        require(computedAt >= tranche_.price.computedAt, "PoolManager/cannot-set-older-price");
+
+        tranche_.price = Price(price, computedAt, tranche_.price.maxAge);
+        emit PriceUpdate(poolId, trancheId, price, computedAt);
+    }
+
+    /// @inheritdoc IPoolManagerGatewayHandler
+    function updateAssetPrice(uint64 poolId, bytes16 trancheId, uint128 assetId, uint128 price, uint64 computedAt)
         public
         auth
     {
         TrancheDetails storage tranche_ = pools[poolId].tranches[trancheId];
         require(tranche_.token != address(0), "PoolManager/tranche-does-not-exist");
 
-        require(
-            computedAt >= tranche_.price.computedAt,
-            "PoolManager/cannot-set-older-price"
-        );
-
-        tranche_.price = Price(price, computedAt, tranche.price.maxAge);
-        emit TranchePriceUpdate(poolId, trancheId, price, computedAt);
-    }
-
-    /// @inheritdoc IPoolManagerGatewayHandler
-    function updateAssetPrice(uint64 poolId, bytes16 trancheId, uint128 assetId, uint128 price, uint64 computedAt) public auth {
-        TrancheDetails storage tranche_ = pools[poolId].tranches[trancheId];
-        require(tranche_.token != address(0), "PoolManager/tranche-does-not-exist");
-
-        Price storage assetPrice = tranche_.prices[assetIdKey.asset][assetIdKey.tokenId];
-
-        AssetIdKey memory assetIdKey = _idToAsset[assetId];
+        (address asset, uint256 tokenId) = checkedIdToAsset(assetId);
+        Price storage assetPrice = tranche_.prices[asset][tokenId];
         require(computedAt >= assetPrice.computedAt, "PoolManager/cannot-set-older-price");
 
         assetPrice.price = price;
         assetPrice.computedAt = computedAt;
-        emit AssetPriceUpdate(poolId, assetIdKey.asset, assetIdKey.tokenId, price, computedAt);
+
+        emit PriceUpdate(poolId,trancheId, asset, tokenId, price, computedAt);
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
@@ -307,59 +305,51 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     /// @notice The pool manager either deploys the vault if a factory address is provided or it simply links/unlinks
     /// the vault
     function update(uint64 poolId, bytes16 trancheId, bytes memory payload) public auth {
-        uint8 kind = MessageLib.updateContractType(payload);
+        uint8 kind = uint8(MessageLib.updateContractType(payload));
 
-        if (kind == UpdateContractType.VaultUpdate) {
+        if (kind == uint8(UpdateContractType.VaultUpdate)) {
+            MessageLib.UpdateContractVaultUpdate memory m = MessageLib.deserializeUpdateContractVaultUpdate(payload);
 
-        MessageLib.UpdateContractVaultUpdate memory m = MessageLib.deserializeUpdateContractVaultUpdate(payload);
+            if (m.kind == uint8(VaultUpdateKind.DeployAndLink)) {
+                address factory = address(bytes20(m.vaultOrFactory));
 
-        if (m.kind == uint8(VaultUpdateKind.DeployAndLink)) {
-            address factory = address(bytes20(m.vaultOrFactory));
-
-            address vault = deployVault(poolId, trancheId, m.assetId, factory);
-            linkVault(poolId, trancheId, m.assetId, vault);
-        } else {
-            address vault = address(bytes20(m.vaultOrFactory));
-
-            // Needed as safeguard against non-validated vaults
-            // I.e. we only accept vaults that have been deployed by the pool manager
-            require(_vaultDetails[vault].asset != address(0), "PoolManager/unknown-vault");
-
-            if (m.kind == uint8(VaultUpdateKind.Link)) {
+                address vault = deployVault(poolId, trancheId, m.assetId, factory);
                 linkVault(poolId, trancheId, m.assetId, vault);
-            } else if (m.kind == uint8(VaultUpdateKind.Unlink)) {
-                unlinkVault(poolId, trancheId, m.assetId, vault);
             } else {
-                revert("PoolManager/malformed-vault-update-msg");
+                address vault = address(bytes20(m.vaultOrFactory));
+
+                // Needed as safeguard against non-validated vaults
+                // I.e. we only accept vaults that have been deployed by the pool manager
+                require(_vaultDetails[vault].asset != address(0), "PoolManager/unknown-vault");
+
+                if (m.kind == uint8(VaultUpdateKind.Link)) {
+                    linkVault(poolId, trancheId, m.assetId, vault);
+                } else if (m.kind == uint8(VaultUpdateKind.Unlink)) {
+                    unlinkVault(poolId, trancheId, m.assetId, vault);
+                } else {
+                    revert("PoolManager/malformed-vault-update-msg");
+                }
             }
-        }
-        } else if (kind == UpdateContractType.MaxAge) {
-            MessageLib.UpdateContractMaxPriceAge() memory m = MessageLib.deserializeUpdateContractMaxPriceAgee(payload);
+        } else if (kind == uint8(UpdateContractType.MaxPriceAge)) {
+            MessageLib.UpdateContractMaxPriceAge memory m = MessageLib.deserializeUpdateContractMaxPriceAge(payload);
+
+            TrancheDetails storage tranche_ = pools[poolId].tranches[trancheId];
+            require(tranche_.token != address(0), "PoolManager/tranche-does-not-exist");
 
             if (m.assetId == 0) {
-                // Update tranche age
+                (address asset, uint256 tokenId) = checkedIdToAsset(m.assetId);
+                tranche_.prices[asset][tokenId].maxAge = m.maxPriceAge;
+                emit MaxPriceAgeUpdate(poolId, trancheId, asset, tokenId, m.maxPriceAge);
             } else {
-                // update asset age
+                tranche_.price.maxAge = m.maxPriceAge;
+                emit MaxPriceAgeUpdate(poolId, trancheId, m.maxPriceAge);
             }
-
         } else {
             revert("PoolManager/unknown-update-contract-type");
         }
     }
 
     // --- Public functions ---
-    function price(uint64 poolId, bytes16 trancheId, uint128 assetId, uint128 tokenId)
-        public
-        view
-        returns (uint128 price)
-    {
-        // Get asset price
-        // Check max age of asset price
-        // Get share price
-        // Check max age of share price
-        // Mul asset price with share price
-    }
-
     /// @inheritdoc IPoolManager
     function deployVault(uint64 poolId, bytes16 trancheId, uint128 assetId, address factory)
         public
@@ -443,19 +433,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     }
 
     /// @inheritdoc IPoolManager
-    function tranchePrice(uint64 poolId, bytes16 trancheId, uint128 assetId)
-        public
-        view
-        returns (uint128 price, uint64 computedAt)
-    {
-        AssetIdKey memory assetIdKey = _idToAsset[assetId];
-        TranchePrice memory value = pools[poolId].tranches[trancheId].prices[assetIdKey.asset][assetIdKey.tokenId];
-        require(value.computedAt > 0, "PoolManager/unknown-price");
-        price = value.price;
-        computedAt = value.computedAt;
-    }
-
-    /// @inheritdoc IPoolManager
     function vaultDetails(address vault) public view returns (VaultDetails memory details) {
         details = _vaultDetails[vault];
         require(details.asset != address(0), "PoolManager/unknown-vault");
@@ -486,6 +463,72 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     function checkedAssetToId(address asset, uint256 tokenId) public view returns (uint128 assetId) {
         assetId = assetToId[asset][tokenId];
         require(assetId != 0, "PoolManager/unknown-asset");
+    }
+
+    /// @inheritdoc IPoolManager
+    function pricePerShare(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (D18) {
+        (Price memory pricePerAsset_, Price memory pricePerShare_) = _pricePerShare(poolId, trancheId, assetId);
+        return pricePerShare_.asPrice() * pricePerAsset_.asPrice();
+    }
+
+    /// @inheritdoc IPoolManager
+    function checkedPricePerShare(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (D18) {
+        (Price memory pricePerAsset_, Price memory pricePerShare_) = _pricePerShare(poolId, trancheId, assetId);
+
+        require(pricePerAsset_.isValid(), "PoolManager/invalid-price");
+        require(pricePerShare_.isValid(), "PoolManager/invalid-price");
+
+        return pricePerShare_.asPrice() * pricePerAsset_.asPrice();
+    }
+
+    /// @inheritdoc IPoolManager
+    function pricePerShare(uint64 poolId, bytes16 trancheId) public view returns (D18) {
+        return _pricePerShare(poolId, trancheId).asPrice();
+    }
+
+    function checkedPricePerShare(uint64 poolId, bytes16 trancheId) public view returns (D18) {
+        Price memory p = _pricePerShare(poolId, trancheId);
+        require(p.isValid(), "PoolManager/invalid-price");
+        return p.asPrice();
+    }
+
+    /// @inheritdoc IPoolManager
+    function pricePerAsset(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (D18) {
+        return _pricePerAsset(poolId, trancheId, assetId).asPrice();
+    }
+
+    function checkedPricePerAsset(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (D18) {
+        Price memory p = _pricePerAsset(poolId, trancheId, assetId);
+
+        require(p.isValid(), "PoolManager/invalid-price");
+        return p.asPrice();
+    }
+
+    function _pricePerAsset(uint64 poolId, bytes16 trancheId, uint128 assetId) internal view returns (Price memory) {
+        TrancheDetails storage tranche_ = pools[poolId].tranches[trancheId];
+        require(tranche_.token != address(0), "PoolManager/tranche-does-not-exist");
+
+        (address asset, uint256 tokenId) = checkedIdToAsset(assetId);
+        return tranche_.prices[asset][tokenId];
+    }
+
+    function _pricePerShare(uint64 poolId, bytes16 trancheId, uint128 assetId)
+        internal view
+        returns (Price memory pricePerAsset_, Price memory pricePerShare_)
+    {
+        TrancheDetails storage tranche_ = pools[poolId].tranches[trancheId];
+        require(tranche_.token != address(0), "PoolManager/tranche-does-not-exist");
+
+        (address asset, uint256 tokenId) = checkedIdToAsset(assetId);
+        pricePerAsset_ = tranche_.prices[asset][tokenId];
+        pricePerShare_ = tranche_.price;
+    }
+
+    function _pricePerShare(uint64 poolId, bytes16 trancheId) internal view returns (Price memory) {
+        TrancheDetails storage tranche_ = pools[poolId].tranches[trancheId];
+        require(tranche_.token != address(0), "PoolManager/tranche-does-not-exist");
+
+        return tranche_.price;
     }
 
     /// @dev Sets up permissions for the base vault manager and potentially a secondary manager (in case of partially

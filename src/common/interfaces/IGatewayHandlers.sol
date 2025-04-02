@@ -87,12 +87,12 @@ interface IPoolManagerGatewayHandler {
 
     /// @notice  Updates the price of a tranche token per unit of pool denomination currency
     /// @dev     The function can only be executed by the gateway contract.
-    function updateTranchePrice(uint64 poolId, bytes16 trancheId, uint128 price, uint64 computedAt)
-        external;
+    function updateTranchePrice(uint64 poolId, bytes16 trancheId, uint128 price, uint64 computedAt) external;
 
     /// @notice  Updates the price of an asset per unit of pool denomination currency
     /// @dev     The function can only be executed by the gateway contract.
-    function updateAssetPrice(uint64 poolId, bytes16 trancheId, AssetId assetId, uint128 price, uint64 computedAt) external;
+    function updateAssetPrice(uint64 poolId, bytes16 trancheId, uint128 assetId, uint128 price, uint64 computedAt)
+        external;
 
     /// @notice Updates the hook of a tranche token
     /// @param  poolId The centrifuge pool id

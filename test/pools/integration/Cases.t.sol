@@ -376,8 +376,9 @@ contract TestCases is PoolsDeployer, Test {
         (bytes[] memory cs, uint256 c) = (new bytes[](4), 0);
         cs[c++] = abi.encodeWithSelector(poolRouter.setTransientPrice.selector, EUR.addr(), assetPerPool);
         cs[c++] = abi.encodeWithSelector(poolRouter.updateSharePrice.selector, scId, sharePrice, "");
-        cs[c++] = abi.encodeWithSelector(poolRouter.notifySharePrice.selector, scId, EUR);
-        cs[c++] = abi.encodeWithSelector(poolRouter.notifySharePrice.selector, scId, USDC_C2);
+        cs[c++] = abi.encodeWithSelector(poolRouter.notifySharePrice.selector, CHAIN_CV, scId);
+        cs[c++] = abi.encodeWithSelector(poolRouter.notifyAssetPrice.selector, scId, USDC_C2);
+        cs[c++] = abi.encodeWithSelector(poolRouter.notifyAssetPrice.selector, scId, EUR);
 
         vm.prank(FM);
         poolRouter.execute{value: GAS}(poolId, cs);
@@ -385,15 +386,23 @@ contract TestCases is PoolsDeployer, Test {
         MessageLib.NotifySharePrice memory m0 = MessageLib.deserializeNotifySharePrice(cv.popMessage());
         assertEq(m0.poolId, poolId.raw());
         assertEq(m0.scId, scId.raw());
-        assertEq(m0.assetId, USDC_C2.raw());
-        assertEq(m0.price, sharePrice.raw()); // @dev USDC_C2 uses idenity valuation and hence the price is the same
+        assertEq(m0.price, expectedPrice.raw());
         assertEq(m0.timestamp, block.timestamp.toUint64());
 
-        MessageLib.NotifySharePrice memory m1 = MessageLib.deserializeNotifySharePrice(cv.popMessage());
+        MessageLib.NotifyAssetPrice memory m1 = MessageLib.deserializeNotifyAssetPrice(cv.popMessage());
         assertEq(m1.poolId, poolId.raw());
         assertEq(m1.scId, scId.raw());
-        assertEq(m1.assetId, EUR.raw());
+        assertEq(m1.assetId, USDC_C2.raw());
         assertEq(m1.price, expectedPrice.raw());
         assertEq(m1.timestamp, block.timestamp.toUint64());
+
+
+        MessageLib.NotifyAssetPrice memory m2 = MessageLib.deserializeNotifyAssetPrice(cv.popMessage());
+        assertEq(m2.poolId, poolId.raw());
+        assertEq(m2.scId, scId.raw());
+        assertEq(m2.assetId, EUR.raw());
+        assertEq(m2.price, sharePrice.raw()); // @dev USDC_C2 uses idenity valuation and hence the price is the same
+        assertEq(m2.timestamp, block.timestamp.toUint64());
+
     }
 }

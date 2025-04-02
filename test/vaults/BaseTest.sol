@@ -186,7 +186,8 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
             centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, trancheDecimals, hook);
         }
 
-        poolManager.updateTranchePrice(poolId, trancheId, assetId, uint128(10 ** 18), uint64(block.timestamp));
+        poolManager.updateTranchePrice(poolId, trancheId, uint128(10 ** 18), uint64(block.timestamp));
+        poolManager.updateAssetPrice(poolId, trancheId, assetId, uint128(10 ** 18), uint64(block.timestamp));
 
         // Trigger new vault deployment via UpdateContract
         bytes32 vaultFactory = _vaultKindToVaultFactory(vaultKind);

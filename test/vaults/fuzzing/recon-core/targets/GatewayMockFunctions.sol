@@ -159,7 +159,8 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
 
     // TODO: Price is capped at u64 to test overflows
     function poolManager_updateTranchePrice(uint64 price, uint64 computedAt) public {
-        poolManager.updateTranchePrice(poolId, trancheId, assetId, price, computedAt);
+        poolManager.updateTranchePrice(poolId, trancheId, price, computedAt);
+        poolManager.updateAssetPrice(poolId, trancheId, assetId, price, computedAt);
     }
 
     function poolManager_updateTrancheMetadata(string memory tokenName, string memory tokenSymbol) public {
