@@ -16,7 +16,7 @@ import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
-import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 /// @title  VaultRouter
 /// @notice This is a helper contract, designed to be the entrypoint for EOAs.
@@ -244,26 +244,22 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
 
     // --- Transfer ---
     /// @inheritdoc IVaultRouter
-    function transferTrancheTokens(address vault, uint16 chainId, bytes32 recipient, uint128 amount)
-        public
-        payable
-        protected
-    {
+    function transferShares(address vault, uint16 chainId, bytes32 receiver, uint128 amount) public payable protected {
         SafeTransferLib.safeTransferFrom(IAsyncVault(vault).share(), msg.sender, address(this), amount);
         _approveMax(IAsyncVault(vault).share(), 0, address(poolManager));
         _pay();
-        IPoolManager(poolManager).transferTrancheTokens(
-            IAsyncVault(vault).poolId(), IAsyncVault(vault).trancheId(), chainId, recipient, amount
+        IPoolManager(poolManager).transferShares(
+            IAsyncVault(vault).poolId(), IAsyncVault(vault).trancheId(), chainId, receiver, amount
         );
     }
 
     /// @inheritdoc IVaultRouter
-    function transferTrancheTokens(address vault, uint16 chainId, address recipient, uint128 amount)
+    function transferShares(address vault, uint16 chainId, address receiver, uint128 amount)
         external
         payable
         protected
     {
-        transferTrancheTokens(vault, chainId, recipient.toBytes32(), amount);
+        transferShares(vault, chainId, receiver.toBytes32(), amount);
     }
 
     // --- Register Asset ---
@@ -304,8 +300,8 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
 
     // --- View Methods ---
     /// @inheritdoc IVaultRouter
-    function getVault(uint64 poolId, bytes16 trancheId, address asset) external view returns (address) {
-        return ITranche(IPoolManager(poolManager).tranche(poolId, trancheId)).vault(asset);
+    function getVault(uint64 poolId, bytes16 scId, address asset) external view returns (address) {
+        return IShareToken(IPoolManager(poolManager).shareToken(poolId, scId)).vault(asset);
     }
 
     /// @inheritdoc IVaultRouter

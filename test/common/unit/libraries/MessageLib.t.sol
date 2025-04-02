@@ -173,12 +173,12 @@ contract TestMessageLibIdentities is Test {
 
     function testTransferShares() public pure {
         MessageLib.TransferShares memory a =
-            MessageLib.TransferShares({poolId: 1, scId: bytes16("sc"), recipient: bytes32("bob"), amount: 8});
+            MessageLib.TransferShares({poolId: 1, scId: bytes16("sc"), receiver: bytes32("bob"), amount: 8});
         MessageLib.TransferShares memory b = MessageLib.deserializeTransferShares(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
-        assertEq(a.recipient, b.recipient);
+        assertEq(a.receiver, b.receiver);
         assertEq(a.amount, b.amount);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);

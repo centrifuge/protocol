@@ -13,7 +13,7 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
 import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IERC7575} from "src/vaults/interfaces/IERC7575.sol";
-import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IAsyncRedeemVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
@@ -62,18 +62,18 @@ abstract contract BaseVault is Auth, IBaseVault {
 
     constructor(
         uint64 poolId_,
-        bytes16 trancheId_,
+        bytes16 scId_,
         address asset_,
         uint256 tokenId_,
-        address share_,
+        address token_,
         address root_,
         address manager_
     ) Auth(msg.sender) {
         poolId = poolId_;
-        trancheId = trancheId_;
+        trancheId = scId_;
         asset = asset_;
         tokenId = tokenId_;
-        share = share_;
+        share = token_;
         _shareDecimals = IERC20Metadata(share).decimals();
         root = IRoot(root_);
         manager = IBaseInvestmentManager(manager_);
@@ -200,7 +200,7 @@ abstract contract BaseVault is Auth, IBaseVault {
 
     /// @inheritdoc IERC7714
     function isPermissioned(address controller) external view returns (bool) {
-        return ITranche(share).checkTransferRestriction(address(0), controller, 0);
+        return IShareToken(share).checkTransferRestriction(address(0), controller, 0);
     }
 
     /// @notice Ensures msg.sender can operate on behalf of controller.
@@ -219,7 +219,7 @@ abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     // --- ERC-7540 methods ---
     /// @inheritdoc IERC7540Redeem
     function requestRedeem(uint256 shares, address controller, address owner) public returns (uint256) {
-        require(ITranche(share).balanceOf(owner) >= shares, "AsyncVault/insufficient-balance");
+        require(IShareToken(share).balanceOf(owner) >= shares, "AsyncVault/insufficient-balance");
 
         // If msg.sender is operator of owner, the transfer is executed as if
         // the sender is the owner, to bypass the allowance check
@@ -231,10 +231,10 @@ abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
         );
 
         address escrow = asyncRedeemManager.escrow();
-        try ITranche(share).authTransferFrom(sender, owner, escrow, shares) returns (bool) {}
+        try IShareToken(share).authTransferFrom(sender, owner, escrow, shares) returns (bool) {}
         catch {
-            // Support tranche tokens that block authTransferFrom. In this case ERC20 approval needs to be set
-            require(ITranche(share).transferFrom(owner, escrow, shares), "AsyncVault/transfer-from-failed");
+            // Support share class tokens that block authTransferFrom. In this case ERC20 approval needs to be set
+            require(IShareToken(share).transferFrom(owner, escrow, shares), "AsyncVault/transfer-from-failed");
         }
 
         emit RedeemRequest(controller, owner, REQUEST_ID, msg.sender, shares);

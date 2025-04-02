@@ -444,7 +444,7 @@ library MessageLib {
     struct TransferShares {
         uint64 poolId;
         bytes16 scId;
-        bytes32 recipient;
+        bytes32 receiver;
         uint128 amount;
     }
 
@@ -453,13 +453,13 @@ library MessageLib {
         return TransferShares({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
-            recipient: data.toBytes32(25),
+            receiver: data.toBytes32(25),
             amount: data.toUint128(57)
         });
     }
 
     function serialize(TransferShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.TransferShares, t.poolId, t.scId, t.recipient, t.amount);
+        return abi.encodePacked(MessageType.TransferShares, t.poolId, t.scId, t.receiver, t.amount);
     }
 
     //---------------------------------------

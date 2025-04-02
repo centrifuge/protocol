@@ -15,7 +15,7 @@ import "forge-std/console2.sol";
 /// These are the re-usable ones, which do alter the state
 /// And we will not call
 abstract contract AsyncVaultProperties is Setup, Asserts {
-    // TODO: change to 10 ** max(token.decimals(), trancheToken.decimals())
+    // TODO: change to 10 ** max(assetErc20.decimals(), token.decimals())
     uint256 MAX_ROUNDING_ERROR = 10 ** 18;
 
     /// @dev 7540-3	convertToAssets(totalSupply) == totalAssets unless price is 0.0
@@ -170,7 +170,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
             return true; // Skip
         }
 
-        uint256 actualBal = trancheToken.balanceOf(actor);
+        uint256 actualBal = token.balanceOf(actor);
         uint256 balWeWillUse = actualBal + shares;
 
         if (balWeWillUse == 0) {
@@ -178,8 +178,8 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
         }
 
         // NOTE: Avoids more false positives
-        trancheToken.approve(address(asyncVaultTarget), 0);
-        trancheToken.approve(address(asyncVaultTarget), type(uint256).max);
+        token.approve(address(asyncVaultTarget), 0);
+        token.approve(address(asyncVaultTarget), type(uint256).max);
 
         uint256 hasReverted;
         try IAsyncVault(asyncVaultTarget).requestRedeem(balWeWillUse, actor, actor) {
@@ -253,7 +253,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
         try IAsyncVault(asyncVaultTarget).withdraw(maxWithdraw, actor, actor) {
             // Success here
             // E-1
-            sumOfClaimedRedemptions[address(token)] += maxWithdraw;
+            sumOfClaimedRedemptions[address(assetErc20)] += maxWithdraw;
             return true;
         } catch {
             return false;
@@ -270,7 +270,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
 
         try IAsyncVault(asyncVaultTarget).redeem(maxRedeem, actor, actor) returns (uint256 assets) {
             // E-1
-            sumOfClaimedRedemptions[address(token)] += assets;
+            sumOfClaimedRedemptions[address(assetErc20)] += assets;
             return true;
         } catch {
             return false;

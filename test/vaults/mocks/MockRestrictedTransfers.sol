@@ -2,17 +2,17 @@
 pragma solidity 0.8.28;
 
 import "test/common/mocks/Mock.sol";
-import "src/vaults/token/RestrictionManager.sol";
+import "src/vaults/token/RestrictedTransfers.sol";
 
-contract MockRestrictionManager is RestrictionManager, Mock {
-    constructor(address root_, address deployer) RestrictionManager(root_, deployer) {}
+contract MockRestrictedTransfers is RestrictedTransfers, Mock {
+    constructor(address root_, address deployer) RestrictedTransfers(root_, deployer) {}
 
     function onERC20Transfer(address from, address to, uint256 value, HookData calldata hookData)
         public
         override
         returns (bytes4)
     {
-        require(checkERC20Transfer(from, to, value, hookData), "RestrictionManager/transfer-blocked");
+        require(checkERC20Transfer(from, to, value, hookData), "RestrictedTransfers/transfer-blocked");
 
         values_address["onERC20Transfer_from"] = from;
         values_address["onERC20Transfer_to"] = to;

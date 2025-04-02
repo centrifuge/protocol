@@ -25,12 +25,12 @@ class AssetRegistry {
 AssetRegistry --|> IERC6909Fungible
 
 class Holdings<wards = PoolManager> <<(C, lightskyblue)>> {
-    + create(poolId, shareClassId, assetId, valuation, accounts)
-    + increase(poolId, shareClassId, assetId, valuation) -> increasedValue
-    + decrease(poolId, shareClassId, assetId, valuation) -> decreasedValue
-    + update(poolId, shareClassId, assetId) -> diff
-    + updateValuation(poolId, shareClassId, assetId)
-    + setAccountId(poolId, shareClassId, assetId)
+    + create(poolId, scId, assetId, valuation, accounts)
+    + increase(poolId, scId, assetId, valuation) -> increasedValue
+    + decrease(poolId, scId, assetId, valuation) -> decreasedValue
+    + update(poolId, scId, assetId) -> diff
+    + updateValuation(poolId, scId, assetId)
+    + setAccountId(poolId, scId, assetId)
 }
 
 class PoolRegistry<wards = PoolManager> {
@@ -48,15 +48,15 @@ interface IShareClassManager {
     + cancelDepositRequest(poolId, scId, assetId, investor) -> (cancelled)
     + requestRedeem(poolId, scId, assetId, investor, amount)
     + cancelRedeemRequest(poolId, scId, assetId, investor) -> (cancelled)
-    + approveDeposits(poolId, shareClassId, assetId, ratio, valuation) -> (approve, pending)
-    + approveRedeems(poolId, shareClassId, assetId, ratio, valuation) -> (approve, pending)
-    + issueShares(poolId, shareClassId, assetId, navPerShare)
-    + revokeShares(poolId, shareClassId, assetId, navPerShare) -> (assetAmount, poolAmount)
-    + claimDeposit(poolId, shareClassId, assetId, investor) -> (assetAmount, shareAmount)
-    + claimRedeem(poolId, shareClassId, assetId, investor) -> (assetAmount, shareAmount)
-    + updateShareClassNav(poolId, shareClassId)
+    + approveDeposits(poolId, scId, assetId, ratio, valuation) -> (approve, pending)
+    + approveRedeems(poolId, scId, assetId, ratio, valuation) -> (approve, pending)
+    + issueShares(poolId, scId, assetId, navPerShare)
+    + revokeShares(poolId, scId, assetId, navPerShare) -> (assetAmount, poolAmount)
+    + claimDeposit(poolId, scId, assetId, investor) -> (assetAmount, shareAmount)
+    + claimRedeem(poolId, scId, assetId, investor) -> (assetAmount, shareAmount)
+    + updateShareClassNav(poolId, scId)
     + update(poolId, data)
-    + updateMetadata(poolId, shareClassId, name, symbol, data)
+    + updateMetadata(poolId, scId, name, symbol, data)
 }
 
 class MultiShareClass<wards = PoolManager> <<(C, lightskyblue)>>{ }

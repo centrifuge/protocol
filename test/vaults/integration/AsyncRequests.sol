@@ -25,7 +25,8 @@ contract AsyncRequestsTest is BaseTest {
     function testDeployment(address nonWard) public {
         vm.assume(
             nonWard != address(root) && nonWard != address(gateway) && nonWard != address(poolManager)
-                && nonWard != address(messageDispatcher) && nonWard != address(messageProcessor) && nonWard != address(this)
+                && nonWard != address(messageDispatcher) && nonWard != address(messageProcessor)
+                && nonWard != address(syncRequests) && nonWard != address(this)
         );
 
         // redeploying within test to increase coverage

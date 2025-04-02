@@ -32,12 +32,12 @@ interface IMultiShareClass is IShareClassManager {
     /// @notice Emits new shares for the given identifier based on the provided NAV up to the desired epoch.
     ///
     /// @param poolId Identifier of the pool
-    /// @param shareClassId Identifier of the share class
+    /// @param scId Identifier of the share class
     /// @param navPerShare Total value of assets of the pool and share class per share
     /// @param endEpochId Identifier of the maximum epoch until which shares are issued
     function issueSharesUntilEpoch(
         PoolId poolId,
-        ShareClassId shareClassId,
+        ShareClassId scId,
         AssetId depositAssetId,
         D18 navPerShare,
         uint32 endEpochId
@@ -47,7 +47,7 @@ interface IMultiShareClass is IShareClassManager {
     /// the provided NAV.
     ///
     /// @param poolId Identifier of the pool
-    /// @param shareClassId Identifier of the share class
+    /// @param scId Identifier of the share class
     /// @param payoutAssetId Identifier of the payout asset
     /// @param navPerShare Total value of assets of the pool and share class per share
     /// @param valuation Source of truth for quotas, e.g. the price of a share class token amount to pool amount
@@ -56,7 +56,7 @@ interface IMultiShareClass is IShareClassManager {
     /// @return payoutPoolAmount Converted amount of pool currency based on number of revoked shares
     function revokeSharesUntilEpoch(
         PoolId poolId,
-        ShareClassId shareClassId,
+        ShareClassId scId,
         AssetId payoutAssetId,
         D18 navPerShare,
         IERC7726 valuation,
@@ -67,7 +67,7 @@ interface IMultiShareClass is IShareClassManager {
     /// issued until the provided epoch.
     ///
     /// @param poolId Identifier of the pool
-    /// @param shareClassId Identifier of the share class
+    /// @param scId Identifier of the share class
     /// @param investor Centrifuge Vault address of the recipient of the claimed share class tokens
     /// @param depositAssetId Identifier of the asset which the investor used for their deposit request
     /// @param endEpochId Identifier of the maximum epoch until it is claimed claim
@@ -75,7 +75,7 @@ interface IMultiShareClass is IShareClassManager {
     /// @return paymentAssetAmount Amount of deposit asset which was taken as payment
     function claimDepositUntilEpoch(
         PoolId poolId,
-        ShareClassId shareClassId,
+        ShareClassId scId,
         bytes32 investor,
         AssetId depositAssetId,
         uint32 endEpochId
@@ -85,7 +85,7 @@ interface IMultiShareClass is IShareClassManager {
     /// asset for the specified range of epochs.
     ///
     /// @param poolId Identifier of the pool
-    /// @param shareClassId Identifier of the share class
+    /// @param scId Identifier of the share class
     /// @param investor Centrifuge Vault address of the recipient of the claimed payout asset amount
     /// @param payoutAssetId Identifier of the asset which the investor committed to as payout when requesting the
     /// redemption
@@ -94,7 +94,7 @@ interface IMultiShareClass is IShareClassManager {
     /// @return paymentShareAmount Amount of shares which the investor redeemed
     function claimRedeemUntilEpoch(
         PoolId poolId,
-        ShareClassId shareClassId,
+        ShareClassId scId,
         bytes32 investor,
         AssetId payoutAssetId,
         uint32 endEpochId
@@ -102,11 +102,9 @@ interface IMultiShareClass is IShareClassManager {
 
     /// @notice returns The metadata of the share class.
     ///
-    /// @param shareClassId Identifier of the share class
+    /// @param scId Identifier of the share class
     /// @return name The registered name of the share class token
     /// @return symbol The registered symbol of the share class token
     /// @return salt The registered salt of the share class token, used for deterministic deployments
-    function metadata(ShareClassId shareClassId)
-        external
-        returns (string memory name, string memory symbol, bytes32 salt);
+    function metadata(ShareClassId scId) external returns (string memory name, string memory symbol, bytes32 salt);
 }

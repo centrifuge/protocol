@@ -12,18 +12,18 @@ import {
     ERROR_MESSAGE
 } from "src/vaults/interfaces/token/IHook.sol";
 import {IERC7575Share, IERC165} from "src/vaults/interfaces/IERC7575.sol";
-import {ITranche, IERC1404} from "src/vaults/interfaces/token/ITranche.sol";
+import {IShareToken, IERC1404} from "src/vaults/interfaces/token/IShareToken.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 
-/// @title  Tranche Token
-/// @notice Extension of ERC20 + ERC1404 for tranche tokens,
+/// @title  Centrifuge Token
+/// @notice Extension of ERC20 + ERC1404,
 ///         integrating an external hook optionally for ERC20 callbacks and ERC1404 checks.
-contract Tranche is ERC20, ITranche {
+contract CentrifugeToken is ERC20, IShareToken {
     using MathLib for uint256;
 
     mapping(address => Balance) private balances;
 
-    /// @inheritdoc ITranche
+    /// @inheritdoc IShareToken
     address public hook;
 
     /// @inheritdoc IERC7575Share
@@ -32,24 +32,24 @@ contract Tranche is ERC20, ITranche {
     constructor(uint8 decimals_) ERC20(decimals_) {}
 
     modifier authOrHook() {
-        require(wards[msg.sender] == 1 || msg.sender == hook, "Tranche/not-authorized");
+        require(wards[msg.sender] == 1 || msg.sender == hook, "CentrifugeToken/not-authorized");
         _;
     }
 
     // --- Administration ---
-    /// @inheritdoc ITranche
+    /// @inheritdoc IShareToken
     function file(bytes32 what, address data) external authOrHook {
         if (what == "hook") hook = data;
-        else revert("Tranche/file-unrecognized-param");
+        else revert("CentrifugeToken/file-unrecognized-param");
         emit File(what, data);
     }
 
-    /// @inheritdoc ITranche
-    function file(bytes32 what, string memory data) public override(ERC20, ITranche) auth {
+    /// @inheritdoc IShareToken
+    function file(bytes32 what, string memory data) public override(ERC20, IShareToken) auth {
         super.file(what, data);
     }
 
-    /// @inheritdoc ITranche
+    /// @inheritdoc IShareToken
     function updateVault(address asset, address vault_) external auth {
         vault[asset] = vault_;
         emit VaultUpdate(asset, vault_);
@@ -64,12 +64,12 @@ contract Tranche is ERC20, ITranche {
         balances[user].amount = value.toUint128();
     }
 
-    /// @inheritdoc ITranche
+    /// @inheritdoc IShareToken
     function hookDataOf(address user) public view returns (bytes16) {
         return balances[user].hookData;
     }
 
-    /// @inheritdoc ITranche
+    /// @inheritdoc IShareToken
     function setHookData(address user, bytes16 hookData) public authOrHook {
         balances[user].hookData = hookData;
         emit SetHookData(user, hookData);
@@ -91,15 +91,15 @@ contract Tranche is ERC20, ITranche {
         _onTransfer(from, to, value);
     }
 
-    /// @inheritdoc ITranche
-    function mint(address to, uint256 value) public override(ERC20, ITranche) {
+    /// @inheritdoc IShareToken
+    function mint(address to, uint256 value) public override(ERC20, IShareToken) {
         super.mint(to, value);
-        require(totalSupply <= type(uint128).max, "Tranche/exceeds-max-supply");
+        require(totalSupply <= type(uint128).max, "CentrifugeToken/exceeds-max-supply");
         _onTransfer(address(0), to, value);
     }
 
-    /// @inheritdoc ITranche
-    function burn(address from, uint256 value) public override(ERC20, ITranche) {
+    /// @inheritdoc IShareToken
+    function burn(address from, uint256 value) public override(ERC20, IShareToken) {
         super.burn(from, value);
         _onTransfer(from, address(0), value);
     }
@@ -109,11 +109,11 @@ contract Tranche is ERC20, ITranche {
             hook == address(0)
                 || IHook(hook).onERC20Transfer(from, to, value, HookData(hookDataOf(from), hookDataOf(to)))
                     == IHook.onERC20Transfer.selector,
-            "Tranche/restrictions-failed"
+            "CentrifugeToken/restrictions-failed"
         );
     }
 
-    /// @inheritdoc ITranche
+    /// @inheritdoc IShareToken
     function authTransferFrom(address sender, address from, address to, uint256 value)
         public
         auth
@@ -124,12 +124,12 @@ contract Tranche is ERC20, ITranche {
             hook == address(0)
                 || IHook(hook).onERC20AuthTransfer(sender, from, to, value, HookData(hookDataOf(from), hookDataOf(to)))
                     == IHook.onERC20AuthTransfer.selector,
-            "Tranche/restrictions-failed"
+            "CentrifugeToken/restrictions-failed"
         );
     }
 
     // --- ERC1404 implementation ---
-    /// @inheritdoc ITranche
+    /// @inheritdoc IShareToken
     function checkTransferRestriction(address from, address to, uint256 value) public view returns (bool) {
         return detectTransferRestriction(from, to, value) == SUCCESS_CODE_ID;
     }

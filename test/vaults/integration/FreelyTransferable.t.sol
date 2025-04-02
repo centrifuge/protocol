@@ -3,21 +3,21 @@ pragma solidity 0.8.28;
 
 import "test/vaults/BaseTest.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {RestrictedRedemptions} from "src/vaults/token/RestrictedRedemptions.sol";
+import {FreelyTransferable} from "src/vaults/token/FreelyTransferable.sol";
 
 contract RedeemTest is BaseTest {
     using CastLib for *;
 
-    function testRestrictedRedemptions(uint256 amount) public {
+    function testFreelyTransferable(uint256 amount) public {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
         (, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, 6, restrictedRedemptions, bytes16(bytes("1")), address(erc20), 0, 0);
+            deployVault(VaultKind.Async, 6, freelyTransferable, bytes16(bytes("1")), address(erc20), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
-        RestrictedRedemptions hook = RestrictedRedemptions(restrictedRedemptions);
-        ITranche tranche = ITranche(address(vault.share()));
+        FreelyTransferable hook = FreelyTransferable(freelyTransferable);
+        IShareToken shareToken = IShareToken(address(vault.share()));
 
-        centrifugeChain.updateTranchePrice(
+        centrifugeChain.updateSharePrice(
             vault.poolId(), vault.trancheId(), assetId, defaultPrice, uint64(block.timestamp)
         );
 
@@ -27,7 +27,7 @@ contract RedeemTest is BaseTest {
 
         vm.startPrank(investor);
         erc20.approve(vault_, amount);
-        (bool isMember,) = hook.isMember(address(tranche), investor);
+        (bool isMember,) = hook.isMember(address(shareToken), investor);
         assertEq(isMember, false);
         vault.requestDeposit(amount, investor, investor);
         vm.stopPrank();
@@ -42,7 +42,7 @@ contract RedeemTest is BaseTest {
         // Can transfer to anyone
         address investor2 = makeAddr("Investor2");
         vm.prank(investor);
-        tranche.transfer(investor2, amount / 2);
+        shareToken.transfer(investor2, amount / 2);
 
         // Not everyone can redeem
         vm.expectRevert(bytes("AsyncRequests/transfer-not-allowed"));
@@ -50,7 +50,7 @@ contract RedeemTest is BaseTest {
         vault.requestRedeem(amount / 2, investor, investor);
 
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
-        (isMember,) = hook.isMember(address(tranche), investor);
+        (isMember,) = hook.isMember(address(shareToken), investor);
         assertEq(isMember, true);
 
         vm.prank(investor);

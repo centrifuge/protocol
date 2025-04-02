@@ -388,7 +388,7 @@ contract GatewayTest is Test {
 
         uint256 balanceBeforeTx = address(gateway).balance;
 
-        (uint256[] memory tranches, uint256 total) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
+        (uint256[] memory tokens, uint256 total) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
         gateway.topUp{value: total}();
 
         gateway.setPayableSource(self, POOL_A);
@@ -400,7 +400,7 @@ contract GatewayTest is Test {
             MockAdapter currentAdapter = MockAdapter(address(threeMockAdapters[i]));
             uint256[] memory metadata = currentAdapter.callsWithValue("send");
             assertEq(metadata.length, 1);
-            assertEq(metadata[0], tranches[i]);
+            assertEq(metadata[0], tokens[i]);
 
             assertEq(currentAdapter.sent(i == 0 ? message : proof), 1);
         }
@@ -418,7 +418,7 @@ contract GatewayTest is Test {
 
         uint256 balanceBeforeTx = address(gateway).balance;
 
-        (uint256[] memory tranches, uint256 total) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
+        (uint256[] memory tokens, uint256 total) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
         uint256 extra = 10 wei;
         uint256 topUpAmount = total + extra;
         gateway.topUp{value: topUpAmount}();
@@ -432,7 +432,7 @@ contract GatewayTest is Test {
             MockAdapter currentAdapter = MockAdapter(address(threeMockAdapters[i]));
             uint256[] memory metadata = currentAdapter.callsWithValue("send");
             assertEq(metadata.length, 1);
-            assertEq(metadata[0], tranches[i]);
+            assertEq(metadata[0], tokens[i]);
 
             assertEq(currentAdapter.sent(i == 0 ? message : proof), 1);
         }
@@ -447,7 +447,7 @@ contract GatewayTest is Test {
         bytes memory message = MessageLib.NotifyPool(POOL_A.raw()).serialize();
         bytes memory proof = _formatMessageProof(message);
 
-        (uint256[] memory tranches, uint256 total) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
+        (uint256[] memory tokens, uint256 total) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
 
         assertEq(_quota(), 0);
 
@@ -461,7 +461,7 @@ contract GatewayTest is Test {
             MockAdapter currentAdapter = MockAdapter(address(threeMockAdapters[i]));
             uint256[] memory metadata = currentAdapter.callsWithValue("send");
             assertEq(metadata.length, 1);
-            assertEq(metadata[0], tranches[i]);
+            assertEq(metadata[0], tokens[i]);
 
             assertEq(currentAdapter.sent(i == 0 ? message : proof), 1);
         }
@@ -475,9 +475,9 @@ contract GatewayTest is Test {
         bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
 
-        (uint256[] memory tranches,) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
+        (uint256[] memory tokens,) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
 
-        uint256 fundsToCoverTwoAdaptersOnly = tranches[0] + tranches[1];
+        uint256 fundsToCoverTwoAdaptersOnly = tokens[0] + tokens[1];
 
         assertEq(_quota(), 0);
 
@@ -489,12 +489,12 @@ contract GatewayTest is Test {
 
         uint256[] memory r1Metadata = adapter1.callsWithValue("send");
         assertEq(r1Metadata.length, 1);
-        assertEq(r1Metadata[0], tranches[0]);
+        assertEq(r1Metadata[0], tokens[0]);
         assertEq(adapter1.sent(message), 1);
 
         uint256[] memory r2Metadata = adapter2.callsWithValue("send");
         assertEq(r2Metadata.length, 1);
-        assertEq(r2Metadata[0], tranches[1]);
+        assertEq(r2Metadata[0], tokens[1]);
         assertEq(adapter2.sent(proof), 1);
 
         uint256[] memory r3Metadata = adapter3.callsWithValue("send");
@@ -818,12 +818,12 @@ contract GatewayTest is Test {
         uint256 thirdRouterEstimate = THIRD_ADAPTER_ESTIMATE + BASE_PROOF_ESTIMATE;
         uint256 totalEstimate = firstRouterEstimate + secondRouterEstimate + thirdRouterEstimate;
 
-        (uint256[] memory tranches, uint256 total) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
+        (uint256[] memory tokens, uint256 total) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
 
-        assertEq(tranches.length, 3);
-        assertEq(tranches[0], firstRouterEstimate);
-        assertEq(tranches[1], secondRouterEstimate);
-        assertEq(tranches[2], thirdRouterEstimate);
+        assertEq(tokens.length, 3);
+        assertEq(tokens[0], firstRouterEstimate);
+        assertEq(tokens[1], secondRouterEstimate);
+        assertEq(tokens[2], thirdRouterEstimate);
         assertEq(total, totalEstimate);
     }
 

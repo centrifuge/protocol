@@ -34,8 +34,14 @@ contract BalanceSheetManagerTest is BaseTest {
 
         assetId = AssetId.wrap(poolManager.registerAsset(address(erc20), erc20TokenId, OTHER_CHAIN_ID));
         poolManager.addPool(POOL_A.raw());
-        poolManager.addTranche(
-            POOL_A.raw(), defaultShareClassId, "testShareClass", "tsc", defaultDecimals, bytes32(""), restrictionManager
+        poolManager.addShareClass(
+            POOL_A.raw(),
+            defaultShareClassId,
+            "testShareClass",
+            "tsc",
+            defaultDecimals,
+            bytes32(""),
+            restrictedTransfers
         );
         poolManager.updateRestriction(
             POOL_A.raw(),
@@ -65,8 +71,7 @@ contract BalanceSheetManagerTest is BaseTest {
     // Deployment
     function testDeployment(address nonWard) public {
         vm.assume(
-            nonWard != address(root) && nonWard != address(asyncVaultFactory)
-                && nonWard != address(syncDepositVaultFactory) && nonWard != address(gateway)
+            nonWard != address(root) && nonWard != address(syncRequests) && nonWard != address(gateway)
                 && nonWard != address(messageProcessor) && nonWard != address(messageDispatcher) && nonWard != address(this)
         );
 
@@ -336,7 +341,7 @@ contract BalanceSheetManagerTest is BaseTest {
             POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount, false
         );
 
-        IERC20 token = IERC20(poolManager.tranche(POOL_A.raw(), defaultShareClassId));
+        IERC20 token = IERC20(poolManager.shareToken(POOL_A.raw(), defaultShareClassId));
         assertEq(token.balanceOf(address(this)), 0);
 
         vm.expectEmit();
@@ -357,7 +362,7 @@ contract BalanceSheetManagerTest is BaseTest {
             POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount, true
         );
 
-        IERC20 token = IERC20(poolManager.tranche(POOL_A.raw(), defaultShareClassId));
+        IERC20 token = IERC20(poolManager.shareToken(POOL_A.raw(), defaultShareClassId));
         assertEq(token.balanceOf(address(this)), 0);
 
         balanceSheetManager.issue(
@@ -370,7 +375,7 @@ contract BalanceSheetManagerTest is BaseTest {
 
     function testRevoke() public {
         testIssue();
-        IERC20 token = IERC20(poolManager.tranche(POOL_A.raw(), defaultShareClassId));
+        IERC20 token = IERC20(poolManager.shareToken(POOL_A.raw(), defaultShareClassId));
         assertEq(token.balanceOf(address(this)), defaultAmount);
 
         vm.prank(randomUser);

@@ -329,7 +329,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     /// forge-config: default.isolate = true
-    function testTransferTrancheTokensToAddressDestination() public {
+    function testTransferSharesToAddressDestination() public {
         (, address vault_,) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
         AsyncVault vault = AsyncVault(vault_);
@@ -348,19 +348,19 @@ contract VaultRouterTest is BaseTest {
         uint256 fuel = estimateGas();
 
         vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        vaultRouter.transferTrancheTokens{value: 0}(vault_, OTHER_CHAIN_ID, destinationAddress, uint128(amount));
+        vaultRouter.transferShares{value: 0}(vault_, OTHER_CHAIN_ID, destinationAddress, uint128(amount));
 
         vm.expectRevert("Gateway/not-enough-gas-funds");
-        vaultRouter.transferTrancheTokens{value: fuel - 1}(vault_, OTHER_CHAIN_ID, destinationAddress, uint128(amount));
+        vaultRouter.transferShares{value: fuel - 1}(vault_, OTHER_CHAIN_ID, destinationAddress, uint128(amount));
 
-        snapStart("VaultRouter_transferTrancheTokens");
-        vaultRouter.transferTrancheTokens{value: fuel}(vault_, OTHER_CHAIN_ID, destinationAddress, uint128(amount));
+        snapStart("VaultRouter_transferShares");
+        vaultRouter.transferShares{value: fuel}(vault_, OTHER_CHAIN_ID, destinationAddress, uint128(amount));
         snapEnd();
         assertEq(share.balanceOf(address(vaultRouter)), 0);
         assertEq(share.balanceOf(address(this)), 0);
     }
 
-    function testTransferTrancheTokensToBytes32Destination() public {
+    function testTransferSharesToBytes32Destination() public {
         (, address vault_,) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
         AsyncVault vault = AsyncVault(vault_);
@@ -381,18 +381,14 @@ contract VaultRouterTest is BaseTest {
         uint256 fuel = estimateGas();
 
         vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        vaultRouter.transferTrancheTokens{value: 0}(
-            vault_, OTHER_CHAIN_ID, destinationAddressAsBytes32, uint128(amount)
-        );
+        vaultRouter.transferShares{value: 0}(vault_, OTHER_CHAIN_ID, destinationAddressAsBytes32, uint128(amount));
 
         vm.expectRevert("Gateway/not-enough-gas-funds");
-        vaultRouter.transferTrancheTokens{value: fuel - 1}(
+        vaultRouter.transferShares{value: fuel - 1}(
             vault_, OTHER_CHAIN_ID, destinationAddressAsBytes32, uint128(amount)
         );
 
-        vaultRouter.transferTrancheTokens{value: fuel}(
-            vault_, OTHER_CHAIN_ID, destinationAddressAsBytes32, uint128(amount)
-        );
+        vaultRouter.transferShares{value: fuel}(vault_, OTHER_CHAIN_ID, destinationAddressAsBytes32, uint128(amount));
         assertEq(share.balanceOf(address(vaultRouter)), 0);
         assertEq(share.balanceOf(address(this)), 0);
     }
