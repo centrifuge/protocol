@@ -102,6 +102,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.poolId, b.poolId);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
     function testNotifyShareClass() public pure {
@@ -125,6 +126,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.hook, b.hook);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
     function testUpdateShareClassPrice() public pure {
@@ -144,6 +146,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.timestamp, b.timestamp);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
     function testUpdateShareClassMetadata() public pure {
@@ -157,6 +160,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.symbol, b.symbol);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
     function testUpdateShareClassHook() public pure {
@@ -169,6 +173,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.hook, b.hook);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
     function testTransferShares() public pure {
@@ -182,6 +187,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.amount, b.amount);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
     function testUpdateRestriction() public pure {
@@ -194,6 +200,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.payload, b.payload);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
 
         // Check the payload length is correctly encoded as little endian
         assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
@@ -243,6 +250,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.payload, b.payload);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
 
         // Check the payload length is correctly encoded as little endian
         assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
@@ -287,6 +295,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.amount, b.amount);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
     function testRedeemRequest() public pure {
@@ -306,6 +315,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.amount, b.amount);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
     function testFulfilledDepositRequest() public pure {
@@ -327,6 +337,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.shareAmount, b.shareAmount);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
     function testFulfilledRedeemRequest() public pure {
@@ -348,6 +359,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.shareAmount, b.shareAmount);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
     function testCancelDepositRequest() public pure {
@@ -361,6 +373,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.assetId, b.assetId);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
     function testCancelRedeemRequest() public pure {
@@ -374,6 +387,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.assetId, b.assetId);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
     function testFulfilledCancelDepositRequest() public pure {
@@ -394,6 +408,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.cancelledAmount, b.cancelledAmount);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
     function testFulfilledCancelRedeemRequest() public pure {
@@ -414,6 +429,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.cancelledShares, b.cancelledShares);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
     function testTriggerRedeemRequest() public pure {
@@ -433,6 +449,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.shares, b.shares);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
     function testUpdateHoldingAmount() public pure {
@@ -472,6 +489,7 @@ contract TestMessageLibIdentities is Test {
         _checkEntries(a.credits, b.credits);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
     function testUpdateHoldingValue() public pure {
@@ -491,6 +509,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.timestamp, b.timestamp);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
     function testUpdateShares() public pure {
@@ -515,6 +534,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.isIssuance, b.isIssuance);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
     function testUpdateJournal() public pure {
@@ -535,6 +555,7 @@ contract TestMessageLibIdentities is Test {
         _checkEntries(a.credits, b.credits);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
     function testTriggerUpdateHoldingAmount() public pure {
@@ -574,6 +595,7 @@ contract TestMessageLibIdentities is Test {
         _checkEntries(a.credits, b.credits);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
     function testTriggerUpdateShares() public pure {
@@ -598,6 +620,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.asAllowance, b.asAllowance);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
     function _checkEntries(JournalEntry[] memory a, JournalEntry[] memory b) private pure {

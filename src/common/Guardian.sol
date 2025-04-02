@@ -30,7 +30,7 @@ contract Guardian is IGuardian {
     }
 
     /// @inheritdoc IGuardian
-    function file(bytes32 what, address data) external onlySafeOrOwner {
+    function file(bytes32 what, address data) external onlySafe {
         if (what == "sender") sender = IRootMessageSender(data);
         else revert FileUnrecognizedParam();
 

@@ -56,7 +56,6 @@ contract GatewayTest is Test {
         gasService = new MockGasService();
         gateway = new Gateway(IRoot(address(root)), IGasService(address(gasService)));
         gateway.file("handler", address(handler));
-        gasService.setReturn("shouldRefuel", true);
 
         adapter1 = new MockAdapter(REMOTE_CENTRIFUGE_ID, gateway);
         vm.label(address(adapter1), "MockAdapter1");
@@ -362,12 +361,9 @@ contract GatewayTest is Test {
         uint256 topUpAmount = 10 wei;
 
         gateway.topUp{value: topUpAmount}();
-        gateway.setPayableSource(self, POOL_A);
 
         vm.expectRevert(bytes("Gateway/not-enough-gas-funds"));
         gateway.send(REMOTE_CENTRIFUGE_ID, message);
-
-        assertEq(gasService.calls("shouldRefuel"), 0);
 
         assertEq(adapter1.calls("pay"), 0);
         assertEq(adapter2.calls("pay"), 0);
@@ -391,10 +387,7 @@ contract GatewayTest is Test {
         (uint256[] memory tokens, uint256 total) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
         gateway.topUp{value: total}();
 
-        gateway.setPayableSource(self, POOL_A);
         gateway.send(REMOTE_CENTRIFUGE_ID, message);
-
-        assertEq(gasService.calls("shouldRefuel"), 0);
 
         for (uint256 i; i < threeMockAdapters.length; i++) {
             MockAdapter currentAdapter = MockAdapter(address(threeMockAdapters[i]));
@@ -423,10 +416,7 @@ contract GatewayTest is Test {
         uint256 topUpAmount = total + extra;
         gateway.topUp{value: topUpAmount}();
 
-        gateway.setPayableSource(self, POOL_A);
         gateway.send(REMOTE_CENTRIFUGE_ID, message);
-
-        assertEq(gasService.calls("shouldRefuel"), 0);
 
         for (uint256 i; i < threeMockAdapters.length; i++) {
             MockAdapter currentAdapter = MockAdapter(address(threeMockAdapters[i]));
@@ -449,13 +439,10 @@ contract GatewayTest is Test {
 
         (uint256[] memory tokens, uint256 total) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
 
-        assertEq(_quota(), 0);
+        assertEq(gateway.fuel(), 0);
 
         gateway.subsidizePool{value: total}(POOL_A);
-        gateway.setPayableSource(self, POOL_A);
         gateway.send(REMOTE_CENTRIFUGE_ID, message);
-
-        assertEq(gasService.calls("shouldRefuel"), 1);
 
         for (uint256 i; i < threeMockAdapters.length; i++) {
             MockAdapter currentAdapter = MockAdapter(address(threeMockAdapters[i]));
@@ -466,26 +453,23 @@ contract GatewayTest is Test {
             assertEq(currentAdapter.sent(i == 0 ? message : proof), 1);
         }
         assertEq(address(gateway).balance, 0);
-        assertEq(_quota(), 0);
+        assertEq(gateway.fuel(), 0);
     }
 
     function testingOutgoingMessagingWithPartiallyCoveredPayment() public {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeMockAdapters);
 
-        bytes memory message = MessageLib.NotifyPool(1).serialize();
+        bytes memory message = MessageLib.NotifyPool(POOL_A.raw()).serialize();
         bytes memory proof = _formatMessageProof(message);
 
         (uint256[] memory tokens,) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
 
         uint256 fundsToCoverTwoAdaptersOnly = tokens[0] + tokens[1];
 
-        assertEq(_quota(), 0);
+        assertEq(gateway.fuel(), 0);
 
         gateway.subsidizePool{value: fundsToCoverTwoAdaptersOnly}(POOL_A);
-        gateway.setPayableSource(self, POOL_A);
         gateway.send(REMOTE_CENTRIFUGE_ID, message);
-
-        assertEq(gasService.calls("shouldRefuel"), 1);
 
         uint256[] memory r1Metadata = adapter1.callsWithValue("send");
         assertEq(r1Metadata.length, 1);
@@ -503,23 +487,20 @@ contract GatewayTest is Test {
         assertEq(adapter3.sent(proof), 1);
 
         assertEq(address(gateway).balance, 0);
-        assertEq(_quota(), 0);
+        assertEq(gateway.fuel(), 0);
     }
 
     function testingOutgoingMessagingWithoutBeingCovered() public {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeMockAdapters);
 
-        bytes memory message = MessageLib.NotifyPool(1).serialize();
+        bytes memory message = MessageLib.NotifyPool(POOL_A.raw()).serialize();
         bytes memory proof = _formatMessageProof(message);
 
         vm.deal(address(gateway), 0);
 
-        assertEq(_quota(), 0);
+        assertEq(gateway.fuel(), 0);
 
-        gateway.setPayableSource(self, POOL_A);
         gateway.send(REMOTE_CENTRIFUGE_ID, message);
-
-        assertEq(gasService.calls("shouldRefuel"), 1);
 
         uint256[] memory r1Metadata = adapter1.callsWithValue("send");
         assertEq(r1Metadata.length, 1);
@@ -536,30 +517,13 @@ contract GatewayTest is Test {
         assertEq(r3Metadata[0], 0);
         assertEq(adapter3.sent(proof), 1);
 
-        assertEq(_quota(), 0);
-    }
-
-    function testingOutgoingMessagingWherePaymentCoverIsNotAllowed() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeMockAdapters);
-
-        bytes memory message = MessageLib.NotifyPool(1).serialize();
-
-        assertEq(_quota(), 0);
-
-        gasService.setReturn("shouldRefuel", false);
-
-        gateway.setPayableSource(self, POOL_A);
-
-        vm.expectRevert(bytes("Gateway/not-enough-gas-funds"));
-        gateway.send(REMOTE_CENTRIFUGE_ID, message);
-
-        assertEq(_quota(), 0);
+        assertEq(gateway.fuel(), 0);
     }
 
     function testRecoverFailedMessage() public {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeMockAdapters);
 
-        bytes memory message = MessageLib.NotifyPool(1).serialize();
+        bytes memory message = MessageLib.NotifyPool(POOL_A.raw()).serialize();
         bytes memory proof = _formatMessageProof(message);
 
         // Only send through 2 out of 3 adapters
@@ -586,23 +550,10 @@ contract GatewayTest is Test {
         assertEq(handler.received(message), 1);
     }
 
-    function testCannotRecoverWithOneAdapter() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneMockAdapter);
-
-        bytes memory message = MessageLib.NotifyPool(1).serialize();
-
-        vm.expectRevert(bytes("Gateway/no-recovery-with-one-adapter-allowed"));
-        _send(
-            adapter1,
-            MessageLib.InitiateMessageRecovery(keccak256(message), address(adapter1).toBytes32(), REMOTE_CENTRIFUGE_ID)
-                .serialize()
-        );
-    }
-
     function testRecoverFailedProof() public {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeMockAdapters);
 
-        bytes memory message = MessageLib.NotifyPool(1).serialize();
+        bytes memory message = MessageLib.NotifyPool(POOL_A.raw()).serialize();
         bytes memory proof = _formatMessageProof(message);
 
         // Only send through 2 out of 3 adapters
@@ -634,7 +585,7 @@ contract GatewayTest is Test {
     function testCannotRecoverInvalidAdapter() public {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeMockAdapters);
 
-        bytes memory message = MessageLib.NotifyPool(1).serialize();
+        bytes memory message = MessageLib.NotifyPool(POOL_A.raw()).serialize();
         bytes memory proof = _formatMessageProof(message);
 
         // Only send through 2 out of 3 adapters
@@ -660,7 +611,7 @@ contract GatewayTest is Test {
     function testDisputeRecovery() public {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeMockAdapters);
 
-        bytes memory message = MessageLib.NotifyPool(1).serialize();
+        bytes memory message = MessageLib.NotifyPool(POOL_A.raw()).serialize();
         bytes memory proof = _formatMessageProof(message);
 
         // Only send through 2 out of 3 adapters
@@ -721,7 +672,7 @@ contract GatewayTest is Test {
         numAdapters = uint8(bound(numAdapters, 1, gateway.MAX_ADAPTER_COUNT()));
         uint16 numParallelDuplicateMessages = uint16(bound(numParallelDuplicateMessages_, 1, 255));
 
-        bytes memory message = MessageLib.NotifyPool(1).serialize();
+        bytes memory message = MessageLib.NotifyPool(POOL_A.raw()).serialize();
         bytes memory proof = _formatMessageProof(message);
 
         // Setup random set of adapters
@@ -811,7 +762,7 @@ contract GatewayTest is Test {
     function testEstimate() public {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeMockAdapters);
 
-        bytes memory message = MessageLib.NotifyPool(1).serialize();
+        bytes memory message = MessageLib.NotifyPool(POOL_A.raw()).serialize();
 
         uint256 firstRouterEstimate = FIRST_ADAPTER_ESTIMATE + BASE_MESSAGE_ESTIMATE;
         uint256 secondRouterEstimate = SECOND_ADAPTER_ESTIMATE + BASE_PROOF_ESTIMATE;
@@ -857,9 +808,5 @@ contract GatewayTest is Test {
     function _send(IAdapter adapter, bytes memory message) internal {
         vm.prank(address(adapter));
         gateway.handle(REMOTE_CENTRIFUGE_ID, message);
-    }
-
-    function _quota() internal view returns (uint256 quota) {
-        quota = uint256(vm.load(address(gateway), bytes32(0x0)));
     }
 }

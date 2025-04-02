@@ -41,14 +41,6 @@ contract Gateway is Auth, IGateway, IRecoverable {
     /// @notice Tells is the gateway is actually configured to create batches
     bool public transient isBatching;
 
-    /// @notice The payer of the transaction.
-    /// @dev This is never used along with batching
-    address public transient payableSource;
-
-    /// @notice The pool associated to the message.
-    /// @dev This is never used along with batching
-    PoolId public transient payablePool;
-
     IRoot public immutable root;
     IGasService public gasService;
 
@@ -168,7 +160,6 @@ contract Gateway is Auth, IGateway, IRecoverable {
         uint8 code = payload.messageCode();
         if (code == uint8(MessageType.InitiateMessageRecovery) || code == uint8(MessageType.DisputeMessageRecovery)) {
             require(!isRecovery, "Gateway/no-recursion");
-            require(adapters[chainId].length > 1, "Gateway/no-recovery-with-one-adapter-allowed");
             return _handleRecovery(payload);
         }
 
@@ -183,11 +174,11 @@ contract Gateway is Auth, IGateway, IRecoverable {
         // Verify adapter and parse message hash
         bytes32 messageHash;
         if (isMessageProof) {
-            require(isRecovery || adapter.id != PRIMARY_ADAPTER_ID, "Gateway/non-proof-adapter");
+            require(adapter.id != PRIMARY_ADAPTER_ID, "Gateway/non-proof-adapter");
             messageHash = payload.deserializeMessageProof().hash;
             emit ProcessProof(chainId, messageHash, adapter_);
         } else {
-            require(isRecovery || adapter.id == PRIMARY_ADAPTER_ID, "Gateway/non-message-adapter");
+            require(adapter.id == PRIMARY_ADAPTER_ID, "Gateway/non-message-adapter");
             messageHash = keccak256(payload);
             emit ProcessMessage(chainId, payload, adapter_);
         }
@@ -277,6 +268,8 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     /// @inheritdoc IMessageSender
     function send(uint16 chainId, bytes calldata message) external pauseable auth {
+        require(message.length > 0, "Gateway/empty-message");
+
         if (isBatching) {
             pendingBatch = true;
 
@@ -319,7 +312,8 @@ contract Gateway is Auth, IGateway, IRecoverable {
                 );
             }
             fuel = 0;
-        } else if (gasService.shouldRefuel(payableSource, payablePool, message)) {
+        } else if (!isBatching) {
+            PoolId poolId = message.messagePoolId();
             for (uint256 i; i < adapters_.length; i++) {
                 IAdapter currentAdapter = IAdapter(adapters_[i]);
                 bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
@@ -328,11 +322,11 @@ contract Gateway is Auth, IGateway, IRecoverable {
                 uint256 consumed =
                     currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit);
 
-                if (consumed <= subsidy[payablePool]) {
+                if (consumed <= subsidy[poolId]) {
                     currentAdapter.send{value: consumed}(
                         chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this)
                     );
-                    subsidy[payablePool] -= consumed;
+                    subsidy[poolId] -= consumed;
                 } else {
                     currentAdapter.send(
                         chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this)
@@ -353,23 +347,17 @@ contract Gateway is Auth, IGateway, IRecoverable {
         // - Or we're in a multicall, but at least one message is required to be sent
         if (!isBatching || pendingBatch) {
             require(msg.value != 0, "Gateway/cannot-topup-with-nothing");
-            fuel = msg.value;
+            fuel += msg.value;
         }
     }
 
     /// @inheritdoc IGateway
-    function setPayableSource(address source, PoolId poolId) external {
-        payableSource = source;
-        payablePool = poolId;
-    }
-
-    /// @inheritdoc IGateway
-    function startBatch() external {
+    function startBatch() external auth {
         isBatching = true;
     }
 
     /// @inheritdoc IGateway
-    function endBatch() external {
+    function endBatch() external auth {
         require(isBatching, NoBatched());
 
         for (uint256 i; i < chainIds.length; i++) {

@@ -5,7 +5,6 @@ import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager
 import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 
 interface IAsyncDepositManager is IDepositManager, IVaultManager {
-    // --- Outgoing message handling ---
     /// @notice Requests assets deposit. Vaults have to request investments from Centrifuge before
     ///         shares can be minted. The deposit requests are added to the order book
     ///         on the corresponding CP instance. Once the next epoch is executed on the corresponding CP instance,
@@ -14,6 +13,7 @@ interface IAsyncDepositManager is IDepositManager, IVaultManager {
     /// @dev    The assets required to fulfill the deposit request have to be locked and are transferred from the
     ///         owner to the escrow, even though the share payout can only happen after epoch execution.
     ///         The receiver becomes the owner of deposit request fulfillment.
+    /// @param  source Deprecated
     function requestDeposit(address vaultAddr, uint256 assets, address receiver, address owner, address source)
         external
         returns (bool);
@@ -27,6 +27,7 @@ interface IAsyncDepositManager is IDepositManager, IVaultManager {
     ///         if orders could be cancelled successfully.
     /// @dev    The cancellation request might fail in case the pending deposit order already got fulfilled on
     ///         Centrifuge.
+    /// @param  source Deprecated
     function cancelDepositRequest(address vaultAddr, address owner, address source) external;
 
     /// @notice Processes owner's deposit request cancellation after the epoch has been executed on the corresponding CP

@@ -112,7 +112,6 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         gateway.file("gasService", address(mockedGasService));
 
         mockedGasService.setReturn("estimate", uint256(0.5 gwei));
-        mockedGasService.setReturn("shouldRefuel", true);
 
         // Label contracts
         vm.label(address(root), "Root");
