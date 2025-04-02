@@ -199,10 +199,9 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         IERC7726 valuation = holdings.valuation(unlockedPoolId, scId, assetId);
         (, D18 pricePerShare) = scm.shareClassPrice(unlockedPoolId, scId);
 
-        uint128 baseAmount =
-            valuation.getQuote(assetRegistry.unitAmount(poolCurrency), poolCurrency.addr(), assetId.addr()).toUint128();
-        D18 pricePerAssetUnit =
-            pricePerShare * ConversionLib.convertIntoPrice(baseAmount, assetRegistry.decimals(assetId));
+        uint128 unitAmount =
+            valuation.getQuote(assetRegistry.unitAmount(assetId), assetId.addr(), poolCurrency.addr()).toUint128();
+        D18 pricePerAssetUnit = d18(unitAmount, assetRegistry.unitAmount(poolCurrency));
         sender.sendNotifyAssetPrice(unlockedPoolId, scId, assetId, pricePerAssetUnit);
     }
 

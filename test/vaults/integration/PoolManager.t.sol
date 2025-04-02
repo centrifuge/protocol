@@ -503,8 +503,8 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook);
 
-        vm.expectRevert("PoolManager/unknown-price");
-        poolManager.pricePerShare(poolId, trancheId, assetId);
+        vm.expectRevert("PoolManager/invalid-price");
+        poolManager.checkedPricePerShare(poolId, trancheId, assetId);
 
         // Allows us to go back in time later
         vm.warp(block.timestamp + 1 days);
@@ -512,6 +512,8 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
         poolManager.updateTranchePrice(poolId, trancheId, price, uint64(block.timestamp));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(randomUser);
         poolManager.updateAssetPrice(poolId, trancheId, assetId, price, uint64(block.timestamp));
 
         centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, price, uint64(block.timestamp));

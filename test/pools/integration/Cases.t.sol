@@ -367,33 +367,36 @@ contract TestCases is PoolsDeployer, Test {
     function testNotifySharePrice() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation();
         D18 sharePrice = d18(100, 1);
-        D18 assetPerPool = d18(1, 3);
-        D18 expectedPrice = assetPerPool.reciprocal() * sharePrice;
+        D18 poolPerEUR = d18(1, 3); // @dev: 3 EUR = 1 USD
+        D18 poolPerUSDC_C2 = d18(1,1); // @dev: 1 USDC_C2 = 1 USD
+        D18 expectedPrice = poolPerEUR.reciprocal() * sharePrice;
         assertEq(expectedPrice.raw(), 300000000000000000300);
         /// @dev assert we have the rounding error here catched
         expectedPrice = d18(300000000000000000000);
 
-        (bytes[] memory cs, uint256 c) = (new bytes[](4), 0);
-        cs[c++] = abi.encodeWithSelector(poolRouter.setTransientPrice.selector, EUR.addr(), assetPerPool);
+        (bytes[] memory cs, uint256 c) = (new bytes[](5), 0);
+        cs[c++] = abi.encodeWithSelector(poolRouter.setTransientPrice.selector, EUR.addr(), poolPerEUR);
         cs[c++] = abi.encodeWithSelector(poolRouter.updateSharePrice.selector, scId, sharePrice, "");
-        cs[c++] = abi.encodeWithSelector(poolRouter.notifySharePrice.selector, CHAIN_CV, scId);
-        cs[c++] = abi.encodeWithSelector(poolRouter.notifyAssetPrice.selector, scId, USDC_C2);
         cs[c++] = abi.encodeWithSelector(poolRouter.notifyAssetPrice.selector, scId, EUR);
+        cs[c++] = abi.encodeWithSelector(poolRouter.notifyAssetPrice.selector, scId, USDC_C2);
+        cs[c++] = abi.encodeWithSelector(poolRouter.notifySharePrice.selector, CHAIN_CV, scId);
 
         vm.prank(FM);
         poolRouter.execute{value: GAS}(poolId, cs);
 
+        assertEq(cv.messageCount(), 3);
+
         MessageLib.NotifySharePrice memory m0 = MessageLib.deserializeNotifySharePrice(cv.popMessage());
         assertEq(m0.poolId, poolId.raw());
         assertEq(m0.scId, scId.raw());
-        assertEq(m0.price, expectedPrice.raw());
+        assertEq(m0.price, sharePrice.raw());
         assertEq(m0.timestamp, block.timestamp.toUint64());
 
         MessageLib.NotifyAssetPrice memory m1 = MessageLib.deserializeNotifyAssetPrice(cv.popMessage());
         assertEq(m1.poolId, poolId.raw());
         assertEq(m1.scId, scId.raw());
         assertEq(m1.assetId, USDC_C2.raw());
-        assertEq(m1.price, expectedPrice.raw());
+        assertEq(m1.price, poolPerUSDC_C2.raw());
         assertEq(m1.timestamp, block.timestamp.toUint64());
 
 
@@ -401,8 +404,7 @@ contract TestCases is PoolsDeployer, Test {
         assertEq(m2.poolId, poolId.raw());
         assertEq(m2.scId, scId.raw());
         assertEq(m2.assetId, EUR.raw());
-        assertEq(m2.price, sharePrice.raw()); // @dev USDC_C2 uses idenity valuation and hence the price is the same
+        assertEq(m2.price, poolPerEUR.raw());
         assertEq(m2.timestamp, block.timestamp.toUint64());
-
     }
 }

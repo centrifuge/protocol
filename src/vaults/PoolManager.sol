@@ -478,7 +478,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         require(pricePerAsset_.isValid(), "PoolManager/invalid-price");
         require(pricePerShare_.isValid(), "PoolManager/invalid-price");
 
-        return pricePerShare_.asPrice() * pricePerAsset_.asPrice();
+        return pricePerShare_.asPrice() * pricePerAsset_.asPrice().reciprocal();
     }
 
     /// @inheritdoc IPoolManager

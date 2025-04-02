@@ -32,7 +32,7 @@ struct Price {
 
 function isValid(Price memory price) view returns (bool) {
     if (price.computedAt != 0 && price.price != 0) {
-        return block.timestamp < price.computedAt + price.maxAge;
+        return block.timestamp <= price.computedAt + price.maxAge;
     } else {
         return false;
     }

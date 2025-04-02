@@ -135,6 +135,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.price, b.price);
         assertEq(a.timestamp, b.timestamp);
 
+
         assertEq(a.serialize().messageLength(), a.serialize().length);
     }
 

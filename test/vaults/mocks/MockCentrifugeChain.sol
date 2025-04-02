@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {d18} from "src/misc/types/D18.sol";
 
 import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
@@ -156,7 +157,7 @@ contract MockCentrifugeChain is Test {
                 poolId: poolId,
                 scId: trancheId,
                 assetId: assetId,
-                price: price,
+                price: d18(1,1).raw(), //NOTE: We assume asset to have 1:1 price with pool token. FOR NOW
                 timestamp: computedAt
             }).serialize()
         );
