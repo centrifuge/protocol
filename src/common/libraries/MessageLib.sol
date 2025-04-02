@@ -92,7 +92,8 @@ library MessageLib {
         (178 << uint8(MessageType.RegisterAsset) * 8) +
         (9   << uint8(MessageType.NotifyPool) * 8) +
         (250 << uint8(MessageType.NotifyShareClass) * 8) +
-        (65 << uint8(MessageType.NotifySharePrice) * 8) +
+        (49 << uint8(MessageType.NotifySharePrice) * 8) +
+        (65 << uint8(MessageType.NotifyAssetPrice) * 8) +
         (185 << uint8(MessageType.UpdateShareClassMetadata) * 8) +
         (57  << uint8(MessageType.UpdateShareClassHook) * 8) +
         (73  << uint8(MessageType.TransferShares) * 8) +

@@ -70,7 +70,7 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
         // IBaseVault vault_ = IBaseVault(vaultAddr);
         // VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
         //TODO FIX(, lastUpdated) = poolManager.pricePerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
-        lastUpdated = 0;
+        lastUpdated = 1;
     }
 
     /// @inheritdoc IERC165

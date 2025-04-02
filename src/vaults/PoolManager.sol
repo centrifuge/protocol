@@ -468,7 +468,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     /// @inheritdoc IPoolManager
     function pricePerShare(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (D18) {
         (Price memory pricePerAsset_, Price memory pricePerShare_) = _pricePerShare(poolId, trancheId, assetId);
-        return pricePerShare_.asPrice() * pricePerAsset_.asPrice();
+        return pricePerShare_.asPrice() * pricePerAsset_.asPrice().reciprocal();
     }
 
     /// @inheritdoc IPoolManager
