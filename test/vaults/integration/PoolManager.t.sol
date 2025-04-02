@@ -78,6 +78,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         vm.assume(
             nonWard != address(root) && nonWard != address(vaultRouter) && nonWard != address(this)
                 && nonWard != address(messageProcessor) && nonWard != address(messageDispatcher)
+                && nonWard != address(gateway)
         );
 
         address[] memory vaultFactories = new address[](1);

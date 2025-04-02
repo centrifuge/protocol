@@ -12,7 +12,7 @@ import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 contract PoolRegistry is Auth, IPoolRegistry {
     using MathLib for uint256;
 
-    uint32 public latestId;
+    uint48 public latestId;
 
     mapping(PoolId => bytes) public metadata;
     mapping(PoolId => AssetId) public currency;
