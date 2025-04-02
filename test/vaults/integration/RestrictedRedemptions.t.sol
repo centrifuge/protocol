@@ -18,9 +18,7 @@ contract RedeemTest is BaseTest {
         RestrictedRedemptions hook = RestrictedRedemptions(restrictedRedemptions);
         ITranche tranche = ITranche(address(vault.share()));
 
-        centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), defaultPrice, uint64(block.timestamp)
-        );
+        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), defaultPrice, uint64(block.timestamp));
 
         // Anyone can deposit
         address investor = makeAddr("Investor");

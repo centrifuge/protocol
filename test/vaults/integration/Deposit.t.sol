@@ -501,9 +501,7 @@ contract DepositTest is BaseTest {
             deployVault(VaultKind.Async, poolId, 6, restrictionManager, "", "", trancheId, address(asset), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
-        centrifugeChain.updateTranchePrice(
-            poolId, trancheId, 1000000000000000000000000000, uint64(block.timestamp)
-        );
+        centrifugeChain.updateTranchePrice(poolId, trancheId, 1000000000000000000000000000, uint64(block.timestamp));
 
         // invest
         uint256 investmentAmount = 100000000000000000000; // 100 * 10**18

@@ -499,7 +499,6 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         address hook = address(new MockHook());
 
-
         vm.expectRevert(bytes("PoolManager/tranche-does-not-exist"));
         centrifugeChain.updateTranchePrice(poolId, trancheId, price, uint64(block.timestamp));
 

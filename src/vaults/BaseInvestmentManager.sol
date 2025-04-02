@@ -50,7 +50,7 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
     function convertToShares(address vaultAddr, uint256 _assets) public view returns (uint256 shares) {
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-        (D18 latestPrice, ) = poolManager.checkedPricePerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
+        (D18 latestPrice,) = poolManager.checkedPricePerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
         shares = uint256(
             PriceConversionLib.calculateShares(_assets.toUint128(), vaultAddr, latestPrice.raw(), MathLib.Rounding.Down)
         );
@@ -60,7 +60,7 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
     function convertToAssets(address vaultAddr, uint256 _shares) public view returns (uint256 assets) {
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-        (D18 latestPrice, ) = poolManager.checkedPricePerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
+        (D18 latestPrice,) = poolManager.checkedPricePerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
         assets = uint256(
             PriceConversionLib.calculateAssets(_shares.toUint128(), vaultAddr, latestPrice.raw(), MathLib.Rounding.Down)
         );

@@ -135,13 +135,12 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.price, b.price);
         assertEq(a.timestamp, b.timestamp);
 
-
         assertEq(a.serialize().messageLength(), a.serialize().length);
     }
 
     function testNotifyAssetPrice() public pure {
         MessageLib.NotifyAssetPrice memory a =
-                            MessageLib.NotifyAssetPrice({poolId: 1, scId: bytes16("sc"), assetId: 5, price: 42, timestamp: 0x12345678});
+            MessageLib.NotifyAssetPrice({poolId: 1, scId: bytes16("sc"), assetId: 5, price: 42, timestamp: 0x12345678});
         MessageLib.NotifyAssetPrice memory b = MessageLib.deserializeNotifyAssetPrice(a.serialize());
 
         assertEq(a.poolId, b.poolId);

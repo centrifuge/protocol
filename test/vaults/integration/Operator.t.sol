@@ -149,9 +149,7 @@ contract OperatorTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
 
         deposit(vault_, investor, amount); // deposit funds first
-        centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), defaultPrice, uint64(block.timestamp)
-        );
+        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), defaultPrice, uint64(block.timestamp));
 
         vm.prank(operator);
         vm.expectRevert(IERC20.InsufficientAllowance.selector);
@@ -196,7 +194,7 @@ contract OperatorTest is BaseTest {
         address operator = makeAddr("operator");
         AsyncVault vault = AsyncVault(vault_);
 
-        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(),price, uint64(block.timestamp));
+        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), price, uint64(block.timestamp));
 
         erc20.mint(controller, amount);
 

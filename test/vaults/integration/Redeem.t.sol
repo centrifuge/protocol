@@ -18,9 +18,7 @@ contract RedeemTest is BaseTest {
         ITranche tranche = ITranche(address(vault.share()));
 
         deposit(vault_, self, amount); // deposit funds first
-        centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), defaultPrice, uint64(block.timestamp)
-        );
+        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), defaultPrice, uint64(block.timestamp));
 
         // will fail - zero deposit not allowed
         vm.expectRevert(bytes("AsyncRequests/zero-amount-not-allowed"));
@@ -95,9 +93,7 @@ contract RedeemTest is BaseTest {
         ITranche tranche = ITranche(address(vault.share()));
 
         deposit(vault_, self, amount); // deposit funds first
-        centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), defaultPrice, uint64(block.timestamp)
-        );
+        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), defaultPrice, uint64(block.timestamp));
 
         vault.requestRedeem(amount, address(this), address(this));
         assertEq(tranche.balanceOf(address(escrow)), amount);

@@ -56,7 +56,6 @@ contract AssetShareConversionTest is BaseTest {
         assertEq(vault.convertToAssets(vault.convertToShares(120000000000000000000)), 120000000000000000000);
         assertEq(vault.pricePerShare(), 1.2e6);
 
-
         // Updating the asset price updates the conversions and price per share in asset
         centrifugeChain.updateAssetPrice(poolId, trancheId, assetId, 0.5e18, uint64(block.timestamp));
 
@@ -76,7 +75,7 @@ contract AssetShareConversionTest is BaseTest {
         uint8 TRANCHE_TOKEN_DECIMALS = 6; // Like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        (address vault_, ) = deployVault(
+        (address vault_,) = deployVault(
             VaultKind.Async, poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0
         );
         AsyncVault vault = AsyncVault(vault_);

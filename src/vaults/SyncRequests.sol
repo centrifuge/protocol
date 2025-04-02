@@ -227,7 +227,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         // NOTE: We want CP to use the default accounting accounts
         JournalEntry[] memory journalEntries = new JournalEntry[](0);
         Meta memory depositMeta = Meta(journalEntries, journalEntries);
-        (D18 pricePerUnit, ) = poolManager.checkedPricePerAsset(poolId.raw(), scId.raw(), vaultDetails.assetId);
+        (D18 pricePerUnit,) = poolManager.checkedPricePerAsset(poolId.raw(), scId.raw(), vaultDetails.assetId);
 
         // Notify CP about updated holdings
         balanceSheetManager.deposit(

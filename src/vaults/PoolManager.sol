@@ -258,7 +258,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         assetPrice.price = price;
         assetPrice.computedAt = computedAt;
 
-        emit PriceUpdate(poolId,trancheId, asset, tokenId, price, computedAt);
+        emit PriceUpdate(poolId, trancheId, asset, tokenId, price, computedAt);
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
@@ -466,14 +466,22 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     }
 
     /// @inheritdoc IPoolManager
-    function pricePerShare(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (D18 price, uint64 computedAt) {
+    function pricePerShare(uint64 poolId, bytes16 trancheId, uint128 assetId)
+        public
+        view
+        returns (D18 price, uint64 computedAt)
+    {
         (Price memory pricePerAsset_, Price memory pricePerShare_) = _pricePerShare(poolId, trancheId, assetId);
         price = pricePerShare_.asPrice() * pricePerAsset_.asPrice().reciprocal();
         computedAt = pricePerShare_.computedAt;
     }
 
     /// @inheritdoc IPoolManager
-    function checkedPricePerShare(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (D18 price, uint64 computedAt) {
+    function checkedPricePerShare(uint64 poolId, bytes16 trancheId, uint128 assetId)
+        public
+        view
+        returns (D18 price, uint64 computedAt)
+    {
         (Price memory pricePerAsset_, Price memory pricePerShare_) = _pricePerShare(poolId, trancheId, assetId);
 
         require(pricePerAsset_.isValid(), "PoolManager/invalid-price");
@@ -490,7 +498,11 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         computedAt = p.computedAt;
     }
 
-    function checkedPricePerShare(uint64 poolId, bytes16 trancheId) public view returns (D18 price, uint64 computedAt) {
+    function checkedPricePerShare(uint64 poolId, bytes16 trancheId)
+        public
+        view
+        returns (D18 price, uint64 computedAt)
+    {
         Price memory p = _pricePerShare(poolId, trancheId);
         require(p.isValid(), "PoolManager/invalid-price");
         price = p.asPrice();
@@ -498,13 +510,21 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     }
 
     /// @inheritdoc IPoolManager
-    function pricePerAsset(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (D18 price, uint64 computedAt) {
+    function pricePerAsset(uint64 poolId, bytes16 trancheId, uint128 assetId)
+        public
+        view
+        returns (D18 price, uint64 computedAt)
+    {
         Price memory p = _pricePerAsset(poolId, trancheId, assetId);
         price = p.asPrice();
         computedAt = p.computedAt;
     }
 
-    function checkedPricePerAsset(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (D18 price, uint64 computedAt) {
+    function checkedPricePerAsset(uint64 poolId, bytes16 trancheId, uint128 assetId)
+        public
+        view
+        returns (D18 price, uint64 computedAt)
+    {
         Price memory p = _pricePerAsset(poolId, trancheId, assetId);
         require(p.isValid(), "PoolManager/invalid-price");
         price = p.asPrice();
@@ -520,7 +540,8 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     }
 
     function _pricePerShare(uint64 poolId, bytes16 trancheId, uint128 assetId)
-        internal view
+        internal
+        view
         returns (Price memory pricePerAsset_, Price memory pricePerShare_)
     {
         TrancheDetails storage tranche_ = pools[poolId].tranches[trancheId];
