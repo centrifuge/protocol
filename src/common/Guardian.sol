@@ -1,16 +1,21 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {AssetId} from "src/common/types/AssetId.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
 import {IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
+
+import {IPoolRouter} from "src/pools/interfaces/IPoolRouter.sol";
 
 contract Guardian is IGuardian {
     IRoot public immutable root;
     ISafe public immutable safe;
 
+    IPoolRouter public poolRouter;
     IRootMessageSender public sender;
 
     constructor(ISafe safe_, IRoot root_, IRootMessageSender messageDispatcher_) {
@@ -32,12 +37,17 @@ contract Guardian is IGuardian {
     /// @inheritdoc IGuardian
     function file(bytes32 what, address data) external onlySafe {
         if (what == "sender") sender = IRootMessageSender(data);
+        else if (what == "poolRouter") poolRouter = IPoolRouter(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
     }
 
     // --- Admin actions ---
+    function createPool(address admin, AssetId currency, IShareClassManager shareClassManager) external onlySafe {
+        poolRouter.createPool(admin, currency, shareClassManager);
+    }
+
     /// @inheritdoc IGuardian
     function pause() external onlySafeOrOwner {
         root.pause();
