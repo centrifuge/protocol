@@ -95,13 +95,14 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         gateway.file("adapters", chainId, adapters);
         IAuth(address(adapter)).rely(address(root));
         IAuth(address(adapter)).deny(deployer);
-        guardian.file("safe", address(adminSafe));
     }
 
     function removeCommonDeployerAccess(address deployer) public {
         if (root.wards(deployer) == 0) {
             return; // Already removed. Make this method idempotent.
         }
+
+        guardian.file("safe", address(adminSafe));
 
         root.deny(deployer);
         gasService.deny(deployer);
