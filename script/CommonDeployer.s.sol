@@ -37,7 +37,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             return; // Already deployed. Make this method idempotent.
         }
 
-        root = Root(create3(_getSalt(1), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, deployer))));
+        root = Root(create3(bytes32("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, deployer))));
 
         uint64 messageGasLimit = uint64(vm.envOr("MESSAGE_COST", BASE_MSG_COST));
         uint64 proofGasLimit = uint64(vm.envOr("PROOF_COST", BASE_MSG_COST));
@@ -108,10 +108,5 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     ///         thus effectively making the deployment non-deterministic
     function _getSalt(string memory name) internal returns (bytes32) {
         return vm.envOr(name, keccak256(abi.encodePacked(string(abi.encodePacked(blockhash(block.number - 1))))));
-    }
-
-    /// @notice To be used when we want a consistent address across chains
-    function _getSalt(uint88 index) internal returns (bytes32) {
-        return bytes32(abi.encodePacked(msg.sender, hex"00", bytes11(index)));
     }
 }
