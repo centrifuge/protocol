@@ -41,14 +41,6 @@ contract Gateway is Auth, IGateway, IRecoverable {
     /// @notice Tells is the gateway is actually configured to create batches
     bool public transient isBatching;
 
-    /// @notice The payer of the transaction.
-    /// @dev This is never used along with batching
-    address public transient payableSource;
-
-    /// @notice The pool associated to the message.
-    /// @dev This is never used along with batching
-    PoolId public transient payablePool;
-
     IRoot public immutable root;
     IGasService public gasService;
 
@@ -320,7 +312,8 @@ contract Gateway is Auth, IGateway, IRecoverable {
                 );
             }
             fuel = 0;
-        } else if (gasService.shouldRefuel(payableSource, payablePool, message)) {
+        } else if (!isBatching) {
+            PoolId poolId = message.messagePoolId();
             for (uint256 i; i < adapters_.length; i++) {
                 IAdapter currentAdapter = IAdapter(adapters_[i]);
                 bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
@@ -329,11 +322,11 @@ contract Gateway is Auth, IGateway, IRecoverable {
                 uint256 consumed =
                     currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit);
 
-                if (consumed <= subsidy[payablePool]) {
+                if (consumed <= subsidy[poolId]) {
                     currentAdapter.send{value: consumed}(
                         chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this)
                     );
-                    subsidy[payablePool] -= consumed;
+                    subsidy[poolId] -= consumed;
                 } else {
                     currentAdapter.send(
                         chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this)
@@ -356,12 +349,6 @@ contract Gateway is Auth, IGateway, IRecoverable {
             require(msg.value != 0, "Gateway/cannot-topup-with-nothing");
             fuel += msg.value;
         }
-    }
-
-    /// @inheritdoc IGateway
-    function setPayableSource(address source, PoolId poolId) external auth {
-        payableSource = source;
-        payablePool = poolId;
     }
 
     /// @inheritdoc IGateway

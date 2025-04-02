@@ -13,7 +13,8 @@ interface IAsyncRedeemManager is IRedeemManager, IVaultManager {
     /// @dev    The shares required to fulfill the redemption request have to be locked and are transferred from the
     ///         owner to the escrow, even though the asset payout can only happen after epoch execution.
     ///         The receiver becomes the owner of redeem request fulfillment.
-    function requestRedeem(address vaultAddr, uint256 shares, address receiver, address, /* owner */ address source)
+    /// @param  source Deprecated
+    function requestRedeem(address vaultAddr, uint256 shares, address receiver, address owner, address source)
         external
         returns (bool);
 

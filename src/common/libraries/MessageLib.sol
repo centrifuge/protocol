@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
+import {PoolId} from "src/common/types/PoolId.sol";
 import {JournalEntry, JournalEntryLib} from "src/common/libraries/JournalEntryLib.sol";
 
 enum MessageType {
@@ -139,6 +140,17 @@ library MessageLib {
             uint16 debitsBytelen = message.toUint16(length); // debitsBytelen
             uint16 creditsByteLen = message.toUint16(length + 2 + debitsBytelen); //creditsByteLen
             length += 2 + debitsBytelen + 2 + creditsByteLen;
+        }
+    }
+
+    function messagePoolId(bytes memory message) internal pure returns (PoolId poolId) {
+        uint8 kind = message.toUint8(0);
+
+        // All messages from NotifyPool to TriggetUpdateShares contains a PoolId in position 1.
+        if (kind >= uint8(MessageType.NotifyPool) && kind <= uint8(MessageType.TriggerUpdateShares)) {
+            return PoolId.wrap(message.toUint64(1));
+        } else {
+            return PoolId.wrap(0);
         }
     }
 
