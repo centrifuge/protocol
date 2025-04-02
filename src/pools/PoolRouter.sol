@@ -192,13 +192,11 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     /// @inheritdoc IPoolRouter
     function notifyAssetPrice(ShareClassId scId, AssetId assetId) public payable {
         _protectedAndUnlocked();
-        IShareClassManager scm = poolRegistry.shareClassManager(unlockedPoolId);
         AssetId poolCurrency = poolRegistry.currency(unlockedPoolId);
-
-        // @dev we assume symetric prices are provided by holdings valuation
+        // NOTE: we assume symetric prices are provided by holdings valuation
         IERC7726 valuation = holdings.valuation(unlockedPoolId, scId, assetId);
-        (, D18 pricePerShare) = scm.shareClassPrice(unlockedPoolId, scId);
 
+        // NOTE: we wanna get the price of POOL_UNIT/ASSET_UNIT
         uint128 unitAmount =
             valuation.getQuote(assetRegistry.unitAmount(assetId), assetId.addr(), poolCurrency.addr()).toUint128();
         D18 pricePerAssetUnit = d18(unitAmount, assetRegistry.unitAmount(poolCurrency));

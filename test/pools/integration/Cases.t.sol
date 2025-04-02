@@ -367,12 +367,8 @@ contract TestCases is PoolsDeployer, Test {
     function testNotifySharePrice() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation();
         D18 sharePrice = d18(100, 1);
-        D18 poolPerEUR = d18(1, 3); // @dev: 3 EUR = 1 USD
-        D18 poolPerUSDC_C2 = d18(1,1); // @dev: 1 USDC_C2 = 1 USD
-        D18 expectedPrice = poolPerEUR.reciprocal() * sharePrice;
-        assertEq(expectedPrice.raw(), 300000000000000000300);
-        /// @dev assert we have the rounding error here catched
-        expectedPrice = d18(300000000000000000000);
+        D18 poolPerEUR = d18(1, 3); // NOTE: 3 EUR = 1 USD
+        D18 poolPerUSDC_C2 = d18(1,1); // NOTE: 1 USDC_C2 = 1 USD
 
         (bytes[] memory cs, uint256 c) = (new bytes[](5), 0);
         cs[c++] = abi.encodeWithSelector(poolRouter.setTransientPrice.selector, EUR.addr(), poolPerEUR);

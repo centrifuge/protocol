@@ -216,30 +216,30 @@ interface IPoolManager is IRecoverable {
     /// @notice Returns the price per share for a given pool, tranche, asset, and token id
     /// @dev   Reverts if the pool or tranche or asset does not exist. Provided price is defined as
     /// SHARE_UNIT/ASSET_UNIT. DOES NOT check if price is valid.
-    function pricePerShare(uint64 poolId, bytes16 trancheId, uint128 assetId) external view returns (D18 price);
+    function pricePerShare(uint64 poolId, bytes16 trancheId, uint128 assetId) external view returns (D18 price, uint64 computedAt);
 
-    /// @notice Returns the price per share for a given pool, tranche, asset, and token id
+    /// @notice Returns the price per share for a given pool, tranche, asset, and token id.
     /// @dev   Reverts if the pool or tranche or asset does not exist. Provided price is defined as
-    /// SHARE_UNIT/ASSET_UNIT. Reverts if price is invalid - i.e. expried.
-    function checkedPricePerShare(uint64 poolId, bytes16 trancheId, uint128 assetId) external view returns (D18 price);
+    /// ASSET_UNIT/SHARE_UNIT. Reverts if price is invalid - i.e. expired
+    function checkedPricePerShare(uint64 poolId, bytes16 trancheId, uint128 assetId) external view returns (D18 price, uint64 computedAt);
 
     /// @notice Returns the price per share for a given pool, tranche
-    /// @dev   Reverts if the pool or tranche does not exist. Provided price is defined as SHARE_UNIT/POOL_UNIT. DOES
+    /// @dev   Reverts if the pool or tranche does not exist. Provided price is defined as POOL_UNIT/SHARE_UNIT. DOES
     /// NOT check if price is valid.
-    function pricePerShare(uint64 poolId, bytes16 trancheId)  external view returns (D18 price);
+    function pricePerShare(uint64 poolId, bytes16 trancheId)  external view returns (D18 price, uint64 computedAt);
 
     /// @notice Returns the price per share for a given pool, tranche
-    /// @dev   Reverts if the pool or tranche does not exist. Provided price is defined as SHARE_UNIT/POOL_UNIT. Reverts
+    /// @dev   Reverts if the pool or tranche does not exist. Provided price is defined as POOL_UNIT/SHARE_UNIT. Reverts
     /// if price is invalid.
-    function checkedPricePerShare(uint64 poolId, bytes16 trancheId) external view returns (D18 price);
+    function checkedPricePerShare(uint64 poolId, bytes16 trancheId) external view returns (D18 price, uint64 computedAt);
 
     /// @notice Returns the price per asset for a given pool, tranche, asset, and token id
     /// @dev   Reverts if the pool or tranche or asset does not exist. Provided price is defined as
     /// POOL_UNIT/ASSET_UNIT. DOES NOT check if price is valid.
-    function pricePerAsset(uint64 poolId, bytes16 trancheId, uint128 assetId)  external view returns (D18 price);
+    function pricePerAsset(uint64 poolId, bytes16 trancheId, uint128 assetId)  external view returns (D18 price, uint64 computedAt);
 
     /// @notice Returns the price per asset for a given pool, tranche, asset, and token id
     /// @dev   Reverts if the pool or tranche or asset does not exist. Provided price is defined as
     /// POOL_UNIT/ASSET_UNIT. Reverts if price is invalid.
-    function checkedPricePerAsset(uint64 poolId, bytes16 trancheId, uint128 assetId) external view returns (D18 price);
+    function checkedPricePerAsset(uint64 poolId, bytes16 trancheId, uint128 assetId) external view returns (D18 price, uint64 computedAt);
 }

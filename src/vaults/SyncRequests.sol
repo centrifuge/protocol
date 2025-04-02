@@ -248,11 +248,13 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     }
 
     /// @dev Retrieve the latest price for the share class token
-    function _pricePerShare(address vaultAddr, uint64 poolId, bytes16 trancheId, uint128 assetId)
+    function _pricePerShare(address, /* vaultAddr */ uint64 poolId, bytes16 trancheId, uint128 assetId)
         internal
         view
-        returns (uint128 latestPrice)
+        returns (uint128)
     {
-        latestPrice = poolManager.checkedPricePerShare(poolId, trancheId, assetId).raw();
+        // TODO: Decide on whether we should use the checked/ or unchcked version
+        (D18 latestPrice,) = poolManager.checkedPricePerShare(poolId, trancheId, assetId);
+        return latestPrice.raw();
     }
 }
