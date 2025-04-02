@@ -166,9 +166,6 @@ interface IShareClassManager {
     /// Errors
     error PoolMissing();
     error ShareClassNotFound();
-    error MaxShareClassNumberExceeded(uint8 numberOfShareClasses);
-    error ClaimDepositRequired();
-    error ClaimRedeemRequired();
     error EpochNotFound();
     error DecreaseMoreThanIssued();
     error CancellationQueued();
