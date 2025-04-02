@@ -152,7 +152,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
         uint128 assetId = poolManager.vaultDetails(vaultAddr).assetId;
 
-        uint128 latestPrice = _pricePerShare(vaultAddr, vault_.poolId(), vault_.trancheId(), assetId);
+        uint128 latestPrice = _pricePerShare(vaultAddr, vault_.poolId(), vault_.trancheId(), assetId).raw();
         assets = PriceConversionLib.calculateAssets(shares.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down);
     }
 
@@ -165,7 +165,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
         uint128 assetId = poolManager.vaultDetails(vaultAddr).assetId;
 
-        uint128 latestPrice = _pricePerShare(vaultAddr, vault_.poolId(), vault_.trancheId(), assetId);
+        uint128 latestPrice = _pricePerShare(vaultAddr, vault_.poolId(), vault_.trancheId(), assetId).raw();
         shares = PriceConversionLib.calculateShares(assets.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down);
     }
 
@@ -205,7 +205,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         uint64 poolId_ = vault_.poolId();
         bytes16 scId_ = vault_.trancheId();
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
-        D18 pricePerShare = d18(_pricePerShare(vaultAddr, poolId_, scId_, vaultDetails.assetId));
+        D18 pricePerShare = _pricePerShare(vaultAddr, poolId_, scId_, vaultDetails.assetId);
 
         PoolId poolId = PoolId.wrap(poolId_);
         ShareClassId scId = ShareClassId.wrap(scId_);
@@ -224,10 +224,10 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         VaultDetails memory vaultDetails,
         uint128 depositAssetAmount
     ) internal {
-        // TODO(follow-up PR): Remove hardcoding
-        D18 pricePerAssetInPoolCurrency = d18(1);
+        // NOTE: We want CP to use the default accounting accounts
         JournalEntry[] memory journalEntries = new JournalEntry[](0);
         Meta memory depositMeta = Meta(journalEntries, journalEntries);
+        (D18 pricePerUnit, ) = poolManager.checkedPricePerAsset(poolId.raw(), scId.raw(), vaultDetails.assetId);
 
         // Notify CP about updated holdings
         balanceSheetManager.deposit(
@@ -237,13 +237,8 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
             vaultDetails.tokenId,
             escrow,
             depositAssetAmount,
-            pricePerAssetInPoolCurrency,
+            pricePerUnit,
             depositMeta
-        );
-
-        // Notify CP about updated holding value
-        balanceSheetManager.updateValue(
-            poolId, scId, vaultDetails.asset, vaultDetails.tokenId, pricePerAssetInPoolCurrency
         );
     }
 
@@ -251,10 +246,10 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     function _pricePerShare(address, /* vaultAddr */ uint64 poolId, bytes16 trancheId, uint128 assetId)
         internal
         view
-        returns (uint128)
+        returns (D18)
     {
         // TODO: Decide on whether we should use the checked/ or unchcked version
         (D18 latestPrice,) = poolManager.checkedPricePerShare(poolId, trancheId, assetId);
-        return latestPrice.raw();
+        return latestPrice;
     }
 }

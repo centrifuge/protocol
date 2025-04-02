@@ -32,7 +32,7 @@ contract DepositTest is BaseTest {
         (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
-        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
+        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), price, uint64(block.timestamp));
 
         erc20.mint(self, amount);
 
@@ -173,7 +173,7 @@ contract DepositTest is BaseTest {
             VaultKind.Async, poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0
         );
         AsyncVault vault = AsyncVault(vault_);
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
+        centrifugeChain.updateTranchePrice(poolId, trancheId, 1000000000000000000, uint64(block.timestamp));
 
         // invest
         uint256 investmentAmount = 100000000; // 100 * 10**6
@@ -325,7 +325,7 @@ contract DepositTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
 
-        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
+        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), price, uint64(block.timestamp));
 
         erc20.mint(self, amount);
 
@@ -377,7 +377,7 @@ contract DepositTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
 
-        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
+        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), price, uint64(block.timestamp));
 
         erc20.mint(self, amount);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max); // add user as member
@@ -434,7 +434,7 @@ contract DepositTest is BaseTest {
             VaultKind.Async, poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, address(asset), 0, 0
         );
         AsyncVault vault = AsyncVault(vault_);
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
+        centrifugeChain.updateTranchePrice(poolId, trancheId, 1000000000000000000, uint64(block.timestamp));
 
         // invest
         uint256 investmentAmount = 100000000; // 100 * 10**6
@@ -502,7 +502,7 @@ contract DepositTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
         centrifugeChain.updateTranchePrice(
-            poolId, trancheId, assetId, 1000000000000000000000000000, uint64(block.timestamp)
+            poolId, trancheId, 1000000000000000000000000000, uint64(block.timestamp)
         );
 
         // invest
@@ -577,7 +577,7 @@ contract DepositTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
 
         // price = (100*10**18) /  (99 * 10**18) = 101.010101 * 10**18
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1010101010101010101, uint64(block.timestamp));
+        centrifugeChain.updateTranchePrice(poolId, trancheId, 1010101010101010101, uint64(block.timestamp));
 
         // invest
         uint256 investmentAmount = 100000000; // 100 * 10**6
@@ -595,7 +595,7 @@ contract DepositTest is BaseTest {
         // 99 * 10**18 / 1.2 = 82500000000000000000
         uint128 shares = 82500000000000000000;
         centrifugeChain.isFulfilledDepositRequest(poolId, trancheId, bytes32(bytes20(self)), _assetId, assets, shares);
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1200000000000000000, uint64(block.timestamp));
+        centrifugeChain.updateTranchePrice(poolId, trancheId, 1200000000000000000, uint64(block.timestamp));
 
         // assert deposit & mint values adjusted
         assertEq(vault.maxDeposit(self), assets);
@@ -620,7 +620,7 @@ contract DepositTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
 
         // price = (100*10**18) /  (99 * 10**18) = 101.010101 * 10**18
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1010101010101010101, uint64(block.timestamp));
+        centrifugeChain.updateTranchePrice(poolId, trancheId, 1010101010101010101, uint64(block.timestamp));
 
         // invest
         uint256 investmentAmount = 100000000000000000000; // 100 * 10**18
@@ -638,7 +638,7 @@ contract DepositTest is BaseTest {
         // 99 * 10**6 / 1.2 = 82500000
         uint128 shares = 82500000;
         centrifugeChain.isFulfilledDepositRequest(poolId, trancheId, bytes32(bytes20(self)), _assetId, assets, shares);
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1200000000000000000, uint64(block.timestamp));
+        centrifugeChain.updateTranchePrice(poolId, trancheId, 1200000000000000000, uint64(block.timestamp));
 
         // assert deposit & mint values adjusted
         assertEq(vault.maxDeposit(self), assets);
@@ -657,7 +657,7 @@ contract DepositTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, price, uint64(block.timestamp));
+        centrifugeChain.updateTranchePrice(poolId, trancheId, price, uint64(block.timestamp));
         erc20.mint(self, amount);
         erc20.approve(vault_, amount);
         centrifugeChain.updateMember(poolId, trancheId, self, type(uint64).max);

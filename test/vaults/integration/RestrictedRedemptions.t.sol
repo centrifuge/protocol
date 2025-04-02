@@ -19,7 +19,7 @@ contract RedeemTest is BaseTest {
         ITranche tranche = ITranche(address(vault.share()));
 
         centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), assetId, defaultPrice, uint64(block.timestamp)
+            vault.poolId(), vault.trancheId(), defaultPrice, uint64(block.timestamp)
         );
 
         // Anyone can deposit

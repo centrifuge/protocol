@@ -19,7 +19,7 @@ contract RedeemTest is BaseTest {
 
         deposit(vault_, self, amount); // deposit funds first
         centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), assetId, defaultPrice, uint64(block.timestamp)
+            vault.poolId(), vault.trancheId(), defaultPrice, uint64(block.timestamp)
         );
 
         // will fail - zero deposit not allowed
@@ -96,7 +96,7 @@ contract RedeemTest is BaseTest {
 
         deposit(vault_, self, amount); // deposit funds first
         centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), assetId, defaultPrice, uint64(block.timestamp)
+            vault.poolId(), vault.trancheId(), defaultPrice, uint64(block.timestamp)
         );
 
         vault.requestRedeem(amount, address(this), address(this));
@@ -344,7 +344,7 @@ contract RedeemTest is BaseTest {
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
         ERC20 asset = ERC20(address(vault.asset()));
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
+        centrifugeChain.updateTranchePrice(poolId, trancheId, 1000000000000000000, uint64(block.timestamp));
 
         // invest
         uint256 investmentAmount = 100000000; // 100 * 10**6

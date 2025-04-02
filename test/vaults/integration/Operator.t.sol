@@ -17,7 +17,7 @@ contract OperatorTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
         ITranche tranche = ITranche(address(vault.share()));
 
-        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
+        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), price, uint64(block.timestamp));
 
         erc20.mint(investor, amount);
 
@@ -71,7 +71,7 @@ contract OperatorTest is BaseTest {
         address operator = makeAddr("operator");
         AsyncVault vault = AsyncVault(vault_);
 
-        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
+        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), price, uint64(block.timestamp));
 
         erc20.mint(controller, amount);
 
@@ -150,7 +150,7 @@ contract OperatorTest is BaseTest {
 
         deposit(vault_, investor, amount); // deposit funds first
         centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), assetId, defaultPrice, uint64(block.timestamp)
+            vault.poolId(), vault.trancheId(), defaultPrice, uint64(block.timestamp)
         );
 
         vm.prank(operator);
@@ -196,7 +196,7 @@ contract OperatorTest is BaseTest {
         address operator = makeAddr("operator");
         AsyncVault vault = AsyncVault(vault_);
 
-        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
+        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(),price, uint64(block.timestamp));
 
         erc20.mint(controller, amount);
 

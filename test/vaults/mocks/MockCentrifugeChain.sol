@@ -141,7 +141,7 @@ contract MockCentrifugeChain is Test {
         );
     }
 
-    function updateTranchePrice(uint64 poolId, bytes16 trancheId, uint128 assetId, uint128 price, uint64 computedAt)
+    function updateTranchePrice(uint64 poolId, bytes16 trancheId, uint128 price, uint64 computedAt)
         public
     {
         execute(
@@ -152,12 +152,17 @@ contract MockCentrifugeChain is Test {
                 timestamp: computedAt
             }).serialize()
         );
+    }
+
+    function updateAssetPrice(uint64 poolId, bytes16 trancheId, uint128 assetId, uint128 price, uint64 computedAt)
+        public
+    {
         execute(
             MessageLib.NotifyAssetPrice({
                 poolId: poolId,
                 scId: trancheId,
                 assetId: assetId,
-                price: d18(1,1).raw(), //NOTE: We assume asset to have 1:1 price with pool token. FOR NOW
+                price: price,
                 timestamp: computedAt
             }).serialize()
         );

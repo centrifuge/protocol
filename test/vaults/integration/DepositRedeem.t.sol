@@ -16,7 +16,8 @@ contract DepositRedeem is BaseTest {
         );
         AsyncVault vault = AsyncVault(vault_);
 
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
+        centrifugeChain.updateTranchePrice(poolId, trancheId, 1e18, uint64(block.timestamp));
+        centrifugeChain.updateAssetPrice(poolId, trancheId, assetId, 1e18, uint64(block.timestamp));
 
         partialDeposit(poolId, trancheId, vault, asset);
 

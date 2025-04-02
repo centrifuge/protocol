@@ -499,10 +499,12 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         address hook = address(new MockHook());
 
+
         vm.expectRevert(bytes("PoolManager/tranche-does-not-exist"));
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, price, uint64(block.timestamp));
+        centrifugeChain.updateTranchePrice(poolId, trancheId, price, uint64(block.timestamp));
 
         centrifugeChain.addTranche(poolId, trancheId, tokenName, tokenSymbol, decimals, hook);
+        centrifugeChain.updateAssetPrice(poolId, trancheId, assetId, 1e18, uint64(block.timestamp));
 
         vm.expectRevert("PoolManager/invalid-price");
         poolManager.checkedPricePerShare(poolId, trancheId, assetId);
@@ -517,13 +519,13 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         vm.prank(randomUser);
         poolManager.updateAssetPrice(poolId, trancheId, assetId, price, uint64(block.timestamp));
 
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, price, uint64(block.timestamp));
+        centrifugeChain.updateTranchePrice(poolId, trancheId, price, uint64(block.timestamp));
         (D18 latestPrice, uint64 lastUpdated) = poolManager.pricePerShare(poolId, trancheId, assetId);
         assertEq(latestPrice.raw(), price);
         assertEq(lastUpdated, block.timestamp);
 
         vm.expectRevert(bytes("PoolManager/cannot-set-older-price"));
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, price, uint64(block.timestamp - 1));
+        centrifugeChain.updateTranchePrice(poolId, trancheId, price, uint64(block.timestamp - 1));
 
         // NOTE: We have no maxAge set, so price is invalid after timestamp of block increases
         vm.warp(block.timestamp + 1);

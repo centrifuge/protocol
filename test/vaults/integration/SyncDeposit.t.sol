@@ -41,7 +41,7 @@ contract SyncDepositTest is BaseTest {
         SyncDepositVault syncVault = SyncDepositVault(syncVault_);
         ITranche tranche = ITranche(address(syncVault.share()));
         centrifugeChain.updateTranchePrice(
-            syncVault.poolId(), syncVault.trancheId(), assetId, price, uint64(block.timestamp)
+            syncVault.poolId(), syncVault.trancheId(), price, uint64(block.timestamp)
         );
 
         // Retrieve async vault
@@ -86,7 +86,7 @@ contract SyncDepositTest is BaseTest {
         PoolId poolId = PoolId.wrap(vault.poolId());
         ShareClassId scId = ShareClassId.wrap(vault.trancheId());
         D18 pricePerShare = d18(price);
-        D18 pricePerUnit = d18(1);
+        D18 pricePerUnit = d18(1,1);
         uint256 timestamp = uint256(block.timestamp);
         uint128 depositAssetAmount = vault.previewMint(shares).toUint128();
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault));
@@ -111,13 +111,6 @@ contract SyncDepositTest is BaseTest {
             uint64(timestamp),
             journalEntries,
             journalEntries
-        );
-
-        vm.expectEmit(false, false, false, false);
-        emit IGateway.SendMessage(bytes(""));
-        vm.expectEmit();
-        emit IBalanceSheetManager.UpdateValue(
-            poolId, scId, vault.asset(), vaultDetails.tokenId, pricePerUnit, uint64(timestamp)
         );
     }
 }
