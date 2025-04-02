@@ -10,12 +10,21 @@ import {SyncRequests} from "src/vaults/SyncRequests.sol";
 
 import "test/vaults/BaseTest.sol";
 
-contract SyncRequestsTest is BaseTest {
+contract SyncRequestsBaseTest is BaseTest {
+    function _assumeUnauthorizedCaller(address nonWard) internal view {
+        vm.assume(
+            nonWard != address(root) && nonWard != address(poolManager) && nonWard != address(syncDepositVaultFactory)
+                && nonWard != address(this)
+        );
+    }
+}
+
+contract SyncRequestsTest is SyncRequestsBaseTest {
     using MessageLib for *;
 
     // Deployment
     function testDeployment(address nonWard) public {
-        vm.assume(nonWard != address(root) && nonWard != address(poolManager) && nonWard != address(this));
+        _assumeUnauthorizedCaller(nonWard);
 
         // redeploying within test to increase coverage
         new SyncRequests(address(root), address(escrow));
@@ -56,29 +65,29 @@ contract SyncRequestsTest is BaseTest {
     }
 }
 
-contract SyncRequestsUnauthorizedTest is BaseTest {
-    function testFileUnauthorized(address caller) public {
-        _expectUnauthorized(caller);
+contract SyncRequestsUnauthorizedTest is SyncRequestsBaseTest {
+    function testFileUnauthorized(address nonWard) public {
+        _expectUnauthorized(nonWard);
         syncRequests.file(bytes32(0), address(0));
     }
 
-    function testAddVaultUnauthorized(address caller) public {
-        _expectUnauthorized(caller);
+    function testAddVaultUnauthorized(address nonWard) public {
+        _expectUnauthorized(nonWard);
         syncRequests.addVault(0, bytes16(0), address(0), address(0), 0);
     }
 
-    function testRemoveVaultUnauthorized(address caller) public {
-        _expectUnauthorized(caller);
+    function testRemoveVaultUnauthorized(address nonWard) public {
+        _expectUnauthorized(nonWard);
         syncRequests.removeVault(0, bytes16(0), address(0), address(0), 0);
     }
 
-    function testDepositUnauthorized(address caller) public {
-        _expectUnauthorized(caller);
+    function testDepositUnauthorized(address nonWard) public {
+        _expectUnauthorized(nonWard);
         syncRequests.deposit(address(0), 0, address(0), address(0));
     }
 
-    function testMintUnauthorized(address caller) public {
-        _expectUnauthorized(caller);
+    function testMintUnauthorized(address nonWard) public {
+        _expectUnauthorized(nonWard);
         syncRequests.mint(address(0), 0, address(0), address(0));
     }
 

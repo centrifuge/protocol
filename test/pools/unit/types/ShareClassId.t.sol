@@ -9,12 +9,12 @@ import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 contract ShareClassIdTest is Test {
     function testShareClassId(bytes16 id) public pure {
         vm.assume(id > 0);
-        ShareClassId shareClassId = ShareClassId.wrap(id);
-        ShareClassId shareClassId2 = ShareClassId.wrap(id);
+        ShareClassId scId = ShareClassId.wrap(id);
+        ShareClassId scId2 = ShareClassId.wrap(id);
 
-        assertEq(shareClassId.isNull(), false);
-        assertEq(shareClassId.raw(), id);
-        assertEq(shareClassId == shareClassId2, true);
+        assertEq(scId.isNull(), false);
+        assertEq(scId.raw(), id);
+        assertEq(scId == scId2, true);
     }
 
     function testNewShareClassId(uint64 poolId_, uint32 index) public pure {

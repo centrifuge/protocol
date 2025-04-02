@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
+import {PoolId} from "src/common/types/PoolId.sol";
 import {JournalEntry, JournalEntryLib} from "src/common/libraries/JournalEntryLib.sol";
 
 enum MessageType {
@@ -84,8 +85,8 @@ library MessageLib {
     // forgefmt: disable-next-item
     uint256 constant MESSAGE_LENGTHS =
         (33  << uint8(MessageType.MessageProof) * 8) +
-        (65  << uint8(MessageType.InitiateMessageRecovery) * 8) +
-        (65  << uint8(MessageType.DisputeMessageRecovery) * 8) +
+        (67  << uint8(MessageType.InitiateMessageRecovery) * 8) +
+        (67  << uint8(MessageType.DisputeMessageRecovery) * 8) +
         (33  << uint8(MessageType.ScheduleUpgrade) * 8) +
         (33  << uint8(MessageType.CancelUpgrade) * 8) +
         (161 << uint8(MessageType.RecoverTokens) * 8) +
@@ -144,6 +145,17 @@ library MessageLib {
         }
     }
 
+    function messagePoolId(bytes memory message) internal pure returns (PoolId poolId) {
+        uint8 kind = message.toUint8(0);
+
+        // All messages from NotifyPool to TriggetUpdateShares contains a PoolId in position 1.
+        if (kind >= uint8(MessageType.NotifyPool) && kind <= uint8(MessageType.TriggerUpdateShares)) {
+            return PoolId.wrap(message.toUint64(1));
+        } else {
+            return PoolId.wrap(0);
+        }
+    }
+
     function updateRestrictionType(bytes memory message) internal pure returns (UpdateRestrictionType) {
         return UpdateRestrictionType(message.toUint8(0));
     }
@@ -176,6 +188,7 @@ library MessageLib {
     struct InitiateMessageRecovery {
         bytes32 hash;
         bytes32 adapter;
+        uint16 domainId;
     }
 
     function deserializeInitiateMessageRecovery(bytes memory data)
@@ -184,11 +197,12 @@ library MessageLib {
         returns (InitiateMessageRecovery memory)
     {
         require(messageType(data) == MessageType.InitiateMessageRecovery, UnknownMessageType());
-        return InitiateMessageRecovery({hash: data.toBytes32(1), adapter: data.toBytes32(33)});
+        return
+            InitiateMessageRecovery({hash: data.toBytes32(1), adapter: data.toBytes32(33), domainId: data.toUint16(65)});
     }
 
     function serialize(InitiateMessageRecovery memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.InitiateMessageRecovery, t.hash, t.adapter);
+        return abi.encodePacked(MessageType.InitiateMessageRecovery, t.hash, t.adapter, t.domainId);
     }
 
     //---------------------------------------
@@ -198,6 +212,7 @@ library MessageLib {
     struct DisputeMessageRecovery {
         bytes32 hash;
         bytes32 adapter;
+        uint16 domainId;
     }
 
     function deserializeDisputeMessageRecovery(bytes memory data)
@@ -206,11 +221,12 @@ library MessageLib {
         returns (DisputeMessageRecovery memory)
     {
         require(messageType(data) == MessageType.DisputeMessageRecovery, UnknownMessageType());
-        return DisputeMessageRecovery({hash: data.toBytes32(1), adapter: data.toBytes32(33)});
+        return
+            DisputeMessageRecovery({hash: data.toBytes32(1), adapter: data.toBytes32(33), domainId: data.toUint16(65)});
     }
 
     function serialize(DisputeMessageRecovery memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.DisputeMessageRecovery, t.hash, t.adapter);
+        return abi.encodePacked(MessageType.DisputeMessageRecovery, t.hash, t.adapter, t.domainId);
     }
 
     //---------------------------------------
@@ -467,7 +483,7 @@ library MessageLib {
     struct TransferShares {
         uint64 poolId;
         bytes16 scId;
-        bytes32 recipient;
+        bytes32 receiver;
         uint128 amount;
     }
 
@@ -476,13 +492,13 @@ library MessageLib {
         return TransferShares({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
-            recipient: data.toBytes32(25),
+            receiver: data.toBytes32(25),
             amount: data.toUint128(57)
         });
     }
 
     function serialize(TransferShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.TransferShares, t.poolId, t.scId, t.recipient, t.amount);
+        return abi.encodePacked(MessageType.TransferShares, t.poolId, t.scId, t.receiver, t.amount);
     }
 
     //---------------------------------------

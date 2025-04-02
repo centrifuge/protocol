@@ -41,9 +41,4 @@ contract GasService is IGasService, Auth {
             return messageGasLimit;
         }
     }
-
-    /// @inheritdoc IGasService
-    function shouldRefuel(address source, PoolId, bytes calldata) public pure returns (bool success) {
-        return source != address(0);
-    }
 }

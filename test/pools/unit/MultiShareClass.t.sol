@@ -124,36 +124,30 @@ abstract contract MultiShareClassBaseTest is Test {
         assertEq(IPoolRegistry(poolRegistryAddress).currency(poolId).addr(), POOL_CURRENCY);
     }
 
-    function _assertDepositRequestEq(
-        ShareClassId shareClassId_,
-        AssetId asset,
-        bytes32 investor_,
-        UserOrder memory expected
-    ) internal view {
-        (uint128 pending, uint32 lastUpdate) = shareClass.depositRequest(shareClassId_, asset, investor_);
+    function _assertDepositRequestEq(ShareClassId scId_, AssetId asset, bytes32 investor_, UserOrder memory expected)
+        internal
+        view
+    {
+        (uint128 pending, uint32 lastUpdate) = shareClass.depositRequest(scId_, asset, investor_);
 
         assertEq(pending, expected.pending, "pending deposit mismatch");
         assertEq(lastUpdate, expected.lastUpdate, "lastUpdate deposit mismatch");
     }
 
-    function _assertRedeemRequestEq(
-        ShareClassId shareClassId_,
-        AssetId asset,
-        bytes32 investor_,
-        UserOrder memory expected
-    ) internal view {
-        (uint128 pending, uint32 lastUpdate) = shareClass.redeemRequest(shareClassId_, asset, investor_);
+    function _assertRedeemRequestEq(ShareClassId scId_, AssetId asset, bytes32 investor_, UserOrder memory expected)
+        internal
+        view
+    {
+        (uint128 pending, uint32 lastUpdate) = shareClass.redeemRequest(scId_, asset, investor_);
 
         assertEq(pending, expected.pending, "pending redeem mismatch");
         assertEq(lastUpdate, expected.lastUpdate, "lastUpdate redeem mismatch");
     }
 
-    function _assertEpochAmountsEq(
-        ShareClassId shareClassId_,
-        AssetId assetId,
-        uint32 epochId,
-        EpochAmounts memory expected
-    ) internal view {
+    function _assertEpochAmountsEq(ShareClassId scId_, AssetId assetId, uint32 epochId, EpochAmounts memory expected)
+        internal
+        view
+    {
         (
             uint128 depositPending,
             uint128 depositApproved,
@@ -162,7 +156,7 @@ abstract contract MultiShareClassBaseTest is Test {
             uint128 redeemPending,
             uint128 redeemApproved,
             uint128 redeemAssets
-        ) = shareClass.epochAmounts(shareClassId_, assetId, epochId);
+        ) = shareClass.epochAmounts(scId_, assetId, epochId);
 
         assertEq(depositPending, expected.depositPending, "depositPending mismatch");
         assertEq(depositApproved, expected.depositApproved, "depositApproved mismatch");
@@ -173,12 +167,9 @@ abstract contract MultiShareClassBaseTest is Test {
         assertEq(redeemAssets, expected.redeemAssets, "redeemAssets mismatch");
     }
 
-    function _assertEpochPointersEq(ShareClassId shareClassId_, AssetId assetId, EpochPointers memory expected)
-        internal
-        view
-    {
+    function _assertEpochPointersEq(ShareClassId scId_, AssetId assetId, EpochPointers memory expected) internal view {
         (uint32 latestDepositApproval, uint32 latestRedeemApproval, uint32 latestIssuance, uint32 latestRevocation) =
-            shareClass.epochPointers(shareClassId_, assetId);
+            shareClass.epochPointers(scId_, assetId);
 
         assertEq(latestDepositApproval, expected.latestDepositApproval, "latestDepositApproval mismatch");
         assertEq(latestRedeemApproval, expected.latestRedeemApproval, "latestRedeemApproval mismatch");

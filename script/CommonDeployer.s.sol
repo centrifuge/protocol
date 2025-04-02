@@ -45,9 +45,6 @@ abstract contract CommonDeployer is Script, JsonRegistry {
 
         root = new Root(DELAY, deployer);
 
-        adminSafe = adminSafe_;
-        guardian = new Guardian(adminSafe, root);
-
         uint64 messageGasLimit = uint64(vm.envOr("MESSAGE_COST", BASE_MSG_COST));
         uint64 proofGasLimit = uint64(vm.envOr("PROOF_COST", BASE_MSG_COST));
 
@@ -55,7 +52,10 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         gateway = new Gateway(root, gasService);
 
         messageProcessor = new MessageProcessor(root, gasService, deployer);
-        messageDispatcher = new MessageDispatcher(chainId, gateway, deployer);
+        messageDispatcher = new MessageDispatcher(chainId, root, gateway, deployer);
+
+        adminSafe = adminSafe_;
+        guardian = new Guardian(adminSafe, root, messageDispatcher);
 
         _commonRegister();
         _commonRely();
@@ -83,15 +83,16 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         gateway.rely(address(guardian));
         gateway.rely(address(messageDispatcher));
         messageProcessor.rely(address(gateway));
+        messageDispatcher.rely(address(guardian));
     }
 
     function _commonFile() private {
         gateway.file("handler", address(messageProcessor));
     }
 
-    function wire(IAdapter adapter, address deployer) public {
+    function wire(uint16 chainId, IAdapter adapter, address deployer) public {
         adapters.push(adapter);
-        gateway.file("adapters", adapters);
+        gateway.file("adapters", chainId, adapters);
         IAuth(address(adapter)).rely(address(root));
         IAuth(address(adapter)).deny(deployer);
     }

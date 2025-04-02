@@ -11,13 +11,13 @@ contract OperatorTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         address investor = makeAddr("investor");
         address operator = makeAddr("operator");
         AsyncVault vault = AsyncVault(vault_);
-        ITranche tranche = ITranche(address(vault.share()));
+        IShareToken shareToken = IShareToken(address(vault.share()));
 
-        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), price, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), price, uint64(block.timestamp));
 
         erc20.mint(investor, amount);
 
@@ -50,7 +50,7 @@ contract OperatorTest is BaseTest {
         vm.prank(operator);
         vault.deposit(amount, investor, investor);
         assertEq(vault.pendingDepositRequest(0, investor), 0);
-        assertEq(tranche.balanceOf(investor), amount);
+        assertEq(shareToken.balanceOf(investor), amount);
 
         vm.prank(investor);
         vault.setOperator(operator, false);
@@ -66,12 +66,12 @@ contract OperatorTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         (address controller, uint256 controllerPk) = makeAddrAndKey("controller");
         address operator = makeAddr("operator");
         AsyncVault vault = AsyncVault(vault_);
 
-        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), price, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), price, uint64(block.timestamp));
 
         erc20.mint(controller, amount);
 
@@ -143,13 +143,13 @@ contract OperatorTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
         vm.assume(amount % 2 == 0);
 
-        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         address investor = makeAddr("investor");
         address operator = makeAddr("operator");
         AsyncVault vault = AsyncVault(vault_);
 
         deposit(vault_, investor, amount); // deposit funds first
-        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), defaultPrice, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), defaultPrice, uint64(block.timestamp));
 
         vm.prank(operator);
         vm.expectRevert(IERC20.InsufficientAllowance.selector);
@@ -189,12 +189,12 @@ contract OperatorTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         (address controller, uint256 controllerPk) = makeAddrAndKey("controller");
         address operator = makeAddr("operator");
         AsyncVault vault = AsyncVault(vault_);
 
-        centrifugeChain.updateTranchePrice(vault.poolId(), vault.trancheId(), price, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), price, uint64(block.timestamp));
 
         erc20.mint(controller, amount);
 

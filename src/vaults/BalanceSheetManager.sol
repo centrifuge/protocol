@@ -24,7 +24,7 @@ import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
 import {IPerPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
-import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 contract BalanceSheetManager is
     Auth,
@@ -223,13 +223,13 @@ contract BalanceSheetManager is
     function _issue(PoolId poolId, ShareClassId scId, address to, D18 pricePerShare, uint128 shares, bool asAllowance)
         internal
     {
-        address token = poolManager.checkedTranche(poolId.raw(), scId.raw());
+        address token = poolManager.checkedShareToken(poolId.raw(), scId.raw());
 
         if (asAllowance) {
-            ITranche(token).mint(address(this), shares);
+            IShareToken(token).mint(address(this), shares);
             IERC20(token).approve(address(to), shares);
         } else {
-            ITranche(token).mint(address(to), shares);
+            IShareToken(token).mint(address(to), shares);
         }
 
         sender.sendUpdateShares(poolId, scId, to, pricePerShare, shares, true);
@@ -237,8 +237,8 @@ contract BalanceSheetManager is
     }
 
     function _revoke(PoolId poolId, ShareClassId scId, address from, D18 pricePerShare, uint128 shares) internal {
-        address token = poolManager.checkedTranche(poolId.raw(), scId.raw());
-        ITranche(token).burn(address(from), shares);
+        address token = poolManager.checkedShareToken(poolId.raw(), scId.raw());
+        IShareToken(token).burn(address(from), shares);
 
         sender.sendUpdateShares(poolId, scId, from, pricePerShare, shares, false);
         emit Revoke(poolId, scId, from, pricePerShare, shares);

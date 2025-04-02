@@ -37,10 +37,10 @@ contract SyncDepositTest is BaseTest {
         erc20.mint(self, amount);
 
         // Deploy sync vault
-        (address syncVault_, uint128 assetId) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
+        (, address syncVault_, uint128 assetId) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
         SyncDepositVault syncVault = SyncDepositVault(syncVault_);
-        ITranche tranche = ITranche(address(syncVault.share()));
-        centrifugeChain.updateTranchePrice(syncVault.poolId(), syncVault.trancheId(), price, uint64(block.timestamp));
+        IShareToken shareToken = IShareToken(address(syncVault.share()));
+        centrifugeChain.updateSharePrice(syncVault.poolId(), syncVault.trancheId(), price, uint64(block.timestamp));
 
         // Retrieve async vault
         address asyncVault_ =
@@ -62,7 +62,7 @@ contract SyncDepositTest is BaseTest {
         erc20.approve(address(syncVault), amount);
 
         // Will fail - user not member: can not send funds
-        vm.expectRevert(bytes("RestrictionManager/transfer-blocked"));
+        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
         syncVault.deposit(amount, self);
 
         assertEq(syncVault.isPermissioned(self), false);
@@ -72,7 +72,7 @@ contract SyncDepositTest is BaseTest {
         _assertDepositEvents(syncVault, shares.toUint128());
         syncVault.deposit(amount, self);
         assertEq(erc20.balanceOf(self), 0, "Mismatch in sync deposited amount");
-        assertEq(tranche.balanceOf(self), shares, "Mismatch in amount of sync received shares");
+        assertEq(shareToken.balanceOf(self), shares, "Mismatch in amount of sync received shares");
 
         // Can now request redemption through async syncVault
         assertEq(asyncVault.pendingRedeemRequest(0, self), 0);

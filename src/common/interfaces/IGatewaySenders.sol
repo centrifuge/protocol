@@ -13,6 +13,23 @@ interface ILocalCentrifugeId {
 }
 
 /// @notice Interface for dispatch-only gateway
+interface IRootMessageSender {
+    /// @notice Creates and send the message
+    function sendScheduleUpgrade(uint16 chainId, bytes32 target) external;
+
+    /// @notice Creates and send the message
+    function sendCancelUpgrade(uint16 chainId, bytes32 target) external;
+
+    /// @notice Creates and send the message
+    function sendInitiateMessageRecovery(uint16 chainId, uint16 adapterChainId, bytes32 adapter, bytes32 hash)
+        external;
+
+    /// @notice Creates and send the message
+    function sendDisputeMessageRecovery(uint16 chainId, uint16 adapterChainId, bytes32 adapter, bytes32 hash)
+        external;
+}
+
+/// @notice Interface for dispatch-only gateway
 interface IPoolMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
     function sendNotifyPool(uint16 chainId, PoolId poolId) external;
@@ -84,7 +101,7 @@ interface IPoolMessageSender is ILocalCentrifugeId {
 /// @notice Interface for dispatch-only gateway
 interface IVaultMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
-    function sendTransferShares(uint16 chainId, uint64 poolId, bytes16 scId, bytes32 recipient, uint128 amount)
+    function sendTransferShares(uint16 chainId, uint64 poolId, bytes16 scId, bytes32 receiver, uint128 amount)
         external;
 
     /// @notice Creates and send the message
@@ -113,7 +130,7 @@ interface IVaultMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
     function sendUpdateHoldingAmount(
         PoolId poolId,
-        ShareClassId shareClassId,
+        ShareClassId scId,
         AssetId assetId,
         address provider,
         uint128 amount,
@@ -127,7 +144,7 @@ interface IVaultMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
     function sendUpdateShares(
         PoolId poolId,
-        ShareClassId shareClassId,
+        ShareClassId scId,
         address receiver,
         D18 pricePerShare,
         uint128 shares,

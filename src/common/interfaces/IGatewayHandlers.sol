@@ -68,11 +68,11 @@ interface IPoolManagerGatewayHandler {
     /// @dev       The function can only be executed by the gateway contract.
     function addPool(uint64 poolId) external;
 
-    /// @notice     New tranche details from an existing Centrifuge pool are added.
+    /// @notice     New share class details from an existing Centrifuge pool are added.
     /// @dev        The function can only be executed by the gateway contract.
-    function addTranche(
+    function addShareClass(
         uint64 poolId,
-        bytes16 trancheId,
+        bytes16 scId,
         string memory tokenName,
         string memory tokenSymbol,
         uint8 decimals,
@@ -80,44 +80,43 @@ interface IPoolManagerGatewayHandler {
         address hook
     ) external returns (address);
 
-    /// @notice   Updates the tokenName and tokenSymbol of a tranche token
+    /// @notice   Updates the tokenName and tokenSymbol of a share class token
     /// @dev      The function can only be executed by the gateway contract.
-    function updateTrancheMetadata(uint64 poolId, bytes16 trancheId, string memory tokenName, string memory tokenSymbol)
+    function updateShareMetadata(uint64 poolId, bytes16 scId, string memory tokenName, string memory tokenSymbol)
         external;
 
-    /// @notice  Updates the price of a tranche token per unit of pool denomination currency
+    /// @notice  Updates the price of a share class token per unit of pool denomination currency
     /// @dev     The function can only be executed by the gateway contract.
-    function updateTranchePrice(uint64 poolId, bytes16 trancheId, uint128 price, uint64 computedAt) external;
+    function updateSharePrice(uint64 poolId, bytes16 scId, uint128 price, uint64 computedAt) external;
 
     /// @notice  Updates the price of an asset per unit of pool denomination currency
     /// @dev     The function can only be executed by the gateway contract.
-    function updateAssetPrice(uint64 poolId, bytes16 trancheId, uint128 assetId, uint128 price, uint64 computedAt)
+    function updateAssetPrice(uint64 poolId, bytes16 scId, uint128 assetId, uint128 price, uint64 computedAt)
         external;
 
-    /// @notice Updates the hook of a tranche token
+    /// @notice Updates the hook of a share class token
     /// @param  poolId The centrifuge pool id
-    /// @param  trancheId The tranche id
+    /// @param  scId The share class id
     /// @param  hook The new hook addres
-    function updateTrancheHook(uint64 poolId, bytes16 trancheId, address hook) external;
+    function updateShareHook(uint64 poolId, bytes16 scId, address hook) external;
 
-    /// @notice Updates the restrictions on a tranche token for a specific user
+    /// @notice Updates the restrictions on a share class token for a specific user
     /// @param  poolId The centrifuge pool id
-    /// @param  trancheId The tranche id
+    /// @param  scId The share class id
     /// @param  update The restriction update in the form of a bytes array indicating
     ///                the restriction to be updated, the user to be updated, and a validUntil timestamp.
-    function updateRestriction(uint64 poolId, bytes16 trancheId, bytes memory update) external;
+    function updateRestriction(uint64 poolId, bytes16 scId, bytes memory update) external;
 
-    /// @notice Mints tranche tokens to a recipient
+    /// @notice Mints share class tokens to a recipient
     /// @dev    The function can only be executed internally or by the gateway contract.
-    function handleTransferTrancheTokens(uint64 poolId, bytes16 trancheId, address destinationAddress, uint128 amount)
-        external;
+    function handleTransferShares(uint64 poolId, bytes16 scId, address destinationAddress, uint128 amount) external;
 
     /// @notice Updates the target address. Generic update function from CP to CV
     /// @param  poolId The centrifuge pool id
-    /// @param  trancheId The tranche id
+    /// @param  scId The share class id
     /// @param  target The target address to be called
     /// @param  update The payload to be processed by the target address
-    function updateContract(uint64 poolId, bytes16 trancheId, address target, bytes memory update) external;
+    function updateContract(uint64 poolId, bytes16 scId, address target, bytes memory update) external;
 }
 
 /// @notice Interface for CV methods related to async investments called by the gateway
@@ -131,7 +130,7 @@ interface IInvestmentManagerGatewayHandler {
     ///         and mint calls.
     function fulfillDepositRequest(
         uint64 poolId,
-        bytes16 trancheId,
+        bytes16 scId,
         address user,
         uint128 assetId,
         uint128 assets,
@@ -190,7 +189,7 @@ interface IInvestmentManagerGatewayHandler {
     ///         deleted.
     function fulfillCancelDepositRequest(
         uint64 poolId,
-        bytes16 trancheId,
+        bytes16 scId,
         address user,
         uint128 assetId,
         uint128 assets,
@@ -206,7 +205,7 @@ interface IInvestmentManagerGatewayHandler {
     ///         and withdraw calls.
     function fulfillRedeemRequest(
         uint64 poolId,
-        bytes16 trancheId,
+        bytes16 scId,
         address user,
         uint128 assetId,
         uint128 assets,
@@ -219,7 +218,7 @@ interface IInvestmentManagerGatewayHandler {
     ///         partial.
     /// @dev    The shares in the escrow are reserved for the user and are transferred to the user during
     ///         claimCancelRedeemRequest calls.
-    function fulfillCancelRedeemRequest(uint64 poolId, bytes16 trancheId, address user, uint128 assetId, uint128 shares)
+    function fulfillCancelRedeemRequest(uint64 poolId, bytes16 scId, address user, uint128 assetId, uint128 shares)
         external;
 
     /// @notice Triggers a redeem request on behalf of the user through Centrifuge governance.
@@ -230,7 +229,7 @@ interface IInvestmentManagerGatewayHandler {
     ///         got fulfilled.
     /// @dev    The user share amount required to fulfill the redeem request has to be locked in escrow,
     ///         even though the asset payout can only happen after epoch execution.
-    function triggerRedeemRequest(uint64 poolId, bytes16 trancheId, address user, uint128 assetId, uint128 shares)
+    function triggerRedeemRequest(uint64 poolId, bytes16 scId, address user, uint128 assetId, uint128 shares)
         external;
 }
 

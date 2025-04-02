@@ -43,20 +43,17 @@ contract PoolRegistryTest is Test {
     function testPoolRegistration(address fundAdmin) public nonZero(fundAdmin) notThisContract(fundAdmin) {
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.registerPool(address(this), CENTRIFUGE_CHAIN_ID, USD, shareClassManager);
-
-        vm.expectRevert(IPoolRegistry.EmptyShareClassManager.selector);
-        registry.registerPool(address(this), CENTRIFUGE_CHAIN_ID, USD, IShareClassManager(address(0)));
+        registry.registerPool(address(this), CENTRIFUGE_CHAIN_ID, USD);
 
         vm.expectRevert(IPoolRegistry.EmptyAdmin.selector);
-        registry.registerPool(address(0), CENTRIFUGE_CHAIN_ID, USD, shareClassManager);
+        registry.registerPool(address(0), CENTRIFUGE_CHAIN_ID, USD);
 
         vm.expectRevert(IPoolRegistry.EmptyCurrency.selector);
-        registry.registerPool(address(this), CENTRIFUGE_CHAIN_ID, AssetId.wrap(0), shareClassManager);
+        registry.registerPool(address(this), CENTRIFUGE_CHAIN_ID, AssetId.wrap(0));
 
         vm.expectEmit();
-        emit IPoolRegistry.NewPool(newPoolId(CENTRIFUGE_CHAIN_ID, 1), fundAdmin, shareClassManager, USD);
-        PoolId poolId = registry.registerPool(fundAdmin, CENTRIFUGE_CHAIN_ID, USD, shareClassManager);
+        emit IPoolRegistry.NewPool(newPoolId(CENTRIFUGE_CHAIN_ID, 1), fundAdmin, USD);
+        PoolId poolId = registry.registerPool(fundAdmin, CENTRIFUGE_CHAIN_ID, USD);
 
         assertEq(poolId.chainId(), CENTRIFUGE_CHAIN_ID);
         assertEq(poolId.raw(), newPoolId(CENTRIFUGE_CHAIN_ID, 1).raw());
@@ -64,7 +61,6 @@ contract PoolRegistryTest is Test {
 
         assertTrue(registry.isAdmin(poolId, fundAdmin));
         assertFalse(registry.isAdmin(poolId, address(this)));
-        assertEq(address(registry.shareClassManager(poolId)), address(shareClassManager));
     }
 
     function testUpdateAdmin(address fundAdmin, address additionalAdmin)
@@ -75,7 +71,7 @@ contract PoolRegistryTest is Test {
         notThisContract(additionalAdmin)
     {
         vm.assume(fundAdmin != additionalAdmin);
-        PoolId poolId = registry.registerPool(fundAdmin, CENTRIFUGE_CHAIN_ID, USD, shareClassManager);
+        PoolId poolId = registry.registerPool(fundAdmin, CENTRIFUGE_CHAIN_ID, USD);
 
         assertFalse(registry.isAdmin(poolId, additionalAdmin));
 
@@ -106,7 +102,7 @@ contract PoolRegistryTest is Test {
     function testSetMetadata(bytes calldata metadata) public {
         address fundAdmin = makeAddr("fundAdmin");
 
-        PoolId poolId = registry.registerPool(fundAdmin, CENTRIFUGE_CHAIN_ID, USD, shareClassManager);
+        PoolId poolId = registry.registerPool(fundAdmin, CENTRIFUGE_CHAIN_ID, USD);
 
         assertEq(registry.metadata(poolId).length, 0);
 
@@ -124,37 +120,31 @@ contract PoolRegistryTest is Test {
         assertEq(registry.metadata(poolId), metadata);
     }
 
-    function testUpdateShareClassManager(IShareClassManager shareClassManager_)
-        public
-        nonZero(address(shareClassManager_))
-    {
+    function testUpdateDependency(bytes32 what, address dependency) public nonZero(dependency) {
         address fundAdmin = makeAddr("fundAdmin");
 
-        PoolId poolId = registry.registerPool(fundAdmin, CENTRIFUGE_CHAIN_ID, USD, shareClassManager);
+        PoolId poolId = registry.registerPool(fundAdmin, CENTRIFUGE_CHAIN_ID, USD);
 
-        assertEq(address(registry.shareClassManager(poolId)), address(shareClassManager));
+        assertEq(address(registry.dependency(poolId, what)), address(0));
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.updateShareClassManager(poolId, shareClassManager_);
+        registry.updateDependency(poolId, what, dependency);
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);
         vm.expectRevert(abi.encodeWithSelector(IPoolRegistry.NonExistingPool.selector, nonExistingPool));
-        registry.updateShareClassManager(nonExistingPool, shareClassManager_);
-
-        vm.expectRevert(IPoolRegistry.EmptyShareClassManager.selector);
-        registry.updateShareClassManager(poolId, IShareClassManager(address(0)));
+        registry.updateDependency(nonExistingPool, what, dependency);
 
         vm.expectEmit();
-        emit IPoolRegistry.UpdatedShareClassManager(poolId, shareClassManager_);
-        registry.updateShareClassManager(poolId, shareClassManager_);
-        assertEq(address(registry.shareClassManager(poolId)), address(shareClassManager_));
+        emit IPoolRegistry.UpdatedDependency(poolId, what, dependency);
+        registry.updateDependency(poolId, what, dependency);
+        assertEq(address(registry.dependency(poolId, what)), address(dependency));
     }
 
     function testUpdateCurrency(AssetId currency) public nonZero(currency.addr()) {
         address fundAdmin = makeAddr("fundAdmin");
 
-        PoolId poolId = registry.registerPool(fundAdmin, CENTRIFUGE_CHAIN_ID, USD, shareClassManager);
+        PoolId poolId = registry.registerPool(fundAdmin, CENTRIFUGE_CHAIN_ID, USD);
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -175,7 +165,7 @@ contract PoolRegistryTest is Test {
     }
 
     function testExists() public {
-        PoolId poolId = registry.registerPool(makeAddr("fundManager"), CENTRIFUGE_CHAIN_ID, USD, shareClassManager);
+        PoolId poolId = registry.registerPool(makeAddr("fundManager"), CENTRIFUGE_CHAIN_ID, USD);
         assertEq(registry.exists(poolId), true);
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);

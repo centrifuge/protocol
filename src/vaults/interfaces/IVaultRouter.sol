@@ -50,7 +50,7 @@ interface IVaultRouter is IMulticall, IRecoverable {
     ///                 1. The DAO signs the legal agreements for the pool => no onchain action,
     ///                    but only after this the issuer can call update_member to add them as a whitelisted investor
     ///                 2. Call `requestDeposit` to lock funds
-    ///                 3. After the pool has fulfilled their request, call `deposit` to claim their tranche tokens
+    ///                 3. After the pool has fulfilled their request, call `deposit` to claim their share class tokens
     ///
     ///
     ///             With the new router function the steps are as follows:
@@ -147,19 +147,19 @@ interface IVaultRouter is IMulticall, IRecoverable {
     function claimCancelRedeemRequest(address vault, address receiver, address controller) external payable;
 
     // --- Transfer ---
-    /// @notice Check `IPoolManager.transferTrancheTokens`.
+    /// @notice Check `IPoolManager.transferShares`.
     /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
     ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
     ///
-    /// @param  vault The vault for the corresponding tranche token
-    /// @param  chainId Check `IPoolManager.transferTrancheTokens.destinationId`
-    /// @param  recipient Check `IPoolManager.transferTrancheTokens.recipient`
-    /// @param  amount Check `IPoolManager.transferTrancheTokens.amount`
-    function transferTrancheTokens(address vault, uint16 chainId, bytes32 recipient, uint128 amount) external payable;
+    /// @param  vault The vault for the corresponding share class token
+    /// @param  chainId Check `IPoolManager.transferShares.destinationId`
+    /// @param  receiver Check `IPoolManager.transferShares.receiver`
+    /// @param  amount Check `IPoolManager.transferShares.amount`
+    function transferShares(address vault, uint16 chainId, bytes32 receiver, uint128 amount) external payable;
 
-    /// @notice This is a more friendly version where the recipient is and EVM address
-    /// @dev    The recipient address is padded to 32 bytes internally
-    function transferTrancheTokens(address vault, uint16 chainId, address recipient, uint128 amount) external payable;
+    /// @notice This is a more friendly version where the receiver is and EVM address
+    /// @dev    The receiver address is padded to 32 bytes internally
+    function transferShares(address vault, uint16 chainId, address receiver, uint128 amount) external payable;
 
     // --- ERC20 permit ---
     /// @notice Check IERC20.permit
@@ -185,9 +185,10 @@ interface IVaultRouter is IMulticall, IRecoverable {
 
     // --- View Methods ---
     /// @notice Check IPoolManager.getVault
-    function getVault(uint64 poolId, bytes16 trancheId, address asset) external view returns (address);
+    function getVault(uint64 poolId, bytes16 scId, address asset) external view returns (address);
 
     /// @notice Check IGateway.estimate
+    ///         If the destination and source chain ID are the same, this will always return 0.
     /// @param chainId destination chain
     function estimate(uint16 chainId, bytes calldata payload) external view returns (uint256 amount);
 

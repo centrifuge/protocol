@@ -20,7 +20,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 
 import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
-import {ITranche} from "src/vaults/interfaces/token/ITranche.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IAsyncRedeemVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
@@ -45,7 +45,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     IBalanceSheetManager public balanceSheetManager;
 
     // TODO(follow-up PR): Support multiple vaults
-    mapping(uint64 poolId => mapping(bytes16 trancheId => mapping(uint128 assetId => address vault))) public vault;
+    mapping(uint64 poolId => mapping(bytes16 scId => mapping(uint128 assetId => address vault))) public vault;
 
     constructor(address root_, address escrow_) BaseInvestmentManager(root_, escrow_) {}
 
@@ -60,7 +60,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
     // --- IVaultManager ---
     /// @inheritdoc IVaultManager
-    function addVault(uint64 poolId, bytes16 trancheId, address vaultAddr, address asset_, uint128 assetId)
+    function addVault(uint64 poolId, bytes16 scId, address vaultAddr, address asset_, uint128 assetId)
         public
         override
         auth
@@ -68,23 +68,23 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
 
         require(vault_.asset() == asset_, "SyncRequests/asset-mismatch");
-        require(vault[poolId][trancheId][assetId] == address(0), "SyncRequests/vault-already-exists");
+        require(vault[poolId][scId][assetId] == address(0), "SyncRequests/vault-already-exists");
 
         address token = vault_.share();
-        vault[poolId][trancheId][assetId] = vaultAddr;
+        vault[poolId][scId][assetId] = vaultAddr;
 
         IAuth(token).rely(vaultAddr);
-        ITranche(token).updateVault(vault_.asset(), vaultAddr);
+        IShareToken(token).updateVault(vault_.asset(), vaultAddr);
         rely(vaultAddr);
 
         (VaultKind vaultKind_, address secondaryManager) = vaultKind(vaultAddr);
         if (vaultKind_ == VaultKind.SyncDepositAsyncRedeem) {
-            IVaultManager(secondaryManager).addVault(poolId, trancheId, vaultAddr, asset_, assetId);
+            IVaultManager(secondaryManager).addVault(poolId, scId, vaultAddr, asset_, assetId);
         }
     }
 
     /// @inheritdoc IVaultManager
-    function removeVault(uint64 poolId, bytes16 trancheId, address vaultAddr, address asset_, uint128 assetId)
+    function removeVault(uint64 poolId, bytes16 scId, address vaultAddr, address asset_, uint128 assetId)
         public
         override
         auth
@@ -93,17 +93,17 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         address token = vault_.share();
 
         require(vault_.asset() == asset_, "SyncRequests/asset-mismatch");
-        require(vault[poolId][trancheId][assetId] != address(0), "SyncRequests/vault-does-not-exist");
+        require(vault[poolId][scId][assetId] != address(0), "SyncRequests/vault-does-not-exist");
 
-        delete vault[poolId][trancheId][assetId];
+        delete vault[poolId][scId][assetId];
 
         IAuth(token).deny(vaultAddr);
-        ITranche(token).updateVault(vault_.asset(), address(0));
+        IShareToken(token).updateVault(vault_.asset(), address(0));
         deny(vaultAddr);
 
         (VaultKind vaultKind_, address secondaryManager) = vaultKind(vaultAddr);
         if (vaultKind_ == VaultKind.SyncDepositAsyncRedeem) {
-            IVaultManager(secondaryManager).removeVault(poolId, trancheId, vaultAddr, asset_, assetId);
+            IVaultManager(secondaryManager).removeVault(poolId, scId, vaultAddr, asset_, assetId);
         }
     }
 
@@ -170,8 +170,8 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     }
 
     /// @inheritdoc IVaultManager
-    function vaultByAssetId(uint64 poolId, bytes16 trancheId, uint128 assetId) public view returns (address) {
-        return vault[poolId][trancheId][assetId];
+    function vaultByAssetId(uint64 poolId, bytes16 scId, uint128 assetId) public view returns (address) {
+        return vault[poolId][scId][assetId];
     }
 
     /// @inheritdoc IVaultManager
@@ -243,13 +243,13 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     }
 
     /// @dev Retrieve the latest price for the share class token
-    function _pricePerShare(address, /* vaultAddr */ uint64 poolId, bytes16 trancheId, uint128 assetId)
+    function _pricePerShare(address, /* vaultAddr */ uint64 poolId, bytes16 scId, uint128 assetId)
         internal
         view
         returns (D18)
     {
         // TODO: Decide on whether we should use the checked/ or unchcked version
-        (D18 latestPrice,) = poolManager.checkedPricePerShare(poolId, trancheId, assetId);
+        (D18 latestPrice,) = poolManager.checkedPricePerShare(poolId, scId, assetId);
         return latestPrice;
     }
 }

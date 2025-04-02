@@ -90,24 +90,24 @@ contract MessageProcessor is Auth, IMessageProcessor {
             poolManager.addPool(MessageLib.deserializeNotifyPool(message).poolId);
         } else if (kind == MessageType.NotifyShareClass) {
             MessageLib.NotifyShareClass memory m = MessageLib.deserializeNotifyShareClass(message);
-            poolManager.addTranche(
+            poolManager.addShareClass(
                 m.poolId, m.scId, m.name, m.symbol.toString(), m.decimals, m.salt, address(bytes20(m.hook))
             );
         } else if (kind == MessageType.NotifySharePrice) {
             MessageLib.NotifySharePrice memory m = MessageLib.deserializeNotifySharePrice(message);
-            poolManager.updateTranchePrice(m.poolId, m.scId, m.price, m.timestamp);
+            poolManager.updateSharePrice(m.poolId, m.scId, m.price, m.timestamp);
         } else if (kind == MessageType.NotifyAssetPrice) {
             MessageLib.NotifyAssetPrice memory m = MessageLib.deserializeNotifyAssetPrice(message);
             poolManager.updateAssetPrice(m.poolId, m.scId, m.assetId, m.price, m.timestamp);
         } else if (kind == MessageType.UpdateShareClassMetadata) {
             MessageLib.UpdateShareClassMetadata memory m = MessageLib.deserializeUpdateShareClassMetadata(message);
-            poolManager.updateTrancheMetadata(m.poolId, m.scId, m.name, m.symbol.toString());
+            poolManager.updateShareMetadata(m.poolId, m.scId, m.name, m.symbol.toString());
         } else if (kind == MessageType.UpdateShareClassHook) {
             MessageLib.UpdateShareClassHook memory m = MessageLib.deserializeUpdateShareClassHook(message);
-            poolManager.updateTrancheHook(m.poolId, m.scId, address(bytes20(m.hook)));
+            poolManager.updateShareHook(m.poolId, m.scId, address(bytes20(m.hook)));
         } else if (kind == MessageType.TransferShares) {
             MessageLib.TransferShares memory m = MessageLib.deserializeTransferShares(message);
-            poolManager.handleTransferTrancheTokens(m.poolId, m.scId, address(bytes20(m.recipient)), m.amount);
+            poolManager.handleTransferShares(m.poolId, m.scId, address(bytes20(m.receiver)), m.amount);
         } else if (kind == MessageType.UpdateRestriction) {
             MessageLib.UpdateRestriction memory m = MessageLib.deserializeUpdateRestriction(message);
             poolManager.updateRestriction(m.poolId, m.scId, m.payload);

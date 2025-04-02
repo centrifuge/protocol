@@ -68,7 +68,7 @@ interface IPoolRouter {
     /// @notice Creates a new pool. `msg.sender` will be the admin of the created pool.
     /// @param currency The pool currency. Usually an AssetId identifying by a ISO4217 code.
     /// @param shareClassManager The share class manager used for this pool.
-    /// @return The id of the new pool.
+    /// @return PoolId The id of the new pool.
     function createPool(address admin, AssetId currency, IShareClassManager shareClassManager)
         external
         payable
@@ -213,4 +213,7 @@ interface IPoolRouter {
     /// @notice Compute the escrow address used for a share class
     /// @return The escrow address
     function escrow(PoolId poolId, ShareClassId scId, EscrowId escrow_) external pure returns (address);
+
+    /// @notice Return the share class manager for a pool
+    function shareClassManager(PoolId poolId) external view returns (IShareClassManager);
 }

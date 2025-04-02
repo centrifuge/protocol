@@ -23,13 +23,13 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, CallTestAndU
         if (address(vault) == address(0)) {
             return false;
         }
-        if (address(trancheToken) == address(0)) {
-            return false;
-        }
-        if (address(restrictionManager) == address(0)) {
-            return false;
-        }
         if (address(token) == address(0)) {
+            return false;
+        }
+        if (address(restrictedTransfers) == address(0)) {
+            return false;
+        }
+        if (address(assetErc20) == address(0)) {
             return false;
         }
 
@@ -178,7 +178,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, CallTestAndU
 
     /// === IMPLEMENTATIONS === ///
     /// All functions are implemented to prevent executing the AsyncVaultProperties
-    /// We simply added a check to ensure that `deployNewTokenPoolAndTranche` was called
+    /// We simply added a check to ensure that `deployNewTokenPoolAndShare` was called
 
     /// === Overridden Implementations === ///
     function asyncVault_3(address asyncVaultTarget) public override returns (bool) {

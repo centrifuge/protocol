@@ -29,7 +29,7 @@ abstract contract SharedStorage {
     bool RECON_USE_SINGLE_DEPLOY = true; // NOTE: Actor Properties break if you use multi cause they are
         // mono-dimensional
 
-    // Should we also enforce the exact balance check on asset / shares?
+    // Should we also enforce the exact balance check on assetErc20 / shares?
     // TODO: This is broken rn
     // Liquidity Pool functions
     bool RECON_EXACT_BAL_CHECK = false;
@@ -37,17 +37,17 @@ abstract contract SharedStorage {
     /// === INTERNAL COUNTERS === ///
     // Currency ID = Currency Length
     // Pool ID = Pool Length
-    // Tranche ID = Tranche Length . toId
+    // Share ID = Share Length . toId
     uint64 ASSET_ID_COUNTER = 1;
     uint64 POOL_ID = 1;
-    uint16 TRANCHE_COUNTER = 1;
+    uint16 SHARE_COUNTER = 1;
     // Hash of index + salt, but we use number to be able to cycle
-    bytes16 TRANCHE_ID = bytes16(bytes32(uint256(TRANCHE_COUNTER)));
+    bytes16 SHARE_ID = bytes16(bytes32(uint256(SHARE_COUNTER)));
     uint16 DEFAULT_DESTINATION_CHAIN = 1;
     uint128 ASSET_ID = uint128(bytes16(abi.encodePacked(DEFAULT_DESTINATION_CHAIN, uint32(1))));
 
     // NOTE: TODO
-    // ** INCOMPLETE - Deployment, Setup and Cycling of Assets, Tranches, Pools and Vaults **/
+    // ** INCOMPLETE - Deployment, Setup and Cycling of Assets, Shares, Pools and Vaults **/
     // Step 1
     // Make Currency
     ERC20[] allTokens;
@@ -55,8 +55,8 @@ abstract contract SharedStorage {
     mapping(address => uint128) assetAddressToAssetId;
     mapping(uint128 => address) assetIdToAssetAddress;
 
-    // TODO: Consider refactoring to a address of Currency or Tranche to get the rest of the details
-    address[] trancheTokens; // TODO: Tranche to ID
+    // TODO: Consider refactoring to a address of Currency or Share to get the rest of the details
+    address[] shareClassTokens; // TODO: Share to ID
     address[] vaults; // TODO: Liquidity To ID?
 
     // === invariant_E_1 === //
@@ -78,8 +78,8 @@ abstract contract SharedStorage {
 
     /**
      * See:
-     *         - poolManager_handleTransfer(bytes32 recipient, uint128 amount)
-     *         - poolManager_handleTransfer(address recipient, uint128 amount)
+     *         - poolManager_handleTransfer(bytes32 receiver, uint128 amount)
+     *         - poolManager_handleTransfer(address receiver, uint128 amount)
      *
      *         - poolManager_transfer
      */
@@ -92,7 +92,7 @@ abstract contract SharedStorage {
     mapping(address => uint256) sumOfTransfersOut;
 
     // Global-1
-    mapping(address => uint256) cancelRedeemTrancheTokenPayout;
+    mapping(address => uint256) cancelRedeemShareTokenPayout;
     // Global-2
     mapping(address => uint256) cancelDepositCurrencyPayout;
 
@@ -105,8 +105,8 @@ abstract contract SharedStorage {
     mapping(address => bool) hasRequestedRedeemCancellation;
 
     // === invariant_E_2 === //
-    // Tranche
-    // Indexed by Tranche Token
+    // Share
+    // Indexed by Share Token
 
     /**
      * // TODO: Jeroen to review!
@@ -150,7 +150,7 @@ abstract contract SharedStorage {
 
     // NOTE: OLD
     mapping(address => uint256) totalCurrenciesSent;
-    mapping(address => uint256) totalTrancheSent;
+    mapping(address => uint256) totalShareSent;
 
     // These are used by invariant_global_3
     mapping(address => uint256) executedInvestments;
@@ -160,7 +160,7 @@ abstract contract SharedStorage {
     mapping(address => uint256) outGoingTransfers;
 
     // NOTE: You need to decide if these should exist
-    mapping(address => uint256) trancheMints;
+    mapping(address => uint256) shareMints;
 
     // TODO: Global-1 and Global-2
     // Something is off

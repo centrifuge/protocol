@@ -34,6 +34,8 @@ abstract contract Setup is BaseSetup, Asserts {
 
     IAdapter[] adapters;
 
+    uint16 public constant CENTRIFUGE_ID = 1;
+
     // todo: create some sort of a function that is usable
     bytes[] messages;
     mapping(bytes32 => bool) doesMessageExists;
@@ -62,9 +64,9 @@ abstract contract Setup is BaseSetup, Asserts {
 
         // Given config, add adapters
         for (uint256 i = 0; i < RECON_ADAPTERS; i++) {
-            adapters.push(new MockAdapter(routerAggregator));
+            adapters.push(new MockAdapter(CENTRIFUGE_ID, routerAggregator));
         }
 
-        routerAggregator.file("adapters", adapters);
+        routerAggregator.file("adapters", CENTRIFUGE_ID, adapters);
     }
 }

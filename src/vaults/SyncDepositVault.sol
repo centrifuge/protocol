@@ -11,20 +11,20 @@ import "src/vaults/interfaces/IERC7575.sol";
 /// @notice Partially (a)synchronous Tokenized Vault implementation with synchronous deposits and asynchronous
 /// redemptions following ERC-7540.
 ///
-/// @dev    Each vault issues shares of Centrifuge tranches as restricted ERC-20 or ERC-6909 tokens
+/// @dev    Each vault issues shares of Centrifuge share class tokens as restricted ERC-20 or ERC-6909 tokens
 ///         against asset deposits based on the current share price.
 contract SyncDepositVault is BaseSyncDepositVault, AsyncRedeemVault {
     constructor(
         uint64 poolId_,
-        bytes16 trancheId_,
+        bytes16 scId_,
         address asset_,
         uint256 tokenId_,
-        address share_,
+        address token_,
         address root_,
         address syncDepositManager_,
         address asyncRedeemManager_
     )
-        BaseVault(poolId_, trancheId_, asset_, tokenId_, share_, root_, syncDepositManager_)
+        BaseVault(poolId_, scId_, asset_, tokenId_, token_, root_, syncDepositManager_)
         BaseSyncDepositVault(syncDepositManager_)
         AsyncRedeemVault(asyncRedeemManager_)
     {}

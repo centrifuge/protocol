@@ -7,12 +7,12 @@ import {AsyncRequests} from "src/vaults/AsyncRequests.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {Root} from "src/common/Root.sol";
-import {Tranche} from "src/vaults/token/Tranche.sol";
+import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
-import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
+import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 
-import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
+import {RestrictedTransfers} from "src/vaults/token/RestrictedTransfers.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 
 // Mocks
@@ -24,7 +24,7 @@ import {SharedStorage} from "./SharedStorage.sol";
 abstract contract Setup is BaseSetup, SharedStorage {
     // Dependencies
     AsyncVaultFactory vaultFactory;
-    TrancheFactory trancheFactory;
+    TokenFactory tokenFactory;
 
     // Handled //
     Escrow public escrow; // NOTE: Restriction Manager will query it
@@ -33,12 +33,12 @@ abstract contract Setup is BaseSetup, SharedStorage {
 
     // TODO: CYCLE / Make it work for variable values
     AsyncVault vault;
-    ERC20 token;
-    Tranche trancheToken;
+    ERC20 assetErc20;
+    CentrifugeToken token;
     address actor = address(this); // TODO: Generalize
-    RestrictionManager restrictionManager;
+    RestrictedTransfers restrictedTransfers;
 
-    bytes16 trancheId;
+    bytes16 scId;
     uint64 poolId;
     uint128 assetId;
 
@@ -61,10 +61,10 @@ abstract contract Setup is BaseSetup, SharedStorage {
         centrifugeChain = address(this);
 
         // Dependencies
-        trancheFactory = new TrancheFactory(address(this), address(this));
+        tokenFactory = new TokenFactory(address(this), address(this));
         escrow = new Escrow(address(address(this)));
         root = new Root(48 hours, address(this));
-        restrictionManager = new RestrictionManager(address(root), address(this));
+        restrictedTransfers = new RestrictedTransfers(address(root), address(this));
 
         root.endorse(address(escrow));
 
@@ -74,14 +74,13 @@ abstract contract Setup is BaseSetup, SharedStorage {
         address[] memory vaultFactories = new address[](1);
         vaultFactories[0] = address(vaultFactory);
 
-        poolManager = new PoolManager(address(escrow), address(trancheFactory), vaultFactories);
+        poolManager = new PoolManager(address(escrow), address(tokenFactory), vaultFactories);
 
-        asyncRequests.file("gateway", address(this));
         asyncRequests.file("poolManager", address(poolManager));
         asyncRequests.rely(address(poolManager));
         asyncRequests.rely(address(vaultFactory));
 
-        restrictionManager.rely(address(poolManager));
+        restrictedTransfers.rely(address(poolManager));
 
         // Setup Escrow Permissions
         escrow.rely(address(asyncRequests));
@@ -89,7 +88,7 @@ abstract contract Setup is BaseSetup, SharedStorage {
 
         // Permissions on factories
         vaultFactory.rely(address(poolManager));
-        trancheFactory.rely(address(poolManager));
+        tokenFactory.rely(address(poolManager));
 
         // TODO: Cycling of:
         // Actors and ERC7540 Vaults
