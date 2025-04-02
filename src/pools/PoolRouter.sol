@@ -116,13 +116,13 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IPoolRouter
-    function createPool(address admin, AssetId currency, IShareClassManager shareClassManager)
+    function createPool(address admin, AssetId currency, IShareClassManager shareClassManager_)
         external
         payable
         returns (PoolId poolId)
     {
         poolId = poolRegistry.registerPool(admin, sender.localCentrifugeId(), currency);
-        poolRegistry.updateDependency(poolId, bytes32("shareClassManager"), address(shareClassManager));
+        poolRegistry.updateDependency(poolId, bytes32("shareClassManager"), address(shareClassManager_));
     }
 
     /// @inheritdoc IPoolRouter
