@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 // Recon Deps
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
-import {Properties} from "../Properties.sol";
 import {vm} from "@chimera/Hevm.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
@@ -15,6 +14,8 @@ import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 import {RestrictedTransfers} from "src/vaults/token/RestrictedTransfers.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
+import {Properties} from "../properties/Properties.sol";
+
 // @dev A way to separately code and maintain a mocked implementation of `Gateway`
 // Based on
 // `Gateway.handle(bytes calldata message)`
@@ -22,7 +23,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
  * - deployNewTokenPoolAndShare Core function that deploys a Liquidity Pool
  *     - poolManager_registerAsset
  */
-abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
+abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
     using CastLib for *;
     using MessageLib for *;
 

@@ -5,7 +5,7 @@ import {MockERC20} from "@recon/MockERC20.sol";
 
 import {Setup} from "./Setup.sol";
 import {AsyncInvestmentState} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
-import {Ghosts} from "./Ghosts.sol";
+import {Ghosts} from "./helpers/Ghosts.sol";
 
 abstract contract BeforeAfter is Ghosts {
 

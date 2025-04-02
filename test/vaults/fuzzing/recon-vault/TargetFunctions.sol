@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 // Recon Deps
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
-import {Properties} from "./Properties.sol";
 import {vm} from "@chimera/Hevm.sol";
 
 // Dependencies
@@ -11,23 +10,23 @@ import {ERC20} from "src/misc/ERC20.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 
 // Component
-import {ShareTokenFunctions} from "./targets/ShareTokenFunctions.sol";
-import {GatewayMockFunctions} from "./targets/GatewayMockFunctions.sol";
-import {RestrictedTransfersFunctions} from "./targets/RestrictedTransfersFunctions.sol";
-import {VaultFunctions} from "./targets/VaultFunctions.sol";
-import {PoolManagerFunctions} from "./targets/PoolManagerFunctions.sol";
-import {VaultCallbacks} from "./targets/VaultCallbacks.sol";
+import {ShareTokenTargets} from "./targets/ShareTokenTargets.sol";
+import {GatewayMockTargets} from "./targets/GatewayMockTargets.sol";
+import {RestrictedTransfersTargets} from "./targets/RestrictedTransfersTargets.sol";
+import {VaultTargets} from "./targets/VaultTargets.sol";
+import {PoolManagerTargets} from "./targets/PoolManagerTargets.sol";
+import {VaultCallbackTargets} from "./targets/VaultCallbackTargets.sol";
 import {ManagerTargets} from "./targets/ManagerTargets.sol";
-
+import {Properties} from "./properties/Properties.sol";
 abstract contract TargetFunctions is
     BaseTargetFunctions,
     Properties,
-    ShareTokenFunctions,
-    GatewayMockFunctions,
-    RestrictedTransfersFunctions,
-    VaultFunctions,
-    PoolManagerFunctions,
-    VaultCallbacks, 
+    ShareTokenTargets,
+    GatewayMockTargets,
+    RestrictedTransfersTargets,
+    VaultTargets,
+    PoolManagerTargets,
+    VaultCallbackTargets, 
     ManagerTargets
 {
     /**

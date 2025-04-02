@@ -3,13 +3,14 @@ pragma solidity 0.8.28;
 
 // Recon Deps
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
-import {Properties} from "../Properties.sol";
 import {vm} from "@chimera/Hevm.sol";
+
+import {Properties} from "../properties/Properties.sol";
 
 // @dev A way to change targets
 // NOTE: There are many combinations
 // NOTE: Using these functions helps you easily keep track of what's going on
-abstract contract TargetSwitchingFunctions is BaseTargetFunctions, Properties {
+abstract contract TargetSwitchingTargets is BaseTargetFunctions, Properties {
     // Cycle through actors
     function changeActor(uint8 actorIndex) public {
         // Given actor swap to new actor

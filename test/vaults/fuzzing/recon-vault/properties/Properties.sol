@@ -5,7 +5,7 @@ import {Asserts} from "@chimera/Asserts.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 import {console2} from "forge-std/console2.sol";
 
-import {BeforeAfter} from "./BeforeAfter.sol";
+import {BeforeAfter} from "../BeforeAfter.sol";
 import {AsyncVaultCentrifugeProperties} from "./AsyncVaultCentrifugeProperties.sol";
 
 abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProperties {

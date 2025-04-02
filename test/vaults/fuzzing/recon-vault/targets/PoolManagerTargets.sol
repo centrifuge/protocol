@@ -3,15 +3,16 @@ pragma solidity 0.8.28;
 
 // Recon Deps
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
-import {Properties} from "../Properties.sol";
 import {vm} from "@chimera/Hevm.sol";
 
 // Dependencies
 import {ERC20} from "src/misc/ERC20.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 
+import {Properties} from "../properties/Properties.sol";
+
 // Only for Share
-abstract contract PoolManagerFunctions is BaseTargetFunctions, Properties {
+abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
     // TODO: Live comparison of TotalSupply of share class token
     // With our current storage value
 

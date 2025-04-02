@@ -7,7 +7,7 @@ import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 
 import {BeforeAfter} from "../BeforeAfter.sol";
-import {Properties} from "../Properties.sol";
+import {Properties} from "../properties/Properties.sol";
 
 
 // Target functions that are effectively inherited from the Actor and AssetManagers

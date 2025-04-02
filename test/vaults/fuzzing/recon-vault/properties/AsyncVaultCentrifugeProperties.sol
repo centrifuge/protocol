@@ -2,8 +2,9 @@
 pragma solidity 0.8.28;
 
 import {Asserts} from "@chimera/Asserts.sol";
-import {Setup} from "./Setup.sol";
-import {AsyncVaultProperties} from "./AsyncVaultProperties.sol";
+
+import {Setup} from "../Setup.sol";
+import {AsyncVaultProperties} from "../properties/AsyncVaultProperties.sol";
 
 /// @dev ERC-7540 Properties used by Centrifuge
 /// See `AsyncVaultProperties` for more properties that can be re-used in your project

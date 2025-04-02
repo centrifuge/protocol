@@ -9,8 +9,10 @@ import {console2} from "forge-std/console2.sol";
 import {Panic} from "@recon/Panic.sol";
 
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
-import "src/pools/PoolRouter.sol";
-import "src/misc/interfaces/IERC7726.sol";
+import {PoolRouter} from "src/pools/PoolRouter.sol";
+import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
+import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {Helpers} from "test/pools/fuzzing/recon-pools/utils/Helpers.sol";
 import {BeforeAfter, OpType} from "../BeforeAfter.sol";

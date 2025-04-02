@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {Asserts} from "@chimera/Asserts.sol";
 import {vm} from "@chimera/Hevm.sol";
 
-import {Setup} from "./Setup.sol";
+import {Setup} from "../Setup.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import "forge-std/console2.sol";

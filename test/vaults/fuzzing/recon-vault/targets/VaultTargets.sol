@@ -10,7 +10,7 @@ import {console2} from "forge-std/console2.sol";
 // Dependencies
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 
-import {Properties} from "../Properties.sol";
+import {Properties} from "../properties/Properties.sol";
 
 /**
  * A collection of handlers that interact with the Liquidity Pool
@@ -20,7 +20,7 @@ import {Properties} from "../Properties.sol";
  * - vault_emitRedeemClaimable
  * - vault_file
  */
-abstract contract VaultFunctions is BaseTargetFunctions, Properties {
+abstract contract VaultTargets is BaseTargetFunctions, Properties {
     /// @dev Get the balance of the current assetErc20 and _getActor()
     function _getTokenAndBalanceForVault() internal view returns (uint256) {
         // Token

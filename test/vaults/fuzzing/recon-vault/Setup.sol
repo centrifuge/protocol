@@ -26,7 +26,7 @@ import {Root} from "src/common/Root.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 
 // Storage
-import {SharedStorage} from "./SharedStorage.sol";
+import {SharedStorage} from "./helpers/SharedStorage.sol";
 import {MockMessageProcessor} from "./mocks/MockMessageProcessor.sol";
 
 abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager {

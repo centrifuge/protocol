@@ -14,12 +14,12 @@ import {ERC20} from "src/misc/ERC20.sol";
 import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 import {RestrictedTransfers} from "src/vaults/token/RestrictedTransfers.sol";
 
-import {Properties} from "../Properties.sol";
+import {Properties} from "../properties/Properties.sol";
 
 /// @dev Separate the 5 Callbacks that go from Gateway to AsyncRequests
 /**
  */
-abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
+abstract contract VaultCallbackTargets is BaseTargetFunctions, Properties {
     /// @dev Callback to requestDeposit
     function asyncRequests_fulfillDepositRequest(
         uint128 currencyPayout,
