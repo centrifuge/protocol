@@ -33,9 +33,6 @@ interface IMessageDispatcher is IRootMessageSender, IVaultMessageSender, IPoolMe
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();
 
-    /// @notice Dispatched when a message is attempted to be executed on the same chain, when that is not allowed.
-    error LocalExecutionNotAllowed();
-
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
     /// Accepts a `bytes32` representation of 'poolRegistry' string value.
