@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+
+import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
 interface ISafe {
     function isOwner(address signer) external view returns (bool);
@@ -22,6 +26,14 @@ interface IGuardian {
     /// Accepts a `bytes32` representation of 'sender' string value.
     /// @param data New value given to the `what` parameter
     function file(bytes32 what, address data) external;
+
+    /// @notice Registers a new pool
+    function createPool(address admin, AssetId currency, IShareClassManager shareClassManager)
+        external
+        returns (PoolId poolId);
+
+    /// @notice Updates metadata for a chain
+    function updateChain(uint16 chainId, string calldata name, string calldata symbol) external;
 
     /// @notice Pause the protocol
     /// @dev callable by both safe and owners

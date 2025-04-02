@@ -73,9 +73,10 @@ contract TestEndToEnd is Test {
         (PoolsDeployer cp, VaultsDeployer cv) = _getDeploys(sameChain);
         uint16 cvChainId = cv.messageDispatcher().localCentrifugeId();
 
-        vm.startPrank(FM);
+        vm.prank(address(safeAdminA));
+        PoolId poolId = cp.guardian().createPool(FM, deployA.USD(), deployA.multiShareClass());
 
-        PoolId poolId = cp.poolRouter().createPool(FM, deployA.USD(), deployA.multiShareClass());
+        vm.startPrank(FM);
 
         (bytes[] memory c, uint256 i) = (new bytes[](1), 0);
         c[i++] = abi.encodeWithSelector(PoolRouter.notifyPool.selector, cvChainId);

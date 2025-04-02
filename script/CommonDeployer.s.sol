@@ -55,7 +55,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         messageDispatcher = new MessageDispatcher(chainId, root, gateway, deployer);
 
         adminSafe = adminSafe_;
-        guardian = new Guardian(adminSafe, root, messageDispatcher);
+        guardian = new Guardian(ISafe(deployer), root, messageDispatcher);
 
         _commonRegister();
         _commonRely();
@@ -95,6 +95,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         gateway.file("adapters", chainId, adapters);
         IAuth(address(adapter)).rely(address(root));
         IAuth(address(adapter)).deny(deployer);
+        guardian.file("safe", address(adminSafe));
     }
 
     function removeCommonDeployerAccess(address deployer) public {

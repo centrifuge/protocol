@@ -89,6 +89,7 @@ contract PoolsDeployer is CommonDeployer {
         poolRouter.file("sender", address(messageDispatcher));
 
         guardian.file("poolRouter", address(poolRouter));
+        guardian.file("assetRegistry", address(assetRegistry));
     }
 
     function _poolsInitialConfig() private {

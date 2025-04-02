@@ -37,29 +37,29 @@ contract AssetRegistry is ERC6909Fungible, IAssetRegistry {
     }
 
     /// @inheritdoc IAssetRegistry
-    function updateChain(uint16 chainId, string calldata name, string calldata symbol) external auth {
+    function updateChain(uint16 chainId, string calldata name_, string calldata symbol_) external auth {
         Chain storage chain_ = chain[chainId];
-        chain_.name = name;
-        chain_.symbol = symbol;
+        chain_.name = name_;
+        chain_.symbol = symbol_;
 
-        emit ChainUpdate(chainId, name, symbol);
+        emit ChainUpdate(chainId, name_, symbol_);
     }
 
     /// @inheritdoc IERC6909MetadataExt
     function name(uint256 asset_) external view returns (string memory) {
         AssetId assetId = AssetId.wrap(asset_.toUint128());
-        Chain memory chain = chain[assetId.chainId()];
+        Chain memory chain_ = chain[assetId.chainId()];
 
-        if (bytes(chain.name).length == 0) return asset[assetId].name;
-        return string.concat(chain.name, " ", asset[assetId].name);
+        if (bytes(chain_.name).length == 0) return asset[assetId].name;
+        return string.concat(chain_.name, " ", asset[assetId].name);
     }
 
     /// @inheritdoc IERC6909MetadataExt
     function symbol(uint256 asset_) external view returns (string memory) {
         AssetId assetId = AssetId.wrap(asset_.toUint128());
-        Chain memory chain = chain[assetId.chainId()];
+        Chain memory chain_ = chain[assetId.chainId()];
 
-        return string.concat(chain.symbol, asset[assetId].symbol);
+        return string.concat(chain_.symbol, asset[assetId].symbol);
     }
 
     /// @inheritdoc IERC6909MetadataExt
