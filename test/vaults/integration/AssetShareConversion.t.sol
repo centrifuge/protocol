@@ -4,16 +4,13 @@ pragma solidity 0.8.28;
 import "test/vaults/BaseTest.sol";
 
 contract AssetShareConversionTest is BaseTest {
-    function testAssetShareConversion(uint64 poolId, bytes16 scId) public {
-        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
-
+    function testAssetShareConversion(bytes16 scId) public {
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
         uint8 SHARE_TOKEN_DECIMALS = 18; // Like DAI
 
         ERC20 asset = _newErc20("Asset", "A", INVESTMENT_CURRENCY_DECIMALS);
-        (address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, poolId, SHARE_TOKEN_DECIMALS, restrictedTransfers, "", "", scId, address(asset), 0, 0
-        );
+        (uint64 poolId, address vault_, uint128 assetId) =
+            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, restrictedTransfers, scId, address(asset), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
 
@@ -59,16 +56,13 @@ contract AssetShareConversionTest is BaseTest {
         assertEq(vault.pricePerShare(), 1.2e6);
     }
 
-    function testAssetShareConversionWithInverseDecimals(uint64 poolId, bytes16 scId) public {
-        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
-
+    function testAssetShareConversionWithInverseDecimals(bytes16 scId) public {
         uint8 INVESTMENT_CURRENCY_DECIMALS = 18; // 18, like DAI
         uint8 SHARE_TOKEN_DECIMALS = 6; // Like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        (address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, poolId, SHARE_TOKEN_DECIMALS, restrictedTransfers, "", "", scId, address(asset), 0, 0
-        );
+        (uint64 poolId, address vault_, uint128 assetId) =
+            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, restrictedTransfers, scId, address(asset), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
         centrifugeChain.updateSharePrice(poolId, scId, assetId, 1000000, uint64(block.timestamp));
@@ -107,16 +101,13 @@ contract AssetShareConversionTest is BaseTest {
         assertEq(vault.pricePerShare(), 1.2e18);
     }
 
-    function testPriceWorksAfterRemovingVault(uint64 poolId, bytes16 scId) public {
-        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
-
+    function testPriceWorksAfterRemovingVault(bytes16 scId) public {
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
         uint8 SHARE_TOKEN_DECIMALS = 18; // Like DAI
 
         ERC20 asset = _newErc20("Asset", "A", INVESTMENT_CURRENCY_DECIMALS);
-        (address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, poolId, SHARE_TOKEN_DECIMALS, restrictedTransfers, "", "", scId, address(asset), 0, 0
-        );
+        (uint64 poolId, address vault_, uint128 assetId) =
+            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, restrictedTransfers, scId, address(asset), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken(address(AsyncVault(vault_).share()));
 

@@ -37,7 +37,7 @@ contract SyncDepositTest is BaseTest {
         erc20.mint(self, amount);
 
         // Deploy sync vault
-        (address syncVault_, uint128 assetId) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
+        (, address syncVault_, uint128 assetId) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
         SyncDepositVault syncVault = SyncDepositVault(syncVault_);
         IShareToken shareToken = IShareToken(address(syncVault.share()));
         centrifugeChain.updateSharePrice(

@@ -24,22 +24,24 @@ contract TestMessageLibIdentities is Test {
 
     function testInitiateMessageRecovery() public pure {
         MessageLib.InitiateMessageRecovery memory a =
-            MessageLib.InitiateMessageRecovery({hash: bytes32("hash"), adapter: bytes32("adapter")});
+            MessageLib.InitiateMessageRecovery({hash: bytes32("hash"), adapter: bytes32("adapter"), domainId: 23});
         MessageLib.InitiateMessageRecovery memory b = MessageLib.deserializeInitiateMessageRecovery(a.serialize());
 
         assertEq(a.hash, b.hash);
         assertEq(a.adapter, b.adapter);
+        assertEq(a.domainId, b.domainId);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
     }
 
     function testDisputeMessageRecovery() public pure {
         MessageLib.DisputeMessageRecovery memory a =
-            MessageLib.DisputeMessageRecovery({hash: bytes32("hash"), adapter: bytes32("adapter")});
+            MessageLib.DisputeMessageRecovery({hash: bytes32("hash"), adapter: bytes32("adapter"), domainId: 23});
         MessageLib.DisputeMessageRecovery memory b = MessageLib.deserializeDisputeMessageRecovery(a.serialize());
 
         assertEq(a.hash, b.hash);
         assertEq(a.adapter, b.adapter);
+        assertEq(a.domainId, b.domainId);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
     }

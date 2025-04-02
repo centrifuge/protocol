@@ -4,16 +4,13 @@ pragma solidity 0.8.28;
 import "test/vaults/BaseTest.sol";
 
 contract DepositRedeem is BaseTest {
-    function testPartialDepositAndRedeemExecutions(uint64 poolId, bytes16 scId) public {
-        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
-
+    function testPartialDepositAndRedeemExecutions(bytes16 scId) public {
         uint8 SHARE_TOKEN_DECIMALS = 18; // Like DAI
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        (address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, poolId, SHARE_TOKEN_DECIMALS, restrictedTransfers, "", "", scId, address(asset), 0, 0
-        );
+        (uint64 poolId, address vault_, uint128 assetId) =
+            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, restrictedTransfers, scId, address(asset), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
 
         centrifugeChain.updateSharePrice(poolId, scId, assetId, 1000000000000000000, uint64(block.timestamp));

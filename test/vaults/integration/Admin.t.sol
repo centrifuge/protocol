@@ -14,8 +14,6 @@ contract AdminTest is BaseTest {
     using MessageLib for *;
     using CastLib for *;
 
-    uint16 constant CHAIN_ID = 1;
-
     function testDeployment() public view {
         // values set correctly
         assertEq(root.paused(), false);
@@ -230,7 +228,7 @@ contract AdminTest is BaseTest {
         deploySimpleVault(VaultKind.Async);
         address clumsyUser = vm.addr(0x1234);
         address vault_ =
-            asyncRequests.vault(POOL_A, bytes16(bytes("1")), poolManager.assetToId(address(erc20), erc20TokenId));
+            asyncRequests.vault(POOL_A.raw(), bytes16(bytes("1")), poolManager.assetToId(address(erc20), erc20TokenId));
         AsyncVault vault = AsyncVault(vault_);
         address asset_ = vault.asset();
         ERC20 asset = ERC20(asset_);
@@ -279,10 +277,9 @@ contract AdminTest is BaseTest {
         assertEq(root.endorsed(router), false);
     }
 
-    /* TODO: Uncomment when guardian has access again to dispute messages
     function testDisputeRecovery() public {
         MockManager poolManager = new MockManager();
-        gateway.file("adapters", testAdapters);
+        gateway.file("adapters", OTHER_CHAIN_ID, testAdapters);
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
@@ -293,29 +290,32 @@ contract AdminTest is BaseTest {
         assertEq(poolManager.received(message), 0);
 
         // Initiate recovery
-    _send(adapter1, MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
+        _send(
+            adapter1,
+            MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32(), OTHER_CHAIN_ID)
+                .serialize()
+        );
 
         vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
-        gateway.executeMessageRecovery(adapter3, proof);
+        gateway.executeMessageRecovery(OTHER_CHAIN_ID, adapter3, proof);
 
         vm.prank(makeAddr("unauthorized"));
         vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
-        guardian.disputeMessageRecovery(adapter3, keccak256(proof));
+        guardian.disputeMessageRecovery(THIS_CHAIN_ID, OTHER_CHAIN_ID, adapter3, keccak256(proof));
 
         // Dispute recovery
         vm.prank(address(adminSafe));
-        guardian.disputeMessageRecovery(adapter3, keccak256(proof));
+        guardian.disputeMessageRecovery(THIS_CHAIN_ID, OTHER_CHAIN_ID, adapter3, keccak256(proof));
 
         // Check that recovery is not possible anymore
         vm.expectRevert(bytes("Gateway/message-recovery-not-initiated"));
-        gateway.executeMessageRecovery(adapter3, proof);
+        gateway.executeMessageRecovery(OTHER_CHAIN_ID, adapter3, proof);
         assertEq(poolManager.received(message), 0);
     }
-    */
 
     function _send(MockAdapter adapter, bytes memory message) internal {
         vm.prank(address(adapter));
-        gateway.handle(CHAIN_ID, message);
+        gateway.handle(OTHER_CHAIN_ID, message);
     }
 
     function _formatMessageProof(bytes memory message) internal pure returns (bytes memory) {

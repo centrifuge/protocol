@@ -13,7 +13,7 @@ import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {newAssetId} from "src/common/types/AssetId.sol";
-import {newPoolId} from "src/common/types/PoolId.sol";
+import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 
 // core contracts
 import {AsyncRequests} from "src/vaults/AsyncRequests.sol";
@@ -64,13 +64,12 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     uint16 public constant OTHER_CHAIN_ID = 1;
     uint16 public constant THIS_CHAIN_ID = OTHER_CHAIN_ID + 100;
     uint32 public constant BLOCK_CHAIN_ID = 23;
-    uint64 immutable POOL_A = newPoolId(OTHER_CHAIN_ID, 1).raw();
+    PoolId public immutable POOL_A = newPoolId(OTHER_CHAIN_ID, 1);
     uint256 public erc20TokenId = 0;
     uint256 public defaultErc6909TokenId = 16;
     uint128 public defaultAssetId = newAssetId(THIS_CHAIN_ID, 1).raw();
     uint128 public defaultPrice = 1 * 10 ** 18;
     uint8 public defaultDecimals = 8;
-    uint32 public defaultPoolId = 5;
     bytes16 public defaultShareClassId = bytes16(bytes("1"));
 
     function setUp() public virtual {
@@ -87,9 +86,9 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
         // deploy mock adapters
 
-        adapter1 = new MockAdapter(gateway);
-        adapter2 = new MockAdapter(gateway);
-        adapter3 = new MockAdapter(gateway);
+        adapter1 = new MockAdapter(OTHER_CHAIN_ID, gateway);
+        adapter2 = new MockAdapter(OTHER_CHAIN_ID, gateway);
+        adapter3 = new MockAdapter(OTHER_CHAIN_ID, gateway);
 
         adapter1.setReturn("estimate", uint256(1 gwei));
         adapter2.setReturn("estimate", uint256(1.25 gwei));
@@ -100,7 +99,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         testAdapters.push(adapter3);
 
         // wire contracts
-        wire(adapter1, address(this));
+        wire(OTHER_CHAIN_ID, adapter1, address(this));
         // remove deployer access
         // removeVaultsDeployerAccess(address(adapter)); // need auth permissions in tests
 
@@ -109,7 +108,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         erc20 = _newErc20("X's Dollar", "USDX", 6);
         erc6909 = new MockERC6909();
 
-        gateway.file("adapters", testAdapters);
+        gateway.file("adapters", OTHER_CHAIN_ID, testAdapters);
         gateway.file("gasService", address(mockedGasService));
 
         mockedGasService.setReturn("estimate", uint256(0.5 gwei));
@@ -165,74 +164,57 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     // helpers
     function deployVault(
         VaultKind vaultKind,
-        uint64 poolId,
         uint8 shareTokenDecimals,
         address hook,
-        string memory tokenName,
-        string memory tokenSymbol,
         bytes16 scId,
         address asset,
         uint256 assetTokenId,
-        uint16 destinationChain
-    ) public returns (address vaultAddress, uint128 assetId) {
+        uint16 /* TODO: destinationChain */
+    ) public returns (uint64 poolId, address vaultAddress, uint128 assetId) {
         if (poolManager.assetToId(asset, assetTokenId) == 0) {
-            assetId = poolManager.registerAsset(asset, assetTokenId, destinationChain);
+            assetId = poolManager.registerAsset(asset, assetTokenId, OTHER_CHAIN_ID);
         } else {
             assetId = poolManager.assetToId(asset, assetTokenId);
         }
 
-        if (poolManager.shareToken(poolId, scId) == address(0)) {
-            centrifugeChain.addPool(poolId);
-            centrifugeChain.addShareClass(poolId, scId, tokenName, tokenSymbol, shareTokenDecimals, hook);
+        if (poolManager.shareToken(POOL_A.raw(), scId) == address(0)) {
+            if (poolManager.pools(POOL_A.raw()) == 0) {
+                centrifugeChain.addPool(POOL_A.raw());
+            }
+            centrifugeChain.addShareClass(POOL_A.raw(), scId, "name", "symbol", shareTokenDecimals, hook);
         }
 
-        poolManager.updateSharePrice(poolId, scId, assetId, uint128(10 ** 18), uint64(block.timestamp));
+        poolManager.updateSharePrice(POOL_A.raw(), scId, assetId, uint128(10 ** 18), uint64(block.timestamp));
+
+        bytes32 vaultFactory = _vaultKindToVaultFactory(vaultKind);
 
         // Trigger new vault deployment via UpdateContract
-        bytes32 vaultFactory = _vaultKindToVaultFactory(vaultKind);
-        bytes memory vaultUpdate = MessageLib.UpdateContractVaultUpdate({
-            vaultOrFactory: vaultFactory,
-            assetId: assetId,
-            kind: uint8(VaultUpdateKind.DeployAndLink)
-        }).serialize();
-        poolManager.update(poolId, scId, vaultUpdate);
-        vaultAddress = IShareToken(poolManager.shareToken(poolId, scId)).vault(asset);
-    }
-
-    function deployVault(
-        VaultKind vaultKind,
-        uint64 poolId,
-        uint8 decimals,
-        string memory tokenName,
-        string memory tokenSymbol,
-        bytes16 scId
-    ) public returns (address vaultAddress, uint128 assetId) {
-        return deployVault(
-            vaultKind,
-            poolId,
-            decimals,
-            restrictedTransfers,
-            tokenName,
-            tokenSymbol,
+        poolManager.update(
+            POOL_A.raw(),
             scId,
-            address(erc20),
-            erc20TokenId,
-            OTHER_CHAIN_ID
+            MessageLib.UpdateContractVaultUpdate({
+                vaultOrFactory: bytes32(bytes20(vaultFactory)),
+                assetId: assetId,
+                kind: uint8(VaultUpdateKind.DeployAndLink)
+            }).serialize()
         );
+        vaultAddress = IShareToken(poolManager.shareToken(POOL_A.raw(), scId)).vault(asset);
+        poolId = POOL_A.raw();
     }
 
-    function deploySimpleVault(VaultKind vaultKind) public returns (address vaultAddress, uint128 assetId) {
+    function deployVault(VaultKind vaultKind, uint8 decimals, bytes16 scId)
+        public
+        returns (uint64 poolId, address vaultAddress, uint128 assetId)
+    {
+        return deployVault(vaultKind, decimals, restrictedTransfers, scId, address(erc20), erc20TokenId, OTHER_CHAIN_ID);
+    }
+
+    function deploySimpleVault(VaultKind vaultKind)
+        public
+        returns (uint64 poolId, address vaultAddress, uint128 assetId)
+    {
         return deployVault(
-            vaultKind,
-            POOL_A,
-            6,
-            restrictedTransfers,
-            "name",
-            "symbol",
-            bytes16(bytes("1")),
-            address(erc20),
-            erc20TokenId,
-            OTHER_CHAIN_ID
+            vaultKind, 6, restrictedTransfers, bytes16(bytes("1")), address(erc20), erc20TokenId, OTHER_CHAIN_ID
         );
     }
 

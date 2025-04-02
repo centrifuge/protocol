@@ -188,6 +188,7 @@ interface IVaultRouter is IMulticall, IRecoverable {
     function getVault(uint64 poolId, bytes16 scId, address asset) external view returns (address);
 
     /// @notice Check IGateway.estimate
+    ///         If the destination and source chain ID are the same, this will always return 0.
     /// @param chainId destination chain
     function estimate(uint16 chainId, bytes calldata payload) external view returns (uint256 amount);
 

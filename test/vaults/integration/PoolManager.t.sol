@@ -256,7 +256,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         vm.assume(amount > 0);
         uint64 validUntil = uint64(block.timestamp + 7 days);
         bytes32 centChainAddress = makeAddr("centChainAddress").toBytes32();
-        (address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
 
@@ -270,11 +270,11 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
         vm.expectRevert(bytes("PoolManager/unknown-token"));
-        poolManager.transferShares(poolId + 1, scId, 0, centChainAddress, amount);
+        poolManager.transferShares(poolId + 1, scId, OTHER_CHAIN_ID, centChainAddress, amount);
 
         // send the transfer from EVM -> Cent Chain
         shareToken.approve(address(poolManager), amount);
-        poolManager.transferShares(poolId, scId, 0, centChainAddress, amount);
+        poolManager.transferShares(poolId, scId, OTHER_CHAIN_ID, centChainAddress, amount);
         assertEq(shareToken.balanceOf(address(this)), 0);
 
         // Finally, verify the connector called `adapter.send`
@@ -292,7 +292,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         vm.assume(amount > 0);
         uint64 validUntil = uint64(block.timestamp + 7 days);
         address destinationAddress = makeAddr("destinationAddress");
-        (address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
@@ -316,7 +316,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         address destinationAddress = makeAddr("destinationAddress");
         vm.assume(amount > 0);
 
-        (address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
 
@@ -345,7 +345,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
     function testUpdateMember(uint64 validUntil) public {
         validUntil = uint64(bound(validUntil, block.timestamp, type(uint64).max));
-        (address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
 
@@ -368,7 +368,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
     }
 
     function testFreezeAndUnfreeze() public {
-        (address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
@@ -403,7 +403,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
     }
 
     function testUpdateShareMetadata() public {
-        (address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
@@ -431,7 +431,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
     }
 
     function testUpdateShareHook() public {
-        (address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
@@ -456,7 +456,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
     }
 
     function testUpdateRestriction() public {
-        (address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
@@ -523,7 +523,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
     }
 
     function testVaultMigration() public {
-        (address oldVault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address oldVault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
 
         AsyncVault oldVault = AsyncVault(oldVault_);
         uint64 poolId = oldVault.poolId();
@@ -552,7 +552,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         address destinationAddress = makeAddr("destinationAddress");
         vm.assume(amount > 0);
 
-        (address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
         shareToken.approve(address(poolManager), amount);
@@ -923,7 +923,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         emit IGateway.SendMessage(bytes(""));
         emit IGateway.SendMessage(bytes(""));
         poolManager.registerAsset(address(erc20), 0, OTHER_CHAIN_ID);
-        poolManager.registerAsset(address(erc20), 0, OTHER_CHAIN_ID + 1);
+        poolManager.registerAsset(address(erc20), 0, OTHER_CHAIN_ID);
     }
 
     function testRegisterAsset_decimalsMissing() public {

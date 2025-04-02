@@ -11,9 +11,8 @@ contract RedeemTest is BaseTest {
     function testFreelyTransferable(uint256 amount) public {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
-        (address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, 5, 6, freelyTransferable, "name", "symbol", bytes16(bytes("1")), address(erc20), 0, 0
-        );
+        (, address vault_, uint128 assetId) =
+            deployVault(VaultKind.Async, 6, freelyTransferable, bytes16(bytes("1")), address(erc20), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
         FreelyTransferable hook = FreelyTransferable(freelyTransferable);
         IShareToken shareToken = IShareToken(address(vault.share()));

@@ -83,8 +83,8 @@ library MessageLib {
     // forgefmt: disable-next-item
     uint256 constant MESSAGE_LENGTHS =
         (33  << uint8(MessageType.MessageProof) * 8) +
-        (65  << uint8(MessageType.InitiateMessageRecovery) * 8) +
-        (65  << uint8(MessageType.DisputeMessageRecovery) * 8) +
+        (67  << uint8(MessageType.InitiateMessageRecovery) * 8) +
+        (67  << uint8(MessageType.DisputeMessageRecovery) * 8) +
         (33  << uint8(MessageType.ScheduleUpgrade) * 8) +
         (33  << uint8(MessageType.CancelUpgrade) * 8) +
         (161 << uint8(MessageType.RecoverTokens) * 8) +
@@ -174,6 +174,7 @@ library MessageLib {
     struct InitiateMessageRecovery {
         bytes32 hash;
         bytes32 adapter;
+        uint16 domainId;
     }
 
     function deserializeInitiateMessageRecovery(bytes memory data)
@@ -182,11 +183,12 @@ library MessageLib {
         returns (InitiateMessageRecovery memory)
     {
         require(messageType(data) == MessageType.InitiateMessageRecovery, UnknownMessageType());
-        return InitiateMessageRecovery({hash: data.toBytes32(1), adapter: data.toBytes32(33)});
+        return
+            InitiateMessageRecovery({hash: data.toBytes32(1), adapter: data.toBytes32(33), domainId: data.toUint16(65)});
     }
 
     function serialize(InitiateMessageRecovery memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.InitiateMessageRecovery, t.hash, t.adapter);
+        return abi.encodePacked(MessageType.InitiateMessageRecovery, t.hash, t.adapter, t.domainId);
     }
 
     //---------------------------------------
@@ -196,6 +198,7 @@ library MessageLib {
     struct DisputeMessageRecovery {
         bytes32 hash;
         bytes32 adapter;
+        uint16 domainId;
     }
 
     function deserializeDisputeMessageRecovery(bytes memory data)
@@ -204,11 +207,12 @@ library MessageLib {
         returns (DisputeMessageRecovery memory)
     {
         require(messageType(data) == MessageType.DisputeMessageRecovery, UnknownMessageType());
-        return DisputeMessageRecovery({hash: data.toBytes32(1), adapter: data.toBytes32(33)});
+        return
+            DisputeMessageRecovery({hash: data.toBytes32(1), adapter: data.toBytes32(33), domainId: data.toUint16(65)});
     }
 
     function serialize(DisputeMessageRecovery memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.DisputeMessageRecovery, t.hash, t.adapter);
+        return abi.encodePacked(MessageType.DisputeMessageRecovery, t.hash, t.adapter, t.domainId);
     }
 
     //---------------------------------------

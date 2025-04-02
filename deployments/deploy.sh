@@ -1,6 +1,17 @@
 #!/bin/bash
 
 # Basic usage: ./development/deploy.sh <Localhost|Axelar|Wormhole> $2
+#
+# Expect a .env file with at least the following:
+#
+# PRIVATE_KEY=
+# ETHERSCAN_KEY=
+# ETHERSCAN_URL=
+# RPC_URL=
+# CHAIN_ID=
+# CENTRIFUGE_ID=
+# DEPLOYMENT_SALT=
+# ADMIN=
 
 source .env
 

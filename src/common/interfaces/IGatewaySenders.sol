@@ -13,6 +13,23 @@ interface ILocalCentrifugeId {
 }
 
 /// @notice Interface for dispatch-only gateway
+interface IRootMessageSender {
+    /// @notice Creates and send the message
+    function sendScheduleUpgrade(uint16 chainId, bytes32 target) external;
+
+    /// @notice Creates and send the message
+    function sendCancelUpgrade(uint16 chainId, bytes32 target) external;
+
+    /// @notice Creates and send the message
+    function sendInitiateMessageRecovery(uint16 chainId, uint16 adapterChainId, bytes32 adapter, bytes32 hash)
+        external;
+
+    /// @notice Creates and send the message
+    function sendDisputeMessageRecovery(uint16 chainId, uint16 adapterChainId, bytes32 adapter, bytes32 hash)
+        external;
+}
+
+/// @notice Interface for dispatch-only gateway
 interface IPoolMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
     function sendNotifyPool(uint16 chainId, PoolId poolId) external;

@@ -29,7 +29,7 @@ contract FactoryTest is Test {
         root = address(new Root(48 hours, address(this)));
     }
 
-    function testTokenFactoryIsDeterministicAcrossChains(uint64 poolId, bytes16 scId) public {
+    function testTokenFactoryIsDeterministicAcrossChains(bytes16 scId) public {
         if (vm.envOr("FORK_TESTS", false)) {
             vm.setEnv("DEPLOYMENT_SALT", "0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563");
             vm.selectFork(mainnetFork);
@@ -37,17 +37,15 @@ contract FactoryTest is Test {
             testSetup1.setUp();
             testSetup1.deployVault(
                 VaultKind.Async,
-                poolId,
                 18,
                 testSetup1.restrictedTransfers(),
-                "",
-                "",
-                scId,
+                bytes16(bytes("1")),
                 address(testSetup1.erc20()),
                 0,
                 0
             );
-            address token1 = PoolManagerLike(address(testSetup1.poolManager())).getShare(poolId, scId);
+            address token1 =
+                PoolManagerLike(address(testSetup1.poolManager())).getShare(testSetup1.POOL_A().raw(), scId);
             address root1 = address(testSetup1.root());
 
             vm.selectFork(polygonFork);
@@ -55,17 +53,15 @@ contract FactoryTest is Test {
             testSetup2.setUp();
             testSetup2.deployVault(
                 VaultKind.Async,
-                poolId,
                 18,
                 testSetup2.restrictedTransfers(),
-                "",
-                "",
-                scId,
+                bytes16(bytes("1")),
                 address(testSetup2.erc20()),
                 0,
                 0
             );
-            address token2 = PoolManagerLike(address(testSetup2.poolManager())).getShare(poolId, scId);
+            address token2 =
+                PoolManagerLike(address(testSetup2.poolManager())).getShare(testSetup2.POOL_A().raw(), scId);
             address root2 = address(testSetup2.root());
 
             assertEq(address(root1), address(root2));

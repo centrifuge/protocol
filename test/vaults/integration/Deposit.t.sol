@@ -6,7 +6,6 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import "test/vaults/BaseTest.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 
 contract DepositTest is BaseTest {
     using MessageLib for *;
@@ -29,7 +28,7 @@ contract DepositTest is BaseTest {
 
         uint128 price = 2 * 10 ** 18;
 
-        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
         centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
@@ -152,32 +151,32 @@ contract DepositTest is BaseTest {
         vm.deal(address(this), 1 ether);
 
         (, uint256 gasPerMessage) = gateway.estimate(OTHER_CHAIN_ID, "PAYLOAD_IS_IRRELEVANT");
-        gateway.subsidizePool{value: gasPerMessage}(PoolId.wrap(POOL_A));
+        gateway.subsidizePool{value: gasPerMessage}(POOL_A);
 
-        assertEq(gateway.subsidy(PoolId.wrap(POOL_A)), gasPerMessage);
+        assertEq(gateway.subsidy(POOL_A), gasPerMessage);
 
         // One outgoing requestDeposit message
         _testDepositMint(amount, false);
 
-        assertEq(gateway.subsidy(PoolId.wrap(POOL_A)), 0);
+        assertEq(gateway.subsidy(POOL_A), 0);
     }
 
-    function testPartialDepositExecutions(uint64 poolId, bytes16 scId) public {
-        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
-
+    function testPartialDepositExecutions() public {
         uint8 SHARE_TOKEN_DECIMALS = 18; // Like DAI
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        (address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, poolId, SHARE_TOKEN_DECIMALS, restrictedTransfers, "", "", scId, address(asset), 0, 0
+        (uint64 poolId, address vault_, uint128 assetId) = deployVault(
+            VaultKind.Async, SHARE_TOKEN_DECIMALS, restrictedTransfers, bytes16(bytes("1")), address(asset), 0, 0
         );
         AsyncVault vault = AsyncVault(vault_);
-        centrifugeChain.updateSharePrice(poolId, scId, assetId, 1000000000000000000, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(
+            poolId, vault.trancheId(), assetId, 1000000000000000000, uint64(block.timestamp)
+        );
 
         // invest
         uint256 investmentAmount = 100000000; // 100 * 10**6
-        centrifugeChain.updateMember(poolId, scId, self, type(uint64).max);
+        centrifugeChain.updateMember(poolId, vault.trancheId(), self, type(uint64).max);
         asset.approve(vault_, investmentAmount);
         asset.mint(self, investmentAmount);
         vault.requestDeposit(investmentAmount, self, self);
@@ -187,7 +186,7 @@ contract DepositTest is BaseTest {
         uint128 assets = 50000000; // 50 * 10**6
         uint128 firstSharePayout = 35714285714285714285; // 50 * 10**18 / 1.4, rounded down
         centrifugeChain.isFulfilledDepositRequest(
-            poolId, scId, bytes32(bytes20(self)), _assetId, assets, firstSharePayout
+            poolId, vault.trancheId(), bytes32(bytes20(self)), _assetId, assets, firstSharePayout
         );
 
         (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
@@ -196,7 +195,7 @@ contract DepositTest is BaseTest {
         // second trigger executed collectInvest of the second 50% at a price of 1.2
         uint128 secondSharePayout = 41666666666666666666; // 50 * 10**18 / 1.2, rounded down
         centrifugeChain.isFulfilledDepositRequest(
-            poolId, scId, bytes32(bytes20(self)), _assetId, assets, secondSharePayout
+            poolId, vault.trancheId(), bytes32(bytes20(self)), _assetId, assets, secondSharePayout
         );
 
         (,, depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
@@ -320,7 +319,7 @@ contract DepositTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         address receiver = makeAddr("receiver");
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
@@ -372,7 +371,7 @@ contract DepositTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         address receiver = makeAddr("receiver");
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
@@ -423,22 +422,22 @@ contract DepositTest is BaseTest {
         assertApproxEqAbs(erc20.balanceOf(address(escrow)), amount, 1);
     }
 
-    function testDepositAndRedeemPrecision(uint64 poolId, bytes16 scId) public {
-        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
-
+    function testDepositAndRedeemPrecision() public {
         uint8 SHARE_TOKEN_DECIMALS = 18; // Like DAI
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        (address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, poolId, SHARE_TOKEN_DECIMALS, restrictedTransfers, "", "", scId, address(asset), 0, 0
+        (uint64 poolId, address vault_, uint128 assetId) = deployVault(
+            VaultKind.Async, SHARE_TOKEN_DECIMALS, restrictedTransfers, bytes16(bytes("1")), address(asset), 0, 0
         );
         AsyncVault vault = AsyncVault(vault_);
-        centrifugeChain.updateSharePrice(poolId, scId, assetId, 1000000000000000000, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(
+            poolId, vault.trancheId(), assetId, 1000000000000000000, uint64(block.timestamp)
+        );
 
         // invest
         uint256 investmentAmount = 100000000; // 100 * 10**6
-        centrifugeChain.updateMember(poolId, scId, self, type(uint64).max);
+        centrifugeChain.updateMember(poolId, vault.trancheId(), self, type(uint64).max);
         asset.approve(vault_, investmentAmount);
         asset.mint(self, investmentAmount);
         vault.requestDeposit(investmentAmount, self, self);
@@ -448,7 +447,7 @@ contract DepositTest is BaseTest {
         uint128 assets = 50000000; // 50 * 10**6
         uint128 firstSharePayout = 41666666666666666666; // 50 * 10**18 / 1.2, rounded down
         centrifugeChain.isFulfilledDepositRequest(
-            poolId, scId, bytes32(bytes20(self)), _assetId, assets, firstSharePayout
+            poolId, vault.trancheId(), bytes32(bytes20(self)), _assetId, assets, firstSharePayout
         );
 
         // assert deposit & mint values adjusted
@@ -463,7 +462,7 @@ contract DepositTest is BaseTest {
         assets = 50000000; // 50 * 10**6
         uint128 secondSharePayout = 35714285714285714285; // 50 * 10**18 / 1.4, rounded down
         centrifugeChain.isFulfilledDepositRequest(
-            poolId, scId, bytes32(bytes20(self)), _assetId, assets, secondSharePayout
+            poolId, vault.trancheId(), bytes32(bytes20(self)), _assetId, assets, secondSharePayout
         );
 
         // collect the share class tokens
@@ -482,7 +481,7 @@ contract DepositTest is BaseTest {
         asset.mint(address(escrow), assets - investmentAmount);
 
         centrifugeChain.isFulfilledRedeemRequest(
-            poolId, scId, bytes32(bytes20(self)), _assetId, assets, firstSharePayout + secondSharePayout
+            poolId, vault.trancheId(), bytes32(bytes20(self)), _assetId, assets, firstSharePayout + secondSharePayout
         );
 
         // redeem price should now be ~1.5*10**18.
@@ -490,15 +489,10 @@ contract DepositTest is BaseTest {
         assertEq(redeemPrice, 1492615384615384615);
     }
 
-    function testDepositAndRedeemPrecisionWithInverseDecimals(uint64 poolId, bytes16 scId) public {
-        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
-
-        // uint8 SHARE_TOKEN_DECIMALS = 6; // Like DAI
-        // uint8 INVESTMENT_CURRENCY_DECIMALS = 18; // 18, like USDC
-
+    function testDepositAndRedeemPrecisionWithInverseDecimals(bytes16 scId) public {
         ERC20 asset = _newErc20("Currency", "CR", 18);
-        (address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, poolId, 6, restrictedTransfers, "", "", scId, address(asset), 0, 0);
+        (uint64 poolId, address vault_, uint128 assetId) =
+            deployVault(VaultKind.Async, 6, restrictedTransfers, scId, address(asset), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
         centrifugeChain.updateSharePrice(poolId, scId, assetId, 1000000000000000000000000000, uint64(block.timestamp));
@@ -562,16 +556,13 @@ contract DepositTest is BaseTest {
     }
 
     // Test that assumes the swap from usdc (investment asset) to dai (pool asset) has a cost of 1%
-    function testDepositAndRedeemPrecisionWithSlippage(uint64 poolId, bytes16 scId) public {
-        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
-
+    function testDepositAndRedeemPrecisionWithSlippage(bytes16 scId) public {
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
         uint8 SHARE_TOKEN_DECIMALS = 18; // Like DAI
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        (address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, poolId, SHARE_TOKEN_DECIMALS, restrictedTransfers, "", "", scId, address(asset), 0, 0
-        );
+        (uint64 poolId, address vault_, uint128 assetId) =
+            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, restrictedTransfers, scId, address(asset), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
 
         // price = (100*10**18) /  (99 * 10**18) = 101.010101 * 10**18
@@ -605,16 +596,13 @@ contract DepositTest is BaseTest {
     }
 
     // Test that assumes the swap from usdc (investment asset) to dai (pool asset) has a cost of 1%
-    function testDepositAndRedeemPrecisionWithSlippageAndWithInverseDecimal(uint64 poolId, bytes16 scId) public {
-        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
-
+    function testDepositAndRedeemPrecisionWithSlippageAndWithInverseDecimal(bytes16 scId) public {
         uint8 INVESTMENT_CURRENCY_DECIMALS = 18; // 18, like DAI
         uint8 SHARE_TOKEN_DECIMALS = 6; // Like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        (address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, poolId, SHARE_TOKEN_DECIMALS, restrictedTransfers, "", "", scId, address(asset), 0, 0
-        );
+        (uint64 poolId, address vault_, uint128 assetId) =
+            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, restrictedTransfers, scId, address(asset), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
 
         // price = (100*10**18) /  (99 * 10**18) = 101.010101 * 10**18
@@ -651,7 +639,7 @@ contract DepositTest is BaseTest {
         amount = uint128(bound(amount, 2, MAX_UINT128));
 
         uint128 price = 2 * 10 ** 18;
-        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
@@ -703,13 +691,11 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(amount, self, self);
     }
 
-    function partialDeposit(uint64 poolId, bytes16 scId, AsyncVault vault, ERC20 asset) public {
-        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
-
+    function partialDeposit(bytes16 scId, AsyncVault vault, ERC20 asset) public {
         IShareToken shareToken = IShareToken(address(vault.share()));
 
         uint256 investmentAmount = 100000000; // 100 * 10**6
-        centrifugeChain.updateMember(poolId, scId, self, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId(), scId, self, type(uint64).max);
         asset.approve(address(vault), investmentAmount);
         asset.mint(self, investmentAmount);
         vault.requestDeposit(investmentAmount, self, self);
@@ -719,7 +705,7 @@ contract DepositTest is BaseTest {
         uint128 assets = 50000000; // 50 * 10**6
         uint128 firstSharePayout = 35714285714285714285; // 50 * 10**18 / 1.4, rounded down
         centrifugeChain.isFulfilledDepositRequest(
-            poolId, scId, bytes32(bytes20(self)), _assetId, assets, firstSharePayout
+            vault.poolId(), scId, bytes32(bytes20(self)), _assetId, assets, firstSharePayout
         );
 
         (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
@@ -728,7 +714,7 @@ contract DepositTest is BaseTest {
         // second trigger executed collectInvest of the second 50% at a price of 1.2
         uint128 secondSharePayout = 41666666666666666666; // 50 * 10**18 / 1.2, rounded down
         centrifugeChain.isFulfilledDepositRequest(
-            poolId, scId, bytes32(bytes20(self)), _assetId, assets, secondSharePayout
+            vault.poolId(), scId, bytes32(bytes20(self)), _assetId, assets, secondSharePayout
         );
 
         (,, depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
@@ -747,7 +733,7 @@ contract DepositTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128));
         vm.assume(amount % 2 == 0);
 
-        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
 

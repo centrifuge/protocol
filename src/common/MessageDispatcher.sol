@@ -9,7 +9,7 @@ import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
@@ -20,13 +20,13 @@ import {
     IPoolRouterGatewayHandler,
     IBalanceSheetManagerGatewayHandler
 } from "src/common/interfaces/IGatewayHandlers.sol";
-import {IVaultMessageSender, IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {IVaultMessageSender, IPoolMessageSender, IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 
-interface IMessageDispatcher is IVaultMessageSender, IPoolMessageSender {
+interface IMessageDispatcher is IRootMessageSender, IVaultMessageSender, IPoolMessageSender {
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 indexed what, address addr);
 
@@ -45,7 +45,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     using BytesLib for bytes;
     using CastLib for *;
 
-    IMessageSender public immutable gateway;
+    IRoot public immutable root;
+    IGateway public immutable gateway;
 
     IPoolRouterGatewayHandler public poolRouter;
     IPoolManagerGatewayHandler public poolManager;
@@ -54,8 +55,9 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     uint16 public localCentrifugeId;
 
-    constructor(uint16 centrifugeChainId_, IMessageSender gateway_, address deployer) Auth(deployer) {
+    constructor(uint16 centrifugeChainId_, IRoot root_, IGateway gateway_, address deployer) Auth(deployer) {
         localCentrifugeId = centrifugeChainId_;
+        root = root_;
         gateway = gateway_;
     }
 
@@ -231,6 +233,54 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 chainId,
                 MessageLib.UpdateContract({poolId: poolId.raw(), scId: scId.raw(), target: target, payload: payload})
                     .serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IRootMessageSender
+    function sendScheduleUpgrade(uint16 chainId, bytes32 target) external auth {
+        if (chainId == localCentrifugeId) {
+            root.scheduleRely(address(bytes20(target)));
+        } else {
+            gateway.send(chainId, MessageLib.ScheduleUpgrade({target: target}).serialize());
+        }
+    }
+
+    /// @inheritdoc IRootMessageSender
+    function sendCancelUpgrade(uint16 chainId, bytes32 target) external auth {
+        if (chainId == localCentrifugeId) {
+            root.cancelRely(address(bytes20(target)));
+        } else {
+            gateway.send(chainId, MessageLib.CancelUpgrade({target: target}).serialize());
+        }
+    }
+
+    /// @inheritdoc IRootMessageSender
+    function sendInitiateMessageRecovery(uint16 chainId, uint16 adapterChainId, bytes32 adapter, bytes32 hash)
+        external
+        auth
+    {
+        if (chainId == localCentrifugeId) {
+            gateway.initiateMessageRecovery(adapterChainId, IAdapter(address(bytes20(adapter))), hash);
+        } else {
+            gateway.send(
+                chainId,
+                MessageLib.InitiateMessageRecovery({hash: hash, adapter: adapter, domainId: adapterChainId}).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IRootMessageSender
+    function sendDisputeMessageRecovery(uint16 chainId, uint16 adapterChainId, bytes32 adapter, bytes32 hash)
+        external
+        auth
+    {
+        if (chainId == localCentrifugeId) {
+            gateway.disputeMessageRecovery(adapterChainId, IAdapter(address(bytes20(adapter))), hash);
+        } else {
+            gateway.send(
+                chainId,
+                MessageLib.DisputeMessageRecovery({hash: hash, adapter: adapter, domainId: adapterChainId}).serialize()
             );
         }
     }

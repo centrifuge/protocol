@@ -43,10 +43,10 @@ interface IGateway is IMessageHandler, IMessageSender {
     event SendMessage(bytes message);
     event RecoverMessage(IAdapter adapter, bytes message);
     event RecoverProof(IAdapter adapter, bytes32 messageHash);
-    event InitiateMessageRecovery(bytes32 messageHash, IAdapter adapter);
-    event DisputeMessageRecovery(bytes32 messageHash, IAdapter adapter);
-    event ExecuteMessageRecovery(bytes message, IAdapter adapter);
-    event File(bytes32 indexed what, IAdapter[] adapters);
+    event InitiateMessageRecovery(uint16 chainId, bytes32 messageHash, IAdapter adapter);
+    event DisputeMessageRecovery(uint16 chainId, bytes32 messageHash, IAdapter adapter);
+    event ExecuteMessageRecovery(uint16 chainId, bytes message, IAdapter adapter);
+    event File(bytes32 indexed what, uint16 chainId, IAdapter[] adapters);
     event File(bytes32 indexed what, address addr);
     event ReceiveNativeTokens(PoolId indexed poolId, address indexed sender, uint256 amount);
 
@@ -54,8 +54,9 @@ interface IGateway is IMessageHandler, IMessageSender {
     /// @notice Used to update an array of addresses ( state variable ) on very rare occasions.
     /// @dev    Currently it is used to update the supported adapters.
     /// @param  what The name of the variable to be updated.
+    /// @param  chainId Chain ID.
     /// @param  value New addresses.
-    function file(bytes32 what, IAdapter[] calldata value) external;
+    function file(bytes32 what, uint16 chainId, IAdapter[] calldata value) external;
 
     /// @notice Used to update an address ( state variable ) on very rare occasions.
     /// @dev    Currently used to update addresses of contract instances.
@@ -74,10 +75,17 @@ interface IGateway is IMessageHandler, IMessageSender {
     /// @notice Finalize batching messages and send the resulting batch message
     function endBatch() external;
 
-    /// @notice Cancel the recovery of a message.
+    /// @notice Initialize the recovery of a message.
+    /// @param  chainId Chain where the adapter is configured for
     /// @param  adapter Adapter that the recovery was targeting
     /// @param  messageHash Hash of the message being disputed
-    function disputeMessageRecovery(IAdapter adapter, bytes32 messageHash) external;
+    function initiateMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) external;
+
+    /// @notice Cancel the recovery of a message.
+    /// @param  chainId Chain where the adapter is configured for
+    /// @param  adapter Adapter that the recovery was targeting
+    /// @param  messageHash Hash of the message being disputed
+    function disputeMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) external;
 
     /// @notice Execute message recovery. After the challenge period, the recovery can be executed.
     ///         If a malign adapter initiates message recovery,
@@ -85,9 +93,10 @@ interface IGateway is IMessageHandler, IMessageSender {
     ///
     ///         Only 1 recovery can be outstanding per message hash. If multiple adapters fail at the same time,
     ///         these will need to be recovered serially (increasing the challenge period for each failed adapter).
+    /// @param  chainId Chain where the adapter is configured for
     /// @param  adapter Adapter's address that the recovery is targeting
     /// @param  message Hash of the message to be recovered
-    function executeMessageRecovery(IAdapter adapter, bytes calldata message) external;
+    function executeMessageRecovery(uint16 chainId, IAdapter adapter, bytes calldata message) external;
 
     /// @notice Prepays for the TX cost for sending through the adapters
     ///         and Centrifuge Chain
@@ -102,8 +111,9 @@ interface IGateway is IMessageHandler, IMessageSender {
     /// @dev    Quorum shows the amount of votes needed in order for a message to be dispatched further.
     ///         The quorum is taken from the first adapter.
     ///         Current quorum is the amount of all adapters.
+    /// @param  chainId Chain where the adapter is configured for
     /// return  Needed amount
-    function quorum() external view returns (uint8);
+    function quorum(uint16 chainId) external view returns (uint8);
 
     /// @notice Gets the current active routers session id.
     /// @dev    When the adapters are updated with new ones,
@@ -111,14 +121,16 @@ interface IGateway is IMessageHandler, IMessageSender {
     ///         Currently it uses sessionId of the previous set and
     ///         increments it by 1. The idea of an activeSessionId is
     ///         to invalidate any incoming messages from previously used adapters.
-    function activeSessionId() external view returns (uint64);
+    /// @param  chainId Chain where the adapter is configured for
+    function activeSessionId(uint16 chainId) external view returns (uint64);
 
     /// @notice Counts how many times each incoming messages has been received per adapter.
     /// @dev    It supports parallel messages ( duplicates ). That means that the incoming messages could be
     ///         the result of two or more independ request from the user of the same type.
     ///         i.e. Same user would like to deposit same underlying asset with the same amount more then once.
+    /// @param  chainId Chain where the adapter is configured for
     /// @param  messageHash The hash value of the incoming message.
-    function votes(bytes32 messageHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory);
+    function votes(uint16 chainId, bytes32 messageHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory);
 
     /// @notice Used to calculate overall cost for bridging a payload on the first adapter and settling
     ///         on the destination chain and bridging its payload proofs on n-1 adapter
@@ -134,13 +146,19 @@ interface IGateway is IMessageHandler, IMessageSender {
         returns (uint256[] memory perAdapter, uint256 total);
 
     /// @notice Returns the address of the adapter at the given id.
-    function adapters(uint256 id) external view returns (IAdapter);
+    /// @param  chainId Chain where the adapter is configured for
+    function adapters(uint16 chainId, uint256 id) external view returns (IAdapter);
 
     /// @notice Returns the number of adapters.
-    function adapterCount() external view returns (uint256);
+    /// @param  chainId Chain where the adapter is configured for
+    function adapterCount(uint16 chainId) external view returns (uint256);
 
     /// @notice Returns the timestamp when the given recovery can be executed.
-    function recoveries(IAdapter adapter, bytes32 messageHash) external view returns (uint256 timestamp);
+    /// @param  chainId Chain where the adapter is configured for
+    function recoveries(uint16 chainId, IAdapter adapter, bytes32 messageHash)
+        external
+        view
+        returns (uint256 timestamp);
 
     /// @notice Returns the current gateway batching level.
     function isBatching() external view returns (bool);

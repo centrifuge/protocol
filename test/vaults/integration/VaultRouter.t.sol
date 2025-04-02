@@ -14,7 +14,6 @@ import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
 import {MockReentrantERC20Wrapper1, MockReentrantERC20Wrapper2} from "test/vaults/mocks/MockReentrantERC20Wrapper.sol";
 
 contract VaultRouterTest is BaseTest {
-    uint16 constant CHAIN_ID = 1;
     uint256 constant GAS_BUFFER = 10 gwei;
     /// @dev Payload is not taken into account during gas estimation
     bytes constant PAYLOAD_FOR_GAS_ESTIMATION = "irrelevant_value";
@@ -34,7 +33,7 @@ contract VaultRouterTest is BaseTest {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
         amount = uint128(bound(amount, 4, MAX_UINT128));
 
-        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
@@ -80,9 +79,9 @@ contract VaultRouterTest is BaseTest {
             assertEq(
                 payCalls[1],
                 adapter.estimate(
-                    CHAIN_ID,
+                    OTHER_CHAIN_ID,
                     PAYLOAD_FOR_GAS_ESTIMATION,
-                    mockedGasService.estimate(CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION)
+                    mockedGasService.estimate(OTHER_CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION)
                 ),
                 "payload gas mismatch"
             );
@@ -110,7 +109,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testEnableDisableVaults() public {
-        (address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
@@ -141,7 +140,7 @@ contract VaultRouterTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128));
         vm.assume(amount % 2 == 0);
 
-        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
@@ -190,7 +189,7 @@ contract VaultRouterTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128));
 
         // deposit
-        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
         erc20.mint(self, amount);
@@ -336,7 +335,7 @@ contract VaultRouterTest is BaseTest {
     function _testMulticallingApproveVaultAndExecuteLockedDepositRequest(uint256 amount, bool snap) internal {
         amount = uint128(bound(amount, 4, MAX_UINT128));
 
-        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
@@ -371,7 +370,7 @@ contract VaultRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         // deposit
-        (address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
         erc20.mint(self, amount);
@@ -437,9 +436,8 @@ contract VaultRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        (address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, 5, 6, restrictedTransfers, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0
-        );
+        (, address vault_, uint128 assetId) =
+            deployVault(VaultKind.Async, 6, restrictedTransfers, bytes16(bytes("1")), address(wrapper), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
@@ -475,9 +473,8 @@ contract VaultRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        (address vault_,) = deployVault(
-            VaultKind.Async, 5, 6, restrictedTransfers, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0
-        );
+        (, address vault_,) =
+            deployVault(VaultKind.Async, 6, restrictedTransfers, bytes16(bytes("1")), address(wrapper), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
@@ -506,9 +503,8 @@ contract VaultRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        (address vault_,) = deployVault(
-            VaultKind.Async, 5, 6, restrictedTransfers, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0
-        );
+        (, address vault_,) =
+            deployVault(VaultKind.Async, 6, restrictedTransfers, bytes16(bytes("1")), address(wrapper), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
@@ -533,9 +529,8 @@ contract VaultRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        (address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, 5, 6, restrictedTransfers, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0
-        );
+        (, address vault_, uint128 assetId) =
+            deployVault(VaultKind.Async, 6, restrictedTransfers, bytes16(bytes("1")), address(wrapper), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
@@ -589,9 +584,8 @@ contract VaultRouterTest is BaseTest {
         address routerEscrowAddress = address(routerEscrow);
 
         MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        (address vault_,) = deployVault(
-            VaultKind.Async, 5, 6, restrictedTransfers, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0
-        );
+        (, address vault_,) =
+            deployVault(VaultKind.Async, 6, restrictedTransfers, bytes16(bytes("1")), address(wrapper), 0, 0);
         vm.label(vault_, "vault");
 
         erc20.mint(self, underlyingAmount);
@@ -664,7 +658,7 @@ contract VaultRouterTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128));
         vm.assume(amount % 2 == 0);
 
-        (address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
@@ -727,12 +721,10 @@ contract VaultRouterTest is BaseTest {
         erc20Y = _newErc20("Y's Dollar", "USDY", 6);
         vm.label(address(erc20X), "erc20X");
         vm.label(address(erc20Y), "erc20Y");
-        (address vault1_,) = deployVault(
-            VaultKind.Async, 5, 6, restrictedTransfers, "name1", "symbol1", bytes16(bytes("1")), address(erc20X), 0, 0
-        );
-        (address vault2_,) = deployVault(
-            VaultKind.Async, 4, 6, restrictedTransfers, "name2", "symbol2", bytes16(bytes("2")), address(erc20Y), 0, 0
-        );
+        (, address vault1_,) =
+            deployVault(VaultKind.Async, 6, restrictedTransfers, bytes16(bytes("1")), address(erc20X), 0, 0);
+        (, address vault2_,) =
+            deployVault(VaultKind.Async, 6, restrictedTransfers, bytes16(bytes("2")), address(erc20Y), 0, 0);
         vault1 = AsyncVault(vault1_);
         vault2 = AsyncVault(vault2_);
         vm.label(vault1_, "vault1");
@@ -753,9 +745,8 @@ contract VaultRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         MockReentrantERC20Wrapper1 wrapper = new MockReentrantERC20Wrapper1(address(erc20), address(vaultRouter));
-        (address vault_,) = deployVault(
-            VaultKind.Async, 5, 6, restrictedTransfers, "name", "symbol", bytes16(bytes("1")), address(wrapper), 0, 0
-        );
+        (, address vault_,) =
+            deployVault(VaultKind.Async, 6, restrictedTransfers, bytes16(bytes("1")), address(wrapper), 0, 0);
         vm.label(vault_, "vault");
 
         address investor = makeAddr("investor");
@@ -771,6 +762,6 @@ contract VaultRouterTest is BaseTest {
     }
 
     function estimateGas() internal view returns (uint256 total) {
-        (, total) = gateway.estimate(CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
+        (, total) = gateway.estimate(OTHER_CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
     }
 }

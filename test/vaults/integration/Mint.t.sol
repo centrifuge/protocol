@@ -8,7 +8,7 @@ contract MintTest is BaseTest {
     function testMint(uint256 amount) public {
         amount = uint128(bound(amount, 2, MAX_UINT128));
 
-        (address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
 
         IShareToken shareToken = IShareToken(address(vault.share()));
