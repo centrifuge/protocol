@@ -6,12 +6,10 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
 interface IPoolRegistry {
-    event NewPool(
-        PoolId poolId, address indexed admin, IShareClassManager indexed shareClassManager, AssetId indexed currency
-    );
+    event NewPool(PoolId poolId, address indexed admin, AssetId indexed currency);
     event UpdatedAdmin(PoolId indexed poolId, address indexed admin, bool canManage);
     event SetMetadata(PoolId indexed poolId, bytes metadata);
-    event UpdatedShareClassManager(PoolId indexed poolId, IShareClassManager indexed shareClassManager);
+    event UpdatedDependency(PoolId indexed poolId, bytes32 indexed what, address dependency);
     event UpdatedCurrency(PoolId indexed poolId, AssetId currency);
 
     error NonExistingPool(PoolId id);
@@ -21,12 +19,7 @@ interface IPoolRegistry {
 
     /// @notice Register a new pool.
     /// @return a PoolId to identify the new pool.
-    function registerPool(
-        address admin,
-        uint16 centrifugeChainId,
-        AssetId currency,
-        IShareClassManager shareClassManager
-    ) external returns (PoolId);
+    function registerPool(address admin, uint16 centrifugeChainId, AssetId currency) external returns (PoolId);
 
     /// @notice allow/disallow an address as an admin for the pool
     function updateAdmin(PoolId poolId, address newAdmin, bool canManage) external;
@@ -34,8 +27,8 @@ interface IPoolRegistry {
     /// @notice sets metadata for this pool
     function setMetadata(PoolId poolId, bytes calldata metadata) external;
 
-    /// @notice updates the share class manager of the pool
-    function updateShareClassManager(PoolId poolId, IShareClassManager shareClassManager) external;
+    /// @notice updates a dependency of the pool
+    function updateDependency(PoolId poolId, bytes32 what, address dependency) external;
 
     /// @notice updates the currency of the pool
     function updateCurrency(PoolId poolId, AssetId currency) external;
@@ -46,8 +39,8 @@ interface IPoolRegistry {
     /// @notice returns the currency of the pool
     function currency(PoolId poolId) external view returns (AssetId);
 
-    /// @notice returns the shareClassManager used in the pool
-    function shareClassManager(PoolId poolId) external view returns (IShareClassManager);
+    /// @notice returns the dependency used in the pool
+    function dependency(PoolId poolId, bytes32 what) external view returns (address);
 
     /// @notice returns the existance of an admin
     function isAdmin(PoolId poolId, address admin) external view returns (bool);

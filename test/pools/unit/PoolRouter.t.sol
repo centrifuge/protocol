@@ -154,7 +154,7 @@ contract TestNotifyShareClass is TestCommon {
     function testErrShareClassNotFound() public {
         vm.mockCall(
             address(poolRegistry),
-            abi.encodeWithSelector(poolRegistry.shareClassManager.selector, POOL_A),
+            abi.encodeWithSelector(poolRegistry.dependency.selector, POOL_A, bytes32("shareClassManager")),
             abi.encode(scm)
         );
 
