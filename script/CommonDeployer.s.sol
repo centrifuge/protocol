@@ -14,10 +14,10 @@ import {MessageDispatcher} from "src/common/MessageDispatcher.sol";
 import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
 
 import "forge-std/Script.sol";
+import {CreateXScript} from "createx-forge/script/CreateXScript.sol";
 
-abstract contract CommonDeployer is Script, JsonRegistry {
+abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     uint256 constant DELAY = 48 hours;
-    bytes32 immutable SALT;
     uint256 constant BASE_MSG_COST = 20000000000000000; // in Weight
 
     IAdapter[] adapters;
@@ -30,20 +30,14 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     MessageProcessor public messageProcessor;
     MessageDispatcher public messageDispatcher;
 
-    constructor() {
-        // If no salt is provided, a pseudo-random salt is generated,
-        // thus effectively making the deployment non-deterministic
-        SALT = vm.envOr(
-            "DEPLOYMENT_SALT", keccak256(abi.encodePacked(string(abi.encodePacked(blockhash(block.number - 1)))))
-        );
-    }
+    function setUp() public virtual withCreateX {}
 
     function deployCommon(uint16 chainId, ISafe adminSafe_, address deployer) public {
         if (address(root) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
 
-        root = new Root(DELAY, deployer);
+        root = Root(create3(_getSalt(1), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, deployer))));
 
         uint64 messageGasLimit = uint64(vm.envOr("MESSAGE_COST", BASE_MSG_COST));
         uint64 proofGasLimit = uint64(vm.envOr("PROOF_COST", BASE_MSG_COST));
@@ -107,5 +101,17 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         gateway.deny(deployer);
         messageProcessor.deny(deployer);
         messageDispatcher.deny(deployer);
+    }
+
+    /// @notice To be used when we want to generate a vanity address, where the salt is passed on deployment
+    /// @dev    If no salt is provided, a pseudo-random salt is generated,
+    ///         thus effectively making the deployment non-deterministic
+    function _getSalt(string memory name) internal returns (bytes32) {
+        return vm.envOr(name, keccak256(abi.encodePacked(string(abi.encodePacked(blockhash(block.number - 1))))));
+    }
+
+    /// @notice To be used when we want a consistent address across chains
+    function _getSalt(uint88 index) internal returns (bytes32) {
+        return bytes32(abi.encodePacked(msg.sender, hex"00", bytes11(index)));
     }
 }

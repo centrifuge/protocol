@@ -72,7 +72,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     uint8 public defaultDecimals = 8;
     bytes16 public defaultShareClassId = bytes16(bytes("1"));
 
-    function setUp() public virtual {
+    function setUp() public virtual override {
         // We should not use the block ChainID
         vm.chainId(BLOCK_CHAIN_ID);
 

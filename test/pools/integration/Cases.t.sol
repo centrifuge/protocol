@@ -59,7 +59,7 @@ contract TestCases is PoolsDeployer, Test {
         gasService.file("messageGasLimit", GAS);
     }
 
-    function setUp() public {
+    function setUp() public override {
         // Deployment
         deployPools(CHAIN_CP, ISafe(address(0)), address(this));
         _mockStuff();

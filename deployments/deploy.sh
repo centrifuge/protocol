@@ -10,7 +10,6 @@
 # RPC_URL=
 # CHAIN_ID=
 # CENTRIFUGE_ID=
-# DEPLOYMENT_SALT=
 # ADMIN=
 
 source .env
