@@ -188,4 +188,7 @@ interface IPoolRouter {
     /// @notice Compute the escrow address used for a share class
     /// @return The escrow address
     function escrow(PoolId poolId, ShareClassId scId, EscrowId escrow_) external pure returns (address);
+
+    /// @notice Return the share class manager for a pool
+    function shareClassManager(PoolId poolId) external view returns (IShareClassManager);
 }

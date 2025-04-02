@@ -130,7 +130,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         _protected();
         _pay();
 
-        IShareClassManager scm = IShareClassManager(poolRegistry.dependency(poolId, bytes32("shareClassManager")));
+        IShareClassManager scm = shareClassManager(poolId);
 
         (uint128 shares, uint128 tokens) = scm.claimDeposit(poolId, scId, investor, assetId);
         sender.sendFulfilledDepositRequest(poolId, scId, assetId, investor, tokens, shares);
@@ -141,7 +141,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         _protected();
         _pay();
 
-        IShareClassManager scm = IShareClassManager(poolRegistry.dependency(poolId, bytes32("shareClassManager")));
+        IShareClassManager scm = shareClassManager(poolId);
 
         (uint128 tokens, uint128 shares) = scm.claimRedeem(poolId, scId, investor, assetId);
 
@@ -165,7 +165,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     function notifyShareClass(uint16 chainId, ShareClassId scId, bytes32 hook) external payable {
         _protectedAndUnlocked();
 
-        IShareClassManager scm = IShareClassManager(poolRegistry.dependency(unlockedPoolId, bytes32("shareClassManager")));
+        IShareClassManager scm = shareClassManager(unlockedPoolId);
         require(scm.exists(unlockedPoolId, scId), IShareClassManager.ShareClassNotFound());
 
         (string memory name, string memory symbol, bytes32 salt) = IMultiShareClass(address(scm)).metadata(scId);
@@ -195,7 +195,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     {
         _protectedAndUnlocked();
 
-        IShareClassManager scm = IShareClassManager(poolRegistry.dependency(unlockedPoolId, bytes32("shareClassManager")));
+        IShareClassManager scm = shareClassManager(unlockedPoolId);
         scm.addShareClass(unlockedPoolId, name, symbol, salt, data);
     }
 
@@ -206,7 +206,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     {
         _protectedAndUnlocked();
 
-        IShareClassManager scm = IShareClassManager(poolRegistry.dependency(unlockedPoolId, bytes32("shareClassManager")));
+        IShareClassManager scm = shareClassManager(unlockedPoolId);
 
         (uint128 approvedAssetAmount,) =
             scm.approveDeposits(unlockedPoolId, scId, maxApproval, paymentAssetId, valuation);
@@ -232,7 +232,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     function approveRedeems(ShareClassId scId, AssetId payoutAssetId, uint128 maxApproval) external payable {
         _protectedAndUnlocked();
 
-        IShareClassManager scm = IShareClassManager(poolRegistry.dependency(unlockedPoolId, bytes32("shareClassManager")));
+        IShareClassManager scm = shareClassManager(unlockedPoolId);
 
         scm.approveRedeems(unlockedPoolId, scId, maxApproval, payoutAssetId);
     }
@@ -241,7 +241,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     function issueShares(ShareClassId scId, AssetId depositAssetId, D18 navPerShare) external payable {
         _protectedAndUnlocked();
 
-        IShareClassManager scm = IShareClassManager(poolRegistry.dependency(unlockedPoolId, bytes32("shareClassManager")));
+        IShareClassManager scm = shareClassManager(unlockedPoolId);
 
         scm.issueShares(unlockedPoolId, scId, depositAssetId, navPerShare);
     }
@@ -253,7 +253,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     {
         _protectedAndUnlocked();
 
-        IShareClassManager scm = IShareClassManager(poolRegistry.dependency(unlockedPoolId, bytes32("shareClassManager")));
+        IShareClassManager scm = shareClassManager(unlockedPoolId);
 
         (uint128 payoutAssetAmount,) = scm.revokeShares(unlockedPoolId, scId, payoutAssetId, navPerShare, valuation);
 
@@ -437,7 +437,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         address pendingShareClassEscrow = escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS);
         assetRegistry.mint(pendingShareClassEscrow, depositAssetId.raw(), amount);
 
-        IShareClassManager scm = IShareClassManager(poolRegistry.dependency(poolId, bytes32("shareClassManager")));
+        IShareClassManager scm = shareClassManager(poolId);
         scm.requestDeposit(poolId, scId, amount, investor, depositAssetId);
     }
 
@@ -446,7 +446,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         external
         auth
     {
-        IShareClassManager scm = IShareClassManager(poolRegistry.dependency(poolId, bytes32("shareClassManager")));
+        IShareClassManager scm = shareClassManager(poolId);
         scm.requestRedeem(poolId, scId, amount, investor, payoutAssetId);
     }
 
@@ -455,7 +455,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         external
         auth
     {
-        IShareClassManager scm = IShareClassManager(poolRegistry.dependency(poolId, bytes32("shareClassManager")));
+        IShareClassManager scm = shareClassManager(poolId);
         (uint128 cancelledAssetAmount) = scm.cancelDepositRequest(poolId, scId, investor, depositAssetId);
 
         address pendingShareClassEscrow = escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS);
@@ -469,7 +469,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         external
         auth
     {
-        IShareClassManager scm = IShareClassManager(poolRegistry.dependency(poolId, bytes32("shareClassManager")));
+        IShareClassManager scm = shareClassManager(poolId);
         uint128 cancelledShareAmount = scm.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
 
         sender.sendFulfilledCancelRedeemRequest(poolId, scId, payoutAssetId, investor, cancelledShareAmount);
@@ -523,13 +523,13 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
 
     /// @inheritdoc IPoolRouterGatewayHandler
     function increaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare, uint128 amount) external auth {
-        IShareClassManager scm = IShareClassManager(poolRegistry.dependency(poolId, bytes32("shareClassManager")));
+        IShareClassManager scm = shareClassManager(poolId);
         scm.increaseShareClassIssuance(poolId, scId, pricePerShare, amount);
     }
 
     /// @inheritdoc IPoolRouterGatewayHandler
     function decreaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare, uint128 amount) external auth {
-        IShareClassManager scm = IShareClassManager(poolRegistry.dependency(poolId, bytes32("shareClassManager")));
+        IShareClassManager scm = shareClassManager(poolId);
         scm.decreaseShareClassIssuance(poolId, scId, pricePerShare, amount);
     }
 
@@ -540,6 +540,11 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     /// @inheritdoc IPoolRouter
     function escrow(PoolId poolId, ShareClassId scId, EscrowId escrow_) public pure returns (address) {
         return address(bytes20(keccak256(abi.encodePacked("escrow", poolId, scId, escrow_))));
+    }
+
+    /// @inheritdoc IPoolRouter
+    function shareClassManager(PoolId poolId) public view returns (IShareClassManager) {
+        return IShareClassManager(poolRegistry.dependency(poolId, bytes32("shareClassManager")));
     }
 
     /// @dev Ensure the method is protected (see `_protected()`) and the pool is unlocked,
