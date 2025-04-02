@@ -9,30 +9,30 @@ contract BurnTest is BaseTest {
     function testBurn(uint256 amount) public {
         amount = uint128(bound(amount, 2, MAX_UINT128));
 
-        address vault_ = deploySimpleVault();
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
 
-        ITranche tranche = ITranche(address(vault.share()));
-        root.relyContract(address(tranche), self); // give self auth permissions
+        IShareToken shareToken = IShareToken(address(vault.share()));
+        root.relyContract(address(shareToken), self); // give self auth permissions
         // add investor as member
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
 
-        tranche.mint(investor, amount);
-        root.denyContract(address(tranche), self); // remove auth permissions from self
+        shareToken.mint(investor, amount);
+        root.denyContract(address(shareToken), self); // remove auth permissions from self
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        tranche.burn(investor, amount);
+        shareToken.burn(investor, amount);
 
-        root.relyContract(address(tranche), self); // give self auth permissions
+        root.relyContract(address(shareToken), self); // give self auth permissions
         vm.expectRevert(IERC20.InsufficientAllowance.selector);
-        tranche.burn(investor, amount);
+        shareToken.burn(investor, amount);
 
         // success
         vm.prank(investor);
-        tranche.approve(self, amount); // approve to burn tokens
-        tranche.burn(investor, amount);
+        shareToken.approve(self, amount); // approve to burn shareTokens
+        shareToken.burn(investor, amount);
 
-        assertEq(tranche.balanceOf(investor), 0);
-        assertEq(tranche.balanceOf(investor), tranche.balanceOf(investor));
+        assertEq(shareToken.balanceOf(investor), 0);
+        assertEq(shareToken.balanceOf(investor), shareToken.balanceOf(investor));
     }
 }

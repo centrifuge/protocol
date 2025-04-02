@@ -51,13 +51,13 @@ contract WormholeAdapterTest is Test {
     MockWormholeRelayer relayer;
     WormholeAdapter adapter;
 
-    uint32 constant CENTRIFUGE_CHAIN_ID = 1;
+    uint16 constant CENTRIFUGE_CHAIN_ID = 1;
     uint16 constant WORMHOLE_CHAIN_ID = 2;
     IMessageHandler constant GATEWAY = IMessageHandler(address(1));
 
     function setUp() public {
         relayer = new MockWormholeRelayer();
-        adapter = new WormholeAdapter(GATEWAY, address(relayer), WORMHOLE_CHAIN_ID);
+        adapter = new WormholeAdapter(GATEWAY, address(relayer), WORMHOLE_CHAIN_ID, address(this));
     }
 
     function testDeploy() public view {
@@ -74,18 +74,11 @@ contract WormholeAdapterTest is Test {
     }
 
     function testFiling(address validAddress) public {
-        adapter.file("sources", WORMHOLE_CHAIN_ID, CENTRIFUGE_CHAIN_ID, validAddress);
+        adapter.file("sources", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, validAddress);
         adapter.file("destinations", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, makeAddr("DestinationAdapter"));
 
         vm.expectRevert(IWormholeAdapter.FileUnrecognizedParam.selector);
-        adapter.file("random", WORMHOLE_CHAIN_ID, CENTRIFUGE_CHAIN_ID, validAddress);
-
-        vm.expectRevert(IWormholeAdapter.FileUnrecognizedParam.selector);
         adapter.file("random", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, makeAddr("DestinationAdapter"));
-
-        vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        adapter.file("sources", WORMHOLE_CHAIN_ID, CENTRIFUGE_CHAIN_ID, validAddress);
 
         vm.prank(makeAddr("unauthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -120,7 +113,7 @@ contract WormholeAdapterTest is Test {
             payload, vaas, validAddress.toBytes32LeftPadded(), WORMHOLE_CHAIN_ID, bytes32(0)
         );
 
-        adapter.file("sources", WORMHOLE_CHAIN_ID, CENTRIFUGE_CHAIN_ID, validAddress);
+        adapter.file("sources", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, validAddress);
 
         // Incorrect address
         vm.prank(address(relayer));

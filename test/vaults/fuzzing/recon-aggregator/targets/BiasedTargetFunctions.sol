@@ -51,7 +51,7 @@ abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
     /**
      * router2.execute(
      *         abi.encodePacked(
-     *             uint8(MessagesLib.Call.InitiateMessageRecovery), keccak256(message), address(router1).toBytes32()
+     *             uint8(MessageLib.Call.InitiateMessageRecovery), keccak256(message), address(router1).toBytes32()
      *         )
      *     );
      */
@@ -73,25 +73,25 @@ abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
     //     // TODO: Can we call this more than once? How would it work
     //     recoverMessageTime[keccak256(message)] = block.timestamp;
 
-    //     // NOTE: Can we recover for self?
-    //     // TODO: CHECK THIS!
-    //     MockAdapter(adapters[calledRouterId]).execute(
-    //         abi.encodePacked(
-    //             uint8(MessagesLib.Call.InitiateMessageRecovery),
-    //             keccak256(message),
-    //             bytes32(bytes20(address(adapters[recoverRouterId])))
-    //         )
-    //     );
-    // }
+        // NOTE: Can we recover for self?
+        // TODO: CHECK THIS!
+        MockAdapter(address(adapters[calledRouterId])).execute(
+            MessageLib.InitiateMessageRecovery({
+                hash: keccak256(message),
+                adapter: bytes32(bytes20(address(adapters[recoverRouterId]))),
+                domainId: 0
+            }).serialize()
+        );
+    }
 
-    // function executeMessageRecovery(uint8 adapterId, uint256 messageIndex) public {
-    //     adapterId %= uint8(RECON_ADAPTERS);
-    //     messageIndex %= uint8(messages.length);
-    //     address router = routerAggregator.adapters(adapterId);
+    function executeMessageRecovery(uint8 adapterId, uint256 messageIndex) public {
+        adapterId %= uint8(RECON_ADAPTERS);
+        messageIndex %= uint8(messages.length);
+        IAdapter router = routerAggregator.adapters(CENTRIFUGE_ID, adapterId);
 
-    //     bytes memory message = messages[messageIndex];
-    //     require(recoverMessageTime[keccak256(message)] != 0);
-    //     routerAggregator.executeMessageRecovery(router, message);
+        bytes memory message = messages[messageIndex];
+        require(recoverMessageTime[keccak256(message)] != 0);
+        routerAggregator.executeMessageRecovery(CENTRIFUGE_ID, router, message);
 
     //     messageRecoveredCount[keccak256(message)] += 1;
 
@@ -101,13 +101,13 @@ abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
     //     );
     // }
 
-    // function disputeMessageRecovery(uint8 adapterId, uint256 messageIndex) public {
-    //     adapterId %= uint8(RECON_ADAPTERS);
-    //     messageIndex %= uint8(messages.length);
-    //     address router = routerAggregator.adapters(adapterId);
+    function disputeMessageRecovery(uint8 adapterId, uint256 messageIndex) public {
+        adapterId %= uint8(RECON_ADAPTERS);
+        messageIndex %= uint8(messages.length);
+        IAdapter router = routerAggregator.adapters(CENTRIFUGE_ID, adapterId);
 
-    //     bytes memory message = messages[messageIndex];
-    //     routerAggregator.disputeMessageRecovery(router, keccak256(message));
+        bytes memory message = messages[messageIndex];
+        routerAggregator.disputeMessageRecovery(CENTRIFUGE_ID, router, keccak256(message));
 
     //     recoverMessageTime[keccak256(message)] = 0; // Unset time
     // }

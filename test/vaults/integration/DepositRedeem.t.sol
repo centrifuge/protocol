@@ -4,94 +4,96 @@ pragma solidity 0.8.28;
 import "test/vaults/BaseTest.sol";
 
 contract DepositRedeem is BaseTest {
-    function testPartialDepositAndRedeemExecutions(uint64 poolId, bytes16 trancheId, uint128 assetId) public {
-        vm.assume(assetId > 0);
-
-        uint8 TRANCHE_TOKEN_DECIMALS = 18; // Like DAI
+    function testPartialDepositAndRedeemExecutions(bytes16 scId) public {
+        uint8 SHARE_TOKEN_DECIMALS = 18; // Like DAI
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        address vault_ =
-            deployVault(poolId, TRANCHE_TOKEN_DECIMALS, restrictionManager, "", "", trancheId, assetId, address(asset));
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        (uint64 poolId, address vault_, uint128 assetId) =
+            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, restrictedTransfers, scId, address(asset), 0, 0);
+        AsyncVault vault = AsyncVault(vault_);
 
-        centrifugeChain.updateTranchePrice(poolId, trancheId, assetId, 1000000000000000000, uint64(block.timestamp));
+        centrifugeChain.updateSharePrice(poolId, scId, assetId, 1000000000000000000, uint64(block.timestamp));
 
-        partialDeposit(poolId, trancheId, vault, asset);
+        partialDeposit(poolId, scId, vault, asset);
 
-        partialRedeem(poolId, trancheId, vault, asset);
+        partialRedeem(poolId, scId, vault, asset);
     }
 
     // Helpers
 
-    function partialDeposit(uint64 poolId, bytes16 trancheId, ERC7540Vault vault, ERC20 asset) public {
-        ITranche tranche = ITranche(address(vault.share()));
+    function partialDeposit(uint64 poolId, bytes16 scId, AsyncVault vault, ERC20 asset) public {
+        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
+
+        IShareToken shareToken = IShareToken(address(vault.share()));
 
         uint256 investmentAmount = 100000000; // 100 * 10**6
-        centrifugeChain.updateMember(poolId, trancheId, self, type(uint64).max);
+        centrifugeChain.updateMember(poolId, scId, self, type(uint64).max);
         asset.approve(address(vault), investmentAmount);
         asset.mint(self, investmentAmount);
         vault.requestDeposit(investmentAmount, self, self);
 
         // first trigger executed collectInvest of the first 50% at a price of 1.4
-        uint128 _assetId = poolManager.assetToId(address(asset)); // retrieve assetId
+        uint128 _assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
         uint128 assets = 50000000; // 50 * 10**6
-        uint128 firstTranchePayout = 35714285714285714285; // 50 * 10**18 / 1.4, rounded down
+        uint128 firstSharePayout = 35714285714285714285; // 50 * 10**18 / 1.4, rounded down
         centrifugeChain.isFulfilledDepositRequest(
-            poolId, trancheId, bytes32(bytes20(self)), _assetId, assets, firstTranchePayout
+            poolId, scId, bytes32(bytes20(self)), _assetId, assets, firstSharePayout
         );
 
-        (,, uint256 depositPrice,,,,,,,) = investmentManager.investments(address(vault), self);
+        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
         assertEq(depositPrice, 1400000000000000000);
 
         // second trigger executed collectInvest of the second 50% at a price of 1.2
-        uint128 secondTranchePayout = 41666666666666666666; // 50 * 10**18 / 1.2, rounded down
+        uint128 secondSharePayout = 41666666666666666666; // 50 * 10**18 / 1.2, rounded down
         centrifugeChain.isFulfilledDepositRequest(
-            poolId, trancheId, bytes32(bytes20(self)), _assetId, assets, secondTranchePayout
+            poolId, scId, bytes32(bytes20(self)), _assetId, assets, secondSharePayout
         );
 
-        (,, depositPrice,,,,,,,) = investmentManager.investments(address(vault), self);
+        (,, depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
         assertEq(depositPrice, 1292307679384615384);
 
         // assert deposit & mint values adjusted
         assertApproxEqAbs(vault.maxDeposit(self), assets * 2, 2);
-        assertEq(vault.maxMint(self), firstTranchePayout + secondTranchePayout);
+        assertEq(vault.maxMint(self), firstSharePayout + secondSharePayout);
 
-        // collect the tranche tokens
-        vault.mint(firstTranchePayout + secondTranchePayout, self);
-        assertEq(tranche.balanceOf(self), firstTranchePayout + secondTranchePayout);
+        // collect the share class tokens
+        vault.mint(firstSharePayout + secondSharePayout, self);
+        assertEq(shareToken.balanceOf(self), firstSharePayout + secondSharePayout);
     }
 
-    function partialRedeem(uint64 poolId, bytes16 trancheId, ERC7540Vault vault, ERC20 asset) public {
-        ITranche tranche = ITranche(address(vault.share()));
+    function partialRedeem(uint64 poolId, bytes16 scId, AsyncVault vault, ERC20 asset) public {
+        vm.assume(poolId >> 48 != THIS_CHAIN_ID);
 
-        uint128 assetId = poolManager.assetToId(address(asset));
-        uint256 totalTranches = tranche.balanceOf(self);
+        IShareToken shareToken = IShareToken(address(vault.share()));
+
+        uint128 assetId = poolManager.assetToId(address(asset), erc20TokenId);
+        uint256 totalShares = shareToken.balanceOf(self);
         uint256 redeemAmount = 50000000000000000000;
-        assertTrue(redeemAmount <= totalTranches);
+        assertTrue(redeemAmount <= totalShares);
         vault.requestRedeem(redeemAmount, self, self);
 
-        // first trigger executed collectRedeem of the first 25 tranches at a price of 1.1
-        uint128 firstTrancheRedeem = 25000000000000000000;
-        uint128 secondTrancheRedeem = 25000000000000000000;
-        assertEq(firstTrancheRedeem + secondTrancheRedeem, redeemAmount);
+        // first trigger executed collectRedeem of the first 25 share class tokens at a price of 1.1
+        uint128 firstShareRedeem = 25000000000000000000;
+        uint128 secondShareRedeem = 25000000000000000000;
+        assertEq(firstShareRedeem + secondShareRedeem, redeemAmount);
         uint128 firstCurrencyPayout = 27500000; // (25000000000000000000/10**18) * 10**6 * 1.1
         centrifugeChain.isFulfilledRedeemRequest(
-            poolId, trancheId, bytes32(bytes20(self)), assetId, firstCurrencyPayout, firstTrancheRedeem
+            poolId, scId, bytes32(bytes20(self)), assetId, firstCurrencyPayout, firstShareRedeem
         );
 
-        assertEq(vault.maxRedeem(self), firstTrancheRedeem);
+        assertEq(vault.maxRedeem(self), firstShareRedeem);
 
-        (,,, uint256 redeemPrice,,,,,,) = investmentManager.investments(address(vault), self);
+        (,,, uint256 redeemPrice,,,,,,) = asyncRequests.investments(address(vault), self);
         assertEq(redeemPrice, 1100000000000000000);
 
-        // second trigger executed collectRedeem of the second 25 tranches at a price of 1.3
+        // second trigger executed collectRedeem of the second 25 share class tokens at a price of 1.3
         uint128 secondCurrencyPayout = 32500000; // (25000000000000000000/10**18) * 10**6 * 1.3
         centrifugeChain.isFulfilledRedeemRequest(
-            poolId, trancheId, bytes32(bytes20(self)), assetId, secondCurrencyPayout, secondTrancheRedeem
+            poolId, scId, bytes32(bytes20(self)), assetId, secondCurrencyPayout, secondShareRedeem
         );
 
-        (,,, redeemPrice,,,,,,) = investmentManager.investments(address(vault), self);
+        (,,, redeemPrice,,,,,,) = asyncRequests.investments(address(vault), self);
         assertEq(redeemPrice, 1200000000000000000);
 
         assertApproxEqAbs(vault.maxWithdraw(self), firstCurrencyPayout + secondCurrencyPayout, 2);
@@ -99,7 +101,7 @@ contract DepositRedeem is BaseTest {
 
         // collect the asset
         vault.redeem(redeemAmount, self, self);
-        assertEq(tranche.balanceOf(self), totalTranches - redeemAmount);
+        assertEq(shareToken.balanceOf(self), totalShares - redeemAmount);
         assertEq(asset.balanceOf(self), firstCurrencyPayout + secondCurrencyPayout);
     }
 }

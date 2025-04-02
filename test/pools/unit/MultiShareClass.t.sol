@@ -9,10 +9,10 @@ import {D18, d18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {PoolId} from "src/pools/types/PoolId.sol";
-import {AssetId} from "src/pools/types/AssetId.sol";
-import {AssetId} from "src/pools/types/AssetId.sol";
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 import {IMultiShareClass} from "src/pools/interfaces/IMultiShareClass.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
@@ -124,36 +124,30 @@ abstract contract MultiShareClassBaseTest is Test {
         assertEq(IPoolRegistry(poolRegistryAddress).currency(poolId).addr(), POOL_CURRENCY);
     }
 
-    function _assertDepositRequestEq(
-        ShareClassId shareClassId_,
-        AssetId asset,
-        bytes32 investor_,
-        UserOrder memory expected
-    ) internal view {
-        (uint128 pending, uint32 lastUpdate) = shareClass.depositRequest(shareClassId_, asset, investor_);
+    function _assertDepositRequestEq(ShareClassId scId_, AssetId asset, bytes32 investor_, UserOrder memory expected)
+        internal
+        view
+    {
+        (uint128 pending, uint32 lastUpdate) = shareClass.depositRequest(scId_, asset, investor_);
 
         assertEq(pending, expected.pending, "pending deposit mismatch");
         assertEq(lastUpdate, expected.lastUpdate, "lastUpdate deposit mismatch");
     }
 
-    function _assertRedeemRequestEq(
-        ShareClassId shareClassId_,
-        AssetId asset,
-        bytes32 investor_,
-        UserOrder memory expected
-    ) internal view {
-        (uint128 pending, uint32 lastUpdate) = shareClass.redeemRequest(shareClassId_, asset, investor_);
+    function _assertRedeemRequestEq(ShareClassId scId_, AssetId asset, bytes32 investor_, UserOrder memory expected)
+        internal
+        view
+    {
+        (uint128 pending, uint32 lastUpdate) = shareClass.redeemRequest(scId_, asset, investor_);
 
         assertEq(pending, expected.pending, "pending redeem mismatch");
         assertEq(lastUpdate, expected.lastUpdate, "lastUpdate redeem mismatch");
     }
 
-    function _assertEpochAmountsEq(
-        ShareClassId shareClassId_,
-        AssetId assetId,
-        uint32 epochId,
-        EpochAmounts memory expected
-    ) internal view {
+    function _assertEpochAmountsEq(ShareClassId scId_, AssetId assetId, uint32 epochId, EpochAmounts memory expected)
+        internal
+        view
+    {
         (
             uint128 depositPending,
             uint128 depositApproved,
@@ -162,7 +156,7 @@ abstract contract MultiShareClassBaseTest is Test {
             uint128 redeemPending,
             uint128 redeemApproved,
             uint128 redeemAssets
-        ) = shareClass.epochAmounts(shareClassId_, assetId, epochId);
+        ) = shareClass.epochAmounts(scId_, assetId, epochId);
 
         assertEq(depositPending, expected.depositPending, "depositPending mismatch");
         assertEq(depositApproved, expected.depositApproved, "depositApproved mismatch");
@@ -173,12 +167,9 @@ abstract contract MultiShareClassBaseTest is Test {
         assertEq(redeemAssets, expected.redeemAssets, "redeemAssets mismatch");
     }
 
-    function _assertEpochPointersEq(ShareClassId shareClassId_, AssetId assetId, EpochPointers memory expected)
-        internal
-        view
-    {
+    function _assertEpochPointersEq(ShareClassId scId_, AssetId assetId, EpochPointers memory expected) internal view {
         (uint32 latestDepositApproval, uint32 latestRedeemApproval, uint32 latestIssuance, uint32 latestRevocation) =
-            shareClass.epochPointers(shareClassId_, assetId);
+            shareClass.epochPointers(scId_, assetId);
 
         assertEq(latestDepositApproval, expected.latestDepositApproval, "latestDepositApproval mismatch");
         assertEq(latestRedeemApproval, expected.latestRedeemApproval, "latestRedeemApproval mismatch");
@@ -307,6 +298,36 @@ contract MultiShareClassSimpleTest is MultiShareClassBaseTest {
 
     function testPreviewShareClassId(uint32 index) public view {
         assertEq(shareClass.previewShareClassId(poolId, index).raw(), bytes16(uint128(poolId.raw() + index)));
+    }
+
+    function testIncreaseShareClassIssuance(uint128 navPerShare_, uint128 amount) public {
+        vm.assume(navPerShare_ > 0);
+        amount = uint128(bound(amount, 0, type(uint128).max / navPerShare_ - 1));
+        D18 navPerShare = d18(navPerShare_);
+
+        vm.expectEmit();
+        emit IShareClassManager.IssuedShares(poolId, scId, 1, navPerShare, navPerShare.mulUint128(amount), amount);
+        shareClass.increaseShareClassIssuance(poolId, scId, navPerShare, amount);
+
+        (uint128 totalIssuance, D18 navPerShareMetric) = shareClass.metrics(scId);
+        assertEq(totalIssuance, amount);
+        assertEq(navPerShareMetric.inner(), 0, "navPerShare metric should not be updated");
+    }
+
+    function testDecreaseShareClassIssuance(uint128 navPerShare_, uint128 amount) public {
+        vm.assume(navPerShare_ > 0);
+        amount = uint128(bound(amount, 0, type(uint128).max / navPerShare_ - 1));
+        D18 navPerShare = d18(navPerShare_);
+
+        shareClass.increaseShareClassIssuance(poolId, scId, navPerShare, amount);
+
+        vm.expectEmit();
+        emit IShareClassManager.RevokedShares(poolId, scId, 1, navPerShare, 0, amount, 0);
+        shareClass.decreaseShareClassIssuance(poolId, scId, navPerShare, amount);
+
+        (uint128 totalIssuance, D18 navPerShareMetric) = shareClass.metrics(scId);
+        assertEq(totalIssuance, 0, "TotalIssuance should be reset");
+        assertEq(navPerShareMetric.inner(), 0, "navPerShare metric should not be updated");
     }
 }
 
@@ -1407,6 +1428,21 @@ contract MultiShareClassRevertsTest is MultiShareClassBaseTest {
     function testUpdateMetadataWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.updateMetadata(poolId, wrongShareClassId, "", "", SC_SALT, bytes(""));
+    }
+
+    function testIncreaseIssuanceWrongShareClassId() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
+        shareClass.increaseShareClassIssuance(poolId, wrongShareClassId, d18(0), 0);
+    }
+
+    function testDecreaseIssuanceWrongShareClassId() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
+        shareClass.decreaseShareClassIssuance(poolId, wrongShareClassId, d18(0), 0);
+    }
+
+    function testDecreaseOverFlow() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.DecreaseMoreThanIssued.selector));
+        shareClass.decreaseShareClassIssuance(poolId, scId, d18(0), 1);
     }
 
     function testIssueSharesBeforeApproval() public {

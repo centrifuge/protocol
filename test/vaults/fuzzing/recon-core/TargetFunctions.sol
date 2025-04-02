@@ -8,12 +8,12 @@ import {vm} from "@chimera/Hevm.sol";
 
 // Dependencies
 import {ERC20} from "src/misc/ERC20.sol";
-import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
+import {AsyncVault} from "src/vaults/AsyncVault.sol";
 
 // Component
-import {TrancheTokenFunctions} from "./targets/TrancheTokenFunctions.sol";
+import {ShareTokenFunctions} from "./targets/ShareTokenFunctions.sol";
 import {GatewayMockFunctions} from "./targets/GatewayMockFunctions.sol";
-import {RestrictionManagerFunctions} from "./targets/RestrictionManagerFunctions.sol";
+import {RestrictedTransfersFunctions} from "./targets/RestrictedTransfersFunctions.sol";
 import {VaultFunctions} from "./targets/VaultFunctions.sol";
 import {PoolManagerFunctions} from "./targets/PoolManagerFunctions.sol";
 import {VaultCallbacks} from "./targets/VaultCallbacks.sol";
@@ -22,16 +22,16 @@ import {ManagerTargets} from "./targets/ManagerTargets.sol";
 abstract contract TargetFunctions is
     BaseTargetFunctions,
     Properties,
-    TrancheTokenFunctions,
+    ShareTokenFunctions,
     GatewayMockFunctions,
-    RestrictionManagerFunctions,
+    RestrictedTransfersFunctions,
     VaultFunctions,
     PoolManagerFunctions,
     VaultCallbacks, 
     ManagerTargets
 {
     /**
-     * TODO: Port Over tranche, liquidity pool stuff
+     * TODO: Port Over share class, liquidity pool stuff
      *
      *
      */
@@ -47,9 +47,9 @@ abstract contract TargetFunctions is
         return true;
     }
 
-    function invariant_doesTranchesGetDeployed() public view returns (bool) {
+    function invariant_doesSharesGetDeployed() public view returns (bool) {
         if (RECON_TOGGLE_CANARY_TESTS) {
-            return trancheTokens.length < 10;
+            return shareClassTokens.length < 10;
         }
 
         return true;

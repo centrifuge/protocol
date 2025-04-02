@@ -6,9 +6,9 @@ import {MockERC20} from "@recon/MockERC20.sol";
 import {console2} from "forge-std/console2.sol";
 
 import {BeforeAfter} from "./BeforeAfter.sol";
-import {ERC7540CentrifugeProperties} from "./ERC7540CentrifugeProperties.sol";
+import {AsyncVaultCentrifugeProperties} from "./AsyncVaultCentrifugeProperties.sol";
 
-abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugeProperties {
+abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProperties {
     event DebugWithString(string, uint256);
     event DebugNumber(uint256);
 
@@ -19,28 +19,43 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
 
     /// @dev This Property demonstrates that the current actor can reach a non-zero balance
     // This helps get coverage in other areas
-    // NOTE: Canary for checking actor balance
-    function invariant_sentinel_tranche_balance() trancheTokenIsSet public {
+    function invariant_sentinel_token_balance() public view returns (bool) {
         if (!RECON_USE_SENTINEL_TESTS) {
-            return; // Skip if setting is off
+            return true; // Skip if setting is off
         }
-        // Dig until we get non-zero tranche balance
+
+        if (address(token) == address(0)) {
+            return true; // Skip
+        }
+        // Dig until we get non-zero share class balance
         // Afaict this will never work
-        eq(trancheToken.balanceOf(_getActor()), 0, "trancheToken.balanceOf(actor)");
+        return token.balanceOf(actor) == 0;
     }
 
     // == GLOBAL == //
-    // Sum of tranche tokens received on `deposit` and `mint` <= sum of fulfilledDepositRequest.shares
-    function invariant_global_1() trancheTokenIsSet public {
+    event DebugNumber(uint256);
+
+    // Sum of share class tokens received on `deposit` and `mint` <= sum of fulfilledDepositRequest.shares
+    function invariant_global_1() public view returns (bool) {
+        if (address(token) == address(0)) {
+            return true; // Skip
+        }
+
         // Mint and Deposit
-        lte(sumOfClaimedDeposits[address(trancheToken)], sumOfFullfilledDeposits[address(trancheToken)], "sumOfClaimedDeposits not <= sumOfFullfilledDeposits");
+        return sumOfClaimedDeposits[address(token)]
+        // asyncRequests_fulfilledDepositRequest
+        <= sumOfFullfilledDeposits[address(token)];
     }
 
-    // Sum of underlying assets received on `redeem` and `withdraw` <= sum of underlying assets received on `fulfillRedeemRequest`
-    function invariant_global_2() trancheTokenIsSet public {
+    function invariant_global_2() public view returns (bool) {
+        if (address(assetErc20) == address(0)) {
+            return true; // Skip
+        }
+
         // Redeem and Withdraw
-        // investmentManager_handleExecutedCollectRedeem
-        lte(sumOfClaimedRedemptions[address(vault.asset())], mintedByCurrencyPayout[address(vault.asset())], "sumOfClaimedRedemptions !<= mintedByCurrencyPayout");
+        return sumOfClaimedRedemptions[address(assetErc20)]
+        // asyncRequests_handleExecutedCollectRedeem
+        <= mintedByCurrencyPayout[address(assetErc20)];
     }
 
     function invariant_global_2_inductive() trancheTokenIsSet public {
@@ -61,32 +76,85 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
     // The sum of tranche tokens minted/transferred is equal to the total supply of tranche tokens
     function invariant_global_3() trancheTokenIsSet public {
         // NOTE: By removing checked the math can overflow, then underflow back, resulting in correct calculations
-        // NOTE: Overflow should always result back to a rational value as trancheToken cannot overflow due to other
+        // NOTE: Overflow should always result back to a rational value as token cannot overflow due to other
         // functions permanently reverting
         uint256 ghostTotalSupply;
         uint256 totalSupply = trancheToken.totalSupply() - totalSupplyAtFork;
         unchecked {
-            // NOTE: Includes `trancheMints` which are arbitrary mints
-            ghostTotalSupply = trancheMints[address(trancheToken)] + executedInvestments[address(trancheToken)]
-                + incomingTransfers[address(trancheToken)] - outGoingTransfers[address(trancheToken)]
-                - executedRedemptions[address(trancheToken)];
+            return token.totalSupply()
+            // NOTE: Includes `shareMints` which are arbitrary mints
+            == shareMints[address(token)] + executedInvestments[address(token)] + incomingTransfers[address(token)]
+                - outGoingTransfers[address(token)] - executedRedemptions[address(token)];
         }
-        eq(totalSupply, ghostTotalSupply, "totalSupply != ghostTotalSupply");
     }
 
-    function invariant_global_4() trancheTokenIsSet public {
+    /// @dev Lists out all system addresses, used to check that no dust is left behind
+    /// NOTE: A more advanced dust check would have 100% of actors withdraw, to ensure that the sum of operations is
+    /// sound
+    function _getSystemAddresses() internal view returns (address[] memory) {
+        uint256 SYSTEM_ADDRESSES_LENGTH = 9;
+
+        address[] memory systemAddresses = new address[](SYSTEM_ADDRESSES_LENGTH);
+        systemAddresses[0] = address(vaultFactory);
+        systemAddresses[1] = address(trancheFactory);
+
+        // NOTE: Skipping escrow which instead can have non-zero bal
+
+        systemAddresses[2] = address(investmentManager);
+        systemAddresses[3] = address(poolManager);
+        systemAddresses[4] = address(vault);
+        systemAddresses[5] = address(token);
+        systemAddresses[6] = address(trancheToken);
+        systemAddresses[7] = address(restrictionManager);
+
+        return systemAddresses;
+    }
+
+    /// @dev Can we donate to this address?
+    /// We explicitly preventing donations since we check for exact balances
+    function _canDonate(address to) internal view returns (bool) {
+        if (to == address(escrow)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// @dev utility to ensure the target is not in the system addresses
+    function _isInSystemAddress(address x) internal view returns (bool) {
         address[] memory systemAddresses = _getSystemAddresses();
         uint256 SYSTEM_ADDRESSES_LENGTH = systemAddresses.length;
 
-        // NOTE: Skipping root and gateway when not gov fuzzing since we mocked them
         for (uint256 i; i < SYSTEM_ADDRESSES_LENGTH; i++) {
-            emit DebugNumber(i); // Number to index
-            eq(MockERC20(address(vault.asset())).balanceOf(systemAddresses[i]), 0, "token.balanceOf(systemAddresses[i]) > 0");
+            if (systemAddresses[i] == x) return true;
+        }
+
+        return false;
+    }
+
+    function invariant_global_4() public returns (bool) {
+        if (address(assetErc20) == address(0)) {
+            return true; // Skip
+        }
+
+        address[] memory systemAddresses = _getSystemAddresses();
+        uint256 SYSTEM_ADDRESSES_LENGTH = systemAddresses.length;
+
+        // NOTE: Skipping root and gateway since we mocked them
+        for (uint256 i; i < SYSTEM_ADDRESSES_LENGTH; i++) {
+            if (assetErc20.balanceOf(systemAddresses[i]) > 0) {
+                emit DebugNumber(i); // Number to index
+                return false; // NOTE: We do not have donation functions so this is true unless something is off
+            }
         }
     }
 
     // Sum of assets received on `claimCancelDepositRequest`<= sum of fulfillCancelDepositRequest.assets
-    function invariant_global_5() trancheTokenIsSet public {
+    function invariant_global_5() public view returns (bool) {
+        if (address(assetErc20) == address(0)) {
+            return true; // Skip
+        }
+
         // claimCancelDepositRequest
         // investmentManager_fulfillCancelDepositRequest
         lte(sumOfClaimedDepositCancelations[address(vault.asset())], cancelDepositCurrencyPayout[address(vault.asset())], "sumOfClaimedDepositCancelations !<= cancelDepositCurrencyPayout");
@@ -105,9 +173,13 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
         }
     }
 
-    // Sum of tranche tokens received on `claimCancelRedeemRequest`<= sum of
+    // Sum of share class tokens received on `claimCancelRedeemRequest`<= sum of
     // fulfillCancelRedeemRequest.shares
-    function invariant_global_6() trancheTokenIsSet public {
+    function invariant_global_6() public view returns (bool) {
+        if (address(token) == address(0)) {
+            return true; // Skip
+        }
+
         // claimCancelRedeemRequest
         lte(sumOfClaimedRedeemCancelations[address(trancheToken)], cancelRedeemTrancheTokenPayout[address(trancheToken)], "sumOfClaimedRedeemCancelations !<= cancelRedeemTrancheTokenPayout");
     }
@@ -125,11 +197,12 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
         }
     }
 
-    // == TRANCHE TOKENS == //
+    // == SHARE CLASS TOKENS == //
     // TT-1
     // On the function handler, both transfer, transferFrom, perhaps even mint
 
-    // TODO: Targets / Tranches
+    // TODO: Actors
+    // TODO: Targets / Shares
     /// @notice Sum of balances equals total supply
     function invariant_tt_2() trancheTokenIsSet public {
         address[] memory actors = _getActors();
@@ -147,9 +220,9 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
         lte(acc, trancheToken.totalSupply(), "sum of user balances > trancheToken.totalSupply()");
     }
 
-    function invariant_IM_1() public {
-        if (address(investmentManager) == address(0)) {
-            return;
+    function invariant_IM_1() public view returns (bool) {
+        if (address(asyncRequests) == address(0)) {
+            return true;
         }
         if (address(vault) == address(0)) {
             return;
@@ -164,15 +237,22 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
 
             // NOTE: Specification | Obv this breaks when you switch pools etc..
             // NOTE: Should reset
-            // OR: Separate the check per actor | tranche instead of being so simple
-            lte(depositPrice, _investorsGlobals[_getActor() ].maxDepositPrice, "depositPrice > maxDepositPrice");
-            gte(depositPrice, _investorsGlobals[_getActor()].minDepositPrice, "depositPrice < minDepositPrice");
+            // OR: Separate the check per actor | share class instead of being so simple
+            if (depositPrice > _investorsGlobals[actor].maxDepositPrice) {
+                return false;
+            }
+
+            if (depositPrice < _investorsGlobals[actor].minDepositPrice) {
+                return false;
+            }
         }
+
+        return true;
     }
 
-    function invariant_IM_2() public {
-        if (address(investmentManager) == address(0)) {
-            return;
+    function invariant_IM_2() public view returns (bool) {
+        if (address(asyncRequests) == address(0)) {
+            return true;
         }
         if (address(vault) == address(0)) {
             return;
@@ -203,7 +283,10 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
      */
     function invariant_E_1() trancheTokenIsSet public {
         if (address(escrow) == address(0)) {
-            return;
+            return true;
+        }
+        if (address(assetErc20) == address(0)) {
+            return true;
         }
 
         // NOTE: By removing checked the math can overflow, then underflow back, resulting in correct calculations
@@ -213,14 +296,16 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
         uint256 ghostBalOfEscrow;
         uint256 balOfEscrow = MockERC20(address(vault.asset())).balanceOf(address(escrow)) - tokenBalanceOfEscrowAtFork; // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
         unchecked {
+            // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
+            return assetErc20.balanceOf(address(escrow))
             // Deposit Requests + Transfers In
             /// @audit Minted by Asset Payouts by Investors
-            (
-                ghostBalOfEscrow = mintedByCurrencyPayout[address(vault.asset())] + sumOfDepositRequests[address(vault.asset())]
-                    + sumOfTransfersIn[address(vault.asset())]
+            == (
+                mintedByCurrencyPayout[address(assetErc20)] + sumOfDepositRequests[address(assetErc20)]
+                    + sumOfTransfersIn[address(assetErc20)]
                 // Minus Claimed Redemptions and TransfersOut
-                - sumOfClaimedRedemptions[address(vault.asset())] - sumOfClaimedDepositCancelations[address(vault.asset())]
-                    - sumOfTransfersOut[address(vault.asset())]
+                - sumOfClaimedRedemptions[address(assetErc20)] - sumOfClaimedDepositCancelations[address(assetErc20)]
+                    - sumOfTransfersOut[address(assetErc20)]
             );
         }
         eq(balOfEscrow, ghostBalOfEscrow, "balOfEscrow != ghostBalOfEscrow");
@@ -228,7 +313,7 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
 
     // Escrow
     /**
-     * The balance of tranche tokens in Escrow
+     * The balance of share class tokens in Escrow
      *     is sum of all fulfilled deposits
      *     minus sum of all claimed deposits
      *     plus sum of all redeem requests
@@ -236,21 +321,36 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
      *
      *     NOTE: Ignores donations
      */
-    function invariant_E_2() trancheTokenIsSet public {
+    function invariant_E_2() public view returns (bool) {
+        if (address(token) == address(0)) {
+            return true;
+        }
+
         // NOTE: By removing checked the math can overflow, then underflow back, resulting in correct calculations
-        // NOTE: Overflow should always result back to a rational value as trancheToken cannot overflow due to other
+        // NOTE: Overflow should always result back to a rational value as token cannot overflow due to other
         // functions permanently reverting
         uint256 ghostBalanceOfEscrow;
         uint256 balanceOfEscrow = trancheToken.balanceOf(address(escrow)) - trancheTokenBalanceOfEscrowAtFork;
         
         unchecked {
-            ghostBalanceOfEscrow = (
-                    sumOfFullfilledDeposits[address(trancheToken)] + sumOfRedeemRequests[address(trancheToken)]
-                    - sumOfClaimedDeposits[address(trancheToken)] - sumOfClaimedRedeemCancelations[address(trancheToken)]
-                    - sumOfClaimedRequests[address(trancheToken)]
+            return token.balanceOf(address(escrow))
+                == (
+                    sumOfFullfilledDeposits[address(token)] + sumOfRedeemRequests[address(token)]
+                        - sumOfClaimedDeposits[address(token)] - sumOfClaimedRedeemCancelations[address(token)]
+                        - sumOfClaimedRequests[address(token)]
                 );
         }
-        eq(balanceOfEscrow, ghostBalanceOfEscrow, "balanceOfEscrow != ghostBalanceOfEscrow");
+    }
+
+    /// NOTE: Example of checked overflow, unused as we have changed tracking of Share tokens to be based on Global_3
+    function _decreaseTotalShareSent(address assetErc20, uint256 amt) internal {
+        uint256 cachedTotal = totalShareSent[assetErc20];
+        unchecked {
+            totalShareSent[assetErc20] -= amt;
+        }
+
+        // Check for overflow here
+        gte(cachedTotal, totalShareSent[assetErc20], " _decreaseTotalShareSent Overflow");
     }
 
     // TODO: Multi Assets -> Iterate over all existing combinations
@@ -264,7 +364,7 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
         //     return; // Canary for actor swaps
         // }
 
-        uint256 balOfEscrow = MockERC20(address(vault.asset())).balanceOf(address(escrow));
+        uint256 balOfEscrow = assetErc20.balanceOf(address(escrow));
 
         // Use acc to track max amount withdrawn for each actor
         address[] memory actors = _getActors();
@@ -289,7 +389,7 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
         //     return; // Canary for actor swaps
         // }
 
-        uint256 balOfEscrow = trancheToken.balanceOf(address(escrow));
+        uint256 balOfEscrow = token.balanceOf(address(escrow));
         emit DebugWithString("balOfEscrow", balOfEscrow);
 
         // Use acc to get maxMint for each actor
@@ -297,7 +397,7 @@ abstract contract Properties is BeforeAfter, Asserts, ERC7540CentrifugePropertie
         
         uint256 acc;
         for (uint256 i; i < actors.length; i++) {
-            // NOTE: Accounts for scenario in which we didn't deploy the demo tranche
+            // NOTE: Accounts for scenario in which we didn't deploy the demo share class
             try vault.maxMint(actors[i]) returns (uint256 amt) {
                 emit DebugWithString("maxMint", amt);
                 acc += amt;

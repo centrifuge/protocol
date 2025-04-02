@@ -1,8 +1,12 @@
-// SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity >=0.5.0;
 
-import {IERC7575} from "src/vaults/interfaces/IERC7575.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
+
+import {IERC7575, IERC165} from "src/vaults/interfaces/IERC7575.sol";
+import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 
 interface IERC7540Operator {
     /**
@@ -278,54 +282,55 @@ interface IERC7714 {
     function isPermissioned(address controller) external view returns (bool);
 }
 
-/**
- * @title  IERC7540Vault
- * @dev    This is the specific set of interfaces used by the Centrifuge impelmentation of ERC7540,
- *         as a fully asynchronous Vault, with cancelation support, and authorize operator signature support.
- */
-interface IERC7540Vault is
-    IERC7540Deposit,
-    IERC7540Redeem,
-    IERC7540CancelDeposit,
-    IERC7540CancelRedeem,
-    IERC7575,
-    IERC7741,
-    IERC7714,
-    IRecoverable
-{
-    event DepositClaimable(address indexed controller, uint256 indexed requestId, uint256 assets, uint256 shares);
-    event RedeemClaimable(address indexed controller, uint256 indexed requestId, uint256 assets, uint256 shares);
-    event CancelDepositClaimable(address indexed controller, uint256 indexed requestId, uint256 assets);
-    event CancelRedeemClaimable(address indexed controller, uint256 indexed requestId, uint256 shares);
-
+/// @notice Interface for the all vault contracts
+/// @dev Must be implemented by all vaults
+interface IBaseVault is IERC7540Operator, IERC7741, IERC7714, IERC7575, IRecoverable {
     /// @notice Identifier of the Centrifuge pool
     function poolId() external view returns (uint64);
 
-    /// @notice Identifier of the tranche of the Centrifuge pool
+    /// @notice Identifier of the share class of the Centrifuge pool
+    /// @dev    IMPORTANT: Name is trancheId to be backwards compatible
     function trancheId() external view returns (bytes16);
 
     /// @notice Set msg.sender as operator of owner, to `approved` status
     /// @dev    MUST be called by endorsed sender
     function setEndorsedOperator(address owner, bool approved) external;
 
+    /// @notice Returns the base investment manager contract handling the vault.
+    /// @dev This naming MUST NOT change due to requirements of olds vaults from v2
+    /// @return The address of the manager contract that is between vault and gateway
+    function manager() external view returns (IBaseInvestmentManager);
+}
+
+/**
+ * @title  IAsyncRedeemVault
+ * @dev    This is the specific set of interfaces used by the Centrifuge implementation of ERC7540,
+ *         as a fully asynchronous Vault, with cancellation support, and authorize operator signature support.
+ */
+interface IAsyncRedeemVault is IERC7540Redeem, IERC7540CancelRedeem, IBaseVault {
+    event RedeemClaimable(address indexed controller, uint256 indexed requestId, uint256 assets, uint256 shares);
+    event CancelRedeemClaimable(address indexed controller, uint256 indexed requestId, uint256 shares);
+
     /// @notice Callback when a redeem Request is triggered externally;
     function onRedeemRequest(address controller, address owner, uint256 shares) external;
-
-    /// @notice Callback when a deposit Request becomes claimable
-    function onDepositClaimable(address owner, uint256 assets, uint256 shares) external;
 
     /// @notice Callback when a redeem Request becomes claimable
     function onRedeemClaimable(address owner, uint256 assets, uint256 shares) external;
 
-    /// @notice Callback when a claim deposit Request becomes claimable
-    function onCancelDepositClaimable(address owner, uint256 assets) external;
-
     /// @notice Callback when a claim redeem Request becomes claimable
     function onCancelRedeemClaimable(address owner, uint256 shares) external;
 
-    /// @notice Price of 1 unit of share, quoted in the decimals of the asset.
-    function pricePerShare() external view returns (uint256);
+    /// @notice Retrieve the asynchronous redeem manager
+    function asyncRedeemManager() external view returns (IAsyncRedeemManager);
+}
 
-    /// @notice Returns timestamp of the last share price update.
-    function priceLastUpdated() external view returns (uint64);
+interface IAsyncVault is IERC7540Deposit, IERC7540CancelDeposit, IAsyncRedeemVault {
+    event DepositClaimable(address indexed controller, uint256 indexed requestId, uint256 assets, uint256 shares);
+    event CancelDepositClaimable(address indexed controller, uint256 indexed requestId, uint256 assets);
+
+    /// @notice Callback when a deposit Request becomes claimable
+    function onDepositClaimable(address owner, uint256 assets, uint256 shares) external;
+
+    /// @notice Callback when a claim deposit Request becomes claimable
+    function onCancelDepositClaimable(address owner, uint256 assets) external;
 }

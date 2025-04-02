@@ -9,41 +9,41 @@ import {vm} from "@chimera/Hevm.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
 // Src Deps | For cycling of values
-import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
+import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {ERC20} from "src/misc/ERC20.sol";
-import {Tranche} from "src/vaults/token/Tranche.sol";
-import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
+import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
+import {RestrictedTransfers} from "src/vaults/token/RestrictedTransfers.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 // @dev A way to separately code and maintain a mocked implementation of `Gateway`
 // Based on
 // `Gateway.handle(bytes calldata message)`
 /**
- * - deployNewTokenPoolAndTranche Core function that deploys a Liquidity Pool
- *     - poolManager_addAsset
+ * - deployNewTokenPoolAndShare Core function that deploys a Liquidity Pool
+ *     - poolManager_registerAsset
  */
 abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     using CastLib for *;
     using MessageLib for *;
 
     // Deploy new Asset
-    // Add Asset to Pool -> Also deploy Tranche
+    // Add Asset to Pool -> Also deploy Share Class
 
     bool hasDoneADeploy;
 
     // Pool ID = Pool ID
     // Asset ID
-    // Tranche ID
+    // Share ID
 
     // Basically the real complete setup
-    function deployNewTokenPoolAndTranche(uint8 decimals, uint256 initialMintPerUsers)
+    function deployNewTokenPoolAndShare(uint8 decimals, uint256 initialMintPerUsers)
         public
         notGovFuzzing
-        returns (address newToken, address newTranche, address newVault)
+        returns (address newToken, address newShareToken, address newVault, uint128 newAssetId)
     {
         // NOTE: TEMPORARY
         require(!hasDoneADeploy); // This bricks the function for this one for Medusa
-        // Meaning we only deploy one token, one Pool, one tranche
+        // Meaning we only deploy one token, one Pool, one share class
 
         if (RECON_USE_SINGLE_DEPLOY) {
             hasDoneADeploy = true;
@@ -61,26 +61,25 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
 
         newToken = _newAsset(decimals);
         {
-            CURRENCY_ID += 1;
-            poolManager_addAsset(CURRENCY_ID, address(newToken));
+            ASSET_ID_COUNTER += 1;
+            newAssetId = poolManager_registerAsset(address(newToken), 0);
         }
 
         {
             POOL_ID += 1;
             poolManager_addPool(POOL_ID);
-            poolManager_allowAsset(POOL_ID, CURRENCY_ID);
         }
 
         {
             // TODO: QA: Custom Names
-            string memory name = "Tranche";
+            string memory name = "Share";
             string memory symbol = "T1";
 
             // TODO: Ask if we should customize decimals and permissions here
-            newTranche = poolManager_addTranche(POOL_ID, TRANCHE_ID, name, symbol, 18, address(restrictionManager));
+            newShareToken = poolManager_addShareClass(POOL_ID, SHARE_ID, name, symbol, 18, address(restrictedTransfers));
         }
 
-        newVault = deployVault(POOL_ID, TRANCHE_ID, address(newToken));
+        newVault = deployVault(POOL_ID, SHARE_ID, newAssetId);
         investmentManager.rely(address(newVault));
 
 
@@ -106,13 +105,14 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         approvals[1] = address(vault);
         _finalizeAssetDeployment(_getActors(), approvals, initialMintPerUsers);
 
-        vault = ERC7540Vault(newVault);
-        trancheToken = Tranche(newTranche);
-        restrictionManager = RestrictionManager(address(trancheToken.hook()));
+        vault = AsyncVault(newVault);
+        assetErc20 = ERC20(newToken);
+        token = CentrifugeToken(newShareToken);
+        restrictedTransfers = RestrictedTransfers(address(token.hook()));
 
-        trancheId = TRANCHE_ID;
+        scId = SHARE_ID;
         poolId = POOL_ID;
-        currencyId = CURRENCY_ID;
+        assetId = newAssetId;
 
         // NOTE: Implicit return
     }
@@ -121,12 +121,12 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     // Add it to All Pools
 
     // Step 2
-    function poolManager_addAsset(uint128 currencyId, address currencyAddress) public notGovFuzzing asAdmin {
-        poolManager.addAsset(currencyId, currencyAddress);
+    function poolManager_registerAsset(address assetAddress, uint256 erc6909TokenId) public returns (uint128 assetId) notGovFuzzing asAdmin {
+        assetId = poolManager.registerAsset(assetAddress, erc6909TokenId, DEFAULT_DESTINATION_CHAIN);
 
-        // Only if success full
-        tokenToCurrencyId[currencyAddress] = currencyId;
-        currencyIdToToken[currencyId] = currencyAddress;
+        // Only if successful
+        assetAddressToAssetId[assetAddress] = assetId;
+        assetIdToAssetAddress[assetId] = assetAddress;
     }
 
     // Step 3
@@ -135,104 +135,104 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     }
 
     // Step 4
-    function poolManager_addTranche(
+    function poolManager_addShareClass(
         uint64 poolId,
-        bytes16 trancheId,
+        bytes16 scId,
         string memory tokenName,
         string memory tokenSymbol,
         uint8 decimals,
         address hook
     ) public notGovFuzzing asAdmin returns (address) {
-        address newTranche = poolManager.addTranche(
-            poolId, trancheId, tokenName, tokenSymbol, decimals, keccak256(abi.encodePacked(poolId, trancheId)), hook
+        address newToken = poolManager.addShareClass(
+            poolId, scId, tokenName, tokenSymbol, decimals, keccak256(abi.encodePacked(poolId, scId)), hook
         );
 
-        trancheTokens.push(newTranche);
+        shareClassTokens.push(newToken);
 
-        return newTranche;
+        return newToken;
     }
 
     // Step 5
-    function poolManager_allowAsset(uint64 poolId, uint128 currencyId) public notGovFuzzing asAdmin {
-        poolManager.allowAsset(poolId, currencyId);
+    function poolManager_deployVault(uint64 poolId, bytes16 scId, uint128 assetId) public returns (address) {
+        return poolManager.deployVault(poolId, scId, assetId, address(vaultFactory));
     }
 
-    // Step 2 = poolManager_addAsset - GatewayMockFunctions
+    /**
+     * NOTE: All of these are implicitly clamped!
+     */
+    function poolManager_updateMember(uint64 validUntil) public {
+        poolManager.updateRestriction(
+            poolId, scId, MessageLib.UpdateRestrictionMember(actor.toBytes32(), validUntil).serialize()
+        );
+    }
+
+    // TODO: Price is capped at u64 to test overflows
+    function poolManager_updateSharePrice(uint64 price, uint64 computedAt) public {
+        poolManager.updateSharePrice(poolId, scId, assetId, price, computedAt);
+    }
+
+    function poolManager_updateShareMetadata(string memory tokenName, string memory tokenSymbol) public {
+        poolManager.updateShareMetadata(poolId, scId, tokenName, tokenSymbol);
+    }
+
+    function poolManager_freeze() public {
+        poolManager.updateRestriction(poolId, scId, MessageLib.UpdateRestrictionFreeze(actor.toBytes32()).serialize());
+    }
+
+    function poolManager_unfreeze() public {
+        poolManager.updateRestriction(poolId, scId, MessageLib.UpdateRestrictionUnfreeze(actor.toBytes32()).serialize());
+    }
+
+    // TODO: Rely / Permissions
+    // Only after all system is setup
+    function root_scheduleRely(address target) public {
+        root.scheduleRely(target);
+    }
+
+    function root_cancelRely(address target) public {
+        root.cancelRely(target);
+    }
+
+    function addToken(uint8 decimals, uint256 initialMintPerUsers) public returns (address) {
+        ERC20 newToken = new ERC20(decimals % RECON_MODULO_DECIMALS); // NOTE: we revert on <1 and >18
+
+        allTokens.push(newToken);
+
+        // TODO: If you have multi actors add them here
+        newToken.mint(actor, initialMintPerUsers);
+
+        return address(newToken);
+    }
+
+    function getMoreToken(uint8 tokenIndex, uint256 newTokenAmount) public {
+        // Token Id
+        ERC20 newToken = allTokens[tokenIndex % allTokens.length];
+
+        // TODO: Consider minting to actors
+        newToken.mint(address(this), newTokenAmount);
+    }
+
+    // Step 2 = poolManager_registerAsset - GatewayMockFunctions
     // Step 3 = poolManager_addPool - GatewayMockFunctions
-    // Step 4 = poolManager_addTranche - GatewayMockFunctions
+    // Step 4 = poolManager_addShareClass - GatewayMockFunctions
+    // Step 5 = poolManager_deployVault - GatewayMockFunctions
 
-    // Step 5 = poolManager_allowAsset - GatewayMockFunctions
+    // A pool can belong to a share class
+    // A Vault can belong to a share class and a currency
 
-    // Step 7 is copied from step 5, ignore
-
-    // A pool can belong to a tranche
-    // A Vault can belong to a tranche and a currency
-
-    // Step 7 is copied from step 5, ignore
-
-    // Step 8, deploy the pool
-    function deployVault(uint64 poolId, bytes16 trancheId, address currency) public notGovFuzzing returns (address) {
-        address newVault = poolManager.deployVault(poolId, trancheId, currency, address(vaultFactory));
-        poolManager.linkVault(poolId, trancheId, currency, newVault);
+    // Step 6 deploy the pool
+    function deployVault(uint64 poolId, bytes16 scId, uint128 assetId) public notGovFuzzing returns (address) {
+        address newVault = poolManager.deployVault(poolId, scId, assetId, address(vaultFactory));
+        poolManager.linkVault(poolId, scId, assetId, newVault);
 
         vaults.push(newVault);
 
         return newVault;
     }
 
-    // Extra 9 - Remove liquidity Pool
-    /// @dev clamped to only remove the first vault
-    function removeVault() public notGovFuzzing {
-        poolManager.unlinkVault(POOL_ID, TRANCHE_ID, _getAsset(), vaults[0]);
-    }
-
-    // Step 10
-    function poolManager_deployVault(uint64 poolId, bytes16 trancheId, address currency) public notGovFuzzing asAdmin returns (address) {
-        return poolManager.deployVault(poolId, trancheId, currency, address(vaultFactory));
-    }
-
-    /**
-     * NOTE: All of these are implicitly clamped!
-     */
-    function poolManager_updateMember(uint64 validUntil) public notGovFuzzing asAdmin {
-        poolManager.updateRestriction(
-            poolId, trancheId, MessageLib.UpdateRestrictionMember(_getActor().toBytes32(), validUntil).serialize()
-        );
-    }
-
-    // TODO: Price is capped at u64 to test overflows
-    function poolManager_updateTranchePrice(uint64 price, uint64 computedAt) public notGovFuzzing asAdmin {
-        poolManager.updateTranchePrice(poolId, trancheId, currencyId, price, computedAt);
-    }
-
-    function poolManager_updateTrancheMetadata(string memory tokenName, string memory tokenSymbol) public notGovFuzzing asAdmin {
-        poolManager.updateTrancheMetadata(poolId, trancheId, tokenName, tokenSymbol);
-    }
-
-    function poolManager_freeze() public notGovFuzzing asAdmin {
-        poolManager.updateRestriction(
-            poolId, trancheId, MessageLib.UpdateRestrictionFreeze(_getActor().toBytes32()).serialize()
-        );
-    }
-
-    function poolManager_unfreeze() public notGovFuzzing asAdmin {
-        poolManager.updateRestriction(
-            poolId, trancheId, MessageLib.UpdateRestrictionUnfreeze(_getActor().toBytes32()).serialize()
-        );
-    }
-
-    function poolManager_disallowAsset() public notGovFuzzing asAdmin {
-        poolManager.disallowAsset(poolId, currencyId);
-    }
-
-    // TODO: Rely / Permissions
-    // Only after all system is setup
-    function root_scheduleRely(address target) public notGovFuzzing asAdmin {
-        root.scheduleRely(target);
-    }
-
-    function root_cancelRely(address target) public notGovFuzzing asAdmin {
-        root.cancelRely(target);
+    // Extra 7 - Remove liquidity Pool
+    function removeVault(uint64 poolId, bytes16 scId, uint128 assetId) public {
+        poolManager.unlinkVault(poolId, scId, assetId, vaults[0]);
     }
 }
 

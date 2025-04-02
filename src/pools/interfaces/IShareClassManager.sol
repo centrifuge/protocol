@@ -3,9 +3,9 @@ pragma solidity 0.8.28;
 
 import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
-import {PoolId} from "src/pools/types/PoolId.sol";
-import {AssetId} from "src/pools/types/AssetId.sol";
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 interface IShareClassManager {
     /// Events
@@ -94,6 +94,7 @@ interface IShareClassManager {
     error ClaimDepositRequired();
     error ClaimRedeemRequired();
     error EpochNotFound();
+    error DecreaseMoreThanIssued();
 
     /// Functions
 
@@ -234,6 +235,20 @@ interface IShareClassManager {
     function updateShareClassNav(PoolId poolId, ShareClassId scId)
         external
         returns (uint128 issuance, D18 navPerShare);
+
+    /// @notice Increases the share class issuance
+    ///
+    /// @param poolId Identifier of the pool
+    /// @param scId Identifier of the share class
+    /// @param amount The amount to increase the share class issuance by
+    function increaseShareClassIssuance(PoolId poolId, ShareClassId scId, D18 navPerShare, uint128 amount) external;
+
+    /// @notice Decreases the share class issuance
+    ///
+    /// @param poolId Identifier of the pool
+    /// @param scId Identifier of the share class
+    /// @param amount The amount to decrease the share class issuance by
+    function decreaseShareClassIssuance(PoolId poolId, ShareClassId scId, D18 navPerShare, uint128 amount) external;
 
     /// @notice Generic update function for a pool.
     ///

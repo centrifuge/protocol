@@ -3,15 +3,15 @@ pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 
-import {PoolId, newPoolId} from "src/pools/types/PoolId.sol";
+import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 
 contract PoolIdTest is Test {
-    function testPoolId(uint32 id) public view {
+    function testPoolId(uint48 id, uint16 chainId) public pure {
         vm.assume(id > 0);
-        PoolId poolId = newPoolId(id);
+        PoolId poolId = newPoolId(chainId, id);
 
         assertEq(poolId.isNull(), false);
-        assertEq(poolId.chainId(), uint32(block.chainid));
-        assertEq(uint32(poolId.raw()), id);
+        assertEq(poolId.chainId(), chainId);
+        assertEq(uint48(poolId.raw()), id);
     }
 }

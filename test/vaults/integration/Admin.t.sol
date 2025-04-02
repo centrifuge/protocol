@@ -14,8 +14,6 @@ contract AdminTest is BaseTest {
     using MessageLib for *;
     using CastLib for *;
 
-    uint32 constant CHAIN_ID = 1;
-
     function testDeployment() public view {
         // values set correctly
         assertEq(root.paused(), false);
@@ -48,24 +46,22 @@ contract AdminTest is BaseTest {
         guardian.unpause();
     }
 
-    function testOutgoingTrancheTokenTransferWhilePausedFails(
+    function testOutgoingShareTokenTransferWhilePausedFails(
         string memory tokenName,
         string memory tokenSymbol,
         uint8 decimals,
-        uint128 assetId,
-        address recipient,
+        address receiver,
         uint128 amount
     ) public {
         // TODO: Set-up correct tests once CC is removed from tests and we test new architecture
     }
 
-    function testIncomingTrancheTokenTransferWhilePausedFails(
+    function testIncomingShareTokenTransferWhilePausedFails(
         string memory tokenName,
         string memory tokenSymbol,
         uint8 decimals,
-        uint128 assetId,
         bytes32, /*sender*/
-        address recipient,
+        address receiver,
         uint128 amount
     ) public {
         // TODO: Set-up correct tests once CC is removed from tests and we test new architecture
@@ -75,9 +71,8 @@ contract AdminTest is BaseTest {
         string memory tokenName,
         string memory tokenSymbol,
         uint8 decimals,
-        uint128 assetId,
         bytes32, /*sender*/
-        address recipient,
+        address receiver,
         uint128 amount
     ) public {
         // TODO: Set-up correct tests once CC is removed from tests and we test new architecture
@@ -107,7 +102,7 @@ contract AdminTest is BaseTest {
         address spell = vm.addr(1);
         vm.prank(address(adminSafe));
         guardian.scheduleRely(spell);
-        vm.warp(block.timestamp + delay + 1 hours);
+        vm.warp(block.timestamp + DELAY + 1 hours);
         root.executeScheduledRely(spell);
         assertEq(root.wards(spell), 1);
     }
@@ -116,7 +111,7 @@ contract AdminTest is BaseTest {
         address spell = vm.addr(1);
         vm.prank(address(adminSafe));
         guardian.scheduleRely(spell);
-        vm.warp(block.timestamp + delay - 1 hours);
+        vm.warp(block.timestamp + DELAY - 1 hours);
         vm.expectRevert(IRoot.TargetNotReady.selector);
         root.executeScheduledRely(spell);
     }
@@ -132,11 +127,11 @@ contract AdminTest is BaseTest {
         address spell = vm.addr(1);
         vm.prank(address(adminSafe));
         guardian.scheduleRely(spell);
-        assertEq(root.schedule(spell), block.timestamp + delay);
+        assertEq(root.schedule(spell), block.timestamp + DELAY);
         vm.prank(address(adminSafe));
         guardian.cancelRely(spell);
         assertEq(root.schedule(spell), 0);
-        vm.warp(block.timestamp + delay + 1 hours);
+        vm.warp(block.timestamp + DELAY + 1 hours);
         vm.expectRevert(IRoot.TargetNotScheduled.selector);
         root.executeScheduledRely(spell);
     }
@@ -170,7 +165,7 @@ contract AdminTest is BaseTest {
     function testIncomingScheduleUpgradeMessage() public {
         address spell = vm.addr(1);
         centrifugeChain.incomingScheduleUpgrade(spell);
-        vm.warp(block.timestamp + delay + 1 hours);
+        vm.warp(block.timestamp + DELAY + 1 hours);
         root.executeScheduledRely(spell);
         assertEq(root.wards(spell), 1);
     }
@@ -178,19 +173,19 @@ contract AdminTest is BaseTest {
     function testIncomingCancelUpgradeMessage() public {
         address spell = vm.addr(1);
         centrifugeChain.incomingScheduleUpgrade(spell);
-        assertEq(root.schedule(spell), block.timestamp + delay);
+        assertEq(root.schedule(spell), block.timestamp + DELAY);
         centrifugeChain.incomingCancelUpgrade(spell);
         assertEq(root.schedule(spell), 0);
-        vm.warp(block.timestamp + delay + 1 hours);
+        vm.warp(block.timestamp + DELAY + 1 hours);
         vm.expectRevert(IRoot.TargetNotScheduled.selector);
         root.executeScheduledRely(spell);
     }
 
-    //------ Updating delay tests ------///
+    //------ Updating DELAY tests ------///
     function testUpdatingDelayWorks() public {
         vm.prank(address(adminSafe));
         guardian.scheduleRely(address(this));
-        vm.warp(block.timestamp + delay + 1 hours);
+        vm.warp(block.timestamp + DELAY + 1 hours);
         root.executeScheduledRely(address(this));
     }
 
@@ -217,42 +212,43 @@ contract AdminTest is BaseTest {
     function testRelyDenyContract() public {
         vm.prank(address(adminSafe));
         guardian.scheduleRely(address(this));
-        vm.warp(block.timestamp + delay + 1 hours);
+        vm.warp(block.timestamp + DELAY + 1 hours);
         root.executeScheduledRely(address(this));
 
-        assertEq(investmentManager.wards(address(this)), 1);
-        root.denyContract(address(investmentManager), address(this));
-        assertEq(investmentManager.wards(address(this)), 0);
+        assertEq(asyncRequests.wards(address(this)), 1);
+        root.denyContract(address(asyncRequests), address(this));
+        assertEq(asyncRequests.wards(address(this)), 0);
 
-        root.relyContract(address(investmentManager), address(this));
-        assertEq(investmentManager.wards(address(this)), 1);
+        root.relyContract(address(asyncRequests), address(this));
+        assertEq(asyncRequests.wards(address(this)), 1);
     }
 
     //------ Token Recovery tests ------///
     function testRecoverTokens() public {
-        deploySimpleVault();
+        deploySimpleVault(VaultKind.Async);
         address clumsyUser = vm.addr(0x1234);
-        address vault_ = investmentManager.vault(5, bytes16(bytes("1")), defaultAssetId);
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        address vault_ =
+            asyncRequests.vault(POOL_A.raw(), bytes16(bytes("1")), poolManager.assetToId(address(erc20), erc20TokenId));
+        AsyncVault vault = AsyncVault(vault_);
         address asset_ = vault.asset();
         ERC20 asset = ERC20(asset_);
         deal(asset_, clumsyUser, 300);
         vm.startPrank(clumsyUser);
         asset.transfer(vault_, 100);
         asset.transfer(address(poolManager), 100);
-        asset.transfer(address(investmentManager), 100);
+        asset.transfer(address(asyncRequests), 100);
         vm.stopPrank();
         assertEq(asset.balanceOf(vault_), 100);
         assertEq(asset.balanceOf(address(poolManager)), 100);
-        assertEq(asset.balanceOf(address(investmentManager)), 100);
+        assertEq(asset.balanceOf(address(asyncRequests)), 100);
         assertEq(asset.balanceOf(clumsyUser), 0);
-        centrifugeChain.recoverTokens(vault_, asset_, clumsyUser, 100);
-        centrifugeChain.recoverTokens(address(poolManager), asset_, clumsyUser, 100);
-        centrifugeChain.recoverTokens(address(investmentManager), asset_, clumsyUser, 100);
+        centrifugeChain.recoverTokens(vault_, asset_, erc20TokenId, clumsyUser, 100);
+        centrifugeChain.recoverTokens(address(poolManager), asset_, erc20TokenId, clumsyUser, 100);
+        centrifugeChain.recoverTokens(address(asyncRequests), asset_, erc20TokenId, clumsyUser, 100);
         assertEq(asset.balanceOf(clumsyUser), 300);
         assertEq(asset.balanceOf(vault_), 0);
         assertEq(asset.balanceOf(address(poolManager)), 0);
-        assertEq(asset.balanceOf(address(investmentManager)), 0);
+        assertEq(asset.balanceOf(address(asyncRequests)), 0);
     }
 
     //Endorsements
@@ -283,7 +279,7 @@ contract AdminTest is BaseTest {
 
     function testDisputeRecovery() public {
         MockManager poolManager = new MockManager();
-        gateway.file("adapters", testAdapters);
+        gateway.file("adapters", OTHER_CHAIN_ID, testAdapters);
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
@@ -294,28 +290,32 @@ contract AdminTest is BaseTest {
         assertEq(poolManager.received(message), 0);
 
         // Initiate recovery
-        _send(adapter1, MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32()).serialize());
+        _send(
+            adapter1,
+            MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32(), OTHER_CHAIN_ID)
+                .serialize()
+        );
 
         vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
-        gateway.executeMessageRecovery(adapter3, proof);
+        gateway.executeMessageRecovery(OTHER_CHAIN_ID, adapter3, proof);
 
         vm.prank(makeAddr("unauthorized"));
         vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
-        guardian.disputeMessageRecovery(adapter3, keccak256(proof));
+        guardian.disputeMessageRecovery(THIS_CHAIN_ID, OTHER_CHAIN_ID, adapter3, keccak256(proof));
 
         // Dispute recovery
         vm.prank(address(adminSafe));
-        guardian.disputeMessageRecovery(adapter3, keccak256(proof));
+        guardian.disputeMessageRecovery(THIS_CHAIN_ID, OTHER_CHAIN_ID, adapter3, keccak256(proof));
 
         // Check that recovery is not possible anymore
         vm.expectRevert(bytes("Gateway/message-recovery-not-initiated"));
-        gateway.executeMessageRecovery(adapter3, proof);
+        gateway.executeMessageRecovery(OTHER_CHAIN_ID, adapter3, proof);
         assertEq(poolManager.received(message), 0);
     }
 
     function _send(MockAdapter adapter, bytes memory message) internal {
         vm.prank(address(adapter));
-        gateway.handle(CHAIN_ID, message);
+        gateway.handle(OTHER_CHAIN_ID, message);
     }
 
     function _formatMessageProof(bytes memory message) internal pure returns (bytes memory) {

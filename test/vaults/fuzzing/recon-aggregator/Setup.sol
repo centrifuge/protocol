@@ -33,7 +33,9 @@ abstract contract Setup is BaseSetup, Asserts {
 
     uint256 RECON_ADAPTERS = 2;
 
-    address[] adapters;
+    IAdapter[] adapters;
+
+    uint16 public constant CENTRIFUGE_ID = 1;
 
     // todo: create some sort of a function that is usable
     bytes[] messages;
@@ -61,12 +63,12 @@ abstract contract Setup is BaseSetup, Asserts {
     function setup() internal virtual override {
         // routerAggregator = new Gateway(address(0), address(0));
 
-        // // Given config, add adapters
-        // for (uint256 i = 0; i < RECON_ADAPTERS; i++) {
-        //     adapters.push(address(new MockAdapter(address(routerAggregator))));
-        // }
+        // Given config, add adapters
+        for (uint256 i = 0; i < RECON_ADAPTERS; i++) {
+            adapters.push(new MockAdapter(CENTRIFUGE_ID, routerAggregator));
+        }
 
-        // routerAggregator.file("adapters", adapters);
+        // routerAggregator.file("adapters", CENTRIFUGE_ID, adapters);
     }
 
     function setupFork() internal {

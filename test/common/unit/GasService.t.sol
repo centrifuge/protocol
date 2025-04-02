@@ -13,7 +13,7 @@ contract GasServiceTest is Test {
 
     uint64 constant MESSAGE_GAS_LIMIT = 40000000000000000;
     uint64 constant PROOF_GAS_LIMIT = 20000000000000000;
-    uint32 constant CHAIN_ID = 1;
+    uint16 constant CHAIN_ID = 1;
 
     GasService service;
 

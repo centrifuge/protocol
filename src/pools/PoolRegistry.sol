@@ -4,40 +4,38 @@ pragma solidity 0.8.28;
 import {Auth} from "src/misc/Auth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 
-import {PoolId, newPoolId} from "src/pools/types/PoolId.sol";
-import {AssetId} from "src/pools/types/AssetId.sol";
+import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
 contract PoolRegistry is Auth, IPoolRegistry {
     using MathLib for uint256;
 
-    uint32 public latestId;
+    uint48 public latestId;
 
     mapping(PoolId => bytes) public metadata;
     mapping(PoolId => AssetId) public currency;
-    mapping(PoolId => IShareClassManager) public shareClassManager;
     mapping(PoolId => mapping(address => bool)) public isAdmin;
+    mapping(PoolId => mapping(bytes32 => address)) public dependency;
 
     constructor(address deployer) Auth(deployer) {}
 
     /// @inheritdoc IPoolRegistry
-    function registerPool(address admin_, AssetId currency_, IShareClassManager shareClassManager_)
+    function registerPool(address admin_, uint16 centrifugeChainId, AssetId currency_)
         external
         auth
         returns (PoolId poolId)
     {
         require(admin_ != address(0), EmptyAdmin());
         require(!currency_.isNull(), EmptyCurrency());
-        require(address(shareClassManager_) != address(0), EmptyShareClassManager());
 
-        poolId = newPoolId(++latestId);
+        poolId = newPoolId(centrifugeChainId, ++latestId);
 
         isAdmin[poolId][admin_] = true;
         currency[poolId] = currency_;
-        shareClassManager[poolId] = shareClassManager_;
 
-        emit NewPool(poolId, admin_, shareClassManager_, currency_);
+        emit NewPool(poolId, admin_, currency_);
     }
 
     /// @inheritdoc IPoolRegistry
@@ -60,13 +58,12 @@ contract PoolRegistry is Auth, IPoolRegistry {
     }
 
     /// @inheritdoc IPoolRegistry
-    function updateShareClassManager(PoolId poolId, IShareClassManager shareClassManager_) external auth {
+    function updateDependency(PoolId poolId, bytes32 what, address dependency_) external auth {
         require(exists(poolId), NonExistingPool(poolId));
-        require(address(shareClassManager_) != address(0), EmptyShareClassManager());
 
-        shareClassManager[poolId] = shareClassManager_;
+        dependency[poolId][what] = dependency_;
 
-        emit UpdatedShareClassManager(poolId, shareClassManager_);
+        emit UpdatedDependency(poolId, what, dependency_);
     }
 
     /// @inheritdoc IPoolRegistry
@@ -80,6 +77,6 @@ contract PoolRegistry is Auth, IPoolRegistry {
     }
 
     function exists(PoolId poolId) public view returns (bool) {
-        return address(shareClassManager[poolId]) != address(0);
+        return !currency[poolId].isNull();
     }
 }

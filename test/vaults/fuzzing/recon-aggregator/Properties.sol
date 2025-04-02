@@ -32,7 +32,7 @@ abstract contract Properties is Setup {
             for (uint256 i = 0; i < messages.length; i++) {
                 bytes32 message = keccak256(messages[i]);
 
-                lt(routerAggregator.votes(message).countNonZeroValues(), RECON_ADAPTERS, "votes(message).countNonZeroValues() >= RECON_ADAPTERS");
+                lt(routerAggregator.votes(CENTRIFUGE_ID, message).countNonZeroValues(), RECON_ADAPTERS, "votes(message).countNonZeroValues() >= RECON_ADAPTERS");
             }
         }
     }

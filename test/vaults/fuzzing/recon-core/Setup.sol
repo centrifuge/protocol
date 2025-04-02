@@ -9,12 +9,16 @@ import {MockERC20} from "@recon/MockERC20.sol";
 import {console2} from "forge-std/console2.sol";
 
 import {Escrow} from "src/vaults/Escrow.sol";
-import {InvestmentManager} from "src/vaults/InvestmentManager.sol";
+import {AsyncRequests} from "src/vaults/AsyncRequests.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
-import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
-import {ERC7540VaultFactory} from "src/vaults/factories/ERC7540VaultFactory.sol";
-import {TrancheFactory} from "src/vaults/factories/TrancheFactory.sol";
-import {RestrictionManager} from "src/vaults/token/RestrictionManager.sol";
+import {AsyncVault} from "src/vaults/AsyncVault.sol";
+import {Root} from "src/common/Root.sol";
+import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
+
+import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
+import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
+
+import {RestrictedTransfers} from "src/vaults/token/RestrictedTransfers.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 import {Tranche} from "src/vaults/token/Tranche.sol";
 
@@ -27,21 +31,25 @@ import {MockMessageProcessor} from "./mocks/MockMessageProcessor.sol";
 
 abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager {
     // Dependencies
-    ERC7540VaultFactory vaultFactory;
-    TrancheFactory trancheFactory;
+    AsyncVaultFactory vaultFactory;
+    TokenFactory tokenFactory;
 
     // Handled //
     Escrow public escrow; // NOTE: Restriction Manager will query it
-    InvestmentManager investmentManager;
+    AsyncRequests asyncRequests;
     PoolManager poolManager;
     MockMessageProcessor messageProcessor;
     // TODO: CYCLE / Make it work for variable values
-    ERC7540Vault vault;
-    Tranche trancheToken;
-    RestrictionManager restrictionManager;
+    AsyncVault vault;
+    ERC20 assetErc20;
+    CentrifugeToken token;
+    address actor = address(this); // TODO: Generalize
+    RestrictedTransfers restrictedTransfers;
 
-    bytes16 trancheId;
+    bytes16 scId;
     uint64 poolId;
+    uint128 assetId;
+
     uint128 currencyId;
     uint256 totalSupplyAtFork;
     uint256 tokenBalanceOfEscrowAtFork;
@@ -117,46 +125,38 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
 
 
         // Dependencies
-        trancheFactory = new TrancheFactory(address(this), address(this));
+        tokenFactory = new TokenFactory(address(this), address(this));
         escrow = new Escrow(address(address(this)));
         root = new Root(48 hours, address(this));
-        restrictionManager = new RestrictionManager(address(root), address(this));
+        restrictedTransfers = new RestrictedTransfers(address(root), address(this));
         messageProcessor = new MockMessageProcessor();
 
         root.endorse(address(escrow));
 
 
-        investmentManager = new InvestmentManager(address(root), address(escrow));
-        vaultFactory = new ERC7540VaultFactory(address(this), address(investmentManager));
-
+        asyncRequests = new AsyncRequests(address(root), address(escrow));
+        vaultFactory = new AsyncVaultFactory(address(this), address(asyncRequests));
 
         address[] memory vaultFactories = new address[](1);
         vaultFactories[0] = address(vaultFactory);
 
 
-        poolManager = new PoolManager(address(escrow), address(trancheFactory), vaultFactories);
-        poolManager.file("gateway", address(this));
-        poolManager.file("sender", address(messageProcessor));
+        poolManager = new PoolManager(address(escrow), address(tokenFactory), vaultFactories);
 
-        investmentManager.file("gateway", address(this));
-        investmentManager.file("poolManager", address(poolManager));
-        investmentManager.file("sender", address(messageProcessor));
-        investmentManager.rely(address(poolManager));
-        investmentManager.rely(address(vaultFactory));
+        asyncRequests.file("poolManager", address(poolManager));
+        asyncRequests.rely(address(poolManager));
+        asyncRequests.rely(address(vaultFactory));
 
-
-        restrictionManager.rely(address(poolManager));
-
+        restrictedTransfers.rely(address(poolManager));
 
         // Setup Escrow Permissions
-        escrow.rely(address(investmentManager));
+        escrow.rely(address(asyncRequests));
         escrow.rely(address(poolManager));
 
 
         // Permissions on factories
         vaultFactory.rely(address(poolManager));
-        trancheFactory.rely(address(poolManager));
-
+        tokenFactory.rely(address(poolManager));
 
         // TODO: Cycling of:
         // Actors and ERC7540 Vaults

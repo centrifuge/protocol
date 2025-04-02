@@ -11,15 +11,13 @@ contract OperatorTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        address vault_ = deploySimpleVault();
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         address investor = makeAddr("investor");
         address operator = makeAddr("operator");
-        ERC7540Vault vault = ERC7540Vault(vault_);
-        ITranche tranche = ITranche(address(vault.share()));
+        AsyncVault vault = AsyncVault(vault_);
+        IShareToken shareToken = IShareToken(address(vault.share()));
 
-        centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), defaultAssetId, price, uint64(block.timestamp)
-        );
+        centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
 
         erc20.mint(investor, amount);
 
@@ -28,11 +26,11 @@ contract OperatorTest is BaseTest {
         erc20.approve(vault_, amount);
 
         vm.prank(operator);
-        vm.expectRevert(bytes("ERC7540Vault/invalid-owner"));
+        vm.expectRevert(bytes("AsyncVault/invalid-owner"));
         vault.requestDeposit(amount, investor, investor);
 
         vm.prank(investor);
-        vm.expectRevert(bytes("ERC7540Vault/cannot-set-self-as-operator"));
+        vm.expectRevert(bytes("AsyncVault/cannot-set-self-as-operator"));
         vault.setOperator(investor, true);
 
         assertEq(vault.isOperator(investor, operator), false);
@@ -46,24 +44,19 @@ contract OperatorTest is BaseTest {
         assertEq(vault.pendingDepositRequest(0, operator), 0);
 
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId(),
-            vault.trancheId(),
-            bytes32(bytes20(investor)),
-            defaultAssetId,
-            uint128(amount),
-            uint128(amount)
+            vault.poolId(), vault.trancheId(), bytes32(bytes20(investor)), assetId, uint128(amount), uint128(amount)
         );
 
         vm.prank(operator);
         vault.deposit(amount, investor, investor);
         assertEq(vault.pendingDepositRequest(0, investor), 0);
-        assertEq(tranche.balanceOf(investor), amount);
+        assertEq(shareToken.balanceOf(investor), amount);
 
         vm.prank(investor);
         vault.setOperator(operator, false);
 
         vm.prank(operator);
-        vm.expectRevert(bytes("ERC7540Vault/invalid-owner"));
+        vm.expectRevert(bytes("AsyncVault/invalid-owner"));
         vault.requestDeposit(amount, investor, investor);
     }
 
@@ -73,14 +66,12 @@ contract OperatorTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        address vault_ = deploySimpleVault();
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         (address controller, uint256 controllerPk) = makeAddrAndKey("controller");
         address operator = makeAddr("operator");
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
 
-        centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), defaultAssetId, price, uint64(block.timestamp)
-        );
+        centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
 
         erc20.mint(controller, amount);
 
@@ -89,7 +80,7 @@ contract OperatorTest is BaseTest {
         erc20.approve(vault_, amount);
 
         vm.prank(operator);
-        vm.expectRevert(bytes("ERC7540Vault/invalid-owner"));
+        vm.expectRevert(bytes("AsyncVault/invalid-owner"));
         vault.requestDeposit(amount, controller, controller);
 
         uint256 deadline = type(uint64).max;
@@ -114,7 +105,7 @@ contract OperatorTest is BaseTest {
         );
         bytes memory signature = abi.encodePacked(r, s, v);
         vm.prank(controller);
-        vm.expectRevert(bytes("ERC7540Vault/cannot-set-self-as-operator"));
+        vm.expectRevert(bytes("AsyncVault/cannot-set-self-as-operator"));
         vault.authorizeOperator(controller, controller, true, bytes32("nonce"), deadline, signature);
 
         (v, r, s) = vm.sign(
@@ -152,14 +143,14 @@ contract OperatorTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
         vm.assume(amount % 2 == 0);
 
-        address vault_ = deploySimpleVault();
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         address investor = makeAddr("investor");
         address operator = makeAddr("operator");
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
 
         deposit(vault_, investor, amount); // deposit funds first
-        centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), defaultAssetId, defaultPrice, uint64(block.timestamp)
+        centrifugeChain.updateSharePrice(
+            vault.poolId(), vault.trancheId(), assetId, defaultPrice, uint64(block.timestamp)
         );
 
         vm.prank(operator);
@@ -177,12 +168,7 @@ contract OperatorTest is BaseTest {
         assertEq(vault.pendingRedeemRequest(0, operator), 0);
 
         centrifugeChain.isFulfilledRedeemRequest(
-            vault.poolId(),
-            vault.trancheId(),
-            bytes32(bytes20(investor)),
-            defaultAssetId,
-            uint128(amount),
-            uint128(amount)
+            vault.poolId(), vault.trancheId(), bytes32(bytes20(investor)), assetId, uint128(amount), uint128(amount)
         );
 
         vm.prank(operator);
@@ -205,14 +191,12 @@ contract OperatorTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        address vault_ = deploySimpleVault();
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         (address controller, uint256 controllerPk) = makeAddrAndKey("controller");
         address operator = makeAddr("operator");
-        ERC7540Vault vault = ERC7540Vault(vault_);
+        AsyncVault vault = AsyncVault(vault_);
 
-        centrifugeChain.updateTranchePrice(
-            vault.poolId(), vault.trancheId(), defaultAssetId, price, uint64(block.timestamp)
-        );
+        centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
 
         erc20.mint(controller, amount);
 
@@ -221,7 +205,7 @@ contract OperatorTest is BaseTest {
         erc20.approve(vault_, amount);
 
         vm.prank(operator);
-        vm.expectRevert(bytes("ERC7540Vault/invalid-owner"));
+        vm.expectRevert(bytes("AsyncVault/invalid-owner"));
         vault.requestDeposit(amount, controller, controller);
 
         uint256 deadline = type(uint64).max;
@@ -248,7 +232,7 @@ contract OperatorTest is BaseTest {
 
         assertEq(vault.authorizations(controller, nonce), true);
 
-        vm.expectRevert(bytes("ERC7540Vault/authorization-used"));
+        vm.expectRevert(bytes("AsyncVault/authorization-used"));
         vm.prank(operator);
         vault.authorizeOperator(controller, operator, true, nonce, deadline, signature);
         assertEq(vault.isOperator(controller, operator), false);

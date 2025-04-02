@@ -1,32 +1,36 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
+import {Auth} from "src/misc/Auth.sol";
+
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 
-import {AssetId} from "src/pools/types/AssetId.sol";
-import {PoolId} from "src/pools/types/PoolId.sol";
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
+import {D18, d18} from "src/misc/types/D18.sol";
 
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 import "forge-std/Test.sol";
 
-contract MockVaults is Test, IAdapter {
+contract MockVaults is Test, Auth, IAdapter {
     using MessageLib for *;
     using CastLib for string;
     using BytesLib for bytes;
 
     IMessageHandler public handler;
-    uint32 public sourceChainId;
+    uint16 public sourceChainId;
 
     uint32[] public lastChainDestinations;
     bytes[] public lastMessages;
 
-    constructor(uint32 chainId, IMessageHandler handler_) {
+    constructor(uint16 chainId, IMessageHandler handler_) Auth(msg.sender) {
         handler = handler_;
         sourceChainId = chainId;
     }
@@ -73,7 +77,7 @@ contract MockVaults is Test, IAdapter {
         );
     }
 
-    function send(uint32 chainId, bytes memory data, uint256, address) external payable {
+    function send(uint16 chainId, bytes memory data, uint256, address) external payable {
         lastChainDestinations.push(chainId);
 
         while (data.length > 0) {
@@ -86,7 +90,69 @@ contract MockVaults is Test, IAdapter {
         }
     }
 
-    function estimate(uint32, bytes calldata, uint256 baseCost) external pure returns (uint256) {
+    function updateHoldingAmount(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 amount,
+        D18 pricePerUnit,
+        bool isIncrease,
+        JournalEntry[] memory debits,
+        JournalEntry[] memory credits
+    ) public {
+        handler.handle(
+            sourceChainId,
+            MessageLib.UpdateHoldingAmount({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                assetId: assetId.raw(),
+                who: bytes32(0),
+                amount: amount,
+                pricePerUnit: pricePerUnit.raw(),
+                timestamp: 0,
+                isIncrease: isIncrease,
+                debits: debits,
+                credits: credits
+            }).serialize()
+        );
+    }
+
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePerUnit) public {
+        handler.handle(
+            sourceChainId,
+            MessageLib.UpdateHoldingValue({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                assetId: assetId.raw(),
+                pricePerUnit: pricePerUnit.raw(),
+                timestamp: 0
+            }).serialize()
+        );
+    }
+
+    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) public {
+        handler.handle(
+            sourceChainId,
+            MessageLib.UpdateJournal({poolId: poolId.raw(), debits: debits, credits: credits}).serialize()
+        );
+    }
+
+    function updateShares(PoolId poolId, ShareClassId scId, uint128 amount, bool isIssuance) public {
+        handler.handle(
+            sourceChainId,
+            MessageLib.UpdateShares({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                who: bytes32(0),
+                pricePerShare: d18(1, 1).raw(),
+                shares: amount,
+                timestamp: 0,
+                isIssuance: isIssuance
+            }).serialize()
+        );
+    }
+
+    function estimate(uint16, bytes calldata, uint256 baseCost) external pure returns (uint256) {
         return baseCost;
     }
 
