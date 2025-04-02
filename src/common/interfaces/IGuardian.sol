@@ -21,6 +21,9 @@ interface IGuardian {
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 indexed what, address addr);
 
+    /// @notice Return the linked Safe
+    function safe() external view returns (ISafe);
+
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
     /// Accepts a `bytes32` representation of 'sender' string value.

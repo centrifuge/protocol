@@ -3,19 +3,19 @@ pragma solidity ^0.8.28;
 
 import "forge-std/Test.sol";
 
-import {ISafe} from "src/common/interfaces/IGuardian.sol";
-
 import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
 
 import {PoolRouter} from "src/pools/PoolRouter.sol";
+import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
+import "src/vaults/interfaces/IPoolManager.sol";
 
 import {FullDeployer, PoolsDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
 
 import {LocalAdapter} from "test/integration/adapters/LocalAdapter.sol";
-
-import "src/vaults/interfaces/IPoolManager.sol";
 
 /// End to end testing assuming two full deployments in two different chains
 contract TestEndToEnd is Test {
@@ -73,8 +73,11 @@ contract TestEndToEnd is Test {
         (PoolsDeployer cp, VaultsDeployer cv) = _getDeploys(sameChain);
         uint16 cvChainId = cv.messageDispatcher().localCentrifugeId();
 
-        vm.prank(address(safeAdminA));
-        PoolId poolId = cp.guardian().createPool(FM, deployA.USD(), deployA.multiShareClass());
+        IGuardian guardian = cp.guardian();
+        AssetId usd = deployA.USD();
+        IShareClassManager scm = deployA.multiShareClass();
+        vm.prank(address(guardian.safe()));
+        PoolId poolId = guardian.createPool(FM, usd, scm);
 
         vm.startPrank(FM);
 
