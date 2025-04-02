@@ -20,7 +20,7 @@ import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 
 import {RestrictedTransfers} from "src/vaults/token/RestrictedTransfers.sol";
 import {ERC20} from "src/misc/ERC20.sol";
-import {Tranche} from "src/vaults/token/Tranche.sol";
+import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 
 import {Root} from "src/common/Root.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
@@ -82,8 +82,13 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         _;
     }
 
-    modifier trancheTokenIsSet() {
-        require(address(trancheToken) != address(0));
+    modifier tokenIsSet() {
+        require(address(token) != address(0));
+        _;
+    }
+
+    modifier assetIsSet() {
+        require(address(assetErc20) != address(0));
         _;
     }
 
@@ -144,6 +149,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         poolManager = new PoolManager(address(escrow), address(tokenFactory), vaultFactories);
 
         asyncRequests.file("poolManager", address(poolManager));
+        asyncRequests.file("sender", address(messageProcessor));
         asyncRequests.rely(address(poolManager));
         asyncRequests.rely(address(vaultFactory));
 
@@ -172,21 +178,22 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
 
         // Forked contracts from here: https://github.com/centrifuge/liquidity-pools/blob/main/deployments/mainnet/ethereum-mainnet.json
         escrow = Escrow(address(0x0000000005F458Fd6ba9EEb5f365D83b7dA913dD));
-        restrictionManager = RestrictionManager(address(0x4737C3f62Cc265e786b280153fC666cEA2fBc0c0));
-        investmentManager = InvestmentManager(address(0xE79f06573d6aF1B66166A926483ba00924285d20));
+        restrictedTransfers = RestrictedTransfers(address(0x4737C3f62Cc265e786b280153fC666cEA2fBc0c0));
+        asyncRequests = AsyncRequests(address(0xE79f06573d6aF1B66166A926483ba00924285d20));
         poolManager = PoolManager(address(0x91808B5E2F6d7483D41A681034D7c9DbB64B9E29));
         root = Root(address(0x0C1fDfd6a1331a875EA013F3897fc8a76ada5DfC));
 
         // Pool specific contracts
-        vault = ERC7540Vault(address(0x1d01Ef1997d44206d839b78bA6813f60F1B3A970));
-        trancheToken = Tranche(address(0x8c213ee79581Ff4984583C6a801e5263418C4b86));
+        vault = AsyncVault(address(0x1d01Ef1997d44206d839b78bA6813f60F1B3A970));
+        token = CentrifugeToken(address(0x8c213ee79581Ff4984583C6a801e5263418C4b86));
         // TODO: replaced with getAsset(), need a better way to do this for forked setup
         // token = ERC20(address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48));
 
         // Pool specific values
         poolId = 4139607887;
-        trancheId = 0x97aa65f23e7be09fcd62d0554d2e9273;
-        currencyId = poolManager.assetToId(address(_getAsset()));
+        scId = 0x97aa65f23e7be09fcd62d0554d2e9273;
+        // TODO: need tokenId to pass in here
+        // assetId = poolManager.assetToId(address(_getAsset()));
 
         // remove previously set actors
         _removeActor(address(this)); // remove default actor
@@ -212,9 +219,9 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
 
         // NOTE: used for invariants that depend on comparing ghost variables to state values
         // state values are taken from the forked contracts so won't initially be in sync with the ghost variables, this allows us to sync them
-        totalSupplyAtFork = trancheToken.totalSupply();
+        totalSupplyAtFork = token.totalSupply();
         tokenBalanceOfEscrowAtFork = MockERC20(address(_getAsset())).balanceOf(address(escrow));
-        trancheTokenBalanceOfEscrowAtFork = trancheToken.balanceOf(address(escrow));
+        trancheTokenBalanceOfEscrowAtFork = token.balanceOf(address(escrow));
     }
 
     /// @dev Returns a random actor from the list of actors

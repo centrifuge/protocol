@@ -80,7 +80,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         }
 
         newVault = deployVault(POOL_ID, SHARE_ID, newAssetId);
-        investmentManager.rely(address(newVault));
+        asyncRequests.rely(address(newVault));
 
 
         // NOTE: Add to storage! So this will be called by other functions
@@ -121,7 +121,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     // Add it to All Pools
 
     // Step 2
-    function poolManager_registerAsset(address assetAddress, uint256 erc6909TokenId) public returns (uint128 assetId) notGovFuzzing asAdmin {
+    function poolManager_registerAsset(address assetAddress, uint256 erc6909TokenId) public notGovFuzzing asAdmin returns (uint128 assetId) {
         assetId = poolManager.registerAsset(assetAddress, erc6909TokenId, DEFAULT_DESTINATION_CHAIN);
 
         // Only if successful
@@ -155,6 +155,21 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     // Step 5
     function poolManager_deployVault(uint64 poolId, bytes16 scId, uint128 assetId) public returns (address) {
         return poolManager.deployVault(poolId, scId, assetId, address(vaultFactory));
+    }
+
+    // Step 6 deploy the pool
+    function deployVault(uint64 poolId, bytes16 scId, uint128 assetId) public notGovFuzzing returns (address) {
+        address newVault = poolManager.deployVault(poolId, scId, assetId, address(vaultFactory));
+        poolManager.linkVault(poolId, scId, assetId, newVault);
+
+        vaults.push(newVault);
+
+        return newVault;
+    }
+
+    // Extra 7 - Remove liquidity Pool
+    function removeVault(uint64 poolId, bytes16 scId, uint128 assetId) public {
+        poolManager.unlinkVault(poolId, scId, assetId, vaults[0]);
     }
 
     /**
@@ -191,48 +206,6 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
 
     function root_cancelRely(address target) public {
         root.cancelRely(target);
-    }
-
-    function addToken(uint8 decimals, uint256 initialMintPerUsers) public returns (address) {
-        ERC20 newToken = new ERC20(decimals % RECON_MODULO_DECIMALS); // NOTE: we revert on <1 and >18
-
-        allTokens.push(newToken);
-
-        // TODO: If you have multi actors add them here
-        newToken.mint(actor, initialMintPerUsers);
-
-        return address(newToken);
-    }
-
-    function getMoreToken(uint8 tokenIndex, uint256 newTokenAmount) public {
-        // Token Id
-        ERC20 newToken = allTokens[tokenIndex % allTokens.length];
-
-        // TODO: Consider minting to actors
-        newToken.mint(address(this), newTokenAmount);
-    }
-
-    // Step 2 = poolManager_registerAsset - GatewayMockFunctions
-    // Step 3 = poolManager_addPool - GatewayMockFunctions
-    // Step 4 = poolManager_addShareClass - GatewayMockFunctions
-    // Step 5 = poolManager_deployVault - GatewayMockFunctions
-
-    // A pool can belong to a share class
-    // A Vault can belong to a share class and a currency
-
-    // Step 6 deploy the pool
-    function deployVault(uint64 poolId, bytes16 scId, uint128 assetId) public notGovFuzzing returns (address) {
-        address newVault = poolManager.deployVault(poolId, scId, assetId, address(vaultFactory));
-        poolManager.linkVault(poolId, scId, assetId, newVault);
-
-        vaults.push(newVault);
-
-        return newVault;
-    }
-
-    // Extra 7 - Remove liquidity Pool
-    function removeVault(uint64 poolId, bytes16 scId, uint128 assetId) public {
-        poolManager.unlinkVault(poolId, scId, assetId, vaults[0]);
     }
 }
 

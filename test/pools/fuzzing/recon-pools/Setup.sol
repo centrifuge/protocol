@@ -28,12 +28,13 @@ import "src/common/interfaces/IMessageSender.sol";
 import "src/common/interfaces/IGateway.sol";
 import "src/misc/TransientValuation.sol";
 import "src/misc/IdentityValuation.sol";
-import "src/pools/MessageProcessor.sol";
+import "src/common/MessageProcessor.sol";
 import "src/common/Root.sol";
 import "test/common/mocks/MockAdapter.sol";
 import "test/common/mocks/MockGasService.sol";
 import "test/pools/fuzzing/recon-pools/mocks/MockGateway.sol";
 import "test/pools/fuzzing/recon-pools/utils/MultiShareClassWrapper.sol";
+import "test/vaults/fuzzing/recon-core/mocks/MockMessageProcessor.sol";
 
 abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     enum Op {
@@ -53,7 +54,6 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     PoolRegistry poolRegistry;
     PoolRouter poolRouter;
     MultiShareClassWrapper multiShareClass;
-    MessageProcessor messageProcessor;
     TransientValuation transientValuation;
     IdentityValuation identityValuation;
     Root root;
@@ -61,7 +61,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     MockAdapter mockAdapter;
     MockGasService gasService;
     MockGateway gateway;
-
+    MockMessageProcessor messageProcessor;
     bytes[] internal queuedCalls; // used for storing calls to PoolRouter to be executed in a single transaction
     PoolId[] internal createdPools;
     // QueuedOp[] internal queuedOps;
@@ -73,6 +73,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
 
     // set the initial price that gets used when creating an asset via a pool's shortcut to avoid stack too deep errors
     D18 internal INITIAL_PRICE = d18(1e18); 
+    uint16 internal CENTIFUGE_CHAIN_ID = 1;
 
     event LogString(string);
 
@@ -100,16 +101,15 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         accounting = new Accounting(address(this)); 
         assetRegistry = new AssetRegistry(address(this)); 
         poolRegistry = new PoolRegistry(address(this)); 
-
-        holdings = new Holdings(IPoolRegistry(address(poolRegistry)), address(this));
-        poolRouter = new PoolRouter(IPoolRegistry(address(poolRegistry)), IAssetRegistry(address(assetRegistry)), IAccounting(address(accounting)), IHoldings(address(holdings)), IGateway(address(gateway)), address(this));
-        multiShareClass = new MultiShareClassWrapper(IPoolRegistry(address(poolRegistry)), address(this));
-        messageProcessor = new MessageProcessor(IMessageSender(address(gateway)), IPoolRouterHandler(address(poolRouter)), address(this));
-
-        mockAdapter = new MockAdapter(IMessageHandler(address(gateway)));
-
         transientValuation = new TransientValuation(assetRegistry, address(this));
         identityValuation = new IdentityValuation(assetRegistry, address(this));
+
+        holdings = new Holdings(IPoolRegistry(address(poolRegistry)), address(this));
+        poolRouter = new PoolRouter(IPoolRegistry(address(poolRegistry)), IAssetRegistry(address(assetRegistry)), IAccounting(address(accounting)), IHoldings(address(holdings)), IGateway(address(gateway)), ITransientValuation(address(transientValuation)), address(this));
+        multiShareClass = new MultiShareClassWrapper(IPoolRegistry(address(poolRegistry)), address(this));
+        messageProcessor = new MockMessageProcessor();
+
+        mockAdapter = new MockAdapter(CENTIFUGE_CHAIN_ID, IMessageHandler(address(gateway)));
 
         // set addresses on the PoolRouter
         poolRouter.file("sender", address(messageProcessor));
@@ -121,7 +121,6 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         holdings.rely(address(poolRouter));
         multiShareClass.rely(address(poolRouter));
         poolRouter.rely(address(poolRouter));
-        messageProcessor.rely(address(poolRouter));
         multiShareClass.rely(address(this));
     }
 

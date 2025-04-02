@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0
 pragma solidity ^0.8.0;
 
-import {PoolId} from "src/pools/types/PoolId.sol";
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
-import {AssetId} from "src/pools/types/AssetId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 import {EpochPointers, UserOrder} from "src/pools/MultiShareClass.sol";
 import {Helpers} from "test/pools/fuzzing/recon-pools/utils/Helpers.sol";
 import {Setup} from "./Setup.sol";

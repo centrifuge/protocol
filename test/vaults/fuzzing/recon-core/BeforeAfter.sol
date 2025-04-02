@@ -4,13 +4,13 @@ pragma solidity ^0.8.0;
 import {MockERC20} from "@recon/MockERC20.sol";
 
 import {Setup} from "./Setup.sol";
-import {InvestmentState} from "src/vaults/interfaces/IInvestmentManager.sol";
+import {AsyncInvestmentState} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {Ghosts} from "./Ghosts.sol";
 
 abstract contract BeforeAfter is Ghosts {
 
     struct BeforeAfterVars {
-        mapping(address investor => InvestmentState) investments;
+        mapping(address investor => AsyncInvestmentState) investments;
         uint256 escrowTokenBalance;
         uint256 escrowTrancheTokenBalance;
     }
@@ -38,8 +38,8 @@ abstract contract BeforeAfter is Ghosts {
                 uint128 claimableCancelRedeemRequest,
                 bool pendingCancelDepositRequest,
                 bool pendingCancelRedeemRequest
-            ) = investmentManager.investments(address(vault), actors[i]);
-            _before.investments[actors[i]] = InvestmentState(
+            ) = asyncRequests.investments(address(vault), actors[i]);
+            _before.investments[actors[i]] = AsyncInvestmentState(
                 maxMint,
                 maxWithdraw,
                 depositPrice,
@@ -53,7 +53,7 @@ abstract contract BeforeAfter is Ghosts {
             );
         }
         _before.escrowTokenBalance = MockERC20(_getAsset()).balanceOf(address(escrow));
-        _before.escrowTrancheTokenBalance = trancheToken.balanceOf(address(escrow));
+        _before.escrowTrancheTokenBalance = token.balanceOf(address(escrow));
     }
 
     function __after() internal {
@@ -70,8 +70,8 @@ abstract contract BeforeAfter is Ghosts {
                 uint128 claimableCancelRedeemRequest,
                 bool pendingCancelDepositRequest,
                 bool pendingCancelRedeemRequest
-            ) = investmentManager.investments(address(vault), actors[i]);
-            _after.investments[actors[i]] = InvestmentState(
+            ) = asyncRequests.investments(address(vault), actors[i]);
+            _after.investments[actors[i]] = AsyncInvestmentState(
                 maxMint,
                 maxWithdraw,
                 depositPrice,
@@ -85,6 +85,6 @@ abstract contract BeforeAfter is Ghosts {
             );
         }
         _after.escrowTokenBalance = MockERC20(_getAsset()).balanceOf(address(escrow));
-        _after.escrowTrancheTokenBalance = trancheToken.balanceOf(address(escrow));
+        _after.escrowTrancheTokenBalance = token.balanceOf(address(escrow));
     }
 }

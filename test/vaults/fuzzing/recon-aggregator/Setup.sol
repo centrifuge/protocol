@@ -7,6 +7,7 @@ import { vm } from "@chimera/Hevm.sol";
 
 import {Gateway} from "src/common/Gateway.sol";
 import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 // What happens if we add more adapters later?
 
@@ -68,7 +69,7 @@ abstract contract Setup is BaseSetup, Asserts {
             adapters.push(new MockAdapter(CENTRIFUGE_ID, routerAggregator));
         }
 
-        // routerAggregator.file("adapters", CENTRIFUGE_ID, adapters);
+        routerAggregator.file("adapters", CENTRIFUGE_ID, adapters);
     }
 
     function setupFork() internal {

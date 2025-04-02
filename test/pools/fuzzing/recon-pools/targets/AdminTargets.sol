@@ -10,10 +10,10 @@ import {Panic} from "@recon/Panic.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 
 // Source
-import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
-import {AccountId} from "src/pools/types/AccountId.sol";
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
-import {PoolId} from "src/pools/types/PoolId.sol";
+import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
@@ -46,10 +46,6 @@ abstract contract AdminTargets is
         queuedCalls.push(abi.encodeWithSelector(poolRouter.addShareClass.selector, name, symbol, salt, data));
     }
 
-    function poolRouter_allowAsset(ShareClassId scId, AssetId assetId, bool allow) public {
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.allowAsset.selector, scId, assetId, allow));
-    }
-
     function poolRouter_allowPoolAdmin(address account, bool allow) public {
         queuedCalls.push(abi.encodeWithSelector(poolRouter.allowPoolAdmin.selector, account, allow));
     }
@@ -70,14 +66,6 @@ abstract contract AdminTargets is
 
     function poolRouter_createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint24 prefix) public {
         queuedCalls.push(abi.encodeWithSelector(poolRouter.createHolding.selector, scId, assetId, valuation, prefix));
-    }
-
-    function poolRouter_decreaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount) public {
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.decreaseHolding.selector, scId, assetId, valuation, amount));
-    }
-
-    function poolRouter_increaseHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount) public {
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.increaseHolding.selector, scId, assetId, valuation, amount));
     }
 
     function poolRouter_issueShares(ShareClassId scId, AssetId depositAssetId, D18 navPerShare) public {

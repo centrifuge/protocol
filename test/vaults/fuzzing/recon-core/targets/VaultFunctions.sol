@@ -21,10 +21,10 @@ import {Properties} from "../Properties.sol";
  * - vault_file
  */
 abstract contract VaultFunctions is BaseTargetFunctions, Properties {
-    /// @dev Get the balance of the current assetErc20 and actor
+    /// @dev Get the balance of the current assetErc20 and _getActor()
     function _getTokenAndBalanceForVault() internal view returns (uint256) {
         // Token
-        uint256 amt = assetErc20.balanceOf(actor);
+        uint256 amt = assetErc20.balanceOf(_getActor());
 
         return amt;
     }
@@ -33,11 +33,12 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
     function vault_requestDeposit(uint256 assets, uint256 toEntropy) public updateGhosts {
         assets = between(assets, 0, _getTokenAndBalanceForVault());
 
+        vm.prank(_getActor());
         assetErc20.approve(address(vault), assets);
-        address to = actor; // NOTE: We transfer to self for now
+        address to = _getRandomActor(toEntropy);
 
         // B4 Balances
-        uint256 balanceB4 = assetErc20.balanceOf(actor);
+        uint256 balanceB4 = assetErc20.balanceOf(_getActor());
         uint256 balanceOfEscrowB4 = assetErc20.balanceOf(address(escrow));
 
         bool hasReverted;
@@ -48,13 +49,13 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
             // TF-1
             sumOfDepositRequests[address(assetErc20)] += assets;
 
-            requestDepositAssets[actor][address(assetErc20)] += assets;
+            requestDepositAssets[_getActor()][address(assetErc20)] += assets;
         } catch {
             hasReverted = true;
         }
 
         // If not member
-        (bool isMember,) = restrictedTransfers.isMember(address(token), actor);
+        (bool isMember,) = restrictedTransfers.isMember(address(token), _getActor());
         if (!isMember) {
             t(hasReverted, "LP-1 Must Revert");
         }
@@ -67,7 +68,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
         }
 
         // After Balances and Checks
-        uint256 balanceAfter = assetErc20.balanceOf(actor);
+        uint256 balanceAfter = assetErc20.balanceOf(_getActor());
         uint256 balanceOfEscrowAfter = assetErc20.balanceOf(address(escrow));
 
         // NOTE: We only enforce the check if the tx didn't revert
@@ -92,6 +93,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
         uint256 balanceB4 = token.balanceOf(_getActor());
         uint256 balanceOfEscrowB4 = token.balanceOf(address(escrow));
 
+        vm.prank(_getActor());
         token.approve(address(vault), shares);
 
         bool hasReverted;
@@ -147,7 +149,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
     function vault_claimCancelDepositRequest(uint256 toEntropy) public updateGhosts asActor {
         address to = _getRandomActor(toEntropy);
 
-        uint256 assets = vault.claimCancelDepositRequest(REQUEST_ID, to, actor);
+        uint256 assets = vault.claimCancelDepositRequest(REQUEST_ID, to, _getActor());
         sumOfClaimedDepositCancelations[address(assetErc20)] += assets;
     }
 
@@ -234,33 +236,34 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
         }
     }
 
-    // TODO: Params
     function vault_redeem(uint256 shares, uint256 toEntropy) public updateGhosts {
         address to = _getRandomActor(toEntropy);
         address vaultAsset = address(vault.asset());
 
         // Bal b4
-        uint256 tokenUserB4 = assetErc20.balanceOf(actor);
+        uint256 tokenUserB4 = assetErc20.balanceOf(_getActor());
         uint256 tokenEscrowB4 = assetErc20.balanceOf(address(escrow));
 
-        uint256 assets = vault.redeem(shares, actor, to);
+        // NOTE: external calls above so need to prank directly here
+        vm.prank(_getActor());
+        uint256 assets = vault.redeem(shares, to, _getActor());
 
         // E-1
         sumOfClaimedRedemptions[address(assetErc20)] += assets;
 
         // Bal after
-        uint256 tokenUserAfter = assetErc20.balanceOf(actor);
+        uint256 tokenUserAfter = assetErc20.balanceOf(_getActor());
         uint256 tokenEscrowAfter = assetErc20.balanceOf(address(escrow));
 
         // Extra check | // TODO: This math will prob overflow
         // NOTE: Unchecked so we get broken property and debug faster
         unchecked {
-            uint256 deltaUser = balanceUserAfter - balanceUserB4;
+            uint256 deltaUser = tokenUserAfter - tokenUserB4;
 
             // TODO: NOTE FOT extra, verifies the transfer amount matches the returned amount
             eq(deltaUser, assets, "FoT-1");
 
-            uint256 deltaEscrow = balanceEscrowB4 - balanceEscrowAfter;
+            uint256 deltaEscrow = tokenEscrowB4 - tokenEscrowAfter;
             emit DebugNumber(deltaUser);
             emit DebugNumber(shares);
             emit DebugNumber(deltaEscrow);
@@ -273,30 +276,29 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
         }
     }
 
-    // TODO: Params
     function vault_withdraw(uint256 assets, uint256 toEntropy) public updateGhosts {
         address to = _getRandomActor(toEntropy);
 
         // Bal b4
-        uint256 tokenUserB4 = assetErc20.balanceOf(actor);
+        uint256 tokenUserB4 = assetErc20.balanceOf(_getActor());
         uint256 tokenEscrowB4 = assetErc20.balanceOf(address(escrow));
 
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
-        vault.withdraw(assets, _getActor(), to);
+        vault.withdraw(assets, to, _getActor());
 
         // E-1
         sumOfClaimedRedemptions[address(assetErc20)] += assets;
 
         // Bal after
-        uint256 tokenUserAfter = assetErc20.balanceOf(actor);
+        uint256 tokenUserAfter = assetErc20.balanceOf(_getActor());
         uint256 tokenEscrowAfter = assetErc20.balanceOf(address(escrow));
 
         // Extra check | // TODO: This math will prob overflow
         // NOTE: Unchecked so we get broken property and debug faster
         unchecked {
-            uint256 deltaUser = balanceUserAfter - balanceUserB4;
-            uint256 deltaEscrow = balanceEscrowB4 - balanceEscrowAfter;
+            uint256 deltaUser = tokenUserAfter - tokenUserB4;
+            uint256 deltaEscrow = tokenEscrowB4 - tokenEscrowAfter;
             emit DebugNumber(deltaUser);
             emit DebugNumber(assets);
             emit DebugNumber(deltaEscrow);

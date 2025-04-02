@@ -47,7 +47,7 @@ abstract contract PoolManagerFunctions is BaseTargetFunctions, Properties {
         // Track minting for Global-3
         outGoingTransfers[address(token)] += amount;
 
-        uint256 balAfterActor = trancheToken.balanceOf(_getActor());
+        uint256 balAfterActor = token.balanceOf(_getActor());
 
         t(balAfterActor <= balB4, "PM-3-A");
         t(balB4 - balAfterActor == amount, "PM-3-A");

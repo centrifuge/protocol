@@ -59,7 +59,7 @@ abstract contract Ghosts is Setup {
             uint128 claimableCancelRedeemRequest,
             bool pendingCancelDepositRequest,
             bool pendingCancelRedeemRequest
-        ) = investmentManager.investments(address(vault), address(_getActor()));
+        ) = asyncRequests.investments(address(vault), address(_getActor()));
 
         return (depositPrice, redeemPrice);
     }

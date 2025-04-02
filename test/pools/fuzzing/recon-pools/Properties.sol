@@ -3,9 +3,9 @@ pragma solidity ^0.8.0;
 
 import {Asserts} from "@chimera/Asserts.sol";
 
-import {AssetId} from "src/pools/types/AssetId.sol";
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
-import {PoolId} from "src/pools/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {EscrowId} from "src/pools/interfaces/IPoolRouter.sol";
@@ -310,7 +310,7 @@ abstract contract Properties is BeforeAfter, Asserts {
                 ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
                 AssetId assetId = poolRegistry.currency(poolId);
 
-                (uint128 holdingAssetAmount,,) = holdings.holding(poolId, scId, assetId);
+                (uint128 holdingAssetAmount,,,) = holdings.holding(poolId, scId, assetId);
                 
                 address pendingShareClassEscrow = poolRouter.escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS);
                 address shareClassEscrow = poolRouter.escrow(poolId, scId, EscrowId.SHARE_CLASS);

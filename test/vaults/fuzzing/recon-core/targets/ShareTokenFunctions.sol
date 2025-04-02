@@ -8,19 +8,20 @@ import {vm} from "@chimera/Hevm.sol";
 
 // Dependencies
 import {ERC20} from "src/misc/ERC20.sol";
-import {ERC7540Vault} from "src/vaults/ERC7540Vault.sol";
+import {AsyncVault} from "src/vaults/AsyncVault.sol";
 
-// Only for Tranche
-abstract contract TrancheTokenFunctions is BaseTargetFunctions, Properties {
-    function trancheToken_transfer(address to, uint256 value) public {
+// Only for Share
+abstract contract ShareTokenFunctions is BaseTargetFunctions, Properties {
+    function token_transfer(address to, uint256 value) public {
         require(_canDonate(to), "never donate to escrow");
 
         // Clamp
-        value = between(value, 0, trancheToken.balanceOf(actor));
+        value = between(value, 0, token.balanceOf(actor));
 
         bool hasReverted;
 
-        try trancheToken.transfer(to, value) {
+        vm.prank(_getActor());
+        try token.transfer(to, value) {
             // NOTE: We're not checking for specifics!
         } catch {
             // NOTE: May revert for a myriad of reasons!
@@ -29,32 +30,34 @@ abstract contract TrancheTokenFunctions is BaseTargetFunctions, Properties {
 
         // TT-1 Always revert if one of them is frozen
         if (
-            restrictionManager.isFrozen(address(trancheToken), to) == true
-                || restrictionManager.isFrozen(address(trancheToken), actor) == true
+            restrictedTransfers.isFrozen(address(token), to) == true
+                || restrictedTransfers.isFrozen(address(token), actor) == true
         ) {
             t(hasReverted, "TT-1 Must Revert");
         }
 
         // Not a member | NOTE: Non member actor and from can move tokens?
-        (bool isMember,) = restrictionManager.isMember(address(trancheToken), to);
+        (bool isMember,) = restrictedTransfers.isMember(address(token), to);
         if (!isMember) {
             t(hasReverted, "TT-3 Must Revert");
         }
     }
 
     // NOTE: We need this for transferFrom to work
-    function trancheToken_approve(address spender, uint256 value) public {
-        trancheToken.approve(spender, value);
+    function token_approve(address spender, uint256 value) public asActor {
+        token.approve(spender, value);
     }
 
     // Check
-    function trancheToken_transferFrom(address from, address to, uint256 value) public {
+    function token_transferFrom(address from, address to, uint256 value) public {
+        address from = _getActor();
         require(_canDonate(to), "never donate to escrow");
 
-        value = between(value, 0, trancheToken.balanceOf(from));
+        value = between(value, 0, token.balanceOf(from));
 
         bool hasReverted;
-        try trancheToken.transferFrom(from, to, value) {
+        vm.prank(from);
+        try token.transferFrom(from, to, value) {
             // NOTE: We're not checking for specifics!
         } catch {
             // NOTE: May revert for a myriad of reasons!
@@ -63,36 +66,37 @@ abstract contract TrancheTokenFunctions is BaseTargetFunctions, Properties {
 
         // TT-1 Always revert if one of them is frozen
         if (
-            restrictionManager.isFrozen(address(trancheToken), to) == true
-                || restrictionManager.isFrozen(address(trancheToken), from) == true
+            restrictedTransfers.isFrozen(address(token), to) == true
+                || restrictedTransfers.isFrozen(address(token), from) == true
         ) {
             t(hasReverted, "TT-1 Must Revert");
         }
 
         // Not a member | NOTE: Non member actor and from can move tokens?
-        (bool isMember,) = restrictionManager.isMember(address(trancheToken), to);
+        (bool isMember,) = restrictedTransfers.isMember(address(token), to);
         if (!isMember) {
             t(hasReverted, "TT-3 Must Revert");
         }
     }
 
-    function trancheToken_mint(address to, uint256 value) public {
+    function token_mint(address to, uint256 value) public notGovFuzzing {
         require(_canDonate(to), "never donate to escrow");
 
         bool hasReverted;
 
-        try trancheToken.mint(to, value) {
-            trancheMints[address(trancheToken)] += value;
+        vm.prank(_getActor());
+        try token.mint(to, value) {
+            shareMints[address(token)] += value;
         } catch {
             hasReverted = true;
         }
 
-        if (restrictionManager.isFrozen(address(trancheToken), to) == true) {
+        if (restrictedTransfers.isFrozen(address(token), to) == true) {
             t(hasReverted, "TT-1 Must Revert");
         }
 
         // Not a member
-        (bool isMember,) = restrictionManager.isMember(address(trancheToken), to);
+        (bool isMember,) = restrictedTransfers.isMember(address(token), to);
         if (!isMember) {
             t(hasReverted, "TT-3 Must Revert");
         }

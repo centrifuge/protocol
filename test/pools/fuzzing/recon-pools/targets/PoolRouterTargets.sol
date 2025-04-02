@@ -8,7 +8,7 @@ import {console2} from "forge-std/console2.sol";
 // Helpers
 import {Panic} from "@recon/Panic.sol";
 
-import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
+import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import "src/pools/PoolRouter.sol";
 import "src/misc/interfaces/IERC7726.sol";
 

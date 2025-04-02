@@ -9,11 +9,11 @@ import {console2} from "forge-std/console2.sol";
 import {Panic} from "@recon/Panic.sol";
 
 // Source
-import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
+import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
-import {PoolId, newPoolId} from "src/pools/types/PoolId.sol";
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
+import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {AdminTargets} from "./targets/AdminTargets.sol";
 import {Helpers} from "./utils/Helpers.sol";
@@ -343,7 +343,7 @@ abstract contract TargetFunctions is
         uint32 isoCode, 
         D18 newPrice
     ) public clearQueuedCalls  {
-        PoolId poolId = newPoolId(poolRegistry.latestId());
+        PoolId poolId = newPoolId(CENTIFUGE_CHAIN_ID, poolRegistry.latestId());
         
         ShareClassId nextScId = multiShareClass.previewNextShareClassId(poolId);
         // get the current share class id by decrementing the next share class id

@@ -5,9 +5,9 @@ import {FoundryAsserts} from "@chimera/FoundryAsserts.sol";
 
 import {Test, console2} from "forge-std/Test.sol";
 
-import {PoolId, raw, newPoolId} from "src/pools/types/PoolId.sol";
-import {ShareClassId} from "src/pools/types/ShareClassId.sol";
-import {AssetId, newAssetId} from "src/pools/types/AssetId.sol";
+import {PoolId, raw, newPoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
@@ -184,7 +184,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
             unsafePoolId := 4294967297
         }
         
-        poolRouter_depositRequest(newPoolId(unsafePoolId), scId, 0,0);
+        poolRouter_depositRequest(newPoolId(CENTIFUGE_CHAIN_ID, unsafePoolId), scId, 0,0);
 
         // looks like this reverts because 4294967297 overflows the uint32 type 
         // shouldn't this make the handler revert though, this wouldn't even be callable with an overflowing input
@@ -223,7 +223,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         assembly {
             unsafePoolId := 4294967297
         }
-        poolRouter_execute_clamped(newPoolId(unsafePoolId));
+        poolRouter_execute_clamped(newPoolId(CENTIFUGE_CHAIN_ID, unsafePoolId));
 
         property_total_pending_redeem_geq_sum_pending_user_redeem();
 
