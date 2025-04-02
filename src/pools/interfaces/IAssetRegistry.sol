@@ -38,5 +38,5 @@ interface IAssetRegistry is IERC6909MetadataExt, IERC6909Fungible {
     function registerAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals) external;
 
     /// @notice             Method for updating metadata of chains
-    function updateChain(uint16 chainId, string calldata name, string calldata symbol) external;
+    function setChain(uint16 chainId, string calldata name, string calldata symbol) external;
 }

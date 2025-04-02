@@ -59,8 +59,8 @@ contract Guardian is IGuardian {
     }
 
     /// @inheritdoc IGuardian
-    function updateChain(uint16 chainId, string calldata name, string calldata symbol) external onlySafe {
-        assetRegistry.updateChain(chainId, name, symbol);
+    function setChain(uint16 chainId, string calldata name, string calldata symbol) external onlySafe {
+        assetRegistry.setChain(chainId, name, symbol);
     }
 
     /// @inheritdoc IGuardian

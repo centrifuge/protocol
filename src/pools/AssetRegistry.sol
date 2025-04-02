@@ -37,7 +37,7 @@ contract AssetRegistry is ERC6909Fungible, IAssetRegistry {
     }
 
     /// @inheritdoc IAssetRegistry
-    function updateChain(uint16 chainId, string calldata name_, string calldata symbol_) external auth {
+    function setChain(uint16 chainId, string calldata name_, string calldata symbol_) external auth {
         Chain storage chain_ = chain[chainId];
         chain_.name = name_;
         chain_.symbol = symbol_;
