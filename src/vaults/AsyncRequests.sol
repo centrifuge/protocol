@@ -42,7 +42,6 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     using MessageLib for *;
     using CastLib for *;
 
-    IGateway public gateway;
     IVaultMessageSender public sender;
 
     mapping(address vault => mapping(address investor => AsyncInvestmentState)) public investments;
@@ -52,8 +51,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
     /// @inheritdoc IBaseInvestmentManager
     function file(bytes32 what, address data) external override(IBaseInvestmentManager, BaseInvestmentManager) auth {
-        if (what == "gateway") gateway = IGateway(data);
-        else if (what == "sender") sender = IVaultMessageSender(data);
+        if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "poolManager") poolManager = IPoolManager(data);
         else revert("AsyncRequests/file-unrecognized-param");
         emit File(what, data);
@@ -91,7 +89,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
     // --- Async investment handlers ---
     /// @inheritdoc IAsyncDepositManager
-    function requestDeposit(address vaultAddr, uint256 assets, address controller, address, /* owner */ address source)
+    function requestDeposit(address vaultAddr, uint256 assets, address controller, address, address)
         public
         auth
         returns (bool)
@@ -117,7 +115,6 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         state.pendingDepositRequest = state.pendingDepositRequest + _assets;
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
-        gateway.setPayableSource(source, PoolId.wrap(vault_.poolId()));
         sender.sendDepositRequest(
             vault_.poolId(), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId, _assets
         );
@@ -151,13 +148,10 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     }
 
     /// @dev    triggered indicates if the the _processRedeemRequest call was triggered from centrifugeChain
-    function _processRedeemRequest(
-        address vaultAddr,
-        uint128 shares,
-        address controller,
-        address source,
-        bool triggered
-    ) internal returns (bool) {
+    function _processRedeemRequest(address vaultAddr, uint128 shares, address controller, address, bool triggered)
+        internal
+        returns (bool)
+    {
         IAsyncVault vault_ = IAsyncVault(vaultAddr);
         AsyncInvestmentState storage state = investments[vaultAddr][controller];
         require(state.pendingCancelRedeemRequest != true || triggered, "AsyncRequests/cancellation-is-pending");
@@ -165,7 +159,6 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         state.pendingRedeemRequest = state.pendingRedeemRequest + shares;
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
-        gateway.setPayableSource(source, PoolId.wrap(vault_.poolId()));
         sender.sendRedeemRequest(
             vault_.poolId(), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId, shares
         );
@@ -174,7 +167,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     }
 
     /// @inheritdoc IAsyncDepositManager
-    function cancelDepositRequest(address vaultAddr, address controller, address source) public auth {
+    function cancelDepositRequest(address vaultAddr, address controller, address) public auth {
         IAsyncVault vault_ = IAsyncVault(vaultAddr);
 
         AsyncInvestmentState storage state = investments[vaultAddr][controller];
@@ -184,14 +177,13 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
-        gateway.setPayableSource(source, PoolId.wrap(vault_.poolId()));
         sender.sendCancelDepositRequest(
             vault_.poolId(), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId
         );
     }
 
     /// @inheritdoc IAsyncRedeemManager
-    function cancelRedeemRequest(address vaultAddr, address controller, address source) public auth {
+    function cancelRedeemRequest(address vaultAddr, address controller, address) public auth {
         IAsyncVault vault_ = IAsyncVault(vaultAddr);
         uint256 approximateSharesPayout = pendingRedeemRequest(vaultAddr, controller);
         require(approximateSharesPayout > 0, "AsyncRequests/no-pending-redeem-request");
@@ -206,7 +198,6 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
-        gateway.setPayableSource(source, PoolId.wrap(vault_.poolId()));
         sender.sendCancelRedeemRequest(
             vault_.poolId(), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId
         );
@@ -588,7 +579,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         returns (bool)
     {
         // forgefmt: disable-next-item
-        return super.supportsInterface(interfaceId) 
+        return super.supportsInterface(interfaceId)
             || interfaceId == type(IVaultManager).interfaceId
             || interfaceId == type(IDepositManager).interfaceId
             || interfaceId == type(IAsyncDepositManager).interfaceId

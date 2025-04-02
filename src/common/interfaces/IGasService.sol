@@ -28,12 +28,4 @@ interface IGasService {
     /// @param  payload Estimates the execution cost based on the payload
     /// @return Estimated cost in WEI units
     function estimate(uint16 chainId, bytes calldata payload) external view returns (uint256);
-
-    /// @notice Used to verify if given user for a given message can take advantage of
-    ///         transaction cost prepayment.
-    /// @dev    This is used in the Gateway to check if the source of the transaction
-    ///         is eligible for tx cost payment from Gateway's balance.
-    /// @param  source Source that triggered the transaction
-    /// @param  payload The message that is going to be send
-    function shouldRefuel(address source, PoolId poolId, bytes calldata payload) external returns (bool);
 }

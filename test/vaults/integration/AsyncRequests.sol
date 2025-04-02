@@ -34,7 +34,6 @@ contract AsyncRequestsTest is BaseTest {
 
         // values set correctly
         assertEq(address(asyncRequests.escrow()), address(escrow));
-        assertEq(address(asyncRequests.gateway()), address(gateway));
         assertEq(address(asyncRequests.poolManager()), address(poolManager));
 
         // permissions set correctly
@@ -52,15 +51,12 @@ contract AsyncRequestsTest is BaseTest {
         vm.expectRevert(bytes("AsyncRequests/file-unrecognized-param"));
         asyncRequests.file("random", self);
 
-        assertEq(address(asyncRequests.gateway()), address(gateway));
         assertEq(address(asyncRequests.poolManager()), address(poolManager));
         // success
         asyncRequests.file("sender", randomUser);
         assertEq(address(asyncRequests.sender()), randomUser);
         asyncRequests.file("poolManager", randomUser);
         assertEq(address(asyncRequests.poolManager()), randomUser);
-        asyncRequests.file("gateway", randomUser);
-        assertEq(address(asyncRequests.gateway()), randomUser);
 
         // remove self from wards
         asyncRequests.deny(self);

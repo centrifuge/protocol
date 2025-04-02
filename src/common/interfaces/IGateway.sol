@@ -64,11 +64,6 @@ interface IGateway is IMessageHandler, IMessageSender {
     /// @param  data New address.
     function file(bytes32 what, address data) external;
 
-    /// @notice Set the payable source of the message.
-    /// @param  source Used to determine whether it is eligible for TX cost payment.
-    /// @param  poolId Used to associate the message to a pool, in order to subsidize the cost.
-    function setPayableSource(address source, PoolId poolId) external;
-
     /// @notice Initialize batching message
     function startBatch() external;
 

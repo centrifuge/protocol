@@ -76,7 +76,6 @@ abstract contract Setup is BaseSetup, SharedStorage {
 
         poolManager = new PoolManager(address(escrow), address(tokenFactory), vaultFactories);
 
-        asyncRequests.file("gateway", address(this));
         asyncRequests.file("poolManager", address(poolManager));
         asyncRequests.rely(address(poolManager));
         asyncRequests.rely(address(vaultFactory));
