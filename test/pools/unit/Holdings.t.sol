@@ -74,7 +74,7 @@ contract TestCreate is TestCommon {
         accounts[1] = AccountId.wrap(0xBB00 | 0x02);
 
         vm.expectEmit();
-        emit IHoldings.Created(POOL_A, SC_1, ASSET_A, itemValuation, false);
+        emit IHoldings.Create(POOL_A, SC_1, ASSET_A, itemValuation, false);
         holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, accounts);
 
         (uint128 amount, uint128 amountValue, IERC7726 valuation, bool isLiability) =
@@ -114,7 +114,7 @@ contract TestIncrease is TestCommon {
 
         mockGetQuote(customValuation, 8, 50);
         vm.expectEmit();
-        emit IHoldings.Increased(POOL_A, SC_1, ASSET_A, customValuation, 8, 50);
+        emit IHoldings.Increase(POOL_A, SC_1, ASSET_A, customValuation, 8, 50);
         uint128 value = holdings.increase(POOL_A, SC_1, ASSET_A, customValuation, 8);
 
         assertEq(value, 50);
@@ -154,7 +154,7 @@ contract TestDecrease is TestCommon {
 
         mockGetQuote(customValuation, 8, 50);
         vm.expectEmit();
-        emit IHoldings.Decreased(POOL_A, SC_1, ASSET_A, customValuation, 8, 50);
+        emit IHoldings.Decrease(POOL_A, SC_1, ASSET_A, customValuation, 8, 50);
         uint128 value = holdings.decrease(POOL_A, SC_1, ASSET_A, customValuation, 8);
 
         assertEq(value, 50);
@@ -193,7 +193,7 @@ contract TestUpdate is TestCommon {
         holdings.increase(POOL_A, SC_1, ASSET_A, customValuation, 20);
 
         vm.expectEmit();
-        emit IHoldings.Updated(POOL_A, SC_1, ASSET_A, 50);
+        emit IHoldings.Update(POOL_A, SC_1, ASSET_A, 50);
         mockGetQuote(itemValuation, 20, 250);
         int128 diff = holdings.update(POOL_A, SC_1, ASSET_A);
 
@@ -209,7 +209,7 @@ contract TestUpdate is TestCommon {
         holdings.increase(POOL_A, SC_1, ASSET_A, customValuation, 20);
 
         vm.expectEmit();
-        emit IHoldings.Updated(POOL_A, SC_1, ASSET_A, -50);
+        emit IHoldings.Update(POOL_A, SC_1, ASSET_A, -50);
         mockGetQuote(itemValuation, 20, 150);
         int128 diff = holdings.update(POOL_A, SC_1, ASSET_A);
 
@@ -225,7 +225,7 @@ contract TestUpdate is TestCommon {
         holdings.increase(POOL_A, SC_1, ASSET_A, customValuation, 20);
 
         vm.expectEmit();
-        emit IHoldings.Updated(POOL_A, SC_1, ASSET_A, 0);
+        emit IHoldings.Update(POOL_A, SC_1, ASSET_A, 0);
         mockGetQuote(itemValuation, 20, 200);
         int128 diff = holdings.update(POOL_A, SC_1, ASSET_A);
 
@@ -256,7 +256,7 @@ contract TestUpdateValuation is TestCommon {
         holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
 
         vm.expectEmit();
-        emit IHoldings.ValuationUpdated(POOL_A, SC_1, ASSET_A, newValuation);
+        emit IHoldings.UpdateValuation(POOL_A, SC_1, ASSET_A, newValuation);
         holdings.updateValuation(POOL_A, SC_1, ASSET_A, newValuation);
 
         assertEq(address(holdings.valuation(POOL_A, SC_1, ASSET_A)), address(newValuation));
@@ -288,7 +288,7 @@ contract TestSetAccountId is TestCommon {
         holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
 
         vm.expectEmit();
-        emit IHoldings.AccountIdSet(POOL_A, SC_1, ASSET_A, AccountId.wrap(0xAA00 | 0x01));
+        emit IHoldings.SetAccountId(POOL_A, SC_1, ASSET_A, AccountId.wrap(0xAA00 | 0x01));
         holdings.setAccountId(POOL_A, SC_1, ASSET_A, AccountId.wrap(0xAA00 | 0x01));
 
         assertEq(AccountId.unwrap(holdings.accountId(POOL_A, SC_1, ASSET_A, 0x01)), 0xAA00 | 0x01);

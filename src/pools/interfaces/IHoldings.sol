@@ -20,12 +20,12 @@ interface IHoldings {
     event File(bytes32 indexed what, address addr);
 
     /// @notice Emitted when a holding is created
-    event Created(
+    event Create(
         PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, IERC7726 valuation, bool isLiability
     );
 
     /// @notice Emitted when a holding is increased
-    event Increased(
+    event Increase(
         PoolId indexed,
         ShareClassId indexed scId,
         AssetId indexed assetId,
@@ -35,7 +35,7 @@ interface IHoldings {
     );
 
     /// @notice Emitted when a holding is decreased
-    event Decreased(
+    event Decrease(
         PoolId indexed,
         ShareClassId indexed scId,
         AssetId indexed assetId,
@@ -45,13 +45,13 @@ interface IHoldings {
     );
 
     /// @notice Emitted when the holding is updated
-    event Updated(PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, int128 diffValue);
+    event Update(PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, int128 diffValue);
 
     /// @notice Emitted when a holding valuation is updated
-    event ValuationUpdated(PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, IERC7726 valuation);
+    event UpdateValuation(PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, IERC7726 valuation);
 
     /// @notice Emitted when an account is for a holding is set
-    event AccountIdSet(PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, AccountId accountId);
+    event SetAccountId(PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, AccountId accountId);
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedWhat();

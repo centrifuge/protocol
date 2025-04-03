@@ -42,7 +42,7 @@ contract AssetRegistry is ERC6909Fungible, IAssetRegistry {
         chain_.name = name_;
         chain_.symbol = symbol_;
 
-        emit ChainUpdate(chainId, name_, symbol_);
+        emit UpdateChain(chainId, name_, symbol_);
     }
 
     /// @inheritdoc IERC6909MetadataExt
