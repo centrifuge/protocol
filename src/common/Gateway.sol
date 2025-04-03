@@ -58,13 +58,13 @@ contract Gateway is Auth, IGateway, IRecoverable {
     mapping(uint16 chainId => mapping(IAdapter adapter => mapping(bytes32 messageHash => uint256 timestamp))) public recoveries;
 
     /// @notice Current batch messages pending to be sent
-    mapping(uint16 chainId => bytes) public /*transient*/ batch;
+    mapping(uint16 chainId => mapping(PoolId => bytes)) public /*transient*/ batch;
 
     /// @notice Current batch messages pending to be sent
-    mapping(uint16 chainId => uint64) public /*transient*/ batchGasLimit;
+    mapping(uint16 chainId => mapping(PoolId => uint64)) public /*transient*/ batchGasLimit;
 
     /// @notice Chains ID with pending batch messages
-    uint16[] public /*transient*/ chainIds;
+    BatchLocator[] public /*transient*/ batchLocators;
 
     constructor(IRoot root_, IGasService gasService_) Auth(msg.sender) {
         root = root_;
@@ -251,13 +251,16 @@ contract Gateway is Auth, IGateway, IRecoverable {
         if (isBatching) {
             pendingBatch = true;
 
-            bytes storage previousMessage = batch[chainId];
-            batchGasLimit[chainId] += gasService.gasLimit(chainId, message);
+            PoolId poolId = processor.messagePoolId(message);
+            bytes storage previousMessage = batch[chainId][poolId];
+
+            batchGasLimit[chainId][poolId] += gasService.gasLimit(chainId, message);
+
             if (previousMessage.length == 0) {
-                chainIds.push(chainId);
-                batch[chainId] = message;
+                batchLocators.push(BatchLocator(chainId, poolId));
+                batch[chainId][poolId] = message;
             } else {
-                batch[chainId] = bytes.concat(previousMessage, message);
+                batch[chainId][poolId] = bytes.concat(previousMessage, message);
             }
         } else {
             _send(chainId, message);
@@ -339,14 +342,14 @@ contract Gateway is Auth, IGateway, IRecoverable {
     function endBatch() external auth {
         require(isBatching, NoBatched());
 
-        for (uint256 i; i < chainIds.length; i++) {
-            uint16 chainId = chainIds[i];
-            _send(chainId, batch[chainId]);
-            delete batch[chainId];
-            delete batchGasLimit[chainId];
+        for (uint256 i; i < batchLocators.length; i++) {
+            BatchLocator memory locator = batchLocators[i];
+            _send(locator.chainId, batch[locator.chainId][locator.poolId]);
+            delete batch[locator.chainId][locator.poolId];
+            delete batchGasLimit[locator.chainId][locator.poolId];
         }
 
-        delete chainIds;
+        delete batchLocators;
         pendingBatch = false;
         isBatching = false;
     }
@@ -361,7 +364,8 @@ contract Gateway is Auth, IGateway, IRecoverable {
         returns (uint64 messageGasLimit)
     {
         if (isBatching) {
-            return batchGasLimit[chainId];
+            PoolId poolId = processor.messagePoolId(message);
+            return batchGasLimit[chainId][poolId];
         }
         else {
             return gasService.gasLimit(chainId, message);

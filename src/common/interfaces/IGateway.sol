@@ -16,6 +16,11 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
 
     error NoBatched();
 
+    struct BatchLocator {
+        uint16 chainId;
+        PoolId poolId;
+    }
+
     /// @dev Each adapter struct is packed with the quorum to reduce SLOADs on handle
     struct Adapter {
         /// @notice Starts at 1 and maps to id - 1 as the index on the adapters array
