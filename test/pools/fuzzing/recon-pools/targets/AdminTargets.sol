@@ -16,6 +16,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
+import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
 import {BeforeAfter, OpType} from "../BeforeAfter.sol";
 import {Properties} from "../Properties.sol";
@@ -30,9 +31,9 @@ abstract contract AdminTargets is
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
 
     /// === STATE FUNCTIONS === ///
-    /// NOTE: these all add to the queuedCalls array, which is then executed in the execute_clamped function allowing the fuzzer to execute multiple calls in a single transaction
-    /// These explicitly clamp the investor to always be one of the actors
-    /// Queuing calls is done by the admin even though there is no asAdmin modifier applied because there are no external calls so using asAdmin creates errors  
+    /// @dev these all add to the queuedCalls array, which is then executed in the execute_clamped function allowing the fuzzer to execute multiple calls in a single transaction
+    /// @dev These explicitly clamp the investor to always be one of the actors
+    /// @dev Queuing calls is done by the admin even though there is no asAdmin modifier applied because there are no external calls so using asAdmin creates errors  
 
     function poolRouter_addCredit(AccountId account, uint128 amount) public {
         queuedCalls.push(abi.encodeWithSelector(poolRouter.addCredit.selector, account, amount));
@@ -235,6 +236,26 @@ abstract contract AdminTargets is
                 t(!arithmeticRevert, "cancelRedeemRequest reverts with arithmetic panic");
             }
         }
+    }
+
+    function poolRouter_updateHoldingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount, D18 pricePerUnit, bool isIncrease, JournalEntry[] memory debits, JournalEntry[] memory credits) public updateGhosts {
+        poolRouter.updateHoldingAmount(poolId, scId, assetId, amount, pricePerUnit, isIncrease, debits, credits);
+    }
+
+    function poolRouter_updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePerUnit) public updateGhosts {
+        poolRouter.updateHoldingValue(poolId, scId, assetId, pricePerUnit);
+    }
+
+    function poolRouter_updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) public updateGhosts {
+        poolRouter.updateJournal(poolId, debits, credits);
+    }
+
+    function poolRouter_increaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare, uint128 amount) public updateGhosts {
+        poolRouter.increaseShareIssuance(poolId, scId, pricePerShare, amount);
+    }
+
+    function poolRouter_decreaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare, uint128 amount) public updateGhosts {
+        poolRouter.decreaseShareIssuance(poolId, scId, pricePerShare, amount);
     }
 
     // === PoolRouter === //

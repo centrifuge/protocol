@@ -14,6 +14,8 @@ import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
+import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
 
 import {AdminTargets} from "./targets/AdminTargets.sol";
 import {Helpers} from "./utils/Helpers.sol";
@@ -233,7 +235,6 @@ abstract contract TargetFunctions is
         poolRouter_claimRedeem(poolId, scId, isoCode);
     }
 
-
     function shortcut_redeem_and_claim(
         PoolId poolId,
         ShareClassId scId,
@@ -336,6 +337,87 @@ abstract contract TargetFunctions is
         transientValuation_setPrice(assetId.addr(), poolRegistry.currency(poolId).addr(), newPrice);
         poolRouter_updateHolding(scId, assetId);
         poolRouter_execute_clamped(poolId);
+    }
+
+    // function shortcut_create_pool_and_update_holding_amount(
+    //     uint8 decimals,
+    //     uint32 isoCode,
+    //     string memory name, 
+    //     string memory symbol, 
+    //     bytes32 salt, 
+    //     bytes memory data,
+    //     bool isIdentityValuation,
+    //     uint24 prefix,
+    //     uint128 amount,
+    //     D18 pricePerUnit,
+    //     bool isIncrease,
+    //     JournalEntry[] memory debits,
+    //     JournalEntry[] memory credits
+    // ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
+    //     decimals %= 24; // upper bound of decimals for most ERC20s is 24
+    //     require(decimals >= 6, "decimals must be >= 6");
+
+    //     (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
+    //     AssetId assetId = newAssetId(isoCode);
+
+    //     poolRouter_updateHoldingAmount(poolId, scId, assetId, amount, pricePerUnit, isIncrease, debits, credits);
+    // }
+
+    function shortcut_create_pool_and_update_holding_value(
+        uint8 decimals,
+        uint32 isoCode,
+        string memory name, 
+        string memory symbol, 
+        bytes32 salt, 
+        bytes memory data,
+        bool isIdentityValuation,
+        uint24 prefix,
+        D18 newPrice
+    ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
+        decimals %= 24; // upper bound of decimals for most ERC20s is 24
+        require(decimals >= 6, "decimals must be >= 6");
+
+        (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
+        AssetId assetId = newAssetId(isoCode);
+
+        poolRouter_updateHoldingValue(poolId, scId, assetId, newPrice);
+        // poolRouter_execute_clamped(poolId);
+    }
+
+    function shortcut_create_pool_and_update_journal(
+        uint8 decimals,
+        uint32 isoCode,
+        string memory name, 
+        string memory symbol, 
+        bytes32 salt, 
+        bytes memory data,
+        bool isIdentityValuation,
+        uint24 prefix,
+        uint8 accountToUpdate,
+        uint128 debitAmount,
+        uint128 creditAmount
+    ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
+        decimals %= 24; // upper bound of decimals for most ERC20s is 24
+        require(decimals >= 6, "decimals must be >= 6");
+
+        (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
+        AssetId assetId = newAssetId(isoCode);
+
+        {
+            AccountId accountId = newAccountId(prefix, accountToUpdate % 6);
+            JournalEntry[] memory debits = new JournalEntry[](1);
+            debits[0] = JournalEntry({
+                accountId: accountId,
+                amount: debitAmount
+            });
+            JournalEntry[] memory credits = new JournalEntry[](1);
+            credits[0] = JournalEntry({
+                accountId: accountId,
+                amount: creditAmount
+            });
+
+            poolRouter_updateJournal(poolId, debits, credits);
+        }
     }
 
     // change price and update holding for most recent poolId
