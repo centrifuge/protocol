@@ -495,7 +495,7 @@ abstract contract TargetFunctions is
     }
 
     /// === POOL ADMIN SHORTCUTS === ///
-    /// @dev these don't have the clearQueuedCalls modifier because they just add to the queue and execute so don't make debugging difficult
+    /// @dev these don't have the clearQueuedCalls modifier because they just add additional calls to the queue and execute so don't make debugging difficult
 
     function shortcut_add_share_class_and_holding(
         PoolId poolId,
@@ -557,6 +557,23 @@ abstract contract TargetFunctions is
 
         // reset the epoch increment to 0 so that the next approval is in a "new tx"
         _setEpochIncrement(0);
+    }
+
+    function shortcut_update_restriction(
+        uint16 poolIdEntropy,
+        uint16 shareClassEntropy,
+        bytes calldata payload
+    ) public {
+        if(createdPools.length > 0) {
+            // get a random pool id
+            PoolId poolId = createdPools[poolIdEntropy % createdPools.length];
+            uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
+            
+            // get a random share class id
+            ShareClassId scId = multiShareClass.previewShareClassId(poolId, shareClassEntropy % shareClassCount);
+            poolRouter_updateRestriction(CENTIFUGE_CHAIN_ID, scId, payload);
+            poolRouter_execute_clamped(poolId);
+        }
     }
 
     /// === Transient Valuation === ///

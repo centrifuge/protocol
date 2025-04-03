@@ -112,6 +112,10 @@ abstract contract AdminTargets is
         queuedCalls.push(abi.encodeWithSelector(poolRouter.updateHoldingValuation.selector, scId, assetId, valuation));
     }
 
+    function poolRouter_updateRestriction(uint16 chainId, ShareClassId scId, bytes calldata payload) public {
+        queuedCalls.push(abi.encodeWithSelector(poolRouter.updateRestriction.selector, chainId, scId, payload));
+    }
+
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
 
     // === PoolManager === //
