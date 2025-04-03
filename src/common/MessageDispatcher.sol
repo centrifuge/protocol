@@ -219,6 +219,21 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IPoolMessageSender
+    function sendUpdateRestriction(uint16 chainId, PoolId poolId, ShareClassId scId, bytes calldata payload)
+        external
+        auth
+    {
+        if (chainId == localCentrifugeId) {
+            poolManager.updateRestriction(poolId.raw(), scId.raw(), payload);
+        } else {
+            gateway.send(
+                chainId,
+                MessageLib.UpdateRestriction({poolId: poolId.raw(), scId: scId.raw(), payload: payload}).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
     function sendUpdateContract(
         uint16 chainId,
         PoolId poolId,

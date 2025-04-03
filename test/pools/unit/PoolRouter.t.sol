@@ -117,6 +117,9 @@ contract TestMainMethodsChecks is TestCommon {
         poolRouter.revokeShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
 
         vm.expectRevert(IPoolRouter.PoolLocked.selector);
+        poolRouter.updateRestriction(0, ShareClassId.wrap(0), bytes(""));
+
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.updateContract(0, ShareClassId.wrap(0), bytes32(0), bytes(""));
 
         vm.expectRevert(IPoolRouter.PoolLocked.selector);

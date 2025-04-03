@@ -276,6 +276,16 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     }
 
     /// @inheritdoc IPoolRouter
+    function updateRestriction(uint16 chainId, ShareClassId scId, bytes calldata payload)
+        external
+        payable
+    {
+        _protectedAndUnlocked();
+
+        sender.sendUpdateRestriction(chainId, unlockedPoolId, scId, payload);
+    }
+
+    /// @inheritdoc IPoolRouter
     function updateContract(uint16 chainId, ShareClassId scId, bytes32 target, bytes calldata payload)
         external
         payable
