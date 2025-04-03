@@ -53,6 +53,9 @@ interface IPoolRouter {
     /// @notice Dispatched when the pool can not be unlocked by the caller
     error NotAuthorizedAdmin();
 
+    /// @notice Dispatched when the share class id does not exist
+    error InvalidShareClassId();
+
     /// @notice Dispatched when the pool is not unlocked to interact with.
     error PoolLocked();
 
