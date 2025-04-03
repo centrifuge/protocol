@@ -131,10 +131,15 @@ interface IPoolRouter {
         external
         payable;
 
-    /// @notice Update remotely an exiting vault.
+    /// @notice Update remotely a restriction.
+    /// @param chainId Chain where CV instance lives.
+    /// @param payload content of the restriction update to execute.
+    function updateRestriction(uint16 chainId, ShareClassId scId, bytes calldata payload) external payable;
+
+    /// @notice Update remotely an existing vault.
     /// @param chainId Chain where CV instance lives.
     /// @param target contract where to execute in CV. Check IUpdateContract interface.
-    /// @param payload content of the to execute.
+    /// @param payload content of the update to execute.
     function updateContract(uint16 chainId, ShareClassId scId, bytes32 target, bytes calldata payload)
         external
         payable;
