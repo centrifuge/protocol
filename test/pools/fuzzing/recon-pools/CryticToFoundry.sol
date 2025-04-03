@@ -71,7 +71,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         // necessary setup via the PoolRouter
         poolRouter_addShareClass(SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
-        poolRouter_createHolding(scId, assetId, identityValuation, 0x01);
+        poolRouter_createHolding(scId, assetId, identityValuation, IS_LIABILITY, 0x01);
         poolRouter_execute_clamped(poolId);
         
         // request deposit
@@ -176,7 +176,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     // forge test --match-test test_poolRouter_depositRequest_0 -vvv 
     function test_poolRouter_depositRequest_0() public {
 
-        (PoolId poolId, ShareClassId scId) = shortcut_create_pool_and_update_holding(1,1,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,d18(1));
+        (PoolId poolId, ShareClassId scId) = shortcut_create_pool_and_update_holding(6,1,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,d18(1));
 
         // downcasting to uint32 
         uint32 unsafePoolId;

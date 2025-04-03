@@ -419,7 +419,8 @@ abstract contract TargetFunctions is
             IERC7726(address(identityValuation)) : 
             IERC7726(address(transientValuation));
 
-        poolRouter_createHolding(scId, assetId, valuation, prefix);
+        // poolRouter_createHolding(scId, assetId, valuation, prefix);
+        poolRouter_createHolding(scId, assetId, valuation, IS_LIABILITY, prefix);
         poolRouter_execute_clamped(poolId);
     }
 
@@ -481,6 +482,12 @@ abstract contract TargetFunctions is
     }
 
     /// === Helpers === ///
+    /// @dev helper to toggle the isLiability boolean for testing
+    /// @dev this is the only variable used in the shortcuts defined like this because implementing it directly in the functions throws a stack too deep error
+    function toggle_IsLiability() public {
+        IS_LIABILITY = !IS_LIABILITY;
+    }
+
     /// helper to set the epoch increment for the multi share class for multiple calls to approvals in same transaction
     function _setEpochIncrement(uint32 epochIncrement) internal {
         multiShareClass.setEpochIncrement(epochIncrement);

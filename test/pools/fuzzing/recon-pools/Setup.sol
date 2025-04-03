@@ -72,15 +72,16 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     bytes[] internal queuedCalls; // used for storing calls to PoolRouter to be executed in a single transaction
     PoolId[] internal createdPools;
     // QueuedOp[] internal queuedOps;
-    
+
     // Canaries
     bool poolCreated;
     bool deposited;
     bool cancelledRedeemRequest;
 
-    // set the initial price that gets used when creating an asset via a pool's shortcut to avoid stack too deep errors
-    D18 internal INITIAL_PRICE = d18(1e18); 
+    D18 internal INITIAL_PRICE = d18(1e18); // set the initial price that gets used when creating an asset via a pool's shortcut to avoid stack too deep errors
     uint16 internal CENTIFUGE_CHAIN_ID = 1;
+    /// @dev see toggle_IsLiability
+    bool internal IS_LIABILITY = false; 
 
     event LogString(string);
 
