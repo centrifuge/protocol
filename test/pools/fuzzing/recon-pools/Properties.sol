@@ -312,8 +312,8 @@ abstract contract Properties is BeforeAfter, Asserts {
 
                 (uint128 holdingAssetAmount,,,) = holdings.holding(poolId, scId, assetId);
                 
-                address pendingShareClassEscrow = poolRouter.escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS);
-                address shareClassEscrow = poolRouter.escrow(poolId, scId, EscrowId.SHARE_CLASS);
+                address pendingShareClassEscrow = poolRouter.escrow(poolId, scId, EscrowId.PendingShareClass);
+                address shareClassEscrow = poolRouter.escrow(poolId, scId, EscrowId.ShareClass);
                 uint256 pendingShareClassEscrowBalance = assetRegistry.balanceOf(pendingShareClassEscrow, assetId.raw());
                 uint256 shareClassEscrowBalance = assetRegistry.balanceOf(shareClassEscrow, assetId.raw());
                 
@@ -335,8 +335,8 @@ abstract contract Properties is BeforeAfter, Asserts {
                 ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
                 AssetId assetId = poolRegistry.currency(poolId);
 
-                address pendingShareClassEscrow = poolRouter.escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS);
-                address shareClassEscrow = poolRouter.escrow(poolId, scId, EscrowId.SHARE_CLASS);
+                address pendingShareClassEscrow = poolRouter.escrow(poolId, scId, EscrowId.PendingShareClass);
+                address shareClassEscrow = poolRouter.escrow(poolId, scId, EscrowId.ShareClass);
                 uint256 assetRegistryBalance = assetRegistry.balanceOf(address(assetRegistry), assetId.raw());
                 uint256 pendingShareClassEscrowBalance = assetRegistry.balanceOf(pendingShareClassEscrow, assetId.raw());
                 uint256 shareClassEscrowBalance = assetRegistry.balanceOf(shareClassEscrow, assetId.raw());
