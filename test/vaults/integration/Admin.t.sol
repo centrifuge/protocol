@@ -8,7 +8,6 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGuardian} from "src/common/Guardian.sol";
 
 import "test/vaults/BaseTest.sol";
-import {MockManager} from "test/common/mocks/MockManager.sol";
 
 contract AdminTest is BaseTest {
     using MessageLib for *;
@@ -278,7 +277,6 @@ contract AdminTest is BaseTest {
     }
 
     function testDisputeRecovery() public {
-        MockManager poolManager = new MockManager();
         gateway.file("adapters", OTHER_CHAIN_ID, testAdapters);
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
@@ -287,7 +285,6 @@ contract AdminTest is BaseTest {
         // Only send through 2 out of 3 adapters
         _send(adapter1, message);
         _send(adapter2, proof);
-        assertEq(poolManager.received(message), 0);
 
         // Initiate recovery
         _send(
@@ -310,7 +307,6 @@ contract AdminTest is BaseTest {
         // Check that recovery is not possible anymore
         vm.expectRevert(bytes("Gateway/message-recovery-not-initiated"));
         gateway.executeMessageRecovery(OTHER_CHAIN_ID, adapter3, proof);
-        assertEq(poolManager.received(message), 0);
     }
 
     function _send(MockAdapter adapter, bytes memory message) internal {

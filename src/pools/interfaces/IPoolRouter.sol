@@ -16,26 +16,26 @@ import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 enum EscrowId {
     /// @notice Represents the escrow for undeployed capital in the share class.
     /// Contains the already invested but not yet approved funds.
-    PENDING_SHARE_CLASS,
+    PendingShareClass,
     /// @notice Represents the escrow for deployed capital in the share class.
     /// Contains the already invested and approved funds.
-    SHARE_CLASS
+    ShareClass
 }
 
 /// @notice Account types used by PoolRouter
 enum AccountType {
     /// @notice Debit normal account for tracking assets
-    ASSET,
+    Asset,
     /// @notice Credit normal account for tracking equities
-    EQUITY,
+    Equity,
     /// @notice Credit normal account for tracking losses
-    LOSS,
+    Loss,
     /// @notice Credit normal account for tracking profits
-    GAIN,
+    Gain,
     /// @notice Debit normal account for tracking expenses
-    EXPENSE,
+    Expense,
     /// @notice Credit normal account for tracking liabilities
-    LIABILITY
+    Liability
 }
 
 /// @notice Interface with all methods available in the system used by actors
@@ -131,10 +131,15 @@ interface IPoolRouter {
         external
         payable;
 
-    /// @notice Update remotely an exiting vault.
+    /// @notice Update remotely a restriction.
+    /// @param chainId Chain where CV instance lives.
+    /// @param payload content of the restriction update to execute.
+    function updateRestriction(uint16 chainId, ShareClassId scId, bytes calldata payload) external payable;
+
+    /// @notice Update remotely an existing vault.
     /// @param chainId Chain where CV instance lives.
     /// @param target contract where to execute in CV. Check IUpdateContract interface.
-    /// @param payload content of the to execute.
+    /// @param payload content of the update to execute.
     function updateContract(uint16 chainId, ShareClassId scId, bytes32 target, bytes calldata payload)
         external
         payable;

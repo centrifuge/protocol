@@ -164,7 +164,7 @@ abstract contract BaseVault is Auth, IBaseVault {
     function supportsInterface(bytes4 interfaceId) public pure virtual override returns (bool) {
         return interfaceId == type(IERC7540Operator).interfaceId || interfaceId == type(IERC7741).interfaceId
             || interfaceId == type(IERC7714).interfaceId || interfaceId == type(IERC7575).interfaceId
-            || interfaceId == type(IRecoverable).interfaceId || interfaceId == type(IERC165).interfaceId;
+            || interfaceId == type(IERC165).interfaceId;
     }
 
     // --- ERC-4626 methods ---
@@ -314,8 +314,8 @@ abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     // --- View methods ---
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) public pure virtual override(BaseVault, IERC165) returns (bool) {
-        return super.supportsInterface(interfaceId) || interfaceId == type(IAsyncRedeemVault).interfaceId
-            || interfaceId == type(IERC7540Redeem).interfaceId || interfaceId == type(IERC7540CancelRedeem).interfaceId;
+        return super.supportsInterface(interfaceId) || interfaceId == type(IERC7540Redeem).interfaceId
+            || interfaceId == type(IERC7540CancelRedeem).interfaceId;
     }
 
     /// @inheritdoc IERC7575

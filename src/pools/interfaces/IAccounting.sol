@@ -14,10 +14,10 @@ interface IAccounting {
     event EndJournalId(PoolId indexed poolId, uint256 journalId);
 
     /// @notice Emitted when a new account is created
-    event AccountCreated(PoolId indexed poolId, AccountId indexed account, bool isDebitNormal);
+    event CreateAccount(PoolId indexed poolId, AccountId indexed account, bool isDebitNormal);
 
     /// @notice Emitted when metadata is set for an account
-    event AccountMetadataSet(PoolId indexed poolId, AccountId indexed account, bytes metadata);
+    event SetAccountMetadata(PoolId indexed poolId, AccountId indexed account, bytes metadata);
 
     /// @notice Dispatched when the pool is already unlocked.
     error AccountingAlreadyUnlocked();

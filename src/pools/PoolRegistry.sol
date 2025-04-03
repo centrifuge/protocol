@@ -45,7 +45,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
 
         isAdmin[poolId][admin_] = canManage;
 
-        emit UpdatedAdmin(poolId, admin_, canManage);
+        emit UpdateAdmin(poolId, admin_, canManage);
     }
 
     /// @inheritdoc IPoolRegistry
@@ -63,7 +63,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
 
         dependency[poolId][what] = dependency_;
 
-        emit UpdatedDependency(poolId, what, dependency_);
+        emit UpdateDependency(poolId, what, dependency_);
     }
 
     /// @inheritdoc IPoolRegistry
@@ -73,7 +73,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
 
         currency[poolId] = currency_;
 
-        emit UpdatedCurrency(poolId, currency_);
+        emit UpdateCurrency(poolId, currency_);
     }
 
     function exists(PoolId poolId) public view returns (bool) {

@@ -48,14 +48,17 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         uint64 messageGasLimit = uint64(vm.envOr("MESSAGE_COST", BASE_MSG_COST));
         uint64 proofGasLimit = uint64(vm.envOr("PROOF_COST", BASE_MSG_COST));
 
-        gasService = new GasService(messageGasLimit, proofGasLimit);
+        messageProcessor = new MessageProcessor(root, gasService, deployer);
+
+        gasService = new GasService(messageGasLimit, proofGasLimit, messageProcessor);
         gateway = new Gateway(root, gasService);
 
-        messageProcessor = new MessageProcessor(root, gasService, deployer);
         messageDispatcher = new MessageDispatcher(chainId, root, gateway, deployer);
 
         adminSafe = adminSafe_;
-        guardian = new Guardian(adminSafe, root, messageDispatcher);
+
+        // deployer is not actually an implementation of ISafe but for deployment this is not an issue
+        guardian = new Guardian(ISafe(deployer), root, messageDispatcher);
 
         _commonRegister();
         _commonRely();
@@ -82,12 +85,14 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         gateway.rely(address(root));
         gateway.rely(address(guardian));
         gateway.rely(address(messageDispatcher));
+        gateway.rely(address(messageProcessor));
         messageProcessor.rely(address(gateway));
         messageDispatcher.rely(address(guardian));
     }
 
     function _commonFile() private {
-        gateway.file("handler", address(messageProcessor));
+        messageProcessor.file("gateway", address(gateway));
+        gateway.file("processor", address(messageProcessor));
     }
 
     function wire(uint16 chainId, IAdapter adapter, address deployer) public {
@@ -101,6 +106,8 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         if (root.wards(deployer) == 0) {
             return; // Already removed. Make this method idempotent.
         }
+
+        guardian.file("safe", address(adminSafe));
 
         root.deny(deployer);
         gasService.deny(deployer);

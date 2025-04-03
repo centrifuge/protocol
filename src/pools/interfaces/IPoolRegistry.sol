@@ -7,10 +7,10 @@ import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
 interface IPoolRegistry {
     event NewPool(PoolId poolId, address indexed admin, AssetId indexed currency);
-    event UpdatedAdmin(PoolId indexed poolId, address indexed admin, bool canManage);
+    event UpdateAdmin(PoolId indexed poolId, address indexed admin, bool canManage);
     event SetMetadata(PoolId indexed poolId, bytes metadata);
-    event UpdatedDependency(PoolId indexed poolId, bytes32 indexed what, address dependency);
-    event UpdatedCurrency(PoolId indexed poolId, AssetId currency);
+    event UpdateDependency(PoolId indexed poolId, bytes32 indexed what, address dependency);
+    event UpdateCurrency(PoolId indexed poolId, AssetId currency);
 
     error NonExistingPool(PoolId id);
     error EmptyAdmin();

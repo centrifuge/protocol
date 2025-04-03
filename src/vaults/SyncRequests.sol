@@ -21,7 +21,7 @@ import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 
 import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IAsyncRedeemVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IERC7540Redeem, IAsyncRedeemVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
@@ -187,24 +187,11 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
     /// @inheritdoc IVaultManager
     function vaultKind(address vaultAddr) public view returns (VaultKind, address) {
-        if (IERC165(vaultAddr).supportsInterface(type(IAsyncRedeemVault).interfaceId)) {
+        if (IERC165(vaultAddr).supportsInterface(type(IERC7540Redeem).interfaceId)) {
             return (VaultKind.SyncDepositAsyncRedeem, address(IAsyncRedeemVault(vaultAddr).asyncRedeemManager()));
         } else {
             return (VaultKind.Sync, address(0));
         }
-    }
-
-    /// --- IERC165 ---
-    /// @inheritdoc IERC165
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(BaseInvestmentManager, IERC165)
-        returns (bool)
-    {
-        return super.supportsInterface(interfaceId) || interfaceId == type(IVaultManager).interfaceId
-            || interfaceId == type(IDepositManager).interfaceId || interfaceId == type(ISyncDepositManager).interfaceId
-            || interfaceId == type(ISyncRequests).interfaceId;
     }
 
     /// --- Internal methods ---

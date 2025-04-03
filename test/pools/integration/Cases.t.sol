@@ -36,6 +36,7 @@ contract TestCases is PoolsDeployer, Test {
     bytes32 constant SC_SALT = bytes32("ExampleSalt");
     bytes32 constant SC_HOOK = bytes32("ExampleHookData");
 
+    address immutable ADMIN = makeAddr("ADMIN");
     address immutable FM = makeAddr("FM");
     address immutable ANY = makeAddr("Anyone");
     bytes32 immutable INVESTOR = bytes32("Investor");
@@ -61,7 +62,7 @@ contract TestCases is PoolsDeployer, Test {
 
     function setUp() public {
         // Deployment
-        deployPools(CHAIN_CP, ISafe(address(0)), address(this));
+        deployPools(CHAIN_CP, ISafe(ADMIN), address(this));
         _mockStuff();
         removePoolsDeployerAccess(address(this));
 
@@ -95,8 +96,8 @@ contract TestCases is PoolsDeployer, Test {
         assertEq(symbol, "USDC");
         assertEq(decimals, 6);
 
-        vm.prank(FM);
-        poolId = poolRouter.createPool(FM, USD, multiShareClass);
+        vm.prank(ADMIN);
+        poolId = guardian.createPool(FM, USD, multiShareClass);
 
         scId = multiShareClass.previewNextShareClassId(poolId);
 
@@ -214,9 +215,10 @@ contract TestCases is PoolsDeployer, Test {
 
     /// forge-config: default.isolate = true
     function testExecuteNoSendNoPay() public {
-        vm.startPrank(FM);
+        vm.prank(ADMIN);
+        PoolId poolId = guardian.createPool(FM, USD, multiShareClass);
 
-        PoolId poolId = poolRouter.createPool(FM, USD, multiShareClass);
+        vm.startPrank(FM);
 
         bytes[] memory cs = new bytes[](1);
         cs[0] = abi.encodeWithSelector(poolRouter.setPoolMetadata.selector, "");
@@ -229,9 +231,10 @@ contract TestCases is PoolsDeployer, Test {
 
     /// forge-config: default.isolate = true
     function testExecuteSendNoPay() public {
-        vm.startPrank(FM);
+        vm.prank(ADMIN);
+        PoolId poolId = guardian.createPool(FM, USD, multiShareClass);
 
-        PoolId poolId = poolRouter.createPool(FM, USD, multiShareClass);
+        vm.startPrank(FM);
 
         bytes[] memory cs = new bytes[](1);
         cs[0] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
@@ -251,10 +254,12 @@ contract TestCases is PoolsDeployer, Test {
     ///
     /// forge-config: default.isolate = true
     function testMultipleMulticall() public {
-        vm.startPrank(FM);
+        vm.startPrank(ADMIN);
+        PoolId poolA = guardian.createPool(FM, USD, multiShareClass);
+        PoolId poolB = guardian.createPool(FM, USD, multiShareClass);
+        vm.stopPrank();
 
-        PoolId poolA = poolRouter.createPool(FM, USD, multiShareClass);
-        PoolId poolB = poolRouter.createPool(FM, USD, multiShareClass);
+        vm.startPrank(FM);
 
         bytes[] memory innerCalls = new bytes[](1);
         innerCalls[0] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
@@ -270,7 +275,7 @@ contract TestCases is PoolsDeployer, Test {
     function testCalUpdateJournal() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation();
 
-        AccountId extraAccountId = newAccountId(123, uint8(AccountType.ASSET));
+        AccountId extraAccountId = newAccountId(123, uint8(AccountType.Asset));
 
         (bytes[] memory cs, uint256 c) = (new bytes[](1), 0);
         cs[c++] = abi.encodeWithSelector(poolRouter.createAccount.selector, extraAccountId, true);
@@ -278,13 +283,13 @@ contract TestCases is PoolsDeployer, Test {
         poolRouter.execute(poolId, cs);
 
         (JournalEntry[] memory debits, uint256 i) = (new JournalEntry[](3), 0);
-        debits[i++] = JournalEntry(1000, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.ASSET)));
+        debits[i++] = JournalEntry(1000, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Asset)));
         debits[i++] = JournalEntry(250, extraAccountId);
-        debits[i++] = JournalEntry(130, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EQUITY)));
+        debits[i++] = JournalEntry(130, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Equity)));
 
         (JournalEntry[] memory credits, uint256 j) = (new JournalEntry[](2), 0);
-        credits[j++] = JournalEntry(1250, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EQUITY)));
-        credits[j++] = JournalEntry(130, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.LOSS)));
+        credits[j++] = JournalEntry(1250, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Equity)));
+        credits[j++] = JournalEntry(130, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Loss)));
 
         cv.updateJournal(poolId, debits, credits);
     }
@@ -297,17 +302,17 @@ contract TestCases is PoolsDeployer, Test {
         JournalEntry[] memory debits = new JournalEntry[](0);
         (JournalEntry[] memory credits, uint256 i) = (new JournalEntry[](1), 0);
         credits[i++] =
-            JournalEntry(130 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.GAIN)));
+            JournalEntry(130 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Gain)));
 
         cv.updateHoldingAmount(poolId, scId, USDC_C2, 1000 * assetDecimals, D18.wrap(1e18), true, debits, credits);
         assertEq(holdings.amount(poolId, scId, USDC_C2), 1000 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 1000 * poolDecimals);
         assertEq(
-            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.GAIN))),
+            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Gain))),
             int128(130 * poolDecimals)
         );
         assertEq(
-            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EQUITY))),
+            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Equity))),
             int128(870 * poolDecimals)
         );
 
@@ -322,25 +327,25 @@ contract TestCases is PoolsDeployer, Test {
     ) public {
         (JournalEntry[] memory debits, uint256 j) = (new JournalEntry[](1), 0);
         debits[j++] =
-            JournalEntry(12 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EXPENSE)));
+            JournalEntry(12 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Expense)));
         (JournalEntry[] memory credits, uint256 k) = (new JournalEntry[](1), 0);
         credits[k++] =
-            JournalEntry(12 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.LOSS)));
+            JournalEntry(12 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Loss)));
 
         cv.updateHoldingAmount(poolId, scId, USDC_C2, 500 * assetDecimals, D18.wrap(1e18), false, debits, credits);
 
         assertEq(holdings.amount(poolId, scId, USDC_C2), 500 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 500 * poolDecimals);
         assertEq(
-            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.LOSS))),
+            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Loss))),
             int128(12 * poolDecimals)
         );
         assertEq(
-            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EXPENSE))),
+            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Expense))),
             int128(12 * poolDecimals)
         );
         assertEq(
-            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EQUITY))),
+            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Equity))),
             // 1000 - 130 - (500-12) = 382
             int128(382 * poolDecimals)
         );
