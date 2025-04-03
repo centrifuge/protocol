@@ -65,27 +65,16 @@ struct QueuedOrder {
     uint128 amount;
 }
 
+enum RequestType {
+    /// @dev Whether the request is a deposit one
+    Deposit,
+    /// @dev Whether the request is a redeem one
+    Redeem
+}
+
 interface IShareClassManager {
     /// Events
     event NewEpoch(PoolId poolId, uint32 newIndex);
-    event UpdatedDepositRequest(
-        PoolId indexed poolId,
-        ShareClassId indexed scId,
-        uint32 indexed epoch,
-        bytes32 investor,
-        AssetId assetId,
-        uint128 updatedAmountUser,
-        uint128 updatedAmountTotal
-    );
-    event UpdatedRedeemRequest(
-        PoolId indexed poolId,
-        ShareClassId indexed scId,
-        uint32 indexed epoch,
-        bytes32 investor,
-        AssetId payoutAssetId,
-        uint128 updatedAmountUser,
-        uint128 updatedAmountTotal
-    );
     event ApprovedDeposits(
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -144,23 +133,17 @@ interface IShareClassManager {
     );
     event UpdatedNav(PoolId indexed poolId, ShareClassId indexed scId, uint128 newAmount);
     event AddedShareClass(PoolId indexed poolId, ShareClassId indexed scId, uint32 indexed index);
-    event UpdatedQueuedDeposit(
+    event UpdatedRequest(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         uint32 indexed epoch,
+        RequestType requestType,
         bytes32 investor,
-        AssetId depositAssetId,
+        AssetId assetId,
+        uint128 pendingUserAmount,
+        uint128 pendingTotalAmount,
         uint128 queuedAmount,
-        bool isCancelling
-    );
-    event UpdatedQueuedRedeem(
-        PoolId indexed poolId,
-        ShareClassId indexed scId,
-        uint32 indexed epoch,
-        bytes32 investor,
-        AssetId paymentAssetId,
-        uint128 queuedAmount,
-        bool isCancelling
+        bool pendingCancellation
     );
 
     /// Errors

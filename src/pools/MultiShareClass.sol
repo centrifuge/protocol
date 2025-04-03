@@ -20,7 +20,8 @@ import {
     EpochPointers,
     ShareClassMetadata,
     ShareClassMetrics,
-    QueuedOrder
+    QueuedOrder,
+    RequestType
 } from "src/pools/interfaces/IShareClassManager.sol";
 import {IMultiShareClass} from "src/pools/interfaces/IMultiShareClass.sol";
 
@@ -97,7 +98,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
         require(exists(poolId, scId_), ShareClassNotFound());
 
         // NOTE: CV ensures amount > 0
-        _updatePending(poolId, scId_, amount, true, investor, depositAssetId, true);
+        _updatePending(poolId, scId_, amount, true, investor, depositAssetId, RequestType.Deposit);
     }
 
     function cancelDepositRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
@@ -109,7 +110,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
 
         uint128 cancellingAmount = depositRequest[scId_][depositAssetId][investor].pending;
 
-        return _updatePending(poolId, scId_, cancellingAmount, false, investor, depositAssetId, true);
+        return _updatePending(poolId, scId_, cancellingAmount, false, investor, depositAssetId, RequestType.Deposit);
     }
 
     /// @inheritdoc IShareClassManager
@@ -120,7 +121,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
         require(exists(poolId, scId_), ShareClassNotFound());
 
         // NOTE: CV ensures amount > 0
-        _updatePending(poolId, scId_, amount, true, investor, payoutAssetId, false);
+        _updatePending(poolId, scId_, amount, true, investor, payoutAssetId, RequestType.Redeem);
     }
 
     /// @inheritdoc IShareClassManager
@@ -133,7 +134,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
 
         uint128 cancellingAmount = redeemRequest[scId_][payoutAssetId][investor].pending;
 
-        return _updatePending(poolId, scId_, cancellingAmount, false, investor, payoutAssetId, false);
+        return _updatePending(poolId, scId_, cancellingAmount, false, investor, payoutAssetId, RequestType.Redeem);
     }
 
     /// @inheritdoc IShareClassManager
@@ -394,7 +395,8 @@ contract MultiShareClass is Auth, IMultiShareClass {
         }
         userOrder.lastUpdate = endEpochId + 1;
 
-        cancelledAssetAmount = _postClaimUpdateQueued(poolId, scId_, investor, depositAssetId, userOrder, true);
+        cancelledAssetAmount =
+            _postClaimUpdateQueued(poolId, scId_, investor, depositAssetId, userOrder, RequestType.Deposit);
     }
 
     /// @inheritdoc IShareClassManager
@@ -475,7 +477,8 @@ contract MultiShareClass is Auth, IMultiShareClass {
 
         userOrder.lastUpdate = endEpochId + 1;
 
-        cancelledShareAmount = _postClaimUpdateQueued(poolId, scId_, investor, payoutAssetId, userOrder, false);
+        cancelledShareAmount =
+            _postClaimUpdateQueued(poolId, scId_, investor, payoutAssetId, userOrder, RequestType.Redeem);
     }
 
     function updateMetadata(
@@ -626,10 +629,11 @@ contract MultiShareClass is Auth, IMultiShareClass {
         bytes32 investor,
         AssetId assetId,
         UserOrder storage userOrder,
-        bool isDeposit
+        RequestType requestType
     ) private returns (uint128 cancelledAmount) {
-        QueuedOrder storage queued =
-            isDeposit ? queuedDepositRequest[scId_][assetId][investor] : queuedRedeemRequest[scId_][assetId][investor];
+        QueuedOrder storage queued = requestType == RequestType.Deposit
+            ? queuedDepositRequest[scId_][assetId][investor]
+            : queuedRedeemRequest[scId_][assetId][investor];
 
         // Increment pending by queued or cancel everything
         uint128 updatePendingAmount = queued.isCancelling ? userOrder.pending : queued.amount;
@@ -640,16 +644,28 @@ contract MultiShareClass is Auth, IMultiShareClass {
             userOrder.pending += queued.amount;
         }
 
-        bool wasQueued = queued.isCancelling || queued.amount > 0;
-        if (isDeposit) {
+        if (requestType == RequestType.Deposit) {
             _updatePendingDeposit(
-                poolId, scId_, updatePendingAmount, !queued.isCancelling, investor, assetId, userOrder
+                poolId,
+                scId_,
+                updatePendingAmount,
+                !queued.isCancelling,
+                investor,
+                assetId,
+                userOrder,
+                QueuedOrder(false, 0)
             );
-
-            if (wasQueued) emit UpdatedQueuedDeposit(poolId, scId_, userOrder.lastUpdate, investor, assetId, 0, false);
         } else {
-            _updatePendingRedeem(poolId, scId_, updatePendingAmount, !queued.isCancelling, investor, assetId, userOrder);
-            if (wasQueued) emit UpdatedQueuedRedeem(poolId, scId_, userOrder.lastUpdate, investor, assetId, 0, false);
+            _updatePendingRedeem(
+                poolId,
+                scId_,
+                updatePendingAmount,
+                !queued.isCancelling,
+                investor,
+                assetId,
+                userOrder,
+                QueuedOrder(false, 0)
+            );
         }
 
         // Clear queued
@@ -665,7 +681,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
     /// @param isIncrement Whether the amount is positive (additional request) or negative (cancellation)
     /// @param investor Address of the entity which is depositing
     /// @param assetId Identifier of the asset which the investor either used as deposit or wants to redeem to
-    /// @param isDeposit Flag indicating whether the request is a deposit or redeem request
+    /// @param requestType Flag indicating whether the request is a deposit or redeem request
     /// @return cancelledAmount Pending amount which was cancelled
     function _updatePending(
         PoolId poolId,
@@ -674,13 +690,17 @@ contract MultiShareClass is Auth, IMultiShareClass {
         bool isIncrement,
         bytes32 investor,
         AssetId assetId,
-        bool isDeposit
+        RequestType requestType
     ) private returns (uint128 cancelledAmount) {
-        UserOrder storage userOrder =
-            isDeposit ? depositRequest[scId_][assetId][investor] : redeemRequest[scId_][assetId][investor];
+        UserOrder storage userOrder = requestType == RequestType.Deposit
+            ? depositRequest[scId_][assetId][investor]
+            : redeemRequest[scId_][assetId][investor];
+        QueuedOrder storage queued = requestType == RequestType.Deposit
+            ? queuedDepositRequest[scId_][assetId][investor]
+            : queuedRedeemRequest[scId_][assetId][investor];
 
         // We must only update either queued or pending
-        if (_updateQueued(poolId, scId_, amount, isIncrement, investor, assetId, userOrder, isDeposit)) {
+        if (_updateQueued(poolId, scId_, amount, isIncrement, investor, assetId, userOrder, queued, requestType)) {
             return 0;
         }
 
@@ -688,8 +708,11 @@ contract MultiShareClass is Auth, IMultiShareClass {
         userOrder.pending = isIncrement ? userOrder.pending + amount : userOrder.pending - amount;
         userOrder.lastUpdate = epochId[poolId];
 
-        if (isDeposit) _updatePendingDeposit(poolId, scId_, amount, isIncrement, investor, assetId, userOrder);
-        else _updatePendingRedeem(poolId, scId_, amount, isIncrement, investor, assetId, userOrder);
+        if (requestType == RequestType.Deposit) {
+            _updatePendingDeposit(poolId, scId_, amount, isIncrement, investor, assetId, userOrder, queued);
+        } else {
+            _updatePendingRedeem(poolId, scId_, amount, isIncrement, investor, assetId, userOrder, queued);
+        }
     }
 
     /// @notice Checks whether the pending amount can be updated. If not, it updates the queued amount.
@@ -701,7 +724,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
     /// @param investor Address of the entity which is depositing
     /// @param assetId Identifier of the asset which the investor either used as deposit or wants to redeem to
     /// @param userOrder User order storage for the deposit or redeem request
-    /// @param isDeposit Flag indicating whether the request is a deposit or redeem request
+    /// @param requestType Flag indicating whether the request is a deposit or redeem request
     /// @return skipPendingUpdate Flag indicating whether the pending amount can be updated which is true if the user
     /// does not need to claim
     function _updateQueued(
@@ -712,19 +735,17 @@ contract MultiShareClass is Auth, IMultiShareClass {
         bytes32 investor,
         AssetId assetId,
         UserOrder storage userOrder,
-        bool isDeposit
+        QueuedOrder storage queued,
+        RequestType requestType
     ) private returns (bool skipPendingUpdate) {
-        uint128 latestApproval = isDeposit
+        uint128 latestApproval = requestType == RequestType.Deposit
             ? epochPointers[scId_][assetId].latestDepositApproval
             : epochPointers[scId_][assetId].latestRedeemApproval;
-            
-        // Short circuit if user can mutate pending, i.e. last update happened after latest approval or pending is 0
+
+        // Short circuit if user can mutate pending, i.e. last update happened after latest approval or is first update
         if (userOrder.lastUpdate > latestApproval || userOrder.pending == 0 || latestApproval == 0) {
             return false;
         }
-
-        QueuedOrder storage queued =
-            isDeposit ? queuedDepositRequest[scId_][assetId][investor] : queuedRedeemRequest[scId_][assetId][investor];
 
         // Block increasing queued amount if cancelling is already queued
         // NOTE: Can only happen due to race condition as CV blocks requests if cancellation is in progress
@@ -736,15 +757,21 @@ contract MultiShareClass is Auth, IMultiShareClass {
             queued.amount += amount;
         }
 
-        if (isDeposit) {
-            emit UpdatedQueuedDeposit(
-                poolId, scId_, epochId[poolId], investor, assetId, queued.amount, queued.isCancelling
-            );
-        } else {
-            emit UpdatedQueuedRedeem(
-                poolId, scId_, epochId[poolId], investor, assetId, queued.amount, queued.isCancelling
-            );
-        }
+        uint128 pendingTotal =
+            requestType == RequestType.Deposit ? pendingDeposit[scId_][assetId] : pendingRedeem[scId_][assetId];
+
+        emit UpdatedRequest(
+            poolId,
+            scId_,
+            epochId[poolId],
+            requestType,
+            investor,
+            assetId,
+            userOrder.pending,
+            pendingTotal,
+            queued.amount,
+            queued.isCancelling
+        );
 
         return true;
     }
@@ -756,13 +783,24 @@ contract MultiShareClass is Auth, IMultiShareClass {
         bool isIncrement,
         bytes32 investor,
         AssetId assetId,
-        UserOrder storage userOrder
+        UserOrder storage userOrder,
+        QueuedOrder memory queued
     ) private {
-        pendingDeposit[scId_][assetId] =
-            isIncrement ? pendingDeposit[scId_][assetId] + amount : pendingDeposit[scId_][assetId] - amount;
+        uint128 pendingTotal = pendingDeposit[scId_][assetId];
+        pendingDeposit[scId_][assetId] = isIncrement ? pendingTotal + amount : pendingTotal - amount;
+        pendingTotal = pendingDeposit[scId_][assetId];
 
-        emit UpdatedDepositRequest(
-            poolId, scId_, epochId[poolId], investor, assetId, userOrder.pending, pendingDeposit[scId_][assetId]
+        emit UpdatedRequest(
+            poolId,
+            scId_,
+            epochId[poolId],
+            RequestType.Deposit,
+            investor,
+            assetId,
+            userOrder.pending,
+            pendingTotal,
+            queued.amount,
+            queued.isCancelling
         );
     }
 
@@ -773,13 +811,24 @@ contract MultiShareClass is Auth, IMultiShareClass {
         bool isIncrement,
         bytes32 investor,
         AssetId assetId,
-        UserOrder storage userOrder
+        UserOrder storage userOrder,
+        QueuedOrder memory queued
     ) private {
-        pendingRedeem[scId_][assetId] =
-            isIncrement ? pendingRedeem[scId_][assetId] + amount : pendingRedeem[scId_][assetId] - amount;
+        uint128 pendingTotal = pendingRedeem[scId_][assetId];
+        pendingRedeem[scId_][assetId] = isIncrement ? pendingTotal + amount : pendingTotal - amount;
+        pendingTotal = pendingRedeem[scId_][assetId];
 
-        emit UpdatedRedeemRequest(
-            poolId, scId_, epochId[poolId], investor, assetId, userOrder.pending, pendingRedeem[scId_][assetId]
+        emit UpdatedRequest(
+            poolId,
+            scId_,
+            epochId[poolId],
+            RequestType.Redeem,
+            investor,
+            assetId,
+            userOrder.pending,
+            pendingTotal,
+            queued.amount,
+            queued.isCancelling
         );
     }
 }

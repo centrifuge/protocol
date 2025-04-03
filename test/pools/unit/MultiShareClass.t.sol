@@ -21,7 +21,8 @@ import {
     EpochPointers,
     ShareClassMetadata,
     ShareClassMetrics,
-    QueuedOrder
+    QueuedOrder,
+    RequestType
 } from "src/pools/interfaces/IShareClassManager.sol";
 import {IMultiShareClass} from "src/pools/interfaces/IMultiShareClass.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
@@ -368,7 +369,9 @@ contract MultiShareClassDepositsNonTransientTest is MultiShareClassBaseTest {
         _assertDepositRequestEq(scId, USDC, investor, UserOrder(0, 0));
 
         vm.expectEmit(true, true, true, true);
-        emit IShareClassManager.UpdatedDepositRequest(poolId, scId, 1, investor, USDC, amount, amount);
+        emit IShareClassManager.UpdatedRequest(
+            poolId, scId, 1, RequestType.Deposit, investor, USDC, amount, amount, 0, false
+        );
         shareClass.requestDeposit(poolId, scId, amount, investor, USDC);
 
         assertEq(shareClass.pendingDeposit(scId, USDC), amount);
@@ -380,7 +383,7 @@ contract MultiShareClassDepositsNonTransientTest is MultiShareClassBaseTest {
         shareClass.requestDeposit(poolId, scId, amount, investor, USDC);
 
         vm.expectEmit(true, true, true, true);
-        emit IShareClassManager.UpdatedDepositRequest(poolId, scId, 1, investor, USDC, 0, 0);
+        emit IShareClassManager.UpdatedRequest(poolId, scId, 1, RequestType.Deposit, investor, USDC, 0, 0, 0, false);
         (uint128 cancelledAmount) = shareClass.cancelDepositRequest(poolId, scId, investor, USDC);
 
         assertEq(cancelledAmount, amount);
@@ -593,7 +596,9 @@ contract MultiShareClassDepositsNonTransientTest is MultiShareClassBaseTest {
         // Expect queued increment due to approval
         queuedAmount += amount;
         vm.expectEmit();
-        emit IShareClassManager.UpdatedQueuedDeposit(poolId, scId, epochId, investor, USDC, queuedAmount, false);
+        emit IShareClassManager.UpdatedRequest(
+            poolId, scId, epochId, RequestType.Deposit, investor, USDC, amount, 0, queuedAmount, false
+        );
         shareClass.requestDeposit(poolId, scId, amount, investor, USDC);
         _assertDepositRequestEq(scId, USDC, investor, UserOrder(queuedAmount, epochId - 1));
         assertEq(shareClass.pendingDeposit(scId, USDC), 0);
@@ -603,7 +608,9 @@ contract MultiShareClassDepositsNonTransientTest is MultiShareClassBaseTest {
         // Expect queued increment due to approval
         queuedAmount += amount;
         vm.expectEmit();
-        emit IShareClassManager.UpdatedQueuedDeposit(poolId, scId, epochId, investor, USDC, queuedAmount, false);
+        emit IShareClassManager.UpdatedRequest(
+            poolId, scId, epochId, RequestType.Deposit, investor, USDC, amount, 0, queuedAmount, false
+        );
         shareClass.requestDeposit(poolId, scId, amount, investor, USDC);
         _assertQueuedDepositRequestEq(scId, USDC, investor, QueuedOrder(false, queuedAmount));
 
@@ -611,8 +618,9 @@ contract MultiShareClassDepositsNonTransientTest is MultiShareClassBaseTest {
         shareClass.issueShares(poolId, scId, USDC, shareToPoolQuote);
         vm.expectEmit();
         emit IShareClassManager.ClaimedDeposit(poolId, scId, 1, investor, USDC, amount, 0, claimedShares);
-        emit IShareClassManager.UpdatedDepositRequest(poolId, scId, epochId, investor, USDC, queuedAmount, queuedAmount);
-        emit IShareClassManager.UpdatedQueuedDeposit(poolId, scId, epochId, investor, USDC, 0, false);
+        emit IShareClassManager.UpdatedRequest(
+            poolId, scId, epochId, RequestType.Deposit, investor, USDC, queuedAmount, queuedAmount, 0, false
+        );
         shareClass.claimDeposit(poolId, scId, investor, USDC);
 
         _assertDepositRequestEq(scId, USDC, investor, UserOrder(queuedAmount, epochId));
@@ -643,7 +651,9 @@ contract MultiShareClassDepositsNonTransientTest is MultiShareClassBaseTest {
         queuedAmount += amount;
         shareClass.requestDeposit(poolId, scId, amount, investor, USDC);
         vm.expectEmit();
-        emit IShareClassManager.UpdatedQueuedDeposit(poolId, scId, epochId, investor, USDC, queuedAmount, true);
+        emit IShareClassManager.UpdatedRequest(
+            poolId, scId, epochId, RequestType.Deposit, investor, USDC, amount, pendingAssetAmount, queuedAmount, true
+        );
         (uint128 cancelledPending) = shareClass.cancelDepositRequest(poolId, scId, investor, USDC);
         assertEq(cancelledPending, 0, "Cancellation queued");
 
@@ -659,8 +669,9 @@ contract MultiShareClassDepositsNonTransientTest is MultiShareClassBaseTest {
         emit IShareClassManager.ClaimedDeposit(
             poolId, scId, 1, investor, USDC, approvedAssetAmount, pendingAssetAmount, issuedShares
         );
-        emit IShareClassManager.UpdatedDepositRequest(poolId, scId, epochId, investor, USDC, 0, 0);
-        emit IShareClassManager.UpdatedQueuedDeposit(poolId, scId, epochId, investor, USDC, 0, false);
+        emit IShareClassManager.UpdatedRequest(
+            poolId, scId, epochId, RequestType.Deposit, investor, USDC, 0, 0, 0, false
+        );
         (uint128 claimedShareAmount, uint128 claimedAssetAmount, uint128 cancelledTotal) =
             shareClass.claimDeposit(poolId, scId, investor, USDC);
         assertEq(claimedShareAmount, issuedShares, "Claimed share amount mismatch");
@@ -689,7 +700,9 @@ contract MultiShareClassDepositsNonTransientTest is MultiShareClassBaseTest {
 
         // Expect queued increment due to approval
         vm.expectEmit();
-        emit IShareClassManager.UpdatedQueuedDeposit(poolId, scId, epochId, investor, USDC, 0, true);
+        emit IShareClassManager.UpdatedRequest(
+            poolId, scId, epochId, RequestType.Deposit, investor, USDC, amount, pendingAssetAmount, 0, true
+        );
         (uint128 cancelledPending) = shareClass.cancelDepositRequest(poolId, scId, investor, USDC);
         assertEq(cancelledPending, 0, "Cancellation queued");
 
@@ -699,8 +712,9 @@ contract MultiShareClassDepositsNonTransientTest is MultiShareClassBaseTest {
         emit IShareClassManager.ClaimedDeposit(
             poolId, scId, 1, investor, USDC, approvedAssetAmount, pendingAssetAmount, issuedShares
         );
-        emit IShareClassManager.UpdatedDepositRequest(poolId, scId, epochId, investor, USDC, 0, 0);
-        emit IShareClassManager.UpdatedQueuedDeposit(poolId, scId, epochId, investor, USDC, 0, false);
+        emit IShareClassManager.UpdatedRequest(
+            poolId, scId, epochId, RequestType.Deposit, investor, USDC, 0, 0, 0, false
+        );
         (uint128 claimedShareAmount, uint128 claimedAssetAmount, uint128 cancelledTotal) =
             shareClass.claimDeposit(poolId, scId, investor, USDC);
         assertEq(claimedShareAmount, issuedShares, "Claimed share amount mismatch");
@@ -725,7 +739,9 @@ contract MultiShareClassRedeemsNonTransientTest is MultiShareClassBaseTest {
         _assertRedeemRequestEq(scId, USDC, investor, UserOrder(0, 0));
 
         vm.expectEmit(true, true, true, true);
-        emit IShareClassManager.UpdatedRedeemRequest(poolId, scId, 1, investor, USDC, amount, amount);
+        emit IShareClassManager.UpdatedRequest(
+            poolId, scId, 1, RequestType.Redeem, investor, USDC, amount, amount, 0, false
+        );
         shareClass.requestRedeem(poolId, scId, amount, investor, USDC);
 
         assertEq(shareClass.pendingRedeem(scId, USDC), amount);
@@ -737,7 +753,7 @@ contract MultiShareClassRedeemsNonTransientTest is MultiShareClassBaseTest {
         shareClass.requestRedeem(poolId, scId, amount, investor, USDC);
 
         vm.expectEmit(true, true, true, true);
-        emit IShareClassManager.UpdatedRedeemRequest(poolId, scId, 1, investor, USDC, 0, 0);
+        emit IShareClassManager.UpdatedRequest(poolId, scId, 1, RequestType.Redeem, investor, USDC, 0, 0, 0, false);
         (uint128 cancelledAmount) = shareClass.cancelRedeemRequest(poolId, scId, investor, USDC);
 
         assertEq(cancelledAmount, amount);
@@ -929,6 +945,8 @@ contract MultiShareClassRedeemsNonTransientTest is MultiShareClassBaseTest {
         amount = uint128(bound(amount, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES / 3));
         D18 shareToPoolQuote = d18(1, 1);
         uint128 claimedAssetAmount = poolToUsdc(amount);
+        uint128 approvedShareAmount = amount;
+        uint128 pendingShareAmount = 0;
         uint128 queuedAmount = 0;
         uint32 epochId = 1;
 
@@ -943,12 +961,24 @@ contract MultiShareClassRedeemsNonTransientTest is MultiShareClassBaseTest {
         _assertRedeemRequestEq(scId, USDC, investor, UserOrder(amount, epochId));
         assertEq(shareClass.pendingRedeem(scId, USDC), amount);
         shareClass.approveRedeems(poolId, scId, amount, USDC);
+        assertEq(shareClass.pendingRedeem(scId, USDC), 0);
         epochId = 2;
 
         // Expect queued increment due to approval
         queuedAmount += amount;
         vm.expectEmit();
-        emit IShareClassManager.UpdatedQueuedRedeem(poolId, scId, epochId, investor, USDC, queuedAmount, false);
+        emit IShareClassManager.UpdatedRequest(
+            poolId,
+            scId,
+            epochId,
+            RequestType.Redeem,
+            investor,
+            USDC,
+            approvedShareAmount,
+            pendingShareAmount,
+            queuedAmount,
+            false
+        );
         shareClass.requestRedeem(poolId, scId, amount, investor, USDC);
         _assertRedeemRequestEq(scId, USDC, investor, UserOrder(queuedAmount, epochId - 1));
         assertEq(shareClass.pendingRedeem(scId, USDC), 0);
@@ -958,20 +988,24 @@ contract MultiShareClassRedeemsNonTransientTest is MultiShareClassBaseTest {
         // Expect queued increment due to approval
         queuedAmount += amount;
         vm.expectEmit();
-        emit IShareClassManager.UpdatedQueuedRedeem(poolId, scId, epochId, investor, USDC, queuedAmount, false);
+        emit IShareClassManager.UpdatedRequest(
+            poolId, scId, epochId, RequestType.Redeem, investor, USDC, amount, 0, queuedAmount, false
+        );
         shareClass.requestRedeem(poolId, scId, amount, investor, USDC);
         _assertQueuedRedeemRequestEq(scId, USDC, investor, QueuedOrder(false, queuedAmount));
 
         // Issue shares + claim -> expect queued to move to pending
         shareClass.revokeShares(poolId, scId, USDC, shareToPoolQuote, oracleMock);
+        pendingShareAmount = queuedAmount;
         vm.expectEmit();
         emit IShareClassManager.ClaimedRedeem(poolId, scId, 1, investor, USDC, amount, 0, claimedAssetAmount);
-        emit IShareClassManager.UpdatedRedeemRequest(poolId, scId, epochId, investor, USDC, queuedAmount, queuedAmount);
-        emit IShareClassManager.UpdatedQueuedRedeem(poolId, scId, epochId, investor, USDC, 0, false);
+        emit IShareClassManager.UpdatedRequest(
+            poolId, scId, epochId, RequestType.Redeem, investor, USDC, pendingShareAmount, pendingShareAmount, 0, false
+        );
         shareClass.claimRedeem(poolId, scId, investor, USDC);
 
-        _assertRedeemRequestEq(scId, USDC, investor, UserOrder(queuedAmount, epochId));
-        assertEq(shareClass.pendingRedeem(scId, USDC), queuedAmount);
+        _assertRedeemRequestEq(scId, USDC, investor, UserOrder(pendingShareAmount, epochId));
+        assertEq(shareClass.pendingRedeem(scId, USDC), pendingShareAmount, "pending redeem mismatch");
         _assertQueuedRedeemRequestEq(scId, USDC, investor, QueuedOrder(false, 0));
         _assertQueuedDepositRequestEq(scId, USDC, investor, QueuedOrder(false, 0));
     }
@@ -1005,7 +1039,9 @@ contract MultiShareClassRedeemsNonTransientTest is MultiShareClassBaseTest {
         queuedAmount += amount;
         shareClass.requestRedeem(poolId, scId, amount, investor, USDC);
         vm.expectEmit();
-        emit IShareClassManager.UpdatedQueuedRedeem(poolId, scId, epochId, investor, USDC, queuedAmount, true);
+        emit IShareClassManager.UpdatedRequest(
+            poolId, scId, epochId, RequestType.Redeem, investor, USDC, amount, pendingShareAmount, queuedAmount, true
+        );
         (uint128 cancelledPending) = shareClass.cancelRedeemRequest(poolId, scId, investor, USDC);
         assertEq(cancelledPending, 0, "Cancellation queued");
 
@@ -1021,8 +1057,9 @@ contract MultiShareClassRedeemsNonTransientTest is MultiShareClassBaseTest {
         emit IShareClassManager.ClaimedRedeem(
             poolId, scId, 1, investor, USDC, approvedShareAmount, pendingShareAmount, revokedAssetAmount
         );
-        emit IShareClassManager.UpdatedRedeemRequest(poolId, scId, epochId, investor, USDC, 0, 0);
-        emit IShareClassManager.UpdatedQueuedRedeem(poolId, scId, epochId, investor, USDC, 0, false);
+        emit IShareClassManager.UpdatedRequest(
+            poolId, scId, epochId, RequestType.Redeem, investor, USDC, 0, 0, 0, false
+        );
         (uint128 claimedAssetAmount, uint128 claimedShareAmount, uint128 cancelledTotal) =
             shareClass.claimRedeem(poolId, scId, investor, USDC);
         assertEq(claimedAssetAmount, revokedAssetAmount, "Claimed asset amount mismatch");
@@ -1058,7 +1095,9 @@ contract MultiShareClassRedeemsNonTransientTest is MultiShareClassBaseTest {
 
         // Expect queued increment due to approval
         vm.expectEmit();
-        emit IShareClassManager.UpdatedQueuedRedeem(poolId, scId, epochId, investor, USDC, 0, true);
+        emit IShareClassManager.UpdatedRequest(
+            poolId, scId, epochId, RequestType.Redeem, investor, USDC, amount, pendingShareAmount, 0, true
+        );
         (uint128 cancelledPending) = shareClass.cancelRedeemRequest(poolId, scId, investor, USDC);
         assertEq(cancelledPending, 0, "Cancellation queued");
 
@@ -1068,8 +1107,9 @@ contract MultiShareClassRedeemsNonTransientTest is MultiShareClassBaseTest {
         emit IShareClassManager.ClaimedRedeem(
             poolId, scId, 1, investor, USDC, approvedShareAmount, pendingShareAmount, revokedAssetAmount
         );
-        emit IShareClassManager.UpdatedRedeemRequest(poolId, scId, epochId, investor, USDC, 0, 0);
-        emit IShareClassManager.UpdatedQueuedRedeem(poolId, scId, epochId, investor, USDC, 0, false);
+        emit IShareClassManager.UpdatedRequest(
+            poolId, scId, epochId, RequestType.Redeem, investor, USDC, 0, 0, 0, false
+        );
         (uint128 claimedAssetAmount, uint128 claimedShareAmount, uint128 cancelledTotal) =
             shareClass.claimRedeem(poolId, scId, investor, USDC);
         assertEq(claimedAssetAmount, revokedAssetAmount, "Claimed share amount mismatch");
