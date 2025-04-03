@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
@@ -9,7 +10,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 uint8 constant MAX_ADAPTER_COUNT = 8;
 
 /// @notice Interface for dispatch-only gateway
-interface IGateway is IMessageHandler, IMessageSender {
+interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedWhat();
 
@@ -69,18 +70,6 @@ interface IGateway is IMessageHandler, IMessageSender {
 
     /// @notice Finalize batching messages and send the resulting batch message
     function endBatch() external;
-
-    /// @notice Initialize the recovery of a message.
-    /// @param  chainId Chain where the adapter is configured for
-    /// @param  adapter Adapter that the recovery was targeting
-    /// @param  messageHash Hash of the message being disputed
-    function initiateMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) external;
-
-    /// @notice Cancel the recovery of a message.
-    /// @param  chainId Chain where the adapter is configured for
-    /// @param  adapter Adapter that the recovery was targeting
-    /// @param  messageHash Hash of the message being disputed
-    function disputeMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) external;
 
     /// @notice Execute message recovery. After the challenge period, the recovery can be executed.
     ///         If a malign adapter initiates message recovery,
