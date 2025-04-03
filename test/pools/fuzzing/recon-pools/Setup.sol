@@ -81,7 +81,11 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     D18 internal INITIAL_PRICE = d18(1e18); // set the initial price that gets used when creating an asset via a pool's shortcut to avoid stack too deep errors
     uint16 internal CENTIFUGE_CHAIN_ID = 1;
     /// @dev see toggle_IsLiability
-    bool internal IS_LIABILITY = false; 
+    bool internal IS_LIABILITY = true; 
+    /// @dev see toggle_IsIncrease
+    bool internal IS_INCREASE = true;
+    /// @dev see toggle_AccountToUpdate
+    uint8 internal ACCOUNT_TO_UPDATE = 0;
 
     event LogString(string);
 

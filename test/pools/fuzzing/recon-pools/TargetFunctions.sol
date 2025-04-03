@@ -339,29 +339,42 @@ abstract contract TargetFunctions is
         poolRouter_execute_clamped(poolId);
     }
 
-    // function shortcut_create_pool_and_update_holding_amount(
-    //     uint8 decimals,
-    //     uint32 isoCode,
-    //     string memory name, 
-    //     string memory symbol, 
-    //     bytes32 salt, 
-    //     bytes memory data,
-    //     bool isIdentityValuation,
-    //     uint24 prefix,
-    //     uint128 amount,
-    //     D18 pricePerUnit,
-    //     bool isIncrease,
-    //     JournalEntry[] memory debits,
-    //     JournalEntry[] memory credits
-    // ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
-    //     decimals %= 24; // upper bound of decimals for most ERC20s is 24
-    //     require(decimals >= 6, "decimals must be >= 6");
+    function shortcut_create_pool_and_update_holding_amount(
+        uint8 decimals,
+        uint32 isoCode,
+        string memory name, 
+        string memory symbol, 
+        bytes32 salt, 
+        bytes memory data,
+        bool isIdentityValuation,
+        uint24 prefix,
+        uint128 amount,
+        D18 pricePerUnit,
+        uint128 debitAmount,
+        uint128 creditAmount
+    ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
+        decimals %= 24; // upper bound of decimals for most ERC20s is 24
+        require(decimals >= 6, "decimals must be >= 6");
 
-    //     (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
-    //     AssetId assetId = newAssetId(isoCode);
+        (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
+        
+        {
+            AssetId assetId = newAssetId(isoCode);
 
-    //     poolRouter_updateHoldingAmount(poolId, scId, assetId, amount, pricePerUnit, isIncrease, debits, credits);
-    // }
+            JournalEntry[] memory debits = new JournalEntry[](1);
+            debits[0] = JournalEntry({
+                accountId: newAccountId(prefix, ACCOUNT_TO_UPDATE % 6),
+                amount: debitAmount
+            });
+            JournalEntry[] memory credits = new JournalEntry[](1);
+            credits[0] = JournalEntry({
+                accountId: newAccountId(prefix, ACCOUNT_TO_UPDATE % 6),
+                amount: creditAmount
+            });
+
+            poolRouter_updateHoldingAmount(poolId, scId, assetId, amount, pricePerUnit, IS_INCREASE, debits, credits);
+        }
+    }
 
     function shortcut_create_pool_and_update_holding_value(
         uint8 decimals,
@@ -565,9 +578,21 @@ abstract contract TargetFunctions is
 
     /// === Helpers === ///
     /// @dev helper to toggle the isLiability boolean for testing
-    /// @dev this is the only variable used in the shortcuts defined like this because implementing it directly in the functions throws a stack too deep error
+    /// @dev this is defined like this because implementing it directly as a param in the functions throws a stack too deep error
     function toggle_IsLiability() public {
         IS_LIABILITY = !IS_LIABILITY;
+    }
+
+    /// @dev helper to toggle the isIncrease boolean for testing
+    /// @dev this is defined like this because implementing it directly as a param in the functions throws a stack too deep error
+    function toggle_IsIncrease() public {
+        IS_INCREASE = !IS_INCREASE;
+    }
+
+    /// @dev helper to toggle the accountToUpdate uint8 for testing
+    /// @dev this is defined like this because implementing it directly as a param in the functions throws a stack too deep error
+    function toggle_AccountToUpdate(uint8 accountToUpdate) public {
+        ACCOUNT_TO_UPDATE = accountToUpdate;
     }
 
     /// helper to set the epoch increment for the multi share class for multiple calls to approvals in same transaction

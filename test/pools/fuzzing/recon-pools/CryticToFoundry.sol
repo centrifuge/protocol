@@ -173,9 +173,9 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         multiShareClass.claimDeposit(poolId, scId, Helpers.addressToBytes32(address(this)), assetId);
     }
 
-    // function test_shortcut_create_pool_and_update_holding_amount() public {
-    //     shortcut_create_pool_and_update_holding_amount(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), false, 0x01, 10e18, d18(20e18), true, new JournalEntry[](0), new JournalEntry[](0));
-    // }
+    function test_shortcut_create_pool_and_update_holding_amount() public {
+        shortcut_create_pool_and_update_holding_amount(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), false, 0x01, 10e18, d18(20e18), 10e18, 10e18);
+    }
 
     function test_shortcut_create_pool_and_update_holding_value() public {
         shortcut_create_pool_and_update_holding_value(18, 123, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""), false, 0x01, d18(20e18));
