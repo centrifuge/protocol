@@ -10,23 +10,23 @@ import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
 import {Accounting} from "src/pools/Accounting.sol";
 
 enum AccountType {
-    ASSET,
-    EQUITY,
-    LOSS,
-    GAIN
+    Asset,
+    Equity,
+    Loss,
+    Gain
 }
 
 PoolId constant POOL_A = PoolId.wrap(33);
 PoolId constant POOL_B = PoolId.wrap(44);
 
 contract AccountingTest is Test {
-    AccountId immutable CASH_ACCOUNT = newAccountId(1, uint8(AccountType.ASSET));
-    AccountId immutable BOND1_INVESTMENT_ACCOUNT = newAccountId(101, uint8(AccountType.ASSET));
-    AccountId immutable FEES_EXPENSE_ACCOUNT = newAccountId(401, uint8(AccountType.ASSET));
-    AccountId immutable FEES_PAYABLE_ACCOUNT = newAccountId(201, uint8(AccountType.LOSS));
-    AccountId immutable EQUITY_ACCOUNT = newAccountId(301, uint8(AccountType.EQUITY));
-    AccountId immutable GAIN_ACCOUNT = newAccountId(302, uint8(AccountType.GAIN));
-    AccountId immutable NON_INITIALIZED_ACCOUNT = newAccountId(999, uint8(AccountType.ASSET));
+    AccountId immutable CASH_ACCOUNT = newAccountId(1, uint8(AccountType.Asset));
+    AccountId immutable BOND1_INVESTMENT_ACCOUNT = newAccountId(101, uint8(AccountType.Asset));
+    AccountId immutable FEES_EXPENSE_ACCOUNT = newAccountId(401, uint8(AccountType.Asset));
+    AccountId immutable FEES_PAYABLE_ACCOUNT = newAccountId(201, uint8(AccountType.Loss));
+    AccountId immutable EQUITY_ACCOUNT = newAccountId(301, uint8(AccountType.Equity));
+    AccountId immutable GAIN_ACCOUNT = newAccountId(302, uint8(AccountType.Gain));
+    AccountId immutable NON_INITIALIZED_ACCOUNT = newAccountId(999, uint8(AccountType.Asset));
 
     Accounting accounting = new Accounting(address(this));
 

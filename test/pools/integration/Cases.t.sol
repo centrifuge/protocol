@@ -275,7 +275,7 @@ contract TestCases is PoolsDeployer, Test {
     function testCalUpdateJournal() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation();
 
-        AccountId extraAccountId = newAccountId(123, uint8(AccountType.ASSET));
+        AccountId extraAccountId = newAccountId(123, uint8(AccountType.Asset));
 
         (bytes[] memory cs, uint256 c) = (new bytes[](1), 0);
         cs[c++] = abi.encodeWithSelector(poolRouter.createAccount.selector, extraAccountId, true);
@@ -283,13 +283,13 @@ contract TestCases is PoolsDeployer, Test {
         poolRouter.execute(poolId, cs);
 
         (JournalEntry[] memory debits, uint256 i) = (new JournalEntry[](3), 0);
-        debits[i++] = JournalEntry(1000, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.ASSET)));
+        debits[i++] = JournalEntry(1000, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Asset)));
         debits[i++] = JournalEntry(250, extraAccountId);
-        debits[i++] = JournalEntry(130, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EQUITY)));
+        debits[i++] = JournalEntry(130, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Equity)));
 
         (JournalEntry[] memory credits, uint256 j) = (new JournalEntry[](2), 0);
-        credits[j++] = JournalEntry(1250, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EQUITY)));
-        credits[j++] = JournalEntry(130, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.LOSS)));
+        credits[j++] = JournalEntry(1250, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Equity)));
+        credits[j++] = JournalEntry(130, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Loss)));
 
         cv.updateJournal(poolId, debits, credits);
     }
@@ -302,17 +302,17 @@ contract TestCases is PoolsDeployer, Test {
         JournalEntry[] memory debits = new JournalEntry[](0);
         (JournalEntry[] memory credits, uint256 i) = (new JournalEntry[](1), 0);
         credits[i++] =
-            JournalEntry(130 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.GAIN)));
+            JournalEntry(130 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Gain)));
 
         cv.updateHoldingAmount(poolId, scId, USDC_C2, 1000 * assetDecimals, D18.wrap(1e18), true, debits, credits);
         assertEq(holdings.amount(poolId, scId, USDC_C2), 1000 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 1000 * poolDecimals);
         assertEq(
-            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.GAIN))),
+            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Gain))),
             int128(130 * poolDecimals)
         );
         assertEq(
-            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EQUITY))),
+            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Equity))),
             int128(870 * poolDecimals)
         );
 
@@ -327,25 +327,25 @@ contract TestCases is PoolsDeployer, Test {
     ) public {
         (JournalEntry[] memory debits, uint256 j) = (new JournalEntry[](1), 0);
         debits[j++] =
-            JournalEntry(12 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EXPENSE)));
+            JournalEntry(12 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Expense)));
         (JournalEntry[] memory credits, uint256 k) = (new JournalEntry[](1), 0);
         credits[k++] =
-            JournalEntry(12 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.LOSS)));
+            JournalEntry(12 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Loss)));
 
         cv.updateHoldingAmount(poolId, scId, USDC_C2, 500 * assetDecimals, D18.wrap(1e18), false, debits, credits);
 
         assertEq(holdings.amount(poolId, scId, USDC_C2), 500 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 500 * poolDecimals);
         assertEq(
-            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.LOSS))),
+            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Loss))),
             int128(12 * poolDecimals)
         );
         assertEq(
-            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EXPENSE))),
+            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Expense))),
             int128(12 * poolDecimals)
         );
         assertEq(
-            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.EQUITY))),
+            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Equity))),
             // 1000 - 130 - (500-12) = 382
             int128(382 * poolDecimals)
         );
