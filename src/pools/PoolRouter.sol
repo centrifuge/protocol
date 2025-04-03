@@ -283,7 +283,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         _protectedAndUnlocked();
 
         IShareClassManager scm = shareClassManager(unlockedPoolId);
-        require(scm.exists(unlockedPoolId, scId), InvalidShareClassId());
+        require(scm.exists(unlockedPoolId, scId), IShareClassManager.ShareClassNotFound());
         
         sender.sendUpdateRestriction(chainId, unlockedPoolId, scId, payload);
     }
