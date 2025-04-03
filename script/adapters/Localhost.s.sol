@@ -24,6 +24,10 @@ contract LocalhostDeployer is FullDeployer {
         vm.startBroadcast();
 
         deployFull(centrifugeId, ISafe(vm.envAddress("ADMIN")), msg.sender);
+
+        // Since `wire()` is not called, separately adding the safe here
+        guardian.file("safe", address(adminSafe));
+
         saveDeploymentOutput();
 
         _configureTestData(centrifugeId);

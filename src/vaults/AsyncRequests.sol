@@ -571,25 +571,6 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         return vault[poolId][scId][assetId];
     }
 
-    /// @inheritdoc IERC165
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(BaseInvestmentManager, IERC165)
-        returns (bool)
-    {
-        // forgefmt: disable-next-item
-        return super.supportsInterface(interfaceId)
-            || interfaceId == type(IVaultManager).interfaceId
-            || interfaceId == type(IDepositManager).interfaceId
-            || interfaceId == type(IAsyncDepositManager).interfaceId
-            || interfaceId == type(IRedeemManager).interfaceId
-            || interfaceId == type(IAsyncRedeemManager).interfaceId
-            || interfaceId == type(IAsyncRequests).interfaceId
-            || interfaceId == type(IInvestmentManagerGatewayHandler).interfaceId
-            || interfaceId == type(IMessageHandler).interfaceId;
-    }
-
     /// @inheritdoc IVaultManager
     function vaultKind(address) public pure returns (VaultKind, address) {
         return (VaultKind.Async, address(0));

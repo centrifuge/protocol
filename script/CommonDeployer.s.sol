@@ -56,7 +56,9 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         messageDispatcher = new MessageDispatcher(chainId, root, gateway, deployer);
 
         adminSafe = adminSafe_;
-        guardian = new Guardian(adminSafe, root, messageDispatcher);
+
+        // deployer is not actually an implementation of ISafe but for deployment this is not an issue
+        guardian = new Guardian(ISafe(deployer), root, messageDispatcher);
 
         _commonRegister();
         _commonRely();
@@ -104,6 +106,8 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         if (root.wards(deployer) == 0) {
             return; // Already removed. Make this method idempotent.
         }
+
+        guardian.file("safe", address(adminSafe));
 
         root.deny(deployer);
         gasService.deny(deployer);
