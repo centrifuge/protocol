@@ -38,7 +38,7 @@ contract TestCases is PoolsDeployer, Test {
     bytes32 constant SC_SALT = bytes32("ExampleSalt");
     bytes32 constant SC_HOOK = bytes32("ExampleHookData");
 
-    address immutable ADMIN = makeAddr("ADMIN");
+    address immutable ADMIN = address(adminSafe);
     address immutable FM = makeAddr("FM");
     address immutable ANY = makeAddr("Anyone");
     bytes32 immutable INVESTOR = bytes32("Investor");
@@ -258,9 +258,10 @@ contract TestCases is PoolsDeployer, Test {
     ///
     /// forge-config: default.isolate = true
     function testMultipleMulticallSamePool() public {
-        vm.startPrank(FM);
-
+        vm.startPrank(ADMIN);
         PoolId poolA = guardian.createPool(FM, USD, multiShareClass);
+
+        vm.startPrank(FM);
 
         bytes[] memory innerCalls = new bytes[](1);
         innerCalls[0] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
