@@ -325,12 +325,12 @@ contract Gateway is Auth, IGateway, IRecoverable {
     }
 
     /// @inheritdoc IGateway
-    function startBatch() external auth {
+    function startBatching() external {
         isBatching = true;
     }
 
     /// @inheritdoc IGateway
-    function endBatch() external auth {
+    function endBatching() external {
         require(isBatching, NoBatched());
 
         for (uint256 i; i < batchLocators.length; i++) {

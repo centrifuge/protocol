@@ -77,10 +77,10 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     function file(bytes32 what, address data) external;
 
     /// @notice Initialize batching message
-    function startBatch() external;
+    function startBatching() external;
 
     /// @notice Finalize batching messages and send the resulting batch message
-    function endBatch() external;
+    function endBatching() external;
 
     /// @notice Execute message recovery. After the challenge period, the recovery can be executed.
     ///         If a malign adapter initiates message recovery,

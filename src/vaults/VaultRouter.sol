@@ -53,14 +53,14 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
     function multicall(bytes[] calldata data) public payable override(Multicall, IMulticall) {
         bool wasBatching = gateway.isBatching();
         if (!wasBatching) {
-            gateway.startBatch();
+            gateway.startBatching();
             gateway.topUp{value: msg.value}();
         }
 
         super.multicall(data);
 
         if (!wasBatching) {
-            gateway.endBatch();
+            gateway.endBatching();
         }
     }
 
