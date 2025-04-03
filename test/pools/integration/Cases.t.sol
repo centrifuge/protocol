@@ -36,6 +36,7 @@ contract TestCases is PoolsDeployer, Test {
     bytes32 constant SC_SALT = bytes32("ExampleSalt");
     bytes32 constant SC_HOOK = bytes32("ExampleHookData");
 
+    address immutable ADMIN = makeAddr("ADMIN");
     address immutable FM = makeAddr("FM");
     address immutable ANY = makeAddr("Anyone");
     bytes32 immutable INVESTOR = bytes32("Investor");
@@ -61,7 +62,7 @@ contract TestCases is PoolsDeployer, Test {
 
     function setUp() public {
         // Deployment
-        deployPools(CHAIN_CP, ISafe(address(0)), address(this));
+        deployPools(CHAIN_CP, ISafe(ADMIN), address(this));
         _mockStuff();
         removePoolsDeployerAccess(address(this));
 
@@ -95,8 +96,8 @@ contract TestCases is PoolsDeployer, Test {
         assertEq(symbol, "USDC");
         assertEq(decimals, 6);
 
-        vm.prank(FM);
-        poolId = poolRouter.createPool(FM, USD, multiShareClass);
+        vm.prank(ADMIN);
+        poolId = guardian.createPool(FM, USD, multiShareClass);
 
         scId = multiShareClass.previewNextShareClassId(poolId);
 
@@ -214,9 +215,10 @@ contract TestCases is PoolsDeployer, Test {
 
     /// forge-config: default.isolate = true
     function testExecuteNoSendNoPay() public {
-        vm.startPrank(FM);
+        vm.prank(ADMIN);
+        PoolId poolId = guardian.createPool(FM, USD, multiShareClass);
 
-        PoolId poolId = poolRouter.createPool(FM, USD, multiShareClass);
+        vm.startPrank(FM);
 
         bytes[] memory cs = new bytes[](1);
         cs[0] = abi.encodeWithSelector(poolRouter.setPoolMetadata.selector, "");
@@ -229,9 +231,10 @@ contract TestCases is PoolsDeployer, Test {
 
     /// forge-config: default.isolate = true
     function testExecuteSendNoPay() public {
-        vm.startPrank(FM);
+        vm.prank(ADMIN);
+        PoolId poolId = guardian.createPool(FM, USD, multiShareClass);
 
-        PoolId poolId = poolRouter.createPool(FM, USD, multiShareClass);
+        vm.startPrank(FM);
 
         bytes[] memory cs = new bytes[](1);
         cs[0] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
@@ -251,10 +254,12 @@ contract TestCases is PoolsDeployer, Test {
     ///
     /// forge-config: default.isolate = true
     function testMultipleMulticall() public {
-        vm.startPrank(FM);
+        vm.startPrank(ADMIN);
+        PoolId poolA = guardian.createPool(FM, USD, multiShareClass);
+        PoolId poolB = guardian.createPool(FM, USD, multiShareClass);
+        vm.stopPrank();
 
-        PoolId poolA = poolRouter.createPool(FM, USD, multiShareClass);
-        PoolId poolB = poolRouter.createPool(FM, USD, multiShareClass);
+        vm.startPrank(FM);
 
         bytes[] memory innerCalls = new bytes[](1);
         innerCalls[0] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);

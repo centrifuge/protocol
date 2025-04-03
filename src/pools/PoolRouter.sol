@@ -119,6 +119,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     function createPool(address admin, AssetId currency, IShareClassManager shareClassManager_)
         external
         payable
+        auth
         returns (PoolId poolId)
     {
         poolId = poolRegistry.registerPool(admin, sender.localCentrifugeId(), currency);

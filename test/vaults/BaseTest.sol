@@ -83,9 +83,9 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
         // deploy core contracts
         deployVaults(THIS_CHAIN_ID, adminSafe, address(this));
+        guardian.file("safe", address(adminSafe));
 
         // deploy mock adapters
-
         adapter1 = new MockAdapter(OTHER_CHAIN_ID, gateway);
         adapter2 = new MockAdapter(OTHER_CHAIN_ID, gateway);
         adapter3 = new MockAdapter(OTHER_CHAIN_ID, gateway);
