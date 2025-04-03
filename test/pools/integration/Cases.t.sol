@@ -15,8 +15,10 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
+import {IGasService} from "src/common/interfaces/IGasService.sol";
 
 import {PoolsDeployer, ISafe} from "script/PoolsDeployer.s.sol";
+import {MESSAGE_COST_ENV, PROOF_COST_ENV} from "script/CommonDeployer.s.sol";
 import {AccountType} from "src/pools/interfaces/IPoolRouter.sol";
 import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
@@ -49,7 +51,6 @@ contract TestCases is PoolsDeployer, Test {
     uint128 constant APPROVED_SHARE_AMOUNT = SHARE_AMOUNT / 5;
     D18 immutable NAV_PER_SHARE = d18(2, 1);
 
-    // The cost of a message
     uint64 constant GAS = 100 wei;
 
     MockVaults cv;
@@ -57,11 +58,13 @@ contract TestCases is PoolsDeployer, Test {
     function _mockStuff() private {
         cv = new MockVaults(CHAIN_CV, gateway);
         wire(CHAIN_CV, cv, address(this));
-
-        gasService.file("messageGasLimit", 0, 0, GAS);
     }
 
     function setUp() public {
+        // Pre deployment
+        vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS));
+        vm.setEnv(PROOF_COST_ENV, vm.toString(GAS));
+
         // Deployment
         deployPools(CHAIN_CP, ISafe(ADMIN), address(this));
         _mockStuff();

@@ -10,14 +10,6 @@ import {IGasService} from "src/common/interfaces/IGasService.sol";
 contract MockGasService is Mock, IGasService {
     using BytesLib for bytes;
 
-    function file(bytes32, uint16, uint8, uint64) external pure {
-        revert("unimplemented");
-    }
-
-    function messageGasLimit(uint16, uint8) external pure returns (uint64) {
-        revert("unimplemented");
-    }
-
     function gasLimit(uint16, bytes calldata payload) public view returns (uint64) {
         uint8 call = payload.toUint8(0);
         if (call == uint8(MessageType.MessageProof)) {

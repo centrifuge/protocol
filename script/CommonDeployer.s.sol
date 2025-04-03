@@ -15,6 +15,9 @@ import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
 
 import "forge-std/Script.sol";
 
+string constant MESSAGE_COST_ENV = "MESSAGE_COST";
+string constant PROOF_COST_ENV = "PROOF_COST";
+
 abstract contract CommonDeployer is Script, JsonRegistry {
     uint256 constant DELAY = 48 hours;
     bytes32 immutable SALT;
@@ -43,11 +46,14 @@ abstract contract CommonDeployer is Script, JsonRegistry {
             return; // Already deployed. Make this method idempotent.
         }
 
+        uint64 messageGasLimit = uint64(vm.envOr(MESSAGE_COST_ENV, BASE_MSG_COST));
+        uint64 proofGasLimit = uint64(vm.envOr(PROOF_COST_ENV, BASE_MSG_COST));
+
         root = new Root(DELAY, deployer);
 
         messageProcessor = new MessageProcessor(root, deployer);
 
-        gasService = new GasService(BASE_MSG_COST);
+        gasService = new GasService(messageGasLimit, proofGasLimit);
         gateway = new Gateway(root, gasService);
 
         messageDispatcher = new MessageDispatcher(chainId, root, gateway, deployer);
@@ -75,7 +81,6 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     }
 
     function _commonRely() private {
-        gasService.rely(address(root));
         root.rely(address(guardian));
         root.rely(address(messageProcessor));
         root.rely(address(messageDispatcher));
@@ -107,7 +112,6 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         guardian.file("safe", address(adminSafe));
 
         root.deny(deployer);
-        gasService.deny(deployer);
         gateway.deny(deployer);
         messageProcessor.deny(deployer);
         messageDispatcher.deny(deployer);

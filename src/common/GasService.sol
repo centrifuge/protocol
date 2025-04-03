@@ -3,44 +3,30 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
+import {MessageLib, MessageType} from "src/common/libraries/MessageLib.sol";
 import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 /// @title  GasService
 /// @notice This is a utility contract used to determine the execution gas limit
 ///         for a payload being sent across all supported adapters.
-contract GasService is IGasService, Auth {
-    using BytesLib for bytes;
+contract GasService is IGasService {
+    using MessageLib for *;
 
-    /// @inheritdoc IGasService
-    mapping(uint16 chainId => mapping(uint8 => uint64)) public messageGasLimit;
+    uint64 public immutable proofGasLimit;
+    uint64 public immutable messageGasLimit;
 
-    constructor(uint64 globalDefaultGasValue) Auth(msg.sender) {
-        messageGasLimit[0][0] = globalDefaultGasValue;
+    constructor(uint64 messageGasLimit_, uint64 proofGasLimit_) {
+        messageGasLimit = messageGasLimit_;
+        proofGasLimit = proofGasLimit_;
     }
 
     /// @inheritdoc IGasService
-    function file(bytes32 what, uint16 chainId, uint8 messageCode, uint64 value) external auth {
-        if (what == "messageGasLimit") messageGasLimit[chainId][messageCode] = value;
-        else revert FileUnrecognizedParam();
-        emit File(what, value);
-    }
-
-    /// --- Estimations ---
-    /// @inheritdoc IGasService
-    function gasLimit(uint16 chainId, bytes calldata payload) public view returns (uint64 gasLimit_) {
-        uint8 messageCode = payload.toUint8(0);
-        gasLimit_ = messageGasLimit[chainId][messageCode];
-
-        if (gasLimit_ == 0) {
-            // Use chain default gas value
-            gasLimit_ = messageGasLimit[chainId][0];
-
-            if (gasLimit_ == 0) {
-                // Use global default gas value
-                gasLimit_ = messageGasLimit[0][0];
-            }
+    function gasLimit(uint16, bytes calldata message) public view returns (uint64) {
+        if (message.messageCode() == uint8(MessageType.MessageProof)) {
+            return proofGasLimit;
+        } else {
+            return messageGasLimit;
         }
     }
 }
