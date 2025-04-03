@@ -25,6 +25,7 @@ import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
 import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
+import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {TransientValuation, ITransientValuation} from "src/misc/TransientValuation.sol";
@@ -36,10 +37,11 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
 import {MockGasService} from "test/common/mocks/MockGasService.sol";
+import {PoolManager} from "src/vaults/PoolManager.sol";
 
 import {MockGateway} from "test/pools/fuzzing/recon-pools/mocks/MockGateway.sol";
 import {MultiShareClassWrapper} from "test/pools/fuzzing/recon-pools/utils/MultiShareClassWrapper.sol";
-import {MockMessageProcessor} from "test/vaults/fuzzing/recon-vault/mocks/MockMessageProcessor.sol";
+import {MockMessageDispatcher} from "test/vaults/fuzzing/recon-vault/mocks/MockMessageDispatcher.sol";
 
 abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     enum Op {
@@ -66,7 +68,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     MockAdapter mockAdapter;
     MockGasService gasService;
     MockGateway gateway;
-    MockMessageProcessor messageProcessor;
+    MockMessageDispatcher messageDispatcher;
     bytes[] internal queuedCalls; // used for storing calls to PoolRouter to be executed in a single transaction
     PoolId[] internal createdPools;
     // QueuedOp[] internal queuedOps;
@@ -112,12 +114,12 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         holdings = new Holdings(IPoolRegistry(address(poolRegistry)), address(this));
         poolRouter = new PoolRouter(IPoolRegistry(address(poolRegistry)), IAssetRegistry(address(assetRegistry)), IAccounting(address(accounting)), IHoldings(address(holdings)), IGateway(address(gateway)), ITransientValuation(address(transientValuation)), address(this));
         multiShareClass = new MultiShareClassWrapper(IPoolRegistry(address(poolRegistry)), address(this));
-        messageProcessor = new MockMessageProcessor();
+        messageDispatcher = new MockMessageDispatcher(PoolManager(address(this)), IAsyncRequests(address(this)), root, CENTIFUGE_CHAIN_ID);
 
         mockAdapter = new MockAdapter(CENTIFUGE_CHAIN_ID, IMessageHandler(address(gateway)));
 
         // set addresses on the PoolRouter
-        poolRouter.file("sender", address(messageProcessor));
+        poolRouter.file("sender", address(messageDispatcher));
 
         // set permissions for calling privileged functions
         poolRegistry.rely(address(poolRouter));

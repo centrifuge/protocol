@@ -64,8 +64,8 @@ abstract contract AdminTargets is
         queuedCalls.push(abi.encodeWithSelector(poolRouter.createAccount.selector, account, isDebitNormal));
     }
 
-    function poolRouter_createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, uint24 prefix) public {
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.createHolding.selector, scId, assetId, valuation, prefix));
+    function poolRouter_createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, bool isLiability, uint24 prefix) public {
+        queuedCalls.push(abi.encodeWithSelector(poolRouter.createHolding.selector, scId, assetId, valuation, isLiability, prefix));
     }
 
     function poolRouter_issueShares(ShareClassId scId, AssetId depositAssetId, D18 navPerShare) public {
