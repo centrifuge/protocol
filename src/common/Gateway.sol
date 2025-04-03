@@ -56,7 +56,8 @@ contract Gateway is Auth, ReentrancyProtection, IGateway, IRecoverable {
     mapping(uint16 chainId => IAdapter[]) public adapters;
 
     /// @inheritdoc IGateway
-    mapping(uint16 chainId => mapping(IAdapter adapter => mapping(bytes32 messageHash => uint256 timestamp))) public recoveries;
+    mapping(uint16 chainId => mapping(IAdapter adapter => mapping(bytes32 messageHash => uint256 timestamp))) public
+        recoveries;
 
     /// @notice Current batch messages pending to be sent
     mapping(uint16 chainId => mapping(PoolId => bytes)) public /*transient*/ batch;
@@ -290,7 +291,6 @@ contract Gateway is Auth, ReentrancyProtection, IGateway, IRecoverable {
                 currentAdapter.send{value: consumed}(
                     chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this)
                 );
-
             }
         } else {
             for (uint256 i; i < adapters_.length; i++) {
@@ -307,7 +307,7 @@ contract Gateway is Auth, ReentrancyProtection, IGateway, IRecoverable {
                     subsidy[poolId] -= consumed;
                 }
 
-                currentAdapter.send{value: canPay ? consumed: 0}(
+                currentAdapter.send{value: canPay ? consumed : 0}(
                     chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this)
                 );
             }
@@ -359,7 +359,7 @@ contract Gateway is Auth, ReentrancyProtection, IGateway, IRecoverable {
         uint256 proofGasLimit = gasService.gasLimit(chainId, proof);
 
         uint256 messageGasLimit = 0;
-        for(uint256 pos; pos < payload.length;) {
+        for (uint256 pos; pos < payload.length;) {
             bytes calldata inner = payload[pos:payload.length];
             messageGasLimit += gasService.gasLimit(chainId, inner);
             pos += processor.messageLength(inner);
