@@ -60,6 +60,9 @@ contract Gateway is Auth, IGateway, IRecoverable {
     /// @notice Current batch messages pending to be sent
     mapping(uint16 chainId => bytes) public /*transient*/ batch;
 
+    /// @notice Current batch messages pending to be sent
+    mapping(uint16 chainId => uint64) public /*transient*/ batchGasLimit;
+
     /// @notice Chains ID with pending batch messages
     uint16[] public /*transient*/ chainIds;
 
@@ -139,20 +142,16 @@ contract Gateway is Auth, IGateway, IRecoverable {
     //----------------------------------------------------------------------------------------------
 
     /// @dev Handle a batch of messages
-    function handle(uint16 chainId, bytes memory message) external pauseable {
-        while (message.length > 0) {
-            _handle(chainId, message, IAdapter(msg.sender), false);
-
-            uint16 messageLength = processor.messageLength(message);
-
-            // TODO: optimize with assembly to just shift the pointer in the array
-            // TODO: Could we use `calldata` message in the signature? Highly desired to avoid a copy.
-            message = message.slice(messageLength, message.length - messageLength);
+    function handle(uint16 chainId, bytes calldata message) external pauseable {
+        for (uint256 pos; pos < message.length;) {
+            bytes calldata inner = message[pos:message.length];
+            _handle(chainId, inner, IAdapter(msg.sender), false);
+            pos += processor.messageLength(inner);
         }
     }
 
     /// @dev Handle an isolated message
-    function _handle(uint16 chainId, bytes memory payload, IAdapter adapter_, bool isRecovery) internal {
+    function _handle(uint16 chainId, bytes calldata payload, IAdapter adapter_, bool isRecovery) internal {
         Adapter memory adapter = _activeAdapters[chainId][adapter_];
         require(adapter.id != 0, "Gateway/invalid-adapter");
 
@@ -253,6 +252,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
             pendingBatch = true;
 
             bytes storage previousMessage = batch[chainId];
+            batchGasLimit[chainId] += gasService.gasLimit(chainId, message);
             if (previousMessage.length == 0) {
                 chainIds.push(chainId);
                 batch[chainId] = message;
@@ -270,8 +270,8 @@ contract Gateway is Auth, IGateway, IRecoverable {
         IAdapter[] memory adapters_ = adapters[chainId];
         require(adapters[chainId].length != 0, "Gateway/not-initialized");
 
-        uint256 messageGasLimit = gasService.estimate(chainId, message);
-        uint256 proofGasLimit = gasService.estimate(chainId, proof);
+        uint64 messageGasLimit = gasLimit(chainId, message);
+        uint64 proofGasLimit = gasService.gasLimit(chainId, proof);
 
         if (fuel != 0) {
             uint256 tank = fuel;
@@ -343,6 +343,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
             uint16 chainId = chainIds[i];
             _send(chainId, batch[chainId]);
             delete batch[chainId];
+            delete batchGasLimit[chainId];
         }
 
         delete chainIds;
@@ -354,6 +355,19 @@ contract Gateway is Auth, IGateway, IRecoverable {
     // View methods
     //----------------------------------------------------------------------------------------------
 
+    function gasLimit(uint16 chainId, bytes memory message)
+        public
+        view
+        returns (uint64 messageGasLimit)
+    {
+        if (isBatching) {
+            return batchGasLimit[chainId];
+        }
+        else {
+            return gasService.gasLimit(chainId, message);
+        }
+    }
+
     /// @inheritdoc IGateway
     function estimate(uint16 chainId, bytes calldata payload)
         external
@@ -361,15 +375,15 @@ contract Gateway is Auth, IGateway, IRecoverable {
         returns (uint256[] memory perAdapter, uint256 total)
     {
         bytes memory proof = processor.createMessageProof(payload);
-        uint256 messageGasLimit = gasService.estimate(chainId, payload);
-        uint256 proofGasLimit = gasService.estimate(chainId, proof);
+        uint256 messageGasLimit = gasLimit(chainId, payload);
+        uint256 proofGasLimit = gasService.gasLimit(chainId, proof);
         perAdapter = new uint256[](adapters[chainId].length);
 
         uint256 adaptersCount = adapters[chainId].length;
         for (uint256 i; i < adaptersCount; i++) {
-            uint256 gasLimit = i == PRIMARY_ADAPTER_ID - 1 ? messageGasLimit : proofGasLimit;
+            uint256 gasLimit_ = i == PRIMARY_ADAPTER_ID - 1 ? messageGasLimit : proofGasLimit;
             bytes memory message = i == PRIMARY_ADAPTER_ID - 1 ? payload : proof;
-            uint256 estimated = IAdapter(adapters[chainId][i]).estimate(chainId, message, gasLimit);
+            uint256 estimated = IAdapter(adapters[chainId][i]).estimate(chainId, message, gasLimit_);
             perAdapter[i] = estimated;
             total += estimated;
         }

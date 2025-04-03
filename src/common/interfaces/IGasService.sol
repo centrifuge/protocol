@@ -7,25 +7,22 @@ interface IGasService {
     event File(bytes32 indexed what, uint64 value);
 
     error FileUnrecognizedParam();
+    error DefaultGasLimitNotDefined();
 
     /// @notice Using file patter to update state variables;
     /// @dev    Used to update the messageGasLimit and proofGasLimit;
     ///         It is used in occasions where update is done rarely.
-    function file(bytes32 what, uint64 value) external;
+    function file(bytes32 what, uint16 chainId, uint8 messageCode, uint64 value) external;
 
-    /// @notice The cost of 'message' execution on the recipient chain.
-    /// @dev    This is a getter method
+    /// @notice The cost of 'message' execution on the recipient chain for an specific message.
+    /// @param chainId Where to the cost is defined
+    /// @param messageCode The code of the message to get the gas limit
     /// @return Amount in gas
-    function messageGasLimit() external returns (uint64);
+    function messageGasLimit(uint16 chainId, uint8 messageCode) external view returns (uint64);
 
-    /// @notice The cost of 'proof' execution on the recipient chain.
-    /// @dev    This is a getter method
-    /// @return Amount in gas
-    function proofGasLimit() external returns (uint64);
-
-    /// @notice Estimate the total execution cost on the remote chain in ETH.
-    /// @dev    Currently payload is disregarded and not included in the calculation.
-    /// @param  payload Estimates the execution cost based on the payload
+    /// @notice Gas limit for the execution cost of an individual message in a remote chain.
+    /// @param chainId Where to the cost is defined
+    /// @param  payload Individual message
     /// @return Estimated cost in WEI units
-    function estimate(uint16 chainId, bytes calldata payload) external view returns (uint256);
+    function gasLimit(uint16 chainId, bytes calldata payload) external view returns (uint64);
 }

@@ -18,7 +18,7 @@ import "forge-std/Script.sol";
 abstract contract CommonDeployer is Script, JsonRegistry {
     uint256 constant DELAY = 48 hours;
     bytes32 immutable SALT;
-    uint256 constant BASE_MSG_COST = 20000000000000000; // in Weight
+    uint64 constant BASE_MSG_COST = 20000000000000000; // in Weight
 
     IAdapter[] adapters;
 
@@ -45,12 +45,9 @@ abstract contract CommonDeployer is Script, JsonRegistry {
 
         root = new Root(DELAY, deployer);
 
-        uint64 messageGasLimit = uint64(vm.envOr("MESSAGE_COST", BASE_MSG_COST));
-        uint64 proofGasLimit = uint64(vm.envOr("PROOF_COST", BASE_MSG_COST));
+        messageProcessor = new MessageProcessor(root, deployer);
 
-        messageProcessor = new MessageProcessor(root, gasService, deployer);
-
-        gasService = new GasService(messageGasLimit, proofGasLimit, messageProcessor);
+        gasService = new GasService(BASE_MSG_COST);
         gateway = new Gateway(root, gasService);
 
         messageDispatcher = new MessageDispatcher(chainId, root, gateway, deployer);
