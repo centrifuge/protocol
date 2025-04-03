@@ -710,9 +710,7 @@ contract MultiShareClassRedeemsNonTransientTest is MultiShareClassBaseTest {
 
         if (payout > 0) {
             vm.expectEmit(true, true, true, true);
-            emit IShareClassManager.ClaimRedeem(
-                poolId, scId, 1, investor, USDC, approvedRedeem, pendingRedeem, payout
-            );
+            emit IShareClassManager.ClaimRedeem(poolId, scId, 1, investor, USDC, approvedRedeem, pendingRedeem, payout);
         }
         (uint128 payoutAssetAmount, uint128 paymentShareAmount) = shareClass.claimRedeem(poolId, scId, investor, USDC);
 
