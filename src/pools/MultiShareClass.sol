@@ -232,7 +232,8 @@ contract MultiShareClass is Auth, IMultiShareClass {
 
         uint128 totalIssuance = metrics[scId_].totalIssuance;
 
-        // First issuance starts at epoch 0, subsequent ones at latest pointer plus one
+        // First issuance is epoch 1 due to also initializing epochs with 1
+        // Subsequent issuances equal latest pointer plus one
         uint32 startEpochId = epochPointers[scId_][depositAssetId].latestIssuance + 1;
 
         for (uint32 epochId_ = startEpochId; epochId_ <= endEpochId; epochId_++) {
@@ -283,7 +284,8 @@ contract MultiShareClass is Auth, IMultiShareClass {
         uint128 totalIssuance = metrics[scId_].totalIssuance;
         address poolCurrency = poolRegistry.currency(poolId).addr();
 
-        // First issuance starts at epoch 0, subsequent ones at latest pointer plus one
+        // First issuance is epoch 1 due to also initializing epochs with 1
+        // Subsequent issuances equal latest pointer plus one
         uint32 startEpochId = epochPointers[scId_][payoutAssetId].latestRevocation + 1;
 
         for (uint32 epochId_ = startEpochId; epochId_ <= endEpochId; epochId_++) {
@@ -715,9 +717,8 @@ contract MultiShareClass is Auth, IMultiShareClass {
         uint128 latestApproval = isDeposit
             ? epochPointers[scId_][assetId].latestDepositApproval
             : epochPointers[scId_][assetId].latestRedeemApproval;
-
-        // Block updates to pending and temporarily store in queued until pending amount does not impact claimable
-        // amount, i.e. last update happened after latest approval
+            
+        // Short circuit if user can mutate pending, i.e. last update happened after latest approval or pending is 0
         if (userOrder.lastUpdate > latestApproval || userOrder.pending == 0 || latestApproval == 0) {
             return false;
         }
