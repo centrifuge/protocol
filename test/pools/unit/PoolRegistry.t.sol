@@ -88,13 +88,13 @@ contract PoolRegistryTest is Test {
 
         // Approve a new admin
         vm.expectEmit();
-        emit IPoolRegistry.UpdatedAdmin(poolId, additionalAdmin, true);
+        emit IPoolRegistry.UpdateAdmin(poolId, additionalAdmin, true);
         registry.updateAdmin(poolId, additionalAdmin, true);
         assertTrue(registry.isAdmin(poolId, additionalAdmin));
 
         // Remove an existing admin
         vm.expectEmit();
-        emit IPoolRegistry.UpdatedAdmin(poolId, additionalAdmin, false);
+        emit IPoolRegistry.UpdateAdmin(poolId, additionalAdmin, false);
         registry.updateAdmin(poolId, additionalAdmin, false);
         assertFalse(registry.isAdmin(poolId, additionalAdmin));
     }
@@ -136,7 +136,7 @@ contract PoolRegistryTest is Test {
         registry.updateDependency(nonExistingPool, what, dependency);
 
         vm.expectEmit();
-        emit IPoolRegistry.UpdatedDependency(poolId, what, dependency);
+        emit IPoolRegistry.UpdateDependency(poolId, what, dependency);
         registry.updateDependency(poolId, what, dependency);
         assertEq(address(registry.dependency(poolId, what)), address(dependency));
     }
@@ -159,7 +159,7 @@ contract PoolRegistryTest is Test {
 
         vm.assume(AssetId.unwrap(registry.currency(poolId)) != AssetId.unwrap(currency));
         vm.expectEmit();
-        emit IPoolRegistry.UpdatedCurrency(poolId, currency);
+        emit IPoolRegistry.UpdateCurrency(poolId, currency);
         registry.updateCurrency(poolId, currency);
         assertEq(AssetId.unwrap(registry.currency(poolId)), AssetId.unwrap(currency));
     }

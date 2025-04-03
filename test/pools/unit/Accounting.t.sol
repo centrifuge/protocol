@@ -46,6 +46,19 @@ contract AccountingTest is Test {
         }
     }
 
+    function testAccount() public {
+        vm.expectEmit();
+        emit IAccounting.CreateAccount(POOL_B, CASH_ACCOUNT, true);
+        accounting.createAccount(POOL_B, CASH_ACCOUNT, true);
+
+        vm.expectEmit();
+        emit IAccounting.SetAccountMetadata(POOL_B, CASH_ACCOUNT, "cash");
+        accounting.setAccountMetadata(POOL_B, CASH_ACCOUNT, "cash");
+
+        (,,,, bytes memory metadata) = accounting.accounts(POOL_B, CASH_ACCOUNT);
+        assertEq(metadata, "cash");
+    }
+
     function testDebitsAndCredits() public {
         accounting.unlock(POOL_A);
 

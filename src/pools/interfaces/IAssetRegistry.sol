@@ -8,7 +8,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 /// @notice Interface for registering and handling assets
 interface IAssetRegistry is IERC6909MetadataExt, IERC6909Fungible {
     event NewAssetEntry(AssetId indexed assetId, string name, string symbol, uint8 decimals);
-    event ChainUpdate(uint16 indexed chainId, string name, string symbol);
+    event UpdateChain(uint16 indexed chainId, string name, string symbol);
 
     /// @dev Fired when id == 0
     error IncorrectAssetId();
