@@ -4,6 +4,8 @@ pragma solidity 0.8.28;
 import "src/misc/interfaces/IERC20.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
+
 import "src/vaults/interfaces/IERC7575.sol";
 import "src/vaults/interfaces/IERC7540.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
@@ -27,11 +29,11 @@ contract ERC20WrapperFake {
 
 contract VaultRouterTest is BaseTest {
     using CastLib for *;
+    using MessageLib for *;
 
     uint16 constant CHAIN_ID = 1;
     uint256 constant GAS_BUFFER = 10 gwei;
-    /// @dev Payload is not taken into account during gas estimation
-    bytes constant PAYLOAD_FOR_GAS_ESTIMATION = "irrelevant_value";
+    bytes PAYLOAD_FOR_GAS_ESTIMATION = MessageLib.NotifyPool(1).serialize();
 
     function testInitialization() public {
         // redeploying within test to increase coverage
@@ -473,7 +475,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testEstimate() public view {
-        bytes memory message = "IRRELEVANT";
+        bytes memory message = MessageLib.NotifyPool(1).serialize();
         uint256 estimated = vaultRouter.estimate(CHAIN_ID, message);
         (, uint256 gatewayEstimated) = gateway.estimate(CHAIN_ID, message);
         assertEq(estimated, gatewayEstimated);
@@ -495,7 +497,7 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.lockDepositRequest(vault_, amount, self, self);
         assertEq(erc20.balanceOf(address(routerEscrow)), amount);
 
-        uint256 gasLimit = vaultRouter.estimate(CHAIN_ID, "irrelevant_payload");
+        uint256 gasLimit = vaultRouter.estimate(CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
 
         vm.expectRevert(bytes("AsyncRequests/transfer-not-allowed"));
         vaultRouter.executeLockedDepositRequest{value: gasLimit}(vault_, self);

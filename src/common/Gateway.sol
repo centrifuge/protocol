@@ -248,8 +248,8 @@ contract Gateway is Auth, IGateway, IRecoverable {
     function send(uint16 chainId, bytes calldata message) external pauseable auth {
         require(message.length > 0, "Gateway/empty-message");
 
+        PoolId poolId = processor.messagePoolId(message);
         if (isBatching) {
-            PoolId poolId = processor.messagePoolId(message);
             bytes storage previousMessage = batch[chainId][poolId];
 
             batchGasLimit[chainId][poolId] += gasService.gasLimit(chainId, message);
@@ -261,17 +261,17 @@ contract Gateway is Auth, IGateway, IRecoverable {
                 batch[chainId][poolId] = bytes.concat(previousMessage, message);
             }
         } else {
-            _send(chainId, message);
+            _send(chainId, poolId, message);
         }
     }
 
-    function _send(uint16 chainId, bytes memory message) private {
+    function _send(uint16 chainId, PoolId poolId, bytes memory message) private {
         bytes memory proof = processor.createMessageProof(message);
 
         IAdapter[] memory adapters_ = adapters[chainId];
         require(adapters[chainId].length != 0, "Gateway/not-initialized");
 
-        uint64 messageGasLimit = gasLimit(chainId, message);
+        uint64 messageGasLimit = (isBatching) ? batchGasLimit[chainId][poolId] : gasService.gasLimit(chainId, message);
         uint64 proofGasLimit = gasService.gasLimit(chainId, proof);
 
         if (paymentMethod == PaymentMethod.TopUp) {
@@ -292,7 +292,6 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
             }
         } else {
-            PoolId poolId = processor.messagePoolId(message);
             for (uint256 i; i < adapters_.length; i++) {
                 IAdapter currentAdapter = IAdapter(adapters_[i]);
                 bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
@@ -335,7 +334,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
         for (uint256 i; i < batchLocators.length; i++) {
             BatchLocator memory locator = batchLocators[i];
-            _send(locator.chainId, batch[locator.chainId][locator.poolId]);
+            _send(locator.chainId, locator.poolId, batch[locator.chainId][locator.poolId]);
             delete batch[locator.chainId][locator.poolId];
             delete batchGasLimit[locator.chainId][locator.poolId];
         }
@@ -348,20 +347,6 @@ contract Gateway is Auth, IGateway, IRecoverable {
     // View methods
     //----------------------------------------------------------------------------------------------
 
-    function gasLimit(uint16 chainId, bytes memory message)
-        public
-        view
-        returns (uint64 messageGasLimit)
-    {
-        if (isBatching) {
-            PoolId poolId = processor.messagePoolId(message);
-            return batchGasLimit[chainId][poolId];
-        }
-        else {
-            return gasService.gasLimit(chainId, message);
-        }
-    }
-
     /// @inheritdoc IGateway
     function estimate(uint16 chainId, bytes calldata payload)
         external
@@ -369,8 +354,16 @@ contract Gateway is Auth, IGateway, IRecoverable {
         returns (uint256[] memory perAdapter, uint256 total)
     {
         bytes memory proof = processor.createMessageProof(payload);
-        uint256 messageGasLimit = gasLimit(chainId, payload);
+
         uint256 proofGasLimit = gasService.gasLimit(chainId, proof);
+
+        uint256 messageGasLimit = 0;
+        for(uint256 pos; pos < payload.length;) {
+            bytes calldata inner = payload[pos:payload.length];
+            messageGasLimit += gasService.gasLimit(chainId, inner);
+            pos += processor.messageLength(inner);
+        }
+
         perAdapter = new uint256[](adapters[chainId].length);
 
         uint256 adaptersCount = adapters[chainId].length;

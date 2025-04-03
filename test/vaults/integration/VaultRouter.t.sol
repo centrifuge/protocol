@@ -6,6 +6,8 @@ import "src/misc/interfaces/IERC20.sol";
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
+
 import "test/vaults/BaseTest.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 import "src/vaults/interfaces/IERC7540.sol";
@@ -14,9 +16,10 @@ import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
 import {MockReentrantERC20Wrapper1, MockReentrantERC20Wrapper2} from "test/vaults/mocks/MockReentrantERC20Wrapper.sol";
 
 contract VaultRouterTest is BaseTest {
+    using MessageLib for *;
+
     uint256 constant GAS_BUFFER = 10 gwei;
-    /// @dev Payload is not taken into account during gas estimation
-    bytes constant PAYLOAD_FOR_GAS_ESTIMATION = "irrelevant_value";
+    bytes PAYLOAD_FOR_GAS_ESTIMATION = MessageLib.NotifyPool(1).serialize();
 
     /// forge-config: default.isolate = true
     function testCFGRouterDeposit() public {
