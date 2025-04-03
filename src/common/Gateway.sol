@@ -8,14 +8,14 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
-import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IRoot, IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {IGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 
 /// @title  Gateway
 /// @notice Routing contract that forwards outgoing messages to multiple adapters (1 full message, n-1 proofs)
@@ -26,7 +26,6 @@ import {PoolId} from "src/common/types/PoolId.sol";
 contract Gateway is Auth, IGateway, IRecoverable {
     using ArrayLib for uint16[8];
     using BytesLib for bytes;
-    using MessageLib for *;
     using MathLib for uint256;
 
     uint8 public constant MAX_ADAPTER_COUNT = 8;
@@ -44,7 +43,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
     IRoot public immutable root;
     IGasService public gasService;
 
-    IMessageHandler public handler;
+    IMessageProcessor public processor;
 
     mapping(uint16 chainId => mapping(bytes32 messageHash => Message)) internal _messages;
     mapping(uint16 chainId => mapping(IAdapter adapter => Adapter)) internal _activeAdapters;
@@ -118,7 +117,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
     /// @inheritdoc IGateway
     function file(bytes32 what, address instance) external auth {
         if (what == "gasService") gasService = IGasService(instance);
-        else if (what == "handler") handler = IMessageHandler(instance);
+        else if (what == "processor") processor = IMessageProcessor(instance);
         else revert("Gateway/file-unrecognized-param");
 
         emit File(what, instance);
@@ -144,7 +143,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
         while (message.length > 0) {
             _handle(chainId, message, IAdapter(msg.sender), false);
 
-            uint16 messageLength = message.messageLength();
+            uint16 messageLength = processor.messageLength(message);
 
             // TODO: optimize with assembly to just shift the pointer in the array
             // TODO: Could we use `calldata` message in the signature? Highly desired to avoid a copy.
@@ -157,16 +156,16 @@ contract Gateway is Auth, IGateway, IRecoverable {
         Adapter memory adapter = _activeAdapters[chainId][adapter_];
         require(adapter.id != 0, "Gateway/invalid-adapter");
 
-        uint8 code = payload.messageCode();
-        if (code == uint8(MessageType.InitiateMessageRecovery) || code == uint8(MessageType.DisputeMessageRecovery)) {
+        if (processor.isMessageRecovery(payload)) {
             require(!isRecovery, "Gateway/no-recursion");
-            return _handleRecovery(payload);
+            return processor.handle(chainId, payload);
         }
 
-        bool isMessageProof = code == uint8(MessageType.MessageProof);
+        bytes32 messageProofHash = processor.messageProofHash(payload);
+        bool isMessageProof = messageProofHash != bytes32(0);
         if (adapter.quorum == 1 && !isMessageProof) {
             // Special case for gas efficiency
-            handler.handle(chainId, payload);
+            processor.handle(chainId, payload);
             emit ExecuteMessage(chainId, payload, adapter_);
             return;
         }
@@ -175,7 +174,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
         bytes32 messageHash;
         if (isMessageProof) {
             require(adapter.id != PRIMARY_ADAPTER_ID, "Gateway/non-proof-adapter");
-            messageHash = payload.deserializeMessageProof().hash;
+            messageHash = messageProofHash;
             emit ProcessProof(chainId, messageHash, adapter_);
         } else {
             require(adapter.id == PRIMARY_ADAPTER_ID, "Gateway/non-message-adapter");
@@ -200,10 +199,10 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
             // Handle message
             if (isMessageProof) {
-                handler.handle(chainId, state.pendingMessage);
+                processor.handle(chainId, state.pendingMessage);
                 emit ExecuteMessage(chainId, state.pendingMessage, adapter_);
             } else {
-                handler.handle(chainId, payload);
+                processor.handle(chainId, payload);
                 emit ExecuteMessage(chainId, payload, adapter_);
             }
 
@@ -216,35 +215,15 @@ contract Gateway is Auth, IGateway, IRecoverable {
         }
     }
 
-    function _handleRecovery(bytes memory message) internal {
-        MessageType kind = message.messageType();
-
-        if (kind == MessageType.InitiateMessageRecovery) {
-            MessageLib.InitiateMessageRecovery memory m = message.deserializeInitiateMessageRecovery();
-            _initiateMessageRecovery(m.domainId, IAdapter(address(bytes20(m.adapter))), m.hash);
-        } else if (kind == MessageType.DisputeMessageRecovery) {
-            MessageLib.DisputeMessageRecovery memory m = message.deserializeDisputeMessageRecovery();
-            _disputeMessageRecovery(m.domainId, IAdapter(address(bytes20(m.adapter))), m.hash);
-        }
-    }
-
-    /// @inheritdoc IGateway
+    /// @inheritdoc IGatewayHandler
     function initiateMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) external auth {
-        _initiateMessageRecovery(chainId, adapter, messageHash);
-    }
-
-    function _initiateMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) internal {
         require(_activeAdapters[chainId][adapter].id != 0, "Gateway/invalid-adapter");
         recoveries[chainId][adapter][messageHash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
         emit InitiateMessageRecovery(chainId, messageHash, adapter);
     }
 
-    /// @inheritdoc IGateway
+    /// @inheritdoc IGatewayHandler
     function disputeMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) external auth {
-        _disputeMessageRecovery(chainId, adapter, messageHash);
-    }
-
-    function _disputeMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) internal {
         delete recoveries[chainId][adapter][messageHash];
         emit DisputeMessageRecovery(chainId, messageHash, adapter);
     }
@@ -286,7 +265,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
     }
 
     function _send(uint16 chainId, bytes memory message) private {
-        bytes memory proof = MessageLib.MessageProof({hash: keccak256(message)}).serialize();
+        bytes memory proof = processor.createMessageProof(message);
 
         IAdapter[] memory adapters_ = adapters[chainId];
         require(adapters[chainId].length != 0, "Gateway/not-initialized");
@@ -313,7 +292,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
             }
             fuel = 0;
         } else if (!isBatching) {
-            PoolId poolId = message.messagePoolId();
+            PoolId poolId = processor.messagePoolId(message);
             for (uint256 i; i < adapters_.length; i++) {
                 IAdapter currentAdapter = IAdapter(adapters_[i]);
                 bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
@@ -381,7 +360,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
         view
         returns (uint256[] memory perAdapter, uint256 total)
     {
-        bytes memory proof = MessageLib.MessageProof({hash: keccak256(payload)}).serialize();
+        bytes memory proof = processor.createMessageProof(payload);
         uint256 messageGasLimit = gasService.estimate(chainId, payload);
         uint256 proofGasLimit = gasService.estimate(chainId, proof);
         perAdapter = new uint256[](adapters[chainId].length);

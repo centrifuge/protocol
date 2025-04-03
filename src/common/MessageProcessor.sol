@@ -8,13 +8,17 @@ import {D18} from "src/misc/types/D18.sol";
 import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
+import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
 import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 import {
+    IGatewayHandler,
     IPoolManagerGatewayHandler,
     IPoolRouterGatewayHandler,
     IBalanceSheetManagerGatewayHandler,
@@ -26,20 +30,6 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 
-interface IMessageProcessor is IMessageHandler {
-    /// @notice Emitted when a call to `file()` was performed.
-    event File(bytes32 indexed what, address addr);
-
-    /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
-    error FileUnrecognizedParam();
-
-    /// @notice Updates a contract parameter.
-    /// @param what Name of the parameter to update.
-    /// Accepts a `bytes32` representation of 'poolRegistry' string value.
-    /// @param data New value given to the `what` parameter
-    function file(bytes32 what, address data) external;
-}
-
 contract MessageProcessor is Auth, IMessageProcessor {
     using MessageLib for *;
     using BytesLib for bytes;
@@ -48,6 +38,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IRoot public immutable root;
     IGasService public immutable gasService;
 
+    IGatewayHandler public gateway;
     IPoolRouterGatewayHandler public poolRouter;
     IPoolManagerGatewayHandler public poolManager;
     IInvestmentManagerGatewayHandler public investmentManager;
@@ -60,7 +51,8 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
     /// @inheritdoc IMessageProcessor
     function file(bytes32 what, address data) external auth {
-        if (what == "poolRouter") poolRouter = IPoolRouterGatewayHandler(data);
+        if (what == "gateway") gateway = IGatewayHandler(data);
+        else if (what == "poolRouter") poolRouter = IPoolRouterGatewayHandler(data);
         else if (what == "poolManager") poolManager = IPoolManagerGatewayHandler(data);
         else if (what == "investmentManager") investmentManager = IInvestmentManagerGatewayHandler(data);
         else if (what == "balanceSheetManager") balanceSheetManager = IBalanceSheetManagerGatewayHandler(data);
@@ -73,7 +65,13 @@ contract MessageProcessor is Auth, IMessageProcessor {
     function handle(uint16, bytes calldata message) external auth {
         MessageType kind = message.messageType();
 
-        if (kind == MessageType.ScheduleUpgrade) {
+        if (kind == MessageType.InitiateMessageRecovery) {
+            MessageLib.InitiateMessageRecovery memory m = message.deserializeInitiateMessageRecovery();
+            gateway.initiateMessageRecovery(m.domainId, IAdapter(address(bytes20(m.adapter))), m.hash);
+        } else if (kind == MessageType.DisputeMessageRecovery) {
+            MessageLib.DisputeMessageRecovery memory m = message.deserializeDisputeMessageRecovery();
+            gateway.disputeMessageRecovery(m.domainId, IAdapter(address(bytes20(m.adapter))), m.hash);
+        } else if (kind == MessageType.ScheduleUpgrade) {
             MessageLib.ScheduleUpgrade memory m = message.deserializeScheduleUpgrade();
             root.scheduleRely(address(bytes20(m.target)));
         } else if (kind == MessageType.CancelUpgrade) {
@@ -235,5 +233,33 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else {
             revert InvalidMessage(uint8(kind));
         }
+    }
+
+    /// @inheritdoc IMessageProperties
+    function isMessageRecovery(bytes calldata message) external pure returns (bool) {
+        uint8 code = message.messageCode();
+        return code == uint8(MessageType.InitiateMessageRecovery) || code == uint8(MessageType.DisputeMessageRecovery);
+    }
+
+    /// @inheritdoc IMessageProperties
+    function messageLength(bytes calldata message) external pure returns (uint16) {
+        return message.messageLength();
+    }
+
+    /// @inheritdoc IMessageProperties
+    function messagePoolId(bytes calldata message) external pure returns (PoolId) {
+        return message.messagePoolId();
+    }
+
+    /// @inheritdoc IMessageProperties
+    function messageProofHash(bytes calldata message) external pure returns (bytes32) {
+        return (message.messageCode() == uint8(MessageType.MessageProof))
+            ? message.deserializeMessageProof().hash
+            : bytes32(0);
+    }
+
+    /// @inheritdoc IMessageProperties
+    function createMessageProof(bytes calldata message) external pure returns (bytes memory) {
+        return MessageLib.MessageProof({hash: keccak256(message)}).serialize();
     }
 }

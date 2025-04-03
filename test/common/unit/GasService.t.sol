@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Test} from "forge-std/Test.sol";
+import "forge-std/Test.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {GasService, IGasService} from "src/common/GasService.sol";
 
@@ -14,15 +15,16 @@ contract GasServiceTest is Test {
     uint64 constant MESSAGE_GAS_LIMIT = 40000000000000000;
     uint64 constant PROOF_GAS_LIMIT = 20000000000000000;
     uint16 constant CHAIN_ID = 1;
+    address constant MESSAGE_PROPERTIES = address(23);
 
     GasService service;
 
     function setUp() public {
-        service = new GasService(MESSAGE_GAS_LIMIT, PROOF_GAS_LIMIT);
+        service = new GasService(MESSAGE_GAS_LIMIT, PROOF_GAS_LIMIT, IMessageProperties(MESSAGE_PROPERTIES));
     }
 
     function testDeployment() public {
-        service = new GasService(MESSAGE_GAS_LIMIT, PROOF_GAS_LIMIT);
+        service = new GasService(MESSAGE_GAS_LIMIT, PROOF_GAS_LIMIT, IMessageProperties(MESSAGE_PROPERTIES));
         assertEq(service.wards(address(this)), 1);
         assertEq(service.messageGasLimit(), MESSAGE_GAS_LIMIT);
         assertEq(service.proofGasLimit(), PROOF_GAS_LIMIT);
@@ -45,15 +47,17 @@ contract GasServiceTest is Test {
         service.file("messageGasLimit", messageGasLimit);
     }
 
-    function testEstimateFunction(bytes calldata message) public view {
+    function testEstimateFunction(bytes calldata message) public {
         vm.assume(message.length > 1);
-        vm.assume(message.toUint8(0) != uint8(MessageType.MessageProof) && message.toUint8(0) <= 28);
+        vm.assume(message.toUint8(0) != uint8(MessageType.MessageProof));
         bytes memory proof = MessageLib.MessageProof(keccak256(message)).serialize();
 
+        vm.mockCall(MESSAGE_PROPERTIES, abi.encode(IMessageProperties.messageProofHash.selector), abi.encode(0));
         uint256 messageGasLimit = service.estimate(CHAIN_ID, message);
-        uint256 proofGasLimit = service.estimate(CHAIN_ID, proof);
-
         assertEq(messageGasLimit, MESSAGE_GAS_LIMIT);
+
+        vm.mockCall(MESSAGE_PROPERTIES, abi.encode(IMessageProperties.messageProofHash.selector), abi.encode(1));
+        uint256 proofGasLimit = service.estimate(CHAIN_ID, proof);
         assertEq(proofGasLimit, PROOF_GAS_LIMIT);
     }
 }

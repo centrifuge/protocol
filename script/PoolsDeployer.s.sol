@@ -78,6 +78,7 @@ contract PoolsDeployer is CommonDeployer {
         gateway.rely(address(poolRouter));
         poolRouter.rely(address(messageProcessor));
         poolRouter.rely(address(messageDispatcher));
+        poolRouter.rely(address(guardian));
         messageDispatcher.rely(address(poolRouter));
     }
 
@@ -86,6 +87,9 @@ contract PoolsDeployer is CommonDeployer {
         messageDispatcher.file("poolRouter", address(poolRouter));
 
         poolRouter.file("sender", address(messageDispatcher));
+
+        guardian.file("poolRouter", address(poolRouter));
+        guardian.file("assetRegistry", address(assetRegistry));
     }
 
     function _poolsInitialConfig() private {

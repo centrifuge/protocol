@@ -4,15 +4,34 @@ pragma solidity 0.8.28;
 import {D18} from "src/misc/types/D18.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 
 /// -----------------------------------------------------
+///  Common Handlers
+/// -----------------------------------------------------
+/// @notice Interface for Gateway methods called by messages
+interface IGatewayHandler {
+    /// @notice Initialize the recovery of a message.
+    /// @param  chainId Chain where the adapter is configured for
+    /// @param  adapter Adapter that the recovery was targeting
+    /// @param  messageHash Hash of the message being disputed
+    function initiateMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) external;
+
+    /// @notice Cancel the recovery of a message.
+    /// @param  chainId Chain where the adapter is configured for
+    /// @param  adapter Adapter that the recovery was targeting
+    /// @param  messageHash Hash of the message being disputed
+    function disputeMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) external;
+}
+
+/// -----------------------------------------------------
 ///  CP Handlers
 /// -----------------------------------------------------
 
-/// @notice Interface for CP methods called by the gateway
+/// @notice Interface for CP methods called by messages
 interface IPoolRouterGatewayHandler {
     /// @notice Tells that an asset was already registered in CV, in order to perform the corresponding register.
     /// @dev The same asset can be re-registered using this. Decimals can not change.
@@ -62,7 +81,7 @@ interface IPoolRouterGatewayHandler {
 ///  CV Handlers
 /// -----------------------------------------------------
 
-/// @notice Interface for CV methods related to pools called by the gateway
+/// @notice Interface for CV methods related to pools called by messages
 interface IPoolManagerGatewayHandler {
     /// @notice    New pool details from an existing Centrifuge pool are added.
     /// @dev       The function can only be executed by the gateway contract.
@@ -115,7 +134,7 @@ interface IPoolManagerGatewayHandler {
     function updateContract(uint64 poolId, bytes16 scId, address target, bytes memory update) external;
 }
 
-/// @notice Interface for CV methods related to async investments called by the gateway
+/// @notice Interface for CV methods related to async investments called by messages
 interface IInvestmentManagerGatewayHandler {
     // --- Deposits ---
     /// @notice Fulfills pending deposit requests after successful epoch execution on CP.
@@ -229,7 +248,7 @@ interface IInvestmentManagerGatewayHandler {
         external;
 }
 
-/// @notice Interface for CV methods related to epoch called by the gateway
+/// @notice Interface for CV methods related to epoch called by messages
 interface IBalanceSheetManagerGatewayHandler {
     function triggerDeposit(
         PoolId poolId,
