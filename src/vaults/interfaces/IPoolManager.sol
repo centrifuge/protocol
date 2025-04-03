@@ -19,17 +19,19 @@ struct ShareClassDetails {
     ///      A vault in this storage DOES NOT mean the vault can be used
     mapping(address asset => mapping(uint256 tokenId => address[])) vaults;
     /// @dev Each tranche has individual price per pool unit in asset denomination (POOL_UNIT/ASSET_UNIT)
-    mapping(address asset => mapping(uint256 tokenId => Price)) prices;
-    /// @dev Each tranche has individual price per tranche unit in pool denomination (POOL_UNIT/TRANCHE_UNIT)
-    Price price;
+    mapping(address asset => mapping(uint256 tokenId => Price)) pricePoolToAsset;
+    /// @dev Each tranche has individual price per tranche unit in pool denomination (POOL_UNIT/SHARE_UNIT)
+    Price pricePoolToShare;
 }
 
+/// @dev Price struct that contains a price, the timstamp at which it was computed and the max age of the price.
 struct Price {
     uint128 price;
     uint64 computedAt;
     uint64 maxAge;
 }
 
+/// @dev Checks if a price is valid. Returns false if price is 0 or computedAt is 0. Otherwise checks for block timestamp <= computedAt + maxAge
 function isValid(Price memory price) view returns (bool) {
     if (price.computedAt != 0 && price.price != 0) {
         return block.timestamp <= price.computedAt + price.maxAge;
@@ -38,6 +40,7 @@ function isValid(Price memory price) view returns (bool) {
     }
 }
 
+/// @dev Retrieves the price as an D18 from the struct
 function asPrice(Price memory price) pure returns (D18) {
     return d18(price.price);
 }
@@ -193,8 +196,8 @@ interface IPoolManager is IRecoverable {
 
     /// @notice Returns the price per share for a given pool, tranche, asset, and token id
     /// @dev   Reverts if the pool or tranche or asset does not exist. Provided price is defined as
-    /// SHARE_UNIT/ASSET_UNIT. DOES NOT check if price is valid.
-    function pricePerShare(uint64 poolId, bytes16 scId, uint128 assetId)
+    /// ASSET_UNIT/SHARE_UNIT. DOES NOT check if price is valid.
+    function priceAssetToShare(uint64 poolId, bytes16 scId, uint128 assetId)
         external
         view
         returns (D18 price, uint64 computedAt);
@@ -202,7 +205,7 @@ interface IPoolManager is IRecoverable {
     /// @notice Returns the price per share for a given pool, tranche, asset, and token id.
     /// @dev   Reverts if the pool or tranche or asset does not exist. Provided price is defined as
     /// ASSET_UNIT/SHARE_UNIT. Reverts if price is invalid - i.e. expired
-    function checkedPricePerShare(uint64 poolId, bytes16 scId, uint128 assetId)
+    function checkedPriceAssetToShare(uint64 poolId, bytes16 scId, uint128 assetId)
         external
         view
         returns (D18 price, uint64 computedAt);
@@ -210,12 +213,12 @@ interface IPoolManager is IRecoverable {
     /// @notice Returns the price per share for a given pool, tranche
     /// @dev   Reverts if the pool or tranche does not exist. Provided price is defined as POOL_UNIT/SHARE_UNIT. DOES
     /// NOT check if price is valid.
-    function pricePerShare(uint64 poolId, bytes16 trancheId) external view returns (D18 price, uint64 computedAt);
+    function pricePoolToShare(uint64 poolId, bytes16 trancheId) external view returns (D18 price, uint64 computedAt);
 
     /// @notice Returns the price per share for a given pool, tranche
     /// @dev   Reverts if the pool or tranche does not exist. Provided price is defined as POOL_UNIT/SHARE_UNIT. Reverts
     /// if price is invalid.
-    function checkedPricePerShare(uint64 poolId, bytes16 trancheId)
+    function checkedPricePoolToShare(uint64 poolId, bytes16 trancheId)
         external
         view
         returns (D18 price, uint64 computedAt);
@@ -223,7 +226,7 @@ interface IPoolManager is IRecoverable {
     /// @notice Returns the price per asset for a given pool, tranche, asset, and token id
     /// @dev   Reverts if the pool or tranche or asset does not exist. Provided price is defined as
     /// POOL_UNIT/ASSET_UNIT. DOES NOT check if price is valid.
-    function pricePerAsset(uint64 poolId, bytes16 scId, uint128 assetId)
+    function pricePoolToAsset(uint64 poolId, bytes16 scId, uint128 assetId)
         external
         view
         returns (D18 price, uint64 computedAt);
@@ -231,7 +234,7 @@ interface IPoolManager is IRecoverable {
     /// @notice Returns the price per asset for a given pool, tranche, asset, and token id
     /// @dev   Reverts if the pool or tranche or asset does not exist. Provided price is defined as
     /// POOL_UNIT/ASSET_UNIT. Reverts if price is invalid.
-    function checkedPricePerAsset(uint64 poolId, bytes16 scId, uint128 assetId)
+    function checkedPricePoolToAsset(uint64 poolId, bytes16 scId, uint128 assetId)
         external
         view
         returns (D18 price, uint64 computedAt);
