@@ -218,15 +218,6 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
             uint256(uint160(AssetId.unwrap(paymentAssetId))),
             approvedAssetAmount
         );
-
-        uint128 valueChange = holdings.increase(unlockedPoolId, scId, paymentAssetId, valuation, approvedAssetAmount);
-
-        accounting.addCredit(
-            holdings.accountId(unlockedPoolId, scId, paymentAssetId, uint8(AccountType.Equity)), valueChange
-        );
-        accounting.addDebit(
-            holdings.accountId(unlockedPoolId, scId, paymentAssetId, uint8(AccountType.Asset)), valueChange
-        );
     }
 
     /// @inheritdoc IPoolRouter

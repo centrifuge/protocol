@@ -282,4 +282,6 @@ interface IBalanceSheetManagerGatewayHandler {
 
     function triggerRevokeShares(PoolId poolId, ShareClassId scId, address from, D18 pricePerShare, uint128 shares)
         external;
+
+    function approvedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external;
 }
