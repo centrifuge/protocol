@@ -369,8 +369,8 @@ contract MultiShareClass is Auth, IMultiShareClass {
             //  1. The sum of pending user orders <= pendingDeposits (instead of equality)
             //  2. The sum of claimable user amounts <= amount of minted share class tokens corresponding to the
             // approved deposit asset amount (instead of equality).
-            //     I.e., it is possible for an epoch to have an excess of a share class token atom which cannot be
-            // claimed by anyone.
+            //     I.e., it is possible for an epoch to have an excess of a share class tokens atom which cannot be
+            // claimed by anyone. This excess is at most n-1 atoms for an epoch with n claimable users.
             //
             // The first implication can be switched to equality if we reduce the pending user amount independent of the
             // claimable amount.
