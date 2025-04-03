@@ -68,7 +68,6 @@ contract ERC6909FungibleTokenMintTest is ERC6909FungibleBaseTest {
     function testMultipleSuccessfullMints() public {
         uint256 firstMint = 1000;
         uint256 secondMint = 2000;
-        uint256 total = firstMint + secondMint;
         address anotherOwner = makeAddr("anotherOwner");
 
         token.mint(self, tokenId, firstMint);
