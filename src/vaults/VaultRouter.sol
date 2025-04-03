@@ -54,12 +54,12 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
         bool wasBatching = gateway.isBatching();
         if (!wasBatching) {
             gateway.startBatch();
+            gateway.topUp{value: msg.value}();
         }
 
         super.multicall(data);
 
         if (!wasBatching) {
-            gateway.topUp{value: msg.value}();
             gateway.endBatch();
         }
     }

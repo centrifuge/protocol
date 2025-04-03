@@ -49,6 +49,7 @@ contract TestCases is PoolsDeployer, Test {
     uint128 constant APPROVED_SHARE_AMOUNT = SHARE_AMOUNT / 5;
     D18 immutable NAV_PER_SHARE = d18(2, 1);
 
+    // The cost of a message
     uint64 constant GAS = 100 wei;
 
     MockVaults cv;
@@ -57,7 +58,7 @@ contract TestCases is PoolsDeployer, Test {
         cv = new MockVaults(CHAIN_CV, gateway);
         wire(CHAIN_CV, cv, address(this));
 
-        gasService.file("messageGasLimit", GAS);
+        gasService.file("messageGasLimit", 0, 0, GAS);
     }
 
     function setUp() public {
@@ -119,7 +120,7 @@ contract TestCases is PoolsDeployer, Test {
         assertEq(c, cs.length);
 
         vm.prank(FM);
-        poolRouter.execute{value: GAS}(poolId, cs);
+        poolRouter.execute{value: GAS * 3}(poolId, cs);
 
         assertEq(poolRegistry.metadata(poolId), "Testing pool");
         assertEq(multiShareClass.exists(poolId, scId), true);
@@ -239,7 +240,7 @@ contract TestCases is PoolsDeployer, Test {
         bytes[] memory cs = new bytes[](1);
         cs[0] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
 
-        vm.expectRevert(bytes("Gateway/cannot-topup-with-nothing"));
+        vm.expectRevert(bytes("Gateway/not-enough-gas-funds"));
         poolRouter.execute(poolId, cs);
     }
 
@@ -247,19 +248,43 @@ contract TestCases is PoolsDeployer, Test {
     /// - multicall()
     ///   - execute(poolA)
     ///      - notifyPool()
-    ///   - execute(poolB)
+    ///   - execute(poolA)
     ///      - notifyPool()
     ///
     /// will pay only for one message. The batch sent is [NotifyPool, NotifyPool].
     ///
     /// forge-config: default.isolate = true
-    function testMultipleMulticall() public {
-        vm.startPrank(ADMIN);
+    function testMultipleMulticallSamePool() public {
+        vm.startPrank(FM);
+
+        PoolId poolA = guardian.createPool(FM, USD, multiShareClass);
+
+        bytes[] memory innerCalls = new bytes[](1);
+        innerCalls[0] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
+
+        (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
+        cs[c++] = abi.encodeWithSelector(poolRouter.execute.selector, poolA, innerCalls);
+        cs[c++] = abi.encodeWithSelector(poolRouter.execute.selector, poolA, innerCalls);
+        assertEq(c, cs.length);
+
+        poolRouter.multicall{value: GAS * 2}(cs);
+    }
+
+    /// Test the following:
+    /// - multicall()
+    ///   - execute(poolA)
+    ///      - notifyPool()
+    ///   - execute(poolB) <- different
+    ///      - notifyPool()
+    ///
+    /// will pay only for two messages because they are different pools.
+    ///
+    /// forge-config: default.isolate = true
+    function testMultipleMulticallDifferentPools() public {
+        vm.startPrank(FM);
+
         PoolId poolA = guardian.createPool(FM, USD, multiShareClass);
         PoolId poolB = guardian.createPool(FM, USD, multiShareClass);
-        vm.stopPrank();
-
-        vm.startPrank(FM);
 
         bytes[] memory innerCalls = new bytes[](1);
         innerCalls[0] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
@@ -269,7 +294,7 @@ contract TestCases is PoolsDeployer, Test {
         cs[c++] = abi.encodeWithSelector(poolRouter.execute.selector, poolB, innerCalls);
         assertEq(c, cs.length);
 
-        poolRouter.multicall{value: GAS}(cs);
+        poolRouter.multicall{value: GAS * 2}(cs);
     }
 
     function testCalUpdateJournal() public {
@@ -316,15 +341,15 @@ contract TestCases is PoolsDeployer, Test {
             int128(870 * poolDecimals)
         );
 
-        extensionCalUpdateHoldingLoss(poolId, scId, poolDecimals, assetDecimals);
+        _extensionCalUpdateHoldingLoss(poolId, scId, poolDecimals, assetDecimals);
     }
 
-    function extensionCalUpdateHoldingLoss(
+    function _extensionCalUpdateHoldingLoss(
         PoolId poolId,
         ShareClassId scId,
         uint128 poolDecimals,
         uint128 assetDecimals
-    ) public {
+    ) private {
         (JournalEntry[] memory debits, uint256 j) = (new JournalEntry[](1), 0);
         debits[j++] =
             JournalEntry(12 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Expense)));

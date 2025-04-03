@@ -87,12 +87,12 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         bool wasBatching = gateway.isBatching();
         if (!wasBatching) {
             gateway.startBatch();
+            gateway.topUp{value: msg.value}();
         }
 
         super.multicall(data);
 
         if (!wasBatching) {
-            gateway.topUp{value: msg.value}();
             gateway.endBatch();
         }
     }

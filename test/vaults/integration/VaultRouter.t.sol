@@ -39,9 +39,6 @@ contract VaultRouterTest is BaseTest {
 
         erc20.mint(self, amount);
 
-        vm.expectRevert(bytes("Gateway/cannot-topup-with-nothing"));
-        vaultRouter.requestDeposit(vault_, amount, self, self);
-
         vm.expectRevert(bytes("AsyncVault/invalid-owner"));
         vaultRouter.requestDeposit{value: 1 wei}(vault_, amount, self, self);
 
@@ -81,7 +78,7 @@ contract VaultRouterTest is BaseTest {
                 adapter.estimate(
                     OTHER_CHAIN_ID,
                     PAYLOAD_FOR_GAS_ESTIMATION,
-                    mockedGasService.estimate(OTHER_CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION)
+                    mockedGasService.gasLimit(OTHER_CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION)
                 ),
                 "payload gas mismatch"
             );
@@ -670,9 +667,6 @@ contract VaultRouterTest is BaseTest {
 
         uint256 gasLimit = estimateGas();
         uint256 lessGas = gasLimit - 1;
-
-        vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        vaultRouter.requestDeposit(vault_, amount, self, self);
 
         vm.expectRevert("Gateway/not-enough-gas-funds");
         vaultRouter.requestDeposit{value: lessGas}(vault_, amount, self, self);

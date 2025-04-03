@@ -57,7 +57,7 @@ contract TestEndToEnd is Test {
         deploy.wire(remoteCentrifugeId, adapter, address(deploy));
 
         vm.startPrank(address(deploy));
-        deploy.gasService().file("messageGasLimit", GAS);
+        deploy.gasService().file("messageGasLimit", 0, 0, GAS);
         vm.stopPrank();
 
         deploy.removeFullDeployerAccess(address(deploy));

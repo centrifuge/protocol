@@ -5,15 +5,24 @@ import "test/common/mocks/Mock.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {MessageType} from "src/common/libraries/MessageLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {IGasService} from "src/common/interfaces/IGasService.sol";
 
-contract MockGasService is Mock {
+contract MockGasService is Mock, IGasService {
     using BytesLib for bytes;
 
-    function estimate(uint16, bytes calldata payload) public view returns (uint256) {
+    function file(bytes32, uint16, uint8, uint64) external pure {
+        revert("unimplemented");
+    }
+
+    function messageGasLimit(uint16, uint8) external pure returns (uint64) {
+        revert("unimplemented");
+    }
+
+    function gasLimit(uint16, bytes calldata payload) public view returns (uint64) {
         uint8 call = payload.toUint8(0);
         if (call == uint8(MessageType.MessageProof)) {
-            return values_uint256_return["proof_estimate"];
+            return uint64(values_uint256_return["proof_estimate"]);
         }
-        return values_uint256_return["message_estimate"];
+        return uint64(values_uint256_return["message_estimate"]);
     }
 }

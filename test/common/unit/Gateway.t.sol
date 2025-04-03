@@ -382,7 +382,6 @@ contract GatewayTest is Test {
     function testPrepayment() public {
         uint256 topUpAmount = 1 gwei;
 
-        vm.expectRevert(bytes("Gateway/cannot-topup-with-nothing"));
         gateway.topUp{value: 0}();
 
         uint256 balanceBeforeTopUp = address(gateway).balance;

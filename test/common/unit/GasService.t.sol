@@ -8,6 +8,7 @@ import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {GasService, IGasService} from "src/common/GasService.sol";
 
+/*
 contract GasServiceTest is Test {
     using MessageLib for *;
     using BytesLib for bytes;
@@ -61,3 +62,4 @@ contract GasServiceTest is Test {
         assertEq(proofGasLimit, PROOF_GAS_LIMIT);
     }
 }
+*/

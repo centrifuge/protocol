@@ -34,8 +34,8 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     uint256 public transient fuel;
 
-    /// @dev Says if a send() was performed, but it's still pending to finalize the batch
-    bool public transient pendingBatch;
+    /// @notice Tells is the gateway is actually configured to create batches
+    PaymentMethod public transient paymentMethod;
 
     /// @notice Tells is the gateway is actually configured to create batches
     bool public transient isBatching;
@@ -249,8 +249,6 @@ contract Gateway is Auth, IGateway, IRecoverable {
         require(message.length > 0, "Gateway/empty-message");
 
         if (isBatching) {
-            pendingBatch = true;
-
             PoolId poolId = processor.messagePoolId(message);
             bytes storage previousMessage = batch[chainId][poolId];
 
@@ -276,8 +274,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
         uint64 messageGasLimit = gasLimit(chainId, message);
         uint64 proofGasLimit = gasService.gasLimit(chainId, proof);
 
-        if (fuel != 0) {
-            uint256 tank = fuel;
+        if (paymentMethod == PaymentMethod.TopUp) {
             for (uint256 i; i < adapters_.length; i++) {
                 IAdapter currentAdapter = IAdapter(adapters_[i]);
                 bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
@@ -286,15 +283,15 @@ contract Gateway is Auth, IGateway, IRecoverable {
                 uint256 consumed =
                     currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit);
 
-                require(consumed <= tank, "Gateway/not-enough-gas-funds");
-                tank -= consumed;
+                require(consumed <= fuel, "Gateway/not-enough-gas-funds");
+                fuel -= consumed;
 
                 currentAdapter.send{value: consumed}(
                     chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this)
                 );
+
             }
-            fuel = 0;
-        } else if (!isBatching) {
+        } else {
             PoolId poolId = processor.messagePoolId(message);
             for (uint256 i; i < adapters_.length; i++) {
                 IAdapter currentAdapter = IAdapter(adapters_[i]);
@@ -304,19 +301,16 @@ contract Gateway is Auth, IGateway, IRecoverable {
                 uint256 consumed =
                     currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit);
 
-                if (consumed <= subsidy[poolId]) {
-                    currentAdapter.send{value: consumed}(
-                        chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this)
-                    );
+                bool canPay = consumed <= subsidy[poolId];
+
+                if (canPay) {
                     subsidy[poolId] -= consumed;
-                } else {
-                    currentAdapter.send(
-                        chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this)
-                    );
                 }
+
+                currentAdapter.send{value: canPay ? consumed: 0}(
+                    chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this)
+                );
             }
-        } else {
-            revert("Gateway/not-enough-gas-funds");
         }
 
         emit SendMessage(message);
@@ -324,13 +318,10 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     /// @inheritdoc IGateway
     function topUp() external payable {
-        // We only require the top up if:
-        // - We're not in a multicall.
-        // - Or we're in a multicall, but at least one message is required to be sent
-        if (!isBatching || pendingBatch) {
-            require(msg.value != 0, "Gateway/cannot-topup-with-nothing");
-            fuel += msg.value;
-        }
+        require(paymentMethod != PaymentMethod.Subsidized, "Gateway/another-payment-method-already-set");
+
+        paymentMethod = PaymentMethod.TopUp;
+        fuel += msg.value;
     }
 
     /// @inheritdoc IGateway
@@ -350,7 +341,6 @@ contract Gateway is Auth, IGateway, IRecoverable {
         }
 
         delete batchLocators;
-        pendingBatch = false;
         isBatching = false;
     }
 

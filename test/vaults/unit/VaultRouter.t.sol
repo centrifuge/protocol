@@ -72,9 +72,6 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
         vaultRouter.enable(vault_);
 
-        vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        vaultRouter.requestDeposit{value: 0}(vault_, amount, self, self);
-
         vm.expectRevert("Gateway/not-enough-gas-funds");
         vaultRouter.requestDeposit{value: gas - 1}(vault_, amount, self, self);
 
@@ -139,15 +136,15 @@ contract VaultRouterTest is BaseTest {
         uint256 fuel = estimateGas();
         vm.deal(address(this), 10 ether);
 
-        vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        vaultRouter.cancelDepositRequest{value: 0}(vault_);
-
         vm.expectRevert("AsyncRequests/no-pending-deposit-request");
         vaultRouter.cancelDepositRequest{value: fuel}(vault_);
 
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
         vaultRouter.executeLockedDepositRequest{value: fuel}(vault_, self);
         assertEq(vault.pendingDepositRequest(0, self), amount);
+
+        vm.expectRevert("Gateway/not-enough-gas-funds");
+        vaultRouter.cancelDepositRequest{value: 0}(vault_);
 
         vaultRouter.cancelDepositRequest{value: fuel}(vault_);
         assertTrue(vault.pendingCancelDepositRequest(0, self));
@@ -212,9 +209,6 @@ contract VaultRouterTest is BaseTest {
         // Then redeem
         share.approve(address(vaultRouter), amount);
 
-        vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        vaultRouter.requestRedeem{value: 0}(vault_, amount, self, self);
-
         vm.expectRevert("Gateway/not-enough-gas-funds");
         vaultRouter.requestRedeem{value: gas - 1}(vault_, amount, self, self);
 
@@ -247,9 +241,6 @@ contract VaultRouterTest is BaseTest {
         assertEq(share.balanceOf(address(self)), 0);
 
         vm.deal(address(this), 10 ether);
-
-        vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        vaultRouter.cancelRedeemRequest{value: 0}(vault_);
 
         vm.expectRevert("Gateway/not-enough-gas-funds");
         vaultRouter.cancelRedeemRequest{value: gas - 1}(vault_);
@@ -347,9 +338,6 @@ contract VaultRouterTest is BaseTest {
         share.approve(address(vaultRouter), amount);
         uint256 fuel = estimateGas();
 
-        vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        vaultRouter.transferShares{value: 0}(vault_, OTHER_CHAIN_ID, destinationAddress, uint128(amount));
-
         vm.expectRevert("Gateway/not-enough-gas-funds");
         vaultRouter.transferShares{value: fuel - 1}(vault_, OTHER_CHAIN_ID, destinationAddress, uint128(amount));
 
@@ -380,9 +368,6 @@ contract VaultRouterTest is BaseTest {
         share.approve(address(vaultRouter), amount);
         uint256 fuel = estimateGas();
 
-        vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        vaultRouter.transferShares{value: 0}(vault_, OTHER_CHAIN_ID, destinationAddressAsBytes32, uint128(amount));
-
         vm.expectRevert("Gateway/not-enough-gas-funds");
         vaultRouter.transferShares{value: fuel - 1}(
             vault_, OTHER_CHAIN_ID, destinationAddressAsBytes32, uint128(amount)
@@ -397,9 +382,6 @@ contract VaultRouterTest is BaseTest {
         address asset = address(erc20);
         uint256 fuel = estimateGas();
 
-        vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        vaultRouter.registerAsset{value: 0}(asset, 0, OTHER_CHAIN_ID);
-
         vm.expectRevert("Gateway/not-enough-gas-funds");
         vaultRouter.registerAsset{value: fuel - 1}(asset, 0, OTHER_CHAIN_ID);
 
@@ -413,9 +395,6 @@ contract VaultRouterTest is BaseTest {
         address asset = address(erc6909);
         uint256 tokenId = 18;
         uint256 fuel = estimateGas();
-
-        vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        vaultRouter.registerAsset{value: 0}(asset, tokenId, OTHER_CHAIN_ID);
 
         vm.expectRevert("Gateway/not-enough-gas-funds");
         vaultRouter.registerAsset{value: fuel - 1}(asset, tokenId, OTHER_CHAIN_ID);
