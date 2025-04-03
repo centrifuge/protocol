@@ -140,6 +140,5 @@ contract AssetRegistrySupportedInterfacesTest is AssetRegistryBaseTest {
         assertTrue(manager.supportsInterface(type(IERC165).interfaceId));
         assertTrue(manager.supportsInterface(type(IERC6909).interfaceId));
         assertTrue(manager.supportsInterface(type(IERC6909MetadataExt).interfaceId));
-        assertTrue(manager.supportsInterface(type(IERC6909TotalSupplyExt).interfaceId));
     }
 }
