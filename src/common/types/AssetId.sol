@@ -21,7 +21,7 @@ function chainId(AssetId assetId) pure returns (uint16) {
     return uint16(AssetId.unwrap(assetId) >> 112);
 }
 
-function newAssetId(uint16 centrifugeChainId, uint32 counter) pure returns (AssetId) {
+function newAssetId(uint16 centrifugeChainId, uint64 counter) pure returns (AssetId) {
     return AssetId.wrap((uint128(centrifugeChainId) << 112) + counter);
 }
 
