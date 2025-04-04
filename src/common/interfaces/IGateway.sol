@@ -17,9 +17,8 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     error NoBatched();
 
     enum PaymentMethod {
-        None,
-        TopUp,
-        Subsidized
+        Subsidized,
+        TopUp
     }
 
     struct BatchLocator {

@@ -318,10 +318,10 @@ contract Gateway is Auth, ReentrancyProtection, IGateway, IRecoverable {
 
     /// @inheritdoc IGateway
     function topUp() external payable {
-        require(paymentMethod != PaymentMethod.Subsidized, "Gateway/another-payment-method-already-set");
+        require(paymentMethod != PaymentMethod.TopUp, "Gateway/another-payment-method-already-set");
 
         paymentMethod = PaymentMethod.TopUp;
-        fuel += msg.value;
+        fuel = msg.value;
     }
 
     /// @inheritdoc IGateway
