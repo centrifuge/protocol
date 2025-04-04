@@ -42,7 +42,9 @@ abstract contract PoolRouterTargets is
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
     /// @dev Property: after successfully calling claimDeposit for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
-    function poolRouter_claimDeposit(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asActor {
+    function poolRouter_claimDeposit(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint32 isoCode) public updateGhosts asActor {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
+        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
         
@@ -56,7 +58,9 @@ abstract contract PoolRouterTargets is
 
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
     /// @dev Property: After successfully calling claimRedeem for an investor, their redeemRequest[..].lastUpdate equals the current epoch id epochId[poolId]
-    function poolRouter_claimRedeem(PoolId poolId, ShareClassId scId, uint32 isoCode) public updateGhosts asActor {
+    function poolRouter_claimRedeem(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint32 isoCode) public updateGhosts asActor {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
+        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
         

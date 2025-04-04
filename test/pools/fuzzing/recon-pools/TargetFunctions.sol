@@ -35,8 +35,6 @@ abstract contract TargetFunctions is
     function shortcut_create_pool_and_holding(
         uint8 decimals,
         uint32 isoCode,
-        string memory name, 
-        string memory symbol, 
         bytes32 salt, 
         bytes memory data,
         bool isIdentityValuation,
@@ -50,12 +48,12 @@ abstract contract TargetFunctions is
         poolRouter_registerAsset(isoCode); // 4294967295
 
         // defaults to pool admined by the admin actor (address(this))
-        poolId = poolRouter_createPool(address(this), isoCode, multiShareClass);
+        PoolId poolId = poolRouter_createPool(address(this), isoCode, multiShareClass);
         
         // create holding
-        scId = multiShareClass.previewNextShareClassId(poolId);
+        ShareClassId scId = multiShareClass.previewNextShareClassId(poolId);
         AssetId assetId = newAssetId(isoCode); // 4294967295
-        shortcut_add_share_class_and_holding(poolId, name, symbol, salt, data, scId, assetId, isIdentityValuation, prefix);
+        shortcut_add_share_class_and_holding(poolId.raw(), salt, data, scId.raw(), assetId.raw(), isIdentityValuation, prefix);
 
         return (poolId, scId);
     }
@@ -63,8 +61,6 @@ abstract contract TargetFunctions is
     function shortcut_deposit(
         uint8 decimals,
         uint32 isoCode,
-        string memory name,
-        string memory symbol,
         bytes32 salt,
         bytes memory data,
         bool isIdentityValuation,
@@ -78,16 +74,16 @@ abstract contract TargetFunctions is
 
         (poolId, scId) = shortcut_create_pool_and_holding(
             decimals, isoCode, 
-            name, symbol, salt, data, 
+            salt, data, 
             isIdentityValuation, prefix
         );
 
         // request deposit
-        poolRouter_depositRequest(poolId, scId, isoCode, amount);
+        poolRouter_depositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode, amount);
         
         // approve and issue shares as the pool admin
         shortcut_approve_and_issue_shares(
-            poolId, scId, isoCode, maxApproval, 
+            PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode, maxApproval, 
             isIdentityValuation, navPerShare
         );
 
@@ -97,8 +93,6 @@ abstract contract TargetFunctions is
     function shortcut_deposit_and_claim(
         uint8 decimals,
         uint32 isoCode,
-        string memory name,
-        string memory symbol,
         bytes32 salt,
         bytes memory data,
         bool isIdentityValuation,
@@ -111,12 +105,12 @@ abstract contract TargetFunctions is
         require(decimals >= 6, "decimals must be >= 6");
 
         (poolId, scId) = shortcut_deposit(
-            decimals, isoCode, name, symbol, salt, data, 
+            decimals, isoCode, salt, data, 
             isIdentityValuation, prefix, amount, maxApproval, navPerShare
         );
 
         // claim deposit as actor
-        poolRouter_claimDeposit(poolId, scId, isoCode);
+        poolRouter_claimDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
 
         return (poolId, scId);
     }
@@ -124,8 +118,6 @@ abstract contract TargetFunctions is
     function shortcut_deposit_claim_and_cancel(
         uint8 decimals,
         uint32 isoCode,
-        string memory name,
-        string memory symbol,
         bytes32 salt,
         bytes memory data,
         bool isIdentityValuation,
@@ -138,15 +130,15 @@ abstract contract TargetFunctions is
         require(decimals >= 6, "decimals must be >= 6");
 
         (poolId, scId) = shortcut_deposit(
-            decimals, isoCode, name, symbol, salt, data, 
+            decimals, isoCode, salt, data, 
             isIdentityValuation, prefix, amount, maxApproval, navPerShare
         );
 
         // claim deposit as actor
-        poolRouter_claimDeposit(poolId, scId, isoCode);
+        poolRouter_claimDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
 
         // cancel deposit
-        poolRouter_cancelDepositRequest(poolId, scId, isoCode);
+        poolRouter_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
 
         return (poolId, scId);
     }
@@ -154,8 +146,6 @@ abstract contract TargetFunctions is
     function shortcut_deposit_and_cancel(
         uint8 decimals,
         uint32 isoCode,
-        string memory name,
-        string memory symbol,
         bytes32 salt,
         bytes memory data,
         bool isIdentityValuation,
@@ -168,12 +158,12 @@ abstract contract TargetFunctions is
         require(decimals >= 6, "decimals must be >= 6");
 
         (poolId, scId) = shortcut_deposit(
-            decimals, isoCode, name, symbol, salt, data, 
+            decimals, isoCode, salt, data, 
             isIdentityValuation, prefix, amount, maxApproval, navPerShare
         );
 
         // cancel deposit
-        poolRouter_cancelDepositRequest(poolId, scId, isoCode);
+        poolRouter_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
 
         return (poolId, scId);
     }
@@ -181,8 +171,6 @@ abstract contract TargetFunctions is
     function shortcut_request_deposit_and_cancel(
         uint8 decimals,
         uint32 isoCode,
-        string memory name,
-        string memory symbol,
         bytes32 salt,
         bytes memory data,
         bool isIdentityValuation,
@@ -195,22 +183,22 @@ abstract contract TargetFunctions is
         require(decimals >= 6, "decimals must be >= 6");
 
         (poolId, scId) = shortcut_deposit(
-            decimals, isoCode, name, symbol, salt, data, 
+            decimals, isoCode, salt, data, 
             isIdentityValuation, prefix, amount, maxApproval, navPerShare
         );
 
         // claim deposit as actor
-        poolRouter_claimDeposit(poolId, scId, isoCode);
+        poolRouter_claimDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
 
         // cancel deposit
-        poolRouter_cancelDepositRequest(poolId, scId, isoCode);
+        poolRouter_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
 
         return (poolId, scId);
     }
 
     function shortcut_redeem(
-        PoolId poolId,
-        ShareClassId scId,
+        uint64 poolId,
+        bytes16 scId,
         uint128 shareAmount,
         uint32 isoCode,
         uint128 maxApproval,
@@ -227,8 +215,8 @@ abstract contract TargetFunctions is
     }
 
     function shortcut_claim_redemption(
-        PoolId poolId,
-        ShareClassId scId,
+        uint64 poolId,
+        bytes16 scId,
         uint32 isoCode
     ) public clearQueuedCalls {        
         // claim redemption as actor
@@ -236,8 +224,8 @@ abstract contract TargetFunctions is
     }
 
     function shortcut_redeem_and_claim(
-        PoolId poolId,
-        ShareClassId scId,
+        uint64 poolId,
+        bytes16 scId,
         uint128 shareAmount,
         uint32 isoCode,
         uint128 maxApproval,
@@ -255,8 +243,6 @@ abstract contract TargetFunctions is
     function shortcut_deposit_redeem_and_claim(
         uint8 decimals,
         uint32 isoCode,
-        string memory name,
-        string memory symbol,
         bytes32 salt,
         bytes memory data,
         bool isIdentityValuation,
@@ -270,21 +256,21 @@ abstract contract TargetFunctions is
         require(decimals >= 6, "decimals must be >= 6");
 
         (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(
-            decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix, depositAmount, maxApproval, navPerShare
+            decimals, isoCode, salt, data, isIdentityValuation, prefix, depositAmount, maxApproval, navPerShare
         );
 
         // request redemption
-        poolRouter_redeemRequest(poolId, scId, isoCode, shareAmount);
+        poolRouter_redeemRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode, shareAmount);
         
         // approve and revoke shares as the pool admin
         // revokes the shares that were issued in the deposit
         shortcut_approve_and_revoke_shares(
-            poolId, scId, isoCode, _getMultiShareClassMetrics(scId), navPerShare, isIdentityValuation
+            PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode, _getMultiShareClassMetrics(scId), navPerShare, isIdentityValuation
         );
         
 
         // claim redemption as actor
-        poolRouter_claimRedeem(poolId, scId, isoCode);
+        poolRouter_claimRedeem(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
     }
 
     // deposit and cancel redemption in one call
@@ -292,8 +278,6 @@ abstract contract TargetFunctions is
     function shortcut_deposit_cancel_redemption(
         uint8 decimals,
         uint32 isoCode,
-        string memory name,
-        string memory symbol,
         bytes32 salt,
         bytes memory data,
         bool isIdentityValuation,
@@ -307,21 +291,19 @@ abstract contract TargetFunctions is
         require(decimals >= 6, "decimals must be >= 6");
 
         (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(
-            decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix, depositAmount, maxApproval, navPerShare
+            decimals, isoCode, salt, data, isIdentityValuation, prefix, depositAmount, maxApproval, navPerShare
         );
 
         // request redemption
-        poolRouter_redeemRequest(poolId, scId, isoCode, shareAmount);
+        poolRouter_redeemRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode, shareAmount);
 
         // cancel redemption
-        poolRouter_cancelRedeemRequest(poolId, scId, isoCode);
+        poolRouter_cancelRedeemRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
     }
 
     function shortcut_create_pool_and_update_holding(
         uint8 decimals,
         uint32 isoCode,
-        string memory name, 
-        string memory symbol, 
         bytes32 salt, 
         bytes memory data,
         bool isIdentityValuation,
@@ -331,19 +313,17 @@ abstract contract TargetFunctions is
         decimals %= 24; // upper bound of decimals for most ERC20s is 24
         require(decimals >= 6, "decimals must be >= 6");
 
-        (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
+        (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, salt, data, isIdentityValuation, prefix);
         AssetId assetId = newAssetId(isoCode);
 
-        transientValuation_setPrice(assetId.addr(), poolRegistry.currency(poolId).addr(), newPrice);
-        poolRouter_updateHolding(scId, assetId);
-        poolRouter_execute_clamped(poolId);
+        transientValuation_setPrice(address(assetId.addr()), poolRegistry.currency(poolId).addr(), newPrice);
+        poolRouter_updateHolding(ShareClassId.unwrap(scId), assetId.raw());
+        poolRouter_execute_clamped(PoolId.unwrap(poolId));
     }
 
     function shortcut_create_pool_and_update_holding_amount(
         uint8 decimals,
         uint32 isoCode,
-        string memory name, 
-        string memory symbol, 
         bytes32 salt, 
         bytes memory data,
         bool isIdentityValuation,
@@ -356,7 +336,7 @@ abstract contract TargetFunctions is
         decimals %= 24; // upper bound of decimals for most ERC20s is 24
         require(decimals >= 6, "decimals must be >= 6");
 
-        (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
+        (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, salt, data, isIdentityValuation, prefix);
         
         {
             AssetId assetId = newAssetId(isoCode);
@@ -372,15 +352,13 @@ abstract contract TargetFunctions is
                 amount: creditAmount
             });
 
-            poolRouter_updateHoldingAmount(poolId, scId, assetId, amount, pricePerUnit, IS_INCREASE, debits, credits);
+            poolRouter_updateHoldingAmount(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw(), amount, pricePerUnit, IS_INCREASE, debits, credits);
         }
     }
 
     function shortcut_create_pool_and_update_holding_value(
         uint8 decimals,
         uint32 isoCode,
-        string memory name, 
-        string memory symbol, 
         bytes32 salt, 
         bytes memory data,
         bool isIdentityValuation,
@@ -390,18 +368,16 @@ abstract contract TargetFunctions is
         decimals %= 24; // upper bound of decimals for most ERC20s is 24
         require(decimals >= 6, "decimals must be >= 6");
 
-        (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
+        (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, salt, data, isIdentityValuation, prefix);
         AssetId assetId = newAssetId(isoCode);
 
-        poolRouter_updateHoldingValue(poolId, scId, assetId, newPrice);
+        poolRouter_updateHoldingValue(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw(), newPrice);
         // poolRouter_execute_clamped(poolId);
     }
 
     function shortcut_create_pool_and_update_journal(
         uint8 decimals,
         uint32 isoCode,
-        string memory name, 
-        string memory symbol, 
         bytes32 salt, 
         bytes memory data,
         bool isIdentityValuation,
@@ -413,7 +389,7 @@ abstract contract TargetFunctions is
         decimals %= 24; // upper bound of decimals for most ERC20s is 24
         require(decimals >= 6, "decimals must be >= 6");
 
-        (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
+        (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, salt, data, isIdentityValuation, prefix);
         AssetId assetId = newAssetId(isoCode);
 
         {
@@ -429,7 +405,7 @@ abstract contract TargetFunctions is
                 amount: creditAmount
             });
 
-            poolRouter_updateJournal(poolId, debits, credits);
+            poolRouter_updateJournal(PoolId.unwrap(poolId), debits, credits);
         }
     }
 
@@ -442,20 +418,18 @@ abstract contract TargetFunctions is
         
         ShareClassId nextScId = multiShareClass.previewNextShareClassId(poolId);
         // get the current share class id by decrementing the next share class id
-        ShareClassId scId = ShareClassId.wrap(bytes16(uint128(ShareClassId.unwrap(nextScId)) - 1)); 
+        ShareClassId scId = ShareClassId.wrap(bytes16(uint128(nextScId.raw()) - 1)); 
 
         AssetId assetId = newAssetId(isoCode);
-        transientValuation_setPrice(assetId.addr(), poolRegistry.currency(poolId).addr(), newPrice);
+        transientValuation_setPrice(address(assetId.addr()), address(assetId.addr()), newPrice);
 
-        poolRouter_updateHolding(scId, assetId);
-        poolRouter_execute_clamped(poolId);
+        poolRouter_updateHolding(scId.raw(), assetId.raw());
+        poolRouter_execute_clamped(poolId.raw());
     }
 
     function shortcut_update_valuation(
         uint8 decimals,
         uint32 isoCode,
-        string memory name, 
-        string memory symbol, 
         bytes32 salt, 
         bytes memory data,
         bool isIdentityValuation,
@@ -464,18 +438,16 @@ abstract contract TargetFunctions is
         decimals %= 24; // upper bound of decimals for most ERC20s is 24
         require(decimals >= 6, "decimals must be >= 6");
         
-        (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix);
+        (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, salt, data, isIdentityValuation, prefix);
     
         AssetId assetId = newAssetId(isoCode);
-        poolRouter_updateHoldingValuation(scId, assetId, isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation)));
-        poolRouter_execute_clamped(poolId);
+        poolRouter_updateHoldingValuation(ShareClassId.unwrap(scId), assetId.raw(), isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation)));
+        poolRouter_execute_clamped(PoolId.unwrap(poolId));
     }
 
     function shortcut_notify_share_class(
         uint8 decimals,
         uint32 isoCode,
-        string memory name,
-        string memory symbol,
         bytes32 salt,
         bytes memory data,
         bool isIdentityValuation,
@@ -487,28 +459,26 @@ abstract contract TargetFunctions is
         decimals %= 24; // upper bound of decimals for most ERC20s is 24
         require(decimals >= 6, "decimals must be >= 6");
 
-        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(decimals, isoCode, name, symbol, salt, data, isIdentityValuation, prefix, depositAmount, shareAmount, navPerShare);
+        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(decimals, isoCode, salt, data, isIdentityValuation, prefix, depositAmount, shareAmount, navPerShare);
 
         // set chainId and hook to constants because we're mocking Gateway so they're not needed
-        poolRouter_notifyShareClass(0, scId, bytes32("ExampleHookData"));
-        poolRouter_execute_clamped(poolId);
+        poolRouter_notifyShareClass(0, ShareClassId.unwrap(scId), bytes32("ExampleHookData"));
+        poolRouter_execute_clamped(PoolId.unwrap(poolId));
     }
 
     /// === POOL ADMIN SHORTCUTS === ///
     /// @dev these don't have the clearQueuedCalls modifier because they just add additional calls to the queue and execute so don't make debugging difficult
 
     function shortcut_add_share_class_and_holding(
-        PoolId poolId,
-        string memory name,
-        string memory symbol,
+        uint64 poolId,
         bytes32 salt,
         bytes memory data,
-        ShareClassId scId,
-        AssetId assetId,
+        bytes16 scId,
+        uint128 assetId,
         bool isIdentityValuation,
         uint24 prefix
     ) public  {
-        poolRouter_addShareClass(name, symbol, salt, data);
+        poolRouter_addShareClass(salt, data);
 
         IERC7726 valuation = isIdentityValuation ? 
             IERC7726(address(identityValuation)) : 
@@ -520,8 +490,8 @@ abstract contract TargetFunctions is
     }
 
     function shortcut_approve_and_issue_shares(
-        PoolId poolId,
-        ShareClassId scId,
+        uint64 poolId,
+        bytes16 scId,
         uint32 isoCode,
         uint128 maxApproval, 
         bool isIdentityValuation,
@@ -531,10 +501,10 @@ abstract contract TargetFunctions is
 
         IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
 
-        transientValuation.setPrice(assetId.addr(), assetId.addr(), INITIAL_PRICE);
+        transientValuation.setPrice(address(assetId.addr()), address(assetId.addr()), INITIAL_PRICE);
 
-        poolRouter_approveDeposits(scId, assetId, maxApproval, valuation);
-        poolRouter_issueShares(scId, assetId, navPerShare);
+        poolRouter_approveDeposits(scId, assetId.raw(), maxApproval, valuation);
+        poolRouter_issueShares(scId, assetId.raw(), navPerShare);
         poolRouter_execute_clamped(poolId);
 
         // reset the epoch increment to 0 so that the next approval is in a "new tx"
@@ -542,8 +512,8 @@ abstract contract TargetFunctions is
     }
 
     function shortcut_approve_and_revoke_shares(
-        PoolId poolId,
-        ShareClassId scId,
+        uint64 poolId,
+        bytes16 scId,
         uint32 isoCode,
         uint128 maxApproval,
         D18 navPerShare,
@@ -571,8 +541,8 @@ abstract contract TargetFunctions is
             
             // get a random share class id
             ShareClassId scId = multiShareClass.previewShareClassId(poolId, shareClassEntropy % shareClassCount);
-            poolRouter_updateRestriction(CENTIFUGE_CHAIN_ID, scId, payload);
-            poolRouter_execute_clamped(poolId);
+            poolRouter_updateRestriction(CENTIFUGE_CHAIN_ID, scId.raw(), payload);
+            poolRouter_execute_clamped(poolId.raw());
         }
     }
 
@@ -582,10 +552,10 @@ abstract contract TargetFunctions is
     }
 
     // set the price of the asset in the transient valuation for a given pool
-    function transientValuation_setPrice_clamped(PoolId poolId, D18 price) public {
-        AssetId assetId = poolRegistry.currency(poolId);
+    function transientValuation_setPrice_clamped(uint64 poolId, D18 price) public {
+        AssetId assetId = poolRegistry.currency(PoolId.wrap(poolId));
 
-        transientValuation.setPrice(assetId.addr(), assetId.addr(), price);
+        transientValuation.setPrice(address(assetId.addr()), address(assetId.addr()), price);
     }
 
     /// === Gateway === ///
