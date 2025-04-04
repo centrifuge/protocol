@@ -45,9 +45,10 @@ abstract contract AdminTargets is
         queuedCalls.push(abi.encodeWithSelector(poolRouter.addDebit.selector, account, amount));
     }
 
-    function poolRouter_addShareClass(bytes32 salt, bytes memory data) public {
+    function poolRouter_addShareClass(bytes32 salt) public {
         string memory name = "Test ShareClass";
         string memory symbol = "TSC";
+        bytes memory data = "not-used";
         queuedCalls.push(abi.encodeWithSelector(poolRouter.addShareClass.selector, name, symbol, salt, data));
     }
 
@@ -351,9 +352,10 @@ abstract contract AdminTargets is
         multiShareClass.revokeSharesUntilEpoch(poolId, shareClassId_, payoutAssetId, navPerShare, valuation, endEpochId);
     }
 
-    function multiShareClass_updateMetadata(uint64 poolIdAsUint, bytes16 scIdAsBytes, string memory name, string memory symbol, bytes32 salt, bytes memory data) public updateGhosts asActor {
+    function multiShareClass_updateMetadata(uint64 poolIdAsUint, bytes16 scIdAsBytes, string memory name, string memory symbol, bytes32 salt) public updateGhosts asActor {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId shareClassId_ = ShareClassId.wrap(scIdAsBytes);
+        bytes memory data = "not-used";
         multiShareClass.updateMetadata(poolId, shareClassId_, name, symbol, salt, data);
     }
 }

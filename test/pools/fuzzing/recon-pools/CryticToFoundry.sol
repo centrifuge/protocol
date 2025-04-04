@@ -72,7 +72,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         assetId = newAssetId(123);
 
         // necessary setup via the PoolRouter
-        poolRouter_addShareClass(SC_SALT, bytes(""));
+        poolRouter_addShareClass(SC_SALT);
         poolRouter_createHolding(scId.raw(), assetId.raw(), identityValuation, IS_LIABILITY, 0x01);
         poolRouter_execute_clamped(poolId.raw());
         
@@ -105,7 +105,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     function test_shortcut_create_pool_and_update_holding() public {
-        (PoolId poolId, ShareClassId scId) = shortcut_create_pool_and_holding(18, 123, SC_SALT, bytes(""), true, 0x01);
+        (PoolId poolId, ShareClassId scId) = shortcut_create_pool_and_holding(18, 123, SC_SALT, true, 0x01);
     
         assetId = newAssetId(123);
         poolRouter_updateHolding(scId.raw(), assetId.raw());
@@ -113,40 +113,40 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     function test_shortcut_deposit_and_claim() public {
-        shortcut_deposit_and_claim(18, 123, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+        shortcut_deposit_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
     }
 
     function test_shortcut_redeem_and_claim() public {
-        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
+        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
         
         shortcut_redeem_and_claim(poolId.raw(), scId.raw(), SHARE_AMOUNT, 123, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE, true);
     }
 
     function test_notify_share_class() public {
-        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
+        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
 
         poolRouter_notifyShareClass(CHAIN_CV, scId.raw(), SC_HOOK);
         poolRouter_execute_clamped(poolId.raw());
     }
 
     function test_shortcut_deposit_claim_and_cancel() public {
-        shortcut_deposit_claim_and_cancel(18, 123, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+        shortcut_deposit_claim_and_cancel(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
     }
 
     function test_deposit_and_cancel() public {
-        shortcut_deposit_and_cancel(18, 123, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+        shortcut_deposit_and_cancel(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
     }
 
     function test_shortcut_deposit_redeem_and_claim() public {
-        shortcut_deposit_redeem_and_claim(18, 123, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+        shortcut_deposit_redeem_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
     }
 
     function test_shortcut_deposit_cancel_redemption() public {
-        shortcut_deposit_cancel_redemption(18, 123, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+        shortcut_deposit_cancel_redemption(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
     }
 
     function test_cancel_redeem_request() public {
-        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
+        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
 
         poolRouter_redeemRequest(poolId.raw(), scId.raw(), 123, SHARE_AMOUNT);
 
@@ -154,35 +154,35 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     function test_shortcut_update_holding() public {
-        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, bytes(""), false, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, false, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
 
         shortcut_update_holding(123, d18(20e18));
     }
 
     function test_shortcut_notify_share_class() public {
-        shortcut_notify_share_class(18, 123, SC_SALT, bytes(""), false, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
+        shortcut_notify_share_class(18, 123, SC_SALT, false, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
     }
 
     function test_shortcut_request_deposit_and_cancel() public {
-        shortcut_request_deposit_and_cancel(18, 123, SC_SALT, bytes(""), false, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+        shortcut_request_deposit_and_cancel(18, 123, SC_SALT, false, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
     }
 
     function test_calling_claimDeposit_directly() public {
-        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, bytes(""), true, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
 
         multiShareClass.claimDeposit(poolId, scId, Helpers.addressToBytes32(address(this)), assetId);
     }
 
     function test_shortcut_create_pool_and_update_holding_amount() public {
-        shortcut_create_pool_and_update_holding_amount(18, 123, SC_SALT, bytes(""), false, 0x01, 10e18, d18(20e18), 10e18, 10e18);
+        shortcut_create_pool_and_update_holding_amount(18, 123, SC_SALT, false, 0x01, 10e18, d18(20e18), 10e18, 10e18);
     }
 
     function test_shortcut_create_pool_and_update_holding_value() public {
-        shortcut_create_pool_and_update_holding_value(18, 123, SC_SALT, bytes(""), false, 0x01, d18(20e18));
+        shortcut_create_pool_and_update_holding_value(18, 123, SC_SALT, false, 0x01, d18(20e18));
     }
 
     function test_shortcut_create_pool_and_update_journal() public {
-        shortcut_create_pool_and_update_journal(18, 123, SC_SALT, bytes(""), true, 0x01, 3, 10e18, 10e18);
+        shortcut_create_pool_and_update_journal(18, 123, SC_SALT, true, 0x01, 3, 10e18, 10e18);
     }
 
     /// Reproducers 
