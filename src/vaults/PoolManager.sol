@@ -58,7 +58,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     ITokenFactory public tokenFactory;
     address public balanceSheetManager;
 
-    uint32 internal _assetCounter;
+    uint64 internal _assetCounter;
 
     mapping(uint64 poolId => Pool) public pools;
     mapping(address factory => bool) public vaultFactory;
