@@ -272,6 +272,26 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
+    /// @inheritdoc IPoolMessageSender
+    function sendRevokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount)
+        external
+        auth
+    {
+        if (poolId.chainId() == localCentrifugeId) {
+            balanceSheetManager.revokedShares(poolId, scId, assetId, assetAmount);
+        } else {
+            gateway.send(
+                poolId.chainId(),
+                MessageLib.RevokedShares({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    assetId: assetId.raw(),
+                    assetAmount: assetAmount
+                }).serialize()
+            );
+        }
+    }
+
     /// @inheritdoc IRootMessageSender
     function sendScheduleUpgrade(uint16 chainId, bytes32 target) external auth {
         if (chainId == localCentrifugeId) {

@@ -219,6 +219,7 @@ contract BalanceSheetManager is
         _revoke(poolId, scId, from, pricePerShare, shares);
     }
 
+    /// @inheritdoc IBalanceSheetManagerGatewayHandler
     function approvedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external auth {
         (address token, uint256 tokenId) = poolManager.checkedIdToAsset(assetId.raw());
         // TODO(wischli): Rm hardcode post #187 merge
@@ -231,6 +232,12 @@ contract BalanceSheetManager is
             poolId, scId, assetId, address(escrow), assetAmount, pricePoolPerAsset, true, meta
         );
         this.updateValue(poolId, scId, token, tokenId, pricePoolPerAsset);
+    }
+
+    /// @inheritdoc IBalanceSheetManagerGatewayHandler
+    function revokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external auth {
+        (address token, uint256 tokenId) = poolManager.checkedIdToAsset(assetId.raw());
+        escrow.reserveIncrease(token, tokenId, poolId.raw(), scId.raw(), assetAmount);
     }
 
     // --- Internal ---

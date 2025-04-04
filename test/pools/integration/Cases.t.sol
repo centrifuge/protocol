@@ -221,6 +221,19 @@ contract TestCases is PoolsDeployer, Test {
             NAV_PER_SHARE.mulUint128(uint128(valuation.getQuote(APPROVED_SHARE_AMOUNT, USD.addr(), USDC_C2.addr())))
         );
         assertEq(m0.shareAmount, APPROVED_SHARE_AMOUNT);
+
+        // Simulate holding update response messages from CV after user claimed redeem
+
+        JournalEntry[] memory meta = new JournalEntry[](0);
+        // TODO(wischli): Rm hardcode post #187 merge
+        D18 pricePerPoolAsset = d18(1);
+
+        cv.updateHoldingAmount(poolId, scId, USDC_C2, INVESTOR_AMOUNT, pricePerPoolAsset, true, meta, meta);
+
+        // FIXME: Pool unlocked and locked in updateHoldingAmount
+        cv.updateHoldingValue(poolId, scId, USDC_C2, pricePerPoolAsset);
+
+        cv.resetMessages();
     }
 
     /// forge-config: default.isolate = true

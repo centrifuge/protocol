@@ -43,6 +43,7 @@ enum MessageType {
     UpdateHoldingValue,
     UpdateShares,
     ApprovedDeposits,
+    RevokedShares,
     UpdateJournal,
     TriggerUpdateHoldingAmount,
     TriggerUpdateShares
@@ -112,6 +113,7 @@ library MessageLib {
         (65  << uint8(MessageType.UpdateHoldingValue) * 8) +
         (98  << uint8(MessageType.UpdateShares) * 8) +
         (57  << uint8(MessageType.ApprovedDeposits) * 8) +
+        (57  << uint8(MessageType.RevokedShares) * 8) +
         (9   << uint8(MessageType.UpdateJournal) * 8) +
         (107 << uint8(MessageType.TriggerUpdateHoldingAmount) * 8) +
         (91  << uint8(MessageType.TriggerUpdateShares) * 8);
@@ -1067,6 +1069,7 @@ library MessageLib {
         uint64 poolId;
         bytes16 scId;
         uint128 assetId;
+        // TODO: Maybe include pricePoolPerAsset for BSM response
         uint128 assetAmount;
     }
 
@@ -1083,6 +1086,32 @@ library MessageLib {
 
     function serialize(ApprovedDeposits memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(MessageType.ApprovedDeposits, t.poolId, t.scId, t.assetId, t.assetAmount);
+    }
+
+    //---------------------------------------
+    //    RevokedShares
+    //---------------------------------------
+
+    struct RevokedShares {
+        uint64 poolId;
+        bytes16 scId;
+        uint128 assetId;
+        uint128 assetAmount;
+    }
+
+    function deserializeRevokedShares(bytes memory data) internal pure returns (RevokedShares memory) {
+        require(messageType(data) == MessageType.RevokedShares, UnknownMessageType());
+
+        return RevokedShares({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            assetId: data.toUint128(25),
+            assetAmount: data.toUint128(41)
+        });
+    }
+
+    function serialize(RevokedShares memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.RevokedShares, t.poolId, t.scId, t.assetId, t.assetAmount);
     }
 
     //---------------------------------------

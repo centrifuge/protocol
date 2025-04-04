@@ -284,4 +284,6 @@ interface IBalanceSheetManagerGatewayHandler {
         external;
 
     function approvedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external;
+
+    function revokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external;
 }
