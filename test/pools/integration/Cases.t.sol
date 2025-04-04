@@ -178,6 +178,16 @@ contract TestCases is PoolsDeployer, Test {
         assertEq(m0.assetAmount, APPROVED_INVESTOR_AMOUNT);
         assertEq(m0.shareAmount, SHARE_AMOUNT);
 
+        // Simulate ApprovedDeposits response messages from CV
+        JournalEntry[] memory meta = new JournalEntry[](0);
+        // TODO(wischli): Rm hardcode post #187 merge
+        D18 pricePerPoolAsset = d18(1);
+
+        cv.updateHoldingAmount(poolId, scId, USDC_C2, INVESTOR_AMOUNT, pricePerPoolAsset, true, meta, meta);
+
+        // FIXME: Pool unlocked and locked in updateHoldingAmount
+        cv.updateHoldingValue(poolId, scId, USDC_C2, pricePerPoolAsset);
+
         cv.resetMessages();
     }
 
