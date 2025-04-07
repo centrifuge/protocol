@@ -35,8 +35,8 @@ contract MockProcessor is Mock, IMessageHandler, IMessageProperties {
     // TODO: simplify tests to avoid using MessageLib. The Gateway should work for any kind of message encoding.
 
     function isMessageRecovery(bytes calldata message) external pure returns (bool) {
-        uint8 code = message.messageCode();
-        return code == uint8(MessageType.InitiateMessageRecovery) || code == uint8(MessageType.DisputeMessageRecovery);
+        uint16 code = message.messageCode();
+        return code == uint16(MessageType.InitiateMessageRecovery) || code == uint16(MessageType.DisputeMessageRecovery);
     }
 
     function messageLength(bytes calldata message) external pure returns (uint16) {
@@ -48,7 +48,7 @@ contract MockProcessor is Mock, IMessageHandler, IMessageProperties {
     }
 
     function messageProofHash(bytes calldata message) external pure returns (bytes32) {
-        return (message.messageCode() == uint8(MessageType.MessageProof))
+        return (message.messageCode() == uint16(MessageType.MessageProof))
             ? message.deserializeMessageProof().hash
             : bytes32(0);
     }

@@ -235,8 +235,8 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
     /// @inheritdoc IMessageProperties
     function isMessageRecovery(bytes calldata message) external pure returns (bool) {
-        uint8 code = message.messageCode();
-        return code == uint8(MessageType.InitiateMessageRecovery) || code == uint8(MessageType.DisputeMessageRecovery);
+        uint16 code = message.messageCode();
+        return code == uint16(MessageType.InitiateMessageRecovery) || code == uint16(MessageType.DisputeMessageRecovery);
     }
 
     /// @inheritdoc IMessageProperties
