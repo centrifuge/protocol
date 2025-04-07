@@ -40,7 +40,9 @@ contract SyncDepositTest is BaseTest {
         (, address syncVault_, uint128 assetId) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
         SyncDepositVault syncVault = SyncDepositVault(syncVault_);
         IShareToken shareToken = IShareToken(address(syncVault.share()));
-        centrifugeChain.updateSharePrice(syncVault.poolId(), syncVault.trancheId(), price, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(
+            syncVault.poolId(), syncVault.trancheId(), price, uint64(block.timestamp)
+        );
 
         // Retrieve async vault
         address asyncVault_ =

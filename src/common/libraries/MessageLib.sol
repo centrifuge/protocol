@@ -22,8 +22,8 @@ enum MessageType {
     RegisterAsset,
     NotifyPool,
     NotifyShareClass,
-    NotifySharePrice,
-    NotifyAssetPrice,
+    NotifyPricePoolPerShare,
+    NotifyPricePoolPerAsset,
     UpdateShareClassMetadata,
     UpdateShareClassHook,
     TransferShares,
@@ -93,8 +93,8 @@ library MessageLib {
         (178 << uint8(MessageType.RegisterAsset) * 8) +
         (9   << uint8(MessageType.NotifyPool) * 8) +
         (250 << uint8(MessageType.NotifyShareClass) * 8) +
-        (49 << uint8(MessageType.NotifySharePrice) * 8) +
-        (65 << uint8(MessageType.NotifyAssetPrice) * 8) +
+        (49 << uint8(MessageType.NotifyPricePoolPerShare) * 8) +
+        (65 << uint8(MessageType.NotifyPricePoolPerAsset) * 8) +
         (185 << uint8(MessageType.UpdateShareClassMetadata) * 8) +
         (57  << uint8(MessageType.UpdateShareClassHook) * 8) +
         (73  << uint8(MessageType.TransferShares) * 8) +
@@ -380,19 +380,23 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //    NotifySharePrice
+    //    NotifyPricePoolPerShare
     //---------------------------------------
 
-    struct NotifySharePrice {
+    struct NotifyPricePoolPerShare {
         uint64 poolId;
         bytes16 scId;
         uint128 price;
         uint64 timestamp;
     }
 
-    function deserializeNotifySharePrice(bytes memory data) internal pure returns (NotifySharePrice memory) {
-        require(messageType(data) == MessageType.NotifySharePrice, UnknownMessageType());
-        return NotifySharePrice({
+    function deserializeNotifyPricePoolPerShare(bytes memory data)
+        internal
+        pure
+        returns (NotifyPricePoolPerShare memory)
+    {
+        require(messageType(data) == MessageType.NotifyPricePoolPerShare, UnknownMessageType());
+        return NotifyPricePoolPerShare({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             price: data.toUint128(25),
@@ -400,15 +404,15 @@ library MessageLib {
         });
     }
 
-    function serialize(NotifySharePrice memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.NotifySharePrice, t.poolId, t.scId, t.price, t.timestamp);
+    function serialize(NotifyPricePoolPerShare memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.NotifyPricePoolPerShare, t.poolId, t.scId, t.price, t.timestamp);
     }
 
     //---------------------------------------
-    //    NotifyAssetPrice
+    //    NotifyPricePoolPerAsset
     //---------------------------------------
 
-    struct NotifyAssetPrice {
+    struct NotifyPricePoolPerAsset {
         uint64 poolId;
         bytes16 scId;
         uint128 assetId;
@@ -416,9 +420,13 @@ library MessageLib {
         uint64 timestamp;
     }
 
-    function deserializeNotifyAssetPrice(bytes memory data) internal pure returns (NotifyAssetPrice memory) {
-        require(messageType(data) == MessageType.NotifyAssetPrice, UnknownMessageType());
-        return NotifyAssetPrice({
+    function deserializeNotifyPricePoolPerAsset(bytes memory data)
+        internal
+        pure
+        returns (NotifyPricePoolPerAsset memory)
+    {
+        require(messageType(data) == MessageType.NotifyPricePoolPerAsset, UnknownMessageType());
+        return NotifyPricePoolPerAsset({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
@@ -427,8 +435,8 @@ library MessageLib {
         });
     }
 
-    function serialize(NotifyAssetPrice memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.NotifyAssetPrice, t.poolId, t.scId, t.assetId, t.price, t.timestamp);
+    function serialize(NotifyPricePoolPerAsset memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.NotifyPricePoolPerAsset, t.poolId, t.scId, t.assetId, t.price, t.timestamp);
     }
 
     //---------------------------------------

@@ -222,7 +222,7 @@ contract TestCases is BaseTest {
         assertEq(totalIssuance2, 55);
     }
 
-    function testNotifySharePrice() public {
+    function testNotifyPricePoolPerShare() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation();
         D18 sharePrice = d18(100, 1);
         D18 poolPerEUR = d18(1, 3); // 3 EUR = 1 USD
@@ -230,7 +230,7 @@ contract TestCases is BaseTest {
 
         (bytes[] memory cs, uint256 c) = (new bytes[](5), 0);
         cs[c++] = abi.encodeWithSelector(hub.setTransientPrice.selector, EUR.addr(), poolPerEUR);
-        cs[c++] = abi.encodeWithSelector(hub.updateSharePrice.selector, scId, sharePrice, "");
+        cs[c++] = abi.encodeWithSelector(hub.updatePricePoolPerShare.selector, scId, sharePrice, "");
         // FIXME(wischli): Doesn't use transient price of first msg
         cs[c++] = abi.encodeWithSelector(hub.notifyAssetPrice.selector, scId, EUR);
         cs[c++] = abi.encodeWithSelector(hub.notifyAssetPrice.selector, scId, USDC_C2);
@@ -241,20 +241,20 @@ contract TestCases is BaseTest {
 
         assertEq(cv.messageCount(), 3);
 
-        MessageLib.NotifySharePrice memory m0 = MessageLib.deserializeNotifySharePrice(cv.popMessage());
+        MessageLib.NotifyPricePoolPerShare memory m0 = MessageLib.deserializeNotifyPricePoolPerShare(cv.popMessage());
         assertEq(m0.poolId, poolId.raw());
         assertEq(m0.scId, scId.raw());
         assertEq(m0.price, sharePrice.raw());
         assertEq(m0.timestamp, block.timestamp.toUint64());
 
-        MessageLib.NotifyAssetPrice memory m1 = MessageLib.deserializeNotifyAssetPrice(cv.popMessage());
+        MessageLib.NotifyPricePoolPerAsset memory m1 = MessageLib.deserializeNotifyPricePoolPerAsset(cv.popMessage());
         assertEq(m1.poolId, poolId.raw());
         assertEq(m1.scId, scId.raw());
         assertEq(m1.assetId, USDC_C2.raw());
         assertEq(m1.price, poolPerUSDC_C2.raw());
         assertEq(m1.timestamp, block.timestamp.toUint64());
 
-        MessageLib.NotifyAssetPrice memory m2 = MessageLib.deserializeNotifyAssetPrice(cv.popMessage());
+        MessageLib.NotifyPricePoolPerAsset memory m2 = MessageLib.deserializeNotifyPricePoolPerAsset(cv.popMessage());
         assertEq(m2.poolId, poolId.raw());
         assertEq(m2.scId, scId.raw());
         assertEq(m2.assetId, EUR.raw());

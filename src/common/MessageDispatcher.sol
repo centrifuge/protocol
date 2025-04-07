@@ -113,14 +113,17 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IPoolMessageSender
-    function sendNotifySharePrice(uint16 chainId, PoolId poolId, ShareClassId scId, D18 sharePrice) external auth {
+    function sendNotifyPricePoolPerShare(uint16 chainId, PoolId poolId, ShareClassId scId, D18 sharePrice)
+        external
+        auth
+    {
         uint64 timestamp = block.timestamp.toUint64();
         if (chainId == localCentrifugeId) {
-            poolManager.updateSharePrice(poolId.raw(), scId.raw(), sharePrice.raw(), timestamp);
+            poolManager.updatePricePoolPerShare(poolId.raw(), scId.raw(), sharePrice.raw(), timestamp);
         } else {
             gateway.send(
                 chainId,
-                MessageLib.NotifySharePrice({
+                MessageLib.NotifyPricePoolPerShare({
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     price: sharePrice.raw(),
@@ -130,18 +133,18 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
-    function sendNotifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId, D18 assetPrice) external auth {
+    function sendNotifyPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 price) external auth {
         uint64 timestamp = block.timestamp.toUint64();
         if (assetId.chainId() == localCentrifugeId) {
-            poolManager.updateAssetPrice(poolId.raw(), scId.raw(), assetId.raw(), assetPrice.raw(), timestamp);
+            poolManager.updatePricePoolPerAsset(poolId.raw(), scId.raw(), assetId.raw(), price.raw(), timestamp);
         } else {
             gateway.send(
                 assetId.chainId(),
-                MessageLib.NotifyAssetPrice({
+                MessageLib.NotifyPricePoolPerAsset({
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     assetId: assetId.raw(),
-                    price: assetPrice.raw(),
+                    price: price.raw(),
                     timestamp: timestamp
                 }).serialize()
             );

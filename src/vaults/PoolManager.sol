@@ -226,7 +226,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
-    function updateSharePrice(uint64 poolId, bytes16 scId, uint128 price, uint64 computedAt) public auth {
+    function updatePricePoolPerShare(uint64 poolId, bytes16 scId, uint128 price, uint64 computedAt) public auth {
         ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
         require(shareClass.shareToken != address(0), "PoolManager/share-token-does-not-exist");
 
@@ -237,21 +237,24 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
-    function updateAssetPrice(uint64 poolId, bytes16 scId, uint128 assetId, uint128 price, uint64 computedAt)
-        public
-        auth
-    {
+    function updatePricePoolPerAsset(
+        uint64 poolId,
+        bytes16 scId,
+        uint128 assetId,
+        uint128 poolPerAsset_,
+        uint64 computedAt
+    ) public auth {
         ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
         require(shareClass.shareToken != address(0), "PoolManager/share-token-does-not-exist");
 
         (address asset, uint256 tokenId) = checkedIdToAsset(assetId);
-        Price storage assetPrice = shareClass.pricePoolPerAsset[asset][tokenId];
-        require(computedAt >= assetPrice.computedAt, "PoolManager/cannot-set-older-price");
+        Price storage poolPerAsset = shareClass.pricePoolPerAsset[asset][tokenId];
+        require(computedAt >= poolPerAsset.computedAt, "PoolManager/cannot-set-older-price");
 
-        assetPrice.price = price;
-        assetPrice.computedAt = computedAt;
+        poolPerAsset.price = poolPerAsset_;
+        poolPerAsset.computedAt = computedAt;
 
-        emit PriceUpdate(poolId, scId, asset, tokenId, price, computedAt);
+        emit PriceUpdate(poolId, scId, asset, tokenId, poolPerAsset_, computedAt);
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler

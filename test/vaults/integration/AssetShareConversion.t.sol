@@ -16,8 +16,8 @@ contract AssetShareConversionTest is BaseTest {
 
         assertEq(vault.priceLastUpdated(), block.timestamp);
         assertEq(vault.pricePerShare(), 1e6);
-        centrifugeChain.updateSharePrice(poolId, scId, 1e18, uint64(block.timestamp));
-        centrifugeChain.updateAssetPrice(poolId, scId, assetId, 1e18, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(poolId, scId, 1e18, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerAsset(poolId, scId, assetId, 1e18, uint64(block.timestamp));
         assertEq(vault.priceLastUpdated(), uint64(block.timestamp));
         assertEq(vault.pricePerShare(), 1e6);
 
@@ -35,7 +35,7 @@ contract AssetShareConversionTest is BaseTest {
             poolId, scId, bytes32(bytes20(self)), _assetId, uint128(investmentAmount), shares
         );
         vault.mint(shares, self);
-        centrifugeChain.updateSharePrice(poolId, scId, 1e18, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(poolId, scId, 1e18, uint64(block.timestamp));
         // assert share/asset conversion
         assertEq(shareToken.totalSupply(), 100000000000000000000);
         assertEq(vault.totalAssets(), 100000000);
@@ -46,7 +46,7 @@ contract AssetShareConversionTest is BaseTest {
         assertEq(vault.pricePerShare(), 1e6);
 
         // assert share/asset conversion after price update
-        centrifugeChain.updateSharePrice(poolId, scId, 1200000000000000000, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(poolId, scId, 1200000000000000000, uint64(block.timestamp));
 
         assertEq(vault.totalAssets(), 120000000);
         assertEq(vault.convertToShares(120000000), 100000000000000000000); // share class tokens have 12 more decimals
@@ -56,7 +56,7 @@ contract AssetShareConversionTest is BaseTest {
         assertEq(vault.pricePerShare(), 1.2e6);
 
         // Updating the asset price updates the conversions and price per share in asset
-        centrifugeChain.updateAssetPrice(poolId, scId, assetId, 0.5e18, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerAsset(poolId, scId, assetId, 0.5e18, uint64(block.timestamp));
 
         // NOTE: For 1 unit of pool, you know get 2 units of assets. As the price of a share is 1.2 POOL/SHARE
         //       we now have 2 * 1.2 = 2.4 units of assets per share
@@ -77,7 +77,7 @@ contract AssetShareConversionTest is BaseTest {
             deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, restrictedTransfers, scId, address(asset), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
-        centrifugeChain.updateSharePrice(poolId, scId, 1000000, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(poolId, scId, 1000000, uint64(block.timestamp));
 
         // invest
         uint256 investmentAmount = 100000000000000000000; // 100 * 10**18
@@ -93,7 +93,7 @@ contract AssetShareConversionTest is BaseTest {
             poolId, scId, bytes32(bytes20(self)), _assetId, uint128(investmentAmount), shares
         );
         vault.mint(shares, self);
-        centrifugeChain.updateSharePrice(poolId, scId, 1000000000000000000, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(poolId, scId, 1000000000000000000, uint64(block.timestamp));
 
         // assert share/asset conversion
         assertEq(shareToken.totalSupply(), 100000000);
@@ -104,7 +104,7 @@ contract AssetShareConversionTest is BaseTest {
         assertEq(vault.pricePerShare(), 1e18);
 
         // assert share/asset conversion after price update
-        centrifugeChain.updateSharePrice(poolId, scId, 1200000000000000000, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(poolId, scId, 1200000000000000000, uint64(block.timestamp));
 
         assertEq(vault.totalAssets(), 120000000000000000000);
         // share class tokens have 12 less decimals than assets
@@ -125,7 +125,7 @@ contract AssetShareConversionTest is BaseTest {
 
         assertEq(vault.priceLastUpdated(), block.timestamp);
         assertEq(vault.pricePerShare(), 1e6);
-        centrifugeChain.updateSharePrice(poolId, scId, 1.2e18, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(poolId, scId, 1.2e18, uint64(block.timestamp));
         assertEq(vault.priceLastUpdated(), uint64(block.timestamp));
         assertEq(vault.pricePerShare(), 1.2e6);
 

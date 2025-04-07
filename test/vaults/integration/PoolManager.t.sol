@@ -484,7 +484,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.updateRestriction(poolId, scId, update);
     }
 
-    function testupdateSharePriceWorks(
+    function testupdatePricePoolPerShareWorks(
         uint64 poolId,
         uint8 decimals,
         string memory tokenName,
@@ -501,10 +501,10 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         address hook = address(new MockHook());
 
         vm.expectRevert(bytes("PoolManager/share-token-does-not-exist"));
-        centrifugeChain.updateSharePrice(poolId, scId, price, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp));
 
         centrifugeChain.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, hook);
-        centrifugeChain.updateAssetPrice(poolId, scId, assetId, 1e18, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerAsset(poolId, scId, assetId, 1e18, uint64(block.timestamp));
 
         vm.expectRevert("PoolManager/invalid-price");
         poolManager.checkedPriceAssetPerShare(poolId, scId, assetId);
@@ -514,18 +514,18 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
-        poolManager.updateSharePrice(poolId, scId, price, uint64(block.timestamp));
+        poolManager.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp));
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
-        poolManager.updateAssetPrice(poolId, scId, assetId, price, uint64(block.timestamp));
+        poolManager.updatePricePoolPerAsset(poolId, scId, assetId, price, uint64(block.timestamp));
 
-        centrifugeChain.updateSharePrice(poolId, scId, price, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp));
         (D18 latestPrice, uint64 lastUpdated) = poolManager.priceAssetPerShare(poolId, scId, assetId);
         assertEq(latestPrice.raw(), price);
         assertEq(lastUpdated, block.timestamp);
 
         vm.expectRevert(bytes("PoolManager/cannot-set-older-price"));
-        centrifugeChain.updateSharePrice(poolId, scId, price, uint64(block.timestamp - 1));
+        centrifugeChain.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp - 1));
 
         // NOTE: We have no maxAge set, so price is invalid after timestamp of block increases
         vm.warp(block.timestamp + 1);

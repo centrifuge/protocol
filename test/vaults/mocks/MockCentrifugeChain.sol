@@ -139,15 +139,18 @@ contract MockCentrifugeChain is Test {
         execute(MessageLib.UpdateShareClassHook({poolId: poolId, scId: scId, hook: bytes32(bytes20(hook))}).serialize());
     }
 
-    function updateSharePrice(uint64 poolId, bytes16 scId, uint128 price, uint64 computedAt) public {
+    function updatePricePoolPerShare(uint64 poolId, bytes16 scId, uint128 price, uint64 computedAt) public {
         execute(
-            MessageLib.NotifySharePrice({poolId: poolId, scId: scId, price: price, timestamp: computedAt}).serialize()
+            MessageLib.NotifyPricePoolPerShare({poolId: poolId, scId: scId, price: price, timestamp: computedAt})
+                .serialize()
         );
     }
 
-    function updateAssetPrice(uint64 poolId, bytes16 scId, uint128 assetId, uint128 price, uint64 computedAt) public {
+    function updatePricePoolPerAsset(uint64 poolId, bytes16 scId, uint128 assetId, uint128 price, uint64 computedAt)
+        public
+    {
         execute(
-            MessageLib.NotifyAssetPrice({
+            MessageLib.NotifyPricePoolPerAsset({
                 poolId: poolId,
                 scId: scId,
                 assetId: assetId,

@@ -175,12 +175,14 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
                 centrifugeChain.addPool(POOL_A.raw());
             }
             centrifugeChain.addShareClass(POOL_A.raw(), scId, "name", "symbol", shareTokenDecimals, hook);
-            centrifugeChain.updateSharePrice(POOL_A.raw(), scId, uint128(10 ** 18), uint64(block.timestamp));
+            centrifugeChain.updatePricePoolPerShare(POOL_A.raw(), scId, uint128(10 ** 18), uint64(block.timestamp));
         }
 
         if (poolManager.assetToId(asset, assetTokenId) == 0) {
             assetId = poolManager.registerAsset(asset, assetTokenId, OTHER_CHAIN_ID);
-            centrifugeChain.updateAssetPrice(POOL_A.raw(), scId, assetId, uint128(10 ** 18), uint64(block.timestamp));
+            centrifugeChain.updatePricePoolPerAsset(
+                POOL_A.raw(), scId, assetId, uint128(10 ** 18), uint64(block.timestamp)
+            );
         } else {
             assetId = poolManager.assetToId(asset, assetTokenId);
         }

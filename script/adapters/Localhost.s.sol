@@ -69,7 +69,7 @@ contract LocalhostDeployer is FullDeployer {
             VaultUpdateKind.DeployAndLink
         );
         // TODO(follow-up): Enable after merging #184
-        // cs[c++] = abi.encodeWithSelector(hub.updateSharePrice.selector, scId, navPerShare);
+        // cs[c++] = abi.encodeWithSelector(hub.updatePricePoolPerShare.selector, scId, navPerShare);
         // cs[c++] = abi.encodeWithSelector(hub.notifySharePrice.selector, scId, assetId);
 
         //hub.execute{value: 0.001 ether}(poolId, cs);

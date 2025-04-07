@@ -13,9 +13,9 @@ contract DepositRedeem is BaseTest {
             deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, restrictedTransfers, scId, address(asset), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
 
-        centrifugeChain.updateSharePrice(poolId, scId, 1e18, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(poolId, scId, 1e18, uint64(block.timestamp));
 
-        centrifugeChain.updateAssetPrice(poolId, scId, assetId, 1e18, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerAsset(poolId, scId, assetId, 1e18, uint64(block.timestamp));
 
         partialDeposit(poolId, scId, vault, asset);
 

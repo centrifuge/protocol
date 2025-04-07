@@ -129,10 +129,10 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
-    function testNotifySharePrice() public pure {
-        MessageLib.NotifySharePrice memory a =
-            MessageLib.NotifySharePrice({poolId: 1, scId: bytes16("sc"), price: 42, timestamp: 0x12345678});
-        MessageLib.NotifySharePrice memory b = MessageLib.deserializeNotifySharePrice(a.serialize());
+    function testNotifyPricePoolPerShare() public pure {
+        MessageLib.NotifyPricePoolPerShare memory a =
+            MessageLib.NotifyPricePoolPerShare({poolId: 1, scId: bytes16("sc"), price: 42, timestamp: 0x12345678});
+        MessageLib.NotifyPricePoolPerShare memory b = MessageLib.deserializeNotifyPricePoolPerShare(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
@@ -142,10 +142,15 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageLength(), a.serialize().length);
     }
 
-    function testNotifyAssetPrice() public pure {
-        MessageLib.NotifyAssetPrice memory a =
-            MessageLib.NotifyAssetPrice({poolId: 1, scId: bytes16("sc"), assetId: 5, price: 42, timestamp: 0x12345678});
-        MessageLib.NotifyAssetPrice memory b = MessageLib.deserializeNotifyAssetPrice(a.serialize());
+    function testNotifyPricePoolPerAsset() public pure {
+        MessageLib.NotifyPricePoolPerAsset memory a = MessageLib.NotifyPricePoolPerAsset({
+            poolId: 1,
+            scId: bytes16("sc"),
+            assetId: 5,
+            price: 42,
+            timestamp: 0x12345678
+        });
+        MessageLib.NotifyPricePoolPerAsset memory b = MessageLib.deserializeNotifyPricePoolPerAsset(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
