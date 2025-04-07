@@ -44,10 +44,10 @@ abstract contract TargetFunctions is
 
         // add and register asset
         add_new_asset(decimals);
-        poolRouter_registerAsset(isoCode); // 4294967295
+        hub_registerAsset(isoCode); // 4294967295
 
         // defaults to pool admined by the admin actor (address(this))
-        PoolId poolId = poolRouter_createPool(address(this), isoCode, multiShareClass);
+        PoolId poolId = hub_createPool(address(this), isoCode, multiShareClass);
         
         // create holding
         ShareClassId scId = multiShareClass.previewNextShareClassId(poolId);
@@ -77,7 +77,7 @@ abstract contract TargetFunctions is
         );
 
         // request deposit
-        poolRouter_depositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode, amount);
+        hub_depositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode, amount);
         
         // approve and issue shares as the pool admin
         shortcut_approve_and_issue_shares(
@@ -107,7 +107,7 @@ abstract contract TargetFunctions is
         );
 
         // claim deposit as actor
-        poolRouter_claimDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
+        hub_claimDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
 
         return (poolId, scId);
     }
@@ -131,10 +131,10 @@ abstract contract TargetFunctions is
         );
 
         // claim deposit as actor
-        poolRouter_claimDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
+        hub_claimDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
 
         // cancel deposit
-        poolRouter_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
+        hub_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
 
         return (poolId, scId);
     }
@@ -158,7 +158,7 @@ abstract contract TargetFunctions is
         );
 
         // cancel deposit
-        poolRouter_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
+        hub_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
 
         return (poolId, scId);
     }
@@ -182,10 +182,10 @@ abstract contract TargetFunctions is
         );
 
         // claim deposit as actor
-        poolRouter_claimDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
+        hub_claimDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
 
         // cancel deposit
-        poolRouter_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
+        hub_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
 
         return (poolId, scId);
     }
@@ -200,7 +200,7 @@ abstract contract TargetFunctions is
         bool isIdentityValuation
     ) public clearQueuedCalls {
         // request redemption
-        poolRouter_redeemRequest(poolId, scId, isoCode, shareAmount);
+        hub_redeemRequest(poolId, scId, isoCode, shareAmount);
         
         // approve and revoke shares as the pool admin
         shortcut_approve_and_revoke_shares(
@@ -214,7 +214,7 @@ abstract contract TargetFunctions is
         uint32 isoCode
     ) public clearQueuedCalls {        
         // claim redemption as actor
-        poolRouter_claimRedeem(poolId, scId, isoCode);
+        hub_claimRedeem(poolId, scId, isoCode);
     }
 
     function shortcut_redeem_and_claim(
@@ -229,7 +229,7 @@ abstract contract TargetFunctions is
         shortcut_redeem(poolId, scId, shareAmount, isoCode, maxApproval, navPerShare, isIdentityValuation);
         
         // claim redemption as actor
-        poolRouter_claimRedeem(poolId, scId, isoCode); 
+        hub_claimRedeem(poolId, scId, isoCode); 
     }
 
     // deposit and redeem in one call
@@ -253,7 +253,7 @@ abstract contract TargetFunctions is
         );
 
         // request redemption
-        poolRouter_redeemRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode, shareAmount);
+        hub_redeemRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode, shareAmount);
         
         // approve and revoke shares as the pool admin
         // revokes the shares that were issued in the deposit
@@ -263,7 +263,7 @@ abstract contract TargetFunctions is
         
 
         // claim redemption as actor
-        poolRouter_claimRedeem(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
+        hub_claimRedeem(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
     }
 
     // deposit and cancel redemption in one call
@@ -287,10 +287,10 @@ abstract contract TargetFunctions is
         );
 
         // request redemption
-        poolRouter_redeemRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode, shareAmount);
+        hub_redeemRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode, shareAmount);
 
         // cancel redemption
-        poolRouter_cancelRedeemRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
+        hub_cancelRedeemRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
     }
 
     function shortcut_create_pool_and_update_holding(
@@ -308,8 +308,8 @@ abstract contract TargetFunctions is
         AssetId assetId = newAssetId(isoCode);
 
         transientValuation_setPrice(address(assetId.addr()), poolRegistry.currency(poolId).addr(), newPrice);
-        poolRouter_updateHolding(ShareClassId.unwrap(scId), assetId.raw());
-        poolRouter_execute_clamped(PoolId.unwrap(poolId));
+        hub_updateHolding(ShareClassId.unwrap(scId), assetId.raw());
+        hub_execute_clamped(PoolId.unwrap(poolId));
     }
 
     function shortcut_create_pool_and_update_holding_amount(
@@ -342,7 +342,7 @@ abstract contract TargetFunctions is
                 amount: creditAmount
             });
 
-            poolRouter_updateHoldingAmount(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw(), amount, pricePerUnit, IS_INCREASE, debits, credits);
+            hub_updateHoldingAmount(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw(), amount, pricePerUnit, IS_INCREASE, debits, credits);
         }
     }
 
@@ -360,8 +360,8 @@ abstract contract TargetFunctions is
         (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, salt, isIdentityValuation, prefix);
         AssetId assetId = newAssetId(isoCode);
 
-        poolRouter_updateHoldingValue(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw(), newPrice);
-        // poolRouter_execute_clamped(poolId);
+        hub_updateHoldingValue(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw(), newPrice);
+        // hub_execute_clamped(poolId);
     }
 
     function shortcut_create_pool_and_update_journal(
@@ -393,7 +393,7 @@ abstract contract TargetFunctions is
                 amount: creditAmount
             });
 
-            poolRouter_updateJournal(PoolId.unwrap(poolId), debits, credits);
+            hub_updateJournal(PoolId.unwrap(poolId), debits, credits);
         }
     }
 
@@ -411,8 +411,8 @@ abstract contract TargetFunctions is
         AssetId assetId = newAssetId(isoCode);
         transientValuation_setPrice(address(assetId.addr()), address(assetId.addr()), newPrice);
 
-        poolRouter_updateHolding(scId.raw(), assetId.raw());
-        poolRouter_execute_clamped(poolId.raw());
+        hub_updateHolding(scId.raw(), assetId.raw());
+        hub_execute_clamped(poolId.raw());
     }
 
     function shortcut_update_valuation(
@@ -428,8 +428,8 @@ abstract contract TargetFunctions is
         (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, salt, isIdentityValuation, prefix);
     
         AssetId assetId = newAssetId(isoCode);
-        poolRouter_updateHoldingValuation(ShareClassId.unwrap(scId), assetId.raw(), isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation)));
-        poolRouter_execute_clamped(PoolId.unwrap(poolId));
+        hub_updateHoldingValuation(ShareClassId.unwrap(scId), assetId.raw(), isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation)));
+        hub_execute_clamped(PoolId.unwrap(poolId));
     }
 
     function shortcut_notify_share_class(
@@ -448,8 +448,8 @@ abstract contract TargetFunctions is
         (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(decimals, isoCode, salt, isIdentityValuation, prefix, depositAmount, shareAmount, navPerShare);
 
         // set chainId and hook to constants because we're mocking Gateway so they're not needed
-        poolRouter_notifyShareClass(0, ShareClassId.unwrap(scId), bytes32("ExampleHookData"));
-        poolRouter_execute_clamped(PoolId.unwrap(poolId));
+        hub_notifyShareClass(0, ShareClassId.unwrap(scId), bytes32("ExampleHookData"));
+        hub_execute_clamped(PoolId.unwrap(poolId));
     }
 
     /// === POOL ADMIN SHORTCUTS === ///
@@ -463,15 +463,15 @@ abstract contract TargetFunctions is
         bool isIdentityValuation,
         uint24 prefix
     ) public  {
-        poolRouter_addShareClass(salt);
+        hub_addShareClass(salt);
 
         IERC7726 valuation = isIdentityValuation ? 
             IERC7726(address(identityValuation)) : 
             IERC7726(address(transientValuation));
 
-        // poolRouter_createHolding(scId, assetId, valuation, prefix);
-        poolRouter_createHolding(scId, assetId, valuation, IS_LIABILITY, prefix);
-        poolRouter_execute_clamped(poolId);
+        // hub_createHolding(scId, assetId, valuation, prefix);
+        hub_createHolding(scId, assetId, valuation, IS_LIABILITY, prefix);
+        hub_execute_clamped(poolId);
     }
 
     function shortcut_approve_and_issue_shares(
@@ -488,9 +488,9 @@ abstract contract TargetFunctions is
 
         transientValuation.setPrice(address(assetId.addr()), address(assetId.addr()), INITIAL_PRICE);
 
-        poolRouter_approveDeposits(scId, assetId.raw(), maxApproval, valuation);
-        poolRouter_issueShares(scId, assetId.raw(), navPerShare);
-        poolRouter_execute_clamped(poolId);
+        hub_approveDeposits(scId, assetId.raw(), maxApproval, valuation);
+        hub_issueShares(scId, assetId.raw(), navPerShare);
+        hub_execute_clamped(poolId);
 
         // reset the epoch increment to 0 so that the next approval is in a "new tx"
         _setEpochIncrement(0);
@@ -506,9 +506,9 @@ abstract contract TargetFunctions is
     ) public  {        
         IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
         
-        poolRouter_approveRedeems(scId, isoCode, maxApproval);
-        poolRouter_revokeShares(scId, isoCode, navPerShare, valuation);
-        poolRouter_execute_clamped(poolId);
+        hub_approveRedeems(scId, isoCode, maxApproval);
+        hub_revokeShares(scId, isoCode, navPerShare, valuation);
+        hub_execute_clamped(poolId);
 
         // reset the epoch increment to 0 so that the next approval is in a "new tx"
         _setEpochIncrement(0);
@@ -526,8 +526,8 @@ abstract contract TargetFunctions is
             
             // get a random share class id
             ShareClassId scId = multiShareClass.previewShareClassId(poolId, shareClassEntropy % shareClassCount);
-            poolRouter_updateRestriction(CENTIFUGE_CHAIN_ID, scId.raw(), payload);
-            poolRouter_execute_clamped(poolId.raw());
+            hub_updateRestriction(CENTIFUGE_CHAIN_ID, scId.raw(), payload);
+            hub_execute_clamped(poolId.raw());
         }
     }
 

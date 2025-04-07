@@ -18,7 +18,7 @@ import {AssetRegistry} from "src/pools/AssetRegistry.sol";
 import {Gateway} from "src/common/Gateway.sol";
 import {Holdings} from "src/pools/Holdings.sol";
 import {PoolRegistry} from "src/pools/PoolRegistry.sol";
-import {PoolRouter} from "src/pools/PoolRouter.sol";
+import {Hub} from "src/pools/Hub.sol";
 import {MultiShareClass} from "src/pools/MultiShareClass.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
@@ -59,7 +59,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     AssetRegistry assetRegistry;
     Holdings holdings;
     PoolRegistry poolRegistry;
-    PoolRouter poolRouter;
+    Hub hub;
     MultiShareClassWrapper multiShareClass;
     TransientValuation transientValuation;
     IdentityValuation identityValuation;
@@ -117,22 +117,22 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         identityValuation = new IdentityValuation(assetRegistry, address(this));
 
         holdings = new Holdings(IPoolRegistry(address(poolRegistry)), address(this));
-        poolRouter = new PoolRouter(IPoolRegistry(address(poolRegistry)), IAssetRegistry(address(assetRegistry)), IAccounting(address(accounting)), IHoldings(address(holdings)), IGateway(address(gateway)), ITransientValuation(address(transientValuation)), address(this));
+        hub = new Hub(IPoolRegistry(address(poolRegistry)), IAssetRegistry(address(assetRegistry)), IAccounting(address(accounting)), IHoldings(address(holdings)), IGateway(address(gateway)), ITransientValuation(address(transientValuation)), address(this));
         multiShareClass = new MultiShareClassWrapper(IPoolRegistry(address(poolRegistry)), address(this));
         messageDispatcher = new MockMessageDispatcher(PoolManager(address(this)), IAsyncRequests(address(this)), root, CENTIFUGE_CHAIN_ID);
 
         mockAdapter = new MockAdapter(CENTIFUGE_CHAIN_ID, IMessageHandler(address(gateway)));
 
         // set addresses on the PoolRouter
-        poolRouter.file("sender", address(messageDispatcher));
+        hub.file("sender", address(messageDispatcher));
 
         // set permissions for calling privileged functions
-        poolRegistry.rely(address(poolRouter));
-        assetRegistry.rely(address(poolRouter));
-        accounting.rely(address(poolRouter));
-        holdings.rely(address(poolRouter));
-        multiShareClass.rely(address(poolRouter));
-        poolRouter.rely(address(poolRouter));
+        poolRegistry.rely(address(hub));
+        assetRegistry.rely(address(hub));
+        accounting.rely(address(hub));
+        holdings.rely(address(hub));
+        multiShareClass.rely(address(hub));
+        hub.rely(address(hub));
         multiShareClass.rely(address(this));
     }
 

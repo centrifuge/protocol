@@ -9,7 +9,7 @@ import {console2} from "forge-std/console2.sol";
 import {Panic} from "@recon/Panic.sol";
 
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
-import {PoolRouter} from "src/pools/PoolRouter.sol";
+import {Hub} from "src/pools/Hub.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -28,10 +28,10 @@ abstract contract PoolRouterTargets is
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
     
     /// === Permissionless Functions === ///
-    function poolRouter_createPool(address admin, uint32 isoCode, IShareClassManager shareClassManager) public updateGhosts asActor returns (PoolId poolId) {
+    function hub_createPool(address admin, uint32 isoCode, IShareClassManager shareClassManager) public updateGhosts asActor returns (PoolId poolId) {
         AssetId assetId_ = newAssetId(isoCode); 
 
-        poolId = poolRouter.createPool(admin, assetId_, shareClassManager);
+        poolId = hub.createPool(admin, assetId_, shareClassManager);
 
         poolCreated = true;
         createdPools.push(poolId);
@@ -42,13 +42,13 @@ abstract contract PoolRouterTargets is
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
     /// @dev Property: after successfully calling claimDeposit for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
-    function poolRouter_claimDeposit(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint32 isoCode) public updateGhosts asActor {
+    function hub_claimDeposit(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint32 isoCode) public updateGhosts asActor {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
         
-        poolRouter.claimDeposit(poolId, scId, assetId, investor);
+        hub.claimDeposit(poolId, scId, assetId, investor);
 
         (, uint32 lastUpdate) = multiShareClass.depositRequest(scId, assetId, investor);
         uint32 epochId = multiShareClass.epochId(poolId);
@@ -58,13 +58,13 @@ abstract contract PoolRouterTargets is
 
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
     /// @dev Property: After successfully calling claimRedeem for an investor, their redeemRequest[..].lastUpdate equals the current epoch id epochId[poolId]
-    function poolRouter_claimRedeem(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint32 isoCode) public updateGhosts asActor {
+    function hub_claimRedeem(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint32 isoCode) public updateGhosts asActor {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
         
-        poolRouter.claimRedeem(poolId, scId, assetId, investor);
+        hub.claimRedeem(poolId, scId, assetId, investor);
 
         (, uint32 lastUpdate) = multiShareClass.redeemRequest(scId, assetId, investor);
         uint32 epochId = multiShareClass.epochId(poolId);
@@ -75,13 +75,13 @@ abstract contract PoolRouterTargets is
     /// === EXECUTION FUNCTIONS === ///
 
     /// @dev Multicall is publicly exposed without access protections so can be called by anyone
-    function poolRouter_multicall(bytes[] memory data) public payable updateGhostsWithType(OpType.BATCH) asActor {
-        poolRouter.multicall{value: msg.value}(data);
+    function hub_multicall(bytes[] memory data) public payable updateGhostsWithType(OpType.BATCH) asActor {
+        hub.multicall{value: msg.value}(data);
     }
 
     /// @dev Makes a call directly to the unclamped handler so doesn't include asActor modifier or else would cause errors with foundry testing
-    function poolRouter_multicall_clamped() public payable {
-        this.poolRouter_multicall{value: msg.value}(queuedCalls);
+    function hub_multicall_clamped() public payable {
+        this.hub_multicall{value: msg.value}(queuedCalls);
 
         queuedCalls = new bytes[](0);
     }

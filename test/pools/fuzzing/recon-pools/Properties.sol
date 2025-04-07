@@ -8,7 +8,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {EscrowId} from "src/pools/interfaces/IPoolRouter.sol";
+import {EscrowId} from "src/pools/interfaces/IHub.sol";
 
 import {Helpers} from "test/pools/fuzzing/recon-pools/utils/Helpers.sol";
 import {BeforeAfter, OpType} from "./BeforeAfter.sol";
@@ -205,7 +205,7 @@ abstract contract Properties is BeforeAfter, Asserts {
                     address actor = _actors[k];
                     
                     // we claim via multiShareClass directly here because PoolRouter doesn't return the payoutShareAmount
-                    (uint128 payoutShareAmount, uint128 payoutAssetAmount) = multiShareClass.claimDeposit(poolId, scId, Helpers.addressToBytes32(actor), assetId);
+                    (uint128 payoutShareAmount, uint128 payoutAssetAmount,) = multiShareClass.claimDeposit(poolId, scId, Helpers.addressToBytes32(actor), assetId);
                     totalPayoutShareAmount += payoutShareAmount;
                     totalPayoutAssetAmount += payoutAssetAmount;
                 }
@@ -251,7 +251,7 @@ abstract contract Properties is BeforeAfter, Asserts {
                 for (uint256 k = 0; k < _actors.length; k++) {
                     address actor = _actors[k];
                     // we claim via multiShareClass directly here because PoolRouter doesn't return the payoutAssetAmount
-                    (uint128 payoutAssetAmount, uint128 paymentShareAmount) = multiShareClass.claimRedeem(poolId, scId, Helpers.addressToBytes32(actor), assetId);
+                    (uint128 payoutAssetAmount, uint128 paymentShareAmount,) = multiShareClass.claimRedeem(poolId, scId, Helpers.addressToBytes32(actor), assetId);
                     totalPayoutAssetAmount += payoutAssetAmount;
                     totalPaymentShareAmount += paymentShareAmount;
                 }
@@ -312,8 +312,8 @@ abstract contract Properties is BeforeAfter, Asserts {
 
                 (uint128 holdingAssetAmount,,,) = holdings.holding(poolId, scId, assetId);
                 
-                address pendingShareClassEscrow = poolRouter.escrow(poolId, scId, EscrowId.PendingShareClass);
-                address shareClassEscrow = poolRouter.escrow(poolId, scId, EscrowId.ShareClass);
+                address pendingShareClassEscrow = hub.escrow(poolId, scId, EscrowId.PendingShareClass);
+                address shareClassEscrow = hub.escrow(poolId, scId, EscrowId.ShareClass);
                 uint256 pendingShareClassEscrowBalance = assetRegistry.balanceOf(pendingShareClassEscrow, assetId.raw());
                 uint256 shareClassEscrowBalance = assetRegistry.balanceOf(shareClassEscrow, assetId.raw());
                 
@@ -335,8 +335,8 @@ abstract contract Properties is BeforeAfter, Asserts {
                 ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
                 AssetId assetId = poolRegistry.currency(poolId);
 
-                address pendingShareClassEscrow = poolRouter.escrow(poolId, scId, EscrowId.PendingShareClass);
-                address shareClassEscrow = poolRouter.escrow(poolId, scId, EscrowId.ShareClass);
+                address pendingShareClassEscrow = hub.escrow(poolId, scId, EscrowId.PendingShareClass);
+                address shareClassEscrow = hub.escrow(poolId, scId, EscrowId.ShareClass);
                 uint256 assetRegistryBalance = assetRegistry.balanceOf(address(assetRegistry), assetId.raw());
                 uint256 pendingShareClassEscrowBalance = assetRegistry.balanceOf(pendingShareClassEscrow, assetId.raw());
                 uint256 shareClassEscrowBalance = assetRegistry.balanceOf(shareClassEscrow, assetId.raw());

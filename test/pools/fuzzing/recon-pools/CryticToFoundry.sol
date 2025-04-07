@@ -27,10 +27,10 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         add_new_asset(18);
 
         //register asset 
-        poolRouter_registerAsset(123);
+        hub_registerAsset(123);
 
         // create pool 
-        poolRouter_createPool(address(this), 123, multiShareClass);
+        hub_createPool(address(this), 123, multiShareClass);
     }
 
     bytes32 INVESTOR = bytes32("Investor");
@@ -56,10 +56,10 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         add_new_asset(18);
 
         //register asset 
-        poolRouter_registerAsset(123);
+        hub_registerAsset(123);
 
         // create pool 
-        PoolId poolId = poolRouter_createPool(address(this), 123, multiShareClass);
+        PoolId poolId = hub_createPool(address(this), 123, multiShareClass);
 
         return poolId;
     }
@@ -72,19 +72,19 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         assetId = newAssetId(123);
 
         // necessary setup via the PoolRouter
-        poolRouter_addShareClass(SC_SALT);
-        poolRouter_createHolding(scId.raw(), assetId.raw(), identityValuation, IS_LIABILITY, 0x01);
-        poolRouter_execute_clamped(poolId.raw());
+        hub_addShareClass(SC_SALT);
+        hub_createHolding(scId.raw(), assetId.raw(), identityValuation, IS_LIABILITY, 0x01);
+        hub_execute_clamped(poolId.raw());
         
         // request deposit
-        poolRouter_depositRequest(poolId.raw(), scId.raw(), 123, INVESTOR_AMOUNT);
+        hub_depositRequest(poolId.raw(), scId.raw(), 123, INVESTOR_AMOUNT);
         
-        poolRouter_approveDeposits(scId.raw(), assetId.raw(), APPROVED_INVESTOR_AMOUNT, identityValuation);
-        poolRouter_issueShares(scId.raw(), assetId.raw(), NAV_PER_SHARE);
-        poolRouter_execute_clamped(poolId.raw());
+        hub_approveDeposits(scId.raw(), assetId.raw(), APPROVED_INVESTOR_AMOUNT, identityValuation);
+        hub_issueShares(scId.raw(), assetId.raw(), NAV_PER_SHARE);
+        hub_execute_clamped(poolId.raw());
 
         // claim deposit
-        poolRouter_claimDeposit(poolId.raw(), scId.raw(), 123);
+        hub_claimDeposit(poolId.raw(), scId.raw(), 123);
 
         return (poolId, scId);
     }
@@ -93,23 +93,23 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         (poolId, scId) = test_request_deposit();
 
         // request redemption
-        poolRouter_redeemRequest(poolId.raw(), scId.raw(), 123, SHARE_AMOUNT);
+        hub_redeemRequest(poolId.raw(), scId.raw(), 123, SHARE_AMOUNT);
 
         // executed via the PoolRouter
-        poolRouter_approveRedeems(scId.raw(), 123, uint128(10000000));
-        poolRouter_revokeShares(scId.raw(), 123, d18(10000000), identityValuation);
-        poolRouter_execute_clamped(poolId.raw());
+        hub_approveRedeems(scId.raw(), 123, uint128(10000000));
+        hub_revokeShares(scId.raw(), 123, d18(10000000), identityValuation);
+        hub_execute_clamped(poolId.raw());
 
         // claim redemption
-        poolRouter_claimRedeem(poolId.raw(), scId.raw(), 123);
+        hub_claimRedeem(poolId.raw(), scId.raw(), 123);
     }
 
     function test_shortcut_create_pool_and_update_holding() public {
         (PoolId poolId, ShareClassId scId) = shortcut_create_pool_and_holding(18, 123, SC_SALT, true, 0x01);
     
         assetId = newAssetId(123);
-        poolRouter_updateHolding(scId.raw(), assetId.raw());
-        poolRouter_execute_clamped(poolId.raw()); 
+        hub_updateHolding(scId.raw(), assetId.raw());
+        hub_execute_clamped(poolId.raw()); 
     }
 
     function test_shortcut_deposit_and_claim() public {
@@ -125,8 +125,8 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     function test_notify_share_class() public {
         (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
 
-        poolRouter_notifyShareClass(CHAIN_CV, scId.raw(), SC_HOOK);
-        poolRouter_execute_clamped(poolId.raw());
+        hub_notifyShareClass(CHAIN_CV, scId.raw(), SC_HOOK);
+        hub_execute_clamped(poolId.raw());
     }
 
     function test_shortcut_deposit_claim_and_cancel() public {
@@ -148,9 +148,9 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     function test_cancel_redeem_request() public {
         (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
 
-        poolRouter_redeemRequest(poolId.raw(), scId.raw(), 123, SHARE_AMOUNT);
+        hub_redeemRequest(poolId.raw(), scId.raw(), 123, SHARE_AMOUNT);
 
-        poolRouter_cancelRedeemRequest(poolId.raw(), scId.raw(), 123);
+        hub_cancelRedeemRequest(poolId.raw(), scId.raw(), 123);
     }
 
     function test_shortcut_update_holding() public {
@@ -187,8 +187,8 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     /// Reproducers 
     
-    // forge test --match-test test_poolRouter_depositRequest_0 -vvv 
-    // function test_poolRouter_depositRequest_0() public {
+    // forge test --match-test test_hub_depositRequest_0 -vvv 
+    // function test_hub_depositRequest_0() public {
 
     //     (PoolId poolId, ShareClassId scId) = shortcut_create_pool_and_update_holding(6,1,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,d18(1));
 
@@ -198,12 +198,12 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     //         unsafePoolId := 4294967297
     //     }
         
-    //     poolRouter_depositRequest(newPoolId(CENTIFUGE_CHAIN_ID, unsafePoolId), scId, 0,0);
+    //     hub_depositRequest(newPoolId(CENTIFUGE_CHAIN_ID, unsafePoolId), scId, 0,0);
 
     //     // looks like this reverts because 4294967297 overflows the uint32 type 
     //     // shouldn't this make the handler revert though, this wouldn't even be callable with an overflowing input
-    //     // poolRouter_depositRequest(4294967297,hex"4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c",0,0);
-    //     // poolRouter.depositRequest(newPoolId(4294967297), scId, Helpers.addressToBytes32(_getActor()), newAssetId(123), 0);
+    //     // hub_depositRequest(4294967297,hex"4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c",0,0);
+    //     // hub.depositRequest(newPoolId(4294967297), scId, Helpers.addressToBytes32(_getActor()), newAssetId(123), 0);
     // }
 
     // forge test --match-test test_property_debited_transient_reset_6 -vvv 
@@ -231,13 +231,13 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     //     shortcut_deposit_redeem_and_claim(6,1,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,1,1,1,d18(1));
 
-    //     poolRouter_addShareClass(hex"4e554c",hex"4e554c",hex"4e554d",hex"");
+    //     hub_addShareClass(hex"4e554c",hex"4e554c",hex"4e554d",hex"");
 
     //     uint32 unsafePoolId;
     //     assembly {
     //         unsafePoolId := 4294967297
     //     }
-    //     poolRouter_execute_clamped(newPoolId(CENTIFUGE_CHAIN_ID, unsafePoolId));
+    //     hub_execute_clamped(newPoolId(CENTIFUGE_CHAIN_ID, unsafePoolId));
 
     //     property_total_pending_redeem_geq_sum_pending_user_redeem();
 
@@ -278,7 +278,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     //     );
 
     //     // Create pool
-    //     poolRouter_createPool(
+    //     hub_createPool(
     //         address(0x00000000000000000000000000000000DeaDBeef),
     //         1023699,
     //         IShareClassManager(address(0x00000000000000000000000000000000DeaDBeef))
@@ -326,7 +326,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     //     );
 
     //     // Add share class
-    //     poolRouter_addShareClass(
+    //     hub_addShareClass(
     //         hex"4e554c",
     //         hex"4e554c",
     //         hex"4e554c",
@@ -361,7 +361,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     //     shortcut_request_deposit_and_cancel(7,5690176,hex"4e554c",hex"4e554c",hex"4e554e",hex"",false,2284391,7,46022909005592245925175521490221428955,d18(1));
 
     //     console2.log("here 2");
-    //     poolRouter_createPool(0x00000000000000000000000000000000DeaDBeef,1045068,IShareClassManager(address(0x00000000000000000000000000000000DeaDBeef)));
+    //     hub_createPool(0x00000000000000000000000000000000DeaDBeef,1045068,IShareClassManager(address(0x00000000000000000000000000000000DeaDBeef)));
 
     //     console2.log("here 3");
     //     shortcut_request_deposit_and_cancel(
@@ -395,7 +395,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     //     );
 
     //     console2.log("here 5");
-    //     poolRouter_addShareClass(hex"4e554c",hex"4e554c",hex"4e554c",hex"");
+    //     hub_addShareClass(hex"4e554c",hex"4e554c",hex"4e554c",hex"");
 
     //     console2.log("here 6");
     //     shortcut_add_share_class_and_holding(

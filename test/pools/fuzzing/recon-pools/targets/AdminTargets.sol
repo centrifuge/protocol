@@ -35,93 +35,93 @@ abstract contract AdminTargets is
     /// @dev These explicitly clamp the investor to always be one of the actors
     /// @dev Queuing calls is done by the admin even though there is no asAdmin modifier applied because there are no external calls so using asAdmin creates errors  
 
-    function poolRouter_addCredit(uint32 accountAsInt, uint128 amount) public {
+    function hub_addCredit(uint32 accountAsInt, uint128 amount) public {
         AccountId account = AccountId.wrap(accountAsInt);
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.addCredit.selector, account, amount));
+        queuedCalls.push(abi.encodeWithSelector(hub.addCredit.selector, account, amount));
     }
 
-    function poolRouter_addDebit(uint32 accountAsInt, uint128 amount) public {
+    function hub_addDebit(uint32 accountAsInt, uint128 amount) public {
         AccountId account = AccountId.wrap(accountAsInt);
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.addDebit.selector, account, amount));
+        queuedCalls.push(abi.encodeWithSelector(hub.addDebit.selector, account, amount));
     }
 
-    function poolRouter_addShareClass(bytes32 salt) public {
+    function hub_addShareClass(bytes32 salt) public {
         string memory name = "Test ShareClass";
         string memory symbol = "TSC";
         bytes memory data = "not-used";
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.addShareClass.selector, name, symbol, salt, data));
+        queuedCalls.push(abi.encodeWithSelector(hub.addShareClass.selector, name, symbol, salt, data));
     }
 
-    function poolRouter_allowPoolAdmin(address account, bool allow) public {
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.allowPoolAdmin.selector, account, allow));
+    function hub_allowPoolAdmin(address account, bool allow) public {
+        queuedCalls.push(abi.encodeWithSelector(hub.allowPoolAdmin.selector, account, allow));
     }
 
-    function poolRouter_approveDeposits(bytes16 scIdAsBytes, uint128 paymentAssetIdAsUint, uint128 maxApproval, IERC7726 valuation) public {
+    function hub_approveDeposits(bytes16 scIdAsBytes, uint128 paymentAssetIdAsUint, uint128 maxApproval, IERC7726 valuation) public {
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId paymentAssetId = AssetId.wrap(paymentAssetIdAsUint);
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.approveDeposits.selector, scId, paymentAssetId, maxApproval, valuation));
+        queuedCalls.push(abi.encodeWithSelector(hub.approveDeposits.selector, scId, paymentAssetId, maxApproval, valuation));
     }
 
-    function poolRouter_approveRedeems(bytes16 scIdAsBytes, uint32 isoCode, uint128 maxApproval) public {
+    function hub_approveRedeems(bytes16 scIdAsBytes, uint32 isoCode, uint128 maxApproval) public {
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId payoutAssetId = newAssetId(isoCode);
         
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.approveRedeems.selector, scId, payoutAssetId, maxApproval));
+        queuedCalls.push(abi.encodeWithSelector(hub.approveRedeems.selector, scId, payoutAssetId, maxApproval));
     }
 
-    function poolRouter_createAccount(uint32 accountAsInt, bool isDebitNormal) public {
+    function hub_createAccount(uint32 accountAsInt, bool isDebitNormal) public {
         AccountId account = AccountId.wrap(accountAsInt);
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.createAccount.selector, account, isDebitNormal));
+        queuedCalls.push(abi.encodeWithSelector(hub.createAccount.selector, account, isDebitNormal));
     }
 
-    function poolRouter_createHolding(bytes16 scIdAsBytes, uint128 assetIdAsUint, IERC7726 valuation, bool isLiability, uint24 prefix) public {
+    function hub_createHolding(bytes16 scIdAsBytes, uint128 assetIdAsUint, IERC7726 valuation, bool isLiability, uint24 prefix) public {
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.createHolding.selector, scId, assetId, valuation, isLiability, prefix));
+        queuedCalls.push(abi.encodeWithSelector(hub.createHolding.selector, scId, assetId, valuation, isLiability, prefix));
     }
 
-    function poolRouter_issueShares(bytes16 scIdAsBytes, uint128 depositAssetIdAsUint, D18 navPerShare) public {
+    function hub_issueShares(bytes16 scIdAsBytes, uint128 depositAssetIdAsUint, D18 navPerShare) public {
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId depositAssetId = AssetId.wrap(depositAssetIdAsUint);
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.issueShares.selector, scId, depositAssetId, navPerShare));
+        queuedCalls.push(abi.encodeWithSelector(hub.issueShares.selector, scId, depositAssetId, navPerShare));
     }
 
-    function poolRouter_notifyPool(uint32 chainId) public {
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.notifyPool.selector, chainId));
+    function hub_notifyPool(uint32 chainId) public {
+        queuedCalls.push(abi.encodeWithSelector(hub.notifyPool.selector, chainId));
     }
 
-    function poolRouter_notifyShareClass(uint32 chainId, bytes16 scIdAsBytes, bytes32 hook) public {
+    function hub_notifyShareClass(uint32 chainId, bytes16 scIdAsBytes, bytes32 hook) public {
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.notifyShareClass.selector, chainId, scId, hook));
+        queuedCalls.push(abi.encodeWithSelector(hub.notifyShareClass.selector, chainId, scId, hook));
     }
 
-    function poolRouter_revokeShares(bytes16 scIdAsBytes, uint32 isoCode, D18 navPerShare, IERC7726 valuation) public {
+    function hub_revokeShares(bytes16 scIdAsBytes, uint32 isoCode, D18 navPerShare, IERC7726 valuation) public {
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId payoutAssetId = newAssetId(isoCode);
 
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.revokeShares.selector, scId, payoutAssetId, navPerShare, valuation));
+        queuedCalls.push(abi.encodeWithSelector(hub.revokeShares.selector, scId, payoutAssetId, navPerShare, valuation));
     }
 
-    function poolRouter_setAccountMetadata(uint32 accountAsInt, bytes memory metadata) public {
+    function hub_setAccountMetadata(uint32 accountAsInt, bytes memory metadata) public {
         AccountId account = AccountId.wrap(accountAsInt);
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.setAccountMetadata.selector, account, metadata));
+        queuedCalls.push(abi.encodeWithSelector(hub.setAccountMetadata.selector, account, metadata));
     }
 
-    function poolRouter_setHoldingAccountId(bytes16 scIdAsBytes, uint128 assetIdAsUint, uint32 accountIdAsInt) public {
+    function hub_setHoldingAccountId(bytes16 scIdAsBytes, uint128 assetIdAsUint, uint32 accountIdAsInt) public {
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
         AccountId accountId = AccountId.wrap(accountIdAsInt);
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.setHoldingAccountId.selector, scId, assetId, accountId));
+        queuedCalls.push(abi.encodeWithSelector(hub.setHoldingAccountId.selector, scId, assetId, accountId));
     }
 
-    function poolRouter_setPoolMetadata(bytes memory metadata) public {
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.setPoolMetadata.selector, metadata));
+    function hub_setPoolMetadata(bytes memory metadata) public {
+        queuedCalls.push(abi.encodeWithSelector(hub.setPoolMetadata.selector, metadata));
     }
 
-    function poolRouter_updateHolding(bytes16 scIdAsBytes, uint128 assetIdAsUint) public {
+    function hub_updateHolding(bytes16 scIdAsBytes, uint128 assetIdAsUint) public {
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.updateHolding.selector, scId, assetId));
+        queuedCalls.push(abi.encodeWithSelector(hub.updateHolding.selector, scId, assetId));
 
         // state space enrichment to help get coverage over this function
         if(poolCreated && deposited) { 
@@ -129,15 +129,15 @@ abstract contract AdminTargets is
         }
     }
 
-    function poolRouter_updateHoldingValuation(bytes16 scIdAsBytes, uint128 assetIdAsUint, IERC7726 valuation) public {
+    function hub_updateHoldingValuation(bytes16 scIdAsBytes, uint128 assetIdAsUint, IERC7726 valuation) public {
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.updateHoldingValuation.selector, scId, assetId, valuation));
+        queuedCalls.push(abi.encodeWithSelector(hub.updateHoldingValuation.selector, scId, assetId, valuation));
     }
 
-    function poolRouter_updateRestriction(uint16 chainId, bytes16 scIdAsBytes, bytes calldata payload) public {
+    function hub_updateRestriction(uint16 chainId, bytes16 scIdAsBytes, bytes calldata payload) public {
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        queuedCalls.push(abi.encodeWithSelector(poolRouter.updateRestriction.selector, chainId, scId, payload));
+        queuedCalls.push(abi.encodeWithSelector(hub.updateRestriction.selector, chainId, scId, payload));
     }
 
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
@@ -147,26 +147,26 @@ abstract contract AdminTargets is
     /// @notice These don't prank asAdmin because there are external calls first, 
     /// @notice admin is the tester contract (address(this)) so we leave out an explicit prank directly before the call to the target function
 
-    function poolRouter_registerAsset(uint32 isoCode) public updateGhosts {
+    function hub_registerAsset(uint32 isoCode) public updateGhosts {
         AssetId assetId_ = newAssetId(isoCode); 
 
         string memory name = MockERC20(_getAsset()).name();
         string memory symbol = MockERC20(_getAsset()).symbol();
         uint8 decimals = MockERC20(_getAsset()).decimals();
 
-        poolRouter.registerAsset(assetId_, name, symbol, decimals);
+        hub.registerAsset(assetId_, name, symbol, decimals);
     }  
 
     /// @dev Property: after successfully calling requestDeposit for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     /// @dev Property: _updateDepositRequest should never revert due to underflow
     /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
-    function poolRouter_depositRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint32 isoCode, uint128 amount) public updateGhosts {
+    function hub_depositRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint32 isoCode, uint128 amount) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId depositAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
-        try poolRouter.depositRequest(poolId, scId, investor, depositAssetId, amount) {
+        try hub.depositRequest(poolId, scId, investor, depositAssetId, amount) {
             deposited = true;
 
             (, uint32 lastUpdate) = multiShareClass.depositRequest(scId, depositAssetId, investor);
@@ -192,13 +192,13 @@ abstract contract AdminTargets is
 
     /// @dev Property: After successfully calling redeemRequest for an investor, their redeemRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     /// @dev Property: _updateRedeemRequest should never revert due to underflow
-    function poolRouter_redeemRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint32 isoCode, uint128 amount) public updateGhosts {
+    function hub_redeemRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint32 isoCode, uint128 amount) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId payoutAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
-        try poolRouter.redeemRequest(poolId, scId, investor, payoutAssetId, amount) {
+        try hub.redeemRequest(poolId, scId, investor, payoutAssetId, amount) {
             (, uint32 lastUpdate) = multiShareClass.redeemRequest(scId, payoutAssetId, investor);
             uint32 epochId = multiShareClass.epochId(poolId);
 
@@ -215,13 +215,13 @@ abstract contract AdminTargets is
     /// @dev Property: cancelDepositRequest absolute value should never be higher than pendingDeposit (would result in underflow revert)
     /// @dev Property: _updateDepositRequest should never revert due to underflow
     /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
-    function poolRouter_cancelDepositRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint32 isoCode) public updateGhosts {
+    function hub_cancelDepositRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint32 isoCode) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId depositAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
-        try poolRouter.cancelDepositRequest(poolId, scId, investor, depositAssetId) {
+        try hub.cancelDepositRequest(poolId, scId, investor, depositAssetId) {
             (uint128 pending, uint32 lastUpdate) = multiShareClass.depositRequest(scId, depositAssetId, investor);
             uint32 epochId = multiShareClass.epochId(poolId);
 
@@ -246,13 +246,13 @@ abstract contract AdminTargets is
     /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].pending is zero
     /// @dev Property: cancelRedeemRequest absolute value should never be higher than pendingRedeem (would result in underflow revert)
-    function poolRouter_cancelRedeemRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint32 isoCode) public updateGhosts {
+    function hub_cancelRedeemRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint32 isoCode) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId payoutAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
-        try poolRouter.cancelRedeemRequest(poolId, scId, investor, payoutAssetId) {
+        try hub.cancelRedeemRequest(poolId, scId, investor, payoutAssetId) {
             (uint128 pending, uint32 lastUpdate) = multiShareClass.redeemRequest(scId, payoutAssetId, investor);
             uint32 epochId = multiShareClass.epochId(poolId);
 
@@ -274,48 +274,48 @@ abstract contract AdminTargets is
         }
     }
 
-    function poolRouter_updateHoldingAmount(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 amount, D18 pricePerUnit, bool isIncrease, JournalEntry[] memory debits, JournalEntry[] memory credits) public updateGhosts {
+    function hub_updateHoldingAmount(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 amount, D18 pricePerUnit, bool isIncrease, JournalEntry[] memory debits, JournalEntry[] memory credits) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
-        poolRouter.updateHoldingAmount(poolId, scId, assetId, amount, pricePerUnit, isIncrease, debits, credits);
+        hub.updateHoldingAmount(poolId, scId, assetId, amount, pricePerUnit, isIncrease, debits, credits);
     }
 
-    function poolRouter_updateHoldingValue(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, D18 pricePerUnit) public updateGhosts {
+    function hub_updateHoldingValue(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, D18 pricePerUnit) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
-        poolRouter.updateHoldingValue(poolId, scId, assetId, pricePerUnit);
+        hub.updateHoldingValue(poolId, scId, assetId, pricePerUnit);
     }
 
-    function poolRouter_updateJournal(uint64 poolIdAsUint, JournalEntry[] memory debits, JournalEntry[] memory credits) public updateGhosts {
+    function hub_updateJournal(uint64 poolIdAsUint, JournalEntry[] memory debits, JournalEntry[] memory credits) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
-        poolRouter.updateJournal(poolId, debits, credits);
+        hub.updateJournal(poolId, debits, credits);
     }
 
-    function poolRouter_increaseShareIssuance(uint64 poolIdAsUint, bytes16 scIdAsBytes, D18 pricePerShare, uint128 amount) public updateGhosts {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        poolRouter.increaseShareIssuance(poolId, scId, pricePerShare, amount);
-    }
-
-    function poolRouter_decreaseShareIssuance(uint64 poolIdAsUint, bytes16 scIdAsBytes, D18 pricePerShare, uint128 amount) public updateGhosts {
+    function hub_increaseShareIssuance(uint64 poolIdAsUint, bytes16 scIdAsBytes, D18 pricePerShare, uint128 amount) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        poolRouter.decreaseShareIssuance(poolId, scId, pricePerShare, amount);
+        hub.increaseShareIssuance(poolId, scId, pricePerShare, amount);
+    }
+
+    function hub_decreaseShareIssuance(uint64 poolIdAsUint, bytes16 scIdAsBytes, D18 pricePerShare, uint128 amount) public updateGhosts {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
+        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
+        hub.decreaseShareIssuance(poolId, scId, pricePerShare, amount);
     }
 
     // === PoolRouter === //
 
-    function poolRouter_execute(uint64 poolIdAsUint, bytes[] memory data) public payable updateGhostsWithType(OpType.BATCH) asAdmin {
+    function hub_execute(uint64 poolIdAsUint, bytes[] memory data) public payable updateGhostsWithType(OpType.BATCH) asAdmin {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
-        poolRouter.execute{value: msg.value}(poolId, data);
+        hub.execute{value: msg.value}(poolId, data);
     }
 
     /// @dev Makes a call directly to the unclamped handler so doesn't include asAdmin modifier or else would cause errors with foundry testing
-    function poolRouter_execute_clamped(uint64 poolIdAsUint) public payable {
+    function hub_execute_clamped(uint64 poolIdAsUint) public payable {
         // TODO: clamp poolId here to one of the created pools
-        this.poolRouter_execute{value: msg.value}(poolIdAsUint, queuedCalls);
+        this.hub_execute{value: msg.value}(poolIdAsUint, queuedCalls);
 
         queuedCalls = new bytes[](0);
     }
