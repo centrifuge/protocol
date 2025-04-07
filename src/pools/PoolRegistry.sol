@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
 
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -14,12 +15,23 @@ contract PoolRegistry is Auth, IPoolRegistry {
 
     uint48 public latestId;
 
+    mapping(AssetId => uint8) internal _decimals;
+
     mapping(PoolId => bytes) public metadata;
     mapping(PoolId => AssetId) public currency;
     mapping(PoolId => mapping(address => bool)) public isAdmin;
     mapping(PoolId => mapping(bytes32 => address)) public dependency;
 
     constructor(address deployer) Auth(deployer) {}
+
+    /// @inheritdoc IPoolRegistry
+    function registerAsset(AssetId assetId, uint8 decimals_) external auth {
+        require(_decimals[assetId] == 0, AssetAlreadyRegistered());
+
+        _decimals[assetId] = decimals_;
+
+        emit NewAsset(assetId, decimals_);
+    }
 
     /// @inheritdoc IPoolRegistry
     function registerPool(address admin_, uint16 centrifugeChainId, AssetId currency_)
@@ -29,6 +41,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
     {
         require(admin_ != address(0), EmptyAdmin());
         require(!currency_.isNull(), EmptyCurrency());
+        require(currency[poolId].isNull(), PoolAlreadyRegistered());
 
         poolId = newPoolId(centrifugeChainId, ++latestId);
 
@@ -76,7 +89,24 @@ contract PoolRegistry is Auth, IPoolRegistry {
         emit UpdateCurrency(poolId, currency_);
     }
 
+    function decimals(PoolId poolId) public view returns (uint8 decimals_) {
+        decimals_ = _decimals[currency[poolId]];
+        require(decimals_ > 0, AssetNotFound());
+    }
+
+    /// @inheritdoc IERC6909Decimals
+    function decimals(uint256 asset_) external view returns (uint8 decimals_) {
+        decimals_ = _decimals[AssetId.wrap(asset_.toUint128())];
+        require(decimals_ > 0, AssetNotFound());
+    }
+
+    /// @inheritdoc IPoolRegistry
     function exists(PoolId poolId) public view returns (bool) {
         return !currency[poolId].isNull();
+    }
+
+    /// @inheritdoc IPoolRegistry
+    function isRegistered(AssetId assetId) public view returns (bool) {
+        return _decimals[assetId] != 0;
     }
 }

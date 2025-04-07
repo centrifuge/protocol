@@ -73,7 +73,6 @@ contract BaseTest is PoolsDeployer, Test {
         vm.label(address(transientValuation), "TransientValuation");
         vm.label(address(identityValuation), "IdentityValuation");
         vm.label(address(poolRegistry), "PoolRegistry");
-        vm.label(address(assetRegistry), "AssetRegistry");
         vm.label(address(accounting), "Accounting");
         vm.label(address(holdings), "Holdings");
         vm.label(address(multiShareClass), "MultiShareClass");

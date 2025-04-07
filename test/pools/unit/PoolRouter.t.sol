@@ -17,7 +17,6 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
 import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
 import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
-import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 import {IPoolRouter} from "src/pools/interfaces/IPoolRouter.sol";
 import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
@@ -34,13 +33,12 @@ contract TestCommon is Test {
     IPoolRegistry immutable poolRegistry = IPoolRegistry(makeAddr("PoolRegistry"));
     IHoldings immutable holdings = IHoldings(makeAddr("Holdings"));
     IAccounting immutable accounting = IAccounting(makeAddr("Accounting"));
-    IAssetRegistry immutable assetRegistry = IAssetRegistry(makeAddr("AssetRegistry"));
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
     IGateway immutable gateway = IGateway(makeAddr("Gateway"));
     ITransientValuation immutable transientValuation = ITransientValuation(makeAddr("TransientValuation"));
 
     PoolRouter poolRouter =
-        new PoolRouter(poolRegistry, assetRegistry, accounting, holdings, gateway, transientValuation, address(this));
+        new PoolRouter(poolRegistry, accounting, holdings, gateway, transientValuation, address(this));
 
     function setUp() public {
         vm.mockCall(
@@ -62,7 +60,7 @@ contract TestMainMethodsChecks is TestCommon {
         vm.startPrank(makeAddr("noPoolAdmin"));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.registerAsset(AssetId.wrap(0), "", "", 0);
+        poolRouter.registerAsset(AssetId.wrap(0), 0);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         poolRouter.depositRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0), 0);
@@ -175,16 +173,14 @@ contract TestNotifyShareClass is TestCommon {
 contract TestCreateHolding is TestCommon {
     function testErrAssetNotFound() public {
         vm.mockCall(
-            address(assetRegistry),
-            abi.encodeWithSelector(assetRegistry.isRegistered.selector, ASSET_A),
-            abi.encode(false)
+            address(poolRegistry), abi.encodeWithSelector(poolRegistry.exists.selector, ASSET_A), abi.encode(false)
         );
 
         bytes[] memory cs = new bytes[](1);
         cs[0] = abi.encodeWithSelector(poolRouter.createHolding.selector, SC_A, ASSET_A, IERC7726(address(1)), false, 0);
 
         vm.prank(ADMIN);
-        vm.expectRevert(IAssetRegistry.AssetNotFound.selector);
+        vm.expectRevert(IPoolRegistry.AssetNotFound.selector);
         poolRouter.execute(POOL_A, cs);
     }
 }

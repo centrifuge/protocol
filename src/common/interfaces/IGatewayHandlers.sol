@@ -34,8 +34,7 @@ interface IGatewayHandler {
 /// @notice Interface for CP methods called by messages
 interface IPoolRouterGatewayHandler {
     /// @notice Tells that an asset was already registered in CV, in order to perform the corresponding register.
-    /// @dev The same asset can be re-registered using this. Decimals can not change.
-    function registerAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals) external;
+    function registerAsset(AssetId assetId, uint8 decimals) external;
 
     /// @notice Perform a deposit that was requested from CV.
     function depositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId, uint128 amount)

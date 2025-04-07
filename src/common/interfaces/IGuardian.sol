@@ -35,9 +35,6 @@ interface IGuardian {
         external
         returns (PoolId poolId);
 
-    /// @notice Updates metadata for a chain
-    function setChain(uint16 chainId, string calldata name, string calldata symbol) external;
-
     /// @notice Pause the protocol
     /// @dev callable by both safe and owners
     function pause() external;

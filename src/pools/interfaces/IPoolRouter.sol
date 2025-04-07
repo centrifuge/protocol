@@ -12,16 +12,6 @@ import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
-/// @notice AssetRegistry accounts identifications used by the PoolRouter
-enum EscrowId {
-    /// @notice Represents the escrow for undeployed capital in the share class.
-    /// Contains the already invested but not yet approved funds.
-    PendingShareClass,
-    /// @notice Represents the escrow for deployed capital in the share class.
-    /// Contains the already invested and approved funds.
-    ShareClass
-}
-
 /// @notice Account types used by PoolRouter
 enum AccountType {
     /// @notice Debit normal account for tracking assets
@@ -189,10 +179,6 @@ interface IPoolRouter {
 
     /// @notice Add credit an account. Decrease the value of debit-normal accounts, increase for credit-normal ones.
     function addCredit(AccountId account, uint128 amount) external payable;
-
-    /// @notice Compute the escrow address used for a share class
-    /// @return The escrow address
-    function escrow(PoolId poolId, ShareClassId scId, EscrowId escrow_) external pure returns (address);
 
     /// @notice Return the share class manager for a pool
     function shareClassManager(PoolId poolId) external view returns (IShareClassManager);

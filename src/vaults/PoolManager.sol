@@ -163,7 +163,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
             emit RegisterAsset(assetId, asset, tokenId, name, symbol, decimals);
         }
 
-        sender.sendRegisterAsset(destChainId, assetId, name, symbol, decimals);
+        sender.sendRegisterAsset(destChainId, assetId, decimals);
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler

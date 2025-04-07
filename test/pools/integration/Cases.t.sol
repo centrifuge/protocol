@@ -10,12 +10,7 @@ contract TestCases is BaseTest {
 
     /// forge-config: default.isolate = true
     function testPoolCreation() public returns (PoolId poolId, ShareClassId scId) {
-        cv.registerAsset(USDC_C2, "USD Coin", "USDC", 6);
-
-        (string memory name, string memory symbol, uint8 decimals) = assetRegistry.asset(USDC_C2);
-        assertEq(name, "USD Coin");
-        assertEq(symbol, "USDC");
-        assertEq(decimals, 6);
+        cv.registerAsset(USDC_C2, 6);
 
         vm.prank(ADMIN);
         poolId = guardian.createPool(FM, USD, multiShareClass);
@@ -158,8 +153,8 @@ contract TestCases is BaseTest {
 
     function testCalUpdateHolding() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation();
-        uint128 poolDecimals = (10 ** assetRegistry.decimals(USD.raw())).toUint128();
-        uint128 assetDecimals = (10 ** assetRegistry.decimals(USDC_C2.raw())).toUint128();
+        uint128 poolDecimals = (10 ** poolRegistry.decimals(USD.raw())).toUint128();
+        uint128 assetDecimals = (10 ** poolRegistry.decimals(USDC_C2.raw())).toUint128();
 
         JournalEntry[] memory debits = new JournalEntry[](0);
         (JournalEntry[] memory credits, uint256 i) = (new JournalEntry[](1), 0);

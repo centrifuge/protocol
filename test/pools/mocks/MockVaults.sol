@@ -35,15 +35,9 @@ contract MockVaults is Test, Auth, IAdapter {
         sourceChainId = chainId;
     }
 
-    function registerAsset(AssetId assetId, string memory name, string memory symbol, uint8 decimals) public {
+    function registerAsset(AssetId assetId, uint8 decimals) public {
         handler.handle(
-            sourceChainId,
-            MessageLib.RegisterAsset({
-                assetId: assetId.raw(),
-                name: name,
-                symbol: symbol.toBytes32(),
-                decimals: decimals
-            }).serialize()
+            sourceChainId, MessageLib.RegisterAsset({assetId: assetId.raw(), decimals: decimals}).serialize()
         );
     }
 

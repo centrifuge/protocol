@@ -116,6 +116,12 @@ interface IERC6909TotalSupplyExt {
     function totalSupply(uint256 tokenId) external returns (uint256 supply);
 }
 
+interface IERC6909Decimals {
+    /// @notice             Used to retrieve the decimals of an asset
+    /// @dev                address is used but the value corresponds to a AssetId
+    function decimals(uint256 assetId) external view returns (uint8);
+}
+
 interface IERC6909MetadataExt {
     /// @notice             Used to retrieve the decimals of an asset
     /// @dev                address is used but the value corresponds to a AssetId

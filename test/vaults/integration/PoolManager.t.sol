@@ -837,12 +837,8 @@ contract PoolManagerRegisterAssetTest is BaseTest {
 
     function testRegisterSingleAssetERC20() public {
         address asset = address(erc20);
-        bytes memory message = MessageLib.RegisterAsset({
-            assetId: defaultAssetId,
-            name: erc20.name(),
-            symbol: erc20.symbol().toBytes32(),
-            decimals: erc20.decimals()
-        }).serialize();
+        bytes memory message =
+            MessageLib.RegisterAsset({assetId: defaultAssetId, decimals: erc20.decimals()}).serialize();
 
         vm.expectEmit();
         emit IPoolManager.RegisterAsset(defaultAssetId, asset, 0, erc20.name(), erc20.symbol(), erc20.decimals());
@@ -881,12 +877,8 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         MockERC6909 erc6909 = new MockERC6909();
         address asset = address(erc6909);
 
-        bytes memory message = MessageLib.RegisterAsset({
-            assetId: defaultAssetId,
-            name: erc6909.name(tokenId),
-            symbol: erc6909.symbol(tokenId).toBytes32(),
-            decimals: erc6909.decimals(tokenId)
-        }).serialize();
+        bytes memory message =
+            MessageLib.RegisterAsset({assetId: defaultAssetId, decimals: erc6909.decimals(tokenId)}).serialize();
 
         vm.expectEmit();
         emit IPoolManager.RegisterAsset(

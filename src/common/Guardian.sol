@@ -11,7 +11,6 @@ import {IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
 import {IPoolRouter} from "src/pools/interfaces/IPoolRouter.sol";
-import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 
 contract Guardian is IGuardian {
     IRoot public immutable root;
@@ -19,7 +18,6 @@ contract Guardian is IGuardian {
     ISafe public safe;
     IPoolRouter public poolRouter;
     IRootMessageSender public sender;
-    IAssetRegistry public assetRegistry;
 
     constructor(ISafe safe_, IRoot root_, IRootMessageSender messageDispatcher_) {
         root = root_;
@@ -42,7 +40,6 @@ contract Guardian is IGuardian {
         if (what == "safe") safe = ISafe(data);
         else if (what == "sender") sender = IRootMessageSender(data);
         else if (what == "poolRouter") poolRouter = IPoolRouter(data);
-        else if (what == "assetRegistry") assetRegistry = IAssetRegistry(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -56,11 +53,6 @@ contract Guardian is IGuardian {
         returns (PoolId poolId)
     {
         return poolRouter.createPool(admin, currency, shareClassManager);
-    }
-
-    /// @inheritdoc IGuardian
-    function setChain(uint16 chainId, string calldata name, string calldata symbol) external onlySafe {
-        assetRegistry.setChain(chainId, name, symbol);
     }
 
     /// @inheritdoc IGuardian

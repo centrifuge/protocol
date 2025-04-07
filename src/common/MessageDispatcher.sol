@@ -493,21 +493,11 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendRegisterAsset(
-        uint16 chainId,
-        uint128 assetId,
-        string memory name,
-        string memory symbol,
-        uint8 decimals
-    ) external auth {
+    function sendRegisterAsset(uint16 chainId, uint128 assetId, uint8 decimals) external auth {
         if (chainId == localCentrifugeId) {
-            poolRouter.registerAsset(AssetId.wrap(assetId), name, symbol, decimals);
+            poolRouter.registerAsset(AssetId.wrap(assetId), decimals);
         } else {
-            gateway.send(
-                chainId,
-                MessageLib.RegisterAsset({assetId: assetId, name: name, symbol: symbol.toBytes32(), decimals: decimals})
-                    .serialize()
-            );
+            gateway.send(chainId, MessageLib.RegisterAsset({assetId: assetId, decimals: decimals}).serialize());
         }
     }
 }
