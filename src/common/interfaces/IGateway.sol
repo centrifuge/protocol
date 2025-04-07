@@ -16,6 +16,16 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
 
     error NoBatched();
 
+    enum PaymentMethod {
+        Subsidized,
+        TopUp
+    }
+
+    struct BatchLocator {
+        uint16 chainId;
+        PoolId poolId;
+    }
+
     /// @dev Each adapter struct is packed with the quorum to reduce SLOADs on handle
     struct Adapter {
         /// @notice Starts at 1 and maps to id - 1 as the index on the adapters array
@@ -66,10 +76,10 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     function file(bytes32 what, address data) external;
 
     /// @notice Initialize batching message
-    function startBatch() external;
+    function startBatching() external;
 
     /// @notice Finalize batching messages and send the resulting batch message
-    function endBatch() external;
+    function endBatching() external;
 
     /// @notice Execute message recovery. After the challenge period, the recovery can be executed.
     ///         If a malign adapter initiates message recovery,

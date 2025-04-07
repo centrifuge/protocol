@@ -6,6 +6,8 @@ import "src/misc/interfaces/IERC20.sol";
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
+
 import "test/vaults/BaseTest.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 import "src/vaults/interfaces/IERC7540.sol";
@@ -14,9 +16,10 @@ import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
 import {MockReentrantERC20Wrapper1, MockReentrantERC20Wrapper2} from "test/vaults/mocks/MockReentrantERC20Wrapper.sol";
 
 contract VaultRouterTest is BaseTest {
+    using MessageLib for *;
+
     uint256 constant GAS_BUFFER = 10 gwei;
-    /// @dev Payload is not taken into account during gas estimation
-    bytes constant PAYLOAD_FOR_GAS_ESTIMATION = "irrelevant_value";
+    bytes PAYLOAD_FOR_GAS_ESTIMATION = MessageLib.NotifyPool(1).serialize();
 
     /// forge-config: default.isolate = true
     function testCFGRouterDeposit() public {
@@ -38,9 +41,6 @@ contract VaultRouterTest is BaseTest {
         vm.label(vault_, "vault");
 
         erc20.mint(self, amount);
-
-        vm.expectRevert(bytes("Gateway/cannot-topup-with-nothing"));
-        vaultRouter.requestDeposit(vault_, amount, self, self);
 
         vm.expectRevert(bytes("AsyncVault/invalid-owner"));
         vaultRouter.requestDeposit{value: 1 wei}(vault_, amount, self, self);
@@ -81,7 +81,7 @@ contract VaultRouterTest is BaseTest {
                 adapter.estimate(
                     OTHER_CHAIN_ID,
                     PAYLOAD_FOR_GAS_ESTIMATION,
-                    mockedGasService.estimate(OTHER_CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION)
+                    mockedGasService.gasLimit(OTHER_CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION)
                 ),
                 "payload gas mismatch"
             );
@@ -670,9 +670,6 @@ contract VaultRouterTest is BaseTest {
 
         uint256 gasLimit = estimateGas();
         uint256 lessGas = gasLimit - 1;
-
-        vm.expectRevert("Gateway/cannot-topup-with-nothing");
-        vaultRouter.requestDeposit(vault_, amount, self, self);
 
         vm.expectRevert("Gateway/not-enough-gas-funds");
         vaultRouter.requestDeposit{value: lessGas}(vault_, amount, self, self);

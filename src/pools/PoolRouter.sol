@@ -86,14 +86,14 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     function multicall(bytes[] calldata data) public payable override {
         bool wasBatching = gateway.isBatching();
         if (!wasBatching) {
-            gateway.startBatch();
+            gateway.startBatching();
+            gateway.topUp{value: msg.value}();
         }
 
         super.multicall(data);
 
         if (!wasBatching) {
-            gateway.topUp{value: msg.value}();
-            gateway.endBatch();
+            gateway.endBatching();
         }
     }
 

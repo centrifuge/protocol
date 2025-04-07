@@ -36,7 +36,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
     using CastLib for *;
 
     IRoot public immutable root;
-    IGasService public immutable gasService;
 
     IGatewayHandler public gateway;
     IPoolRouterGatewayHandler public poolRouter;
@@ -44,9 +43,8 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IInvestmentManagerGatewayHandler public investmentManager;
     IBalanceSheetManagerGatewayHandler public balanceSheetManager;
 
-    constructor(IRoot root_, IGasService gasService_, address deployer) Auth(deployer) {
+    constructor(IRoot root_, address deployer) Auth(deployer) {
         root = root_;
-        gasService = gasService_;
     }
 
     /// @inheritdoc IMessageProcessor
