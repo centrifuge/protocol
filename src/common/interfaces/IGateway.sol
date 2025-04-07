@@ -11,18 +11,20 @@ uint8 constant MAX_ADAPTER_COUNT = 8;
 
 /// @notice Interface for dispatch-only gateway
 interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
-    /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
-    error FileUnrecognizedWhat();
-
-    error NoBatched();
-
+    /// @notice Defines the current payment method
     enum PaymentMethod {
+        /// @notice The payment is done by subdized pools
         Subsidized,
-        TopUp
+        /// @notice The payment is done in the same transaction
+        Transaction
     }
 
+    /// @notice Identifies a Batch
     struct BatchLocator {
+        /// @notice chain associated to the batch
         uint16 chainId;
+        /// @notice pools associated to the batch.
+        /// NOTE: poolId == 0 represent a batch of messages pool-unrelated
         PoolId poolId;
     }
 
@@ -61,6 +63,49 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     event File(bytes32 indexed what, address addr);
     event ReceiveNativeTokens(PoolId indexed poolId, address indexed sender, uint256 amount);
 
+    /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
+    error FileUnrecognizedParam();
+
+    /// @notice Dispatched when the batch is ended without starting it.
+    error NoBatched();
+
+    /// @notice Dispatched when the gateway is paused.
+    error Paused();
+
+    /// @notice Dispatched when the gateway is configured with a number of adapter exceeding the maximum.
+    error ExceedsMax();
+
+    /// @notice Dispatched when the gateway is configured with an empty adapter set.
+    error EmptyAdapterSet();
+
+    /// @notice Dispatched when the gateway is configured with duplicate adapters.
+    error NoDuplicatedAllowed();
+
+    /// @notice Dispatched when the gateway tries to handle a message from an adaptet not contained in the adapter set.
+    error InvalidAdapter();
+
+    /// @notice Dispatched when the gateway tries to recover a recovery message, which is not allowed.
+    error RecoveryMessageRecovered();
+
+    /// @notice Dispatched when the gateway tries to handle a proof from a non proof adapter.
+    error NonProofAdapter();
+
+    /// @notice Dispatched when the gateway tries to handle a message from a non message adapter.
+    error NonMessageAdapter();
+
+    /// @notice Dispatched when a recovery message is executed without being initiated.
+    error MessageRecoveryNotInitiated();
+
+    /// @notice Dispatched when a recovery message is executed without waiting the challenge period.
+    error MessageRecoveryPeriodNotEnded();
+
+    /// @notice Dispatched when a the gateway tries to send an empty message.
+    error EmptyMessage();
+
+    /// @notice Dispatched when a the gateway has not enough fuel to send a message.
+    /// Only dispatched in PayTransaction method
+    error NotEnoughTransactionGas();
+
     // --- Administration ---
     /// @notice Used to update an array of addresses ( state variable ) on very rare occasions.
     /// @dev    Currently it is used to update the supported adapters.
@@ -74,6 +119,12 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @param  what The name of the variable to be updated.
     /// @param  data New address.
     function file(bytes32 what, address data) external;
+
+    /// @notice Prepays for the TX cost for sending the messages through the adapters
+    ///         Currently being called from Vault Router only.
+    ///         In order to prepay, the method MUST be called with `msg.value`.
+    ///         Called is assumed to have called IGateway.estimate before calling this.
+    function payTransaction() external payable;
 
     /// @notice Initialize batching message
     function startBatching() external;
@@ -91,14 +142,6 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @param  adapter Adapter's address that the recovery is targeting
     /// @param  message Hash of the message to be recovered
     function executeMessageRecovery(uint16 chainId, IAdapter adapter, bytes calldata message) external;
-
-    /// @notice Prepays for the TX cost for sending through the adapters
-    ///         and Centrifuge Chain
-    /// @dev    It can be called only through endorsed contracts.
-    ///         Currently being called from Vault Router only.
-    ///         In order to prepay, the method MUST be called with `msg.value`.
-    ///         Called is assumed to have called IGateway.estimate before calling this.
-    function topUp() external payable;
 
     // --- Helpers ---
     /// @notice A view method of the current quorum.abi

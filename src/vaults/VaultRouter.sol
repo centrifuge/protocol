@@ -54,7 +54,7 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
         bool wasBatching = gateway.isBatching();
         if (!wasBatching) {
             gateway.startBatching();
-            gateway.topUp{value: msg.value}();
+            gateway.payTransaction{value: msg.value}();
         }
 
         super.multicall(data);
@@ -333,7 +333,7 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
     /// @notice Send native tokens to the gateway for transaction payment if it's not in a multicall.
     function _pay() internal {
         if (!gateway.isBatching()) {
-            gateway.topUp{value: msg.value}();
+            gateway.payTransaction{value: msg.value}();
         }
     }
 

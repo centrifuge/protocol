@@ -87,7 +87,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         bool wasBatching = gateway.isBatching();
         if (!wasBatching) {
             gateway.startBatching();
-            gateway.topUp{value: msg.value}();
+            gateway.payTransaction{value: msg.value}();
         }
 
         super.multicall(data);
@@ -284,7 +284,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
 
         IShareClassManager scm = shareClassManager(unlockedPoolId);
         require(scm.exists(unlockedPoolId, scId), IShareClassManager.ShareClassNotFound());
-        
+
         sender.sendUpdateRestriction(chainId, unlockedPoolId, scId, payload);
     }
 
@@ -573,7 +573,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     /// @notice Send native tokens to the gateway for transaction payment if it's not in a multicall.
     function _pay() internal {
         if (!gateway.isBatching()) {
-            gateway.topUp{value: msg.value}();
+            gateway.payTransaction{value: msg.value}();
         }
     }
 

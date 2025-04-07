@@ -5,7 +5,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {IGuardian} from "src/common/Guardian.sol";
+import {IGuardian, IGateway} from "src/common/Guardian.sol";
 
 import "test/vaults/BaseTest.sol";
 
@@ -293,7 +293,7 @@ contract AdminTest is BaseTest {
                 .serialize()
         );
 
-        vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
+        vm.expectRevert(IGateway.MessageRecoveryPeriodNotEnded.selector);
         gateway.executeMessageRecovery(OTHER_CHAIN_ID, adapter3, proof);
 
         vm.prank(makeAddr("unauthorized"));
@@ -305,7 +305,7 @@ contract AdminTest is BaseTest {
         guardian.disputeMessageRecovery(THIS_CHAIN_ID, OTHER_CHAIN_ID, adapter3, keccak256(proof));
 
         // Check that recovery is not possible anymore
-        vm.expectRevert(bytes("Gateway/message-recovery-not-initiated"));
+        vm.expectRevert(IGateway.MessageRecoveryNotInitiated.selector);
         gateway.executeMessageRecovery(OTHER_CHAIN_ID, adapter3, proof);
     }
 
