@@ -10,13 +10,13 @@ import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
 import {IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
-import {IPoolRouter} from "src/pools/interfaces/IPoolRouter.sol";
+import {IHub} from "src/pools/interfaces/IHub.sol";
 
 contract Guardian is IGuardian {
     IRoot public immutable root;
 
     ISafe public safe;
-    IPoolRouter public poolRouter;
+    IHub public hub;
     IRootMessageSender public sender;
 
     constructor(ISafe safe_, IRoot root_, IRootMessageSender messageDispatcher_) {
@@ -39,7 +39,7 @@ contract Guardian is IGuardian {
     function file(bytes32 what, address data) external onlySafe {
         if (what == "safe") safe = ISafe(data);
         else if (what == "sender") sender = IRootMessageSender(data);
-        else if (what == "poolRouter") poolRouter = IPoolRouter(data);
+        else if (what == "hub") hub = IHub(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -52,7 +52,7 @@ contract Guardian is IGuardian {
         onlySafe
         returns (PoolId poolId)
     {
-        return poolRouter.createPool(admin, currency, shareClassManager);
+        return hub.createPool(admin, currency, shareClassManager);
     }
 
     /// @inheritdoc IGuardian

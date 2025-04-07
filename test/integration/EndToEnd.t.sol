@@ -7,7 +7,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
 
-import {PoolRouter} from "src/pools/PoolRouter.sol";
+import {Hub} from "src/pools/Hub.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
@@ -85,10 +85,10 @@ contract TestEndToEnd is Test {
         vm.startPrank(FM);
 
         (bytes[] memory c, uint256 i) = (new bytes[](1), 0);
-        c[i++] = abi.encodeWithSelector(PoolRouter.notifyPool.selector, cvChainId);
+        c[i++] = abi.encodeWithSelector(Hub.notifyPool.selector, cvChainId);
         assertEq(i, c.length);
 
-        cp.poolRouter().execute{value: GAS}(poolId, c);
+        cp.hub().execute{value: GAS}(poolId, c);
 
         assert(cv.poolManager().pools(poolId.raw()) != 0);
     }

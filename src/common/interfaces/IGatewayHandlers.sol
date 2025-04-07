@@ -32,7 +32,7 @@ interface IGatewayHandler {
 /// -----------------------------------------------------
 
 /// @notice Interface for CP methods called by messages
-interface IPoolRouterGatewayHandler {
+interface IHubGatewayHandler {
     /// @notice Tells that an asset was already registered in CV, in order to perform the corresponding register.
     function registerAsset(AssetId assetId, uint8 decimals) external;
 
