@@ -44,7 +44,7 @@ function inner(D18 d1) pure returns (uint128) {
 ///      Example: if d = 2.0 (2e18 internally), reciprocal(d) = 0.5 (5e17 internally).
 function reciprocal(D18 d) pure returns (D18) {
     uint128 val = D18.unwrap(d);
-    require(val != 0, "reciprocal of zero");
+    require(val != 0, "D18/division-by-zero");
     return d18(1e18, val);
 }
 

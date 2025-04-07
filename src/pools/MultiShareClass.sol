@@ -556,7 +556,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
 
     /// @inheritdoc IShareClassManager
     function update(PoolId, bytes calldata) external pure {
-        // @dev No-op, but don't wanna fail in case composing share class calls this
+        // No-op on purpose to allow higher level contract calls to this
     }
 
     /// @notice Revokes shares for a single epoch, updates epoch ratio and emits event.
