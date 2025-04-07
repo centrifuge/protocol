@@ -27,7 +27,7 @@ import {
 
 uint64 constant POOL_ID = 42;
 uint32 constant SC_ID_INDEX = 1;
-ShareClassId constant SC_ID = ShareClassId.wrap(bytes16(uint128((POOL_ID) << 64) + SC_ID_INDEX));
+ShareClassId constant SC_ID = ShareClassId.wrap(bytes16((uint128(POOL_ID) << 64) + SC_ID_INDEX));
 address constant POOL_CURRENCY = address(840);
 AssetId constant USDC = AssetId.wrap(69);
 AssetId constant OTHER_STABLE = AssetId.wrap(1337);
@@ -262,7 +262,7 @@ contract MultiShareClassSimpleTest is MultiShareClassBaseTest {
 
     function testPreviewNextShareClassId() public view notThisContract(poolRegistryAddress) {
         ShareClassId preview = shareClass.previewNextShareClassId(poolId);
-        ShareClassId calc = ShareClassId.wrap(bytes16(uint128(POOL_ID << 64) + SC_ID_INDEX + 1));
+        ShareClassId calc = ShareClassId.wrap(bytes16((uint128(POOL_ID) << 64) + SC_ID_INDEX + 1));
 
         assertEq(ShareClassId.unwrap(preview), ShareClassId.unwrap(calc));
     }
@@ -297,7 +297,7 @@ contract MultiShareClassSimpleTest is MultiShareClassBaseTest {
     }
 
     function testPreviewShareClassId(uint32 index) public view {
-        assertEq(shareClass.previewShareClassId(poolId, index).raw(), bytes16(uint128(poolId.raw() << 64) + index));
+        assertEq(shareClass.previewShareClassId(poolId, index).raw(), bytes16((uint128(poolId.raw()) << 64) + index));
     }
 
     function testIncreaseShareClassIssuance(uint128 navPerShare_, uint128 amount) public {
@@ -1275,7 +1275,7 @@ contract MultiShareClassRoundingEdgeCasesRedeem is MultiShareClassBaseTest {
 contract MultiShareClassRevertsTest is MultiShareClassBaseTest {
     using MathLib for uint128;
 
-    ShareClassId wrongShareClassId = ShareClassId.wrap(bytes16(uint128(POOL_ID + 42)));
+    ShareClassId wrongShareClassId = ShareClassId.wrap(bytes16((uint128(POOL_ID) << 64) + 42));
     address unauthorized = makeAddr("unauthorizedAddress");
 
     function testFile(bytes32 what) public {
