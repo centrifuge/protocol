@@ -128,8 +128,13 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
 
         IShareClassManager scm = shareClassManager(poolId);
 
-        (uint128 shares, uint128 tokens) = scm.claimDeposit(poolId, scId, investor, assetId);
+        (uint128 shares, uint128 tokens, uint128 cancelledAssetAmount) = scm.claimDeposit(poolId, scId, investor, assetId);
         sender.sendFulfilledDepositRequest(poolId, scId, assetId, investor, tokens, shares);
+
+        // If cancellation was queued, notify about delayed cancellation
+        if (cancelledAssetAmount > 0) {
+            sender.sendFulfilledCancelDepositRequest(poolId, scId, assetId, investor, cancelledAssetAmount);
+        }
     }
 
     /// @inheritdoc IHub
@@ -139,9 +144,14 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
 
         IShareClassManager scm = shareClassManager(poolId);
 
-        (uint128 tokens, uint128 shares) = scm.claimRedeem(poolId, scId, investor, assetId);
+        (uint128 tokens, uint128 shares, uint128 cancelledShareAmount) = scm.claimRedeem(poolId, scId, investor, assetId);
 
         sender.sendFulfilledRedeemRequest(poolId, scId, assetId, investor, tokens, shares);
+
+        // If cancellation was queued, notify about delayed cancellation
+        if (cancelledShareAmount > 0) {
+            sender.sendFulfilledCancelRedeemRequest(poolId, scId, assetId, investor, cancelledShareAmount);
+        }
     }
 
     //----------------------------------------------------------------------------------------------
@@ -446,9 +456,12 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
         auth
     {
         IShareClassManager scm = shareClassManager(poolId);
-        (uint128 cancelledAssetAmount) = scm.cancelDepositRequest(poolId, scId, investor, depositAssetId);
+        uint128 cancelledAssetAmount = scm.cancelDepositRequest(poolId, scId, investor, depositAssetId);
 
-        sender.sendFulfilledCancelDepositRequest(poolId, scId, depositAssetId, investor, cancelledAssetAmount);
+        // Cancellation might have been queued such that it will be executed in the future during claiming
+        if (cancelledAssetAmount > 0) {
+            sender.sendFulfilledCancelDepositRequest(poolId, scId, depositAssetId, investor, cancelledAssetAmount);
+        }
     }
 
     /// @inheritdoc IHubGatewayHandler
@@ -459,7 +472,10 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
         IShareClassManager scm = shareClassManager(poolId);
         uint128 cancelledShareAmount = scm.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
 
-        sender.sendFulfilledCancelRedeemRequest(poolId, scId, payoutAssetId, investor, cancelledShareAmount);
+        // Cancellation might have been queued such that it will be executed in the future during claiming
+        if (cancelledShareAmount > 0) {
+            sender.sendFulfilledCancelRedeemRequest(poolId, scId, payoutAssetId, investor, cancelledShareAmount);
+        }
     }
 
     /// @inheritdoc IHubGatewayHandler

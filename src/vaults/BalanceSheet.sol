@@ -15,24 +15,18 @@ import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 import {IVaultMessageSender} from "../common/interfaces/IGatewaySenders.sol";
-import {IBalanceSheetManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
+import {IBalanceSheetGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
-import {IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
+import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {IPerPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
-contract BalanceSheetManager is
-    Auth,
-    IRecoverable,
-    IBalanceSheetManager,
-    IBalanceSheetManagerGatewayHandler,
-    IUpdateContract
-{
+contract BalanceSheet is Auth, IRecoverable, IBalanceSheet, IBalanceSheetGatewayHandler, IUpdateContract {
     using MathLib for *;
 
     IPerPoolEscrow public immutable escrow;
@@ -58,7 +52,7 @@ contract BalanceSheetManager is
         if (what == "gateway") gateway = IGateway(data);
         else if (what == "poolManager") poolManager = IPoolManager(data);
         else if (what == "sender") sender = IVaultMessageSender(data);
-        else revert("BalanceSheetManager/file-unrecognized-param");
+        else revert("BalanceSheet/file-unrecognized-param");
         emit File(what, data);
     }
 
@@ -85,7 +79,7 @@ contract BalanceSheetManager is
     }
 
     /// --- External ---
-    /// @inheritdoc IBalanceSheetManager
+    /// @inheritdoc IBalanceSheet
     function deposit(
         PoolId poolId,
         ShareClassId scId,
@@ -109,7 +103,7 @@ contract BalanceSheetManager is
         );
     }
 
-    /// @inheritdoc IBalanceSheetManager
+    /// @inheritdoc IBalanceSheet
     function withdraw(
         PoolId poolId,
         ShareClassId scId,
@@ -135,7 +129,7 @@ contract BalanceSheetManager is
         );
     }
 
-    /// @inheritdoc IBalanceSheetManager
+    /// @inheritdoc IBalanceSheet
     function updateValue(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, D18 pricePerUnit)
         external
         auth
@@ -145,7 +139,7 @@ contract BalanceSheetManager is
         emit UpdateValue(poolId, scId, asset, tokenId, pricePerUnit, uint64(block.timestamp));
     }
 
-    /// @inheritdoc IBalanceSheetManager
+    /// @inheritdoc IBalanceSheet
     function revoke(PoolId poolId, ShareClassId scId, address from, D18 pricePerShare, uint128 shares)
         external
         authOrPermission(poolId, scId)
@@ -153,7 +147,7 @@ contract BalanceSheetManager is
         _revoke(poolId, scId, from, pricePerShare, shares);
     }
 
-    /// @inheritdoc IBalanceSheetManager
+    /// @inheritdoc IBalanceSheet
     function issue(PoolId poolId, ShareClassId scId, address to, D18 pricePerShare, uint128 shares, bool asAllowance)
         external
         authOrPermission(poolId, scId)
@@ -161,15 +155,15 @@ contract BalanceSheetManager is
         _issue(poolId, scId, to, pricePerShare, shares, asAllowance);
     }
 
-    /// @inheritdoc IBalanceSheetManager
+    /// @inheritdoc IBalanceSheet
     function journalEntry(PoolId poolId, ShareClassId scId, Meta calldata m) external authOrPermission(poolId, scId) {
         // We do not need to ensure the meta here. Could be part of a batch and does not have to be balanced
         sender.sendJournalEntry(poolId, m.debits, m.credits);
         emit UpdateEntry(poolId, scId, m.debits, m.credits);
     }
 
-    /// --- IBalanceSheetManagerHandler ---
-    /// @inheritdoc IBalanceSheetManagerGatewayHandler
+    /// --- IBalanceSheetHandler ---
+    /// @inheritdoc IBalanceSheetGatewayHandler
     function triggerDeposit(
         PoolId poolId,
         ShareClassId scId,
@@ -184,7 +178,7 @@ contract BalanceSheetManager is
         _deposit(poolId, scId, assetId, asset, tokenId, provider, amount, pricePerUnit, m);
     }
 
-    /// @inheritdoc IBalanceSheetManagerGatewayHandler
+    /// @inheritdoc IBalanceSheetGatewayHandler
     function triggerWithdraw(
         PoolId poolId,
         ShareClassId scId,
@@ -199,7 +193,7 @@ contract BalanceSheetManager is
         _withdraw(poolId, scId, assetId, asset, tokenId, receiver, amount, pricePerUnit, asAllowance, m);
     }
 
-    /// @inheritdoc IBalanceSheetManagerGatewayHandler
+    /// @inheritdoc IBalanceSheetGatewayHandler
     function triggerIssueShares(
         PoolId poolId,
         ShareClassId scId,
@@ -211,7 +205,7 @@ contract BalanceSheetManager is
         _issue(poolId, scId, to, pricePerShare, shares, asAllowance);
     }
 
-    /// @inheritdoc IBalanceSheetManagerGatewayHandler
+    /// @inheritdoc IBalanceSheetGatewayHandler
     function triggerRevokeShares(PoolId poolId, ShareClassId scId, address from, D18 pricePerShare, uint128 shares)
         external
         auth

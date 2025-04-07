@@ -16,7 +16,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
-import {IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
+import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
@@ -95,12 +95,12 @@ contract SyncDepositTest is BaseTest {
         vm.expectEmit(false, false, false, false);
         emit IGateway.SendMessage(bytes(""));
         vm.expectEmit();
-        emit IBalanceSheetManager.Issue(poolId, scId, self, pricePerShare, shares);
+        emit IBalanceSheet.Issue(poolId, scId, self, pricePerShare, shares);
 
         vm.expectEmit(false, false, false, false);
         emit IGateway.SendMessage(bytes(""));
         vm.expectEmit();
-        emit IBalanceSheetManager.Deposit(
+        emit IBalanceSheet.Deposit(
             poolId,
             scId,
             vault.asset(),
@@ -116,7 +116,7 @@ contract SyncDepositTest is BaseTest {
         vm.expectEmit(false, false, false, false);
         emit IGateway.SendMessage(bytes(""));
         vm.expectEmit();
-        emit IBalanceSheetManager.UpdateValue(
+        emit IBalanceSheet.UpdateValue(
             poolId, scId, vault.asset(), vaultDetails.tokenId, pricePerUnit, uint64(timestamp)
         );
     }
