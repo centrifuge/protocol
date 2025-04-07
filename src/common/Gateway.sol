@@ -295,9 +295,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
                 }
             }
 
-            currentAdapter.send{value: consumed}(
-                chainId, payload, gasLimit, address(this)
-            );
+            currentAdapter.send{value: consumed}(chainId, payload, gasLimit, address(this));
         }
 
         emit SendMessage(message);
