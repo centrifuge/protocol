@@ -14,7 +14,7 @@ To run the tests locally, you can use the following commands:
 
 #### Core Contracts
 ```bash
-echidna . --contract CryticCoreTester --config echidna.yaml
+echidna . --contract CryticVaultTester --config echidna.yaml --format text --workers 16 --test-limit 100000000
 ```
 
 #### Aggregator

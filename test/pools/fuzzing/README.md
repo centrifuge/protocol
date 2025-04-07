@@ -2,6 +2,13 @@
 
 This repository contains the invariant suite for the Centrifuge Pools.
 
+## Testing 
+
+To run the suite use the following command: 
+```bash
+echidna . --contract CryticPoolTester --config echidna.yaml --format text --workers 16 --test-limit 100000000
+```
+
 ## Setup
 
 ### Target Functions
