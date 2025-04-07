@@ -275,41 +275,29 @@ contract Gateway is Auth, IGateway, IRecoverable {
         uint64 messageGasLimit = (isBatching) ? batchGasLimit[chainId][poolId] : gasService.gasLimit(chainId, message);
         uint64 proofGasLimit = gasService.gasLimit(chainId, proof);
 
-        if (paymentMethod == PaymentMethod.TopUp) {
-            for (uint256 i; i < adapters_.length; i++) {
-                IAdapter currentAdapter = IAdapter(adapters_[i]);
-                bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
-                bytes memory payload = isPrimaryAdapter ? message : proof;
+        for (uint256 i; i < adapters_.length; i++) {
+            IAdapter currentAdapter = IAdapter(adapters_[i]);
+            bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
+            bytes memory payload = isPrimaryAdapter ? message : proof;
+            uint64 gasLimit = isPrimaryAdapter ? messageGasLimit : proofGasLimit;
 
-                uint256 consumed =
-                    currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit);
+            uint256 consumed = currentAdapter.estimate(chainId, payload, gasLimit);
 
+            if (paymentMethod == PaymentMethod.TopUp) {
                 require(consumed <= fuel, "Gateway/not-enough-gas-funds");
                 fuel -= consumed;
-
-                currentAdapter.send{value: consumed}(
-                    chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this)
-                );
-            }
-        } else {
-            for (uint256 i; i < adapters_.length; i++) {
-                IAdapter currentAdapter = IAdapter(adapters_[i]);
-                bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
-                bytes memory payload = isPrimaryAdapter ? message : proof;
-
-                uint256 consumed =
-                    currentAdapter.estimate(chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit);
-
-                bool canPay = consumed <= subsidy[poolId];
-
-                if (canPay) {
+            } else {
+                if (consumed <= subsidy[poolId]) {
                     subsidy[poolId] -= consumed;
                 }
-
-                currentAdapter.send{value: canPay ? consumed : 0}(
-                    chainId, payload, isPrimaryAdapter ? messageGasLimit : proofGasLimit, address(this)
-                );
+                else {
+                    consumed = 0;
+                }
             }
+
+            currentAdapter.send{value: consumed}(
+                chainId, payload, gasLimit, address(this)
+            );
         }
 
         emit SendMessage(message);
