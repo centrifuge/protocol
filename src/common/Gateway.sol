@@ -35,7 +35,6 @@ contract Gateway is Auth, ReentrancyProtection, IGateway, IRecoverable {
 
     uint256 public transient fuel;
 
-    /// @notice Tells is the gateway is actually configured to create batches
     PaymentMethod public transient paymentMethod;
 
     /// @notice Tells is the gateway is actually configured to create batches
