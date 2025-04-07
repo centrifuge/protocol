@@ -81,13 +81,13 @@ interface IHub {
     function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external payable;
 
     /// @notice Notify to a CV instance that a new pool is available
-    /// @param chainId Chain where CV instance lives
-    function notifyPool(uint16 chainId) external payable;
+    /// @param centrifugeId Chain where CV instance lives
+    function notifyPool(uint16 centrifugeId) external payable;
 
     /// @notice Notify to a CV instance that a new share class is available
-    /// @param chainId Chain where CV instance lives
+    /// @param centrifugeId Chain where CV instance lives
     /// @param hook The hook address of the share class
-    function notifyShareClass(uint16 chainId, ShareClassId scId, bytes32 hook) external payable;
+    function notifyShareClass(uint16 centrifugeId, ShareClassId scId, bytes32 hook) external payable;
 
     /// @notice Attach custom data to a pool
     function setPoolMetadata(bytes calldata metadata) external payable;
@@ -132,15 +132,15 @@ interface IHub {
         payable;
 
     /// @notice Update remotely a restriction.
-    /// @param chainId Chain where CV instance lives.
+    /// @param centrifugeId Chain where CV instance lives.
     /// @param payload content of the restriction update to execute.
-    function updateRestriction(uint16 chainId, ShareClassId scId, bytes calldata payload) external payable;
+    function updateRestriction(uint16 centrifugeId, ShareClassId scId, bytes calldata payload) external payable;
 
     /// @notice Update remotely an existing vault.
-    /// @param chainId Chain where CV instance lives.
+    /// @param centrifugeId Chain where CV instance lives.
     /// @param target contract where to execute in CV. Check IUpdateContract interface.
     /// @param payload content of the update to execute.
-    function updateContract(uint16 chainId, ShareClassId scId, bytes32 target, bytes calldata payload)
+    function updateContract(uint16 centrifugeId, ShareClassId scId, bytes32 target, bytes calldata payload)
         external
         payable;
 

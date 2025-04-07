@@ -113,7 +113,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
 
     // Step 2
     function poolManager_registerAsset(address assetAddress, uint256 erc6909TokenId) public returns (uint128 assetId) {
-        assetId = poolManager.registerAsset(assetAddress, erc6909TokenId, DEFAULT_DESTINATION_CHAIN);
+        assetId = poolManager.registerAsset(DEFAULT_DESTINATION_CHAIN, assetAddress, erc6909TokenId);
 
         // Only if successful
         assetAddressToAssetId[assetAddress] = assetId;

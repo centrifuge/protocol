@@ -45,7 +45,7 @@ contract LocalhostDeployer is FullDeployer {
         token.file("name", "USD Coin");
         token.file("symbol", "USDC");
         token.mint(msg.sender, 10_000_000e6);
-        vaultRouter.registerAsset{value: 0.001 ether}(address(token), 0, centrifugeId);
+        vaultRouter.registerAsset{value: 0.001 ether}(centrifugeId, address(token), 0);
 
         // Deploy vault
         D18 navPerShare = d18(1, 1);

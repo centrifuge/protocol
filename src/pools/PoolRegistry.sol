@@ -22,7 +22,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
     constructor(address deployer) Auth(deployer) {}
 
     /// @inheritdoc IPoolRegistry
-    function registerPool(address admin_, uint16 centrifugeChainId, AssetId currency_)
+    function registerPool(address admin_, uint16 centrifugeId, AssetId currency_)
         external
         auth
         returns (PoolId poolId)
@@ -30,7 +30,7 @@ contract PoolRegistry is Auth, IPoolRegistry {
         require(admin_ != address(0), EmptyAdmin());
         require(!currency_.isNull(), EmptyCurrency());
 
-        poolId = newPoolId(centrifugeChainId, ++latestId);
+        poolId = newPoolId(centrifugeId, ++latestId);
 
         isAdmin[poolId][admin_] = true;
         currency[poolId] = currency_;

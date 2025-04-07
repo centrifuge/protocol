@@ -342,10 +342,10 @@ contract VaultRouterTest is BaseTest {
         uint256 fuel = estimateGas();
 
         vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
-        vaultRouter.transferShares{value: fuel - 1}(vault_, OTHER_CHAIN_ID, destinationAddress, uint128(amount));
+        vaultRouter.transferShares{value: fuel - 1}(OTHER_CHAIN_ID, vault_, destinationAddress, uint128(amount));
 
         snapStart("VaultRouter_transferShares");
-        vaultRouter.transferShares{value: fuel}(vault_, OTHER_CHAIN_ID, destinationAddress, uint128(amount));
+        vaultRouter.transferShares{value: fuel}(OTHER_CHAIN_ID, vault_, destinationAddress, uint128(amount));
         snapEnd();
         assertEq(share.balanceOf(address(vaultRouter)), 0);
         assertEq(share.balanceOf(address(this)), 0);
@@ -373,10 +373,10 @@ contract VaultRouterTest is BaseTest {
 
         vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
         vaultRouter.transferShares{value: fuel - 1}(
-            vault_, OTHER_CHAIN_ID, destinationAddressAsBytes32, uint128(amount)
+            OTHER_CHAIN_ID, vault_, destinationAddressAsBytes32, uint128(amount)
         );
 
-        vaultRouter.transferShares{value: fuel}(vault_, OTHER_CHAIN_ID, destinationAddressAsBytes32, uint128(amount));
+        vaultRouter.transferShares{value: fuel}(OTHER_CHAIN_ID, vault_, destinationAddressAsBytes32, uint128(amount));
         assertEq(share.balanceOf(address(vaultRouter)), 0);
         assertEq(share.balanceOf(address(this)), 0);
     }
@@ -386,11 +386,11 @@ contract VaultRouterTest is BaseTest {
         uint256 fuel = estimateGas();
 
         vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
-        vaultRouter.registerAsset{value: fuel - 1}(asset, 0, OTHER_CHAIN_ID);
+        vaultRouter.registerAsset{value: fuel - 1}(OTHER_CHAIN_ID, asset, 0);
 
         vm.expectEmit();
         emit IPoolManager.RegisterAsset(defaultAssetId, asset, 0, erc20.name(), erc20.symbol(), erc20.decimals());
-        vaultRouter.registerAsset{value: fuel}(asset, 0, OTHER_CHAIN_ID);
+        vaultRouter.registerAsset{value: fuel}(OTHER_CHAIN_ID, asset, 0);
     }
 
     function testRegisterAssetERC6909() public {
@@ -400,13 +400,13 @@ contract VaultRouterTest is BaseTest {
         uint256 fuel = estimateGas();
 
         vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
-        vaultRouter.registerAsset{value: fuel - 1}(asset, tokenId, OTHER_CHAIN_ID);
+        vaultRouter.registerAsset{value: fuel - 1}(OTHER_CHAIN_ID, asset, tokenId);
 
         vm.expectEmit();
         emit IPoolManager.RegisterAsset(
             defaultAssetId, asset, tokenId, erc6909.name(tokenId), erc6909.symbol(tokenId), erc6909.decimals(tokenId)
         );
-        vaultRouter.registerAsset{value: fuel}(asset, tokenId, OTHER_CHAIN_ID);
+        vaultRouter.registerAsset{value: fuel}(OTHER_CHAIN_ID, asset, tokenId);
     }
 
     function testEnableAndDisable() public {
