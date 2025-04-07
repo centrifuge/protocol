@@ -89,10 +89,19 @@ contract TestMainMethodsChecks is TestCommon {
 
     function testErrPoolLocked() public {
         vm.expectRevert(IHub.PoolLocked.selector);
+        hub.setTransientPrice(AssetId.wrap(0), D18.wrap(0));
+
+        vm.expectRevert(IHub.PoolLocked.selector);
         hub.notifyPool(0);
 
         vm.expectRevert(IHub.PoolLocked.selector);
         hub.notifyShareClass(0, ShareClassId.wrap(0), bytes32(""));
+
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.notifySharePrice(0, ShareClassId.wrap(0));
+
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.notifyAssetPrice(ShareClassId.wrap(0), AssetId.wrap(0));
 
         vm.expectRevert(IHub.PoolLocked.selector);
         hub.setPoolMetadata(bytes(""));
@@ -123,6 +132,9 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IHub.PoolLocked.selector);
         hub.updateVault(ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), bytes32(0), VaultUpdateKind(0));
+
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.updatePricePoolPerShare(ShareClassId.wrap(0), D18.wrap(0), bytes(""));
 
         vm.expectRevert(IHub.PoolLocked.selector);
         hub.createHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), false, 0);

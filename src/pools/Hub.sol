@@ -197,6 +197,7 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
     /// @inheritdoc IHub
     function notifySharePrice(uint16 chainId, ShareClassId scId) public payable {
         _protectedAndUnlocked();
+
         IShareClassManager scm = shareClassManager(unlockedPoolId);
         (, D18 poolPerShare) = scm.shareClassPrice(unlockedPoolId, scId);
 
@@ -206,6 +207,7 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
     /// @inheritdoc IHub
     function notifyAssetPrice(ShareClassId scId, AssetId assetId) public payable {
         _protectedAndUnlocked();
+
         AssetId poolCurrency = poolRegistry.currency(unlockedPoolId);
         // NOTE: We assume symmetric prices are provided by holdings valuation
         IERC7726 valuation = holdings.valuation(unlockedPoolId, scId, assetId);
@@ -369,6 +371,7 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
     /// @inheritdoc IHub
     function updatePricePoolPerShare(ShareClassId scId, D18 navPerShare, bytes calldata data) public payable {
         _protectedAndUnlocked();
+        
         IShareClassManager scm = shareClassManager(unlockedPoolId);
         scm.updateShareClass(unlockedPoolId, scId, navPerShare, data);
     }
