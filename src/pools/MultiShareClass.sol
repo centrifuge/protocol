@@ -175,13 +175,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
         _pendingDeposit -= approvedAssetAmount;
 
         emit ApproveDeposits(
-            poolId,
-            scId_,
-            approvalEpochId,
-            paymentAssetId,
-            approvedPoolAmount,
-            approvedAssetAmount,
-            _pendingDeposit
+            poolId, scId_, approvalEpochId, paymentAssetId, approvedPoolAmount, approvedAssetAmount, _pendingDeposit
         );
     }
 
@@ -215,14 +209,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
 
         epochPointers[scId_][payoutAssetId].latestRedeemApproval = approvalEpochId;
 
-        emit ApproveRedeems(
-            poolId,
-            scId_,
-            approvalEpochId,
-            payoutAssetId,
-            approvedShareAmount,
-            pendingShareAmount
-        );
+        emit ApproveRedeems(poolId, scId_, approvalEpochId, payoutAssetId, approvedShareAmount, pendingShareAmount);
     }
 
     /// @inheritdoc IShareClassManager
@@ -382,8 +369,8 @@ contract MultiShareClass is Auth, IMultiShareClass {
             //  1. The sum of pending user orders <= pendingDeposits (instead of equality)
             //  2. The sum of claimable user amounts <= amount of minted share class tokens corresponding to the
             // approved deposit asset amount (instead of equality).
-            //     I.e., it is possible for an epoch to have an excess of a share class tokens atom which cannot be
-            // claimed by anyone. This excess is at most n-1 atoms for an epoch with n claimable users.
+            //     I.e., it is possible for an epoch to have an excess of a share class tokens which cannot be
+            // claimed by anyone. This excess is at most n-1 share tokens for an epoch with n claimable users.
             //
             // The first implication can be switched to equality if we reduce the pending user amount independent of the
             // claimable amount.
@@ -463,8 +450,8 @@ contract MultiShareClass is Auth, IMultiShareClass {
             //  1. The sum of pending user orders <= pendingRedeems (instead of equality)
             //  2. The sum of claimable user amounts <= amount of payout asset corresponding to the approved share class
             // token amount (instead of equality).
-            //     I.e., it is possible for an epoch to have an excess of a single payout asset atom which cannot be
-            // claimed by anyone.
+            //     I.e., it is possible for an epoch to have an excess of a single payout asset unit which cannot be
+            // claimed by anyone. This excess is at most n-1 payout asset units for an epoch with n claimable users.
             //
             // The first implication can be switched to equality if we reduce the pending user amount independent of the
             // claimable amount.
@@ -588,13 +575,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
 
         uint128 nav = navPerShare.mulUint128(totalIssuance - epochAmounts_.redeemApproved);
         emit RevokeShares(
-            poolId,
-            scId_,
-            epochId_,
-            navPerShare,
-            nav,
-            epochAmounts_.redeemApproved,
-            epochAmounts_.redeemAssets
+            poolId, scId_, epochId_, navPerShare, nav, epochAmounts_.redeemApproved, epochAmounts_.redeemAssets
         );
     }
 
