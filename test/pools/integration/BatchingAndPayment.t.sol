@@ -14,9 +14,9 @@ contract TestBatchingAndPayment is BaseTest {
         vm.startPrank(FM);
 
         bytes[] memory cs = new bytes[](1);
-        cs[0] = abi.encodeWithSelector(poolRouter.setPoolMetadata.selector, "");
+        cs[0] = abi.encodeWithSelector(hub.setPoolMetadata.selector, "");
 
-        poolRouter.execute(poolId, cs);
+        hub.execute(poolId, cs);
 
         // Check no messages were sent as intended
         assertEq(cv.messageCount(), 0);
@@ -30,10 +30,10 @@ contract TestBatchingAndPayment is BaseTest {
         vm.startPrank(FM);
 
         bytes[] memory cs = new bytes[](1);
-        cs[0] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
+        cs[0] = abi.encodeWithSelector(hub.notifyPool.selector, CHAIN_CV);
 
         vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
-        poolRouter.execute(poolId, cs);
+        hub.execute(poolId, cs);
     }
 
     /// Test the following:
@@ -53,14 +53,14 @@ contract TestBatchingAndPayment is BaseTest {
         vm.startPrank(FM);
 
         bytes[] memory innerCalls = new bytes[](1);
-        innerCalls[0] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
+        innerCalls[0] = abi.encodeWithSelector(hub.notifyPool.selector, CHAIN_CV);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
-        cs[c++] = abi.encodeWithSelector(poolRouter.execute.selector, poolA, innerCalls);
-        cs[c++] = abi.encodeWithSelector(poolRouter.execute.selector, poolA, innerCalls);
+        cs[c++] = abi.encodeWithSelector(hub.execute.selector, poolA, innerCalls);
+        cs[c++] = abi.encodeWithSelector(hub.execute.selector, poolA, innerCalls);
         assertEq(c, cs.length);
 
-        poolRouter.multicall{value: GAS * 2}(cs);
+        hub.multicall{value: GAS * 2}(cs);
     }
 
     /// Test the following:
@@ -82,13 +82,13 @@ contract TestBatchingAndPayment is BaseTest {
         vm.startPrank(FM);
 
         bytes[] memory innerCalls = new bytes[](1);
-        innerCalls[0] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
+        innerCalls[0] = abi.encodeWithSelector(hub.notifyPool.selector, CHAIN_CV);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
-        cs[c++] = abi.encodeWithSelector(poolRouter.execute.selector, poolA, innerCalls);
-        cs[c++] = abi.encodeWithSelector(poolRouter.execute.selector, poolB, innerCalls);
+        cs[c++] = abi.encodeWithSelector(hub.execute.selector, poolA, innerCalls);
+        cs[c++] = abi.encodeWithSelector(hub.execute.selector, poolB, innerCalls);
         assertEq(c, cs.length);
 
-        poolRouter.multicall{value: GAS * 2}(cs);
+        hub.multicall{value: GAS * 2}(cs);
     }
 }

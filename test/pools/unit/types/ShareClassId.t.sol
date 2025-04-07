@@ -21,6 +21,27 @@ contract ShareClassIdTest is Test {
         PoolId poolId = PoolId.wrap(poolId_);
         ShareClassId scId = newShareClassId(poolId, index);
 
-        assertEq(scId.raw(), bytes16(uint128(poolId.raw()) + index));
+        assertEq(scId.raw(), bytes16((uint128(poolId.raw()) << 64) + index));
+    }
+
+    function testShareClassIdCollisionResistance(uint64 poolId1, uint64 poolId2, uint32 index1, uint32 index2)
+        public
+        pure
+    {
+        poolId1 = uint64(bound(poolId1, 2, type(uint64).max - 1));
+        index1 = uint32(bound(index1, 2, type(uint32).max - 1));
+        vm.assume(poolId2 != poolId1);
+        vm.assume(index1 != index2);
+
+        assertNotEq(
+            newShareClassId(PoolId.wrap(poolId1), index1).raw(), newShareClassId(PoolId.wrap(poolId2), index2).raw()
+        );
+
+        ShareClassId scId1 = newShareClassId(PoolId.wrap(poolId1), index1);
+        ShareClassId scId2 = newShareClassId(PoolId.wrap(poolId1 - 1), index1 + 1);
+        ShareClassId scId3 = newShareClassId(PoolId.wrap(poolId1 + 1), index1 - 1);
+        assertNotEq(scId1.raw(), scId2.raw());
+        assertNotEq(scId1.raw(), scId3.raw());
+        assertNotEq(scId2.raw(), scId3.raw());
     }
 }

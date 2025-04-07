@@ -20,8 +20,8 @@ import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 import {
     IGatewayHandler,
     IPoolManagerGatewayHandler,
-    IPoolRouterGatewayHandler,
-    IBalanceSheetManagerGatewayHandler,
+    IBalanceSheetGatewayHandler,
+    IHubGatewayHandler,
     IInvestmentManagerGatewayHandler
 } from "src/common/interfaces/IGatewayHandlers.sol";
 import {IVaultMessageSender, IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
@@ -38,10 +38,10 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IRoot public immutable root;
 
     IGatewayHandler public gateway;
-    IPoolRouterGatewayHandler public poolRouter;
+    IHubGatewayHandler public hub;
     IPoolManagerGatewayHandler public poolManager;
     IInvestmentManagerGatewayHandler public investmentManager;
-    IBalanceSheetManagerGatewayHandler public balanceSheetManager;
+    IBalanceSheetGatewayHandler public balanceSheet;
 
     constructor(IRoot root_, address deployer) Auth(deployer) {
         root = root_;
@@ -50,10 +50,10 @@ contract MessageProcessor is Auth, IMessageProcessor {
     /// @inheritdoc IMessageProcessor
     function file(bytes32 what, address data) external auth {
         if (what == "gateway") gateway = IGatewayHandler(data);
-        else if (what == "poolRouter") poolRouter = IPoolRouterGatewayHandler(data);
+        else if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "poolManager") poolManager = IPoolManagerGatewayHandler(data);
         else if (what == "investmentManager") investmentManager = IInvestmentManagerGatewayHandler(data);
-        else if (what == "balanceSheetManager") balanceSheetManager = IBalanceSheetManagerGatewayHandler(data);
+        else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -82,7 +82,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.RegisterAsset) {
             MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
-            poolRouter.registerAsset(AssetId.wrap(m.assetId), m.name, m.symbol.toString(), m.decimals);
+            hub.registerAsset(AssetId.wrap(m.assetId), m.name, m.symbol.toString(), m.decimals);
         } else if (kind == MessageType.NotifyPool) {
             poolManager.addPool(MessageLib.deserializeNotifyPool(message).poolId);
         } else if (kind == MessageType.NotifyShareClass) {
@@ -110,22 +110,22 @@ contract MessageProcessor is Auth, IMessageProcessor {
             poolManager.updateContract(m.poolId, m.scId, address(bytes20(m.target)), m.payload);
         } else if (kind == MessageType.DepositRequest) {
             MessageLib.DepositRequest memory m = message.deserializeDepositRequest();
-            poolRouter.depositRequest(
+            hub.depositRequest(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId), m.amount
             );
         } else if (kind == MessageType.RedeemRequest) {
             MessageLib.RedeemRequest memory m = message.deserializeRedeemRequest();
-            poolRouter.redeemRequest(
+            hub.redeemRequest(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId), m.amount
             );
         } else if (kind == MessageType.CancelDepositRequest) {
             MessageLib.CancelDepositRequest memory m = message.deserializeCancelDepositRequest();
-            poolRouter.cancelDepositRequest(
+            hub.cancelDepositRequest(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId)
             );
         } else if (kind == MessageType.CancelRedeemRequest) {
             MessageLib.CancelRedeemRequest memory m = message.deserializeCancelRedeemRequest();
-            poolRouter.cancelRedeemRequest(
+            hub.cancelRedeemRequest(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId)
             );
         } else if (kind == MessageType.FulfilledDepositRequest) {
@@ -156,7 +156,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
             Meta memory meta = Meta({debits: m.debits, credits: m.credits});
             if (m.isIncrease) {
-                balanceSheetManager.triggerDeposit(
+                balanceSheet.triggerDeposit(
                     PoolId.wrap(m.poolId),
                     ShareClassId.wrap(m.scId),
                     AssetId.wrap(m.assetId),
@@ -166,7 +166,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
                     meta
                 );
             } else {
-                balanceSheetManager.triggerWithdraw(
+                balanceSheet.triggerWithdraw(
                     PoolId.wrap(m.poolId),
                     ShareClassId.wrap(m.scId),
                     AssetId.wrap(m.assetId),
@@ -180,7 +180,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.TriggerUpdateShares) {
             MessageLib.TriggerUpdateShares memory m = message.deserializeTriggerUpdateShares();
             if (m.isIssuance) {
-                balanceSheetManager.triggerIssueShares(
+                balanceSheet.triggerIssueShares(
                     PoolId.wrap(m.poolId),
                     ShareClassId.wrap(m.scId),
                     address(bytes20(m.who)),
@@ -189,7 +189,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
                     m.asAllowance
                 );
             } else {
-                balanceSheetManager.triggerRevokeShares(
+                balanceSheet.triggerRevokeShares(
                     PoolId.wrap(m.poolId),
                     ShareClassId.wrap(m.scId),
                     address(bytes20(m.who)),
@@ -199,7 +199,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             }
         } else if (kind == MessageType.UpdateHoldingAmount) {
             MessageLib.UpdateHoldingAmount memory m = message.deserializeUpdateHoldingAmount();
-            poolRouter.updateHoldingAmount(
+            hub.updateHoldingAmount(
                 PoolId.wrap(m.poolId),
                 ShareClassId.wrap(m.scId),
                 AssetId.wrap(m.assetId),
@@ -211,20 +211,20 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.UpdateHoldingValue) {
             MessageLib.UpdateHoldingValue memory m = message.deserializeUpdateHoldingValue();
-            poolRouter.updateHoldingValue(
+            hub.updateHoldingValue(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), D18.wrap(m.pricePerUnit)
             );
         } else if (kind == MessageType.UpdateJournal) {
             MessageLib.UpdateJournal memory m = message.deserializeUpdateJournal();
-            poolRouter.updateJournal(PoolId.wrap(m.poolId), m.debits, m.credits);
+            hub.updateJournal(PoolId.wrap(m.poolId), m.debits, m.credits);
         } else if (kind == MessageType.UpdateShares) {
             MessageLib.UpdateShares memory m = message.deserializeUpdateShares();
             if (m.isIssuance) {
-                poolRouter.increaseShareIssuance(
+                hub.increaseShareIssuance(
                     PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), D18.wrap(m.pricePerShare), m.shares
                 );
             } else {
-                poolRouter.decreaseShareIssuance(
+                hub.decreaseShareIssuance(
                     PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), D18.wrap(m.pricePerShare), m.shares
                 );
             }
