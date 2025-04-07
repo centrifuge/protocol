@@ -24,7 +24,7 @@ import {IGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 ///         Handling incoming messages from the Centrifuge Chain through multiple adapters.
 ///         Supports processing multiple duplicate messages in parallel by
 ///         storing counts of messages and proofs that have been received.
-contract Gateway is Auth, ReentrancyProtection, IGateway, IRecoverable {
+contract Gateway is Auth, IGateway, IRecoverable {
     using ArrayLib for uint16[8];
     using BytesLib for bytes;
     using MathLib for uint256;
@@ -316,20 +316,18 @@ contract Gateway is Auth, ReentrancyProtection, IGateway, IRecoverable {
     }
 
     /// @inheritdoc IGateway
-    function topUp() external payable {
-        require(paymentMethod != PaymentMethod.TopUp, "Gateway/another-payment-method-already-set");
-
+    function topUp() external auth payable {
         paymentMethod = PaymentMethod.TopUp;
-        fuel = msg.value;
+        fuel += msg.value;
     }
 
     /// @inheritdoc IGateway
-    function startBatching() external protected {
+    function startBatching() external auth {
         isBatching = true;
     }
 
     /// @inheritdoc IGateway
-    function endBatching() external protected {
+    function endBatching() external auth {
         require(isBatching, NoBatched());
 
         for (uint256 i; i < batchLocators.length; i++) {
