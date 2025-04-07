@@ -38,7 +38,7 @@ enum MessageType {
     FulfilledCancelDepositRequest,
     FulfilledCancelRedeemRequest,
     TriggerRedeemRequest,
-    // -- BalanceSheetManager messages
+    // -- BalanceSheet messages
     UpdateHoldingAmount,
     UpdateHoldingValue,
     UpdateShares,

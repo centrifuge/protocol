@@ -17,8 +17,8 @@ import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 import {
     IInvestmentManagerGatewayHandler,
     IPoolManagerGatewayHandler,
-    IHubGatewayHandler,
-    IBalanceSheetManagerGatewayHandler
+    IBalanceSheetGatewayHandler,
+    IHubGatewayHandler
 } from "src/common/interfaces/IGatewayHandlers.sol";
 import {IVaultMessageSender, IPoolMessageSender, IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
@@ -51,7 +51,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     IHubGatewayHandler public hub;
     IPoolManagerGatewayHandler public poolManager;
     IInvestmentManagerGatewayHandler public investmentManager;
-    IBalanceSheetManagerGatewayHandler public balanceSheetManager;
+    IBalanceSheetGatewayHandler public balanceSheet;
 
     uint16 public localCentrifugeId;
 
@@ -66,7 +66,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "poolManager") poolManager = IPoolManagerGatewayHandler(data);
         else if (what == "investmentManager") investmentManager = IInvestmentManagerGatewayHandler(data);
-        else if (what == "balanceSheetManager") balanceSheetManager = IBalanceSheetManagerGatewayHandler(data);
+        else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);

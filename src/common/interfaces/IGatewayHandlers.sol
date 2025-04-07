@@ -249,7 +249,7 @@ interface IInvestmentManagerGatewayHandler {
 }
 
 /// @notice Interface for CV methods related to epoch called by messages
-interface IBalanceSheetManagerGatewayHandler {
+interface IBalanceSheetGatewayHandler {
     function triggerDeposit(
         PoolId poolId,
         ShareClassId scId,
