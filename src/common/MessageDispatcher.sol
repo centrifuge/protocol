@@ -17,8 +17,8 @@ import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 import {
     IInvestmentManagerGatewayHandler,
     IPoolManagerGatewayHandler,
-    IBalanceSheetGatewayHandler
-    IHubGatewayHandler,
+    IBalanceSheetGatewayHandler,
+    IHubGatewayHandler
 } from "src/common/interfaces/IGatewayHandlers.sol";
 import {IVaultMessageSender, IPoolMessageSender, IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
