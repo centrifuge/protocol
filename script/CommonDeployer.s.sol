@@ -15,10 +15,13 @@ import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
 
 import "forge-std/Script.sol";
 
+string constant MESSAGE_COST_ENV = "MESSAGE_COST";
+string constant PROOF_COST_ENV = "PROOF_COST";
+
 abstract contract CommonDeployer is Script, JsonRegistry {
     uint256 constant DELAY = 48 hours;
     bytes32 immutable SALT;
-    uint256 constant BASE_MSG_COST = 20000000000000000; // in Weight
+    uint64 constant FALLBACK_MSG_COST = 20000000000000000; // in Weight
 
     IAdapter[] adapters;
 
@@ -43,19 +46,22 @@ abstract contract CommonDeployer is Script, JsonRegistry {
             return; // Already deployed. Make this method idempotent.
         }
 
+        uint64 messageGasLimit = uint64(vm.envOr(MESSAGE_COST_ENV, FALLBACK_MSG_COST));
+        uint64 proofGasLimit = uint64(vm.envOr(PROOF_COST_ENV, FALLBACK_MSG_COST));
+
         root = new Root(DELAY, deployer);
 
-        uint64 messageGasLimit = uint64(vm.envOr("MESSAGE_COST", BASE_MSG_COST));
-        uint64 proofGasLimit = uint64(vm.envOr("PROOF_COST", BASE_MSG_COST));
+        messageProcessor = new MessageProcessor(root, deployer);
 
         gasService = new GasService(messageGasLimit, proofGasLimit);
         gateway = new Gateway(root, gasService);
 
-        messageProcessor = new MessageProcessor(root, gasService, deployer);
         messageDispatcher = new MessageDispatcher(chainId, root, gateway, deployer);
 
         adminSafe = adminSafe_;
-        guardian = new Guardian(adminSafe, root, messageDispatcher);
+
+        // deployer is not actually an implementation of ISafe but for deployment this is not an issue
+        guardian = new Guardian(ISafe(deployer), root, messageDispatcher);
 
         _commonRegister();
         _commonRely();
@@ -75,19 +81,20 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     }
 
     function _commonRely() private {
-        gasService.rely(address(root));
         root.rely(address(guardian));
         root.rely(address(messageProcessor));
         root.rely(address(messageDispatcher));
         gateway.rely(address(root));
         gateway.rely(address(guardian));
         gateway.rely(address(messageDispatcher));
+        gateway.rely(address(messageProcessor));
         messageProcessor.rely(address(gateway));
         messageDispatcher.rely(address(guardian));
     }
 
     function _commonFile() private {
-        gateway.file("handler", address(messageProcessor));
+        messageProcessor.file("gateway", address(gateway));
+        gateway.file("processor", address(messageProcessor));
     }
 
     function wire(uint16 chainId, IAdapter adapter, address deployer) public {
@@ -102,8 +109,9 @@ abstract contract CommonDeployer is Script, JsonRegistry {
             return; // Already removed. Make this method idempotent.
         }
 
+        guardian.file("safe", address(adminSafe));
+
         root.deny(deployer);
-        gasService.deny(deployer);
         gateway.deny(deployer);
         messageProcessor.deny(deployer);
         messageDispatcher.deny(deployer);

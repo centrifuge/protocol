@@ -21,10 +21,10 @@ import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 
 import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IAsyncRedeemVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IERC7540Redeem, IAsyncRedeemVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
-import {IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
+import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
@@ -42,7 +42,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     using CastLib for *;
     using MessageLib for *;
 
-    IBalanceSheetManager public balanceSheetManager;
+    IBalanceSheet public balanceSheet;
 
     // TODO(follow-up PR): Support multiple vaults
     mapping(uint64 poolId => mapping(bytes16 scId => mapping(uint128 assetId => address vault))) public vault;
@@ -53,7 +53,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     /// @inheritdoc IBaseInvestmentManager
     function file(bytes32 what, address data) external override(IBaseInvestmentManager, BaseInvestmentManager) auth {
         if (what == "poolManager") poolManager = IPoolManager(data);
-        else if (what == "balanceSheetManager") balanceSheetManager = IBalanceSheetManager(data);
+        else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
         else revert("SyncRequests/file-unrecognized-param");
         emit File(what, data);
     }
@@ -176,24 +176,11 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
     /// @inheritdoc IVaultManager
     function vaultKind(address vaultAddr) public view returns (VaultKind, address) {
-        if (IERC165(vaultAddr).supportsInterface(type(IAsyncRedeemVault).interfaceId)) {
+        if (IERC165(vaultAddr).supportsInterface(type(IERC7540Redeem).interfaceId)) {
             return (VaultKind.SyncDepositAsyncRedeem, address(IAsyncRedeemVault(vaultAddr).asyncRedeemManager()));
         } else {
             return (VaultKind.Sync, address(0));
         }
-    }
-
-    /// --- IERC165 ---
-    /// @inheritdoc IERC165
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(BaseInvestmentManager, IERC165)
-        returns (bool)
-    {
-        return super.supportsInterface(interfaceId) || interfaceId == type(IVaultManager).interfaceId
-            || interfaceId == type(IDepositManager).interfaceId || interfaceId == type(ISyncDepositManager).interfaceId
-            || interfaceId == type(ISyncRequests).interfaceId;
     }
 
     /// --- Internal methods ---
@@ -211,7 +198,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         ShareClassId scId = ShareClassId.wrap(scId_);
 
         // Mint shares for receiver & notify CP about issued shares
-        balanceSheetManager.issue(poolId, scId, receiver, pricePerShare, shares, false);
+        balanceSheet.issue(poolId, scId, receiver, pricePerShare, shares, false);
 
         _updateHoldings(poolId, scId, vaultDetails, depositAssetAmount);
     }
@@ -227,17 +214,17 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         // NOTE: We want CP to use the default accounting accounts
         JournalEntry[] memory journalEntries = new JournalEntry[](0);
         Meta memory depositMeta = Meta(journalEntries, journalEntries);
-        (D18 pricePerUnit,) = poolManager.checkedPriceAssetToShare(poolId.raw(), scId.raw(), vaultDetails.assetId);
+        (D18 priceSharePerAsset,) = poolManager.checkedPriceAssetToShare(poolId.raw(), scId.raw(), vaultDetails.assetId);
 
         // Notify CP about updated holdings
-        balanceSheetManager.deposit(
+        balanceSheet.deposit(
             poolId,
             scId,
             vaultDetails.asset,
             vaultDetails.tokenId,
             escrow,
             depositAssetAmount,
-            pricePerUnit,
+            priceSharePerAsset,
             depositMeta
         );
     }

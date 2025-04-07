@@ -89,6 +89,9 @@ interface IPoolMessageSender is ILocalCentrifugeId {
     ) external;
 
     /// @notice Creates and send the message
+    function sendUpdateRestriction(uint16 chainId, PoolId poolId, ShareClassId scId, bytes calldata payload) external;
+
+    /// @notice Creates and send the message
     function sendUpdateContract(
         uint16 chainId,
         PoolId poolId,

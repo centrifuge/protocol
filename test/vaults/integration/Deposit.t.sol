@@ -150,7 +150,7 @@ contract DepositTest is BaseTest {
         vm.assume(amount % 2 == 0);
         vm.deal(address(this), 1 ether);
 
-        (, uint256 gasPerMessage) = gateway.estimate(OTHER_CHAIN_ID, "PAYLOAD_IS_IRRELEVANT");
+        (, uint256 gasPerMessage) = gateway.estimate(OTHER_CHAIN_ID, MessageLib.NotifyPool(1).serialize());
         gateway.subsidizePool{value: gasPerMessage}(POOL_A);
 
         assertEq(gateway.subsidy(POOL_A), gasPerMessage);

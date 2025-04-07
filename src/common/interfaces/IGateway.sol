@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
@@ -9,11 +10,23 @@ import {PoolId} from "src/common/types/PoolId.sol";
 uint8 constant MAX_ADAPTER_COUNT = 8;
 
 /// @notice Interface for dispatch-only gateway
-interface IGateway is IMessageHandler, IMessageSender {
-    /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
-    error FileUnrecognizedWhat();
+interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
+    /// @notice Defines the current payment method
+    enum PaymentMethod {
+        /// @notice The payment is done by subdized pools
+        Subsidized,
+        /// @notice The payment is done in the same transaction
+        Transaction
+    }
 
-    error NoBatched();
+    /// @notice Identifies a Batch
+    struct BatchLocator {
+        /// @notice chain associated to the batch
+        uint16 chainId;
+        /// @notice pools associated to the batch.
+        /// NOTE: poolId == 0 represent a batch of messages pool-unrelated
+        PoolId poolId;
+    }
 
     /// @dev Each adapter struct is packed with the quorum to reduce SLOADs on handle
     struct Adapter {
@@ -50,6 +63,49 @@ interface IGateway is IMessageHandler, IMessageSender {
     event File(bytes32 indexed what, address addr);
     event ReceiveNativeTokens(PoolId indexed poolId, address indexed sender, uint256 amount);
 
+    /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
+    error FileUnrecognizedParam();
+
+    /// @notice Dispatched when the batch is ended without starting it.
+    error NoBatched();
+
+    /// @notice Dispatched when the gateway is paused.
+    error Paused();
+
+    /// @notice Dispatched when the gateway is configured with a number of adapter exceeding the maximum.
+    error ExceedsMax();
+
+    /// @notice Dispatched when the gateway is configured with an empty adapter set.
+    error EmptyAdapterSet();
+
+    /// @notice Dispatched when the gateway is configured with duplicate adapters.
+    error NoDuplicatesAllowed();
+
+    /// @notice Dispatched when the gateway tries to handle a message from an adaptet not contained in the adapter set.
+    error InvalidAdapter();
+
+    /// @notice Dispatched when the gateway tries to recover a recovery message, which is not allowed.
+    error RecoveryMessageRecovered();
+
+    /// @notice Dispatched when the gateway tries to handle a proof from a non proof adapter.
+    error NonProofAdapter();
+
+    /// @notice Dispatched when the gateway tries to handle a message from a non message adapter.
+    error NonMessageAdapter();
+
+    /// @notice Dispatched when a recovery message is executed without being initiated.
+    error MessageRecoveryNotInitiated();
+
+    /// @notice Dispatched when a recovery message is executed without waiting the challenge period.
+    error MessageRecoveryChallengePeriodNotEnded();
+
+    /// @notice Dispatched when a the gateway tries to send an empty message.
+    error EmptyMessage();
+
+    /// @notice Dispatched when a the gateway has not enough fuel to send a message.
+    /// Only dispatched in PayTransaction method
+    error NotEnoughTransactionGas();
+
     // --- Administration ---
     /// @notice Used to update an array of addresses ( state variable ) on very rare occasions.
     /// @dev    Currently it is used to update the supported adapters.
@@ -64,23 +120,17 @@ interface IGateway is IMessageHandler, IMessageSender {
     /// @param  data New address.
     function file(bytes32 what, address data) external;
 
+    /// @notice Prepays for the TX cost for sending the messages through the adapters
+    ///         Currently being called from Vault Router only.
+    ///         In order to prepay, the method MUST be called with `msg.value`.
+    ///         Called is assumed to have called IGateway.estimate before calling this.
+    function payTransaction() external payable;
+
     /// @notice Initialize batching message
-    function startBatch() external;
+    function startBatching() external;
 
     /// @notice Finalize batching messages and send the resulting batch message
-    function endBatch() external;
-
-    /// @notice Initialize the recovery of a message.
-    /// @param  chainId Chain where the adapter is configured for
-    /// @param  adapter Adapter that the recovery was targeting
-    /// @param  messageHash Hash of the message being disputed
-    function initiateMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) external;
-
-    /// @notice Cancel the recovery of a message.
-    /// @param  chainId Chain where the adapter is configured for
-    /// @param  adapter Adapter that the recovery was targeting
-    /// @param  messageHash Hash of the message being disputed
-    function disputeMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) external;
+    function endBatching() external;
 
     /// @notice Execute message recovery. After the challenge period, the recovery can be executed.
     ///         If a malign adapter initiates message recovery,
@@ -92,14 +142,6 @@ interface IGateway is IMessageHandler, IMessageSender {
     /// @param  adapter Adapter's address that the recovery is targeting
     /// @param  message Hash of the message to be recovered
     function executeMessageRecovery(uint16 chainId, IAdapter adapter, bytes calldata message) external;
-
-    /// @notice Prepays for the TX cost for sending through the adapters
-    ///         and Centrifuge Chain
-    /// @dev    It can be called only through endorsed contracts.
-    ///         Currently being called from Vault Router only.
-    ///         In order to prepay, the method MUST be called with `msg.value`.
-    ///         Called is assumed to have called IGateway.estimate before calling this.
-    function topUp() external payable;
 
     // --- Helpers ---
     /// @notice A view method of the current quorum.abi

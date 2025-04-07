@@ -63,22 +63,17 @@ contract ERC6909FungibleTokenMintTest is ERC6909FungibleBaseTest {
         amount = bound(amount, 1, type(uint256).max);
         token.mint(self, tokenId, amount);
         assertEq(token.balanceOf(self, tokenId), amount);
-        assertEq(token.totalSupply(tokenId), amount);
     }
 
     function testMultipleSuccessfullMints() public {
         uint256 firstMint = 1000;
         uint256 secondMint = 2000;
-        uint256 total = firstMint + secondMint;
         address anotherOwner = makeAddr("anotherOwner");
 
         token.mint(self, tokenId, firstMint);
         assertEq(token.balanceOf(self, tokenId), firstMint);
-        assertEq(token.totalSupply(tokenId), firstMint);
-
         token.mint(anotherOwner, tokenId, secondMint);
         assertEq(token.balanceOf(anotherOwner, tokenId), secondMint);
-        assertEq(token.totalSupply(tokenId), total);
     }
 
     function testRevertOnBigSupply() public {
@@ -101,7 +96,6 @@ contract ERC6909FungibleTokenBurntest is ERC6909FungibleBaseTest {
     function testSuccessfulBurn(uint256 amount) public {
         token.burn(self, tokenId, amount);
         assertEq(token.balanceOf(self, tokenId), totalSupply - amount);
-        assertEq(token.totalSupply(tokenId), totalSupply - amount);
     }
 
     function testMultipleSuccessfulBurns() public {
@@ -115,7 +109,6 @@ contract ERC6909FungibleTokenBurntest is ERC6909FungibleBaseTest {
         uint256 currentSupply = totalSupply - 2 * amount;
 
         assertEq(token.balanceOf(self, tokenId), currentSupply);
-        assertEq(token.totalSupply(tokenId), currentSupply);
 
         // Testing for another owner of the same token
         assertEq(token.balanceOf(anotherOwner, tokenId), 0);
@@ -127,23 +120,19 @@ contract ERC6909FungibleTokenBurntest is ERC6909FungibleBaseTest {
 
         // Testing for another token for the same user
         assertEq(token.balanceOf(self, anotherTokenId), 0);
-        assertEq(token.totalSupply(anotherTokenId), 0);
 
         token.mint(self, anotherTokenId, amount);
 
         assertEq(token.balanceOf(self, anotherTokenId), amount);
-        assertEq(token.totalSupply(anotherTokenId), amount);
 
         token.burn(self, anotherTokenId, amount);
 
         assertEq(token.balanceOf(self, anotherTokenId), 0);
-        assertEq(token.totalSupply(anotherTokenId), 0);
     }
 
     function testRevertOnInsufficientBalance() public {
         uint256 balance = token.balanceOf(self, tokenId);
         token.burn(self, tokenId, balance);
-        assertEq(token.totalSupply(tokenId), 0);
         assertEq(token.balanceOf(self, tokenId), 0);
 
         vm.expectRevert(abi.encodeWithSelector(IERC6909.InsufficientBalance.selector, self, tokenId));

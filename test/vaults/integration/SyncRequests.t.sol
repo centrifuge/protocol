@@ -32,13 +32,13 @@ contract SyncRequestsTest is SyncRequestsBaseTest {
         // values set correctly
         assertEq(address(syncRequests.escrow()), address(escrow));
         assertEq(address(syncRequests.poolManager()), address(poolManager));
-        assertEq(address(syncRequests.balanceSheetManager()), address(balanceSheetManager));
+        assertEq(address(syncRequests.balanceSheet()), address(balanceSheet));
 
         // permissions set correctly
         assertEq(syncRequests.wards(address(root)), 1);
         assertEq(syncRequests.wards(address(poolManager)), 1);
         assertEq(syncRequests.wards(address(syncDepositVaultFactory)), 1);
-        assertEq(balanceSheetManager.wards(address(syncRequests)), 1);
+        assertEq(balanceSheet.wards(address(syncRequests)), 1);
         assertEq(syncRequests.wards(nonWard), 0);
     }
 
@@ -49,13 +49,13 @@ contract SyncRequestsTest is SyncRequestsBaseTest {
         syncRequests.file("random", self);
 
         assertEq(address(syncRequests.poolManager()), address(poolManager));
-        assertEq(address(syncRequests.balanceSheetManager()), address(balanceSheetManager));
+        assertEq(address(syncRequests.balanceSheet()), address(balanceSheet));
 
         // success
         syncRequests.file("poolManager", randomUser);
         assertEq(address(syncRequests.poolManager()), randomUser);
-        syncRequests.file("balanceSheetManager", randomUser);
-        assertEq(address(syncRequests.balanceSheetManager()), randomUser);
+        syncRequests.file("balanceSheet", randomUser);
+        assertEq(address(syncRequests.balanceSheet()), randomUser);
 
         // remove self from wards
         syncRequests.deny(self);

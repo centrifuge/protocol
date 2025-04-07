@@ -8,6 +8,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 /// @notice Interface for registering and handling assets
 interface IAssetRegistry is IERC6909MetadataExt, IERC6909Fungible {
     event NewAssetEntry(AssetId indexed assetId, string name, string symbol, uint8 decimals);
+    event UpdateChain(uint16 indexed chainId, string name, string symbol);
 
     /// @dev Fired when id == 0
     error IncorrectAssetId();
@@ -17,6 +18,11 @@ interface IAssetRegistry is IERC6909MetadataExt, IERC6909Fungible {
         string name;
         string symbol;
         uint8 decimals;
+    }
+
+    struct Chain {
+        string name; // E.g. "Ethereum", "Base", "Arbitrum"
+        string symbol; // E.g. "eth", "base", "arb"
     }
 
     /// @notice             A getter function to get an Asset based on AssetId
@@ -31,13 +37,16 @@ interface IAssetRegistry is IERC6909MetadataExt, IERC6909Fungible {
     ///                     `decimals` MUST be different than 0.
     function registerAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals) external;
 
-    /// @notice Provides one in the decimals of the asset
+    /// @notice             Provides one in the decimals of the asset
     ///
-    /// @param assetId The relevant asset
+    /// @param              assetId The relevant asset
     function unitAmount(AssetId assetId) external view returns (uint128);
 
-    /// @notice Provides one in the decimals of the asset
+    /// @notice             Provides one in the decimals of the asset
     ///
-    /// @param assetId The relevant asset
+    /// @param              assetId The relevant asset
     function decimals(AssetId assetId) external view returns (uint8);
+
+    /// @notice             Method for updating metadata of chains
+    function setChain(uint16 chainId, string calldata name, string calldata symbol) external;
 }

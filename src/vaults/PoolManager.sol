@@ -56,9 +56,9 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
     IVaultMessageSender public sender;
     ITokenFactory public tokenFactory;
-    address public balanceSheetManager;
+    address public balanceSheet;
 
-    uint32 internal _assetCounter;
+    uint64 internal _assetCounter;
 
     mapping(uint64 poolId => Pool) public pools;
     mapping(address factory => bool) public vaultFactory;
@@ -82,7 +82,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     function file(bytes32 what, address data) external auth {
         if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "tokenFactory") tokenFactory = ITokenFactory(data);
-        else if (what == "balanceSheetManager") balanceSheetManager = data;
+        else if (what == "balanceSheet") balanceSheet = data;
         else revert("PoolManager/file-unrecognized-param");
         emit File(what, data);
     }
@@ -158,7 +158,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
             // Give balance sheet manager infinite approval for asset
             // in the escrow to transfer to the user on transfer
-            escrow.approveMax(asset, tokenId, balanceSheetManager);
+            escrow.approveMax(asset, tokenId, balanceSheet);
 
             emit RegisterAsset(assetId, asset, tokenId, name, symbol, decimals);
         }
@@ -194,8 +194,8 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
         address[] memory tokenWards = new address[](2);
         tokenWards[0] = address(this);
-        // BalanceSheetManager needs this in order to mint shares
-        tokenWards[1] = address(balanceSheetManager);
+        // BalanceSheet needs this in order to mint shares
+        tokenWards[1] = address(balanceSheet);
 
         address shareToken_ = tokenFactory.newToken(name, symbol, decimals, salt, tokenWards);
 
@@ -461,7 +461,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         returns (D18 price, uint64 computedAt)
     {
         (Price memory pricePerAsset_, Price memory pricePerShare_) = _pricePoolToShare(poolId, scId, assetId);
-        price = pricePerShare_.asPrice() * pricePerAsset_.asPrice().reciprocal();
+        price = pricePerShare_.asPrice() / pricePerAsset_.asPrice();
         computedAt = pricePerShare_.computedAt;
     }
 
@@ -487,11 +487,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         computedAt = p.computedAt;
     }
 
-    function checkedPricePoolToShare(uint64 poolId, bytes16 scId)
-        public
-        view
-        returns (D18 price, uint64 computedAt)
-    {
+    function checkedPricePoolToShare(uint64 poolId, bytes16 scId) public view returns (D18 price, uint64 computedAt) {
         Price memory p = _pricePoolToShare(poolId, scId);
         require(p.isValid(), "PoolManager/invalid-price");
         price = p.asPrice();

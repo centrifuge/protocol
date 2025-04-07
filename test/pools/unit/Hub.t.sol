@@ -19,9 +19,9 @@ import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
 import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
 import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
-import {IPoolRouter} from "src/pools/interfaces/IPoolRouter.sol";
+import {IHub} from "src/pools/interfaces/IHub.sol";
 import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
-import {PoolRouter} from "src/pools/PoolRouter.sol";
+import {Hub} from "src/pools/Hub.sol";
 import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
 contract TestCommon is Test {
@@ -39,8 +39,7 @@ contract TestCommon is Test {
     IGateway immutable gateway = IGateway(makeAddr("Gateway"));
     ITransientValuation immutable transientValuation = ITransientValuation(makeAddr("TransientValuation"));
 
-    PoolRouter poolRouter =
-        new PoolRouter(poolRegistry, assetRegistry, accounting, holdings, gateway, transientValuation, address(this));
+    Hub hub = new Hub(poolRegistry, assetRegistry, accounting, holdings, gateway, transientValuation, address(this));
 
     function setUp() public {
         vm.mockCall(
@@ -51,8 +50,8 @@ contract TestCommon is Test {
 
         vm.mockCall(address(accounting), abi.encodeWithSelector(accounting.unlock.selector, POOL_A), abi.encode(true));
 
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.startBatch.selector), abi.encode());
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endBatch.selector), abi.encode());
+        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.startBatching.selector), abi.encode());
+        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endBatching.selector), abi.encode());
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.isBatching.selector), abi.encode(true));
     }
 }
@@ -62,89 +61,92 @@ contract TestMainMethodsChecks is TestCommon {
         vm.startPrank(makeAddr("noPoolAdmin"));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.registerAsset(AssetId.wrap(0), "", "", 0);
+        hub.registerAsset(AssetId.wrap(0), "", "", 0);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.depositRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0), 0);
+        hub.depositRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0), 0);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.redeemRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0), 0);
+        hub.redeemRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0), 0);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.cancelDepositRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
+        hub.cancelDepositRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.cancelRedeemRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
+        hub.cancelRedeemRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
 
         JournalEntry[] memory entries = new JournalEntry[](0);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.updateHoldingAmount(
+        hub.updateHoldingAmount(
             PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(1), false, entries, entries
         );
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolRouter.updateJournal(PoolId.wrap(0), entries, entries);
+        hub.updateJournal(PoolId.wrap(0), entries, entries);
 
         vm.stopPrank();
     }
 
     function testErrPoolLocked() public {
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.notifyPool(0);
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.notifyPool(0);
 
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.notifyShareClass(0, ShareClassId.wrap(0), bytes32(""));
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.notifyShareClass(0, ShareClassId.wrap(0), bytes32(""));
 
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.setPoolMetadata(bytes(""));
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.setPoolMetadata(bytes(""));
 
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.allowPoolAdmin(address(0), false);
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.allowPoolAdmin(address(0), false);
 
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.addShareClass("", "", bytes32(0), bytes(""));
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.addShareClass("", "", bytes32(0), bytes(""));
 
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.approveDeposits(ShareClassId.wrap(0), AssetId.wrap(0), 0, IERC7726(address(0)));
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.approveDeposits(ShareClassId.wrap(0), AssetId.wrap(0), 0, IERC7726(address(0)));
 
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.approveRedeems(ShareClassId.wrap(0), AssetId.wrap(0), 0);
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.approveRedeems(ShareClassId.wrap(0), AssetId.wrap(0), 0);
 
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.issueShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.issueShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
 
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.revokeShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.revokeShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
 
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.updateContract(0, ShareClassId.wrap(0), bytes32(0), bytes(""));
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.updateRestriction(0, ShareClassId.wrap(0), bytes(""));
 
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.updateVault(ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), bytes32(0), VaultUpdateKind(0));
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.updateContract(0, ShareClassId.wrap(0), bytes32(0), bytes(""));
 
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.createHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), false, 0);
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.updateVault(ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), bytes32(0), VaultUpdateKind(0));
 
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.updateHolding(ShareClassId.wrap(0), AssetId.wrap(0));
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.createHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), false, 0);
 
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.updateHoldingValuation(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)));
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.updateHolding(ShareClassId.wrap(0), AssetId.wrap(0));
 
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.setHoldingAccountId(ShareClassId.wrap(0), AssetId.wrap(0), AccountId.wrap(0));
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.updateHoldingValuation(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)));
 
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.createAccount(AccountId.wrap(0), false);
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.setHoldingAccountId(ShareClassId.wrap(0), AssetId.wrap(0), AccountId.wrap(0));
 
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.setAccountMetadata(AccountId.wrap(0), bytes(""));
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.createAccount(AccountId.wrap(0), false);
 
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.addDebit(AccountId.wrap(0), 0);
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.setAccountMetadata(AccountId.wrap(0), bytes(""));
 
-        vm.expectRevert(IPoolRouter.PoolLocked.selector);
-        poolRouter.addCredit(AccountId.wrap(0), 0);
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.addDebit(AccountId.wrap(0), 0);
+
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.addCredit(AccountId.wrap(0), 0);
 
         vm.stopPrank();
     }
@@ -161,11 +163,11 @@ contract TestNotifyShareClass is TestCommon {
         vm.mockCall(address(scm), abi.encodeWithSelector(scm.exists.selector, POOL_A, SC_A), abi.encode(false));
 
         bytes[] memory cs = new bytes[](1);
-        cs[0] = abi.encodeWithSelector(poolRouter.notifyShareClass.selector, 23, SC_A, bytes32(""));
+        cs[0] = abi.encodeWithSelector(hub.notifyShareClass.selector, 23, SC_A, bytes32(""));
 
         vm.prank(ADMIN);
         vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
-        poolRouter.execute(POOL_A, cs);
+        hub.execute(POOL_A, cs);
     }
 }
 
@@ -178,10 +180,10 @@ contract TestCreateHolding is TestCommon {
         );
 
         bytes[] memory cs = new bytes[](1);
-        cs[0] = abi.encodeWithSelector(poolRouter.createHolding.selector, SC_A, ASSET_A, IERC7726(address(1)), false, 0);
+        cs[0] = abi.encodeWithSelector(hub.createHolding.selector, SC_A, ASSET_A, IERC7726(address(1)), false, 0);
 
         vm.prank(ADMIN);
         vm.expectRevert(IAssetRegistry.AssetNotFound.selector);
-        poolRouter.execute(POOL_A, cs);
+        hub.execute(POOL_A, cs);
     }
 }

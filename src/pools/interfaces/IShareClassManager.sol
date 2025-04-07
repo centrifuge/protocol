@@ -7,28 +7,75 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
+struct EpochAmounts {
+    /// @dev Total pending asset amount of deposit asset
+    uint128 depositPending;
+    /// @dev Total approved asset amount of deposit asset
+    uint128 depositApproved;
+    /// @dev Total approved pool amount of deposit asset
+    uint128 depositPool;
+    /// @dev Total number of share class tokens issued
+    uint128 depositShares;
+    /// @dev Amount of shares pending to be redeemed
+    uint128 redeemPending;
+    /// @dev Total approved amount of redeemed share class tokens
+    uint128 redeemApproved;
+    /// @dev Total asset amount of revoked share class tokens
+    uint128 redeemAssets;
+}
+
+struct UserOrder {
+    /// @dev Pending amount in deposit asset denomination
+    uint128 pending;
+    /// @dev Index of epoch in which last order was made
+    uint32 lastUpdate;
+}
+
+struct EpochPointers {
+    /// @dev The last epoch in which a deposit approval was made
+    uint32 latestDepositApproval;
+    /// @dev The last epoch in which a redeem approval was made
+    uint32 latestRedeemApproval;
+    /// @dev The last epoch in which shares were issued
+    uint32 latestIssuance;
+    /// @dev The last epoch in which a shares were revoked
+    uint32 latestRevocation;
+}
+
+struct ShareClassMetadata {
+    /// @dev The name of the share class token
+    string name;
+    /// @dev The symbol of the share class token
+    string symbol;
+    /// @dev The salt of the share class token
+    bytes32 salt;
+}
+
+struct ShareClassMetrics {
+    /// @dev Total number of shares
+    uint128 totalIssuance;
+    /// @dev The latest net asset value per share class token
+    D18 navPerShare;
+}
+
+struct QueuedOrder {
+    /// @dev Whether the user requested a cancellation which is now queued
+    bool isCancelling;
+    /// @dev The queued increased request amount
+    uint128 amount;
+}
+
+enum RequestType {
+    /// @dev Whether the request is a deposit one
+    Deposit,
+    /// @dev Whether the request is a redeem one
+    Redeem
+}
+
 interface IShareClassManager {
     /// Events
     event NewEpoch(PoolId poolId, uint32 newIndex);
-    event UpdatedDepositRequest(
-        PoolId indexed poolId,
-        ShareClassId indexed scId,
-        uint32 indexed epoch,
-        bytes32 investor,
-        AssetId assetId,
-        uint128 updatedAmountUser,
-        uint128 updatedAmountTotal
-    );
-    event UpdatedRedeemRequest(
-        PoolId indexed poolId,
-        ShareClassId indexed scId,
-        uint32 indexed epoch,
-        bytes32 investor,
-        AssetId payoutAssetId,
-        uint128 updatedAmountUser,
-        uint128 updatedAmountTotal
-    );
-    event ApprovedDeposits(
+    event ApproveDeposits(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         uint32 indexed epoch,
@@ -37,7 +84,7 @@ interface IShareClassManager {
         uint128 approvedAssetAmount,
         uint128 pendingAssetAmount
     );
-    event ApprovedRedeems(
+    event ApproveRedeems(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         uint32 indexed epoch,
@@ -45,7 +92,7 @@ interface IShareClassManager {
         uint128 approvedShareClassAmount,
         uint128 pendingShareClassAmount
     );
-    event IssuedShares(
+    event IssueShares(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         uint32 indexed epoch,
@@ -55,7 +102,7 @@ interface IShareClassManager {
         uint128 issuedShareAmount
     );
 
-    event RevokedShares(
+    event RevokeShares(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         uint32 indexed epoch,
@@ -66,7 +113,7 @@ interface IShareClassManager {
         uint128 revokedAssetAmount
     );
 
-    event ClaimedDeposit(
+    event ClaimDeposit(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         uint32 indexed epoch,
@@ -76,7 +123,7 @@ interface IShareClassManager {
         uint128 pendingAssetAmount,
         uint128 claimedShareAmount
     );
-    event ClaimedRedeem(
+    event ClaimRedeem(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         uint32 indexed epoch,
@@ -87,7 +134,7 @@ interface IShareClassManager {
         uint128 claimedAssetAmount
     );
     event Updated(PoolId indexed poolId, bytes data);
-    event UpdatedShareClass(
+    event UpdateShareClass(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         uint128 nav,
@@ -95,16 +142,28 @@ interface IShareClassManager {
         uint128 totalIssuance,
         bytes data
     );
-    event AddedShareClass(PoolId indexed poolId, ShareClassId indexed scId, uint32 indexed index);
+    // TODO: unused
+    event UpdateNav(PoolId indexed poolId, ShareClassId indexed scId, uint128 newAmount);
+    event AddShareClass(PoolId indexed poolId, ShareClassId indexed scId, uint32 indexed index);
+    event UpdateRequest(
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
+        uint32 indexed epoch,
+        RequestType requestType,
+        bytes32 investor,
+        AssetId assetId,
+        uint128 pendingUserAmount,
+        uint128 pendingTotalAmount,
+        uint128 queuedAmount,
+        bool pendingCancellation
+    );
 
     /// Errors
     error PoolMissing();
     error ShareClassNotFound();
-    error MaxShareClassNumberExceeded(uint8 numberOfShareClasses);
-    error ClaimDepositRequired();
-    error ClaimRedeemRequired();
     error EpochNotFound();
     error DecreaseMoreThanIssued();
+    error CancellationQueued();
 
     /// Functions
 
@@ -220,9 +279,10 @@ interface IShareClassManager {
     /// @param depositAssetId Identifier of the asset which the investor used for their deposit request
     /// @return payoutShareAmount Amount of shares which the investor receives
     /// @return paymentAssetAmount Amount of deposit asset which was taken as payment
+    /// @return cancelledAssetAmount Amount of deposit asset which was cancelled due to being queued
     function claimDeposit(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
         external
-        returns (uint128 payoutShareAmount, uint128 paymentAssetAmount);
+        returns (uint128 payoutShareAmount, uint128 paymentAssetAmount, uint128 cancelledAssetAmount);
 
     /// @notice Collects an asset amount for an investor after their redeem request was (partially) approved and shares
     /// were revoked.
@@ -234,9 +294,10 @@ interface IShareClassManager {
     /// shares
     /// @return payoutAssetAmount Amount of payout amount which the investor receives
     /// @return paymentShareAmount Amount of shares which the investor redeemed
+    /// @return cancelledShareAmount Amount of shares which were cancelled due to being queued
     function claimRedeem(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
         external
-        returns (uint128 payoutAssetAmount, uint128 paymentShareAmount);
+        returns (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelledShareAmount);
 
     /// @notice Updates the NAV of a share class of a pool and returns it per share as well as the issuance.
     /// @dev the nav per share provided does not need to match the nave per share returned. The nav per share returned

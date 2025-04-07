@@ -8,7 +8,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
-interface IBalanceSheetManager {
+interface IBalanceSheet {
     // --- Errors ---
     error EntriesUnbalanced();
 

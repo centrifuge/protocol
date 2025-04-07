@@ -72,10 +72,4 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
         (, lastUpdated) = poolManager.checkedPriceAssetToShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
     }
-
-    /// @inheritdoc IERC165
-    function supportsInterface(bytes4 interfaceId) public view virtual returns (bool) {
-        return interfaceId == type(IBaseInvestmentManager).interfaceId || interfaceId == type(IRecoverable).interfaceId
-            || interfaceId == type(IERC165).interfaceId;
-    }
 }

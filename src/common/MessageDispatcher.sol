@@ -18,8 +18,8 @@ import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 import {
     IInvestmentManagerGatewayHandler,
     IPoolManagerGatewayHandler,
-    IPoolRouterGatewayHandler,
-    IBalanceSheetManagerGatewayHandler
+    IBalanceSheetGatewayHandler,
+    IHubGatewayHandler
 } from "src/common/interfaces/IGatewayHandlers.sol";
 import {IVaultMessageSender, IPoolMessageSender, IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
@@ -50,10 +50,10 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     IRoot public immutable root;
     IGateway public immutable gateway;
 
-    IPoolRouterGatewayHandler public poolRouter;
+    IHubGatewayHandler public hub;
     IPoolManagerGatewayHandler public poolManager;
     IInvestmentManagerGatewayHandler public investmentManager;
-    IBalanceSheetManagerGatewayHandler public balanceSheetManager;
+    IBalanceSheetGatewayHandler public balanceSheet;
 
     uint16 public localCentrifugeId;
 
@@ -65,10 +65,10 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     /// @inheritdoc IMessageDispatcher
     function file(bytes32 what, address data) external auth {
-        if (what == "poolRouter") poolRouter = IPoolRouterGatewayHandler(data);
+        if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "poolManager") poolManager = IPoolManagerGatewayHandler(data);
         else if (what == "investmentManager") investmentManager = IInvestmentManagerGatewayHandler(data);
-        else if (what == "balanceSheetManager") balanceSheetManager = IBalanceSheetManagerGatewayHandler(data);
+        else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -257,6 +257,21 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IPoolMessageSender
+    function sendUpdateRestriction(uint16 chainId, PoolId poolId, ShareClassId scId, bytes calldata payload)
+        external
+        auth
+    {
+        if (chainId == localCentrifugeId) {
+            poolManager.updateRestriction(poolId.raw(), scId.raw(), payload);
+        } else {
+            gateway.send(
+                chainId,
+                MessageLib.UpdateRestriction({poolId: poolId.raw(), scId: scId.raw(), payload: payload}).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
     function sendUpdateContract(
         uint16 chainId,
         PoolId poolId,
@@ -344,9 +359,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         auth
     {
         if (PoolId.wrap(poolId).chainId() == localCentrifugeId) {
-            poolRouter.depositRequest(
-                PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, AssetId.wrap(assetId), amount
-            );
+            hub.depositRequest(PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, AssetId.wrap(assetId), amount);
         } else {
             gateway.send(
                 PoolId.wrap(poolId).chainId(),
@@ -367,9 +380,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         auth
     {
         if (PoolId.wrap(poolId).chainId() == localCentrifugeId) {
-            poolRouter.redeemRequest(
-                PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, AssetId.wrap(assetId), amount
-            );
+            hub.redeemRequest(PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, AssetId.wrap(assetId), amount);
         } else {
             gateway.send(
                 PoolId.wrap(poolId).chainId(),
@@ -387,9 +398,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     /// @inheritdoc IVaultMessageSender
     function sendCancelDepositRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId) external auth {
         if (PoolId.wrap(poolId).chainId() == localCentrifugeId) {
-            poolRouter.cancelDepositRequest(
-                PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, AssetId.wrap(assetId)
-            );
+            hub.cancelDepositRequest(PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, AssetId.wrap(assetId));
         } else {
             gateway.send(
                 PoolId.wrap(poolId).chainId(),
@@ -402,9 +411,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     /// @inheritdoc IVaultMessageSender
     function sendCancelRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId) external auth {
         if (PoolId.wrap(poolId).chainId() == localCentrifugeId) {
-            poolRouter.cancelRedeemRequest(
-                PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, AssetId.wrap(assetId)
-            );
+            hub.cancelRedeemRequest(PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, AssetId.wrap(assetId));
         } else {
             gateway.send(
                 PoolId.wrap(poolId).chainId(),
@@ -426,9 +433,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         Meta calldata meta
     ) external auth {
         if (poolId.chainId() == localCentrifugeId) {
-            poolRouter.updateHoldingAmount(
-                poolId, scId, assetId, amount, pricePerUnit, isIncrease, meta.debits, meta.credits
-            );
+            hub.updateHoldingAmount(poolId, scId, assetId, amount, pricePerUnit, isIncrease, meta.debits, meta.credits);
         } else {
             gateway.send(
                 poolId.chainId(),
@@ -454,7 +459,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         auth
     {
         if (poolId.chainId() == localCentrifugeId) {
-            poolRouter.updateHoldingValue(poolId, scId, assetId, pricePerUnit);
+            hub.updateHoldingValue(poolId, scId, assetId, pricePerUnit);
         } else {
             gateway.send(
                 poolId.chainId(),
@@ -480,9 +485,9 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external auth {
         if (poolId.chainId() == localCentrifugeId) {
             if (isIssuance) {
-                poolRouter.increaseShareIssuance(poolId, scId, pricePerShare, shares);
+                hub.increaseShareIssuance(poolId, scId, pricePerShare, shares);
             } else {
-                poolRouter.decreaseShareIssuance(poolId, scId, pricePerShare, shares);
+                hub.decreaseShareIssuance(poolId, scId, pricePerShare, shares);
             }
         } else {
             gateway.send(
@@ -506,7 +511,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         auth
     {
         if (poolId.chainId() == localCentrifugeId) {
-            poolRouter.updateJournal(poolId, debits, credits);
+            hub.updateJournal(poolId, debits, credits);
         } else {
             gateway.send(
                 poolId.chainId(),
@@ -524,7 +529,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         uint8 decimals
     ) external auth {
         if (chainId == localCentrifugeId) {
-            poolRouter.registerAsset(AssetId.wrap(assetId), name, symbol, decimals);
+            hub.registerAsset(AssetId.wrap(assetId), name, symbol, decimals);
         } else {
             gateway.send(
                 chainId,

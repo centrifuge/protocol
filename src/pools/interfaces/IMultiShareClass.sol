@@ -12,10 +12,10 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 interface IMultiShareClass is IShareClassManager {
     /// Events
     event File(bytes32 what, address who);
-    event AddedShareClass(
+    event AddShareClass(
         PoolId indexed poolId, ShareClassId indexed scId, uint32 indexed index, string name, string symbol, bytes32 salt
     );
-    event UpdatedMetadata(PoolId indexed poolId, ShareClassId indexed scId, string name, string symbol, bytes32 salt);
+    event UpdateMetadata(PoolId indexed poolId, ShareClassId indexed scId, string name, string symbol, bytes32 salt);
 
     /// Errors
     error ApprovalRequired();
@@ -73,13 +73,14 @@ interface IMultiShareClass is IShareClassManager {
     /// @param endEpochId Identifier of the maximum epoch until it is claimed claim
     /// @return payoutShareAmount Amount of shares which the investor receives
     /// @return paymentAssetAmount Amount of deposit asset which was taken as payment
+    /// @return cancelledAssetAmount Amount of deposit asset which was cancelled as a result of a queued cancellation
     function claimDepositUntilEpoch(
         PoolId poolId,
         ShareClassId scId,
         bytes32 investor,
         AssetId depositAssetId,
         uint32 endEpochId
-    ) external returns (uint128 payoutShareAmount, uint128 paymentAssetAmount);
+    ) external returns (uint128 payoutShareAmount, uint128 paymentAssetAmount, uint128 cancelledAssetAmount);
 
     /// @notice Reduces the share class token count of the investor in exchange for collecting an amount of payment
     /// asset for the specified range of epochs.
@@ -92,13 +93,14 @@ interface IMultiShareClass is IShareClassManager {
     /// @param endEpochId Identifier of the maximum epoch until it is claimed claim
     /// @return payoutAssetAmount Amount of payout asset which the investor receives
     /// @return paymentShareAmount Amount of shares which the investor redeemed
+    /// @return cancelledShareAmount Amount of shares which were cancelled as a result of a queued cancellation
     function claimRedeemUntilEpoch(
         PoolId poolId,
         ShareClassId scId,
         bytes32 investor,
         AssetId payoutAssetId,
         uint32 endEpochId
-    ) external returns (uint128 payoutAssetAmount, uint128 paymentShareAmount);
+    ) external returns (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelledShareAmount);
 
     /// @notice returns The metadata of the share class.
     ///

@@ -16,7 +16,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
-import {IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
+import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
@@ -31,7 +31,7 @@ contract SyncDepositTest is BaseTest {
 
     function testSyncDeposit(uint256 amount) public {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
-        amount = uint128(bound(amount, 4, MAX_UINT128));
+        amount = uint128(bound(amount, 4, MAX_UINT128 / priceFactor));
         vm.assume(amount % 2 == 0);
 
         erc20.mint(self, amount);
@@ -84,8 +84,8 @@ contract SyncDepositTest is BaseTest {
         PoolId poolId = PoolId.wrap(vault.poolId());
         ShareClassId scId = ShareClassId.wrap(vault.trancheId());
         D18 pricePerShare = d18(price);
-        D18 pricePerUnit = d18(1, 1);
-        uint256 timestamp = uint256(block.timestamp);
+        D18 pricePerUnit = d18(priceFactor, 1);
+        uint64 timestamp = uint64(block.timestamp);
         uint128 depositAssetAmount = vault.previewMint(shares).toUint128();
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault));
         JournalEntry[] memory journalEntries = new JournalEntry[](0);
@@ -93,12 +93,12 @@ contract SyncDepositTest is BaseTest {
         vm.expectEmit(false, false, false, false);
         emit IGateway.SendMessage(bytes(""));
         vm.expectEmit();
-        emit IBalanceSheetManager.Issue(poolId, scId, self, pricePerShare, shares);
+        emit IBalanceSheet.Issue(poolId, scId, self, pricePerShare, shares);
 
         vm.expectEmit(false, false, false, false);
         emit IGateway.SendMessage(bytes(""));
         vm.expectEmit();
-        emit IBalanceSheetManager.Deposit(
+        emit IBalanceSheet.Deposit(
             poolId,
             scId,
             vault.asset(),
@@ -106,7 +106,7 @@ contract SyncDepositTest is BaseTest {
             syncRequests.escrow(),
             depositAssetAmount,
             pricePerUnit,
-            uint64(timestamp),
+            timestamp,
             journalEntries,
             journalEntries
         );

@@ -83,9 +83,9 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
 
         // deploy core contracts
         deployVaults(THIS_CHAIN_ID, adminSafe, address(this));
+        guardian.file("safe", address(adminSafe));
 
         // deploy mock adapters
-
         adapter1 = new MockAdapter(OTHER_CHAIN_ID, gateway);
         adapter2 = new MockAdapter(OTHER_CHAIN_ID, gateway);
         adapter3 = new MockAdapter(OTHER_CHAIN_ID, gateway);
@@ -118,7 +118,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         vm.label(address(asyncRequests), "AsyncRequests");
         vm.label(address(asyncRequests), "SyncRequests");
         vm.label(address(poolManager), "PoolManager");
-        vm.label(address(balanceSheetManager), "BalanceSheetManager");
+        vm.label(address(balanceSheet), "BalanceSheet");
         vm.label(address(gateway), "Gateway");
         vm.label(address(messageProcessor), "MessageProcessor");
         vm.label(address(messageDispatcher), "MessageDispatcher");
@@ -142,7 +142,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         excludeContract(address(root));
         excludeContract(address(asyncRequests));
         excludeContract(address(syncRequests));
-        excludeContract(address(balanceSheetManager));
+        excludeContract(address(balanceSheet));
         excludeContract(address(poolManager));
         excludeContract(address(gateway));
         excludeContract(address(erc20));

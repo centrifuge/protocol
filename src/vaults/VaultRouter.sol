@@ -53,14 +53,14 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
     function multicall(bytes[] calldata data) public payable override(Multicall, IMulticall) {
         bool wasBatching = gateway.isBatching();
         if (!wasBatching) {
-            gateway.startBatch();
+            gateway.startBatching();
+            gateway.payTransaction{value: msg.value}();
         }
 
         super.multicall(data);
 
         if (!wasBatching) {
-            gateway.topUp{value: msg.value}();
-            gateway.endBatch();
+            gateway.endBatching();
         }
     }
 
@@ -333,7 +333,7 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
     /// @notice Send native tokens to the gateway for transaction payment if it's not in a multicall.
     function _pay() internal {
         if (!gateway.isBatching()) {
-            gateway.topUp{value: msg.value}();
+            gateway.payTransaction{value: msg.value}();
         }
     }
 

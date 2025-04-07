@@ -126,7 +126,7 @@ contract AssetMetadataRetrievalTest is AssetRegistryBaseTest {
         assertEq(manager.name(1234), "");
     }
 
-    function testRetrivingSymbol() public view {
+    function testRetrievingSymbol() public view {
         // when exists
         assertEq(manager.symbol(rawAssetId), symbol);
 
@@ -140,6 +140,5 @@ contract AssetRegistrySupportedInterfacesTest is AssetRegistryBaseTest {
         assertTrue(manager.supportsInterface(type(IERC165).interfaceId));
         assertTrue(manager.supportsInterface(type(IERC6909).interfaceId));
         assertTrue(manager.supportsInterface(type(IERC6909MetadataExt).interfaceId));
-        assertTrue(manager.supportsInterface(type(IERC6909TotalSupplyExt).interfaceId));
     }
 }
