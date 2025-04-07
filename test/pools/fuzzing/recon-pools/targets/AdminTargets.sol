@@ -299,9 +299,21 @@ abstract contract AdminTargets is
         hub.increaseShareIssuance(poolId, scId, pricePerShare, amount);
     }
 
+    function hub_increaseShareIssuance_clamped(uint64 poolEntropy, uint32 scEntropy, D18 pricePerShare, uint128 amount) public updateGhosts {
+        PoolId poolId = _getRandomPoolId(poolEntropy);
+        ShareClassId scId = _getRandomShareClassIdForPool(poolId, scEntropy);
+        hub.increaseShareIssuance(poolId, scId, pricePerShare, amount);
+    }
+
     function hub_decreaseShareIssuance(uint64 poolIdAsUint, bytes16 scIdAsBytes, D18 pricePerShare, uint128 amount) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
+        hub.decreaseShareIssuance(poolId, scId, pricePerShare, amount);
+    }
+
+    function hub_decreaseShareIssuance_clamped(uint64 poolEntropy, uint32 scEntropy, D18 pricePerShare, uint128 amount) public updateGhosts {
+        PoolId poolId = _getRandomPoolId(poolEntropy);
+        ShareClassId scId = _getRandomShareClassIdForPool(poolId, scEntropy);
         hub.decreaseShareIssuance(poolId, scId, pricePerShare, amount);
     }
 
@@ -357,23 +369,5 @@ abstract contract AdminTargets is
         ShareClassId shareClassId_ = ShareClassId.wrap(scIdAsBytes);
         bytes memory data = "not-used";
         multiShareClass.updateMetadata(poolId, shareClassId_, name, symbol, salt, data);
-    }
-    
-    function multiShareClass_increaseShareClassIssuance(uint64 poolIdAsUint, bytes16 scIdAsBytes, D18 navPerShare, uint128 amount) public updateGhosts asAdmin {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        ShareClassId shareClassId_ = ShareClassId.wrap(scIdAsBytes);
-        multiShareClass.increaseShareClassIssuance(poolId, shareClassId_, navPerShare, amount);
-    }
-
-    function multiShareClass_decreaseShareClassIssuance(uint64 poolIdAsUint, bytes16 scIdAsBytes, D18 navPerShare, uint128 amount) public updateGhosts asAdmin {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        ShareClassId shareClassId_ = ShareClassId.wrap(scIdAsBytes);
-        multiShareClass.decreaseShareClassIssuance(poolId, shareClassId_, navPerShare, amount);
-    }
-
-    function multiShareClass_updateShareClassNav(uint64 poolIdAsUint, bytes16 scIdAsBytes) public updateGhosts asAdmin {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        ShareClassId shareClassId_ = ShareClassId.wrap(scIdAsBytes);
-        multiShareClass.updateShareClassNav(poolId, shareClassId_);
     }
 }

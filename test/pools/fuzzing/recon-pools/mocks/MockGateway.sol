@@ -65,10 +65,13 @@ contract MockGateway {
         
     }
 
-    function startBatch() external {
+    function startBatching() external {
     }
 
-    function endBatch() external {
+    function endBatching() external {
+    }
+
+    function payTransaction() external payable {
     }
 
 

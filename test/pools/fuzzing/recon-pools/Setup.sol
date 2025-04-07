@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 // Chimera deps
 import {BaseSetup} from "@chimera/BaseSetup.sol";
 import {vm} from "@chimera/Hevm.sol";
-
+import {console2} from "forge-std/console2.sol";
 // Managers
 import {ActorManager} from "@recon/ActorManager.sol";
 import {AssetManager} from "@recon/AssetManager.sol";
@@ -147,5 +147,22 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     modifier asActor {
         vm.prank(address(_getActor()));
         _;
+    }
+
+    /// === Helpers === ///
+    function _getRandomPoolId(uint64 poolEntropy) internal view returns (PoolId) {
+        return createdPools[poolEntropy % createdPools.length];
+    }
+
+    function _getRandomShareClassIdForPool(PoolId poolId, uint32 scEntropy) internal view returns (ShareClassId) {
+        uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
+        uint32 randomIndex = scEntropy % shareClassCount;
+        if(randomIndex == 0) {
+            // the first share class is never assigned
+            randomIndex = 1;
+        }
+
+        ShareClassId scId = multiShareClass.previewShareClassId(poolId, randomIndex);
+        return scId;
     }
 }

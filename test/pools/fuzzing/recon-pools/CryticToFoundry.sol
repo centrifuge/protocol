@@ -18,21 +18,6 @@ import {Helpers} from "test/pools/fuzzing/recon-pools/utils/Helpers.sol";
 
 // forge test --match-contract CryticToFoundry --match-path test/pools/fuzzing/recon-pools/CryticToFoundry.sol -vv
 contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
-    function setUp() public {
-        setup();
-    }
-
-    function test_create_pool() public {
-        // deploy new asset
-        add_new_asset(18);
-
-        //register asset 
-        hub_registerAsset(123);
-
-        // create pool 
-        hub_createPool(address(this), 123, multiShareClass);
-    }
-
     bytes32 INVESTOR = bytes32("Investor");
     string SC_NAME = "ExampleName";
     string SC_SYMBOL = "ExampleSymbol";
@@ -49,6 +34,10 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     PoolId poolId;
     ShareClassId scId;
     AssetId assetId;
+
+    function setUp() public {
+        setup();
+    }
 
     /// Unit Tests 
     function _createPool() internal returns (PoolId) {
@@ -185,7 +174,33 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         shortcut_create_pool_and_update_journal(18, 123, SC_SALT, true, 0x01, 3, 10e18, 10e18);
     }
 
-    /// Reproducers 
+    function test_hub_increaseShareIssuance() public {
+        (poolId, scId) = test_request_deposit();
+
+        hub_increaseShareIssuance(poolId.raw(), scId.raw(), NAV_PER_SHARE, SHARE_AMOUNT);
+    }
+
+    function test_hub_decreaseShareIssuance() public {
+        (poolId, scId) = test_request_deposit();
+
+        hub_increaseShareIssuance(poolId.raw(), scId.raw(), NAV_PER_SHARE, SHARE_AMOUNT);
+
+        hub_decreaseShareIssuance(poolId.raw(), scId.raw(), NAV_PER_SHARE, SHARE_AMOUNT);
+    }
+
+    function test_hub_increaseShareIssuance_clamped() public {
+        (poolId, scId) = test_request_deposit();
+
+        hub_increaseShareIssuance_clamped(poolId.raw(), 2, NAV_PER_SHARE, SHARE_AMOUNT);
+    }
+
+    function test_hub_decreaseShareIssuance_clamped() public {
+        (poolId, scId) = test_request_deposit();
+
+        hub_increaseShareIssuance_clamped(poolId.raw(), 2, NAV_PER_SHARE, SHARE_AMOUNT);
+
+        hub_decreaseShareIssuance_clamped(poolId.raw(), 2, NAV_PER_SHARE, SHARE_AMOUNT);
+    }
     
     // forge test --match-test test_hub_depositRequest_0 -vvv 
     // function test_hub_depositRequest_0() public {
