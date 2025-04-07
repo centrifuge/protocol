@@ -23,14 +23,13 @@ contract TestCases is BaseTest {
         scId = multiShareClass.previewNextShareClassId(poolId);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](6), 0);
-        cs[c++] = abi.encodeWithSelector(poolRouter.setPoolMetadata.selector, bytes("Testing pool"));
-        cs[c++] = abi.encodeWithSelector(poolRouter.addShareClass.selector, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
-        cs[c++] = abi.encodeWithSelector(poolRouter.notifyPool.selector, CHAIN_CV);
-        cs[c++] = abi.encodeWithSelector(poolRouter.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
-        cs[c++] =
-            abi.encodeWithSelector(poolRouter.createHolding.selector, scId, USDC_C2, identityValuation, false, 0x01);
+        cs[c++] = abi.encodeWithSelector(hub.setPoolMetadata.selector, bytes("Testing pool"));
+        cs[c++] = abi.encodeWithSelector(hub.addShareClass.selector, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
+        cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, CHAIN_CV);
+        cs[c++] = abi.encodeWithSelector(hub.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
+        cs[c++] = abi.encodeWithSelector(hub.createHolding.selector, scId, USDC_C2, identityValuation, false, 0x01);
         cs[c++] = abi.encodeWithSelector(
-            poolRouter.updateVault.selector,
+            hub.updateVault.selector,
             scId,
             USDC_C2,
             bytes32("target"),
@@ -40,7 +39,7 @@ contract TestCases is BaseTest {
         assertEq(c, cs.length);
 
         vm.prank(FM);
-        poolRouter.execute{value: GAS * 3}(poolId, cs);
+        hub.execute{value: GAS * 3}(poolId, cs);
 
         assertEq(poolRegistry.metadata(poolId), "Testing pool");
         assertEq(multiShareClass.exists(poolId, scId), true);
@@ -78,18 +77,17 @@ contract TestCases is BaseTest {
         IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
-        cs[c++] = abi.encodeWithSelector(
-            poolRouter.approveDeposits.selector, scId, USDC_C2, APPROVED_INVESTOR_AMOUNT, valuation
-        );
-        cs[c++] = abi.encodeWithSelector(poolRouter.issueShares.selector, scId, USDC_C2, NAV_PER_SHARE);
+        cs[c++] =
+            abi.encodeWithSelector(hub.approveDeposits.selector, scId, USDC_C2, APPROVED_INVESTOR_AMOUNT, valuation);
+        cs[c++] = abi.encodeWithSelector(hub.issueShares.selector, scId, USDC_C2, NAV_PER_SHARE);
         assertEq(c, cs.length);
 
         vm.prank(FM);
-        poolRouter.execute(poolId, cs);
+        hub.execute(poolId, cs);
 
         vm.prank(ANY);
         vm.deal(ANY, GAS);
-        poolRouter.claimDeposit{value: GAS}(poolId, scId, USDC_C2, INVESTOR);
+        hub.claimDeposit{value: GAS}(poolId, scId, USDC_C2, INVESTOR);
 
         MessageLib.FulfilledDepositRequest memory m0 = MessageLib.deserializeFulfilledDepositRequest(cv.lastMessages(0));
         assertEq(m0.poolId, poolId.raw());
@@ -111,16 +109,16 @@ contract TestCases is BaseTest {
         IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
-        cs[c++] = abi.encodeWithSelector(poolRouter.approveRedeems.selector, scId, USDC_C2, APPROVED_SHARE_AMOUNT);
-        cs[c++] = abi.encodeWithSelector(poolRouter.revokeShares.selector, scId, USDC_C2, NAV_PER_SHARE, valuation);
+        cs[c++] = abi.encodeWithSelector(hub.approveRedeems.selector, scId, USDC_C2, APPROVED_SHARE_AMOUNT);
+        cs[c++] = abi.encodeWithSelector(hub.revokeShares.selector, scId, USDC_C2, NAV_PER_SHARE, valuation);
         assertEq(c, cs.length);
 
         vm.prank(FM);
-        poolRouter.execute(poolId, cs);
+        hub.execute(poolId, cs);
 
         vm.prank(ANY);
         vm.deal(ANY, GAS);
-        poolRouter.claimRedeem{value: GAS}(poolId, scId, USDC_C2, INVESTOR);
+        hub.claimRedeem{value: GAS}(poolId, scId, USDC_C2, INVESTOR);
 
         MessageLib.FulfilledRedeemRequest memory m0 = MessageLib.deserializeFulfilledRedeemRequest(cv.lastMessages(0));
         assertEq(m0.poolId, poolId.raw());
@@ -140,9 +138,9 @@ contract TestCases is BaseTest {
         AccountId extraAccountId = newAccountId(123, uint8(AccountType.Asset));
 
         (bytes[] memory cs, uint256 c) = (new bytes[](1), 0);
-        cs[c++] = abi.encodeWithSelector(poolRouter.createAccount.selector, extraAccountId, true);
+        cs[c++] = abi.encodeWithSelector(hub.createAccount.selector, extraAccountId, true);
         vm.prank(FM);
-        poolRouter.execute(poolId, cs);
+        hub.execute(poolId, cs);
 
         (JournalEntry[] memory debits, uint256 i) = (new JournalEntry[](3), 0);
         debits[i++] = JournalEntry(1000, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Asset)));

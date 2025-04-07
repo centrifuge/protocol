@@ -19,7 +19,7 @@ import {IGasService} from "src/common/interfaces/IGasService.sol";
 
 import {PoolsDeployer, ISafe} from "script/PoolsDeployer.s.sol";
 import {MESSAGE_COST_ENV, PROOF_COST_ENV} from "script/CommonDeployer.s.sol";
-import {AccountType} from "src/pools/interfaces/IPoolRouter.sol";
+import {AccountType} from "src/pools/interfaces/IHub.sol";
 import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
 import {MockVaults} from "test/pools/mocks/MockVaults.sol";
@@ -77,7 +77,7 @@ contract BaseTest is PoolsDeployer, Test {
         vm.label(address(accounting), "Accounting");
         vm.label(address(holdings), "Holdings");
         vm.label(address(multiShareClass), "MultiShareClass");
-        vm.label(address(poolRouter), "PoolRouter");
+        vm.label(address(hub), "Hub");
         vm.label(address(gateway), "Gateway");
         vm.label(address(messageProcessor), "MessageProcessor");
         vm.label(address(messageDispatcher), "MessageDispatcher");
