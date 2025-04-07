@@ -24,7 +24,7 @@ import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IERC7540Redeem, IAsyncRedeemVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
-import {IBalanceSheetManager} from "src/vaults/interfaces/IBalanceSheetManager.sol";
+import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
@@ -42,7 +42,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     using CastLib for *;
     using MessageLib for *;
 
-    IBalanceSheetManager public balanceSheetManager;
+    IBalanceSheet public balanceSheet;
 
     mapping(address vaultAddr => uint64) public maxPriceAge;
     // TODO(follow-up PR): Support multiple vaults
@@ -54,7 +54,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     /// @inheritdoc IBaseInvestmentManager
     function file(bytes32 what, address data) external override(IBaseInvestmentManager, BaseInvestmentManager) auth {
         if (what == "poolManager") poolManager = IPoolManager(data);
-        else if (what == "balanceSheetManager") balanceSheetManager = IBalanceSheetManager(data);
+        else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
         else revert("SyncRequests/file-unrecognized-param");
         emit File(what, data);
     }
@@ -209,7 +209,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         ShareClassId scId = ShareClassId.wrap(scId_);
 
         // Mint shares for receiver & notify CP about issued shares
-        balanceSheetManager.issue(poolId, scId, receiver, pricePerShare, shares, false);
+        balanceSheet.issue(poolId, scId, receiver, pricePerShare, shares, false);
 
         _updateHoldings(poolId, scId, vaultDetails, depositAssetAmount);
     }
@@ -228,7 +228,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         Meta memory depositMeta = Meta(journalEntries, journalEntries);
 
         // Notify CP about updated holdings
-        balanceSheetManager.deposit(
+        balanceSheet.deposit(
             poolId,
             scId,
             vaultDetails.asset,
@@ -240,9 +240,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         );
 
         // Notify CP about updated holding value
-        balanceSheetManager.updateValue(
-            poolId, scId, vaultDetails.asset, vaultDetails.tokenId, pricePerAssetInPoolCurrency
-        );
+        balanceSheet.updateValue(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, pricePerAssetInPoolCurrency);
     }
 
     /// @dev Retrieve the latest price for the share class token
