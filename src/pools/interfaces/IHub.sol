@@ -12,7 +12,7 @@ import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
-/// @notice AssetRegistry accounts identifications used by the PoolRouter
+/// @notice AssetRegistry accounts identifications used by the Hub
 enum EscrowId {
     /// @notice Represents the escrow for undeployed capital in the share class.
     /// Contains the already invested but not yet approved funds.
@@ -22,7 +22,7 @@ enum EscrowId {
     ShareClass
 }
 
-/// @notice Account types used by PoolRouter
+/// @notice Account types used by Hub
 enum AccountType {
     /// @notice Debit normal account for tracking assets
     Asset,
@@ -39,7 +39,7 @@ enum AccountType {
 }
 
 /// @notice Interface with all methods available in the system used by actors
-interface IPoolRouter {
+interface IHub {
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 what, address addr);
 
