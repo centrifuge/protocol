@@ -329,13 +329,14 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
             ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
             require(shareClass.shareToken != address(0), "PoolManager/share-token-does-not-exist");
 
+            // Unset asset id acts as wildcard for setting share max price age
             if (m.assetId == 0) {
                 (address asset, uint256 tokenId) = checkedIdToAsset(m.assetId);
                 shareClass.pricePoolPerAsset[asset][tokenId].maxAge = m.maxPriceAge;
-                emit MaxPriceAgeUpdate(poolId, scId, asset, tokenId, m.maxPriceAge);
+                emit UpdateAssetMaxPriceAge(poolId, scId, asset, tokenId, m.maxPriceAge);
             } else {
                 shareClass.pricePoolPerShare.maxAge = m.maxPriceAge;
-                emit MaxPriceAgeUpdate(poolId, scId, m.maxPriceAge);
+                emit UpdateShareMaxPriceAge(poolId, scId, m.maxPriceAge);
             }
         } else {
             revert("PoolManager/unknown-update-contract-type");

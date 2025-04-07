@@ -682,6 +682,7 @@ library MessageLib {
     //---------------------------------------
 
     struct UpdateContractMaxPriceAge {
+        /// @dev Set to zero to update share max price age
         uint128 assetId;
         uint64 maxPriceAge;
     }
