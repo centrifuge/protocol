@@ -358,4 +358,22 @@ abstract contract AdminTargets is
         bytes memory data = "not-used";
         multiShareClass.updateMetadata(poolId, shareClassId_, name, symbol, salt, data);
     }
+    
+    function multiShareClass_increaseShareClassIssuance(uint64 poolIdAsUint, bytes16 scIdAsBytes, D18 navPerShare, uint128 amount) public updateGhosts asAdmin {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
+        ShareClassId shareClassId_ = ShareClassId.wrap(scIdAsBytes);
+        multiShareClass.increaseShareClassIssuance(poolId, shareClassId_, navPerShare, amount);
+    }
+
+    function multiShareClass_decreaseShareClassIssuance(uint64 poolIdAsUint, bytes16 scIdAsBytes, D18 navPerShare, uint128 amount) public updateGhosts asAdmin {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
+        ShareClassId shareClassId_ = ShareClassId.wrap(scIdAsBytes);
+        multiShareClass.decreaseShareClassIssuance(poolId, shareClassId_, navPerShare, amount);
+    }
+
+    function multiShareClass_updateShareClassNav(uint64 poolIdAsUint, bytes16 scIdAsBytes) public updateGhosts asAdmin {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
+        ShareClassId shareClassId_ = ShareClassId.wrap(scIdAsBytes);
+        multiShareClass.updateShareClassNav(poolId, shareClassId_);
+    }
 }
