@@ -85,7 +85,7 @@ contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
         require(balance >= value, InsufficientBalance());
 
         unchecked {
-            _setBalance(msg.sender, _balanceOf(msg.sender) - value);
+            _setBalance(msg.sender, balance - value);
             // note: we don't need an overflow check here b/c sum of all balances == totalSupply
             _setBalance(to, _balanceOf(to) + value);
         }
@@ -116,7 +116,7 @@ contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
         }
 
         unchecked {
-            _setBalance(from, _balanceOf(from) - value);
+            _setBalance(from, balance - value);
             // note: we don't need an overflow check here b/c sum of all balances == totalSupply
             _setBalance(to, _balanceOf(to) + value);
         }
@@ -143,7 +143,7 @@ contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
             // and there is an overflow check below
             _setBalance(to, _balanceOf(to) + value);
         }
-        totalSupply = totalSupply + value;
+        totalSupply += value;
 
         emit Transfer(address(0), to, value);
     }
@@ -165,8 +165,8 @@ contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
 
         unchecked {
             // We don't need overflow checks b/c require(balance >= value) and balance <= totalSupply
-            _setBalance(from, _balanceOf(from) - value);
-            totalSupply = totalSupply - value;
+            _setBalance(from, balance - value);
+            totalSupply -= value;
         }
 
         emit Transfer(from, address(0), value);
