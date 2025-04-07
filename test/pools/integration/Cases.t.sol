@@ -132,6 +132,7 @@ contract TestCases is BaseTest {
         assertEq(m0.shareAmount, APPROVED_SHARE_AMOUNT);
     }
 
+    /// forge-config: default.isolate = true
     function testCalUpdateJournal() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation();
 
@@ -154,6 +155,7 @@ contract TestCases is BaseTest {
         cv.updateJournal(poolId, debits, credits);
     }
 
+    /// forge-config: default.isolate = true
     function testCalUpdateHolding() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation();
         uint128 poolDecimals = (10 ** assetRegistry.decimals(USD.raw())).toUint128();
@@ -165,6 +167,7 @@ contract TestCases is BaseTest {
             JournalEntry(130 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Gain)));
 
         cv.updateHoldingAmount(poolId, scId, USDC_C2, 1000 * assetDecimals, D18.wrap(1e18), true, debits, credits);
+
         assertEq(holdings.amount(poolId, scId, USDC_C2), 1000 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 1000 * poolDecimals);
         assertEq(
@@ -176,20 +179,11 @@ contract TestCases is BaseTest {
             int128(870 * poolDecimals)
         );
 
-        _extensionCalUpdateHoldingLoss(poolId, scId, poolDecimals, assetDecimals);
-    }
-
-    function _extensionCalUpdateHoldingLoss(
-        PoolId poolId,
-        ShareClassId scId,
-        uint128 poolDecimals,
-        uint128 assetDecimals
-    ) private {
-        (JournalEntry[] memory debits, uint256 j) = (new JournalEntry[](1), 0);
-        debits[j++] =
+        (debits, i) = (new JournalEntry[](1), 0);
+        debits[i++] =
             JournalEntry(12 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Expense)));
-        (JournalEntry[] memory credits, uint256 k) = (new JournalEntry[](1), 0);
-        credits[k++] =
+        (credits, i) = (new JournalEntry[](1), 0);
+        credits[i++] =
             JournalEntry(12 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Loss)));
 
         cv.updateHoldingAmount(poolId, scId, USDC_C2, 500 * assetDecimals, D18.wrap(1e18), false, debits, credits);
@@ -211,6 +205,7 @@ contract TestCases is BaseTest {
         );
     }
 
+    /// forge-config: default.isolate = true
     function testCalUpdateShares() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation();
 

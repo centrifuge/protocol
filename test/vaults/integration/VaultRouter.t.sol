@@ -7,6 +7,7 @@ import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
 
 import "test/vaults/BaseTest.sol";
 import "src/vaults/interfaces/IERC7575.sol";
@@ -671,7 +672,7 @@ contract VaultRouterTest is BaseTest {
         uint256 gasLimit = estimateGas();
         uint256 lessGas = gasLimit - 1;
 
-        vm.expectRevert("Gateway/not-enough-gas-funds");
+        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
         vaultRouter.requestDeposit{value: lessGas}(vault_, amount, self, self);
 
         vm.expectRevert("PoolManager/unknown-vault");

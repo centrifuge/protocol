@@ -5,6 +5,7 @@ import "src/misc/interfaces/IERC20.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
 
 import "src/vaults/interfaces/IERC7575.sol";
 import "src/vaults/interfaces/IERC7540.sol";
@@ -74,7 +75,7 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
         vaultRouter.enable(vault_);
 
-        vm.expectRevert("Gateway/not-enough-gas-funds");
+        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
         vaultRouter.requestDeposit{value: gas - 1}(vault_, amount, self, self);
 
         vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
@@ -145,7 +146,7 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.executeLockedDepositRequest{value: fuel}(vault_, self);
         assertEq(vault.pendingDepositRequest(0, self), amount);
 
-        vm.expectRevert("Gateway/not-enough-gas-funds");
+        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
         vaultRouter.cancelDepositRequest{value: 0}(vault_);
 
         vaultRouter.cancelDepositRequest{value: fuel}(vault_);
@@ -211,7 +212,7 @@ contract VaultRouterTest is BaseTest {
         // Then redeem
         share.approve(address(vaultRouter), amount);
 
-        vm.expectRevert("Gateway/not-enough-gas-funds");
+        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
         vaultRouter.requestRedeem{value: gas - 1}(vault_, amount, self, self);
 
         vaultRouter.requestRedeem{value: gas}(vault_, amount, self, self);
@@ -244,7 +245,7 @@ contract VaultRouterTest is BaseTest {
 
         vm.deal(address(this), 10 ether);
 
-        vm.expectRevert("Gateway/not-enough-gas-funds");
+        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
         vaultRouter.cancelRedeemRequest{value: gas - 1}(vault_);
 
         vaultRouter.cancelRedeemRequest{value: gas}(vault_);
@@ -340,7 +341,7 @@ contract VaultRouterTest is BaseTest {
         share.approve(address(vaultRouter), amount);
         uint256 fuel = estimateGas();
 
-        vm.expectRevert("Gateway/not-enough-gas-funds");
+        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
         vaultRouter.transferShares{value: fuel - 1}(vault_, OTHER_CHAIN_ID, destinationAddress, uint128(amount));
 
         snapStart("VaultRouter_transferShares");
@@ -370,7 +371,7 @@ contract VaultRouterTest is BaseTest {
         share.approve(address(vaultRouter), amount);
         uint256 fuel = estimateGas();
 
-        vm.expectRevert("Gateway/not-enough-gas-funds");
+        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
         vaultRouter.transferShares{value: fuel - 1}(
             vault_, OTHER_CHAIN_ID, destinationAddressAsBytes32, uint128(amount)
         );
@@ -384,7 +385,7 @@ contract VaultRouterTest is BaseTest {
         address asset = address(erc20);
         uint256 fuel = estimateGas();
 
-        vm.expectRevert("Gateway/not-enough-gas-funds");
+        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
         vaultRouter.registerAsset{value: fuel - 1}(asset, 0, OTHER_CHAIN_ID);
 
         vm.expectEmit();
@@ -398,7 +399,7 @@ contract VaultRouterTest is BaseTest {
         uint256 tokenId = 18;
         uint256 fuel = estimateGas();
 
-        vm.expectRevert("Gateway/not-enough-gas-funds");
+        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
         vaultRouter.registerAsset{value: fuel - 1}(asset, tokenId, OTHER_CHAIN_ID);
 
         vm.expectEmit();
