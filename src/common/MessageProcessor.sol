@@ -21,7 +21,7 @@ import {
     IGatewayHandler,
     IPoolManagerGatewayHandler,
     IPoolRouterGatewayHandler,
-    IBalanceSheetManagerGatewayHandler,
+    IBalanceSheetGatewayHandler,
     IInvestmentManagerGatewayHandler
 } from "src/common/interfaces/IGatewayHandlers.sol";
 import {IVaultMessageSender, IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
@@ -41,7 +41,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IPoolRouterGatewayHandler public poolRouter;
     IPoolManagerGatewayHandler public poolManager;
     IInvestmentManagerGatewayHandler public investmentManager;
-    IBalanceSheetManagerGatewayHandler public balanceSheetManager;
+    IBalanceSheetGatewayHandler public balanceSheet;
 
     constructor(IRoot root_, address deployer) Auth(deployer) {
         root = root_;
@@ -53,7 +53,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         else if (what == "poolRouter") poolRouter = IPoolRouterGatewayHandler(data);
         else if (what == "poolManager") poolManager = IPoolManagerGatewayHandler(data);
         else if (what == "investmentManager") investmentManager = IInvestmentManagerGatewayHandler(data);
-        else if (what == "balanceSheetManager") balanceSheetManager = IBalanceSheetManagerGatewayHandler(data);
+        else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -156,7 +156,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
             Meta memory meta = Meta({debits: m.debits, credits: m.credits});
             if (m.isIncrease) {
-                balanceSheetManager.triggerDeposit(
+                balanceSheet.triggerDeposit(
                     PoolId.wrap(m.poolId),
                     ShareClassId.wrap(m.scId),
                     AssetId.wrap(m.assetId),
@@ -166,7 +166,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
                     meta
                 );
             } else {
-                balanceSheetManager.triggerWithdraw(
+                balanceSheet.triggerWithdraw(
                     PoolId.wrap(m.poolId),
                     ShareClassId.wrap(m.scId),
                     AssetId.wrap(m.assetId),
@@ -180,7 +180,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.TriggerUpdateShares) {
             MessageLib.TriggerUpdateShares memory m = message.deserializeTriggerUpdateShares();
             if (m.isIssuance) {
-                balanceSheetManager.triggerIssueShares(
+                balanceSheet.triggerIssueShares(
                     PoolId.wrap(m.poolId),
                     ShareClassId.wrap(m.scId),
                     address(bytes20(m.who)),
@@ -189,7 +189,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
                     m.asAllowance
                 );
             } else {
-                balanceSheetManager.triggerRevokeShares(
+                balanceSheet.triggerRevokeShares(
                     PoolId.wrap(m.poolId),
                     ShareClassId.wrap(m.scId),
                     address(bytes20(m.who)),
