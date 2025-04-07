@@ -51,7 +51,7 @@ contract Holdings is Auth, IHoldings {
             accountId[poolId][scId][assetId][accountId_.kind()] = accountId_;
         }
 
-        emit Created(poolId, scId, assetId, valuation_, isLiability_);
+        emit Create(poolId, scId, assetId, valuation_, isLiability_);
     }
 
     /// @inheritdoc IHoldings
@@ -70,7 +70,7 @@ contract Holdings is Auth, IHoldings {
         holding_.assetAmount += amount_;
         holding_.assetAmountValue += amountValue;
 
-        emit Increased(poolId, scId, assetId, valuation_, amount_, amountValue);
+        emit Increase(poolId, scId, assetId, valuation_, amount_, amountValue);
     }
 
     /// @inheritdoc IHoldings
@@ -89,7 +89,7 @@ contract Holdings is Auth, IHoldings {
         holding_.assetAmount -= amount_;
         holding_.assetAmountValue -= amountValue;
 
-        emit Decreased(poolId, scId, assetId, valuation_, amount_, amountValue);
+        emit Decrease(poolId, scId, assetId, valuation_, amount_, amountValue);
     }
 
     /// @inheritdoc IHoldings
@@ -107,7 +107,7 @@ contract Holdings is Auth, IHoldings {
 
         holding_.assetAmountValue = currentAmountValue;
 
-        emit Updated(poolId, scId, assetId, diffValue);
+        emit Update(poolId, scId, assetId, diffValue);
     }
 
     /// @inheritdoc IHoldings
@@ -119,7 +119,7 @@ contract Holdings is Auth, IHoldings {
 
         holding_.valuation = valuation_;
 
-        emit ValuationUpdated(poolId, scId, assetId, valuation_);
+        emit UpdateValuation(poolId, scId, assetId, valuation_);
     }
 
     /// @inheritdoc IHoldings
@@ -129,7 +129,7 @@ contract Holdings is Auth, IHoldings {
 
         accountId[poolId][scId][assetId][accountId_.kind()] = accountId_;
 
-        emit AccountIdSet(poolId, scId, assetId, accountId_);
+        emit SetAccountId(poolId, scId, assetId, accountId_);
     }
 
     /// @inheritdoc IHoldings

@@ -12,10 +12,10 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 interface IMultiShareClass is IShareClassManager {
     /// Events
     event File(bytes32 what, address who);
-    event AddedShareClass(
+    event AddShareClass(
         PoolId indexed poolId, ShareClassId indexed scId, uint32 indexed index, string name, string symbol, bytes32 salt
     );
-    event UpdatedMetadata(PoolId indexed poolId, ShareClassId indexed scId, string name, string symbol, bytes32 salt);
+    event UpdateMetadata(PoolId indexed poolId, ShareClassId indexed scId, string name, string symbol, bytes32 salt);
 
     /// Errors
     error ApprovalRequired();

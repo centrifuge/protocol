@@ -87,7 +87,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
 
         _updateMetadata(scId_, name, symbol, salt);
 
-        emit AddedShareClass(poolId, scId_, index, name, symbol, salt);
+        emit AddShareClass(poolId, scId_, index, name, symbol, salt);
     }
 
     /// @inheritdoc IShareClassManager
@@ -174,8 +174,14 @@ contract MultiShareClass is Auth, IMultiShareClass {
         pendingDeposit[scId_][paymentAssetId] -= approvedAssetAmount;
         _pendingDeposit -= approvedAssetAmount;
 
-        emit ApprovedDeposits(
-            poolId, scId_, approvalEpochId, paymentAssetId, approvedPoolAmount, approvedAssetAmount, _pendingDeposit
+        emit ApproveDeposits(
+            poolId,
+            scId_,
+            approvalEpochId,
+            paymentAssetId,
+            approvedPoolAmount,
+            approvedAssetAmount,
+            _pendingDeposit
         );
     }
 
@@ -209,7 +215,14 @@ contract MultiShareClass is Auth, IMultiShareClass {
 
         epochPointers[scId_][payoutAssetId].latestRedeemApproval = approvalEpochId;
 
-        emit ApprovedRedeems(poolId, scId_, approvalEpochId, payoutAssetId, approvedShareAmount, pendingShareAmount);
+        emit ApproveRedeems(
+            poolId,
+            scId_,
+            approvalEpochId,
+            payoutAssetId,
+            approvedShareAmount,
+            pendingShareAmount
+        );
     }
 
     /// @inheritdoc IShareClassManager
@@ -249,7 +262,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
             totalIssuance += issuedShareAmount;
             uint128 nav = navPerShare.mulUint128(totalIssuance);
 
-            emit IssuedShares(poolId, scId_, epochId_, navPerShare, nav, issuedShareAmount);
+            emit IssueShares(poolId, scId_, epochId_, navPerShare, nav, issuedShareAmount);
         }
 
         epochPointers[scId_][depositAssetId].latestIssuance = endEpochId;
@@ -354,7 +367,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
             uint128 approvedAssetAmount =
                 userOrder.pending.mulDiv(epochAmounts_.depositApproved, epochAmounts_.depositPending).toUint128();
             if (approvedAssetAmount == 0) {
-                emit ClaimedDeposit(poolId, scId_, epochId_, investor, depositAssetId, 0, userOrder.pending, 0);
+                emit ClaimDeposit(poolId, scId_, epochId_, investor, depositAssetId, 0, userOrder.pending, 0);
                 continue;
             }
 
@@ -382,7 +395,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
                 paymentAssetAmount += approvedAssetAmount;
             }
 
-            emit ClaimedDeposit(
+            emit ClaimDeposit(
                 poolId,
                 scId_,
                 epochId_,
@@ -435,7 +448,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
             uint128 approvedShareAmount =
                 userOrder.pending.mulDiv(epochAmounts_.redeemApproved, epochAmounts_.redeemPending).toUint128();
             if (approvedShareAmount == 0) {
-                emit ClaimedRedeem(poolId, scId_, epochId_, investor, payoutAssetId, 0, userOrder.pending, 0);
+                emit ClaimRedeem(poolId, scId_, epochId_, investor, payoutAssetId, 0, userOrder.pending, 0);
                 continue;
             }
 
@@ -463,7 +476,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
                 userOrder.pending -= approvedShareAmount;
             }
 
-            emit ClaimedRedeem(
+            emit ClaimRedeem(
                 poolId,
                 scId_,
                 epochId_,
@@ -493,7 +506,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
 
         _updateMetadata(scId_, name, symbol, salt);
 
-        emit UpdatedMetadata(poolId, scId_, name, symbol, salt);
+        emit UpdateMetadata(poolId, scId_, name, symbol, salt);
     }
 
     /// @inheritdoc IShareClassManager
@@ -506,7 +519,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
         uint128 newIssuance = metrics[scId_].totalIssuance + amount;
         metrics[scId_].totalIssuance = newIssuance;
 
-        emit IssuedShares(poolId, scId_, epochId[poolId], navPerShare, navPerShare.mulUint128(newIssuance), amount);
+        emit IssueShares(poolId, scId_, epochId[poolId], navPerShare, navPerShare.mulUint128(newIssuance), amount);
     }
 
     /// @inheritdoc IShareClassManager
@@ -520,7 +533,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
         uint128 newIssuance = metrics[scId_].totalIssuance - amount;
         metrics[scId_].totalIssuance = newIssuance;
 
-        emit RevokedShares(poolId, scId_, epochId[poolId], navPerShare, navPerShare.mulUint128(newIssuance), amount, 0);
+        emit RevokeShares(poolId, scId_, epochId[poolId], navPerShare, navPerShare.mulUint128(newIssuance), amount, 0);
     }
 
     /// @inheritdoc IShareClassManager
@@ -574,8 +587,14 @@ contract MultiShareClass is Auth, IMultiShareClass {
             IERC7726(valuation).getQuote(payoutPoolAmount, poolCurrency, payoutAssetId.addr()).toUint128();
 
         uint128 nav = navPerShare.mulUint128(totalIssuance - epochAmounts_.redeemApproved);
-        emit RevokedShares(
-            poolId, scId_, epochId_, navPerShare, nav, epochAmounts_.redeemApproved, epochAmounts_.redeemAssets
+        emit RevokeShares(
+            poolId,
+            scId_,
+            epochId_,
+            navPerShare,
+            nav,
+            epochAmounts_.redeemApproved,
+            epochAmounts_.redeemAssets
         );
     }
 
@@ -760,7 +779,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
         uint128 pendingTotal =
             requestType == RequestType.Deposit ? pendingDeposit[scId_][assetId] : pendingRedeem[scId_][assetId];
 
-        emit UpdatedRequest(
+        emit UpdateRequest(
             poolId,
             scId_,
             epochId[poolId],
@@ -790,7 +809,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
         pendingDeposit[scId_][assetId] = isIncrement ? pendingTotal + amount : pendingTotal - amount;
         pendingTotal = pendingDeposit[scId_][assetId];
 
-        emit UpdatedRequest(
+        emit UpdateRequest(
             poolId,
             scId_,
             epochId[poolId],
@@ -818,7 +837,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
         pendingRedeem[scId_][assetId] = isIncrement ? pendingTotal + amount : pendingTotal - amount;
         pendingTotal = pendingRedeem[scId_][assetId];
 
-        emit UpdatedRequest(
+        emit UpdateRequest(
             poolId,
             scId_,
             epochId[poolId],

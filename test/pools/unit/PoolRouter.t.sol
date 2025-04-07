@@ -51,8 +51,8 @@ contract TestCommon is Test {
 
         vm.mockCall(address(accounting), abi.encodeWithSelector(accounting.unlock.selector, POOL_A), abi.encode(true));
 
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.startBatch.selector), abi.encode());
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endBatch.selector), abi.encode());
+        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.startBatching.selector), abi.encode());
+        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endBatching.selector), abi.encode());
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.isBatching.selector), abi.encode(true));
     }
 }
@@ -115,6 +115,9 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.revokeShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
+
+        vm.expectRevert(IPoolRouter.PoolLocked.selector);
+        poolRouter.updateRestriction(0, ShareClassId.wrap(0), bytes(""));
 
         vm.expectRevert(IPoolRouter.PoolLocked.selector);
         poolRouter.updateContract(0, ShareClassId.wrap(0), bytes32(0), bytes(""));

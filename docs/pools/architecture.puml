@@ -84,15 +84,17 @@ class PoolLocker {
 PoolLocker -right-> Multicall
 
 enum EscrowType {
-    SHARE_CLASS
-    PENDING_SHARE_CLASS
+    ShareClass
+    PendingShareClass
 }
 
 enum AccountType {
-    ASSET,
-    EQUITY,
-    LOSS,
-    GAIN,
+    Asset,
+    Equity,
+    Loss,
+    Gain,
+    Expense,
+    Liability
 }
 
 interface IPoolManagerHandler {

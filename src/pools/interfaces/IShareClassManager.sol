@@ -75,7 +75,7 @@ enum RequestType {
 interface IShareClassManager {
     /// Events
     event NewEpoch(PoolId poolId, uint32 newIndex);
-    event ApprovedDeposits(
+    event ApproveDeposits(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         uint32 indexed epoch,
@@ -84,7 +84,7 @@ interface IShareClassManager {
         uint128 approvedAssetAmount,
         uint128 pendingAssetAmount
     );
-    event ApprovedRedeems(
+    event ApproveRedeems(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         uint32 indexed epoch,
@@ -92,7 +92,7 @@ interface IShareClassManager {
         uint128 approvedShareClassAmount,
         uint128 pendingShareClassAmount
     );
-    event IssuedShares(
+    event IssueShares(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         uint32 indexed epoch,
@@ -101,7 +101,7 @@ interface IShareClassManager {
         uint128 issuedShareAmount
     );
 
-    event RevokedShares(
+    event RevokeShares(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         uint32 indexed epoch,
@@ -111,7 +111,7 @@ interface IShareClassManager {
         uint128 revokedAssetAmount
     );
 
-    event ClaimedDeposit(
+    event ClaimDeposit(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         uint32 indexed epoch,
@@ -121,7 +121,7 @@ interface IShareClassManager {
         uint128 pendingAssetAmount,
         uint128 claimedShareAmount
     );
-    event ClaimedRedeem(
+    event ClaimRedeem(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         uint32 indexed epoch,
@@ -131,9 +131,9 @@ interface IShareClassManager {
         uint128 pendingShareClassAmount,
         uint128 claimedAssetAmount
     );
-    event UpdatedNav(PoolId indexed poolId, ShareClassId indexed scId, uint128 newAmount);
-    event AddedShareClass(PoolId indexed poolId, ShareClassId indexed scId, uint32 indexed index);
-    event UpdatedRequest(
+    event UpdateNav(PoolId indexed poolId, ShareClassId indexed scId, uint128 newAmount);
+    event AddShareClass(PoolId indexed poolId, ShareClassId indexed scId, uint32 indexed index);
+    event UpdateRequest(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         uint32 indexed epoch,

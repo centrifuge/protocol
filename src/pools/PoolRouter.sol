@@ -86,14 +86,14 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
     function multicall(bytes[] calldata data) public payable override {
         bool wasBatching = gateway.isBatching();
         if (!wasBatching) {
-            gateway.startBatch();
+            gateway.startBatching();
+            gateway.topUp{value: msg.value}();
         }
 
         super.multicall(data);
 
         if (!wasBatching) {
-            gateway.topUp{value: msg.value}();
-            gateway.endBatch();
+            gateway.endBatching();
         }
     }
 
@@ -151,7 +151,8 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
 
         (uint128 tokens, uint128 shares, uint128 cancelledShareAmount) = scm.claimRedeem(poolId, scId, investor, assetId);
 
-        assetRegistry.burn(escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS), assetId.raw(), tokens);
+        assetRegistry.burn(escrow(poolId, scId, EscrowId.PendingShareClass), assetId.raw(), tokens);
+
         sender.sendFulfilledRedeemRequest(poolId, scId, assetId, investor, tokens, shares);
 
         // If cancellation was queued, notify about delayed cancellation
@@ -222,8 +223,8 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
             scm.approveDeposits(unlockedPoolId, scId, maxApproval, paymentAssetId, valuation);
 
         assetRegistry.authTransferFrom(
-            escrow(unlockedPoolId, scId, EscrowId.PENDING_SHARE_CLASS),
-            escrow(unlockedPoolId, scId, EscrowId.SHARE_CLASS),
+            escrow(unlockedPoolId, scId, EscrowId.PendingShareClass),
+            escrow(unlockedPoolId, scId, EscrowId.ShareClass),
             uint256(uint160(AssetId.unwrap(paymentAssetId))),
             approvedAssetAmount
         );
@@ -231,10 +232,10 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         uint128 valueChange = holdings.increase(unlockedPoolId, scId, paymentAssetId, valuation, approvedAssetAmount);
 
         accounting.addCredit(
-            holdings.accountId(unlockedPoolId, scId, paymentAssetId, uint8(AccountType.EQUITY)), valueChange
+            holdings.accountId(unlockedPoolId, scId, paymentAssetId, uint8(AccountType.Equity)), valueChange
         );
         accounting.addDebit(
-            holdings.accountId(unlockedPoolId, scId, paymentAssetId, uint8(AccountType.ASSET)), valueChange
+            holdings.accountId(unlockedPoolId, scId, paymentAssetId, uint8(AccountType.Asset)), valueChange
         );
     }
 
@@ -268,8 +269,8 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         (uint128 payoutAssetAmount,) = scm.revokeShares(unlockedPoolId, scId, payoutAssetId, navPerShare, valuation);
 
         assetRegistry.authTransferFrom(
-            escrow(unlockedPoolId, scId, EscrowId.SHARE_CLASS),
-            escrow(unlockedPoolId, scId, EscrowId.PENDING_SHARE_CLASS),
+            escrow(unlockedPoolId, scId, EscrowId.ShareClass),
+            escrow(unlockedPoolId, scId, EscrowId.PendingShareClass),
             uint256(uint160(AssetId.unwrap(payoutAssetId))),
             payoutAssetAmount
         );
@@ -277,11 +278,24 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         uint128 valueChange = holdings.decrease(unlockedPoolId, scId, payoutAssetId, valuation, payoutAssetAmount);
 
         accounting.addCredit(
-            holdings.accountId(unlockedPoolId, scId, payoutAssetId, uint8(AccountType.ASSET)), valueChange
+            holdings.accountId(unlockedPoolId, scId, payoutAssetId, uint8(AccountType.Asset)), valueChange
         );
         accounting.addDebit(
-            holdings.accountId(unlockedPoolId, scId, payoutAssetId, uint8(AccountType.EQUITY)), valueChange
+            holdings.accountId(unlockedPoolId, scId, payoutAssetId, uint8(AccountType.Equity)), valueChange
         );
+    }
+
+    /// @inheritdoc IPoolRouter
+    function updateRestriction(uint16 chainId, ShareClassId scId, bytes calldata payload)
+        external
+        payable
+    {
+        _protectedAndUnlocked();
+
+        IShareClassManager scm = shareClassManager(unlockedPoolId);
+        require(scm.exists(unlockedPoolId, scId), IShareClassManager.ShareClassNotFound());
+        
+        sender.sendUpdateRestriction(chainId, unlockedPoolId, scId, payload);
     }
 
     /// @inheritdoc IPoolRouter
@@ -327,12 +341,12 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         require(assetRegistry.isRegistered(assetId), IAssetRegistry.AssetNotFound());
 
         AccountId[] memory accounts = new AccountId[](6);
-        accounts[0] = newAccountId(prefix, uint8(AccountType.ASSET));
-        accounts[1] = newAccountId(prefix, uint8(AccountType.EQUITY));
-        accounts[2] = newAccountId(prefix, uint8(AccountType.LOSS));
-        accounts[3] = newAccountId(prefix, uint8(AccountType.GAIN));
-        accounts[4] = newAccountId(prefix, uint8(AccountType.EXPENSE));
-        accounts[5] = newAccountId(prefix, uint8(AccountType.LIABILITY));
+        accounts[0] = newAccountId(prefix, uint8(AccountType.Asset));
+        accounts[1] = newAccountId(prefix, uint8(AccountType.Equity));
+        accounts[2] = newAccountId(prefix, uint8(AccountType.Loss));
+        accounts[3] = newAccountId(prefix, uint8(AccountType.Gain));
+        accounts[4] = newAccountId(prefix, uint8(AccountType.Expense));
+        accounts[5] = newAccountId(prefix, uint8(AccountType.Liability));
 
         createAccount(accounts[0], true);
         createAccount(accounts[1], false);
@@ -353,33 +367,33 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         if (diff > 0) {
             if (holdings.isLiability(unlockedPoolId, scId, assetId)) {
                 accounting.addCredit(
-                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.LIABILITY)), uint128(diff)
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.Liability)), uint128(diff)
                 );
                 accounting.addDebit(
-                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.EXPENSE)), uint128(diff)
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.Expense)), uint128(diff)
                 );
             } else {
                 accounting.addCredit(
-                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.GAIN)), uint128(diff)
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.Gain)), uint128(diff)
                 );
                 accounting.addDebit(
-                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.ASSET)), uint128(diff)
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.Asset)), uint128(diff)
                 );
             }
         } else if (diff < 0) {
             if (holdings.isLiability(unlockedPoolId, scId, assetId)) {
                 accounting.addCredit(
-                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.EXPENSE)), uint128(diff)
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.Expense)), uint128(diff)
                 );
                 accounting.addDebit(
-                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.LIABILITY)), uint128(diff)
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.Liability)), uint128(diff)
                 );
             } else {
                 accounting.addCredit(
-                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.ASSET)), uint128(diff)
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.Asset)), uint128(diff)
                 );
                 accounting.addDebit(
-                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.LOSS)), uint128(diff)
+                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.Loss)), uint128(diff)
                 );
             }
         }
@@ -444,7 +458,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         external
         auth
     {
-        address pendingShareClassEscrow = escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS);
+        address pendingShareClassEscrow = escrow(poolId, scId, EscrowId.PendingShareClass);
         assetRegistry.mint(pendingShareClassEscrow, depositAssetId.raw(), amount);
 
         IShareClassManager scm = shareClassManager(poolId);
@@ -603,8 +617,8 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         uint128 creditValue
     ) internal {
         bool isLiability = holdings.isLiability(poolId, scId, assetId);
-        AccountType debitAccountType = isLiability ? AccountType.EXPENSE : AccountType.ASSET;
-        AccountType creditAccountType = isLiability ? AccountType.LIABILITY : AccountType.EQUITY;
+        AccountType debitAccountType = isLiability ? AccountType.Expense : AccountType.Asset;
+        AccountType creditAccountType = isLiability ? AccountType.Liability : AccountType.Equity;
 
         if (isIncrease) {
             holdings.increase(poolId, scId, assetId, transientValuation, amount);
@@ -625,7 +639,7 @@ contract PoolRouter is Auth, Multicall, IPoolRouter, IPoolRouterGatewayHandler {
         AssetId depositAssetId,
         uint128 cancelledAssetAmount
     ) internal {
-        address pendingShareClassEscrow = escrow(poolId, scId, EscrowId.PENDING_SHARE_CLASS);
+        address pendingShareClassEscrow = escrow(poolId, scId, EscrowId.PendingShareClass);
         assetRegistry.burn(pendingShareClassEscrow, depositAssetId.raw(), cancelledAssetAmount);
 
         sender.sendFulfilledCancelDepositRequest(poolId, scId, depositAssetId, investor, cancelledAssetAmount);
