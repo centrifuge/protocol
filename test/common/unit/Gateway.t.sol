@@ -206,7 +206,7 @@ contract GatewayTest is Test {
         vm.expectRevert(IGateway.FileUnrecognizedParam.selector);
         gateway.file("notAdapters", REMOTE_CENTRIFUGE_ID, nineMockAdapters);
 
-        vm.expectRevert(IGateway.NoDuplicatedAllowed.selector);
+        vm.expectRevert(IGateway.NoDuplicatesAllowed.selector);
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, twoDuplicateMockAdapters);
 
         gateway.deny(address(this));
@@ -583,7 +583,7 @@ contract GatewayTest is Test {
         );
         */
 
-        vm.expectRevert(IGateway.MessageRecoveryPeriodNotEnded.selector);
+        vm.expectRevert(IGateway.MessageRecoveryChallengePeriodNotEnded.selector);
         gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter1, message);
 
         // Execute recovery
@@ -618,7 +618,7 @@ contract GatewayTest is Test {
         );
         */
 
-        vm.expectRevert(IGateway.MessageRecoveryPeriodNotEnded.selector);
+        vm.expectRevert(IGateway.MessageRecoveryChallengePeriodNotEnded.selector);
         gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter3, proof);
         vm.warp(block.timestamp + gateway.RECOVERY_CHALLENGE_PERIOD());
 
@@ -679,7 +679,7 @@ contract GatewayTest is Test {
         );
         */
 
-        vm.expectRevert(IGateway.MessageRecoveryPeriodNotEnded.selector);
+        vm.expectRevert(IGateway.MessageRecoveryChallengePeriodNotEnded.selector);
         gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter3, proof);
 
         // Dispute recovery

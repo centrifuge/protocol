@@ -79,7 +79,7 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     error EmptyAdapterSet();
 
     /// @notice Dispatched when the gateway is configured with duplicate adapters.
-    error NoDuplicatedAllowed();
+    error NoDuplicatesAllowed();
 
     /// @notice Dispatched when the gateway tries to handle a message from an adaptet not contained in the adapter set.
     error InvalidAdapter();
@@ -97,7 +97,7 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     error MessageRecoveryNotInitiated();
 
     /// @notice Dispatched when a recovery message is executed without waiting the challenge period.
-    error MessageRecoveryPeriodNotEnded();
+    error MessageRecoveryChallengePeriodNotEnded();
 
     /// @notice Dispatched when a the gateway tries to send an empty message.
     error EmptyMessage();

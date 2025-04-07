@@ -293,7 +293,7 @@ contract AdminTest is BaseTest {
                 .serialize()
         );
 
-        vm.expectRevert(IGateway.MessageRecoveryPeriodNotEnded.selector);
+        vm.expectRevert(IGateway.MessageRecoveryChallengePeriodNotEnded.selector);
         gateway.executeMessageRecovery(OTHER_CHAIN_ID, adapter3, proof);
 
         vm.prank(makeAddr("unauthorized"));

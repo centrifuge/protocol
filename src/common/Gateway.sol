@@ -104,7 +104,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
             // Enable new adapters, setting quorum to number of adapters
             for (uint8 j; j < quorum_; j++) {
-                require(_activeAdapters[chainId][addresses[j]].id == 0, NoDuplicatedAllowed());
+                require(_activeAdapters[chainId][addresses[j]].id == 0, NoDuplicatesAllowed());
 
                 // Ids are assigned sequentially starting at 1
                 _activeAdapters[chainId][addresses[j]] = Adapter(j + 1, quorum_, sessionId);
@@ -234,7 +234,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
         uint256 recovery = recoveries[chainId][adapter][messageHash];
 
         require(recovery != 0, MessageRecoveryNotInitiated());
-        require(recovery <= block.timestamp, MessageRecoveryPeriodNotEnded());
+        require(recovery <= block.timestamp, MessageRecoveryChallengePeriodNotEnded());
 
         delete recoveries[chainId][adapter][messageHash];
         _handle(chainId, message, adapter, true);
