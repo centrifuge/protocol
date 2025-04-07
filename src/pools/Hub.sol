@@ -168,6 +168,8 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
 
     /// @inheritdoc IHub
     function setTransientPrice(AssetId assetId, D18 price) public payable {
+        _protectedAndUnlocked();
+        
         address poolCurrency = poolRegistry.currency(unlockedPoolId).addr();
         transientValuation.setPrice(assetId.addr(), poolCurrency, price);
     }

@@ -507,7 +507,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         centrifugeChain.updateAssetPrice(poolId, scId, assetId, 1e18, uint64(block.timestamp));
 
         vm.expectRevert("PoolManager/invalid-price");
-        poolManager.checkedPriceAssetToShare(poolId, scId, assetId);
+        poolManager.checkedPriceAssetPerShare(poolId, scId, assetId);
 
         // Allows us to go back in time later
         vm.warp(block.timestamp + 1 days);
@@ -520,7 +520,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.updateAssetPrice(poolId, scId, assetId, price, uint64(block.timestamp));
 
         centrifugeChain.updateSharePrice(poolId, scId, price, uint64(block.timestamp));
-        (D18 latestPrice, uint64 lastUpdated) = poolManager.priceAssetToShare(poolId, scId, assetId);
+        (D18 latestPrice, uint64 lastUpdated) = poolManager.priceAssetPerShare(poolId, scId, assetId);
         assertEq(latestPrice.raw(), price);
         assertEq(lastUpdated, block.timestamp);
 
@@ -530,10 +530,10 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         // NOTE: We have no maxAge set, so price is invalid after timestamp of block increases
         vm.warp(block.timestamp + 1);
         vm.expectRevert("PoolManager/invalid-price");
-        poolManager.checkedPriceAssetToShare(poolId, scId, assetId);
+        poolManager.checkedPriceAssetPerShare(poolId, scId, assetId);
 
         // NOTE: Unchecked version will work
-        (latestPrice, lastUpdated) = poolManager.priceAssetToShare(poolId, scId, assetId);
+        (latestPrice, lastUpdated) = poolManager.priceAssetPerShare(poolId, scId, assetId);
         assertEq(latestPrice.raw(), price);
         assertEq(lastUpdated, block.timestamp - 1);
     }

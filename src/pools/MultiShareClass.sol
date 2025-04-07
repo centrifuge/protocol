@@ -529,11 +529,11 @@ contract MultiShareClass is Auth, IMultiShareClass {
     function updateShareClass(PoolId poolId, ShareClassId scId_, D18 navPerShare, bytes calldata data) external auth returns (uint128, D18) {
         require(exists(poolId, scId_), ShareClassNotFound());
 
-        metrics[scId_].navPerShare = navPerShare;
-        uint128 totalIssuance = metrics[scId_].totalIssuance;
-        emit UpdateShareClass(poolId, scId_, navPerShare.mulUint128(totalIssuance), navPerShare, totalIssuance, data);
+        ShareClassMetrics storage m = metrics[scId_];
+        m.navPerShare = navPerShare;
+        emit UpdateShareClass(poolId, scId_, navPerShare.mulUint128(m.totalIssuance), navPerShare, m.totalIssuance, data);
 
-        return (totalIssuance, navPerShare);
+        return (m.totalIssuance, navPerShare);
     }
 
     /// @inheritdoc IShareClassManager

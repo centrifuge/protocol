@@ -61,7 +61,8 @@ contract AssetShareConversionTest is BaseTest {
         // NOTE: For 1 unit of pool, you know get 2 units of assets. As the price of a share is 1.2 POOL/SHARE
         //       we now have 2 * 1.2 = 2.4 units of assets per share
         assertEq(vault.totalAssets(), 240000000);
-        assertEq(vault.convertToShares(240000000), 100000000000000000000); // tranche tokens have 12 more decimals than
+        assertEq(vault.convertToShares(240000000), 100000000000000000000); // share class tokens have 12 more decimals
+            // than
         // assets
         assertEq(vault.convertToAssets(vault.convertToShares(240000000000000000000)), 240000000000000000000);
         assertEq(vault.pricePerShare(), 2.4e6);

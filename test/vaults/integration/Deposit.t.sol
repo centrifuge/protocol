@@ -30,7 +30,7 @@ contract DepositTest is BaseTest {
 
         (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
-    IShareToken shareToken = IShareToken(address(vault.share()));
+        IShareToken shareToken = IShareToken(address(vault.share()));
         centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), price, uint64(block.timestamp));
 
         erc20.mint(self, amount);
@@ -489,7 +489,7 @@ contract DepositTest is BaseTest {
         (uint64 poolId, address vault_, uint128 assetId) =
             deployVault(VaultKind.Async, 6, restrictedTransfers, scId, address(asset), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
-    IShareToken shareToken = IShareToken(address(vault.share()));
+        IShareToken shareToken = IShareToken(address(vault.share()));
         centrifugeChain.updateSharePrice(poolId, scId, 1000000000000000000000000000, uint64(block.timestamp));
 
         // invest

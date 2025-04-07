@@ -64,10 +64,7 @@ contract AssetRegistry is ERC6909Fungible, IAssetRegistry {
 
     /// @inheritdoc IAssetRegistry
     function unitAmount(AssetId assetId) external view returns (uint128) {
-        uint8 decimals_ = asset[assetId].decimals;
-        require(decimals_ > 0, AssetNotFound());
-
-        return (10 ** decimals_).toUint128();
+        return (10 ** this.decimals(assetId)).toUint128();
     }
 
     /// @inheritdoc IAssetRegistry

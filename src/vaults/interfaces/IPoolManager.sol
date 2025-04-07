@@ -18,20 +18,21 @@ struct ShareClassDetails {
     ///      multiple vaults can be linked to the same asset.
     ///      A vault in this storage DOES NOT mean the vault can be used
     mapping(address asset => mapping(uint256 tokenId => address[])) vaults;
-    /// @dev Each tranche has individual price per pool unit in asset denomination (POOL_UNIT/ASSET_UNIT)
-    mapping(address asset => mapping(uint256 tokenId => Price)) pricePoolToAsset;
-    /// @dev Each tranche has individual price per tranche unit in pool denomination (POOL_UNIT/SHARE_UNIT)
-    Price pricePoolToShare;
+    /// @dev For each share class, we store the price per pool unit in asset denomination (POOL_UNIT/ASSET_UNIT)
+    mapping(address asset => mapping(uint256 tokenId => Price)) pricePoolPerAsset;
+    /// @dev Each share class has an individual price per share class unit in pool denomination (POOL_UNIT/SHARE_UNIT)
+    Price pricePoolPerShare;
 }
 
-/// @dev Price struct that contains a price, the timstamp at which it was computed and the max age of the price.
+/// @dev Price struct that contains a price, the timestamp at which it was computed and the max age of the price.
 struct Price {
     uint128 price;
     uint64 computedAt;
     uint64 maxAge;
 }
 
-/// @dev Checks if a price is valid. Returns false if price is 0 or computedAt is 0. Otherwise checks for block timestamp <= computedAt + maxAge
+/// @dev Checks if a price is valid. Returns false if price is 0 or computedAt is 0. Otherwise checks for block
+/// timestamp <= computedAt + maxAge
 function isValid(Price memory price) view returns (bool) {
     if (price.computedAt != 0 && price.price != 0) {
         return block.timestamp <= price.computedAt + price.maxAge;
@@ -191,50 +192,51 @@ interface IPoolManager is IRecoverable {
     /// @return details The details of the vault including the underlying asset address, token id, asset id
     function vaultDetails(address vault) external view returns (VaultDetails memory details);
 
-    /// @notice Checks whether a given asset-vault pair is eligible for investing into a tranche of a pool
+    /// @notice Checks whether a given asset-vault pair is eligible for investing into a share class of a pool
     function isLinked(uint64 poolId, bytes16 scId, address asset, address vault) external view returns (bool);
 
-    /// @notice Returns the price per share for a given pool, tranche, asset, and token id
-    /// @dev   Reverts if the pool or tranche or asset does not exist. Provided price is defined as
+    /// @notice Returns the price per share for a given pool, share class, asset, and token id
+    /// @dev   Reverts if the pool or share class or asset does not exist. Provided price is defined as
     /// ASSET_UNIT/SHARE_UNIT. DOES NOT check if price is valid.
-    function priceAssetToShare(uint64 poolId, bytes16 scId, uint128 assetId)
+    function priceAssetPerShare(uint64 poolId, bytes16 scId, uint128 assetId)
         external
         view
         returns (D18 price, uint64 computedAt);
 
-    /// @notice Returns the price per share for a given pool, tranche, asset, and token id.
-    /// @dev   Reverts if the pool or tranche or asset does not exist. Provided price is defined as
+    /// @notice Returns the price per share for a given pool, share class, asset, and token id.
+    /// @dev   Reverts if the pool or share class or asset does not exist. Provided price is defined as
     /// ASSET_UNIT/SHARE_UNIT. Reverts if price is invalid - i.e. expired
-    function checkedPriceAssetToShare(uint64 poolId, bytes16 scId, uint128 assetId)
+    function checkedPriceAssetPerShare(uint64 poolId, bytes16 scId, uint128 assetId)
         external
         view
         returns (D18 price, uint64 computedAt);
 
     /// @notice Returns the price per share for a given pool, tranche
-    /// @dev   Reverts if the pool or tranche does not exist. Provided price is defined as POOL_UNIT/SHARE_UNIT. DOES
+    /// @dev   Reverts if the pool or share class does not exist. Provided price is defined as POOL_UNIT/SHARE_UNIT. DOES
     /// NOT check if price is valid.
-    function pricePoolToShare(uint64 poolId, bytes16 trancheId) external view returns (D18 price, uint64 computedAt);
+    function pricePoolPerShare(uint64 poolId, bytes16 trancheId) external view returns (D18 price, uint64 computedAt);
 
     /// @notice Returns the price per share for a given pool, tranche
-    /// @dev   Reverts if the pool or tranche does not exist. Provided price is defined as POOL_UNIT/SHARE_UNIT. Reverts
+    /// @dev   Reverts if the pool or share class does not exist. Provided price is defined as POOL_UNIT/SHARE_UNIT.
+    /// Reverts
     /// if price is invalid.
-    function checkedPricePoolToShare(uint64 poolId, bytes16 trancheId)
+    function checkedPricePoolPerShare(uint64 poolId, bytes16 trancheId)
         external
         view
         returns (D18 price, uint64 computedAt);
 
-    /// @notice Returns the price per asset for a given pool, tranche, asset, and token id
-    /// @dev   Reverts if the pool or tranche or asset does not exist. Provided price is defined as
+    /// @notice Returns the price per asset for a given pool, share class, asset, and token id
+    /// @dev   Reverts if the pool or share class or asset does not exist. Provided price is defined as
     /// POOL_UNIT/ASSET_UNIT. DOES NOT check if price is valid.
-    function pricePoolToAsset(uint64 poolId, bytes16 scId, uint128 assetId)
+    function pricePoolPerAsset(uint64 poolId, bytes16 scId, uint128 assetId)
         external
         view
         returns (D18 price, uint64 computedAt);
 
-    /// @notice Returns the price per asset for a given pool, tranche, asset, and token id
-    /// @dev   Reverts if the pool or tranche or asset does not exist. Provided price is defined as
+    /// @notice Returns the price per asset for a given pool, share class, asset, and token id
+    /// @dev   Reverts if the pool or share class or asset does not exist. Provided price is defined as
     /// POOL_UNIT/ASSET_UNIT. Reverts if price is invalid.
-    function checkedPricePoolToAsset(uint64 poolId, bytes16 scId, uint128 assetId)
+    function checkedPricePoolPerAsset(uint64 poolId, bytes16 scId, uint128 assetId)
         external
         view
         returns (D18 price, uint64 computedAt);
