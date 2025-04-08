@@ -150,10 +150,17 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         returns (uint256 assets)
     {
         SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
-        uint128 assetId = poolManager.vaultDetails(vaultAddr).assetId;
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
 
-        uint128 latestPrice = _pricePerShare(vaultAddr, vault_.poolId(), vault_.trancheId(), assetId).raw();
-        assets = PriceConversionLib.calculateAssets(shares.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down);
+        uint128 latestPrice = _pricePerShare(vaultAddr, vault_.poolId(), vault_.trancheId(), vaultDetails.assetId).raw();
+        assets = PriceConversionLib.calculateAssets(
+            vault_.share(),
+            shares.toUint128(),
+            vaultDetails.asset,
+            vaultDetails.tokenId,
+            latestPrice,
+            MathLib.Rounding.Down
+        );
     }
 
     /// @inheritdoc ISyncDepositManager
@@ -163,10 +170,17 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         returns (uint256 shares)
     {
         SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
-        uint128 assetId = poolManager.vaultDetails(vaultAddr).assetId;
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
 
-        uint128 latestPrice = _pricePerShare(vaultAddr, vault_.poolId(), vault_.trancheId(), assetId).raw();
-        shares = PriceConversionLib.calculateShares(assets.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down);
+        uint128 latestPrice = _pricePerShare(vaultAddr, vault_.poolId(), vault_.trancheId(), vaultDetails.assetId).raw();
+        shares = PriceConversionLib.calculateShares(
+            vault_.share(),
+            vaultDetails.asset,
+            vaultDetails.tokenId,
+            assets.toUint128(),
+            latestPrice,
+            MathLib.Rounding.Down
+        );
     }
 
     /// @inheritdoc IVaultManager

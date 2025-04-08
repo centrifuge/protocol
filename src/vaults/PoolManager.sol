@@ -54,14 +54,16 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
 
     IEscrow public immutable escrow;
 
+    address public balanceSheet;
     IVaultMessageSender public sender;
     ITokenFactory public tokenFactory;
-    address public balanceSheet;
+    ISyncRequests public syncRequests;
 
     uint64 internal _assetCounter;
 
     mapping(uint64 poolId => Pool) public pools;
     mapping(address factory => bool) public vaultFactory;
+
     mapping(address => VaultDetails) internal _vaultDetails;
     mapping(uint128 assetId => AssetIdKey) internal _idToAsset;
     mapping(address asset => mapping(uint256 tokenId => uint128 assetId)) internal _assetToId;
@@ -82,6 +84,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "tokenFactory") tokenFactory = ITokenFactory(data);
         else if (what == "balanceSheet") balanceSheet = data;
+        else if (what == "syncRequests") syncRequests = ISyncRequests(data);
         else revert("PoolManager/file-unrecognized-param");
         emit File(what, data);
     }
@@ -193,7 +196,7 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         address[] memory tokenWards = new address[](2);
         tokenWards[0] = address(this);
         // BalanceSheet needs this in order to mint shares
-        tokenWards[1] = address(balanceSheet);
+        tokenWards[1] = balanceSheet;
 
         address shareToken_ = tokenFactory.newToken(name, symbol, decimals, salt, tokenWards);
 
@@ -335,6 +338,14 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
                 shareClass.pricePoolPerShare.maxAge = m.maxPriceAge;
                 emit UpdateShareMaxPriceAge(poolId, scId, m.maxPriceAge);
             }
+        } else if (kind == uint8(UpdateContractType.Valuation)) {
+            MessageLib.UpdateContractValuation memory m = MessageLib.deserializeUpdateContractValuation(payload);
+
+            (address asset, uint256 tokenId) = idToAsset(m.assetId);
+            ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
+            require(shareClass.shareToken != address(0), "PoolManager/share-token-does-not-exist");
+
+            syncRequests.setValuation(m.poolId, m.scId, asset, tokenId, address(bytes20(m.valuation)));
         } else {
             revert("PoolManager/unknown-update-contract-type");
         }

@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
+import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
 
 library PriceConversionLib {
     using MathLib for uint256;
@@ -12,15 +13,18 @@ library PriceConversionLib {
     uint8 internal constant PRICE_DECIMALS = 18;
 
     /// @dev    Calculates share amount based on asset amount and share price. Returned value is in share decimals.
-    function calculateShares(uint128 assets, address vault, uint256 price, MathLib.Rounding rounding)
-        internal
-        view
-        returns (uint128 shares)
-    {
+    function calculateShares(
+        address shareToken,
+        address asset,
+        uint256 tokenId,
+        uint128 assets,
+        uint256 price,
+        MathLib.Rounding rounding
+    ) internal view returns (uint128 shares) {
         if (price == 0 || assets == 0) {
             shares = 0;
         } else {
-            (uint8 assetDecimals, uint8 shareDecimals) = getPoolDecimals(vault);
+            (uint8 assetDecimals, uint8 shareDecimals) = getPoolDecimals(shareToken, asset, tokenId);
 
             uint256 sharesInPriceDecimals =
                 toPriceDecimals(assets, assetDecimals).mulDiv(10 ** PRICE_DECIMALS, price, rounding);
@@ -30,15 +34,18 @@ library PriceConversionLib {
     }
 
     /// @dev    Calculates asset amount based on share amount and share price. Returned value is in asset decimals.
-    function calculateAssets(uint128 shares, address vault, uint256 price, MathLib.Rounding rounding)
-        internal
-        view
-        returns (uint128 assets)
-    {
+    function calculateAssets(
+        address shareToken,
+        uint128 shares,
+        address asset,
+        uint256 tokenId,
+        uint256 price,
+        MathLib.Rounding rounding
+    ) internal view returns (uint128 assets) {
         if (price == 0 || shares == 0) {
             assets = 0;
         } else {
-            (uint8 assetDecimals, uint8 shareDecimals) = getPoolDecimals(vault);
+            (uint8 assetDecimals, uint8 shareDecimals) = getPoolDecimals(shareToken, asset, tokenId);
 
             uint256 assetsInPriceDecimals =
                 toPriceDecimals(shares, shareDecimals).mulDiv(price, 10 ** PRICE_DECIMALS, rounding);
@@ -48,12 +55,16 @@ library PriceConversionLib {
     }
 
     /// @dev    Calculates share price and returns the value in price decimals
-    function calculatePrice(address vault, uint128 assets, uint128 shares) internal view returns (uint256) {
+    function calculatePrice(address shareToken, uint128 shares, address asset, uint256 tokenId, uint128 assets)
+        internal
+        view
+        returns (uint256)
+    {
         if (assets == 0 || shares == 0) {
             return 0;
         }
 
-        (uint8 assetDecimals, uint8 shareDecimals) = getPoolDecimals(vault);
+        (uint8 assetDecimals, uint8 shareDecimals) = getPoolDecimals(shareToken, asset, tokenId);
         return toPriceDecimals(assets, assetDecimals).mulDiv(
             10 ** PRICE_DECIMALS, toPriceDecimals(shares, shareDecimals), MathLib.Rounding.Down
         );
@@ -72,9 +83,13 @@ library PriceConversionLib {
         return (_value / 10 ** (PRICE_DECIMALS - decimals)).toUint128();
     }
 
-    /// @dev    Returns the asset decimals and the share decimals for a given vault
-    function getPoolDecimals(address vault) internal view returns (uint8 assetDecimals, uint8 shareDecimals) {
-        assetDecimals = IERC20Metadata(IBaseVault(vault).asset()).decimals();
-        shareDecimals = IERC20Metadata(IBaseVault(vault).share()).decimals();
+    /// @dev    Returns the asset decimals and the share decimals
+    function getPoolDecimals(address shareToken, address asset, uint256 tokenId)
+        internal
+        view
+        returns (uint8 assetDecimals, uint8 shareDecimals)
+    {
+        assetDecimals = tokenId == 0 ? IERC20Metadata(asset).decimals() : IERC6909MetadataExt(asset).decimals(tokenId);
+        shareDecimals = IERC20Metadata(shareToken).decimals();
     }
 }
