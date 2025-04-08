@@ -11,14 +11,13 @@ import "src/vaults/interfaces/IERC7540.sol";
 import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 
 import "forge-std/Test.sol";
-import {GasSnapshot} from "forge-gas-snapshot/GasSnapshot.sol";
 import {MockRestrictedTransfers} from "test/vaults/mocks/MockRestrictedTransfers.sol";
 
 interface ERC20Like {
     function balanceOf(address) external view returns (uint256);
 }
 
-contract ShareTokenTest is Test, GasSnapshot {
+contract ShareTokenTest is Test {
     CentrifugeToken token;
     MockRestrictedTransfers restrictedTransfers;
 
@@ -128,11 +127,11 @@ contract ShareTokenTest is Test, GasSnapshot {
 
         restrictedTransfers.unfreeze(address(token), targetUser);
         if (snap) {
-            snapStart("Share_transferFrom");
+            vm.startSnapshotGas("Share_transferFrom");
         }
         token.transferFrom(self, targetUser, amount);
         if (snap) {
-            snapEnd();
+            vm.stopSnapshotGas();
         }
         assertEq(token.balanceOf(targetUser), amount);
         afterTransferAssumptions(self, targetUser, amount);

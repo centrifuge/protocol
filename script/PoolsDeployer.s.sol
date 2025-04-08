@@ -65,15 +65,27 @@ contract PoolsDeployer is CommonDeployer {
     }
 
     function _poolsRely() private {
+        // Rely hub
         hubRegistry.rely(address(hub));
         holdings.rely(address(hub));
         accounting.rely(address(hub));
         shareClassManager.rely(address(hub));
         gateway.rely(address(hub));
+        messageDispatcher.rely(address(hub));
+
+        // Rely others on hub
         hub.rely(address(messageProcessor));
         hub.rely(address(messageDispatcher));
         hub.rely(address(guardian));
-        messageDispatcher.rely(address(hub));
+
+        // Rely root
+        hubRegistry.rely(address(root));
+        accounting.rely(address(root));
+        holdings.rely(address(root));
+        shareClassManager.rely(address(root));
+        hub.rely(address(root));
+        transientValuation.rely(address(root));
+        identityValuation.rely(address(root));
     }
 
     function _poolsFile() private {
