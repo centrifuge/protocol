@@ -117,7 +117,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         identityValuation = new IdentityValuation(hubRegistry, address(this));
         mockAdapter = new MockAdapter(CENTIFUGE_CHAIN_ID, IMessageHandler(address(gateway)));
         mockAccountValue = new MockAccountValue();
-        
+
         holdings = new Holdings(IHubRegistry(address(hubRegistry)), address(this));
         shareClassManager = new ShareClassManagerWrapper(IHubRegistry(address(hubRegistry)), address(this));
         messageDispatcher = new MockMessageDispatcher(PoolManager(address(this)), IAsyncRequests(address(this)), root, CENTIFUGE_CHAIN_ID);
@@ -171,5 +171,9 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
 
         ShareClassId scId = shareClassManager.previewShareClassId(poolId, randomIndex);
         return scId;
+    }
+
+    function _checkIfCanCancel(uint32 lastUpdate, uint128 pending, uint128 latestApproval) internal view returns (bool) {
+        return lastUpdate > latestApproval || pending == 0 || latestApproval == 0;
     }
 }

@@ -22,8 +22,6 @@ import {BeforeAfter, OpType} from "../BeforeAfter.sol";
 import {Properties} from "../Properties.sol";
 import {Helpers} from "../utils/Helpers.sol";
 
-import "forge-std/console2.sol";
-
 abstract contract AdminTargets is
     BaseTargetFunctions,
     Properties
@@ -218,13 +216,17 @@ abstract contract AdminTargets is
         AssetId depositAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
+        (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.depositRequest(scId, depositAssetId, investor);
+        (uint32 latestApproval,,,) = shareClassManager.epochPointers(scId, depositAssetId);
         try hub.cancelDepositRequest(poolId, scId, investor, depositAssetId) {
             (uint128 pending, uint32 lastUpdate) = shareClassManager.depositRequest(scId, depositAssetId, investor);
             uint32 epochId = shareClassManager.epochId(poolId);
 
-            console2.log("here");
-            eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId");
-            eq(pending, 0, "pending is not zero");
+            // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
+            if(_checkIfCanCancel(lastUpdateBefore, pendingBefore, latestApproval)) {
+                eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId");
+                eq(pending, 0, "pending is not zero");
+            }
         } catch (bytes memory reason) {
             uint32 epochId = shareClassManager.epochId(poolId);
             uint128 previousDepositApproved;
