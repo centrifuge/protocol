@@ -12,12 +12,12 @@ import {GasService} from "src/common/GasService.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
-import {HubRegistry} from "src/pools/HubRegistry.sol";
-import {ShareClassManager} from "src/pools/ShareClassManager.sol";
-import {Holdings} from "src/pools/Holdings.sol";
-import {Accounting} from "src/pools/Accounting.sol";
-import {Hub, IHub} from "src/pools/Hub.sol";
-import {Hub} from "src/pools/Hub.sol";
+import {HubRegistry} from "src/hub/HubRegistry.sol";
+import {ShareClassManager} from "src/hub/ShareClassManager.sol";
+import {Holdings} from "src/hub/Holdings.sol";
+import {Accounting} from "src/hub/Accounting.sol";
+import {Hub, IHub} from "src/hub/Hub.sol";
+import {Hub} from "src/hub/Hub.sol";
 
 import "forge-std/Script.sol";
 import {CommonDeployer} from "script/CommonDeployer.s.sol";

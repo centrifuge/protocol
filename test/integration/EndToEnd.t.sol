@@ -7,8 +7,8 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
 
-import {Hub} from "src/pools/Hub.sol";
-import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
+import {Hub} from "src/hub/Hub.sol";
+import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import "src/vaults/interfaces/IPoolManager.sol";

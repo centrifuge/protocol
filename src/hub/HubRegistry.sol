@@ -7,8 +7,8 @@ import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
 
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
-import {IHubRegistry} from "src/pools/interfaces/IHubRegistry.sol";
-import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
+import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
+import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 
 contract HubRegistry is Auth, IHubRegistry {
     using MathLib for uint256;

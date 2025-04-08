@@ -19,10 +19,10 @@ import {IGasService} from "src/common/interfaces/IGasService.sol";
 
 import {PoolsDeployer, ISafe} from "script/PoolsDeployer.s.sol";
 import {MESSAGE_COST_ENV, PROOF_COST_ENV} from "script/CommonDeployer.s.sol";
-import {AccountType} from "src/pools/interfaces/IHub.sol";
+import {AccountType} from "src/hub/interfaces/IHub.sol";
 import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
-import {MockVaults} from "test/pools/mocks/MockVaults.sol";
+import {MockVaults} from "test/hub/mocks/MockVaults.sol";
 import {ShareClassIdTest} from "../unit/types/ShareClassId.t.sol";
 
 contract BaseTest is PoolsDeployer, Test {

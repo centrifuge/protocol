@@ -9,7 +9,7 @@ import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
 import {IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
-import {IHub} from "src/pools/interfaces/IHub.sol";
+import {IHub} from "src/hub/interfaces/IHub.sol";
 
 contract Guardian is IGuardian {
     IRoot public immutable root;

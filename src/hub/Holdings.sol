@@ -9,8 +9,8 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
-import {IHoldings, Holding} from "src/pools/interfaces/IHoldings.sol";
-import {IHubRegistry} from "src/pools/interfaces/IHubRegistry.sol";
+import {IHoldings, Holding} from "src/hub/interfaces/IHoldings.sol";
+import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 
 contract Holdings is Auth, IHoldings {
     using MathLib for uint256; // toInt128()
