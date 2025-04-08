@@ -3,6 +3,8 @@ pragma solidity ^0.8.28;
 
 import "test/pools/integration/BaseTest.t.sol";
 
+import {IGateway} from "src/common/interfaces/IGateway.sol";
+
 contract TestBatchingAndPayment is BaseTest {
     /// forge-config: default.isolate = true
     function testExecuteNoSendNoPay() public {
@@ -30,7 +32,7 @@ contract TestBatchingAndPayment is BaseTest {
         bytes[] memory cs = new bytes[](1);
         cs[0] = abi.encodeWithSelector(hub.notifyPool.selector, CHAIN_CV);
 
-        vm.expectRevert(bytes("Gateway/not-enough-gas-funds"));
+        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
         hub.execute(poolId, cs);
     }
 
@@ -41,7 +43,7 @@ contract TestBatchingAndPayment is BaseTest {
     ///   - execute(poolA)
     ///      - notifyPool()
     ///
-    /// will pay only for one message. The batch sent is [NotifyPool, NotifyPool].
+    /// will send one message. The batch sent is [NotifyPool, NotifyPool].
     ///
     /// forge-config: default.isolate = true
     function testMultipleMulticallSamePool() public {
@@ -68,7 +70,7 @@ contract TestBatchingAndPayment is BaseTest {
     ///   - execute(poolB) <- different
     ///      - notifyPool()
     ///
-    /// will pay only for two messages because they are different pools.
+    /// will send two messages because they are different pools.
     ///
     /// forge-config: default.isolate = true
     function testMultipleMulticallDifferentPools() public {

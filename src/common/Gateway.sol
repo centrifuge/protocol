@@ -73,7 +73,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
     }
 
     modifier pauseable() {
-        require(!root.paused(), "Gateway/paused");
+        require(!root.paused(), Paused());
         _;
     }
 
@@ -90,8 +90,8 @@ contract Gateway is Auth, IGateway, IRecoverable {
     function file(bytes32 what, uint16 chainId, IAdapter[] calldata addresses) external auth {
         if (what == "adapters") {
             uint8 quorum_ = addresses.length.toUint8();
-            require(quorum_ != 0, "Gateway/empty-adapter-set");
-            require(quorum_ <= MAX_ADAPTER_COUNT, "Gateway/exceeds-max");
+            require(quorum_ != 0, EmptyAdapterSet());
+            require(quorum_ <= MAX_ADAPTER_COUNT, ExceedsMax());
 
             // Increment session id to reset pending votes
             uint256 numAdapters = adapters[chainId].length;
@@ -104,7 +104,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
             // Enable new adapters, setting quorum to number of adapters
             for (uint8 j; j < quorum_; j++) {
-                require(_activeAdapters[chainId][addresses[j]].id == 0, "Gateway/no-duplicates-allowed");
+                require(_activeAdapters[chainId][addresses[j]].id == 0, NoDuplicatesAllowed());
 
                 // Ids are assigned sequentially starting at 1
                 _activeAdapters[chainId][addresses[j]] = Adapter(j + 1, quorum_, sessionId);
@@ -112,7 +112,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
             adapters[chainId] = addresses;
         } else {
-            revert("Gateway/file-unrecognized-param");
+            revert FileUnrecognizedParam();
         }
 
         emit File(what, chainId, addresses);
@@ -122,7 +122,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
     function file(bytes32 what, address instance) external auth {
         if (what == "gasService") gasService = IGasService(instance);
         else if (what == "processor") processor = IMessageProcessor(instance);
-        else revert("Gateway/file-unrecognized-param");
+        else revert FileUnrecognizedParam();
 
         emit File(what, instance);
     }
@@ -154,10 +154,10 @@ contract Gateway is Auth, IGateway, IRecoverable {
     /// @dev Handle an isolated message
     function _handle(uint16 chainId, bytes calldata payload, IAdapter adapter_, bool isRecovery) internal {
         Adapter memory adapter = _activeAdapters[chainId][adapter_];
-        require(adapter.id != 0, "Gateway/invalid-adapter");
+        require(adapter.id != 0, InvalidAdapter());
 
         if (processor.isMessageRecovery(payload)) {
-            require(!isRecovery, "Gateway/no-recursion");
+            require(!isRecovery, RecoveryMessageRecovered());
             return processor.handle(chainId, payload);
         }
 
@@ -173,11 +173,11 @@ contract Gateway is Auth, IGateway, IRecoverable {
         // Verify adapter and parse message hash
         bytes32 messageHash;
         if (isMessageProof) {
-            require(adapter.id != PRIMARY_ADAPTER_ID, "Gateway/non-proof-adapter");
+            require(adapter.id != PRIMARY_ADAPTER_ID, NonProofAdapter());
             messageHash = messageProofHash;
             emit ProcessProof(chainId, messageHash, adapter_);
         } else {
-            require(adapter.id == PRIMARY_ADAPTER_ID, "Gateway/non-message-adapter");
+            require(adapter.id == PRIMARY_ADAPTER_ID, NonMessageAdapter());
             messageHash = keccak256(payload);
             emit ProcessMessage(chainId, payload, adapter_);
         }
@@ -217,7 +217,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     /// @inheritdoc IGatewayHandler
     function initiateMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) external auth {
-        require(_activeAdapters[chainId][adapter].id != 0, "Gateway/invalid-adapter");
+        require(_activeAdapters[chainId][adapter].id != 0, InvalidAdapter());
         recoveries[chainId][adapter][messageHash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
         emit InitiateMessageRecovery(chainId, messageHash, adapter);
     }
@@ -233,8 +233,8 @@ contract Gateway is Auth, IGateway, IRecoverable {
         bytes32 messageHash = keccak256(message);
         uint256 recovery = recoveries[chainId][adapter][messageHash];
 
-        require(recovery != 0, "Gateway/message-recovery-not-initiated");
-        require(recovery <= block.timestamp, "Gateway/challenge-period-has-not-ended");
+        require(recovery != 0, MessageRecoveryNotInitiated());
+        require(recovery <= block.timestamp, MessageRecoveryChallengePeriodNotEnded());
 
         delete recoveries[chainId][adapter][messageHash];
         _handle(chainId, message, adapter, true);
@@ -247,7 +247,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     /// @inheritdoc IMessageSender
     function send(uint16 chainId, bytes calldata message) external pauseable auth {
-        require(message.length > 0, "Gateway/empty-message");
+        require(message.length > 0, EmptyMessage());
 
         PoolId poolId = processor.messagePoolId(message);
         if (isBatching) {
@@ -270,7 +270,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
         bytes memory proof = processor.createMessageProof(message);
 
         IAdapter[] memory adapters_ = adapters[chainId];
-        require(adapters[chainId].length != 0, "Gateway/not-initialized");
+        require(adapters[chainId].length != 0, EmptyAdapterSet());
 
         uint64 messageGasLimit = (isBatching) ? batchGasLimit[chainId][poolId] : gasService.gasLimit(chainId, message);
         uint64 proofGasLimit = gasService.gasLimit(chainId, proof);
@@ -283,8 +283,8 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
             uint256 consumed = currentAdapter.estimate(chainId, payload, gasLimit);
 
-            if (paymentMethod == PaymentMethod.TopUp) {
-                require(consumed <= fuel, "Gateway/not-enough-gas-funds");
+            if (paymentMethod == PaymentMethod.Transaction) {
+                require(consumed <= fuel, NotEnoughTransactionGas());
                 fuel -= consumed;
             } else {
                 if (consumed <= subsidy[poolId]) {
@@ -302,8 +302,8 @@ contract Gateway is Auth, IGateway, IRecoverable {
     }
 
     /// @inheritdoc IGateway
-    function topUp() external auth payable {
-        paymentMethod = PaymentMethod.TopUp;
+    function payTransaction() external auth payable {
+        paymentMethod = PaymentMethod.Transaction;
         fuel += msg.value;
     }
 
