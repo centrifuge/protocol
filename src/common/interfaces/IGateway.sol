@@ -61,7 +61,7 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     event ExecuteMessageRecovery(uint16 centrifugeId, bytes message, IAdapter adapter);
     event File(bytes32 indexed what, uint16 centrifugeId, IAdapter[] adapters);
     event File(bytes32 indexed what, address addr);
-    event ReceiveNativeTokens(PoolId indexed poolId, address indexed sender, uint256 amount);
+    event SubsidizePool(PoolId indexed poolId, address indexed sender, uint256 amount);
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();

@@ -45,16 +45,9 @@ contract Gateway is Auth, IGateway, IRecoverable {
     // Batching
     //-----------------------------
 
-    /// @notice Tells if the gateway is actually configured to create batches
     bool public transient isBatching;
-
-    /// @notice Chains ID with pending batch messages
     BatchLocator[] public /*transient*/ batchLocators;
-
-    /// @notice Current batch messages pending to be sent
     mapping(uint16 centrifugeId => mapping(PoolId => bytes)) public /*transient*/ batch;
-
-    /// @notice Current batch messages pending to be sent
     mapping(uint16 centrifugeId => mapping(PoolId => uint64)) public /*transient*/ batchGasLimit;
 
     //-----------------------------
@@ -62,31 +55,21 @@ contract Gateway is Auth, IGateway, IRecoverable {
     //-----------------------------
 
     PaymentMethod public transient paymentMethod;
-
-    /// @notice Current amount available in this transaction to pay messages
     uint256 public transient fuel;
-
-    /// @notice Amount of native tokens received per pool for paying messages
     mapping(PoolId => uint256) public subsidy;
 
     //-----------------------------
     // Adapters
     //-----------------------------
 
-    /// @inheritdoc IGateway
     mapping(uint16 centrifugeId => IAdapter[]) public adapters;
-
-    /// @notice Adapter configurations
     mapping(uint16 centrifugeId => mapping(IAdapter adapter => Adapter)) internal _activeAdapters;
 
     //-----------------------------
     // Messages
     //-----------------------------
 
-    /// @notice Message related info
     mapping(uint16 centrifugeId => mapping(bytes32 messageHash => Message)) internal _messages;
-
-    /// @inheritdoc IGateway
     mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 messageHash => uint256 timestamp)))
         public recoveries;
 
@@ -323,7 +306,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
 
     function subsidizePool(PoolId poolId) external payable {
         subsidy[poolId] += msg.value;
-        emit ReceiveNativeTokens(poolId, msg.sender, msg.value);
+        emit SubsidizePool(poolId, msg.sender, msg.value);
     }
 
     /// @inheritdoc IGateway
