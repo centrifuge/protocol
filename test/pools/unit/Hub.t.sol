@@ -172,7 +172,9 @@ contract TestNotifyShareClass is TestCommon {
 contract TestCreateHolding is TestCommon {
     function testErrAssetNotFound() public {
         vm.mockCall(
-            address(poolRegistry), abi.encodeWithSelector(poolRegistry.exists.selector, ASSET_A), abi.encode(false)
+            address(poolRegistry),
+            abi.encodeWithSelector(poolRegistry.isRegistered.selector, ASSET_A),
+            abi.encode(false)
         );
 
         bytes[] memory cs = new bytes[](1);
