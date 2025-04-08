@@ -33,42 +33,27 @@ contract Gateway is Auth, IGateway, IRecoverable {
     uint8 public constant PRIMARY_ADAPTER_ID = 1;
     uint256 public constant RECOVERY_CHALLENGE_PERIOD = 7 days;
 
-    //-----------------------------
     // Dependencies
-    //-----------------------------
-
     IRoot public immutable root;
     IGasService public gasService;
     IMessageProcessor public processor;
 
-    //-----------------------------
     // Batching
-    //-----------------------------
-
     bool public transient isBatching;
     BatchLocator[] public /*transient*/ batchLocators;
     mapping(uint16 centrifugeId => mapping(PoolId => bytes)) public /*transient*/ batch;
     mapping(uint16 centrifugeId => mapping(PoolId => uint64)) public /*transient*/ batchGasLimit;
 
-    //-----------------------------
     // Payment
-    //-----------------------------
-
     PaymentMethod public transient paymentMethod;
     uint256 public transient fuel;
     mapping(PoolId => uint256) public subsidy;
 
-    //-----------------------------
     // Adapters
-    //-----------------------------
-
     mapping(uint16 centrifugeId => IAdapter[]) public adapters;
     mapping(uint16 centrifugeId => mapping(IAdapter adapter => Adapter)) internal _activeAdapters;
 
-    //-----------------------------
     // Messages
-    //-----------------------------
-
     mapping(uint16 centrifugeId => mapping(bytes32 messageHash => Message)) internal _messages;
     mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 messageHash => uint256 timestamp)))
         public recoveries;
