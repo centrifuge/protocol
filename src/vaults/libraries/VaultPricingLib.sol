@@ -89,7 +89,12 @@ library VaultPricingLib {
         view
         returns (uint8 assetDecimals, uint8 shareDecimals)
     {
-        assetDecimals = tokenId == 0 ? IERC20Metadata(asset).decimals() : IERC6909MetadataExt(asset).decimals(tokenId);
+        assetDecimals = getAssetDecimals(asset, tokenId);
         shareDecimals = IERC20Metadata(shareToken).decimals();
+    }
+
+    /// @dev    Returns the asset decimals
+    function getAssetDecimals(address asset, uint256 tokenId) internal view returns (uint8 assetDecimals) {
+        return tokenId == 0 ? IERC20Metadata(asset).decimals() : IERC6909MetadataExt(asset).decimals(tokenId);
     }
 }

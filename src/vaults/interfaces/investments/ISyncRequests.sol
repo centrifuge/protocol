@@ -29,9 +29,5 @@ interface ISyncRequests is ISyncDepositManager {
     /// @param scId The share class id
     /// @param assetId The asset id for which we want to know the ASSET_UNIT/SHARE_UNIT price
     /// @return price The asset price per share
-    /// @return computedAt The timestamp at which the price was computed
-    function priceAssetPerShare(uint64 poolId, bytes16 scId, uint128 assetId)
-        external
-        view
-        returns (D18 price, uint64 computedAt);
+    function priceAssetPerShare(uint64 poolId, bytes16 scId, uint128 assetId) external view returns (D18 price);
 }

@@ -517,6 +517,7 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
     ) external auth {
         accounting.unlock(poolId);
         address poolCurrency = hubRegistry.currency(poolId).addr();
+        // TODO(wischli): Investigate whether priceAssetPerShare is the correct provider from CV side
         transientValuation.setPrice(assetId.addr(), poolCurrency, pricePerUnit);
         uint128 valueChange = transientValuation.getQuote(amount, assetId.addr(), poolCurrency).toUint128();
 
