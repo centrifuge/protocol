@@ -9,7 +9,7 @@ import {PoolId, raw, newPoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
-import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
+import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 
@@ -48,7 +48,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_registerAsset(123);
 
         // create pool 
-        PoolId poolId = hub_createPool(address(this), 123, multiShareClass);
+        PoolId poolId = hub_createPool(address(this), 123, shareClassManager);
 
         return poolId;
     }
@@ -57,7 +57,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         poolId = _createPool();
 
         // request deposit
-        scId = multiShareClass.previewNextShareClassId(poolId);
+        scId = shareClassManager.previewNextShareClassId(poolId);
         assetId = newAssetId(123);
 
         // necessary setup via the PoolRouter
@@ -159,7 +159,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     function test_calling_claimDeposit_directly() public {
         (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
 
-        multiShareClass.claimDeposit(poolId, scId, Helpers.addressToBytes32(address(this)), assetId);
+        shareClassManager.claimDeposit(poolId, scId, Helpers.addressToBytes32(address(this)), assetId);
     }
 
     function test_shortcut_create_pool_and_update_holding_amount() public {

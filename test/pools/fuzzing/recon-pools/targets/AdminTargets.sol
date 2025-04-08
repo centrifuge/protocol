@@ -149,12 +149,9 @@ abstract contract AdminTargets is
 
     function hub_registerAsset(uint32 isoCode) public updateGhosts {
         AssetId assetId_ = newAssetId(isoCode); 
-
-        string memory name = MockERC20(_getAsset()).name();
-        string memory symbol = MockERC20(_getAsset()).symbol();
         uint8 decimals = MockERC20(_getAsset()).decimals();
 
-        hub.registerAsset(assetId_, name, symbol, decimals);
+        hub.registerAsset(assetId_, decimals);
     }  
 
     /// @dev Property: after successfully calling requestDeposit for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
@@ -169,17 +166,17 @@ abstract contract AdminTargets is
         try hub.depositRequest(poolId, scId, investor, depositAssetId, amount) {
             deposited = true;
 
-            (, uint32 lastUpdate) = multiShareClass.depositRequest(scId, depositAssetId, investor);
-            uint32 epochId = multiShareClass.epochId(poolId);
+            (, uint32 lastUpdate) = shareClassManager.depositRequest(scId, depositAssetId, investor);
+            uint32 epochId = shareClassManager.epochId(poolId);
 
             eq(lastUpdate, epochId, "lastUpdate is not equal to epochId"); 
 
             address[] memory _actors = _getActors();
-            uint128 totalPendingDeposit = multiShareClass.pendingDeposit(scId, depositAssetId);
+            uint128 totalPendingDeposit = shareClassManager.pendingDeposit(scId, depositAssetId);
             uint128 totalPendingUserDeposit = 0;
             for (uint256 k = 0; k < _actors.length; k++) {
                 address actor = _actors[k];
-                (uint128 pendingUserDeposit,) = multiShareClass.depositRequest(scId, depositAssetId, Helpers.addressToBytes32(actor));
+                (uint128 pendingUserDeposit,) = shareClassManager.depositRequest(scId, depositAssetId, Helpers.addressToBytes32(actor));
                 totalPendingUserDeposit += pendingUserDeposit;
             }
 
@@ -199,8 +196,8 @@ abstract contract AdminTargets is
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
         try hub.redeemRequest(poolId, scId, investor, payoutAssetId, amount) {
-            (, uint32 lastUpdate) = multiShareClass.redeemRequest(scId, payoutAssetId, investor);
-            uint32 epochId = multiShareClass.epochId(poolId);
+            (, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, payoutAssetId, investor);
+            uint32 epochId = shareClassManager.epochId(poolId);
 
             eq(lastUpdate, epochId, "lastUpdate is not equal to epochId after redeemRequest");
         } catch (bytes memory reason) {
@@ -222,19 +219,20 @@ abstract contract AdminTargets is
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
         try hub.cancelDepositRequest(poolId, scId, investor, depositAssetId) {
-            (uint128 pending, uint32 lastUpdate) = multiShareClass.depositRequest(scId, depositAssetId, investor);
-            uint32 epochId = multiShareClass.epochId(poolId);
+            (uint128 pending, uint32 lastUpdate) = shareClassManager.depositRequest(scId, depositAssetId, investor);
+            uint32 epochId = shareClassManager.epochId(poolId);
 
+            console2.log("here");
             eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId");
             eq(pending, 0, "pending is not zero");
         } catch (bytes memory reason) {
-            uint32 epochId = multiShareClass.epochId(poolId);
+            uint32 epochId = shareClassManager.epochId(poolId);
             uint128 previousDepositApproved;
             if(epochId > 0) {
                 // we also check the previous epoch because approvals can increment the epochId
-                (,previousDepositApproved,,,,,) = multiShareClass.epochAmounts(scId, depositAssetId, epochId - 1);
+                (,previousDepositApproved,,,,,) = shareClassManager.epochAmounts(scId, depositAssetId, epochId - 1);
             }
-            (,uint128 currentDepositApproved,,,,,) = multiShareClass.epochAmounts(scId, depositAssetId, epochId);
+            (,uint128 currentDepositApproved,,,,,) = shareClassManager.epochAmounts(scId, depositAssetId, epochId);
             // we only care about arithmetic reverts in the case of 0 approvals because if there have been any approvals, it's expected that user won't be able to cancel their request 
             if(previousDepositApproved == 0 && currentDepositApproved == 0) {
                 bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
@@ -253,19 +251,19 @@ abstract contract AdminTargets is
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
         try hub.cancelRedeemRequest(poolId, scId, investor, payoutAssetId) {
-            (uint128 pending, uint32 lastUpdate) = multiShareClass.redeemRequest(scId, payoutAssetId, investor);
-            uint32 epochId = multiShareClass.epochId(poolId);
+            (uint128 pending, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, payoutAssetId, investor);
+            uint32 epochId = shareClassManager.epochId(poolId);
 
             eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId after cancelRedeemRequest");
             eq(pending, 0, "pending is not zero after cancelRedeemRequest");
         } catch (bytes memory reason) {
-            uint32 epochId = multiShareClass.epochId(poolId);
+            uint32 epochId = shareClassManager.epochId(poolId);
             uint128 previousRedeemApproved;
             if(epochId > 0) {
                 // we also check the previous epoch because approvals can increment the epochId
-                (,,,,, previousRedeemApproved,) = multiShareClass.epochAmounts(scId, payoutAssetId, epochId - 1);
+                (,,,,, previousRedeemApproved,) = shareClassManager.epochAmounts(scId, payoutAssetId, epochId - 1);
             }
-            (,,,,, uint128 currentRedeemApproved,) = multiShareClass.epochAmounts(scId, payoutAssetId, epochId);
+            (,,,,, uint128 currentRedeemApproved,) = shareClassManager.epochAmounts(scId, payoutAssetId, epochId);
             // we only care about arithmetic reverts in the case of 0 approvals because if there have been any approvals, it's expected that user won't be able to cancel their request 
             if(previousRedeemApproved == 0 && currentRedeemApproved == 0) {
                 bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
@@ -334,40 +332,40 @@ abstract contract AdminTargets is
 
     // === MultiShareClass === //
 
-    function multiShareClass_claimDepositUntilEpoch(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint32 endEpochId) public updateGhosts asAdmin {
+    function shareClassManager_claimDepositUntilEpoch(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint32 endEpochId) public updateGhosts asAdmin {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId shareClassId_ = ShareClassId.wrap(scIdAsBytes);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
         AssetId depositAssetId = AssetId.wrap(assetIdAsUint);
 
-        multiShareClass.claimDepositUntilEpoch(poolId, shareClassId_, investor, depositAssetId, endEpochId);
+        shareClassManager.claimDepositUntilEpoch(poolId, shareClassId_, investor, depositAssetId, endEpochId);
     }
 
-    function multiShareClass_claimRedeemUntilEpoch(uint64 poolIdAsUint, bytes16 scIdAsBytes, bytes32 investor, uint128 assetIdAsUint, uint32 endEpochId) public updateGhosts asAdmin {
+    function shareClassManager_claimRedeemUntilEpoch(uint64 poolIdAsUint, bytes16 scIdAsBytes, bytes32 investor, uint128 assetIdAsUint, uint32 endEpochId) public updateGhosts asAdmin {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId shareClassId_ = ShareClassId.wrap(scIdAsBytes);
         AssetId payoutAssetId = AssetId.wrap(assetIdAsUint);
-        multiShareClass.claimRedeemUntilEpoch(poolId, shareClassId_, investor, payoutAssetId, endEpochId);
+        shareClassManager.claimRedeemUntilEpoch(poolId, shareClassId_, investor, payoutAssetId, endEpochId);
     }
 
-    function multiShareClass_issueSharesUntilEpoch(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, D18 navPerShare, uint32 endEpochId) public updateGhosts asAdmin {
+    function shareClassManager_issueSharesUntilEpoch(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, D18 navPerShare, uint32 endEpochId) public updateGhosts asAdmin {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId shareClassId_ = ShareClassId.wrap(scIdAsBytes);
         AssetId depositAssetId = AssetId.wrap(assetIdAsUint);
-        multiShareClass.issueSharesUntilEpoch(poolId, shareClassId_, depositAssetId, navPerShare, endEpochId);
+        shareClassManager.issueSharesUntilEpoch(poolId, shareClassId_, depositAssetId, navPerShare, endEpochId);
     }
 
-    function multiShareClass_revokeSharesUntilEpoch(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, D18 navPerShare, IERC7726 valuation, uint32 endEpochId) public updateGhosts asAdmin {
+    function shareClassManager_revokeSharesUntilEpoch(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, D18 navPerShare, IERC7726 valuation, uint32 endEpochId) public updateGhosts asAdmin {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId shareClassId_ = ShareClassId.wrap(scIdAsBytes);
         AssetId payoutAssetId = AssetId.wrap(assetIdAsUint);
-        multiShareClass.revokeSharesUntilEpoch(poolId, shareClassId_, payoutAssetId, navPerShare, valuation, endEpochId);
+        shareClassManager.revokeSharesUntilEpoch(poolId, shareClassId_, payoutAssetId, navPerShare, valuation, endEpochId);
     }
 
-    function multiShareClass_updateMetadata(uint64 poolIdAsUint, bytes16 scIdAsBytes, string memory name, string memory symbol, bytes32 salt) public updateGhosts asActor {
+    function shareClassManager_updateMetadata(uint64 poolIdAsUint, bytes16 scIdAsBytes, string memory name, string memory symbol, bytes32 salt) public updateGhosts asActor {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId shareClassId_ = ShareClassId.wrap(scIdAsBytes);
         bytes memory data = "not-used";
-        multiShareClass.updateMetadata(poolId, shareClassId_, name, symbol, salt, data);
+        shareClassManager.updateMetadata(poolId, shareClassId_, name, symbol, salt, data);
     }
 }

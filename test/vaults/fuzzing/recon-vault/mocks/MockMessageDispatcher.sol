@@ -63,7 +63,7 @@ contract MockMessageDispatcher {
         uint128 assetAmount,
         uint128 shareAmount
     ) external  {
-        if (assetId.chainId() == localCentrifugeId) {
+        if (assetId.centrifugeId() == localCentrifugeId) {
             asyncRequests.fulfillDepositRequest(
                 poolId.raw(), scId.raw(), address(bytes20(investor)), assetId.raw(), assetAmount, shareAmount
             );
@@ -80,7 +80,7 @@ contract MockMessageDispatcher {
         uint128 assetAmount,
         uint128 shareAmount
     ) external  {
-        if (assetId.chainId() == localCentrifugeId) {
+        if (assetId.centrifugeId() == localCentrifugeId) {
             asyncRequests.fulfillRedeemRequest(
                 poolId.raw(), scId.raw(), address(bytes20(investor)), assetId.raw(), assetAmount, shareAmount
             );
@@ -95,7 +95,7 @@ contract MockMessageDispatcher {
         bytes32 investor,
         uint128 cancelledAmount
     ) external  {
-        if (assetId.chainId() == localCentrifugeId) {
+        if (assetId.centrifugeId() == localCentrifugeId) {
             asyncRequests.fulfillCancelDepositRequest(
                 poolId.raw(), scId.raw(), address(bytes20(investor)), assetId.raw(), cancelledAmount, cancelledAmount
             );
@@ -110,7 +110,7 @@ contract MockMessageDispatcher {
         bytes32 investor,
         uint128 cancelledShares
     ) external  {
-        if (assetId.chainId() == localCentrifugeId) {
+        if (assetId.centrifugeId() == localCentrifugeId) {
             asyncRequests.fulfillCancelRedeemRequest(
                 poolId.raw(), scId.raw(), address(bytes20(investor)), assetId.raw(), cancelledShares
             );

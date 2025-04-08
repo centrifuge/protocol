@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
-import {EpochPointers, UserOrder} from "src/pools/MultiShareClass.sol";
+import {EpochPointers, UserOrder} from "src/hub/interfaces/IShareClassManager.sol";
 import {Helpers} from "test/pools/fuzzing/recon-pools/utils/Helpers.sol";
 import {Setup} from "./Setup.sol";
 
@@ -53,18 +53,18 @@ abstract contract BeforeAfter is Setup {
         for (uint256 i = 0; i < createdPools.length; i++) {
             address[] memory _actors = _getActors();
             PoolId poolId = createdPools[i];
-            _before.ghostEpochId[poolId] = multiShareClass.epochId(poolId);
+            _before.ghostEpochId[poolId] = shareClassManager.epochId(poolId);
             // loop through all share classes for the pool
-            for (uint32 j = 0; j < multiShareClass.shareClassCount(poolId); j++) {
-                ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
-                AssetId assetId = poolRegistry.currency(poolId);
+            for (uint32 j = 0; j < shareClassManager.shareClassCount(poolId); j++) {
+                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+                AssetId assetId = hubRegistry.currency(poolId);
                 
-                (,_before.ghostLatestRedeemApproval,,) = multiShareClass.epochPointers(scId, assetId);
+                (,_before.ghostLatestRedeemApproval,,) = shareClassManager.epochPointers(scId, assetId);
                 
                 // loop over all actors
                 for (uint256 k = 0; k < _actors.length; k++) {
                     bytes32 actor = Helpers.addressToBytes32(_actors[k]);
-                    (uint128 pendingRedeem, uint32 lastUpdate) = multiShareClass.redeemRequest(scId, assetId, actor);
+                    (uint128 pendingRedeem, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, actor);
                     _before.ghostRedeemRequest[scId][assetId][actor] = UserOrder({pending: pendingRedeem, lastUpdate: lastUpdate});
                 }
             }
@@ -79,18 +79,18 @@ abstract contract BeforeAfter is Setup {
         for (uint256 i = 0; i < createdPools.length; i++) {
             address[] memory _actors = _getActors();
             PoolId poolId = createdPools[i];
-            _after.ghostEpochId[poolId] = multiShareClass.epochId(poolId);
+            _after.ghostEpochId[poolId] = shareClassManager.epochId(poolId);
             // loop through all share classes for the pool
-            for (uint32 j = 0; j < multiShareClass.shareClassCount(poolId); j++) {
-                ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
-                AssetId assetId = poolRegistry.currency(poolId);
+            for (uint32 j = 0; j < shareClassManager.shareClassCount(poolId); j++) {
+                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+                AssetId assetId = hubRegistry.currency(poolId);
                 
-                (,_after.ghostLatestRedeemApproval,,) = multiShareClass.epochPointers(scId, assetId);
+                (,_after.ghostLatestRedeemApproval,,) = shareClassManager.epochPointers(scId, assetId);
                 
                 // loop over all actors
                 for (uint256 k = 0; k < _actors.length; k++) {
                     bytes32 actor = Helpers.addressToBytes32(_actors[k]);
-                    (uint128 pendingRedeem, uint32 lastUpdate) = multiShareClass.redeemRequest(scId, assetId, actor);
+                    (uint128 pendingRedeem, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, actor);
                     _after.ghostRedeemRequest[scId][assetId][actor] = UserOrder({pending: pendingRedeem, lastUpdate: lastUpdate});
                 }
             }

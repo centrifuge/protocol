@@ -8,7 +8,6 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {EscrowId} from "src/pools/interfaces/IHub.sol";
 
 import {Helpers} from "test/pools/fuzzing/recon-pools/utils/Helpers.sol";
 import {BeforeAfter, OpType} from "./BeforeAfter.sol";
@@ -40,19 +39,17 @@ abstract contract Properties is BeforeAfter, Asserts {
 
     /// @dev Property: The total pending asset amount pendingDeposit[..] is always >= than the approved asset amount epochAmounts[..].depositApproved
     function property_total_pending_and_approved() public {
-        address[] memory _actors = _getActors();
-
         for (uint256 i = 0; i < createdPools.length; i++) {
             PoolId poolId = createdPools[i];
-            uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
+            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
             // skip the first share class because it's never assigned
             for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
-                AssetId assetId = poolRegistry.currency(poolId);
+                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+                AssetId assetId = hubRegistry.currency(poolId);
 
-                uint32 epochId = multiShareClass.epochId(poolId);
-                uint128 pendingDeposit = multiShareClass.pendingDeposit(scId, assetId);
-                (uint128 depositPending, uint128 approvedDeposit,,,,,) = multiShareClass.epochAmounts(scId, assetId, epochId);
+                uint32 epochId = shareClassManager.epochId(poolId);
+                uint128 pendingDeposit = shareClassManager.pendingDeposit(scId, assetId);
+                (uint128 depositPending, uint128 approvedDeposit,,,,,) = shareClassManager.epochAmounts(scId, assetId, epochId);
 
                 gte(pendingDeposit, approvedDeposit, "pending deposit is less than approved deposit");
                 gte(pendingDeposit, depositPending, "pending deposit is less than pending for epoch");
@@ -68,26 +65,26 @@ abstract contract Properties is BeforeAfter, Asserts {
 
         for (uint256 i = 0; i < createdPools.length; i++) {
             PoolId poolId = createdPools[i];
-            uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
+            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
             // skip the first share class because it's never assigned
             for (uint32 j = 1; j < shareClassCount; j++) { 
-                ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
-                AssetId assetId = poolRegistry.currency(poolId);
+                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+                AssetId assetId = hubRegistry.currency(poolId);
 
-                uint32 epochId = multiShareClass.epochId(poolId);
-                uint128 pendingRedeemCurrent = multiShareClass.pendingRedeem(scId, assetId);
+                uint32 epochId = shareClassManager.epochId(poolId);
+                uint128 pendingRedeemCurrent = shareClassManager.pendingRedeem(scId, assetId);
                 
                 // get the pending and approved redeem amounts for the previous epoch
-                (,,,, uint128 redeemPendingPrevious, uint128 redeemApprovedPrevious, uint128 redeemAssetsPrevious) = multiShareClass.epochAmounts(scId, assetId, epochId - 1);
+                (,,,, uint128 redeemPendingPrevious, uint128 redeemApprovedPrevious, uint128 redeemAssetsPrevious) = shareClassManager.epochAmounts(scId, assetId, epochId - 1);
 
                 // get the pending and approved redeem amounts for the current epoch
-                (,,,,, uint128 redeemApprovedCurrent,) = multiShareClass.epochAmounts(scId, assetId, epochId);
+                (,,,,, uint128 redeemApprovedCurrent,) = shareClassManager.epochAmounts(scId, assetId, epochId);
 
                 uint128 totalPendingUserRedeem = 0;
                 for (uint256 k = 0; k < _actors.length; k++) {
                     address actor = _actors[k];
 
-                    (uint128 pendingUserRedeemCurrent,) = multiShareClass.redeemRequest(scId, assetId, Helpers.addressToBytes32(actor));
+                    (uint128 pendingUserRedeemCurrent,) = shareClassManager.redeemRequest(scId, assetId, Helpers.addressToBytes32(actor));
                     totalPendingUserRedeem += pendingUserRedeemCurrent;
                     
                     // pendingUserRedeem hasn't changed if the claimableAssetAmountPrevious is 0, so we can use it to calculate the claimableAssetAmount from the previous epoch 
@@ -114,15 +111,15 @@ abstract contract Properties is BeforeAfter, Asserts {
     function property_epochId_strictly_greater_than_any_latest_pointer() public {
         for (uint256 i = 0; i < createdPools.length; i++) {
             PoolId poolId = createdPools[i];
-            uint32 epochId = multiShareClass.epochId(poolId);
+            uint32 epochId = shareClassManager.epochId(poolId);
 
-            uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
+            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
             // skip the first share class because it's never assigned
             for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
-                AssetId assetId = poolRegistry.currency(poolId);
+                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+                AssetId assetId = hubRegistry.currency(poolId);
 
-                (uint32 latestDepositApproval, uint32 latestRedeemApproval, uint32 latestIssuance, uint32 latestRevocation) = multiShareClass.epochPointers(scId, assetId);
+                (uint32 latestDepositApproval, uint32 latestRedeemApproval, uint32 latestIssuance, uint32 latestRevocation) = shareClassManager.epochPointers(scId, assetId);
                 
                 gt(epochId, latestDepositApproval, "epochId is not strictly greater than latest deposit approval");
                 gt(epochId, latestRedeemApproval, "epochId is not strictly greater than latest redeem approval");
@@ -166,7 +163,7 @@ abstract contract Properties is BeforeAfter, Asserts {
     //     }
 
     //     // if(hasApprovedDeposits && hasRevokedShares) {
-    //     //     multiShareClass.metrics(scId);
+    //     //     shareClassManager.metrics(scId);
     //     // }
     // }
     /// Stateless Properties ///
@@ -180,7 +177,7 @@ abstract contract Properties is BeforeAfter, Asserts {
         // loop over all created pools
         for (uint256 i = 0; i < createdPools.length; i++) {
             PoolId poolId = createdPools[i];
-            uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
+            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
             
             // check that the epoch has ended, if not, skip
             // we know an epoch has ended if the epochId changed after an operation which we cache in the before/after structs
@@ -193,19 +190,19 @@ abstract contract Properties is BeforeAfter, Asserts {
             uint128 totalPayoutAssetAmount = 0;
             // skip the first share class because it's never assigned
             for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
-                AssetId assetId = poolRegistry.currency(poolId);
+                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+                AssetId assetId = hubRegistry.currency(poolId);
 
                 // check the previous epochId since the current epoch is still ongoing
-                uint32 epochId = multiShareClass.epochId(poolId) - 1;
-                (,, uint128 depositPoolApproved, uint128 depositSharesIssued,,,) = multiShareClass.epochAmounts(scId, assetId, epochId);
+                uint32 epochId = shareClassManager.epochId(poolId) - 1;
+                (,, uint128 depositPoolApproved, uint128 depositSharesIssued,,,) = shareClassManager.epochAmounts(scId, assetId, epochId);
 
                 // loop over all actors
                 for (uint256 k = 0; k < _actors.length; k++) {
                     address actor = _actors[k];
                     
-                    // we claim via multiShareClass directly here because PoolRouter doesn't return the payoutShareAmount
-                    (uint128 payoutShareAmount, uint128 payoutAssetAmount,) = multiShareClass.claimDeposit(poolId, scId, Helpers.addressToBytes32(actor), assetId);
+                    // we claim via shareClassManager directly here because PoolRouter doesn't return the payoutShareAmount
+                    (uint128 payoutShareAmount, uint128 payoutAssetAmount,) = shareClassManager.claimDeposit(poolId, scId, Helpers.addressToBytes32(actor), assetId);
                     totalPayoutShareAmount += payoutShareAmount;
                     totalPayoutAssetAmount += payoutAssetAmount;
                 }
@@ -235,23 +232,23 @@ abstract contract Properties is BeforeAfter, Asserts {
         // loop over all created pools
         for (uint256 i = 0; i < createdPools.length; i++) {
             PoolId poolId = createdPools[i];
-            uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
+            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
             // loop over all share classes in the pool
             // skip the first share class because it's never assigned
             for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
-                AssetId assetId = poolRegistry.currency(poolId);
+                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+                AssetId assetId = hubRegistry.currency(poolId);
 
-                uint32 epochId = multiShareClass.epochId(poolId);
-                (,,,,, uint128 redeemApprovedShares, uint128 redeemAssets) = multiShareClass.epochAmounts(scId, assetId, epochId);
+                uint32 epochId = shareClassManager.epochId(poolId);
+                (,,,,, uint128 redeemApprovedShares, uint128 redeemAssets) = shareClassManager.epochAmounts(scId, assetId, epochId);
 
                 // sum eligible user claim payoutAssetAmount for the epoch
                 uint128 totalPayoutAssetAmount = 0;
                 uint128 totalPaymentShareAmount = 0;
                 for (uint256 k = 0; k < _actors.length; k++) {
                     address actor = _actors[k];
-                    // we claim via multiShareClass directly here because PoolRouter doesn't return the payoutAssetAmount
-                    (uint128 payoutAssetAmount, uint128 paymentShareAmount,) = multiShareClass.claimRedeem(poolId, scId, Helpers.addressToBytes32(actor), assetId);
+                    // we claim via shareClassManager directly here because PoolRouter doesn't return the payoutAssetAmount
+                    (uint128 payoutAssetAmount, uint128 paymentShareAmount,) = shareClassManager.claimRedeem(poolId, scId, Helpers.addressToBytes32(actor), assetId);
                     totalPayoutAssetAmount += payoutAssetAmount;
                     totalPaymentShareAmount += paymentShareAmount;
                 }
@@ -277,11 +274,11 @@ abstract contract Properties is BeforeAfter, Asserts {
 
         for (uint256 i = 0; i < createdPools.length; i++) {
             PoolId poolId = createdPools[i];
-            uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
+            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
             // skip the first share class because it's never assigned
             for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
-                AssetId assetId = poolRegistry.currency(poolId);
+                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+                AssetId assetId = hubRegistry.currency(poolId);
 
                 // loop over all actors
                 for (uint256 k = 0; k < _actors.length; k++) {
@@ -299,52 +296,54 @@ abstract contract Properties is BeforeAfter, Asserts {
     }
 
     /// @dev Property: The amount of holdings of an asset for a pool-shareClas pair in Holdings MUST always be equal to the balance of the escrow for said pool-shareClass for the respective token
-    function property_holdings_balance_equals_escrow_balance() public stateless {
-        address[] memory _actors = _getActors();
+    // TODO: verify if this should be applied to the vaults side instead
+    // function property_holdings_balance_equals_escrow_balance() public stateless {
+    //     address[] memory _actors = _getActors();
 
-        for (uint256 i = 0; i < createdPools.length; i++) {
-            PoolId poolId = createdPools[i];
-            uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
-            // skip the first share class because it's never assigned
-            for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
-                AssetId assetId = poolRegistry.currency(poolId);
+    //     for (uint256 i = 0; i < createdPools.length; i++) {
+    //         PoolId poolId = createdPools[i];
+    //         uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
+    //         // skip the first share class because it's never assigned
+    //         for (uint32 j = 1; j < shareClassCount; j++) {
+    //             ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+    //             AssetId assetId = hubRegistry.currency(poolId);
 
-                (uint128 holdingAssetAmount,,,) = holdings.holding(poolId, scId, assetId);
+    //             (uint128 holdingAssetAmount,,,) = holdings.holding(poolId, scId, assetId);
                 
-                address pendingShareClassEscrow = hub.escrow(poolId, scId, EscrowId.PendingShareClass);
-                address shareClassEscrow = hub.escrow(poolId, scId, EscrowId.ShareClass);
-                uint256 pendingShareClassEscrowBalance = assetRegistry.balanceOf(pendingShareClassEscrow, assetId.raw());
-                uint256 shareClassEscrowBalance = assetRegistry.balanceOf(shareClassEscrow, assetId.raw());
+    //             address pendingShareClassEscrow = hub.escrow(poolId, scId, EscrowId.PendingShareClass);
+    //             address shareClassEscrow = hub.escrow(poolId, scId, EscrowId.ShareClass);
+    //             uint256 pendingShareClassEscrowBalance = assetRegistry.balanceOf(pendingShareClassEscrow, assetId.raw());
+    //             uint256 shareClassEscrowBalance = assetRegistry.balanceOf(shareClassEscrow, assetId.raw());
                 
-                eq(holdingAssetAmount, pendingShareClassEscrowBalance + shareClassEscrowBalance, "holding != escrow balance");
-            }
-        }
-    }
+    //             eq(holdingAssetAmount, pendingShareClassEscrowBalance + shareClassEscrowBalance, "holding != escrow balance");
+    //         }
+    //     }
+    // }
 
     /// @dev Property: The amount of tokens existing in the AssetRegistry MUST always be <= the balance of the associated token in the escrow
     // TODO: confirm if this is correct because it seems like AssetRegistry would never be receiving tokens in the first place
-    function property_assetRegistry_balance_leq_escrow_balance() public stateless {
-        address[] memory _actors = _getActors();
+    // TODO: verify if this should be applied to the vaults side instead
+    // function property_assetRegistry_balance_leq_escrow_balance() public stateless {
+    //     address[] memory _actors = _getActors();
 
-        for (uint256 i = 0; i < createdPools.length; i++) {
-            PoolId poolId = createdPools[i];
-            uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
-            // skip the first share class because it's never assigned
-            for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = multiShareClass.previewShareClassId(poolId, j);
-                AssetId assetId = poolRegistry.currency(poolId);
+    //     for (uint256 i = 0; i < createdPools.length; i++) {
+    //         PoolId poolId = createdPools[i];
+    //         uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
+    //         // skip the first share class because it's never assigned
+    //         for (uint32 j = 1; j < shareClassCount; j++) {
+    //             ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+    //             AssetId assetId = hubRegistry.currency(poolId);
 
-                address pendingShareClassEscrow = hub.escrow(poolId, scId, EscrowId.PendingShareClass);
-                address shareClassEscrow = hub.escrow(poolId, scId, EscrowId.ShareClass);
-                uint256 assetRegistryBalance = assetRegistry.balanceOf(address(assetRegistry), assetId.raw());
-                uint256 pendingShareClassEscrowBalance = assetRegistry.balanceOf(pendingShareClassEscrow, assetId.raw());
-                uint256 shareClassEscrowBalance = assetRegistry.balanceOf(shareClassEscrow, assetId.raw());
+    //             address pendingShareClassEscrow = hub.escrow(poolId, scId, EscrowId.PendingShareClass);
+    //             address shareClassEscrow = hub.escrow(poolId, scId, EscrowId.ShareClass);
+    //             uint256 assetRegistryBalance = assetRegistry.balanceOf(address(assetRegistry), assetId.raw());
+    //             uint256 pendingShareClassEscrowBalance = assetRegistry.balanceOf(pendingShareClassEscrow, assetId.raw());
+    //             uint256 shareClassEscrowBalance = assetRegistry.balanceOf(shareClassEscrow, assetId.raw());
 
-                lte(assetRegistryBalance, pendingShareClassEscrowBalance + shareClassEscrowBalance, "assetRegistry balance > escrow balance");
-            }
-        }
-    }
+    //             lte(assetRegistryBalance, pendingShareClassEscrowBalance + shareClassEscrowBalance, "assetRegistry balance > escrow balance");
+    //         }
+    //     }
+    // }
 
     /// Rounding Properties /// 
 

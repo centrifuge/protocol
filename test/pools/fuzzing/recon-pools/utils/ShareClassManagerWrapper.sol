@@ -1,10 +1,10 @@
-import {MultiShareClass} from "src/pools/MultiShareClass.sol";
-import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
+import {ShareClassManager} from "src/hub/ShareClassManager.sol";
+import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 
 /// @dev Wrapper so we can reset the epoch increment for testing
-contract MultiShareClassWrapper is MultiShareClass {
-    constructor(IPoolRegistry poolRegistry, address deployer) MultiShareClass(poolRegistry, deployer) {
-        poolRegistry = poolRegistry;
+contract ShareClassManagerWrapper is ShareClassManager {
+    constructor(IHubRegistry hubRegistry, address deployer) ShareClassManager(hubRegistry, deployer) {
+        hubRegistry = hubRegistry;
     }
 
     /// @dev We need to reset the epoch increment for shortcut functions which make multiple calls to the share class in the same transaction

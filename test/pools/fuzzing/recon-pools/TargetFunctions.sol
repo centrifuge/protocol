@@ -47,10 +47,10 @@ abstract contract TargetFunctions is
         hub_registerAsset(isoCode); // 4294967295
 
         // defaults to pool admined by the admin actor (address(this))
-        PoolId poolId = hub_createPool(address(this), isoCode, multiShareClass);
+        PoolId poolId = hub_createPool(address(this), isoCode, shareClassManager);
         
         // create holding
-        ShareClassId scId = multiShareClass.previewNextShareClassId(poolId);
+        ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
         AssetId assetId = newAssetId(isoCode); // 4294967295
         shortcut_add_share_class_and_holding(poolId.raw(), salt, scId.raw(), assetId.raw(), isIdentityValuation, prefix);
 
@@ -307,7 +307,7 @@ abstract contract TargetFunctions is
         (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, salt, isIdentityValuation, prefix);
         AssetId assetId = newAssetId(isoCode);
 
-        transientValuation_setPrice(address(assetId.addr()), poolRegistry.currency(poolId).addr(), newPrice);
+        transientValuation_setPrice(address(assetId.addr()), hubRegistry.currency(poolId).addr(), newPrice);
         hub_updateHolding(ShareClassId.unwrap(scId), assetId.raw());
         hub_execute_clamped(PoolId.unwrap(poolId));
     }
@@ -402,9 +402,9 @@ abstract contract TargetFunctions is
         uint32 isoCode, 
         D18 newPrice
     ) public clearQueuedCalls  {
-        PoolId poolId = newPoolId(CENTIFUGE_CHAIN_ID, poolRegistry.latestId());
+        PoolId poolId = newPoolId(CENTIFUGE_CHAIN_ID, hubRegistry.latestId());
         
-        ShareClassId nextScId = multiShareClass.previewNextShareClassId(poolId);
+        ShareClassId nextScId = shareClassManager.previewNextShareClassId(poolId);
         // get the current share class id by decrementing the next share class id
         ShareClassId scId = ShareClassId.wrap(bytes16(uint128(nextScId.raw()) - 1)); 
 
@@ -522,10 +522,10 @@ abstract contract TargetFunctions is
         if(createdPools.length > 0) {
             // get a random pool id
             PoolId poolId = createdPools[poolIdEntropy % createdPools.length];
-            uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
+            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
             
             // get a random share class id
-            ShareClassId scId = multiShareClass.previewShareClassId(poolId, shareClassEntropy % shareClassCount);
+            ShareClassId scId = shareClassManager.previewShareClassId(poolId, shareClassEntropy % shareClassCount);
             hub_updateRestriction(CENTIFUGE_CHAIN_ID, scId.raw(), payload);
             hub_execute_clamped(poolId.raw());
         }
@@ -538,7 +538,7 @@ abstract contract TargetFunctions is
 
     // set the price of the asset in the transient valuation for a given pool
     function transientValuation_setPrice_clamped(uint64 poolId, D18 price) public {
-        AssetId assetId = poolRegistry.currency(PoolId.wrap(poolId));
+        AssetId assetId = hubRegistry.currency(PoolId.wrap(poolId));
 
         transientValuation.setPrice(address(assetId.addr()), address(assetId.addr()), price);
     }
@@ -569,11 +569,11 @@ abstract contract TargetFunctions is
 
     /// helper to set the epoch increment for the multi share class for multiple calls to approvals in same transaction
     function _setEpochIncrement(uint32 epochIncrement) internal {
-        multiShareClass.setEpochIncrement(epochIncrement);
+        shareClassManager.setEpochIncrement(epochIncrement);
     }
 
     function _getMultiShareClassMetrics(ShareClassId scId) internal view returns (uint128 totalIssuance) {
-        (totalIssuance,) = multiShareClass.metrics(scId);
+        (totalIssuance,) = shareClassManager.metrics(scId);
         return totalIssuance;
     }
 

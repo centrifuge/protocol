@@ -9,8 +9,8 @@ import {console2} from "forge-std/console2.sol";
 import {Panic} from "@recon/Panic.sol";
 
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
-import {Hub} from "src/pools/Hub.sol";
-import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
+import {Hub} from "src/hub/Hub.sol";
+import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
@@ -31,7 +31,7 @@ abstract contract PoolRouterTargets is
     function hub_createPool(address admin, uint32 isoCode, IShareClassManager shareClassManager) public updateGhosts asActor returns (PoolId poolId) {
         AssetId assetId_ = newAssetId(isoCode); 
 
-        poolId = hub.createPool(admin, assetId_, shareClassManager);
+        poolId = hub.createPool(admin, assetId_);
 
         poolCreated = true;
         createdPools.push(poolId);
@@ -50,8 +50,8 @@ abstract contract PoolRouterTargets is
         
         hub.claimDeposit(poolId, scId, assetId, investor);
 
-        (, uint32 lastUpdate) = multiShareClass.depositRequest(scId, assetId, investor);
-        uint32 epochId = multiShareClass.epochId(poolId);
+        (, uint32 lastUpdate) = shareClassManager.depositRequest(scId, assetId, investor);
+        uint32 epochId = shareClassManager.epochId(poolId);
 
         eq(lastUpdate, epochId, "lastUpdate is not equal to epochId");
     }
@@ -66,8 +66,8 @@ abstract contract PoolRouterTargets is
         
         hub.claimRedeem(poolId, scId, assetId, investor);
 
-        (, uint32 lastUpdate) = multiShareClass.redeemRequest(scId, assetId, investor);
-        uint32 epochId = multiShareClass.epochId(poolId);
+        (, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, investor);
+        uint32 epochId = shareClassManager.epochId(poolId);
 
         eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId");
     }

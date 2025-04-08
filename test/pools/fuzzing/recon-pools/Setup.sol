@@ -13,19 +13,19 @@ import {AssetManager} from "@recon/AssetManager.sol";
 import {Utils} from "@recon/Utils.sol";
 
 // Dependencies
-import {Accounting} from "src/pools/Accounting.sol";
-import {AssetRegistry} from "src/pools/AssetRegistry.sol";
+import {Accounting} from "src/hub/Accounting.sol";
+import {HubRegistry} from "src/hub/HubRegistry.sol";
 import {Gateway} from "src/common/Gateway.sol";
-import {Holdings} from "src/pools/Holdings.sol";
-import {PoolRegistry} from "src/pools/PoolRegistry.sol";
-import {Hub} from "src/pools/Hub.sol";
-import {MultiShareClass} from "src/pools/MultiShareClass.sol";
-import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
-import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
-import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
-import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
+import {Holdings} from "src/hub/Holdings.sol";
+import {HubRegistry} from "src/hub/HubRegistry.sol";
+import {Hub} from "src/hub/Hub.sol";
+import {ShareClassManager} from "src/hub/ShareClassManager.sol";
+import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
+import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
+import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
+import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {TransientValuation, ITransientValuation} from "src/misc/TransientValuation.sol";
@@ -40,7 +40,7 @@ import {MockGasService} from "test/common/mocks/MockGasService.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 
 import {MockGateway} from "test/pools/fuzzing/recon-pools/mocks/MockGateway.sol";
-import {MultiShareClassWrapper} from "test/pools/fuzzing/recon-pools/utils/MultiShareClassWrapper.sol";
+import {ShareClassManagerWrapper} from "test/pools/fuzzing/recon-pools/utils/ShareClassManagerWrapper.sol";
 import {MockMessageDispatcher} from "test/vaults/fuzzing/recon-vault/mocks/MockMessageDispatcher.sol";
 
 abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
@@ -56,11 +56,10 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     }
 
     Accounting accounting;
-    AssetRegistry assetRegistry;
+    HubRegistry hubRegistry;
     Holdings holdings;
-    PoolRegistry poolRegistry;
     Hub hub;
-    MultiShareClassWrapper multiShareClass;
+    ShareClassManagerWrapper shareClassManager;
     TransientValuation transientValuation;
     IdentityValuation identityValuation;
     Root root;
@@ -111,29 +110,34 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         gasService = new MockGasService();
         root = new Root(7 days, address(this));
         accounting = new Accounting(address(this)); 
-        assetRegistry = new AssetRegistry(address(this)); 
-        poolRegistry = new PoolRegistry(address(this)); 
-        transientValuation = new TransientValuation(assetRegistry, address(this));
-        identityValuation = new IdentityValuation(assetRegistry, address(this));
-
-        holdings = new Holdings(IPoolRegistry(address(poolRegistry)), address(this));
-        hub = new Hub(IPoolRegistry(address(poolRegistry)), IAssetRegistry(address(assetRegistry)), IAccounting(address(accounting)), IHoldings(address(holdings)), IGateway(address(gateway)), ITransientValuation(address(transientValuation)), address(this));
-        multiShareClass = new MultiShareClassWrapper(IPoolRegistry(address(poolRegistry)), address(this));
-        messageDispatcher = new MockMessageDispatcher(PoolManager(address(this)), IAsyncRequests(address(this)), root, CENTIFUGE_CHAIN_ID);
-
+        hubRegistry = new HubRegistry(address(this)); 
+        transientValuation = new TransientValuation(hubRegistry, address(this));
+        identityValuation = new IdentityValuation(hubRegistry, address(this));
         mockAdapter = new MockAdapter(CENTIFUGE_CHAIN_ID, IMessageHandler(address(gateway)));
+
+        holdings = new Holdings(IHubRegistry(address(hubRegistry)), address(this));
+        shareClassManager = new ShareClassManagerWrapper(IHubRegistry(address(hubRegistry)), address(this));
+        messageDispatcher = new MockMessageDispatcher(PoolManager(address(this)), IAsyncRequests(address(this)), root, CENTIFUGE_CHAIN_ID);
+        hub = new Hub(
+            IShareClassManager(address(shareClassManager)), 
+            IHubRegistry(address(hubRegistry)), 
+            IAccounting(address(accounting)), 
+            IHoldings(address(holdings)), 
+            IGateway(address(gateway)), 
+            ITransientValuation(address(transientValuation)), 
+            address(this)
+        );
 
         // set addresses on the PoolRouter
         hub.file("sender", address(messageDispatcher));
 
         // set permissions for calling privileged functions
-        poolRegistry.rely(address(hub));
-        assetRegistry.rely(address(hub));
+        hubRegistry.rely(address(hub));
         accounting.rely(address(hub));
         holdings.rely(address(hub));
-        multiShareClass.rely(address(hub));
+        shareClassManager.rely(address(hub));
         hub.rely(address(hub));
-        multiShareClass.rely(address(this));
+        shareClassManager.rely(address(this));
     }
 
     /// === MODIFIERS === ///
@@ -155,14 +159,14 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     }
 
     function _getRandomShareClassIdForPool(PoolId poolId, uint32 scEntropy) internal view returns (ShareClassId) {
-        uint32 shareClassCount = multiShareClass.shareClassCount(poolId);
+        uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
         uint32 randomIndex = scEntropy % shareClassCount;
         if(randomIndex == 0) {
             // the first share class is never assigned
             randomIndex = 1;
         }
 
-        ShareClassId scId = multiShareClass.previewShareClassId(poolId, randomIndex);
+        ShareClassId scId = shareClassManager.previewShareClassId(poolId, randomIndex);
         return scId;
     }
 }
