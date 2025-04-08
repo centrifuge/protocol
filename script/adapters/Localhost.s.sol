@@ -37,7 +37,7 @@ contract LocalhostDeployer is FullDeployer {
 
     function _configureTestData(uint16 centrifugeId) internal {
         // Create pool
-        PoolId poolId = hub.createPool(msg.sender, USD, shareClassManager);
+        PoolId poolId = hub.createPool(msg.sender, USD);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
         // Deploy and register test USDC

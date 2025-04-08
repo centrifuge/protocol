@@ -8,7 +8,6 @@ import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
 import {IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
 import {IHub} from "src/pools/interfaces/IHub.sol";
 
@@ -47,12 +46,8 @@ contract Guardian is IGuardian {
 
     // --- Admin actions ---
     /// @inheritdoc IGuardian
-    function createPool(address admin, AssetId currency, IShareClassManager shareClassManager)
-        external
-        onlySafe
-        returns (PoolId poolId)
-    {
-        return hub.createPool(admin, currency, shareClassManager);
+    function createPool(address admin, AssetId currency) external onlySafe returns (PoolId poolId) {
+        return hub.createPool(admin, currency);
     }
 
     /// @inheritdoc IGuardian

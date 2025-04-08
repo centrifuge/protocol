@@ -114,7 +114,7 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
-    function createPool(address admin, AssetId currency, IShareClassManager shareClassManager_)
+    function createPool(address admin, AssetId currency)
         external
         payable
         auth

@@ -57,12 +57,8 @@ interface IHub {
 
     /// @notice Creates a new pool. `msg.sender` will be the admin of the created pool.
     /// @param currency The pool currency. Usually an AssetId identifying by a ISO4217 code.
-    /// @param shareClassManager The share class manager used for this pool.
     /// @return PoolId The id of the new pool.
-    function createPool(address admin, AssetId currency, IShareClassManager shareClassManager)
-        external
-        payable
-        returns (PoolId);
+    function createPool(address admin, AssetId currency) external payable returns (PoolId);
 
     /// @notice Claim a deposit for an investor address located in the chain where the asset belongs
     function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external payable;
