@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
+pragma solidity >=0.5.0;
 
 import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
