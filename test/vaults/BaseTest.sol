@@ -38,9 +38,8 @@ import {MockSafe} from "test/vaults/mocks/MockSafe.sol";
 
 // test env
 import "forge-std/Test.sol";
-import {GasSnapshot} from "forge-gas-snapshot/GasSnapshot.sol";
 
-contract BaseTest is VaultsDeployer, GasSnapshot, Test {
+contract BaseTest is VaultsDeployer, Test {
     using MessageLib for *;
 
     MockCentrifugeChain centrifugeChain;

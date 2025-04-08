@@ -13,7 +13,7 @@ import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
-import {PriceConversionLib} from "src/vaults/libraries/PriceConversionLib.sol";
+import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 
 abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
     using MathLib for uint256;
@@ -50,9 +50,8 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
         (uint128 latestPrice,) = poolManager.sharePrice(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
-        shares = uint256(
-            PriceConversionLib.calculateShares(_assets.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down)
-        );
+        shares =
+            uint256(VaultPricingLib.calculateShares(_assets.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down));
     }
 
     /// @inheritdoc IBaseInvestmentManager
@@ -60,9 +59,8 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
         (uint128 latestPrice,) = poolManager.sharePrice(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
-        assets = uint256(
-            PriceConversionLib.calculateAssets(_shares.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down)
-        );
+        assets =
+            uint256(VaultPricingLib.calculateAssets(_shares.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down));
     }
 
     /// @inheritdoc IBaseInvestmentManager
