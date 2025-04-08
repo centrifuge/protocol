@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import "test/pools/integration/BaseTest.t.sol";
+import "test/hub/integration/BaseTest.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 

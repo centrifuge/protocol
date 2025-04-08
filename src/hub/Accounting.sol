@@ -5,7 +5,7 @@ import {Auth} from "src/misc/Auth.sol";
 
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
+import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 import {TransientStorage} from "src/misc/libraries/TransientStorage.sol";
 
 /// @notice In a transaction there can be multiple journal entries for different pools,

@@ -7,13 +7,13 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
 
-import {Hub} from "src/pools/Hub.sol";
-import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
+import {Hub} from "src/hub/Hub.sol";
+import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import "src/vaults/interfaces/IPoolManager.sol";
 
-import {FullDeployer, PoolsDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
+import {FullDeployer, HubDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
 import {CommonDeployer, MESSAGE_COST_ENV, PROOF_COST_ENV} from "script/CommonDeployer.s.sol";
 
 import {LocalAdapter} from "test/integration/adapters/LocalAdapter.sol";
@@ -66,17 +66,17 @@ contract TestEndToEnd is Test {
         deploy.removeFullDeployerAccess(address(deploy));
     }
 
-    function _getDeploys(bool sameChain) public view returns (PoolsDeployer cp, VaultsDeployer cv) {
-        cp = deployA;
+    function _getDeploys(bool sameChain) public view returns (HubDeployer ch, VaultsDeployer cv) {
+        ch = deployA;
         cv = (sameChain) ? deployA : deployB;
     }
 
     /// forge-config: default.isolate = true
     function testConfigurePool(bool sameChain) public {
-        (PoolsDeployer cp, VaultsDeployer cv) = _getDeploys(sameChain);
+        (HubDeployer ch, VaultsDeployer cv) = _getDeploys(sameChain);
         uint16 cvChainId = cv.messageDispatcher().localCentrifugeId();
 
-        IGuardian guardian = cp.guardian();
+        IGuardian guardian = ch.guardian();
         AssetId usd = deployA.USD();
         vm.prank(address(guardian.safe()));
         PoolId poolId = guardian.createPool(FM, usd);
@@ -87,7 +87,7 @@ contract TestEndToEnd is Test {
         c[i++] = abi.encodeWithSelector(Hub.notifyPool.selector, cvChainId);
         assertEq(i, c.length);
 
-        cp.hub().execute{value: GAS}(poolId, c);
+        ch.hub().execute{value: GAS}(poolId, c);
 
         assert(cv.poolManager().pools(poolId.raw()) != 0);
     }

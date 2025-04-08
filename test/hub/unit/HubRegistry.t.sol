@@ -9,9 +9,9 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {HubRegistry} from "src/pools/HubRegistry.sol";
-import {IHubRegistry} from "src/pools/interfaces/IHubRegistry.sol";
-import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
+import {HubRegistry} from "src/hub/HubRegistry.sol";
+import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
+import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 
 contract HubRegistryTest is Test {
     using MathLib for uint256;

@@ -6,8 +6,8 @@ import "forge-std/Test.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
-import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
-import {Accounting} from "src/pools/Accounting.sol";
+import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
+import {Accounting} from "src/hub/Accounting.sol";
 
 enum AccountType {
     Asset,

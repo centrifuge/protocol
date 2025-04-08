@@ -23,10 +23,10 @@ import {
     ShareClassMetrics,
     QueuedOrder,
     RequestType
-} from "src/pools/interfaces/IShareClassManager.sol";
-import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
-import {IHubRegistry} from "src/pools/interfaces/IHubRegistry.sol";
-import {ShareClassManager} from "src/pools/ShareClassManager.sol";
+} from "src/hub/interfaces/IShareClassManager.sol";
+import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
+import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
+import {ShareClassManager} from "src/hub/ShareClassManager.sol";
 
 uint64 constant POOL_ID = 42;
 uint32 constant SC_ID_INDEX = 1;

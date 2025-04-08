@@ -96,9 +96,9 @@ max_test_rejects = 65_536 # default value
     "test/*.sol",
     #Check if https://github.com/foundry-rs/foundry/issues/9088 is fixed to remove the following:
     "src/misc/ReentrancyProtection.sol", #Because transient keyword
-    "src/pools/Accounting.sol", #Because transient keyword
-    "src/pools/Hub.sol", #Because transient keyword
-    "src/pools/ShareClassManager.sol", #Because transient keyword
+    "src/hub/Accounting.sol", #Because transient keyword
+    "src/hub/Hub.sol", #Because transient keyword
+    "src/hub/ShareClassManager.sol", #Because transient keyword
     "src/common/Gateway.sol", #Because transient keyword
   ]
 

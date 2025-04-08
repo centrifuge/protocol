@@ -14,13 +14,13 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IHubRegistry} from "src/pools/interfaces/IHubRegistry.sol";
-import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
-import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
-import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
-import {IHub} from "src/pools/interfaces/IHub.sol";
+import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
+import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
+import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
+import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
+import {IHub} from "src/hub/interfaces/IHub.sol";
 import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
-import {Hub} from "src/pools/Hub.sol";
+import {Hub} from "src/hub/Hub.sol";
 import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
 contract TestCommon is Test {
