@@ -4,7 +4,7 @@ pragma abicoder v2;
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {PriceConversionLib} from "src/vaults/libraries/PriceConversionLib.sol";
+import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 
 import "test/vaults/BaseTest.sol";
 
@@ -16,7 +16,7 @@ contract AsyncRequestsHarness is AsyncRequests {
     constructor(address root, address escrow) AsyncRequests(root, escrow) {}
 
     function calculatePrice(address vault, uint128 assets, uint128 shares) external view returns (uint256 price) {
-        return PriceConversionLib.calculatePrice(vault, assets, shares);
+        return VaultPricingLib.calculatePrice(vault, assets, shares);
     }
 }
 

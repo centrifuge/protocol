@@ -5,13 +5,11 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 
-library PriceConversionLib {
+library VaultPricingLib {
     using MathLib for uint256;
 
     /// @dev Prices are fixed-point integers with 18 decimals
     uint8 internal constant PRICE_DECIMALS = 18;
-
-    uint256 internal constant PRICE_DIGITS = 10 ** PRICE_DECIMALS;
 
     /// @dev    Calculates share amount based on asset amount and share price. Returned value is in share decimals.
     function calculateShares(uint128 assets, address vault, uint256 price, MathLib.Rounding rounding)
