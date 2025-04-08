@@ -162,12 +162,6 @@ contract TestMainMethodsChecks is TestCommon {
 
 contract TestNotifyShareClass is TestCommon {
     function testErrShareClassNotFound() public {
-        vm.mockCall(
-            address(hubRegistry),
-            abi.encodeWithSelector(hubRegistry.dependency.selector, POOL_A, bytes32("shareClassManager")),
-            abi.encode(scm)
-        );
-
         vm.mockCall(address(scm), abi.encodeWithSelector(scm.exists.selector, POOL_A, SC_A), abi.encode(false));
 
         bytes[] memory cs = new bytes[](1);
