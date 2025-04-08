@@ -37,7 +37,7 @@ contract HubDeployer is CommonDeployer {
     // Data
     AssetId public immutable USD = newAssetId(840);
 
-    function deployPools(uint16 centrifugeId, ISafe adminSafe_, address deployer) public {
+    function deployHub(uint16 centrifugeId, ISafe adminSafe_, address deployer) public {
         deployCommon(centrifugeId, adminSafe_, deployer);
 
         hubRegistry = new HubRegistry(deployer);

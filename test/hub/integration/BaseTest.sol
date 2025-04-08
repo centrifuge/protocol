@@ -17,15 +17,14 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
 
-import {PoolsDeployer, ISafe} from "script/PoolsDeployer.s.sol";
+import {HubDeployer, ISafe} from "script/HubDeployer.s.sol";
 import {MESSAGE_COST_ENV, PROOF_COST_ENV} from "script/CommonDeployer.s.sol";
 import {AccountType} from "src/hub/interfaces/IHub.sol";
 import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
 import {MockVaults} from "test/hub/mocks/MockVaults.sol";
-import {ShareClassIdTest} from "../unit/types/ShareClassId.t.sol";
 
-contract BaseTest is PoolsDeployer, Test {
+contract BaseTest is HubDeployer, Test {
     uint16 constant CHAIN_CP = 5;
     uint16 constant CHAIN_CV = 6;
 
@@ -62,9 +61,9 @@ contract BaseTest is PoolsDeployer, Test {
         vm.setEnv(PROOF_COST_ENV, vm.toString(GAS));
 
         // Deployment
-        deployPools(CHAIN_CP, ISafe(ADMIN), address(this));
+        deployHub(CHAIN_CP, ISafe(ADMIN), address(this));
         _mockStuff();
-        removePoolsDeployerAccess(address(this));
+        removeHubDeployerAccess(address(this));
 
         // Initialize accounts
         vm.deal(FM, 1 ether);

@@ -9,7 +9,7 @@ import {VaultsDeployer} from "script/VaultsDeployer.s.sol";
 
 contract FullDeployer is HubDeployer, VaultsDeployer {
     function deployFull(uint16 centrifugeId, ISafe adminSafe_, address deployer) public {
-        deployPools(centrifugeId, adminSafe_, deployer);
+        deployHub(centrifugeId, adminSafe_, deployer);
         deployVaults(centrifugeId, adminSafe_, deployer);
     }
 
