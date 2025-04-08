@@ -122,7 +122,7 @@ interface IERC6909Decimals {
     function decimals(uint256 assetId) external view returns (uint8);
 }
 
-interface IERC6909MetadataExt {
+interface IERC6909MetadataExt is IERC6909Decimals {
     /// @notice             Used to retrieve the decimals of an asset
     /// @dev                address is used but the value corresponds to a AssetId
     function decimals(uint256 assetId) external view returns (uint8);

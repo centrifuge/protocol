@@ -2,7 +2,6 @@
 pragma solidity 0.8.28;
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {ERC6909} from "src/misc/ERC6909.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
 import {Escrow} from "src/vaults/Escrow.sol";

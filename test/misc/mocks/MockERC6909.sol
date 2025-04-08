@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ERC6909} from "src/misc/ERC6909.sol";
-import {IERC6909MetadataExt, IERC6909Decimals, IERC6909Fungible, IERC6909} from "src/misc/interfaces/IERC6909.sol";
+import {IERC6909MetadataExt, IERC6909Fungible, IERC6909} from "src/misc/interfaces/IERC6909.sol";
 
-contract MockERC6909 is IERC6909Fungible, IERC6909Decimals {
+contract MockERC6909 is IERC6909MetadataExt, IERC6909Fungible {
     mapping(address owner => mapping(uint256 tokenId => uint256)) public balanceOf;
     mapping(address owner => mapping(address spender => mapping(uint256 tokenId => uint256))) public allowance;
     mapping(address owner => mapping(address spender => bool)) public operator;
