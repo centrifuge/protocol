@@ -41,7 +41,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         );
     }
 
-    function deployCommon(uint16 chainId, ISafe adminSafe_, address deployer) public {
+    function deployCommon(uint16 centrifugeId, ISafe adminSafe_, address deployer) public {
         if (address(root) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
@@ -56,7 +56,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         gasService = new GasService(messageGasLimit, proofGasLimit);
         gateway = new Gateway(root, gasService);
 
-        messageDispatcher = new MessageDispatcher(chainId, root, gateway, deployer);
+        messageDispatcher = new MessageDispatcher(centrifugeId, root, gateway, deployer);
 
         adminSafe = adminSafe_;
 
@@ -88,6 +88,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         gateway.rely(address(guardian));
         gateway.rely(address(messageDispatcher));
         gateway.rely(address(messageProcessor));
+        messageDispatcher.rely(address(root));
         messageProcessor.rely(address(gateway));
         messageDispatcher.rely(address(guardian));
     }
@@ -97,9 +98,9 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         gateway.file("processor", address(messageProcessor));
     }
 
-    function wire(uint16 chainId, IAdapter adapter, address deployer) public {
+    function wire(uint16 centrifugeId, IAdapter adapter, address deployer) public {
         adapters.push(adapter);
-        gateway.file("adapters", chainId, adapters);
+        gateway.file("adapters", centrifugeId, adapters);
         IAuth(address(adapter)).rely(address(root));
         IAuth(address(adapter)).deny(deployer);
     }

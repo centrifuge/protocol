@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {D18} from "src/misc/types/D18.sol";
+
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
@@ -28,7 +30,7 @@ interface ISyncRequests is ISyncDepositManager {
     /// @param assetId The asset id for which we want to know the ASSET_UNIT/SHARE_UNIT price
     /// @return price The asset price per share
     /// @return computedAt The timestamp at which the price was computed
-    function priceAssetPerShare(uint64 poolId, bytes16 scId, uint128 assetId, bool checkValidity)
+    function priceAssetPerShare(uint64 poolId, bytes16 scId, uint128 assetId)
         external
         view
         returns (D18 price, uint64 computedAt);

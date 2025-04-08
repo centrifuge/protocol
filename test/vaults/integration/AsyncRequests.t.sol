@@ -4,7 +4,7 @@ pragma abicoder v2;
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {PriceConversionLib} from "src/vaults/libraries/PriceConversionLib.sol";
+import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
 
@@ -19,12 +19,12 @@ contract AsyncRequestsHarness is AsyncRequests {
 
     function calculatePrice(address vault, uint128 assets, uint128 shares) external view returns (uint256 price) {
         if (vault == address(0)) {
-            return PriceConversionLib.calculatePrice(address(0), shares, address(0), 0, assets);
+            return VaultPricingLib.calculatePrice(address(0), shares, address(0), 0, assets);
         }
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
         address shareToken = IAsyncVault(vault).share();
-        return PriceConversionLib.calculatePrice(shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, assets);
+        return VaultPricingLib.calculatePrice(shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, assets);
     }
 }
 

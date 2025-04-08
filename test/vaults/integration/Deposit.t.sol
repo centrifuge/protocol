@@ -71,11 +71,11 @@ contract DepositTest is BaseTest {
         // success
         erc20.approve(vault_, amount);
         if (snap) {
-            snapStart("AsyncVault_requestDeposit");
+            vm.startSnapshotGas("AsyncVault", "requestDeposit");
         }
         vault.requestDeposit(amount, self, self);
         if (snap) {
-            snapEnd();
+            vm.stopSnapshotGas();
         }
 
         // fail: no asset left
@@ -91,13 +91,13 @@ contract DepositTest is BaseTest {
         // trigger executed collectInvest
         assertApproxEqAbs(shares, amount / 2, 2);
         if (snap) {
-            snapStart("AsyncRequests_fulfillDepositRequest");
+            vm.startSnapshotGas("AsyncVault", "fulfillDepositRequest");
         }
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), assetId, uint128(amount), shares
         );
         if (snap) {
-            snapEnd();
+            vm.stopSnapshotGas();
         }
 
         // assert deposit & mint values adjusted

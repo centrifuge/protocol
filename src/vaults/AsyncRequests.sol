@@ -30,7 +30,7 @@ import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInv
 import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
-import {PriceConversionLib} from "src/vaults/libraries/PriceConversionLib.sol";
+import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 
 /// @title  Investment Manager
@@ -588,7 +588,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
         address shareToken = IAsyncVault(vaultAddr).share();
 
-        return PriceConversionLib.calculateShares(
+        return VaultPricingLib.calculateShares(
             shareToken, vaultDetails.asset, vaultDetails.tokenId, assets, price, rounding
         );
     }
@@ -601,7 +601,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
         address shareToken = IAsyncVault(vaultAddr).share();
 
-        return PriceConversionLib.calculateAssets(
+        return VaultPricingLib.calculateAssets(
             shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, price, rounding
         );
     }
@@ -610,6 +610,6 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
         address shareToken = IAsyncVault(vaultAddr).share();
 
-        return PriceConversionLib.calculatePrice(shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, assets);
+        return VaultPricingLib.calculatePrice(shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, assets);
     }
 }

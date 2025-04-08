@@ -14,7 +14,7 @@ import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
-import {PriceConversionLib} from "src/vaults/libraries/PriceConversionLib.sol";
+import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 
 abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
     using MathLib for uint256;
@@ -54,7 +54,7 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
         (D18 latestPrice,) =
             poolManager.priceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, true);
         shares = uint256(
-            PriceConversionLib.calculateShares(
+            VaultPricingLib.calculateShares(
                 vault_.share(),
                 vaultDetails.asset,
                 vaultDetails.tokenId,
@@ -73,7 +73,7 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
         (D18 latestPrice,) =
             poolManager.priceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, true);
         assets = uint256(
-            PriceConversionLib.calculateAssets(
+            VaultPricingLib.calculateAssets(
                 vault_.share(),
                 _shares.toUint128(),
                 vaultDetails.asset,

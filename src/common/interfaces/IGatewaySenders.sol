@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
+pragma solidity >=0.5.0;
 
 import {D18} from "src/misc/types/D18.sol";
 
@@ -15,28 +15,28 @@ interface ILocalCentrifugeId {
 /// @notice Interface for dispatch-only gateway
 interface IRootMessageSender {
     /// @notice Creates and send the message
-    function sendScheduleUpgrade(uint16 chainId, bytes32 target) external;
+    function sendScheduleUpgrade(uint16 centrifugeId, bytes32 target) external;
 
     /// @notice Creates and send the message
-    function sendCancelUpgrade(uint16 chainId, bytes32 target) external;
+    function sendCancelUpgrade(uint16 centrifugeId, bytes32 target) external;
 
     /// @notice Creates and send the message
-    function sendInitiateMessageRecovery(uint16 chainId, uint16 adapterChainId, bytes32 adapter, bytes32 hash)
+    function sendInitiateMessageRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, bytes32 adapter, bytes32 hash)
         external;
 
     /// @notice Creates and send the message
-    function sendDisputeMessageRecovery(uint16 chainId, uint16 adapterChainId, bytes32 adapter, bytes32 hash)
+    function sendDisputeMessageRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, bytes32 adapter, bytes32 hash)
         external;
 }
 
 /// @notice Interface for dispatch-only gateway
 interface IPoolMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
-    function sendNotifyPool(uint16 chainId, PoolId poolId) external;
+    function sendNotifyPool(uint16 centrifugeId, PoolId poolId) external;
 
     /// @notice Creates and send the message
     function sendNotifyShareClass(
-        uint16 chainId,
+        uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
         string memory name,
@@ -93,11 +93,12 @@ interface IPoolMessageSender is ILocalCentrifugeId {
     ) external;
 
     /// @notice Creates and send the message
-    function sendUpdateRestriction(uint16 chainId, PoolId poolId, ShareClassId scId, bytes calldata payload) external;
+    function sendUpdateRestriction(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes calldata payload)
+        external;
 
     /// @notice Creates and send the message
     function sendUpdateContract(
-        uint16 chainId,
+        uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
         bytes32 target,
@@ -108,7 +109,7 @@ interface IPoolMessageSender is ILocalCentrifugeId {
 /// @notice Interface for dispatch-only gateway
 interface IVaultMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
-    function sendTransferShares(uint16 chainId, uint64 poolId, bytes16 scId, bytes32 receiver, uint128 amount)
+    function sendTransferShares(uint16 centrifugeId, uint64 poolId, bytes16 scId, bytes32 receiver, uint128 amount)
         external;
 
     /// @notice Creates and send the message
@@ -126,13 +127,7 @@ interface IVaultMessageSender is ILocalCentrifugeId {
     function sendCancelRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId) external;
 
     /// @notice Creates and send the message
-    function sendRegisterAsset(
-        uint16 chainId,
-        uint128 assetId,
-        string memory name,
-        string memory symbol,
-        uint8 decimals
-    ) external;
+    function sendRegisterAsset(uint16 centrifugeId, uint128 assetId, uint8 decimals) external;
 
     /// @notice Creates and send the message
     function sendUpdateHoldingAmount(

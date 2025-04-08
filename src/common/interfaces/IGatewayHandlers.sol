@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
+pragma solidity >=0.5.0;
 
 import {D18} from "src/misc/types/D18.sol";
 
@@ -15,16 +15,16 @@ import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 /// @notice Interface for Gateway methods called by messages
 interface IGatewayHandler {
     /// @notice Initialize the recovery of a message.
-    /// @param  chainId Chain where the adapter is configured for
+    /// @param  centrifugeId Chain where the adapter is configured for
     /// @param  adapter Adapter that the recovery was targeting
     /// @param  messageHash Hash of the message being disputed
-    function initiateMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) external;
+    function initiateMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 messageHash) external;
 
     /// @notice Cancel the recovery of a message.
-    /// @param  chainId Chain where the adapter is configured for
+    /// @param  centrifugeId Chain where the adapter is configured for
     /// @param  adapter Adapter that the recovery was targeting
     /// @param  messageHash Hash of the message being disputed
-    function disputeMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) external;
+    function disputeMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 messageHash) external;
 }
 
 /// -----------------------------------------------------
@@ -34,8 +34,7 @@ interface IGatewayHandler {
 /// @notice Interface for CP methods called by messages
 interface IHubGatewayHandler {
     /// @notice Tells that an asset was already registered in CV, in order to perform the corresponding register.
-    /// @dev The same asset can be re-registered using this. Decimals can not change.
-    function registerAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals) external;
+    function registerAsset(AssetId assetId, uint8 decimals) external;
 
     /// @notice Perform a deposit that was requested from CV.
     function depositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId, uint128 amount)

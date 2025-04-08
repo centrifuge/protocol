@@ -24,24 +24,24 @@ contract TestMessageLibIdentities is Test {
 
     function testInitiateMessageRecovery() public pure {
         MessageLib.InitiateMessageRecovery memory a =
-            MessageLib.InitiateMessageRecovery({hash: bytes32("hash"), adapter: bytes32("adapter"), domainId: 23});
+            MessageLib.InitiateMessageRecovery({hash: bytes32("hash"), adapter: bytes32("adapter"), centrifugeId: 23});
         MessageLib.InitiateMessageRecovery memory b = MessageLib.deserializeInitiateMessageRecovery(a.serialize());
 
         assertEq(a.hash, b.hash);
         assertEq(a.adapter, b.adapter);
-        assertEq(a.domainId, b.domainId);
+        assertEq(a.centrifugeId, b.centrifugeId);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
     }
 
     function testDisputeMessageRecovery() public pure {
         MessageLib.DisputeMessageRecovery memory a =
-            MessageLib.DisputeMessageRecovery({hash: bytes32("hash"), adapter: bytes32("adapter"), domainId: 23});
+            MessageLib.DisputeMessageRecovery({hash: bytes32("hash"), adapter: bytes32("adapter"), centrifugeId: 23});
         MessageLib.DisputeMessageRecovery memory b = MessageLib.deserializeDisputeMessageRecovery(a.serialize());
 
         assertEq(a.hash, b.hash);
         assertEq(a.adapter, b.adapter);
-        assertEq(a.domainId, b.domainId);
+        assertEq(a.centrifugeId, b.centrifugeId);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
     }
@@ -84,15 +84,14 @@ contract TestMessageLibIdentities is Test {
     }
 
     function testRegisterAsset() public pure {
-        MessageLib.RegisterAsset memory a = MessageLib.RegisterAsset({assetId: 1, name: "n", symbol: "s", decimals: 4});
+        MessageLib.RegisterAsset memory a = MessageLib.RegisterAsset({assetId: 1, decimals: 4});
         MessageLib.RegisterAsset memory b = MessageLib.deserializeRegisterAsset(a.serialize());
 
         assertEq(a.assetId, b.assetId);
-        assertEq(a.name, b.name);
-        assertEq(a.symbol, b.symbol);
         assertEq(a.decimals, b.decimals);
 
-        assertEq(a.serialize().messageLength(), 178);
+        assertEq(bytes(a.serialize()).length, a.serialize().messageLength());
+        assertEq(a.serialize().messageLength(), 18);
     }
 
     function testNotifyPool() public pure {

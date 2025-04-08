@@ -8,10 +8,8 @@ import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
 import {IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
-import {IHub} from "src/pools/interfaces/IHub.sol";
-import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
+import {IHub} from "src/hub/interfaces/IHub.sol";
 
 contract Guardian is IGuardian {
     IRoot public immutable root;
@@ -19,7 +17,6 @@ contract Guardian is IGuardian {
     ISafe public safe;
     IHub public hub;
     IRootMessageSender public sender;
-    IAssetRegistry public assetRegistry;
 
     constructor(ISafe safe_, IRoot root_, IRootMessageSender messageDispatcher_) {
         root = root_;
@@ -42,7 +39,6 @@ contract Guardian is IGuardian {
         if (what == "safe") safe = ISafe(data);
         else if (what == "sender") sender = IRootMessageSender(data);
         else if (what == "hub") hub = IHub(data);
-        else if (what == "assetRegistry") assetRegistry = IAssetRegistry(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -50,17 +46,8 @@ contract Guardian is IGuardian {
 
     // --- Admin actions ---
     /// @inheritdoc IGuardian
-    function createPool(address admin, AssetId currency, IShareClassManager shareClassManager)
-        external
-        onlySafe
-        returns (PoolId poolId)
-    {
-        return hub.createPool(admin, currency, shareClassManager);
-    }
-
-    /// @inheritdoc IGuardian
-    function setChain(uint16 chainId, string calldata name, string calldata symbol) external onlySafe {
-        assetRegistry.setChain(chainId, name, symbol);
+    function createPool(address admin, AssetId currency) external onlySafe returns (PoolId poolId) {
+        return hub.createPool(admin, currency);
     }
 
     /// @inheritdoc IGuardian
@@ -84,29 +71,29 @@ contract Guardian is IGuardian {
     }
 
     /// @inheritdoc IGuardian
-    function scheduleUpgrade(uint16 chainId, address target) external onlySafe {
-        sender.sendScheduleUpgrade(chainId, bytes32(bytes20(target)));
+    function scheduleUpgrade(uint16 centrifugeId, address target) external onlySafe {
+        sender.sendScheduleUpgrade(centrifugeId, bytes32(bytes20(target)));
     }
 
     /// @inheritdoc IGuardian
-    function cancelUpgrade(uint16 chainId, address target) external onlySafe {
-        sender.sendCancelUpgrade(chainId, bytes32(bytes20(target)));
+    function cancelUpgrade(uint16 centrifugeId, address target) external onlySafe {
+        sender.sendCancelUpgrade(centrifugeId, bytes32(bytes20(target)));
     }
 
     /// @inheritdoc IGuardian
-    function initiateMessageRecovery(uint16 chainId, uint16 adapterChainId, IAdapter adapter, bytes32 hash)
+    function initiateMessageRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
         external
         onlySafe
     {
-        sender.sendInitiateMessageRecovery(chainId, adapterChainId, bytes32(bytes20(address(adapter))), hash);
+        sender.sendInitiateMessageRecovery(centrifugeId, adapterCentrifugeId, bytes32(bytes20(address(adapter))), hash);
     }
 
     /// @inheritdoc IGuardian
-    function disputeMessageRecovery(uint16 chainId, uint16 adapterChainId, IAdapter adapter, bytes32 hash)
+    function disputeMessageRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
         external
         onlySafe
     {
-        sender.sendDisputeMessageRecovery(chainId, adapterChainId, bytes32(bytes20(address(adapter))), hash);
+        sender.sendDisputeMessageRecovery(centrifugeId, adapterCentrifugeId, bytes32(bytes20(address(adapter))), hash);
     }
 
     // --- Helpers ---

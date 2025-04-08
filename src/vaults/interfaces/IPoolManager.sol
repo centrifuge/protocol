@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
+pragma solidity >=0.5.0;
 
 import {D18, d18} from "src/misc/types/D18.sol";
 
@@ -99,10 +99,10 @@ interface IPoolManager is IRecoverable {
     );
     event PriceUpdate(uint64 indexed poolId, bytes16 indexed scId, uint256 price, uint64 computedAt);
     event TransferShares(
+        uint64 centrifugeId,
         uint64 indexed poolId,
         bytes16 indexed scId,
         address indexed sender,
-        uint64 destinationId,
         bytes32 destinationAddress,
         uint128 amount
     );
@@ -143,25 +143,23 @@ interface IPoolManager is IRecoverable {
 
     /// @notice transfers share class tokens to a cross-chain recipient address
     /// @dev    To transfer to evm chains, pad a 20 byte evm address with 12 bytes of 0
+    /// @param  centrifugeId The destination chain id
     /// @param  poolId The centrifuge pool id
     /// @param  scId The share class id
-    /// @param  destinationId The destination chain id
     /// @param  receiver A bytes32 representation of the receiver address
     /// @param  amount The amount of tokens to transfer
-    function transferShares(uint64 poolId, bytes16 scId, uint16 destinationId, bytes32 receiver, uint128 amount)
+    function transferShares(uint16 centrifugeId, uint64 poolId, bytes16 scId, bytes32 receiver, uint128 amount)
         external;
 
     /// @notice Registers an ERC-20 or ERC-6909 asset in another chain.
     /// @dev `decimals()` MUST return a `uint8` value between 2 and 18.
     /// @dev `name()` and `symbol()` MAY return no values.
     ///
+    /// @param centrifugeId The centrifuge id of chain to where the shares are transferred
     /// @param asset The address of the asset to be registered
     /// @param tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
-    /// @param destinationChain The centrifuge id of the destination chain
     /// @return assetId The underlying internal uint128 assetId.
-    function registerAsset(address asset, uint256 tokenId, uint16 destinationChain)
-        external
-        returns (uint128 assetId);
+    function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId) external returns (uint128 assetId);
 
     /// @notice Deploys a new vault
     ///

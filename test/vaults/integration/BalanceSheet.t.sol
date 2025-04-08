@@ -32,7 +32,7 @@ contract BalanceSheetTest is BaseTest {
         defaultPricePerShare = d18(1, 1);
         defaultTypedShareClassId = ShareClassId.wrap(defaultShareClassId);
 
-        assetId = AssetId.wrap(poolManager.registerAsset(address(erc20), erc20TokenId, OTHER_CHAIN_ID));
+        assetId = AssetId.wrap(poolManager.registerAsset(OTHER_CHAIN_ID, address(erc20), erc20TokenId));
         poolManager.addPool(POOL_A.raw());
         poolManager.addShareClass(
             POOL_A.raw(),

@@ -65,10 +65,10 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
         if (kind == MessageType.InitiateMessageRecovery) {
             MessageLib.InitiateMessageRecovery memory m = message.deserializeInitiateMessageRecovery();
-            gateway.initiateMessageRecovery(m.domainId, IAdapter(address(bytes20(m.adapter))), m.hash);
+            gateway.initiateMessageRecovery(m.centrifugeId, IAdapter(address(bytes20(m.adapter))), m.hash);
         } else if (kind == MessageType.DisputeMessageRecovery) {
             MessageLib.DisputeMessageRecovery memory m = message.deserializeDisputeMessageRecovery();
-            gateway.disputeMessageRecovery(m.domainId, IAdapter(address(bytes20(m.adapter))), m.hash);
+            gateway.disputeMessageRecovery(m.centrifugeId, IAdapter(address(bytes20(m.adapter))), m.hash);
         } else if (kind == MessageType.ScheduleUpgrade) {
             MessageLib.ScheduleUpgrade memory m = message.deserializeScheduleUpgrade();
             root.scheduleRely(address(bytes20(m.target)));
@@ -82,7 +82,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.RegisterAsset) {
             MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
-            hub.registerAsset(AssetId.wrap(m.assetId), m.name, m.symbol.toString(), m.decimals);
+            hub.registerAsset(AssetId.wrap(m.assetId), m.decimals);
         } else if (kind == MessageType.NotifyPool) {
             poolManager.addPool(MessageLib.deserializeNotifyPool(message).poolId);
         } else if (kind == MessageType.NotifyShareClass) {

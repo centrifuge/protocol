@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
+pragma solidity >=0.5.0;
 
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 
@@ -151,15 +151,21 @@ interface IVaultRouter is IMulticall, IRecoverable {
     /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
     ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
     ///
+    /// @param  centrifugeId Chain to where transfer the shares
     /// @param  vault The vault for the corresponding share class token
-    /// @param  chainId Check `IPoolManager.transferShares.destinationId`
     /// @param  receiver Check `IPoolManager.transferShares.receiver`
     /// @param  amount Check `IPoolManager.transferShares.amount`
-    function transferShares(address vault, uint16 chainId, bytes32 receiver, uint128 amount) external payable;
+    function transferShares(uint16 centrifugeId, address vault, bytes32 receiver, uint128 amount) external payable;
 
     /// @notice This is a more friendly version where the receiver is and EVM address
     /// @dev    The receiver address is padded to 32 bytes internally
-    function transferShares(address vault, uint16 chainId, address receiver, uint128 amount) external payable;
+    function transferShares(uint16 centrifugeId, address vault, address receiver, uint128 amount) external payable;
+
+    /// @notice Register an asset to be used in a pool existing in centrifugeId
+    /// @param centrifugeId Where the asset will be registered
+    /// @param asset If tokenId == 0, an ERC20 address, if tokenId != 0, an ERC6909 address
+    /// @param tokenId An ERC6909 tokenId
+    function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId) external payable;
 
     // --- ERC20 permit ---
     /// @notice Check IERC20.permit
@@ -189,8 +195,8 @@ interface IVaultRouter is IMulticall, IRecoverable {
 
     /// @notice Check IGateway.estimate
     ///         If the destination and source chain ID are the same, this will always return 0.
-    /// @param chainId destination chain
-    function estimate(uint16 chainId, bytes calldata payload) external view returns (uint256 amount);
+    /// @param centrifugeId destination chain
+    function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 amount);
 
     /// @notice Called to check if `user` has permissions on `vault` to execute requests
     ///

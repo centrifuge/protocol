@@ -63,7 +63,7 @@ contract WormholeAdapterTest is Test {
     function testDeploy() public view {
         assertEq(address(adapter.gateway()), address(GATEWAY));
         assertEq(address(adapter.relayer()), address(relayer));
-        assertEq(adapter.refundChain(), 2);
+        assertEq(adapter.refundWormholeId(), 2);
 
         assertEq(adapter.wards(address(this)), 1);
     }

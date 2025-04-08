@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
+pragma solidity >=0.5.0;
 
 import {IERC165} from "forge-std/interfaces/IERC165.sol";
 
@@ -116,7 +116,13 @@ interface IERC6909TotalSupplyExt {
     function totalSupply(uint256 tokenId) external returns (uint256 supply);
 }
 
-interface IERC6909MetadataExt {
+interface IERC6909Decimals {
+    /// @notice             Used to retrieve the decimals of an asset
+    /// @dev                address is used but the value corresponds to a AssetId
+    function decimals(uint256 assetId) external view returns (uint8);
+}
+
+interface IERC6909MetadataExt is IERC6909Decimals {
     /// @notice             Used to retrieve the decimals of an asset
     /// @dev                address is used but the value corresponds to a AssetId
     function decimals(uint256 assetId) external view returns (uint8);

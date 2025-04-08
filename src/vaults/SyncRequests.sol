@@ -31,7 +31,7 @@ import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInv
 import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
-import {PriceConversionLib} from "src/vaults/libraries/PriceConversionLib.sol";
+import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 
 /// @title  Sync Investment Manager
@@ -155,7 +155,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
 
         uint128 latestPrice = _pricePerShare(vaultAddr, vault_.poolId(), vault_.trancheId(), vaultDetails.assetId).raw();
-        assets = PriceConversionLib.calculateAssets(
+        assets = VaultPricingLib.calculateAssets(
             vault_.share(),
             shares.toUint128(),
             vaultDetails.asset,
@@ -175,7 +175,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
 
         uint128 latestPrice = _pricePerShare(vaultAddr, vault_.poolId(), vault_.trancheId(), vaultDetails.assetId).raw();
-        shares = PriceConversionLib.calculateShares(
+        shares = VaultPricingLib.calculateShares(
             vault_.share(),
             vaultDetails.asset,
             vaultDetails.tokenId,
@@ -217,7 +217,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
             return poolManager.priceAssetPerShare(poolId, scId, assetId, false);
         } else {
             address shareToken = poolManager.shareToken(poolId, scId);
-            (uint8 assetDecimals,) = PriceConversionLib.getPoolDecimals(shareToken, asset, tokenId);
+            (uint8 assetDecimals,) = VaultPricingLib.getPoolDecimals(shareToken, asset, tokenId);
 
             uint128 assetAmountPerShare = valuation_.getQuote(assetDecimals, asset, shareToken).toUint128();
 
