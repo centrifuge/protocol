@@ -133,7 +133,6 @@ interface IShareClassManager {
         uint128 pendingShareClassAmount,
         uint128 claimedAssetAmount
     );
-    event Updated(PoolId indexed poolId, bytes data);
     event UpdateShareClass(
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -142,8 +141,6 @@ interface IShareClassManager {
         uint128 totalIssuance,
         bytes data
     );
-    // TODO: unused
-    event UpdateNav(PoolId indexed poolId, ShareClassId indexed scId, uint128 newAmount);
     event AddShareClass(PoolId indexed poolId, ShareClassId indexed scId, uint32 indexed index);
     event UpdateRequest(
         PoolId indexed poolId,
