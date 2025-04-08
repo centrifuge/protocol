@@ -127,7 +127,7 @@ contract ShareTokenTest is Test {
 
         restrictedTransfers.unfreeze(address(token), targetUser);
         if (snap) {
-            vm.startSnapshotGas("Share_transferFrom");
+            vm.startSnapshotGas("ShareToken", "transferFrom");
         }
         token.transferFrom(self, targetUser, amount);
         if (snap) {

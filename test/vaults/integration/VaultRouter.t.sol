@@ -64,7 +64,7 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
 
         if (snap) {
-            vm.startSnapshotGas("VaultRouter_requestDeposit");
+            vm.startSnapshotGas("VaultRouter", "requestDeposit");
         }
         vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
         if (snap) {
@@ -97,7 +97,7 @@ contract VaultRouterTest is BaseTest {
         assertEq(shareToken.balanceOf(address(escrow)), sharePayout);
 
         if (snap) {
-            vm.startSnapshotGas("VaultRouter_claimDeposit");
+            vm.startSnapshotGas("VaultRouter", "claimDeposit");
         }
         vaultRouter.claimDeposit(vault_, self, self);
         if (snap) {
@@ -197,7 +197,7 @@ contract VaultRouterTest is BaseTest {
         erc20.approve(vault_, amount);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
         if (snap) {
-            vm.startSnapshotGas("VaultRouter_enable");
+            vm.startSnapshotGas("VaultRouter", "enable");
         }
         vaultRouter.enable(vault_);
         if (snap) {
@@ -220,7 +220,7 @@ contract VaultRouterTest is BaseTest {
 
         // redeem
         if (snap) {
-            vm.startSnapshotGas("VaultRouter_requestRedeem");
+            vm.startSnapshotGas("VaultRouter", "requestRedeem");
         }
         vaultRouter.requestRedeem{value: fuel}(vault_, sharePayout, self, self);
         if (snap) {
@@ -345,7 +345,7 @@ contract VaultRouterTest is BaseTest {
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
         vaultRouter.enable(address(vault_));
         if (snap) {
-            vm.startSnapshotGas("VaultRouter_lockDepositRequest");
+            vm.startSnapshotGas("VaultRouter", "lockDepositRequest");
         }
         vaultRouter.lockDepositRequest(vault_, amount, self, self);
         if (snap) {

@@ -71,7 +71,7 @@ contract DepositTest is BaseTest {
         // success
         erc20.approve(vault_, amount);
         if (snap) {
-            vm.startSnapshotGas("AsyncVault_requestDeposit");
+            vm.startSnapshotGas("AsyncVault", "requestDeposit");
         }
         vault.requestDeposit(amount, self, self);
         if (snap) {
@@ -91,7 +91,7 @@ contract DepositTest is BaseTest {
         // trigger executed collectInvest
         assertApproxEqAbs(shares, amount / 2, 2);
         if (snap) {
-            vm.startSnapshotGas("AsyncRequests_fulfillDepositRequest");
+            vm.startSnapshotGas("AsyncVault", "fulfillDepositRequest");
         }
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), assetId, uint128(amount), shares
