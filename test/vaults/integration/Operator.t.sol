@@ -66,7 +66,7 @@ contract OperatorTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
         (address controller, uint256 controllerPk) = makeAddrAndKey("controller");
         address operator = makeAddr("operator");
         AsyncVault vault = AsyncVault(vault_);
@@ -191,7 +191,7 @@ contract OperatorTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
         (address controller, uint256 controllerPk) = makeAddrAndKey("controller");
         address operator = makeAddr("operator");
         AsyncVault vault = AsyncVault(vault_);
