@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IRecoverable} from "src/common/interfaces/IRoot.sol";
-
 /// @dev Centrifuge pools
 struct Pool {
     uint256 createdAt;
@@ -58,7 +56,7 @@ struct AssetIdKey {
     uint256 tokenId;
 }
 
-interface IPoolManager is IRecoverable {
+interface IPoolManager {
     event File(bytes32 indexed what, address data);
     event RegisterAsset(
         uint128 indexed assetId,

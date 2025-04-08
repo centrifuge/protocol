@@ -81,6 +81,20 @@ contract Guardian is IGuardian {
     }
 
     /// @inheritdoc IGuardian
+    function recoverTokens(
+        uint16 centrifugeId,
+        address target,
+        address token,
+        uint256 tokenId,
+        address to,
+        uint256 amount
+    ) external onlySafe {
+        sender.sendRecoverTokens(
+            centrifugeId, bytes32(bytes20(target)), bytes32(bytes20(token)), tokenId, bytes32(bytes20(to)), amount
+        );
+    }
+
+    /// @inheritdoc IGuardian
     function initiateMessageRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
         external
         onlySafe

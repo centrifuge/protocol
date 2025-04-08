@@ -77,9 +77,8 @@ contract MessageProcessor is Auth, IMessageProcessor {
             root.cancelRely(address(bytes20(m.target)));
         } else if (kind == MessageType.RecoverTokens) {
             MessageLib.RecoverTokens memory m = message.deserializeRecoverTokens();
-            root.recoverTokens(
-                address(bytes20(m.target)), address(bytes20(m.token)), m.tokenId, address(bytes20(m.to)), m.amount
-            );
+            require(m.tokenId == 0, "TODO: Root does not support recover tokenId");
+            root.recoverTokens(address(bytes20(m.target)), address(bytes20(m.token)), address(bytes20(m.to)), m.amount);
         } else if (kind == MessageType.RegisterAsset) {
             MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
             hub.registerAsset(AssetId.wrap(m.assetId), m.decimals);

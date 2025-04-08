@@ -47,20 +47,31 @@ interface IGuardian {
     /// @dev callable by safe only
     function cancelRely(address target) external;
 
-    /// @notice Schedule an upgrade (scheduled rely) on another chain
+    /// @notice Schedule an upgrade (scheduled rely) on a specific chain
     /// @dev    Only supports EVM targets today
     function scheduleUpgrade(uint16 centrifugeId, address target) external;
 
-    /// @notice Cancel an upgrade (scheduled rely) on another chain
+    /// @notice Cancel an upgrade (scheduled rely) on a specific chain
     /// @dev    Only supports EVM targets today
     function cancelUpgrade(uint16 centrifugeId, address target) external;
 
-    /// @notice Initiate message recovery on another chain
+    /// @notice Recover tokens on a specific chain
+    /// @dev    Only supports EVM targets today
+    function recoverTokens(
+        uint16 centrifugeId,
+        address target,
+        address token,
+        uint256 tokenId,
+        address to,
+        uint256 amount
+    ) external;
+
+    /// @notice Initiate message recovery on a specific chain
     /// @dev    Only supports EVM targets today
     function initiateMessageRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
         external;
 
-    /// @notice Dispute message recovery on another chain
+    /// @notice Dispute message recovery on a specific chain
     /// @dev    Only supports EVM targets today
     function disputeMessageRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
         external;

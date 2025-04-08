@@ -3,9 +3,7 @@ pragma solidity 0.8.28;
 
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 
-import {IRecoverable} from "src/common/interfaces/IRoot.sol";
-
-interface IVaultRouter is IMulticall, IRecoverable {
+interface IVaultRouter is IMulticall {
     // --- Events ---
     event LockDepositRequest(
         address indexed vault, address indexed controller, address indexed owner, address sender, uint256 amount

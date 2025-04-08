@@ -2,14 +2,12 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
-import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {ArrayLib} from "src/misc/libraries/ArrayLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
-import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
+import {Recoverable} from "src/misc/Recoverable.sol";
 
-import {IRoot, IRecoverable} from "src/common/interfaces/IRoot.sol";
+import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
@@ -24,7 +22,7 @@ import {IGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 ///         Handling incoming messages from the Centrifuge Chain through multiple adapters.
 ///         Supports processing multiple duplicate messages in parallel by
 ///         storing counts of messages and proofs that have been received.
-contract Gateway is Auth, IGateway, IRecoverable {
+contract Gateway is Auth, IGateway, Recoverable {
     using ArrayLib for uint16[8];
     using BytesLib for bytes;
     using MathLib for uint256;
@@ -113,17 +111,6 @@ contract Gateway is Auth, IGateway, IRecoverable {
         else revert FileUnrecognizedParam();
 
         emit File(what, instance);
-    }
-
-    /// @inheritdoc IRecoverable
-    function recoverTokens(address token, uint256 tokenId, address receiver, uint256 amount) external auth {
-        if (token == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)) {
-            SafeTransferLib.safeTransferETH(receiver, amount);
-        } else if (tokenId == 0) {
-            SafeTransferLib.safeTransfer(token, receiver, amount);
-        } else {
-            IERC6909(token).transfer(receiver, tokenId, amount);
-        }
     }
 
     //----------------------------------------------------------------------------------------------

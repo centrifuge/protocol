@@ -261,6 +261,26 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
+    function sendRecoverTokens(
+        uint16 centrifugeId,
+        bytes32 target,
+        bytes32 token,
+        uint256 tokenId,
+        bytes32 to,
+        uint256 amount
+    ) external auth {
+        if (centrifugeId == localCentrifugeId) {
+            require(tokenId == 0, "TODO: Root does not support recover tokenId");
+            root.recoverTokens(address(bytes20(target)), address(bytes20(token)), address(bytes20(to)), amount);
+        } else {
+            gateway.send(
+                centrifugeId,
+                MessageLib.RecoverTokens({target: target, token: token, tokenId: tokenId, to: to, amount: amount})
+                    .serialize()
+            );
+        }
+    }
+
     /// @inheritdoc IRootMessageSender
     function sendCancelUpgrade(uint16 centrifugeId, bytes32 target) external auth {
         if (centrifugeId == localCentrifugeId) {

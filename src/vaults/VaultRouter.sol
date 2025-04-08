@@ -8,9 +8,9 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC20, IERC20Permit, IERC20Wrapper} from "src/misc/interfaces/IERC20.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
+import {Recoverable} from "src/misc/Recoverable.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 
 import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
@@ -26,7 +26,7 @@ import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 ///         the multicall functionality which batches message calls into a single one.
 /// @dev    It is critical to ensure that at the end of any transaction, no funds remain in the
 ///         VaultRouter. Any funds that do remain are at risk of being taken by other users.
-contract VaultRouter is Auth, Multicall, IVaultRouter {
+contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     using CastLib for address;
 
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
@@ -61,15 +61,6 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
 
         if (!wasBatching) {
             gateway.endBatching();
-        }
-    }
-
-    /// @inheritdoc IRecoverable
-    function recoverTokens(address token, uint256 tokenId, address to, uint256 amount) external auth {
-        if (tokenId == 0) {
-            SafeTransferLib.safeTransfer(token, to, amount);
-        } else {
-            IERC6909(token).transfer(to, tokenId, amount);
         }
     }
 

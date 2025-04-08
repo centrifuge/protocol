@@ -9,9 +9,9 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {Recoverable} from "src/misc/Recoverable.sol";
 
 import {VaultUpdateKind, MessageLib} from "src/common/libraries/MessageLib.sol";
-import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IPoolManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
@@ -43,7 +43,7 @@ import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 /// @title  Pool Manager
 /// @notice This contract manages which pools & share classes exist,
 ///         as well as managing allowed pool currencies, and incoming and outgoing transfers.
-contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGatewayHandler {
+contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolManagerGatewayHandler {
     using MessageLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;
@@ -94,15 +94,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
             revert("PoolManager/file-unrecognized-param");
         }
         emit File(what, factory, status);
-    }
-
-    /// @inheritdoc IRecoverable
-    function recoverTokens(address token, uint256 tokenId, address to, uint256 amount) external auth {
-        if (tokenId == 0) {
-            SafeTransferLib.safeTransfer(token, to, amount);
-        } else {
-            IERC6909(token).transfer(to, tokenId, amount);
-        }
     }
 
     // --- Outgoing message handling ---

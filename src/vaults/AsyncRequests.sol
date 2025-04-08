@@ -13,7 +13,6 @@ import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
-import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
