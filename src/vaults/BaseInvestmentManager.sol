@@ -51,6 +51,7 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
+        // TODO(wischli): Check if should be overwritten by SyncRequests using the custom valuation
         (D18 latestPrice,) =
             poolManager.priceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, true);
         shares = uint256(
@@ -70,6 +71,7 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
+        // TODO(wischli): Check if should be overwritten by SyncRequests using the custom valuation
         (D18 latestPrice,) =
             poolManager.priceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, true);
         assets = uint256(
@@ -88,6 +90,8 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
     function priceLastUpdated(address vaultAddr) public view returns (uint64 lastUpdated) {
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
+
+        // TODO(wischli): Check if should be overwritten by SyncRequests using the custom valuation
         (, lastUpdated) =
             poolManager.priceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, true);
     }
