@@ -13,6 +13,8 @@ verbosity = 3
 ffi = true
 fs_permissions = [{ access = "read-write", path = ".forge-snapshots/"}, { access = "read-write", path = "./deployments"}]
 
+gas_snapshot_check = true
+
 # False-alarm warnings
 ignored_warnings_from = [
     "src/misc/ReentrancyProtection.sol" # Issue: https://github.com/ethereum/solidity/issues/14359

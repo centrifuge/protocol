@@ -336,9 +336,9 @@ contract VaultRouterTest is BaseTest {
         vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
         vaultRouter.transferShares{value: fuel - 1}(OTHER_CHAIN_ID, vault_, destinationAddress, uint128(amount));
 
-        snapStart("VaultRouter_transferShares");
+        vm.startSnapshotGas("VaultRouter", "transferShares");
         vaultRouter.transferShares{value: fuel}(OTHER_CHAIN_ID, vault_, destinationAddress, uint128(amount));
-        snapEnd();
+        vm.stopSnapshotGas();
         assertEq(share.balanceOf(address(vaultRouter)), 0);
         assertEq(share.balanceOf(address(this)), 0);
     }

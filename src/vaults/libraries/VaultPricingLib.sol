@@ -5,7 +5,7 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 
-library PriceConversionLib {
+library VaultPricingLib {
     using MathLib for uint256;
 
     /// @dev Prices are fixed-point integers with 18 decimals

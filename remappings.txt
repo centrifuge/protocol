@@ -1,3 +1,2 @@
 forge-std/=lib/forge-std/src/
-forge-gas-snapshot/=lib/forge-gas-snapshot/src/
 @chimera/=lib/chimera/src/
