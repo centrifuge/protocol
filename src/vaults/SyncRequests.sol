@@ -9,9 +9,10 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
-import {IERC20} from "src/misc/interfaces/IERC20.sol";
+import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
+import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import {d18, D18} from "src/misc/types/D18.sol";
+import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
@@ -44,8 +45,9 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
     IBalanceSheet public balanceSheet;
 
-    // TODO(follow-up PR): Support multiple vaults
     mapping(uint64 poolId => mapping(bytes16 scId => mapping(uint128 assetId => address vault))) public vault;
+    mapping(uint64 poolId => mapping(bytes16 scId => mapping(address asset => mapping(uint256 tokenId => IERC7726))))
+        public valuation;
 
     constructor(address root_, address escrow_) BaseInvestmentManager(root_, escrow_) {}
 
@@ -197,6 +199,36 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         }
     }
 
+    function setValuation(uint64 poolId, bytes16 scId, address asset, uint256 tokenId, address valuation_) external {
+        valuation[poolId][scId][asset][tokenId] = IERC7726(valuation_);
+
+        emit SetValuation(poolId, scId, asset, tokenId, address(valuation_));
+    }
+
+    function priceAssetPerShare(uint64 poolId, bytes16 scId, uint128 assetId)
+        public
+        view
+        returns (D18 price, uint64 computedAt)
+    {
+        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
+        IERC7726 valuation_ = valuation[poolId][scId][asset][tokenId];
+
+        if (address(valuation_) == address(0)) {
+            return poolManager.priceAssetPerShare(poolId, scId, assetId, false);
+        } else {
+            address shareToken = poolManager.shareToken(poolId, scId);
+            (uint8 assetDecimals,) = PriceConversionLib.getPoolDecimals(shareToken, asset, tokenId);
+
+            uint128 assetAmountPerShare = valuation_.getQuote(assetDecimals, asset, shareToken).toUint128();
+
+            // Retrieve price by normalizing by asset denomination
+            price = d18(assetAmountPerShare, assetDecimals);
+
+            // TODO: computed at ?
+            computedAt = uint64(block.timestamp);
+        }
+    }
+
     /// --- Internal methods ---
     /// @dev Issues shares to the receiver and instruct the Balance Sheet Manager to react on the issuance and the
     /// updated holding
@@ -249,7 +281,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         view
         returns (D18)
     {
-        (D18 latestPrice,) = poolManager.priceAssetPerShare(poolId, scId, assetId, true);
+        (D18 latestPrice,) = priceAssetPerShare(poolId, scId, assetId);
         return latestPrice;
     }
 }

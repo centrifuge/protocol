@@ -291,6 +291,22 @@ contract TestMessageLibIdentities is Test {
         // This message is a submessage and has not static message length defined
     }
 
+    function testUpdateContractValuation() public pure {
+        MessageLib.UpdateContractValuation memory a = MessageLib.UpdateContractValuation({
+            poolId: 42,
+            scId: bytes16("sc"),
+            assetId: 1337,
+            valuation: bytes32("valuation")
+        });
+        MessageLib.UpdateContractValuation memory b = MessageLib.deserializeUpdateContractValuation(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.assetId, b.assetId);
+        assertEq(a.valuation, b.valuation);
+        // This message is a submessage and has not static message length defined
+    }
+
     function testDepositRequest() public pure {
         MessageLib.DepositRequest memory a = MessageLib.DepositRequest({
             poolId: 1,
