@@ -64,6 +64,7 @@ jobs:
         env:
           FOUNDRY_PROFILE: ci-coverage
           FORK_TESTS: false
+          FORGE_SNAPSHOT_CHECK: false
 
       # To ignore coverage for certain directories modify the paths in this step as needed. The
       # below default ignores coverage results for the test and script directories. Alternatively,
