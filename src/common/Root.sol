@@ -116,11 +116,4 @@ contract Root is Auth, IRoot {
         IAuth(target).deny(user);
         emit DenyContract(target, user);
     }
-
-    /// --- Token recovery ---
-    /// @inheritdoc IRoot
-    function recoverTokens(address target, address token, address to, uint256 amount) public auth {
-        IRecoverable(target).recoverTokens(token, to, amount);
-        emit RecoverTokens(target, token, to, amount);
-    }
 }

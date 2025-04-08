@@ -6,6 +6,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
+import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
@@ -29,6 +30,7 @@ import {IVaultMessageSender, IPoolMessageSender} from "src/common/interfaces/IGa
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {ITokenRecoverer} from "src/common/interfaces/ITokenRecoverer.sol";
 
 contract MessageProcessor is Auth, IMessageProcessor {
     using MessageLib for *;
@@ -36,6 +38,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     using CastLib for *;
 
     IRoot public immutable root;
+    ITokenRecoverer public immutable tokenRecoverer;
 
     IGatewayHandler public gateway;
     IHubGatewayHandler public hub;
@@ -43,8 +46,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IInvestmentManagerGatewayHandler public investmentManager;
     IBalanceSheetGatewayHandler public balanceSheet;
 
-    constructor(IRoot root_, address deployer) Auth(deployer) {
+    constructor(IRoot root_, ITokenRecoverer tokenRecoverer_, address deployer) Auth(deployer) {
         root = root_;
+        tokenRecoverer = tokenRecoverer_;
     }
 
     /// @inheritdoc IMessageProcessor
@@ -77,8 +81,13 @@ contract MessageProcessor is Auth, IMessageProcessor {
             root.cancelRely(address(bytes20(m.target)));
         } else if (kind == MessageType.RecoverTokens) {
             MessageLib.RecoverTokens memory m = message.deserializeRecoverTokens();
-            require(m.tokenId == 0, "TODO: Root does not support recover tokenId");
-            root.recoverTokens(address(bytes20(m.target)), address(bytes20(m.token)), address(bytes20(m.to)), m.amount);
+            tokenRecoverer.recoverTokens(
+                IRecoverable(address(bytes20(m.target))),
+                address(bytes20(m.token)),
+                m.tokenId,
+                address(bytes20(m.to)),
+                m.amount
+            );
         } else if (kind == MessageType.RegisterAsset) {
             MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
             hub.registerAsset(AssetId.wrap(m.assetId), m.decimals);

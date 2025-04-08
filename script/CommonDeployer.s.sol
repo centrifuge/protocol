@@ -10,6 +10,7 @@ import {Guardian, ISafe} from "src/common/Guardian.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {MessageProcessor} from "src/common/MessageProcessor.sol";
 import {MessageDispatcher} from "src/common/MessageDispatcher.sol";
+import {TokenRecoverer} from "src/common/TokenRecoverer.sol";
 
 import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
 
@@ -25,8 +26,9 @@ abstract contract CommonDeployer is Script, JsonRegistry {
 
     IAdapter[] adapters;
 
-    Root public root;
     ISafe public adminSafe;
+    Root public root;
+    TokenRecoverer public tokenRecoverer;
     Guardian public guardian;
     GasService public gasService;
     Gateway public gateway;
@@ -50,13 +52,14 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         uint64 proofGasLimit = uint64(vm.envOr(PROOF_COST_ENV, FALLBACK_MSG_COST));
 
         root = new Root(DELAY, deployer);
+        tokenRecoverer = new TokenRecoverer(root, deployer);
 
-        messageProcessor = new MessageProcessor(root, deployer);
+        messageProcessor = new MessageProcessor(root, tokenRecoverer, deployer);
 
         gasService = new GasService(messageGasLimit, proofGasLimit);
         gateway = new Gateway(root, gasService);
 
-        messageDispatcher = new MessageDispatcher(centrifugeId, root, gateway, deployer);
+        messageDispatcher = new MessageDispatcher(centrifugeId, root, gateway, tokenRecoverer, deployer);
 
         adminSafe = adminSafe_;
 
@@ -90,6 +93,8 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         gateway.rely(address(messageProcessor));
         messageProcessor.rely(address(gateway));
         messageDispatcher.rely(address(guardian));
+        tokenRecoverer.rely(address(messageDispatcher));
+        tokenRecoverer.rely(address(messageProcessor));
     }
 
     function _commonFile() private {

@@ -12,7 +12,6 @@ interface IRoot {
     event CancelRely(address indexed target);
     event RelyContract(address indexed target, address indexed user);
     event DenyContract(address indexed target, address indexed user);
-    event RecoverTokens(address indexed target, address indexed token, address indexed to, uint256 amount);
     event Endorse(address indexed user);
     event Veto(address indexed user);
 
@@ -75,8 +74,4 @@ interface IRoot {
 
     /// @notice Removes an address as a ward on any contract that Root is a ward on
     function denyContract(address target, address user) external;
-
-    /// --- Token Recovery ---
-    /// @notice Allows Governance to recover tokens sent to the wrong contract by mistake
-    function recoverTokens(address target, address token, address to, uint256 amount) external;
 }
