@@ -191,7 +191,7 @@ library MessageLib {
     struct InitiateMessageRecovery {
         bytes32 hash;
         bytes32 adapter;
-        uint16 domainId;
+        uint16 centrifugeId;
     }
 
     function deserializeInitiateMessageRecovery(bytes memory data)
@@ -200,12 +200,15 @@ library MessageLib {
         returns (InitiateMessageRecovery memory)
     {
         require(messageType(data) == MessageType.InitiateMessageRecovery, UnknownMessageType());
-        return
-            InitiateMessageRecovery({hash: data.toBytes32(1), adapter: data.toBytes32(33), domainId: data.toUint16(65)});
+        return InitiateMessageRecovery({
+            hash: data.toBytes32(1),
+            adapter: data.toBytes32(33),
+            centrifugeId: data.toUint16(65)
+        });
     }
 
     function serialize(InitiateMessageRecovery memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.InitiateMessageRecovery, t.hash, t.adapter, t.domainId);
+        return abi.encodePacked(MessageType.InitiateMessageRecovery, t.hash, t.adapter, t.centrifugeId);
     }
 
     //---------------------------------------
@@ -215,7 +218,7 @@ library MessageLib {
     struct DisputeMessageRecovery {
         bytes32 hash;
         bytes32 adapter;
-        uint16 domainId;
+        uint16 centrifugeId;
     }
 
     function deserializeDisputeMessageRecovery(bytes memory data)
@@ -224,12 +227,15 @@ library MessageLib {
         returns (DisputeMessageRecovery memory)
     {
         require(messageType(data) == MessageType.DisputeMessageRecovery, UnknownMessageType());
-        return
-            DisputeMessageRecovery({hash: data.toBytes32(1), adapter: data.toBytes32(33), domainId: data.toUint16(65)});
+        return DisputeMessageRecovery({
+            hash: data.toBytes32(1),
+            adapter: data.toBytes32(33),
+            centrifugeId: data.toUint16(65)
+        });
     }
 
     function serialize(DisputeMessageRecovery memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.DisputeMessageRecovery, t.hash, t.adapter, t.domainId);
+        return abi.encodePacked(MessageType.DisputeMessageRecovery, t.hash, t.adapter, t.centrifugeId);
     }
 
     //---------------------------------------

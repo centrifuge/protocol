@@ -30,9 +30,9 @@ contract MockVaults is Test, Auth, IAdapter {
     uint32[] public lastChainDestinations;
     bytes[] public lastMessages;
 
-    constructor(uint16 chainId, IMessageHandler handler_) Auth(msg.sender) {
+    constructor(uint16 centrifugeId, IMessageHandler handler_) Auth(msg.sender) {
         handler = handler_;
-        sourceChainId = chainId;
+        sourceChainId = centrifugeId;
     }
 
     function registerAsset(AssetId assetId, uint8 decimals) public {
@@ -71,8 +71,8 @@ contract MockVaults is Test, Auth, IAdapter {
         );
     }
 
-    function send(uint16 chainId, bytes memory data, uint256, address) external payable {
-        lastChainDestinations.push(chainId);
+    function send(uint16 centrifugeId, bytes memory data, uint256, address) external payable {
+        lastChainDestinations.push(centrifugeId);
 
         while (data.length > 0) {
             uint16 messageLength = data.messageLength();

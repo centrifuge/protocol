@@ -15,16 +15,16 @@ import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 /// @notice Interface for Gateway methods called by messages
 interface IGatewayHandler {
     /// @notice Initialize the recovery of a message.
-    /// @param  chainId Chain where the adapter is configured for
+    /// @param  centrifugeId Chain where the adapter is configured for
     /// @param  adapter Adapter that the recovery was targeting
     /// @param  messageHash Hash of the message being disputed
-    function initiateMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) external;
+    function initiateMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 messageHash) external;
 
     /// @notice Cancel the recovery of a message.
-    /// @param  chainId Chain where the adapter is configured for
+    /// @param  centrifugeId Chain where the adapter is configured for
     /// @param  adapter Adapter that the recovery was targeting
     /// @param  messageHash Hash of the message being disputed
-    function disputeMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) external;
+    function disputeMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 messageHash) external;
 }
 
 /// -----------------------------------------------------

@@ -69,7 +69,7 @@ interface IAxelarExecutable {
 }
 
 struct AxelarSource {
-    uint16 centrifugeChainId;
+    uint16 centrifugeId;
     address addr;
 }
 
@@ -79,11 +79,11 @@ struct AxelarDestination {
 }
 
 interface IAxelarAdapter is IAdapter, IAxelarExecutable {
-    event File(bytes32 indexed what, string axelarId, uint16 centrifugeChainId, address source);
-    event File(bytes32 indexed what, uint16 centrifugeChainId, string axelarId, address destination);
+    event File(bytes32 indexed what, string axelarId, uint16 centrifugeId, address source);
+    event File(bytes32 indexed what, uint16 centrifugeId, string axelarId, address destination);
 
     error FileUnrecognizedParam();
 
-    function file(bytes32 what, string calldata axelarId, uint16 centrifugeChainId, address source) external;
-    function file(bytes32 what, uint16 centrifugeChainId, string calldata axelarId, address destination) external;
+    function file(bytes32 what, string calldata axelarId, uint16 centrifugeId, address source) external;
+    function file(bytes32 what, uint16 centrifugeId, string calldata axelarId, address destination) external;
 }

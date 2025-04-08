@@ -6,12 +6,12 @@ import "forge-std/Test.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 
 contract PoolIdTest is Test {
-    function testPoolId(uint48 id, uint16 chainId) public pure {
+    function testPoolId(uint48 id, uint16 centrifugeId) public pure {
         vm.assume(id > 0);
-        PoolId poolId = newPoolId(chainId, id);
+        PoolId poolId = newPoolId(centrifugeId, id);
 
         assertEq(poolId.isNull(), false);
-        assertEq(poolId.chainId(), chainId);
+        assertEq(poolId.centrifugeId(), centrifugeId);
         assertEq(uint48(poolId.raw()), id);
     }
 }

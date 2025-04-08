@@ -157,14 +157,14 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
-    function notifyPool(uint16 chainId) external payable {
+    function notifyPool(uint16 centrifugeId) external payable {
         _protectedAndUnlocked();
 
-        sender.sendNotifyPool(chainId, unlockedPoolId);
+        sender.sendNotifyPool(centrifugeId, unlockedPoolId);
     }
 
     /// @inheritdoc IHub
-    function notifyShareClass(uint16 chainId, ShareClassId scId, bytes32 hook) external payable {
+    function notifyShareClass(uint16 centrifugeId, ShareClassId scId, bytes32 hook) external payable {
         _protectedAndUnlocked();
 
         require(shareClassManager.exists(unlockedPoolId, scId), IShareClassManager.ShareClassNotFound());
@@ -172,7 +172,7 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
         (string memory name, string memory symbol, bytes32 salt) = shareClassManager.metadata(scId);
         uint8 decimals = hubRegistry.decimals(unlockedPoolId);
 
-        sender.sendNotifyShareClass(chainId, unlockedPoolId, scId, name, symbol, decimals, salt, hook);
+        sender.sendNotifyShareClass(centrifugeId, unlockedPoolId, scId, name, symbol, decimals, salt, hook);
     }
 
     /// @inheritdoc IHub
@@ -253,7 +253,7 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function updateRestriction(uint16 chainId, ShareClassId scId, bytes calldata payload)
+    function updateRestriction(uint16 centrifugeId, ShareClassId scId, bytes calldata payload)
         external
         payable
     {
@@ -261,17 +261,17 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
 
         require(shareClassManager.exists(unlockedPoolId, scId), IShareClassManager.ShareClassNotFound());
 
-        sender.sendUpdateRestriction(chainId, unlockedPoolId, scId, payload);
+        sender.sendUpdateRestriction(centrifugeId, unlockedPoolId, scId, payload);
     }
 
     /// @inheritdoc IHub
-    function updateContract(uint16 chainId, ShareClassId scId, bytes32 target, bytes calldata payload)
+    function updateContract(uint16 centrifugeId, ShareClassId scId, bytes32 target, bytes calldata payload)
         external
         payable
     {
         _protectedAndUnlocked();
 
-        sender.sendUpdateContract(chainId, unlockedPoolId, scId, target, payload);
+        sender.sendUpdateContract(centrifugeId, unlockedPoolId, scId, target, payload);
     }
 
     /// @inheritdoc IHub
@@ -285,7 +285,7 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
         _protectedAndUnlocked();
 
         sender.sendUpdateContract(
-            assetId.chainId(),
+            assetId.centrifugeId(),
             unlockedPoolId,
             scId,
             target,

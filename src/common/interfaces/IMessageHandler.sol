@@ -7,6 +7,7 @@ interface IMessageHandler {
     error InvalidMessage(uint8 code);
 
     /// @notice Handling incoming messages.
+    /// @param centrifugeId Source chain
     /// @param message Incoming message
-    function handle(uint16 chainId, bytes calldata message) external;
+    function handle(uint16 centrifugeId, bytes calldata message) external;
 }

@@ -8,9 +8,9 @@ import {PoolsDeployer} from "script/PoolsDeployer.s.sol";
 import {VaultsDeployer} from "script/VaultsDeployer.s.sol";
 
 contract FullDeployer is PoolsDeployer, VaultsDeployer {
-    function deployFull(uint16 chainId, ISafe adminSafe_, address deployer) public {
-        deployPools(chainId, adminSafe_, deployer);
-        deployVaults(chainId, adminSafe_, deployer);
+    function deployFull(uint16 centrifugeId, ISafe adminSafe_, address deployer) public {
+        deployPools(centrifugeId, adminSafe_, deployer);
+        deployVaults(centrifugeId, adminSafe_, deployer);
     }
 
     function removeFullDeployerAccess(address deployer) public {

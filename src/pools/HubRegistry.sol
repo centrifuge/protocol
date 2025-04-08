@@ -34,7 +34,7 @@ contract HubRegistry is Auth, IHubRegistry {
     }
 
     /// @inheritdoc IHubRegistry
-    function registerPool(address admin_, uint16 centrifugeChainId, AssetId currency_)
+    function registerPool(address admin_, uint16 centrifugeId, AssetId currency_)
         external
         auth
         returns (PoolId poolId)
@@ -43,7 +43,7 @@ contract HubRegistry is Auth, IHubRegistry {
         require(!currency_.isNull(), EmptyCurrency());
         require(currency[poolId].isNull(), PoolAlreadyRegistered());
 
-        poolId = newPoolId(centrifugeChainId, ++latestId);
+        poolId = newPoolId(centrifugeId, ++latestId);
 
         isAdmin[poolId][admin_] = true;
         currency[poolId] = currency_;

@@ -53,17 +53,19 @@ interface IGuardian {
 
     /// @notice Schedule an upgrade (scheduled rely) on another chain
     /// @dev    Only supports EVM targets today
-    function scheduleUpgrade(uint16 chainId, address target) external;
+    function scheduleUpgrade(uint16 centrifugeId, address target) external;
 
     /// @notice Cancel an upgrade (scheduled rely) on another chain
     /// @dev    Only supports EVM targets today
-    function cancelUpgrade(uint16 chainId, address target) external;
+    function cancelUpgrade(uint16 centrifugeId, address target) external;
 
     /// @notice Initiate message recovery on another chain
     /// @dev    Only supports EVM targets today
-    function initiateMessageRecovery(uint16 chainId, uint16 adapterChainId, IAdapter adapter, bytes32 hash) external;
+    function initiateMessageRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
+        external;
 
     /// @notice Dispute message recovery on another chain
     /// @dev    Only supports EVM targets today
-    function disputeMessageRecovery(uint16 chainId, uint16 adapterChainId, IAdapter adapter, bytes32 hash) external;
+    function disputeMessageRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
+        external;
 }
