@@ -12,16 +12,6 @@ import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
-/// @notice AssetRegistry accounts identifications used by the Hub
-enum EscrowId {
-    /// @notice Represents the escrow for undeployed capital in the share class.
-    /// Contains the already invested but not yet approved funds.
-    PendingShareClass,
-    /// @notice Represents the escrow for deployed capital in the share class.
-    /// Contains the already invested and approved funds.
-    ShareClass
-}
-
 /// @notice Account types used by Hub
 enum AccountType {
     /// @notice Debit normal account for tracking assets
@@ -58,7 +48,7 @@ interface IHub {
 
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
-    /// Accepts a `bytes32` representation of 'poolRegistry', 'assetRegistry', 'accounting', 'holdings', 'gateway' and '
+    /// Accepts a `bytes32` representation of 'hubRegistry', 'assetRegistry', 'accounting', 'holdings', 'gateway' and '
     /// sender' as string value.
     function file(bytes32 what, address data) external;
 
@@ -67,12 +57,8 @@ interface IHub {
 
     /// @notice Creates a new pool. `msg.sender` will be the admin of the created pool.
     /// @param currency The pool currency. Usually an AssetId identifying by a ISO4217 code.
-    /// @param shareClassManager The share class manager used for this pool.
     /// @return PoolId The id of the new pool.
-    function createPool(address admin, AssetId currency, IShareClassManager shareClassManager)
-        external
-        payable
-        returns (PoolId);
+    function createPool(address admin, AssetId currency) external payable returns (PoolId);
 
     /// @notice Claim a deposit for an investor address located in the chain where the asset belongs
     function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external payable;
@@ -189,11 +175,4 @@ interface IHub {
 
     /// @notice Add credit an account. Decrease the value of debit-normal accounts, increase for credit-normal ones.
     function addCredit(AccountId account, uint128 amount) external payable;
-
-    /// @notice Compute the escrow address used for a share class
-    /// @return The escrow address
-    function escrow(PoolId poolId, ShareClassId scId, EscrowId escrow_) external pure returns (address);
-
-    /// @notice Return the share class manager for a pool
-    function shareClassManager(PoolId poolId) external view returns (IShareClassManager);
 }

@@ -5,8 +5,6 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
-import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
-
 interface ISafe {
     function isOwner(address signer) external view returns (bool);
 }
@@ -31,12 +29,7 @@ interface IGuardian {
     function file(bytes32 what, address data) external;
 
     /// @notice Registers a new pool
-    function createPool(address admin, AssetId currency, IShareClassManager shareClassManager)
-        external
-        returns (PoolId poolId);
-
-    /// @notice Updates metadata for a chain
-    function setChain(uint16 centrifugeId, string calldata name, string calldata symbol) external;
+    function createPool(address admin, AssetId currency) external returns (PoolId poolId);
 
     /// @notice Pause the protocol
     /// @dev callable by both safe and owners

@@ -10,7 +10,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {IHoldings, Holding} from "src/pools/interfaces/IHoldings.sol";
-import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
+import {IHubRegistry} from "src/pools/interfaces/IHubRegistry.sol";
 
 contract Holdings is Auth, IHoldings {
     using MathLib for uint256; // toInt128()
@@ -18,15 +18,15 @@ contract Holdings is Auth, IHoldings {
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => Holding))) public holding;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => mapping(uint8 kind => AccountId)))) public accountId;
 
-    IPoolRegistry public poolRegistry;
+    IHubRegistry public hubRegistry;
 
-    constructor(IPoolRegistry poolRegistry_, address deployer) Auth(deployer) {
-        poolRegistry = poolRegistry_;
+    constructor(IHubRegistry hubRegistry_, address deployer) Auth(deployer) {
+        hubRegistry = hubRegistry_;
     }
 
     /// @inheritdoc IHoldings
     function file(bytes32 what, address data) external auth {
-        if (what == "poolRegistry") poolRegistry = IPoolRegistry(data);
+        if (what == "hubRegistry") hubRegistry = IHubRegistry(data);
         else revert FileUnrecognizedWhat();
 
         emit File(what, data);
@@ -65,7 +65,7 @@ contract Holdings is Auth, IHoldings {
         Holding storage holding_ = holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
-        amountValue = valuation_.getQuote(amount_, assetId.addr(), poolRegistry.currency(poolId).addr()).toUint128();
+        amountValue = valuation_.getQuote(amount_, assetId.addr(), hubRegistry.currency(poolId).addr()).toUint128();
 
         holding_.assetAmount += amount_;
         holding_.assetAmountValue += amountValue;
@@ -84,7 +84,7 @@ contract Holdings is Auth, IHoldings {
         Holding storage holding_ = holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
-        amountValue = valuation_.getQuote(amount_, assetId.addr(), poolRegistry.currency(poolId).addr()).toUint128();
+        amountValue = valuation_.getQuote(amount_, assetId.addr(), hubRegistry.currency(poolId).addr()).toUint128();
 
         holding_.assetAmount -= amount_;
         holding_.assetAmountValue -= amountValue;
@@ -98,7 +98,7 @@ contract Holdings is Auth, IHoldings {
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
         uint128 currentAmountValue = holding_.valuation.getQuote(
-            holding_.assetAmount, assetId.addr(), poolRegistry.currency(poolId).addr()
+            holding_.assetAmount, assetId.addr(), hubRegistry.currency(poolId).addr()
         ).toUint128();
 
         diffValue = currentAmountValue > holding_.assetAmountValue

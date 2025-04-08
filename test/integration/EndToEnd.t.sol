@@ -78,9 +78,8 @@ contract TestEndToEnd is Test {
 
         IGuardian guardian = cp.guardian();
         AssetId usd = deployA.USD();
-        IShareClassManager scm = deployA.multiShareClass();
         vm.prank(address(guardian.safe()));
-        PoolId poolId = guardian.createPool(FM, usd, scm);
+        PoolId poolId = guardian.createPool(FM, usd);
 
         vm.startPrank(FM);
 

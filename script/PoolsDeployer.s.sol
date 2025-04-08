@@ -12,10 +12,9 @@ import {GasService} from "src/common/GasService.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
-import {PoolRegistry} from "src/pools/PoolRegistry.sol";
-import {MultiShareClass} from "src/pools/MultiShareClass.sol";
+import {HubRegistry} from "src/pools/HubRegistry.sol";
+import {ShareClassManager} from "src/pools/ShareClassManager.sol";
 import {Holdings} from "src/pools/Holdings.sol";
-import {AssetRegistry} from "src/pools/AssetRegistry.sol";
 import {Accounting} from "src/pools/Accounting.sol";
 import {Hub, IHub} from "src/pools/Hub.sol";
 import {Hub} from "src/pools/Hub.sol";
@@ -25,11 +24,10 @@ import {CommonDeployer} from "script/CommonDeployer.s.sol";
 
 contract PoolsDeployer is CommonDeployer {
     // Main contracts
-    PoolRegistry public poolRegistry;
-    AssetRegistry public assetRegistry;
+    HubRegistry public hubRegistry;
     Accounting public accounting;
     Holdings public holdings;
-    MultiShareClass public multiShareClass;
+    ShareClassManager public shareClassManager;
     Hub public hub;
 
     // Utilities
@@ -42,14 +40,13 @@ contract PoolsDeployer is CommonDeployer {
     function deployPools(uint16 centrifugeId, ISafe adminSafe_, address deployer) public {
         deployCommon(centrifugeId, adminSafe_, deployer);
 
-        poolRegistry = new PoolRegistry(deployer);
-        assetRegistry = new AssetRegistry(deployer);
-        transientValuation = new TransientValuation(assetRegistry, deployer);
-        identityValuation = new IdentityValuation(assetRegistry, deployer);
+        hubRegistry = new HubRegistry(deployer);
+        transientValuation = new TransientValuation(hubRegistry, deployer);
+        identityValuation = new IdentityValuation(hubRegistry, deployer);
         accounting = new Accounting(deployer);
-        holdings = new Holdings(poolRegistry, deployer);
-        multiShareClass = new MultiShareClass(poolRegistry, deployer);
-        hub = new Hub(poolRegistry, assetRegistry, accounting, holdings, gateway, transientValuation, deployer);
+        holdings = new Holdings(hubRegistry, deployer);
+        shareClassManager = new ShareClassManager(hubRegistry, deployer);
+        hub = new Hub(shareClassManager, hubRegistry, accounting, holdings, gateway, transientValuation, deployer);
 
         _poolsRegister();
         _poolsRely();
@@ -58,22 +55,20 @@ contract PoolsDeployer is CommonDeployer {
     }
 
     function _poolsRegister() private {
-        register("poolRegistry", address(poolRegistry));
-        register("assetRegistry", address(assetRegistry));
+        register("hubRegistry", address(hubRegistry));
         register("accounting", address(accounting));
         register("holdings", address(holdings));
-        register("multiShareClass", address(multiShareClass));
+        register("shareClassManager", address(shareClassManager));
         register("hub", address(hub));
         register("transientValuation", address(transientValuation));
         register("identityValuation", address(identityValuation));
     }
 
     function _poolsRely() private {
-        poolRegistry.rely(address(hub));
-        assetRegistry.rely(address(hub));
+        hubRegistry.rely(address(hub));
         holdings.rely(address(hub));
         accounting.rely(address(hub));
-        multiShareClass.rely(address(hub));
+        shareClassManager.rely(address(hub));
         gateway.rely(address(hub));
         hub.rely(address(messageProcessor));
         hub.rely(address(messageDispatcher));
@@ -88,21 +83,19 @@ contract PoolsDeployer is CommonDeployer {
         hub.file("sender", address(messageDispatcher));
 
         guardian.file("hub", address(hub));
-        guardian.file("assetRegistry", address(assetRegistry));
     }
 
     function _poolsInitialConfig() private {
-        assetRegistry.registerAsset(USD, "United States dollar", "USD", 18);
+        hubRegistry.registerAsset(USD, 18);
     }
 
     function removePoolsDeployerAccess(address deployer) public {
         removeCommonDeployerAccess(deployer);
 
-        poolRegistry.deny(deployer);
-        assetRegistry.deny(deployer);
+        hubRegistry.deny(deployer);
         accounting.deny(deployer);
         holdings.deny(deployer);
-        multiShareClass.deny(deployer);
+        shareClassManager.deny(deployer);
         hub.deny(deployer);
 
         transientValuation.deny(deployer);

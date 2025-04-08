@@ -37,8 +37,8 @@ contract LocalhostDeployer is FullDeployer {
 
     function _configureTestData(uint16 centrifugeId) internal {
         // Create pool
-        PoolId poolId = hub.createPool(msg.sender, USD, multiShareClass);
-        ShareClassId scId = multiShareClass.previewNextShareClassId(poolId);
+        PoolId poolId = hub.createPool(msg.sender, USD);
+        ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
         // Deploy and register test USDC
         ERC20 token = new ERC20(6);

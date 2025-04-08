@@ -35,7 +35,7 @@ interface IMessageDispatcher is IRootMessageSender, IVaultMessageSender, IPoolMe
 
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
-    /// Accepts a `bytes32` representation of 'poolRegistry' string value.
+    /// Accepts a `bytes32` representation of 'hubRegistry' string value.
     /// @param data New value given to the `what` parameter
     function file(bytes32 what, address data) external;
 }
@@ -485,21 +485,11 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendRegisterAsset(
-        uint16 centrifugeId,
-        uint128 assetId,
-        string memory name,
-        string memory symbol,
-        uint8 decimals
-    ) external auth {
+    function sendRegisterAsset(uint16 centrifugeId, uint128 assetId, uint8 decimals) external auth {
         if (centrifugeId == localCentrifugeId) {
-            hub.registerAsset(AssetId.wrap(assetId), name, symbol, decimals);
+            hub.registerAsset(AssetId.wrap(assetId), decimals);
         } else {
-            gateway.send(
-                centrifugeId,
-                MessageLib.RegisterAsset({assetId: assetId, name: name, symbol: symbol.toBytes32(), decimals: decimals})
-                    .serialize()
-            );
+            gateway.send(centrifugeId, MessageLib.RegisterAsset({assetId: assetId, decimals: decimals}).serialize());
         }
     }
 }

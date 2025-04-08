@@ -10,17 +10,12 @@ contract TestCases is BaseTest {
 
     /// forge-config: default.isolate = true
     function testPoolCreation() public returns (PoolId poolId, ShareClassId scId) {
-        cv.registerAsset(USDC_C2, "USD Coin", "USDC", 6);
-
-        (string memory name, string memory symbol, uint8 decimals) = assetRegistry.asset(USDC_C2);
-        assertEq(name, "USD Coin");
-        assertEq(symbol, "USDC");
-        assertEq(decimals, 6);
+        cv.registerAsset(USDC_C2, 6);
 
         vm.prank(ADMIN);
-        poolId = guardian.createPool(FM, USD, multiShareClass);
+        poolId = guardian.createPool(FM, USD);
 
-        scId = multiShareClass.previewNextShareClassId(poolId);
+        scId = shareClassManager.previewNextShareClassId(poolId);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](6), 0);
         cs[c++] = abi.encodeWithSelector(hub.setPoolMetadata.selector, bytes("Testing pool"));
@@ -41,8 +36,8 @@ contract TestCases is BaseTest {
         vm.prank(FM);
         hub.execute{value: GAS * 3}(poolId, cs);
 
-        assertEq(poolRegistry.metadata(poolId), "Testing pool");
-        assertEq(multiShareClass.exists(poolId, scId), true);
+        assertEq(hubRegistry.metadata(poolId), "Testing pool");
+        assertEq(shareClassManager.exists(poolId, scId), true);
 
         MessageLib.NotifyPool memory m0 = MessageLib.deserializeNotifyPool(cv.lastMessages(0));
         assertEq(m0.poolId, poolId.raw());
@@ -158,8 +153,8 @@ contract TestCases is BaseTest {
     /// forge-config: default.isolate = true
     function testCalUpdateHolding() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation();
-        uint128 poolDecimals = (10 ** assetRegistry.decimals(USD.raw())).toUint128();
-        uint128 assetDecimals = (10 ** assetRegistry.decimals(USDC_C2.raw())).toUint128();
+        uint128 poolDecimals = (10 ** hubRegistry.decimals(USD.raw())).toUint128();
+        uint128 assetDecimals = (10 ** hubRegistry.decimals(USDC_C2.raw())).toUint128();
 
         JournalEntry[] memory debits = new JournalEntry[](0);
         (JournalEntry[] memory credits, uint256 i) = (new JournalEntry[](1), 0);
@@ -211,12 +206,12 @@ contract TestCases is BaseTest {
 
         cv.updateShares(poolId, scId, 100, true);
 
-        (uint128 totalIssuance,) = multiShareClass.metrics(scId);
+        (uint128 totalIssuance,) = shareClassManager.metrics(scId);
         assertEq(totalIssuance, 100);
 
         cv.updateShares(poolId, scId, 45, false);
 
-        (uint128 totalIssuance2,) = multiShareClass.metrics(scId);
+        (uint128 totalIssuance2,) = shareClassManager.metrics(scId);
         assertEq(totalIssuance2, 55);
     }
 }

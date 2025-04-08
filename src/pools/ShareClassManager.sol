@@ -12,7 +12,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId, newShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
+import {IHubRegistry} from "src/pools/interfaces/IHubRegistry.sol";
 import {
     IShareClassManager,
     EpochAmounts,
@@ -23,9 +23,8 @@ import {
     QueuedOrder,
     RequestType
 } from "src/pools/interfaces/IShareClassManager.sol";
-import {IMultiShareClass} from "src/pools/interfaces/IMultiShareClass.sol";
 
-contract MultiShareClass is Auth, IMultiShareClass {
+contract ShareClassManager is Auth, IShareClassManager {
     using MathLib for D18;
     using MathLib for uint128;
     using MathLib for uint256;
@@ -38,7 +37,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
 
     /// Storage
     uint32 internal transient _epochIncrement;
-    IPoolRegistry public poolRegistry;
+    IHubRegistry public hubRegistry;
     mapping(bytes32 salt => bool) public salts;
     mapping(PoolId poolId => uint32) public epochId;
     mapping(PoolId poolId => uint32) public shareClassCount;
@@ -59,13 +58,13 @@ contract MultiShareClass is Auth, IMultiShareClass {
     mapping(ShareClassId scId => mapping(AssetId paymentAssetId => mapping(bytes32 investor => QueuedOrder queued)))
         public queuedDepositRequest;
 
-    constructor(IPoolRegistry poolRegistry_, address deployer) Auth(deployer) {
-        poolRegistry = poolRegistry_;
+    constructor(IHubRegistry hubRegistry_, address deployer) Auth(deployer) {
+        hubRegistry = hubRegistry_;
     }
 
     function file(bytes32 what, address data) external auth {
-        require(what == "poolRegistry", UnrecognizedFileParam());
-        poolRegistry = IPoolRegistry(data);
+        require(what == "hubRegistry", UnrecognizedFileParam());
+        hubRegistry = IHubRegistry(data);
         emit File(what, data);
     }
 
@@ -159,7 +158,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
         require(approvedAssetAmount > 0, ZeroApprovalAmount());
 
         // Increase approved
-        address poolCurrency = poolRegistry.currency(poolId).addr();
+        address poolCurrency = hubRegistry.currency(poolId).addr();
         approvedPoolAmount =
             (IERC7726(valuation).getQuote(approvedAssetAmount, paymentAssetId.addr(), poolCurrency)).toUint128();
 
@@ -220,7 +219,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
         issueSharesUntilEpoch(poolId, scId_, depositAssetId, navPerShare, epochPointers_.latestDepositApproval);
     }
 
-    /// @inheritdoc IMultiShareClass
+    /// @inheritdoc IShareClassManager
     function issueSharesUntilEpoch(
         PoolId poolId,
         ShareClassId scId_,
@@ -270,7 +269,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
         );
     }
 
-    /// @inheritdoc IMultiShareClass
+    /// @inheritdoc IShareClassManager
     function revokeSharesUntilEpoch(
         PoolId poolId,
         ShareClassId scId_,
@@ -283,7 +282,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
         require(endEpochId < epochId[poolId], EpochNotFound());
 
         uint128 totalIssuance = metrics[scId_].totalIssuance;
-        address poolCurrency = poolRegistry.currency(poolId).addr();
+        address poolCurrency = hubRegistry.currency(poolId).addr();
 
         // First issuance is epoch 1 due to also initializing epochs with 1
         // Subsequent issuances equal latest pointer plus one
@@ -329,7 +328,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
         );
     }
 
-    /// @inheritdoc IMultiShareClass
+    /// @inheritdoc IShareClassManager
     function claimDepositUntilEpoch(
         PoolId poolId,
         ShareClassId scId_,
@@ -410,7 +409,7 @@ contract MultiShareClass is Auth, IMultiShareClass {
         );
     }
 
-    /// @inheritdoc IMultiShareClass
+    /// @inheritdoc IShareClassManager
     function claimRedeemUntilEpoch(
         PoolId poolId,
         ShareClassId scId_,

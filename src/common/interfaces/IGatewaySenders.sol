@@ -119,13 +119,7 @@ interface IVaultMessageSender is ILocalCentrifugeId {
     function sendCancelRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId) external;
 
     /// @notice Creates and send the message
-    function sendRegisterAsset(
-        uint16 centrifugeId,
-        uint128 assetId,
-        string memory name,
-        string memory symbol,
-        uint8 decimals
-    ) external;
+    function sendRegisterAsset(uint16 centrifugeId, uint128 assetId, uint8 decimals) external;
 
     /// @notice Creates and send the message
     function sendUpdateHoldingAmount(
