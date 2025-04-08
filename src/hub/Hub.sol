@@ -518,7 +518,7 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
     }
 
     //----------------------------------------------------------------------------------------------
-    // view / pure methods
+    //  private methods
     //----------------------------------------------------------------------------------------------
 
     /// @dev Ensure the method is protected (see `_protected()`) and the pool is unlocked,
