@@ -28,4 +28,29 @@ abstract contract DoomsdayTargets is
             t(expectedRevert, "accountValue should never revert");
         }
     }
+
+    /// @dev Differential fuzz test for accounting.accountValue calculation
+    function accounting_accountValue_differential(uint128 totalDebit, uint128 totalCredit) public {
+        // using totalDebit - totalCredit but since these values are fuzzed, this also represents all possible totalCredit - totalDebit values
+        int128 valueFromInt;
+        uint128 valueFromUint;
+        bool valueFromIntReverts;
+        bool valueFromUintReverts;
+
+        try mockAccountValue.valueFromInt(totalDebit, totalCredit) returns (int128 result) {
+            valueFromInt = result;
+        } catch (bytes memory reason) {
+            valueFromIntReverts = true;
+        }
+
+        try mockAccountValue.valueFromUint(totalDebit, totalCredit) returns (uint128 result) {
+            valueFromUint = result;
+        } catch (bytes memory reason) {
+            valueFromUintReverts = true;
+        }
+
+        // precondition: valueFromInt should only revert if valueFromUint also does
+        t(!(valueFromIntReverts && !valueFromUintReverts), "valueFromInt should only revert if valueFromUint also does");
+        t(valueFromInt == int128(valueFromUint), "valueFromInt and valueFromUint should be equal");
+    }
 }

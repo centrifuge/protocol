@@ -42,7 +42,7 @@ import {PoolManager} from "src/vaults/PoolManager.sol";
 import {MockGateway} from "test/pools/fuzzing/recon-pools/mocks/MockGateway.sol";
 import {ShareClassManagerWrapper} from "test/pools/fuzzing/recon-pools/utils/ShareClassManagerWrapper.sol";
 import {MockMessageDispatcher} from "test/vaults/fuzzing/recon-core/mocks/MockMessageDispatcher.sol";
-
+import {MockAccountValue} from "test/pools/fuzzing/recon-pools/mocks/MockAccountValue.sol";
 abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     enum Op {
         APPROVE_DEPOSITS,
@@ -68,6 +68,8 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     MockGasService gasService;
     MockGateway gateway;
     MockMessageDispatcher messageDispatcher;
+    MockAccountValue mockAccountValue;
+
     bytes[] internal queuedCalls; // used for storing calls to PoolRouter to be executed in a single transaction
     PoolId[] internal createdPools;
     // QueuedOp[] internal queuedOps;
@@ -114,7 +116,8 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         transientValuation = new TransientValuation(hubRegistry, address(this));
         identityValuation = new IdentityValuation(hubRegistry, address(this));
         mockAdapter = new MockAdapter(CENTIFUGE_CHAIN_ID, IMessageHandler(address(gateway)));
-
+        mockAccountValue = new MockAccountValue();
+        
         holdings = new Holdings(IHubRegistry(address(hubRegistry)), address(this));
         shareClassManager = new ShareClassManagerWrapper(IHubRegistry(address(hubRegistry)), address(this));
         messageDispatcher = new MockMessageDispatcher(PoolManager(address(this)), IAsyncRequests(address(this)), root, CENTIFUGE_CHAIN_ID);
