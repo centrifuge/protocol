@@ -304,7 +304,7 @@ library MessageLib {
 
     function deserializeRegisterAsset(bytes memory data) internal pure returns (RegisterAsset memory) {
         require(messageType(data) == MessageType.RegisterAsset, UnknownMessageType());
-        return RegisterAsset({assetId: data.toUint128(1), decimals: data.toUint8(177)});
+        return RegisterAsset({assetId: data.toUint128(1), decimals: data.toUint8(17)});
     }
 
     function serialize(RegisterAsset memory t) internal pure returns (bytes memory) {
