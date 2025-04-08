@@ -39,13 +39,13 @@ abstract contract DoomsdayTargets is
 
         try mockAccountValue.valueFromInt(totalDebit, totalCredit) returns (int128 result) {
             valueFromInt = result;
-        } catch (bytes memory reason) {
+        } catch {
             valueFromIntReverts = true;
         }
 
         try mockAccountValue.valueFromUint(totalDebit, totalCredit) returns (uint128 result) {
             valueFromUint = result;
-        } catch (bytes memory reason) {
+        } catch {
             valueFromUintReverts = true;
         }
 
