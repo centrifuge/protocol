@@ -14,7 +14,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
 
-import {FullDeployer, PoolsDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
+import {FullDeployer, HubDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
 
 // Script to deploy CP and CP with an Localhost Adapter.
 contract LocalhostDeployer is FullDeployer {
@@ -37,15 +37,15 @@ contract LocalhostDeployer is FullDeployer {
 
     function _configureTestData(uint16 centrifugeId) internal {
         // Create pool
-        PoolId poolId = hub.createPool(msg.sender, USD, multiShareClass);
-        ShareClassId scId = multiShareClass.previewNextShareClassId(poolId);
+        PoolId poolId = hub.createPool(msg.sender, USD);
+        ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
         // Deploy and register test USDC
         ERC20 token = new ERC20(6);
         token.file("name", "USD Coin");
         token.file("symbol", "USDC");
         token.mint(msg.sender, 10_000_000e6);
-        vaultRouter.registerAsset{value: 0.001 ether}(address(token), 0, centrifugeId);
+        vaultRouter.registerAsset{value: 0.001 ether}(centrifugeId, address(token), 0);
 
         // Deploy vault
         D18 navPerShare = d18(1, 1);

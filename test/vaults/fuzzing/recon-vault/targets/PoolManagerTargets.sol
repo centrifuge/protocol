@@ -42,7 +42,7 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
         // Exact approval
         token.approve(address(poolManager), amount);
 
-        poolManager.transferShares(poolId, scId, destinationChainId, destinationAddress, amount);
+        poolManager.transferShares(destinationChainId, poolId, scId, destinationAddress, amount);
         // TF-11 burns share class tokens from user, not tracked in escrow
 
         // Track minting for Global-3

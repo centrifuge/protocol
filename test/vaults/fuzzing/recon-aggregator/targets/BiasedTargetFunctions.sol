@@ -79,7 +79,7 @@ abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
             MessageLib.InitiateMessageRecovery({
                 hash: keccak256(message),
                 adapter: bytes32(bytes20(address(adapters[recoverRouterId]))),
-                domainId: 0
+                centrifugeId: 0
             }).serialize()
         );
     }

@@ -89,7 +89,7 @@ library MessageLib {
         (33  << uint8(MessageType.ScheduleUpgrade) * 8) +
         (33  << uint8(MessageType.CancelUpgrade) * 8) +
         (161 << uint8(MessageType.RecoverTokens) * 8) +
-        (178 << uint8(MessageType.RegisterAsset) * 8) +
+        (18  << uint8(MessageType.RegisterAsset) * 8) +
         (9   << uint8(MessageType.NotifyPool) * 8) +
         (250 << uint8(MessageType.NotifyShareClass) * 8) +
         (65  << uint8(MessageType.UpdateShareClassPrice) * 8) +
@@ -191,7 +191,7 @@ library MessageLib {
     struct InitiateMessageRecovery {
         bytes32 hash;
         bytes32 adapter;
-        uint16 domainId;
+        uint16 centrifugeId;
     }
 
     function deserializeInitiateMessageRecovery(bytes memory data)
@@ -200,12 +200,15 @@ library MessageLib {
         returns (InitiateMessageRecovery memory)
     {
         require(messageType(data) == MessageType.InitiateMessageRecovery, UnknownMessageType());
-        return
-            InitiateMessageRecovery({hash: data.toBytes32(1), adapter: data.toBytes32(33), domainId: data.toUint16(65)});
+        return InitiateMessageRecovery({
+            hash: data.toBytes32(1),
+            adapter: data.toBytes32(33),
+            centrifugeId: data.toUint16(65)
+        });
     }
 
     function serialize(InitiateMessageRecovery memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.InitiateMessageRecovery, t.hash, t.adapter, t.domainId);
+        return abi.encodePacked(MessageType.InitiateMessageRecovery, t.hash, t.adapter, t.centrifugeId);
     }
 
     //---------------------------------------
@@ -215,7 +218,7 @@ library MessageLib {
     struct DisputeMessageRecovery {
         bytes32 hash;
         bytes32 adapter;
-        uint16 domainId;
+        uint16 centrifugeId;
     }
 
     function deserializeDisputeMessageRecovery(bytes memory data)
@@ -224,12 +227,15 @@ library MessageLib {
         returns (DisputeMessageRecovery memory)
     {
         require(messageType(data) == MessageType.DisputeMessageRecovery, UnknownMessageType());
-        return
-            DisputeMessageRecovery({hash: data.toBytes32(1), adapter: data.toBytes32(33), domainId: data.toUint16(65)});
+        return DisputeMessageRecovery({
+            hash: data.toBytes32(1),
+            adapter: data.toBytes32(33),
+            centrifugeId: data.toUint16(65)
+        });
     }
 
     function serialize(DisputeMessageRecovery memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.DisputeMessageRecovery, t.hash, t.adapter, t.domainId);
+        return abi.encodePacked(MessageType.DisputeMessageRecovery, t.hash, t.adapter, t.centrifugeId);
     }
 
     //---------------------------------------
@@ -299,25 +305,16 @@ library MessageLib {
 
     struct RegisterAsset {
         uint128 assetId;
-        string name; // Fixed to 128 bytes
-        bytes32 symbol; // utf8
         uint8 decimals;
     }
 
     function deserializeRegisterAsset(bytes memory data) internal pure returns (RegisterAsset memory) {
         require(messageType(data) == MessageType.RegisterAsset, UnknownMessageType());
-        return RegisterAsset({
-            assetId: data.toUint128(1),
-            name: data.slice(17, 128).bytes128ToString(),
-            symbol: data.toBytes32(145),
-            decimals: data.toUint8(177)
-        });
+        return RegisterAsset({assetId: data.toUint128(1), decimals: data.toUint8(17)});
     }
 
     function serialize(RegisterAsset memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(
-            MessageType.RegisterAsset, t.assetId, bytes(t.name).sliceZeroPadded(0, 128), t.symbol, t.decimals
-        );
+        return abi.encodePacked(MessageType.RegisterAsset, t.assetId, t.decimals);
     }
 
     //---------------------------------------
