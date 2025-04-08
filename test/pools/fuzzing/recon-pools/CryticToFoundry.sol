@@ -48,12 +48,12 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_registerAsset(123);
 
         // create pool 
-        PoolId poolId = hub_createPool(address(this), 123, shareClassManager);
+        poolId = hub_createPool(address(this), 123);
 
         return poolId;
     }
     
-    function test_request_deposit() public returns (PoolId poolId, ShareClassId scId){
+    function test_request_deposit() public returns (PoolId, ShareClassId){
         poolId = _createPool();
 
         // request deposit
@@ -78,7 +78,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         return (poolId, scId);
     }
 
-    function test_request_redeem() public returns (PoolId poolId, ShareClassId scId){
+    function test_request_redeem() public returns (PoolId, ShareClassId){
         (poolId, scId) = test_request_deposit();
 
         // request redemption
@@ -91,10 +91,12 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         // claim redemption
         hub_claimRedeem(poolId.raw(), scId.raw(), 123);
+
+        return (poolId, scId);
     }
 
     function test_shortcut_create_pool_and_update_holding() public {
-        (PoolId poolId, ShareClassId scId) = shortcut_create_pool_and_holding(18, 123, SC_SALT, true, 0x01);
+        (poolId, scId) = shortcut_create_pool_and_holding(18, 123, SC_SALT, true, 0x01);
     
         assetId = newAssetId(123);
         hub_updateHolding(scId.raw(), assetId.raw());
@@ -106,13 +108,13 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     function test_shortcut_redeem_and_claim() public {
-        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
+        (poolId, scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
         
         shortcut_redeem_and_claim(poolId.raw(), scId.raw(), SHARE_AMOUNT, 123, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE, true);
     }
 
     function test_notify_share_class() public {
-        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
+        (poolId, scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
 
         hub_notifyShareClass(CHAIN_CV, scId.raw(), SC_HOOK);
         hub_execute_clamped(poolId.raw());
@@ -135,7 +137,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     function test_cancel_redeem_request() public {
-        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
+        (poolId, scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
 
         hub_redeemRequest(poolId.raw(), scId.raw(), 123, SHARE_AMOUNT);
 
@@ -143,7 +145,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     function test_shortcut_update_holding() public {
-        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, false, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+        shortcut_deposit_and_claim(18, 123, SC_SALT, false, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
 
         shortcut_update_holding(123, d18(20e18));
     }
@@ -157,7 +159,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     function test_calling_claimDeposit_directly() public {
-        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+        (poolId, scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
 
         shareClassManager.claimDeposit(poolId, scId, Helpers.addressToBytes32(address(this)), assetId);
     }

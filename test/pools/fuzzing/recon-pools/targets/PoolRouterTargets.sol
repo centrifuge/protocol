@@ -28,7 +28,7 @@ abstract contract PoolRouterTargets is
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
     
     /// === Permissionless Functions === ///
-    function hub_createPool(address admin, uint32 isoCode, IShareClassManager shareClassManager) public updateGhosts asActor returns (PoolId poolId) {
+    function hub_createPool(address admin, uint32 isoCode) public updateGhosts asActor returns (PoolId poolId) {
         AssetId assetId_ = newAssetId(isoCode); 
 
         poolId = hub.createPool(admin, assetId_);

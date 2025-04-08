@@ -47,10 +47,10 @@ abstract contract TargetFunctions is
         hub_registerAsset(isoCode); // 4294967295
 
         // defaults to pool admined by the admin actor (address(this))
-        PoolId poolId = hub_createPool(address(this), isoCode, shareClassManager);
+        poolId = hub_createPool(address(this), isoCode);
         
         // create holding
-        ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
+        scId = shareClassManager.previewNextShareClassId(poolId);
         AssetId assetId = newAssetId(isoCode); // 4294967295
         shortcut_add_share_class_and_holding(poolId.raw(), salt, scId.raw(), assetId.raw(), isIdentityValuation, prefix);
 
@@ -378,7 +378,6 @@ abstract contract TargetFunctions is
         require(decimals >= 6, "decimals must be >= 6");
 
         (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, salt, isIdentityValuation, prefix);
-        AssetId assetId = newAssetId(isoCode);
 
         {
             AccountId accountId = newAccountId(prefix, accountToUpdate % 6);
