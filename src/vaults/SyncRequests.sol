@@ -214,8 +214,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         // NOTE: We want CP to use the default accounting accounts
         JournalEntry[] memory journalEntries = new JournalEntry[](0);
         Meta memory depositMeta = Meta(journalEntries, journalEntries);
-        (D18 priceSharePerAsset,) =
-            poolManager.checkedPriceAssetPerShare(poolId.raw(), scId.raw(), vaultDetails.assetId);
+        (D18 priceSharePerAsset,) = poolManager.priceAssetPerShare(poolId.raw(), scId.raw(), vaultDetails.assetId, true);
 
         // Notify CP about updated holdings
         balanceSheet.deposit(
@@ -236,8 +235,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         view
         returns (D18)
     {
-        // TODO: Decide on whether we should use the checked/ or unchcked version
-        (D18 latestPrice,) = poolManager.checkedPriceAssetPerShare(poolId, scId, assetId);
+        (D18 latestPrice,) = poolManager.priceAssetPerShare(poolId, scId, assetId, true);
         return latestPrice;
     }
 }

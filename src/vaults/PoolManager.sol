@@ -182,7 +182,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         bytes32 salt,
         address hook
     ) public auth returns (address) {
-        uint32 counter = 1;
         require(decimals >= MIN_DECIMALS, "PoolManager/too-few-token-decimals");
         require(decimals <= MAX_DECIMALS, "PoolManager/too-many-token-decimals");
         require(isPoolActive(poolId), "PoolManager/invalid-pool");
@@ -443,77 +442,56 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
     }
 
     /// @inheritdoc IPoolManager
-    function priceAssetPerShare(uint64 poolId, bytes16 scId, uint128 assetId)
+    function priceAssetPerShare(uint64 poolId, bytes16 scId, uint128 assetId, bool checkValidity)
         public
         view
         returns (D18 price, uint64 computedAt)
     {
-        (Price memory pricePerAsset_, Price memory pricePerShare_) = _pricePool(poolId, scId, assetId);
-        price = pricePerShare_.asPrice() / pricePerAsset_.asPrice();
-        computedAt = pricePerShare_.computedAt;
+        (Price memory pricePerAsset, Price memory pricePerShare) = _poolPer(poolId, scId, assetId);
+
+        if (checkValidity) {
+            require(pricePerAsset.isValid(), "PoolManager/invalid-price");
+            require(pricePerShare.isValid(), "PoolManager/invalid-price");
+        }
+
+        price = pricePerShare.asPrice() / pricePerAsset.asPrice();
+        computedAt = pricePerShare.computedAt;
     }
 
     /// @inheritdoc IPoolManager
-    function checkedPriceAssetPerShare(uint64 poolId, bytes16 scId, uint128 assetId)
+    function pricePoolPerShare(uint64 poolId, bytes16 scId, bool checkValidity)
         public
         view
         returns (D18 price, uint64 computedAt)
     {
-        (Price memory pricePerAsset_, Price memory pricePerShare_) = _pricePool(poolId, scId, assetId);
-
-        require(pricePerAsset_.isValid(), "PoolManager/invalid-price");
-        require(pricePerShare_.isValid(), "PoolManager/invalid-price");
-
-        price = pricePerShare_.asPrice() / pricePerAsset_.asPrice();
-        computedAt = pricePerShare_.computedAt;
-    }
-
-    /// @inheritdoc IPoolManager
-    function pricePoolPerShare(uint64 poolId, bytes16 scId) public view returns (D18 price, uint64 computedAt) {
-        Price memory p = _pricePoolPerShare(poolId, scId);
-        price = p.asPrice();
-        computedAt = p.computedAt;
-    }
-
-    /// @inheritdoc IPoolManager
-    function checkedPricePoolPerShare(uint64 poolId, bytes16 scId) public view returns (D18 price, uint64 computedAt) {
-        Price memory p = _pricePoolPerShare(poolId, scId);
-        require(p.isValid(), "PoolManager/invalid-price");
-        price = p.asPrice();
-        computedAt = p.computedAt;
-    }
-
-    /// @inheritdoc IPoolManager
-    function pricePoolPerAsset(uint64 poolId, bytes16 scId, uint128 assetId)
-        public
-        view
-        returns (D18 price, uint64 computedAt)
-    {
-        (Price memory p,) = _pricePool(poolId, scId, assetId);
-        price = p.asPrice();
-        computedAt = p.computedAt;
-    }
-
-    function checkedPricePoolPerAsset(uint64 poolId, bytes16 scId, uint128 assetId)
-        public
-        view
-        returns (D18 price, uint64 computedAt)
-    {
-        (Price memory p,) = _pricePool(poolId, scId, assetId);
-        require(p.isValid(), "PoolManager/invalid-price");
-        price = p.asPrice();
-        computedAt = p.computedAt;
-    }
-
-    function _pricePoolPerAsset(uint64 poolId, bytes16 scId, uint128 assetId) internal view returns (Price memory) {
         ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
         require(shareClass.shareToken != address(0), "PoolManager/share-token-does-not-exist");
 
-        (address asset, uint256 tokenId) = idToAsset(assetId);
-        return shareClass.pricePoolPerAsset[asset][tokenId];
+        if (checkValidity) {
+            require(shareClass.pricePoolPerShare.isValid(), "PoolManager/invalid-price");
+        }
+
+        price = shareClass.pricePoolPerShare.asPrice();
+        computedAt = shareClass.pricePoolPerShare.computedAt;
     }
 
-    function _pricePool(uint64 poolId, bytes16 scId, uint128 assetId)
+    /// @inheritdoc IPoolManager
+    function pricePoolPerAsset(uint64 poolId, bytes16 scId, uint128 assetId, bool checkValidity)
+        public
+        view
+        returns (D18 price, uint64 computedAt)
+    {
+        (Price memory poolPerAsset,) = _poolPer(poolId, scId, assetId);
+
+        if (checkValidity) {
+            require(poolPerAsset.isValid(), "PoolManager/invalid-price");
+        }
+
+        price = poolPerAsset.asPrice();
+        computedAt = poolPerAsset.computedAt;
+    }
+
+    function _poolPer(uint64 poolId, bytes16 scId, uint128 assetId)
         internal
         view
         returns (Price memory poolPerAsset, Price memory poolPerShare)
@@ -524,13 +502,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         (address asset, uint256 tokenId) = idToAsset(assetId);
         poolPerAsset = shareClass.pricePoolPerAsset[asset][tokenId];
         poolPerShare = shareClass.pricePoolPerShare;
-    }
-
-    function _pricePoolPerShare(uint64 poolId, bytes16 scId) internal view returns (Price memory) {
-        ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
-        require(shareClass.shareToken != address(0), "PoolManager/share-token-does-not-exist");
-
-        return shareClass.pricePoolPerShare;
     }
 
     /// @dev Sets up permissions for the base vault manager and potentially a secondary manager (in case of partially

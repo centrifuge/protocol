@@ -51,7 +51,7 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
         (D18 latestPrice,) =
-            poolManager.checkedPriceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
+            poolManager.priceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, true);
         shares = uint256(
             PriceConversionLib.calculateShares(_assets.toUint128(), vaultAddr, latestPrice.raw(), MathLib.Rounding.Down)
         );
@@ -62,7 +62,7 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
         (D18 latestPrice,) =
-            poolManager.checkedPriceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
+            poolManager.priceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, true);
         assets = uint256(
             PriceConversionLib.calculateAssets(_shares.toUint128(), vaultAddr, latestPrice.raw(), MathLib.Rounding.Down)
         );
@@ -73,6 +73,6 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
         (, lastUpdated) =
-            poolManager.checkedPriceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId);
+            poolManager.priceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, true);
     }
 }
