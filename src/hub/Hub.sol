@@ -7,6 +7,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {Multicall, IMulticall} from "src/misc/Multicall.sol";
+import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {MessageLib, UpdateContractType, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
@@ -19,12 +20,11 @@ import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
-import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
-import {IHubRegistry} from "src/pools/interfaces/IHubRegistry.sol";
-import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
-import {IHoldings, Holding} from "src/pools/interfaces/IHoldings.sol";
-import {IHub, AccountType} from "src/pools/interfaces/IHub.sol";
-import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
+import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
+import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
+import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
+import {IHoldings, Holding} from "src/hub/interfaces/IHoldings.sol";
+import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
 
 // @inheritdoc IHub
 contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {

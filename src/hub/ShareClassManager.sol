@@ -12,7 +12,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId, newShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IHubRegistry} from "src/pools/interfaces/IHubRegistry.sol";
+import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {
     IShareClassManager,
     EpochAmounts,
@@ -22,7 +22,7 @@ import {
     ShareClassMetrics,
     QueuedOrder,
     RequestType
-} from "src/pools/interfaces/IShareClassManager.sol";
+} from "src/hub/interfaces/IShareClassManager.sol";
 
 contract ShareClassManager is Auth, IShareClassManager {
     using MathLib for D18;

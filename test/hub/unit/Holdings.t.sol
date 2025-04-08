@@ -10,9 +10,9 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {Holdings} from "src/pools/Holdings.sol";
-import {IHubRegistry} from "src/pools/interfaces/IHubRegistry.sol";
-import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
+import {Holdings} from "src/hub/Holdings.sol";
+import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
+import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
 
 PoolId constant POOL_A = PoolId.wrap(42);
 ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("1"));
