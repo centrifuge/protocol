@@ -9,14 +9,14 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {PoolRegistry} from "src/pools/PoolRegistry.sol";
-import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
+import {HubRegistry} from "src/pools/HubRegistry.sol";
+import {IHubRegistry} from "src/pools/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
-contract PoolRegistryTest is Test {
+contract HubRegistryTest is Test {
     using MathLib for uint256;
 
-    PoolRegistry registry;
+    HubRegistry registry;
 
     uint16 constant CENTRIFUGE_CHAIN_ID = 23;
     AssetId constant USD = AssetId.wrap(840);
@@ -37,7 +37,7 @@ contract PoolRegistryTest is Test {
     }
 
     function setUp() public {
-        registry = new PoolRegistry(address(this));
+        registry = new HubRegistry(address(this));
     }
 
     function testPoolRegistration(address fundAdmin) public nonZero(fundAdmin) notThisContract(fundAdmin) {
@@ -45,14 +45,14 @@ contract PoolRegistryTest is Test {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         registry.registerPool(address(this), CENTRIFUGE_CHAIN_ID, USD);
 
-        vm.expectRevert(IPoolRegistry.EmptyAdmin.selector);
+        vm.expectRevert(IHubRegistry.EmptyAdmin.selector);
         registry.registerPool(address(0), CENTRIFUGE_CHAIN_ID, USD);
 
-        vm.expectRevert(IPoolRegistry.EmptyCurrency.selector);
+        vm.expectRevert(IHubRegistry.EmptyCurrency.selector);
         registry.registerPool(address(this), CENTRIFUGE_CHAIN_ID, AssetId.wrap(0));
 
         vm.expectEmit();
-        emit IPoolRegistry.NewPool(newPoolId(CENTRIFUGE_CHAIN_ID, 1), fundAdmin, USD);
+        emit IHubRegistry.NewPool(newPoolId(CENTRIFUGE_CHAIN_ID, 1), fundAdmin, USD);
         PoolId poolId = registry.registerPool(fundAdmin, CENTRIFUGE_CHAIN_ID, USD);
 
         assertEq(poolId.chainId(), CENTRIFUGE_CHAIN_ID);
@@ -80,21 +80,21 @@ contract PoolRegistryTest is Test {
         registry.updateAdmin(poolId, additionalAdmin, true);
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);
-        vm.expectRevert(abi.encodeWithSelector(IPoolRegistry.NonExistingPool.selector, nonExistingPool));
+        vm.expectRevert(abi.encodeWithSelector(IHubRegistry.NonExistingPool.selector, nonExistingPool));
         registry.updateAdmin(nonExistingPool, additionalAdmin, true);
 
-        vm.expectRevert(IPoolRegistry.EmptyAdmin.selector);
+        vm.expectRevert(IHubRegistry.EmptyAdmin.selector);
         registry.updateAdmin(poolId, address(0), true);
 
         // Approve a new admin
         vm.expectEmit();
-        emit IPoolRegistry.UpdateAdmin(poolId, additionalAdmin, true);
+        emit IHubRegistry.UpdateAdmin(poolId, additionalAdmin, true);
         registry.updateAdmin(poolId, additionalAdmin, true);
         assertTrue(registry.isAdmin(poolId, additionalAdmin));
 
         // Remove an existing admin
         vm.expectEmit();
-        emit IPoolRegistry.UpdateAdmin(poolId, additionalAdmin, false);
+        emit IHubRegistry.UpdateAdmin(poolId, additionalAdmin, false);
         registry.updateAdmin(poolId, additionalAdmin, false);
         assertFalse(registry.isAdmin(poolId, additionalAdmin));
     }
@@ -111,34 +111,26 @@ contract PoolRegistryTest is Test {
         registry.setMetadata(poolId, metadata);
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);
-        vm.expectRevert(abi.encodeWithSelector(IPoolRegistry.NonExistingPool.selector, nonExistingPool));
+        vm.expectRevert(abi.encodeWithSelector(IHubRegistry.NonExistingPool.selector, nonExistingPool));
         registry.setMetadata(nonExistingPool, metadata);
 
         vm.expectEmit();
-        emit IPoolRegistry.SetMetadata(poolId, metadata);
+        emit IHubRegistry.SetMetadata(poolId, metadata);
         registry.setMetadata(poolId, metadata);
         assertEq(registry.metadata(poolId), metadata);
     }
 
     function testUpdateDependency(bytes32 what, address dependency) public nonZero(dependency) {
-        address fundAdmin = makeAddr("fundAdmin");
-
-        PoolId poolId = registry.registerPool(fundAdmin, CENTRIFUGE_CHAIN_ID, USD);
-
-        assertEq(address(registry.dependency(poolId, what)), address(0));
+        assertEq(address(registry.dependency(what)), address(0));
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.updateDependency(poolId, what, dependency);
-
-        PoolId nonExistingPool = PoolId.wrap(0xDEAD);
-        vm.expectRevert(abi.encodeWithSelector(IPoolRegistry.NonExistingPool.selector, nonExistingPool));
-        registry.updateDependency(nonExistingPool, what, dependency);
+        registry.updateDependency(what, dependency);
 
         vm.expectEmit();
-        emit IPoolRegistry.UpdateDependency(poolId, what, dependency);
-        registry.updateDependency(poolId, what, dependency);
-        assertEq(address(registry.dependency(poolId, what)), address(dependency));
+        emit IHubRegistry.UpdateDependency(what, dependency);
+        registry.updateDependency(what, dependency);
+        assertEq(address(registry.dependency(what)), address(dependency));
     }
 
     function testUpdateCurrency(AssetId currency) public nonZero(currency.addr()) {
@@ -151,15 +143,15 @@ contract PoolRegistryTest is Test {
         registry.updateCurrency(poolId, currency);
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);
-        vm.expectRevert(abi.encodeWithSelector(IPoolRegistry.NonExistingPool.selector, nonExistingPool));
+        vm.expectRevert(abi.encodeWithSelector(IHubRegistry.NonExistingPool.selector, nonExistingPool));
         registry.updateCurrency(nonExistingPool, currency);
 
-        vm.expectRevert(IPoolRegistry.EmptyCurrency.selector);
+        vm.expectRevert(IHubRegistry.EmptyCurrency.selector);
         registry.updateCurrency(poolId, AssetId.wrap(0));
 
         vm.assume(AssetId.unwrap(registry.currency(poolId)) != AssetId.unwrap(currency));
         vm.expectEmit();
-        emit IPoolRegistry.UpdateCurrency(poolId, currency);
+        emit IHubRegistry.UpdateCurrency(poolId, currency);
         registry.updateCurrency(poolId, currency);
         assertEq(AssetId.unwrap(registry.currency(poolId)), AssetId.unwrap(currency));
     }

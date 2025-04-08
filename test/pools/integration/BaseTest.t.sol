@@ -72,10 +72,10 @@ contract BaseTest is PoolsDeployer, Test {
         // Label contracts & actors (for debugging)
         vm.label(address(transientValuation), "TransientValuation");
         vm.label(address(identityValuation), "IdentityValuation");
-        vm.label(address(poolRegistry), "PoolRegistry");
+        vm.label(address(hubRegistry), "HubRegistry");
         vm.label(address(accounting), "Accounting");
         vm.label(address(holdings), "Holdings");
-        vm.label(address(multiShareClass), "MultiShareClass");
+        vm.label(address(shareClassManager), "ShareClassManager");
         vm.label(address(hub), "Hub");
         vm.label(address(gateway), "Gateway");
         vm.label(address(messageProcessor), "MessageProcessor");

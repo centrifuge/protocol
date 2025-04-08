@@ -7,12 +7,12 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
-interface IPoolRegistry is IERC6909Decimals {
+interface IHubRegistry is IERC6909Decimals {
     event NewAsset(AssetId indexed assetId, uint8 decimals);
     event NewPool(PoolId poolId, address indexed admin, AssetId indexed currency);
     event UpdateAdmin(PoolId indexed poolId, address indexed admin, bool canManage);
     event SetMetadata(PoolId indexed poolId, bytes metadata);
-    event UpdateDependency(PoolId indexed poolId, bytes32 indexed what, address dependency);
+    event UpdateDependency(bytes32 indexed what, address dependency);
     event UpdateCurrency(PoolId indexed poolId, AssetId currency);
 
     error NonExistingPool(PoolId id);
@@ -36,8 +36,8 @@ interface IPoolRegistry is IERC6909Decimals {
     /// @notice sets metadata for this pool
     function setMetadata(PoolId poolId, bytes calldata metadata) external;
 
-    /// @notice updates a dependency of the pool
-    function updateDependency(PoolId poolId, bytes32 what, address dependency) external;
+    /// @notice updates a dependency of the system
+    function updateDependency(bytes32 what, address dependency) external;
 
     /// @notice updates the currency of the pool
     function updateCurrency(PoolId poolId, AssetId currency) external;
@@ -48,8 +48,8 @@ interface IPoolRegistry is IERC6909Decimals {
     /// @notice returns the currency of the pool
     function currency(PoolId poolId) external view returns (AssetId);
 
-    /// @notice returns the dependency used in the pool
-    function dependency(PoolId poolId, bytes32 what) external view returns (address);
+    /// @notice returns the dependency used in the system
+    function dependency(bytes32 what) external view returns (address);
 
     /// @notice returns the existance of an admin
     function isAdmin(PoolId poolId, address admin) external view returns (bool);

@@ -14,7 +14,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
+import {IHubRegistry} from "src/pools/interfaces/IHubRegistry.sol";
 import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
 import {IAccounting} from "src/pools/interfaces/IAccounting.sol";
 import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
@@ -30,20 +30,18 @@ contract TestCommon is Test {
     AssetId constant ASSET_A = AssetId.wrap(3);
     address constant ADMIN = address(1);
 
-    IPoolRegistry immutable poolRegistry = IPoolRegistry(makeAddr("PoolRegistry"));
+    IHubRegistry immutable hubRegistry = IHubRegistry(makeAddr("HubRegistry"));
     IHoldings immutable holdings = IHoldings(makeAddr("Holdings"));
     IAccounting immutable accounting = IAccounting(makeAddr("Accounting"));
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
     IGateway immutable gateway = IGateway(makeAddr("Gateway"));
     ITransientValuation immutable transientValuation = ITransientValuation(makeAddr("TransientValuation"));
 
-    Hub hub = new Hub(poolRegistry, accounting, holdings, gateway, transientValuation, address(this));
+    Hub hub = new Hub(scm, hubRegistry, accounting, holdings, gateway, transientValuation, address(this));
 
     function setUp() public {
         vm.mockCall(
-            address(poolRegistry),
-            abi.encodeWithSelector(poolRegistry.isAdmin.selector, POOL_A, ADMIN),
-            abi.encode(true)
+            address(hubRegistry), abi.encodeWithSelector(hubRegistry.isAdmin.selector, POOL_A, ADMIN), abi.encode(true)
         );
 
         vm.mockCall(address(accounting), abi.encodeWithSelector(accounting.unlock.selector, POOL_A), abi.encode(true));
@@ -153,8 +151,8 @@ contract TestMainMethodsChecks is TestCommon {
 contract TestNotifyShareClass is TestCommon {
     function testErrShareClassNotFound() public {
         vm.mockCall(
-            address(poolRegistry),
-            abi.encodeWithSelector(poolRegistry.dependency.selector, POOL_A, bytes32("shareClassManager")),
+            address(hubRegistry),
+            abi.encodeWithSelector(hubRegistry.dependency.selector, POOL_A, bytes32("shareClassManager")),
             abi.encode(scm)
         );
 
@@ -172,16 +170,14 @@ contract TestNotifyShareClass is TestCommon {
 contract TestCreateHolding is TestCommon {
     function testErrAssetNotFound() public {
         vm.mockCall(
-            address(poolRegistry),
-            abi.encodeWithSelector(poolRegistry.isRegistered.selector, ASSET_A),
-            abi.encode(false)
+            address(hubRegistry), abi.encodeWithSelector(hubRegistry.isRegistered.selector, ASSET_A), abi.encode(false)
         );
 
         bytes[] memory cs = new bytes[](1);
         cs[0] = abi.encodeWithSelector(hub.createHolding.selector, SC_A, ASSET_A, IERC7726(address(1)), false, 0);
 
         vm.prank(ADMIN);
-        vm.expectRevert(IPoolRegistry.AssetNotFound.selector);
+        vm.expectRevert(IHubRegistry.AssetNotFound.selector);
         hub.execute(POOL_A, cs);
     }
 }

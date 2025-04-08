@@ -48,7 +48,7 @@ interface IHub {
 
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
-    /// Accepts a `bytes32` representation of 'poolRegistry', 'assetRegistry', 'accounting', 'holdings', 'gateway' and '
+    /// Accepts a `bytes32` representation of 'hubRegistry', 'assetRegistry', 'accounting', 'holdings', 'gateway' and '
     /// sender' as string value.
     function file(bytes32 what, address data) external;
 
@@ -179,7 +179,4 @@ interface IHub {
 
     /// @notice Add credit an account. Decrease the value of debit-normal accounts, increase for credit-normal ones.
     function addCredit(AccountId account, uint128 amount) external payable;
-
-    /// @notice Return the share class manager for a pool
-    function shareClassManager(PoolId poolId) external view returns (IShareClassManager);
 }

@@ -9,7 +9,7 @@ contract TestBatchingAndPayment is BaseTest {
     /// forge-config: default.isolate = true
     function testExecuteNoSendNoPay() public {
         vm.prank(ADMIN);
-        PoolId poolId = guardian.createPool(FM, USD, multiShareClass);
+        PoolId poolId = guardian.createPool(FM, USD, shareClassManager);
 
         vm.startPrank(FM);
 
@@ -25,7 +25,7 @@ contract TestBatchingAndPayment is BaseTest {
     /// forge-config: default.isolate = true
     function testExecuteSendNoPay() public {
         vm.prank(ADMIN);
-        PoolId poolId = guardian.createPool(FM, USD, multiShareClass);
+        PoolId poolId = guardian.createPool(FM, USD, shareClassManager);
 
         vm.startPrank(FM);
 
@@ -48,7 +48,7 @@ contract TestBatchingAndPayment is BaseTest {
     /// forge-config: default.isolate = true
     function testMultipleMulticallSamePool() public {
         vm.startPrank(ADMIN);
-        PoolId poolA = guardian.createPool(FM, USD, multiShareClass);
+        PoolId poolA = guardian.createPool(FM, USD, shareClassManager);
 
         vm.startPrank(FM);
 
@@ -76,8 +76,8 @@ contract TestBatchingAndPayment is BaseTest {
     function testMultipleMulticallDifferentPools() public {
         vm.startPrank(ADMIN);
 
-        PoolId poolA = guardian.createPool(FM, USD, multiShareClass);
-        PoolId poolB = guardian.createPool(FM, USD, multiShareClass);
+        PoolId poolA = guardian.createPool(FM, USD, shareClassManager);
+        PoolId poolB = guardian.createPool(FM, USD, shareClassManager);
 
         vm.startPrank(FM);
 

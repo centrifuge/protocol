@@ -11,7 +11,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {Holdings} from "src/pools/Holdings.sol";
-import {IPoolRegistry} from "src/pools/interfaces/IPoolRegistry.sol";
+import {IHubRegistry} from "src/pools/interfaces/IHubRegistry.sol";
 import {IHoldings} from "src/pools/interfaces/IHoldings.sol";
 
 PoolId constant POOL_A = PoolId.wrap(42);
@@ -21,17 +21,17 @@ ShareClassId constant NON_SC = ShareClassId.wrap(0);
 AssetId constant NON_ASSET = AssetId.wrap(0);
 AssetId constant POOL_CURRENCY = AssetId.wrap(23);
 
-contract PoolRegistryMock {
+contract HubRegistryMock {
     function currency(PoolId) external pure returns (AssetId) {
         return POOL_CURRENCY;
     }
 }
 
 contract TestCommon is Test {
-    IPoolRegistry immutable poolRegistry = IPoolRegistry(address(new PoolRegistryMock()));
+    IHubRegistry immutable hubRegistry = IHubRegistry(address(new HubRegistryMock()));
     IERC7726 immutable itemValuation = IERC7726(address(23));
     IERC7726 immutable customValuation = IERC7726(address(42));
-    Holdings holdings = new Holdings(poolRegistry, address(this));
+    Holdings holdings = new Holdings(hubRegistry, address(this));
 
     function mockGetQuote(IERC7726 valuation, uint128 baseAmount, uint128 quoteAmount) public {
         vm.mockCall(
@@ -45,25 +45,25 @@ contract TestCommon is Test {
 }
 
 contract TestFile is TestCommon {
-    address constant newPoolRegistryAddr = address(42);
+    address constant newHubRegistryAddr = address(42);
 
     function testSuccess() public {
         vm.expectEmit();
-        emit IHoldings.File("poolRegistry", newPoolRegistryAddr);
-        holdings.file("poolRegistry", newPoolRegistryAddr);
+        emit IHoldings.File("hubRegistry", newHubRegistryAddr);
+        holdings.file("hubRegistry", newHubRegistryAddr);
 
-        assertEq(address(holdings.poolRegistry()), newPoolRegistryAddr);
+        assertEq(address(holdings.hubRegistry()), newHubRegistryAddr);
     }
 
     function testErrNotAuthorized() public {
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        holdings.file("poolRegistry", newPoolRegistryAddr);
+        holdings.file("hubRegistry", newHubRegistryAddr);
     }
 
     function testErrFileUnrecognizedWhat() public {
         vm.expectRevert(abi.encodeWithSelector(IHoldings.FileUnrecognizedWhat.selector));
-        holdings.file("unrecongnizedWhat", newPoolRegistryAddr);
+        holdings.file("unrecongnizedWhat", newHubRegistryAddr);
     }
 }
 
