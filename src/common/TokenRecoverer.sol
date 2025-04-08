@@ -21,7 +21,13 @@ contract TokenRecoverer is Auth, ITokenRecoverer {
         auth
     {
         root.relyContract(address(target), address(this));
-        target.recoverTokens(token, tokenId, to, amount);
+
+        if (tokenId == 0) {
+            target.recoverTokens(token, to, amount);
+        } else {
+            target.recoverTokens(token, tokenId, to, amount);
+        }
+
         root.denyContract(address(target), address(this));
 
         emit RecoverTokens(target, token, tokenId, to, amount);
