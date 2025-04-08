@@ -41,7 +41,7 @@ import {PoolManager} from "src/vaults/PoolManager.sol";
 
 import {MockGateway} from "test/pools/fuzzing/recon-pools/mocks/MockGateway.sol";
 import {ShareClassManagerWrapper} from "test/pools/fuzzing/recon-pools/utils/ShareClassManagerWrapper.sol";
-import {MockMessageDispatcher} from "test/vaults/fuzzing/recon-vault/mocks/MockMessageDispatcher.sol";
+import {MockMessageDispatcher} from "test/vaults/fuzzing/recon-core/mocks/MockMessageDispatcher.sol";
 
 abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     enum Op {
