@@ -163,7 +163,7 @@ interface IVaultRouter is IMulticall, IRecoverable {
 
     /// @notice Register an asset to be used in a pool existing in centrifugeId
     /// @param centrifugeId Where the asset will be registered
-    /// @param asset If tokenId == 0, an ERC20 address, if tokenId != 0, and ERC6909 address
+    /// @param asset If tokenId == 0, an ERC20 address, if tokenId != 0, an ERC6909 address
     /// @param tokenId An ERC6909 tokenId
     function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId) external payable;
 
