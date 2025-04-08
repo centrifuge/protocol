@@ -39,8 +39,8 @@ contract PoolsDeployer is CommonDeployer {
     // Data
     AssetId public immutable USD = newAssetId(840);
 
-    function deployPools(uint16 chainId, ISafe adminSafe_, address deployer) public {
-        deployCommon(chainId, adminSafe_, deployer);
+    function deployPools(uint16 centrifugeId, ISafe adminSafe_, address deployer) public {
+        deployCommon(centrifugeId, adminSafe_, deployer);
 
         poolRegistry = new PoolRegistry(deployer);
         assetRegistry = new AssetRegistry(deployer);

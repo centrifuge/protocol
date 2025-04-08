@@ -88,10 +88,10 @@ interface IPoolManager is IRecoverable {
         uint64 computedAt
     );
     event TransferShares(
+        uint64 centrifugeId,
         uint64 indexed poolId,
         bytes16 indexed scId,
         address indexed sender,
-        uint64 destinationId,
         bytes32 destinationAddress,
         uint128 amount
     );
@@ -140,20 +140,19 @@ interface IPoolManager is IRecoverable {
 
     /// @notice transfers share class tokens to a cross-chain recipient address
     /// @dev    To transfer to evm chains, pad a 20 byte evm address with 12 bytes of 0
+    /// @param  centrifugeId The destination chain id
     /// @param  poolId The centrifuge pool id
     /// @param  scId The share class id
-    /// @param  destinationId The destination chain id
     /// @param  receiver A bytes32 representation of the receiver address
     /// @param  amount The amount of tokens to transfer
-    function transferShares(uint64 poolId, bytes16 scId, uint16 destinationId, bytes32 receiver, uint128 amount)
+    function transferShares(uint16 centrifugeId, uint64 poolId, bytes16 scId, bytes32 receiver, uint128 amount)
         external;
 
     /// @notice     Registers an ERC-20 or ERC-6909 asset in another chain.
     /// @dev        `decimals()` MUST return a `uint8` value between 2 and 18.
     ///             `name()` and `symbol()` MAY return no values.
-    function registerAsset(address asset, uint256 tokenId, uint16 destinationChain)
-        external
-        returns (uint128 assetId);
+    /// @param  centrifugeId Chain to where transfer the shares
+    function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId) external returns (uint128 assetId);
 
     function deployVault(uint64 poolId, bytes16 scId, uint128 assetId, address factory) external returns (address);
 

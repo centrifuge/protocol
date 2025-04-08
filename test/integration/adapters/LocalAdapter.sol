@@ -10,13 +10,13 @@ import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 /// An adapter that sends the message to the another MessageHandler and acts as MessageHandler too.
 contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
-    uint16 localId;
+    uint16 localCentrifugeId;
     IMessageHandler public gateway;
     IMessageHandler public endpoint;
 
-    constructor(uint16 localId_, IMessageHandler gateway_, address deployer) Auth(deployer) {
+    constructor(uint16 localCentrifugeId_, IMessageHandler gateway_, address deployer) Auth(deployer) {
         gateway = gateway_;
-        localId = localId_;
+        localCentrifugeId = localCentrifugeId_;
     }
 
     function setEndpoint(IMessageHandler endpoint_) public {
@@ -24,20 +24,20 @@ contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
     }
 
     /// @inheritdoc IMessageHandler
-    function handle(uint16 remoteId, bytes calldata message) external {
+    function handle(uint16 remoteCentrifugeId, bytes calldata message) external {
         // Local messages must be bypassed
-        assertNotEq(localId, remoteId, "Local messages must be bypassed");
+        assertNotEq(localCentrifugeId, remoteCentrifugeId, "Local messages must be bypassed");
 
-        gateway.handle(remoteId, message);
+        gateway.handle(remoteCentrifugeId, message);
     }
 
     /// @inheritdoc IAdapter
-    function send(uint16 destinationId, bytes calldata payload, uint256, address) external payable {
+    function send(uint16 remoteCentrifugeId, bytes calldata payload, uint256, address) external payable {
         // Local messages must be bypassed
-        assertNotEq(destinationId, localId, "Local messages must be bypassed");
+        assertNotEq(remoteCentrifugeId, localCentrifugeId, "Local messages must be bypassed");
 
         // The other handler will receive the message as comming from this
-        endpoint.handle(localId, payload);
+        endpoint.handle(localCentrifugeId, payload);
     }
 
     /// @inheritdoc IAdapter

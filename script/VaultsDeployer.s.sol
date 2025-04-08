@@ -36,8 +36,8 @@ contract VaultsDeployer is CommonDeployer {
     address public freelyTransferable;
     address public tokenFactory;
 
-    function deployVaults(uint16 chainId, ISafe adminSafe_, address deployer) public {
-        deployCommon(chainId, adminSafe_, deployer);
+    function deployVaults(uint16 centrifugeId, ISafe adminSafe_, address deployer) public {
+        deployCommon(centrifugeId, adminSafe_, deployer);
 
         escrow = new Escrow{salt: SALT}(deployer);
         routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow2"))}(deployer);
@@ -55,7 +55,7 @@ contract VaultsDeployer is CommonDeployer {
 
         poolManager = new PoolManager(address(escrow), tokenFactory, vaultFactories);
         balanceSheet = new BalanceSheet(address(escrow));
-        vaultRouter = new VaultRouter(chainId, address(routerEscrow), address(gateway), address(poolManager));
+        vaultRouter = new VaultRouter(centrifugeId, address(routerEscrow), address(gateway), address(poolManager));
 
         _vaultsRegister();
         _vaultsEndorse();

@@ -59,8 +59,8 @@ contract Guardian is IGuardian {
     }
 
     /// @inheritdoc IGuardian
-    function setChain(uint16 chainId, string calldata name, string calldata symbol) external onlySafe {
-        assetRegistry.setChain(chainId, name, symbol);
+    function setChain(uint16 centrifugeId, string calldata name, string calldata symbol) external onlySafe {
+        assetRegistry.setChain(centrifugeId, name, symbol);
     }
 
     /// @inheritdoc IGuardian
@@ -84,29 +84,29 @@ contract Guardian is IGuardian {
     }
 
     /// @inheritdoc IGuardian
-    function scheduleUpgrade(uint16 chainId, address target) external onlySafe {
-        sender.sendScheduleUpgrade(chainId, bytes32(bytes20(target)));
+    function scheduleUpgrade(uint16 centrifugeId, address target) external onlySafe {
+        sender.sendScheduleUpgrade(centrifugeId, bytes32(bytes20(target)));
     }
 
     /// @inheritdoc IGuardian
-    function cancelUpgrade(uint16 chainId, address target) external onlySafe {
-        sender.sendCancelUpgrade(chainId, bytes32(bytes20(target)));
+    function cancelUpgrade(uint16 centrifugeId, address target) external onlySafe {
+        sender.sendCancelUpgrade(centrifugeId, bytes32(bytes20(target)));
     }
 
     /// @inheritdoc IGuardian
-    function initiateMessageRecovery(uint16 chainId, uint16 adapterChainId, IAdapter adapter, bytes32 hash)
+    function initiateMessageRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
         external
         onlySafe
     {
-        sender.sendInitiateMessageRecovery(chainId, adapterChainId, bytes32(bytes20(address(adapter))), hash);
+        sender.sendInitiateMessageRecovery(centrifugeId, adapterCentrifugeId, bytes32(bytes20(address(adapter))), hash);
     }
 
     /// @inheritdoc IGuardian
-    function disputeMessageRecovery(uint16 chainId, uint16 adapterChainId, IAdapter adapter, bytes32 hash)
+    function disputeMessageRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
         external
         onlySafe
     {
-        sender.sendDisputeMessageRecovery(chainId, adapterChainId, bytes32(bytes20(address(adapter))), hash);
+        sender.sendDisputeMessageRecovery(centrifugeId, adapterCentrifugeId, bytes32(bytes20(address(adapter))), hash);
     }
 
     // --- Helpers ---

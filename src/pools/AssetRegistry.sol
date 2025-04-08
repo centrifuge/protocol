@@ -48,7 +48,7 @@ contract AssetRegistry is ERC6909Fungible, IAssetRegistry {
     /// @inheritdoc IERC6909MetadataExt
     function name(uint256 asset_) external view returns (string memory) {
         AssetId assetId = AssetId.wrap(asset_.toUint128());
-        Chain memory chain_ = chain[assetId.chainId()];
+        Chain memory chain_ = chain[assetId.centrifugeId()];
 
         if (bytes(chain_.name).length == 0) return asset[assetId].name;
         return string.concat(chain_.name, " ", asset[assetId].name);
@@ -57,7 +57,7 @@ contract AssetRegistry is ERC6909Fungible, IAssetRegistry {
     /// @inheritdoc IERC6909MetadataExt
     function symbol(uint256 asset_) external view returns (string memory) {
         AssetId assetId = AssetId.wrap(asset_.toUint128());
-        Chain memory chain_ = chain[assetId.chainId()];
+        Chain memory chain_ = chain[assetId.centrifugeId()];
 
         return string.concat(chain_.symbol, asset[assetId].symbol);
     }
