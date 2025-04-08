@@ -22,7 +22,7 @@ import {Hub} from "src/hub/Hub.sol";
 import "forge-std/Script.sol";
 import {CommonDeployer} from "script/CommonDeployer.s.sol";
 
-contract PoolsDeployer is CommonDeployer {
+contract HubDeployer is CommonDeployer {
     // Main contracts
     HubRegistry public hubRegistry;
     Accounting public accounting;
@@ -89,7 +89,7 @@ contract PoolsDeployer is CommonDeployer {
         hubRegistry.registerAsset(USD, 18);
     }
 
-    function removePoolsDeployerAccess(address deployer) public {
+    function removeHubDeployerAccess(address deployer) public {
         removeCommonDeployerAccess(deployer);
 
         hubRegistry.deny(deployer);

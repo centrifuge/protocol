@@ -14,7 +14,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
 
-import {FullDeployer, PoolsDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
+import {FullDeployer, HubDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
 
 // Script to deploy CP and CP with an Localhost Adapter.
 contract LocalhostDeployer is FullDeployer {
