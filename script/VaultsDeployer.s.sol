@@ -55,7 +55,7 @@ contract VaultsDeployer is CommonDeployer {
 
         poolManager = new PoolManager(address(escrow), tokenFactory, vaultFactories);
         balanceSheet = new BalanceSheet(address(escrow));
-        vaultRouter = new VaultRouter(centrifugeId, address(routerEscrow), address(gateway), address(poolManager));
+        vaultRouter = new VaultRouter(address(routerEscrow), address(gateway), address(poolManager), messageDispatcher);
 
         _vaultsRegister();
         _vaultsEndorse();

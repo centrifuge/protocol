@@ -11,6 +11,7 @@ import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRecoverable} from "src/common/interfaces/IRoot.sol";
+import {IMessageDispatcher} from "src/common/interfaces/IMessageDispatcher.sol";
 
 import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
@@ -34,17 +35,19 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
 
     IEscrow public immutable escrow;
     IGateway public immutable gateway;
-    uint16 public immutable localCentrifugeId;
     IPoolManager public immutable poolManager;
+    IMessageDispatcher public immutable messageDispatcher;
 
     /// @inheritdoc IVaultRouter
     mapping(address controller => mapping(address vault => uint256 amount)) public lockedRequests;
 
-    constructor(uint16 localCentrifugeId_, address escrow_, address gateway_, address poolManager_) Auth(msg.sender) {
-        localCentrifugeId = localCentrifugeId_;
+    constructor(address escrow_, address gateway_, address poolManager_, IMessageDispatcher messageDispatcher_)
+        Auth(msg.sender)
+    {
         escrow = IEscrow(escrow_);
         gateway = IGateway(gateway_);
         poolManager = IPoolManager(poolManager_);
+        messageDispatcher = messageDispatcher_;
     }
 
     // --- Administration ---
@@ -310,9 +313,8 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
     }
 
     /// @inheritdoc IVaultRouter
-    function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 amount) {
-        if (centrifugeId == localCentrifugeId) return 0;
-        (, amount) = IGateway(gateway).estimate(centrifugeId, payload);
+    function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256) {
+        return messageDispatcher.estimate(centrifugeId, payload);
     }
 
     /// @inheritdoc IVaultRouter
