@@ -1,0 +1,65 @@
+name: Deploy to Testnet
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to Base Sepolia
+    runs-on: ubuntu-latest
+    
+    env:
+      FOUNDRY_PROFILE: deployment
+      DEPLOYMENT_SALT: ${{ github.sha }}
+      # Environment for the Base Sepolia network
+      RPC_URL: ${{ secrets.BASE_SEPOLIA_RPC_URL }}
+      PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+      ETHERSCAN_API_KEY: ${{ secrets.BASE_ETHERSCAN_API_KEY }}
+      
+      # Protocol configuration
+      CENTRIFUGE_CHAIN_ID: 23
+      ADMIN: ${{ secrets.TESTNET_ADMIN_SAFE }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Build contracts
+        run: forge build --sizes --deny-warnings
+
+      - name: Deploy full protocol
+        run: |
+          # Deploy the full protocol without a specific adapter
+          forge script script/FullDeployer.s.sol:FullDeployer \
+            --sig "run()" \
+            --rpc-url $RPC_URL \
+            --broadcast \
+            --verify \
+            --etherscan-api-key $ETHERSCAN_API_KEY \
+            -vvvv
+        
+      - name: Save deployment artifacts
+        run: |
+          # Create directory if it doesn't exist
+          mkdir -p deployments/testnet/base-sepolia
+          
+          # Copy deployment output to deployments directory
+          cp broadcast/FullDeployer.s.sol/*/run-latest.json deployments/testnet/base-sepolia/deployment.json
+        
+      - name: Commit deployment artifacts
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "chore: update base-sepolia deployment artifacts [skip ci]"
+          file_pattern: deployments/testnet/base-sepolia/deployment.json
+          commit_user_name: GitHub Actions
+          commit_user_email: actions@github.com
+          commit_author: GitHub Actions <actions@github.com>
