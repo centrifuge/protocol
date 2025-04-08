@@ -170,7 +170,8 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         uint256 assetTokenId,
         uint16 /* TODO: destinationChain */
     ) public returns (uint64 poolId, address vaultAddress, uint128 assetId) {
-        if (poolManager.shareToken(POOL_A.raw(), scId) == address(0)) {
+        try poolManager.shareToken(POOL_A.raw(), scId) {}
+        catch {
             if (poolManager.pools(POOL_A.raw()) == 0) {
                 centrifugeChain.addPool(POOL_A.raw());
             }
@@ -178,13 +179,13 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
             centrifugeChain.updatePricePoolPerShare(POOL_A.raw(), scId, uint128(10 ** 18), uint64(block.timestamp));
         }
 
-        if (poolManager.assetToId(asset, assetTokenId) == 0) {
+        try poolManager.assetToId(asset, assetTokenId) {
+            assetId = poolManager.assetToId(asset, assetTokenId);
+        } catch {
             assetId = poolManager.registerAsset(asset, assetTokenId, OTHER_CHAIN_ID);
             centrifugeChain.updatePricePoolPerAsset(
                 POOL_A.raw(), scId, assetId, uint128(10 ** 18), uint64(block.timestamp)
             );
-        } else {
-            assetId = poolManager.assetToId(asset, assetTokenId);
         }
 
         bytes32 vaultFactory = _vaultKindToVaultFactory(vaultKind);

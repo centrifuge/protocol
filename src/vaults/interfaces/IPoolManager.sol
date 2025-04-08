@@ -117,6 +117,7 @@ interface IPoolManager is IRecoverable {
     );
 
     /// @notice Returns the asset address and tokenId associated with a given asset id.
+    /// @dev Reverts if asset id does not exist
     ///
     /// @param assetId The underlying internal uint128 assetId.
     /// @return asset The address of the asset linked to the given asset id.
@@ -124,25 +125,12 @@ interface IPoolManager is IRecoverable {
     function idToAsset(uint128 assetId) external view returns (address asset, uint256 tokenId);
 
     /// @notice Returns assetId given the asset address and tokenId.
+    /// @dev Reverts if asset id does not exist
     ///
     /// @param asset The address of the asset linked to the given asset id.
     /// @param tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
     /// @return assetId The underlying internal uint128 assetId.
     function assetToId(address asset, uint256 tokenId) external view returns (uint128 assetId);
-
-    /// @notice Returns the asset address and tokenId associated with a given asset id. Ensures asset exists.
-    ///
-    /// @param assetId The underlying internal uint128 assetId.
-    /// @return asset The address of the asset linked to the given asset id.
-    /// @return tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
-    function checkedIdToAsset(uint128 assetId) external view returns (address asset, uint256 tokenId);
-
-    /// @notice Returns assetId given the asset address and tokenId. Ensures asset exists.
-    ///
-    /// @param asset The address of the asset linked to the given asset id.
-    /// @param tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
-    /// @return assetId The underlying internal uint128 assetId.
-    function checkedAssetToId(address asset, uint256 tokenId) external view returns (uint128 assetId);
 
     /// @notice Updates a contract parameter
     /// @param what Accepts a bytes32 representation of 'gateway', 'investmentManager', 'tokenFactory',
@@ -179,11 +167,9 @@ interface IPoolManager is IRecoverable {
     /// @notice Returns whether the given pool id is active
     function isPoolActive(uint64 poolId) external view returns (bool);
 
-    /// @notice Returns the share class token for a given pool and share class id
+    /// @notice Returns the share class token for a given pool and share class id.
+    /// @dev Reverts if share class does not exists
     function shareToken(uint64 poolId, bytes16 scId) external view returns (address);
-
-    /// @notice Returns the share class token for a given pool and share class id. Ensures share class exists
-    function checkedShareToken(uint64 poolId, bytes16 scId) external view returns (address);
 
     /// @notice Function to get the details of a vault
     /// @dev    Reverts if vault does not exist
