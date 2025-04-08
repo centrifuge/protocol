@@ -30,7 +30,7 @@ import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInv
 import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
-import {PriceConversionLib} from "src/vaults/libraries/PriceConversionLib.sol";
+import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 
 /// @title  Sync Investment Manager
@@ -154,7 +154,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         uint128 assetId = poolManager.vaultDetails(vaultAddr).assetId;
 
         uint128 latestPrice = _pricePerShare(vaultAddr, vault_.poolId(), vault_.trancheId(), assetId);
-        assets = PriceConversionLib.calculateAssets(shares.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down);
+        assets = VaultPricingLib.calculateAssets(shares.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down);
     }
 
     /// @inheritdoc ISyncDepositManager
@@ -167,7 +167,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         uint128 assetId = poolManager.vaultDetails(vaultAddr).assetId;
 
         uint128 latestPrice = _pricePerShare(vaultAddr, vault_.poolId(), vault_.trancheId(), assetId);
-        shares = PriceConversionLib.calculateShares(assets.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down);
+        shares = VaultPricingLib.calculateShares(assets.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down);
     }
 
     /// @inheritdoc IVaultManager

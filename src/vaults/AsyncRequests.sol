@@ -30,7 +30,7 @@ import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInv
 import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
-import {PriceConversionLib} from "src/vaults/libraries/PriceConversionLib.sol";
+import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 
 /// @title  Investment Manager
@@ -218,7 +218,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         AsyncInvestmentState storage state = investments[vault_][user];
         require(state.pendingDepositRequest != 0, "AsyncRequests/no-pending-deposit-request");
         state.depositPrice =
-            PriceConversionLib.calculatePrice(vault_, _maxDeposit(vault_, user) + assets, state.maxMint + shares);
+            VaultPricingLib.calculatePrice(vault_, _maxDeposit(vault_, user) + assets, state.maxMint + shares);
         state.maxMint = state.maxMint + shares;
         state.pendingDepositRequest = state.pendingDepositRequest > assets ? state.pendingDepositRequest - assets : 0;
 
@@ -246,7 +246,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         require(state.pendingRedeemRequest != 0, "AsyncRequests/no-pending-redeem-request");
 
         // Calculate new weighted average redeem price and update order book values
-        state.redeemPrice = PriceConversionLib.calculatePrice(
+        state.redeemPrice = VaultPricingLib.calculatePrice(
             vault_, state.maxWithdraw + assets, ((maxRedeem(vault_, user)) + shares).toUint128()
         );
         state.maxWithdraw = state.maxWithdraw + assets;
@@ -351,9 +351,9 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
         AsyncInvestmentState storage state = investments[vaultAddr][controller];
         uint128 sharesUp =
-            PriceConversionLib.calculateShares(assets.toUint128(), vaultAddr, state.depositPrice, MathLib.Rounding.Up);
+            VaultPricingLib.calculateShares(assets.toUint128(), vaultAddr, state.depositPrice, MathLib.Rounding.Up);
         uint128 sharesDown =
-            PriceConversionLib.calculateShares(assets.toUint128(), vaultAddr, state.depositPrice, MathLib.Rounding.Down);
+            VaultPricingLib.calculateShares(assets.toUint128(), vaultAddr, state.depositPrice, MathLib.Rounding.Down);
         _processDeposit(state, sharesUp, sharesDown, vaultAddr, receiver);
         shares = uint256(sharesDown);
     }
@@ -367,8 +367,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         AsyncInvestmentState storage state = investments[vaultAddr][controller];
         uint128 shares_ = shares.toUint128();
         _processDeposit(state, shares_, shares_, vaultAddr, receiver);
-        assets =
-            uint256(PriceConversionLib.calculateAssets(shares_, vaultAddr, state.depositPrice, MathLib.Rounding.Down));
+        assets = uint256(VaultPricingLib.calculateAssets(shares_, vaultAddr, state.depositPrice, MathLib.Rounding.Down));
     }
 
     function _processDeposit(
@@ -399,9 +398,9 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
         AsyncInvestmentState storage state = investments[vaultAddr][controller];
         uint128 assetsUp =
-            PriceConversionLib.calculateAssets(shares.toUint128(), vaultAddr, state.redeemPrice, MathLib.Rounding.Up);
+            VaultPricingLib.calculateAssets(shares.toUint128(), vaultAddr, state.redeemPrice, MathLib.Rounding.Up);
         uint128 assetsDown =
-            PriceConversionLib.calculateAssets(shares.toUint128(), vaultAddr, state.redeemPrice, MathLib.Rounding.Down);
+            VaultPricingLib.calculateAssets(shares.toUint128(), vaultAddr, state.redeemPrice, MathLib.Rounding.Down);
         _processRedeem(state, assetsUp, assetsDown, vaultAddr, receiver, controller);
         assets = uint256(assetsDown);
     }
@@ -415,8 +414,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         AsyncInvestmentState storage state = investments[vaultAddr][controller];
         uint128 assets_ = assets.toUint128();
         _processRedeem(state, assets_, assets_, vaultAddr, receiver, controller);
-        shares =
-            uint256(PriceConversionLib.calculateShares(assets_, vaultAddr, state.redeemPrice, MathLib.Rounding.Down));
+        shares = uint256(VaultPricingLib.calculateShares(assets_, vaultAddr, state.redeemPrice, MathLib.Rounding.Down));
     }
 
     function _processRedeem(
@@ -512,7 +510,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
     function _maxDeposit(address vaultAddr, address user) internal view returns (uint128 assets) {
         AsyncInvestmentState memory state = investments[vaultAddr][user];
-        assets = PriceConversionLib.calculateAssets(state.maxMint, vaultAddr, state.depositPrice, MathLib.Rounding.Down);
+        assets = VaultPricingLib.calculateAssets(state.maxMint, vaultAddr, state.depositPrice, MathLib.Rounding.Down);
     }
 
     /// @inheritdoc IDepositManager
@@ -532,7 +530,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         if (!_canTransfer(vaultAddr, user, address(0), 0)) return 0;
         AsyncInvestmentState memory state = investments[vaultAddr][user];
         shares = uint256(
-            PriceConversionLib.calculateShares(state.maxWithdraw, vaultAddr, state.redeemPrice, MathLib.Rounding.Down)
+            VaultPricingLib.calculateShares(state.maxWithdraw, vaultAddr, state.redeemPrice, MathLib.Rounding.Down)
         );
     }
 

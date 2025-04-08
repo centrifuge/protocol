@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
+pragma solidity >=0.5.0;
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
