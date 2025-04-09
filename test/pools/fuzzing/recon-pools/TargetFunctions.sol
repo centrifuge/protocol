@@ -20,12 +20,12 @@ import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
 import {AdminTargets} from "./targets/AdminTargets.sol";
 import {Helpers} from "./utils/Helpers.sol";
 import {ManagerTargets} from "./targets/ManagerTargets.sol";
-import {PoolRouterTargets} from "./targets/PoolRouterTargets.sol";
+import {HubTargets} from "./targets/HubTargets.sol";
 
 abstract contract TargetFunctions is
     AdminTargets,
     ManagerTargets,
-    PoolRouterTargets
+    HubTargets
 {
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
     /// === SHORTCUT FUNCTIONS === ///

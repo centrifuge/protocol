@@ -18,7 +18,7 @@ import {Helpers} from "test/pools/fuzzing/recon-pools/utils/Helpers.sol";
 import {BeforeAfter, OpType} from "../BeforeAfter.sol";
 import {Properties} from "../Properties.sol";
 
-abstract contract PoolRouterTargets is
+abstract contract HubTargets is
     BaseTargetFunctions,
     Properties
 {
