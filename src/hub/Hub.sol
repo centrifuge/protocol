@@ -194,11 +194,12 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
 
         // Retrieve amount of 1 asset unit in pool currency
         uint128 assetUnitAmount = (10 ** hubRegistry.decimals(assetId.raw())).toUint128();
+        uint128 poolUnitAmount = (10 ** hubRegistry.decimals(poolCurrency.raw())).toUint128();
         uint128 assetAmountPerPool =
             valuation.getQuote(assetUnitAmount, assetId.addr(), poolCurrency.addr()).toUint128();
         
         // Retrieve price by normalizing by pool denomination
-        D18 pricePoolPerAsset = d18(assetAmountPerPool, assetUnitAmount);
+        D18 pricePoolPerAsset = d18(assetAmountPerPool, poolUnitAmount);
         sender.sendNotifyPricePoolPerAsset(unlockedPoolId, scId, assetId, pricePoolPerAsset);
     }
 
