@@ -108,6 +108,19 @@ contract MathLibTest is Test {
         MathLib.toUint32(x);
     }
 
+    function testToUint64(uint256 x) public pure {
+        x = bound(x, 0, type(uint64).max);
+
+        assertEq(x, uint256(MathLib.toUint64(x)));
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testToUint64Overflow(uint256 x) public {
+        vm.assume(x > type(uint64).max);
+        vm.expectRevert(MathLib.Uint64_Overflow.selector);
+        MathLib.toUint64(x);
+    }
+
     function testMin(uint256 x, uint256 y) public pure {
         vm.assume(x > 0);
         y = uint256(bound(y, 0, x - 1));
