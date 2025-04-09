@@ -154,40 +154,6 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.file("", address(0), true);
     }
 
-    function testRecoverTokensERC20(uint256 amount) public {
-        vm.assume(amount > 0);
-
-        address asset = address(erc20);
-        address to = makeAddr("to");
-        erc20.mint(address(poolManager), amount);
-
-        assertEq(erc20.balanceOf(to), 0);
-        poolManager.recoverTokens(asset, 0, to, amount);
-        assertEq(erc20.balanceOf(address(poolManager)), 0);
-        assertEq(erc20.balanceOf(to), amount);
-    }
-
-    function testRecoverTokensERC6909(uint256 amount, uint8 tokenId) public {
-        vm.assume(amount > 0);
-        tokenId = uint8(bound(tokenId, 2, 18));
-
-        MockERC6909 erc6909 = new MockERC6909();
-        address asset = address(erc6909);
-        address to = makeAddr("to");
-        erc6909.mint(address(poolManager), tokenId, amount);
-
-        assertEq(erc6909.balanceOf(to, tokenId), 0);
-        poolManager.recoverTokens(asset, tokenId, to, amount);
-        assertEq(erc6909.balanceOf(address(poolManager), tokenId), 0);
-        assertEq(erc6909.balanceOf(to, tokenId), amount);
-    }
-
-    function testRecoverTokensUnauthorized() public {
-        vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolManager.recoverTokens(address(0), 0, address(0), 0);
-    }
-
     function testAddPool(uint64 poolId) public {
         centrifugeChain.addPool(poolId);
 

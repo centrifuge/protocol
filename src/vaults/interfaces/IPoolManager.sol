@@ -3,8 +3,6 @@ pragma solidity >=0.5.0;
 
 import {D18, d18} from "src/misc/types/D18.sol";
 
-import {IRecoverable} from "src/common/interfaces/IRoot.sol";
-
 /// @dev Centrifuge pools
 struct Pool {
     uint256 createdAt;
@@ -68,7 +66,7 @@ struct AssetIdKey {
     uint256 tokenId;
 }
 
-interface IPoolManager is IRecoverable {
+interface IPoolManager {
     event File(bytes32 indexed what, address data);
     event RegisterAsset(
         uint128 indexed assetId,

@@ -21,6 +21,16 @@ interface IRootMessageSender {
     function sendCancelUpgrade(uint16 centrifugeId, bytes32 target) external;
 
     /// @notice Creates and send the message
+    function sendRecoverTokens(
+        uint16 centrifugeId,
+        bytes32 target,
+        bytes32 token,
+        uint256 tokenId,
+        bytes32 to,
+        uint256 amount
+    ) external;
+
+    /// @notice Creates and send the message
     function sendInitiateMessageRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, bytes32 adapter, bytes32 hash)
         external;
 

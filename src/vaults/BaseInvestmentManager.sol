@@ -9,14 +9,14 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {D18} from "src/misc/types/D18.sol";
 
-import {IRecoverable} from "src/common/interfaces/IRoot.sol";
+import {Recoverable} from "src/misc/Recoverable.sol";
 
 import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 
-abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
+abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentManager {
     using MathLib for uint256;
 
     address public immutable root;
@@ -27,15 +27,6 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
     constructor(address root_, address escrow_) Auth(msg.sender) {
         root = root_;
         escrow = escrow_;
-    }
-
-    /// @inheritdoc IRecoverable
-    function recoverTokens(address token, uint256 tokenId, address to, uint256 amount) external auth {
-        if (tokenId == 0) {
-            SafeTransferLib.safeTransfer(token, to, amount);
-        } else {
-            IERC6909(token).transfer(to, tokenId, amount);
-        }
     }
 
     /// @inheritdoc IBaseInvestmentManager

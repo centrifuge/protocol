@@ -9,9 +9,9 @@ import {D18, d18} from "src/misc/types/D18.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
+import {Recoverable} from "src/misc/Recoverable.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 import {IVaultMessageSender} from "../common/interfaces/IGatewaySenders.sol";
@@ -26,7 +26,7 @@ import {IPerPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
-contract BalanceSheet is Auth, IRecoverable, IBalanceSheet, IBalanceSheetGatewayHandler, IUpdateContract {
+contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayHandler, IUpdateContract {
     using MathLib for *;
 
     IPerPoolEscrow public immutable escrow;
@@ -54,15 +54,6 @@ contract BalanceSheet is Auth, IRecoverable, IBalanceSheet, IBalanceSheetGateway
         else if (what == "sender") sender = IVaultMessageSender(data);
         else revert("BalanceSheet/file-unrecognized-param");
         emit File(what, data);
-    }
-
-    /// @inheritdoc IRecoverable
-    function recoverTokens(address token, uint256 tokenId, address to, uint256 amount) external auth {
-        if (tokenId == 0) {
-            SafeTransferLib.safeTransfer(token, to, amount);
-        } else {
-            IERC6909(token).transfer(to, tokenId, amount);
-        }
     }
 
     /// --- IUpdateContract Implementation ---

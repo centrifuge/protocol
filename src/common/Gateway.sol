@@ -2,14 +2,12 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
-import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {ArrayLib} from "src/misc/libraries/ArrayLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
-import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
+import {Recoverable} from "src/misc/Recoverable.sol";
 
-import {IRoot, IRecoverable} from "src/common/interfaces/IRoot.sol";
+import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
@@ -24,7 +22,7 @@ import {IGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 ///         Handling incoming messages from the Centrifuge Chain through multiple adapters.
 ///         Supports processing multiple duplicate messages in parallel by
 ///         storing counts of messages and proofs that have been received.
-contract Gateway is Auth, IGateway, IRecoverable {
+contract Gateway is Auth, IGateway, Recoverable {
     using ArrayLib for uint16[8];
     using BytesLib for bytes;
     using MathLib for uint256;
@@ -115,31 +113,15 @@ contract Gateway is Auth, IGateway, IRecoverable {
         emit File(what, instance);
     }
 
-    /// @inheritdoc IRecoverable
-    function recoverTokens(address token, uint256 tokenId, address receiver, uint256 amount) external auth {
-        if (token == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)) {
-            SafeTransferLib.safeTransferETH(receiver, amount);
-        } else if (tokenId == 0) {
-            SafeTransferLib.safeTransfer(token, receiver, amount);
-        } else {
-            IERC6909(token).transfer(receiver, tokenId, amount);
-        }
-    }
-
     //----------------------------------------------------------------------------------------------
     // Incoming methods
     //----------------------------------------------------------------------------------------------
 
-    /// @dev Handle a batch of messages
-    function handle(uint16 centrifugeId, bytes calldata message) external pauseable {
-        for (uint256 pos; pos < message.length;) {
-            bytes calldata inner = message[pos:message.length];
-            _handle(centrifugeId, inner, IAdapter(msg.sender), false);
-            pos += processor.messageLength(inner);
-        }
+    /// @dev Handle an inbound payload
+    function handle(uint16 centrifugeId, bytes calldata payload) external pauseable {
+        _handle(centrifugeId, payload, IAdapter(msg.sender), false);
     }
 
-    /// @dev Handle an isolated message
     function _handle(uint16 centrifugeId, bytes calldata payload, IAdapter adapter_, bool isRecovery) internal {
         Adapter memory adapter = _activeAdapters[centrifugeId][adapter_];
         require(adapter.id != 0, InvalidAdapter());
@@ -153,8 +135,7 @@ contract Gateway is Auth, IGateway, IRecoverable {
         bool isMessageProof = messageProofHash != bytes32(0);
         if (adapter.quorum == 1 && !isMessageProof) {
             // Special case for gas efficiency
-            processor.handle(centrifugeId, payload);
-            emit ExecuteMessage(centrifugeId, payload, adapter_);
+            _handleBatch(centrifugeId, payload, adapter_);
             return;
         }
 
@@ -185,13 +166,11 @@ contract Gateway is Auth, IGateway, IRecoverable {
             // Reduce votes by quorum
             state.votes.decreaseFirstNValues(adapter.quorum);
 
-            // Handle message
             if (isMessageProof) {
-                processor.handle(centrifugeId, state.pendingMessage);
-                emit ExecuteMessage(centrifugeId, state.pendingMessage, adapter_);
-            } else {
-                processor.handle(centrifugeId, payload);
-                emit ExecuteMessage(centrifugeId, payload, adapter_);
+                _handleBatch(centrifugeId, state.pendingMessage, adapter_);
+            }
+            else {
+                _handleBatch(centrifugeId, payload, adapter_);
             }
 
             // Only if there are no more pending messages, remove the pending message
@@ -200,6 +179,18 @@ contract Gateway is Auth, IGateway, IRecoverable {
             }
         } else if (!isMessageProof) {
             state.pendingMessage = payload;
+        }
+    }
+
+    function _handleBatch(uint16 centrifugeId, bytes memory batch_, IAdapter adapter_) internal {
+        bytes memory message = batch_;
+        for (uint256 start; start < batch_.length;) {
+            uint256 length = processor.messageLength(message);
+            message = batch_.slice(start, length);
+            start = length;
+
+            processor.handle(centrifugeId, message);
+            emit ExecuteMessage(centrifugeId, message, adapter_);
         }
     }
 
