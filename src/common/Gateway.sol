@@ -188,7 +188,7 @@ contract Gateway is Auth, IGateway, Recoverable {
         for (uint256 start; start < batch_.length;) {
             uint256 length = processor.messageLength(message);
             message = batch_.slice(start, length);
-            start = length;
+            start += length;
 
             try processor.handle(centrifugeId, message) {
                 emit ExecuteMessage(centrifugeId, message);
