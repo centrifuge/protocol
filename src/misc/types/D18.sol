@@ -96,6 +96,10 @@ function eq(D18 a, D18 b) pure returns (bool) {
     return D18.unwrap(a) == D18.unwrap(b);
 }
 
+function geq(D18 a, D18 b) pure returns (bool) {
+    return D18.unwrap(a) >= D18.unwrap(b);
+}
+
 function raw(D18 d) pure returns (uint128) {
     return D18.unwrap(d);
 }
@@ -107,6 +111,7 @@ using {
     inner,
     eq,
     mulD8 as *,
+    geq as >=,
     mulUint128,
     mulUint256,
     reciprocalMulUint128,
