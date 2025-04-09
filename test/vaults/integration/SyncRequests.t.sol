@@ -124,6 +124,11 @@ contract SyncRequestsUnauthorizedTest is SyncRequestsBaseTest {
         syncRequests.setValuation(0, bytes16(0), address(0), 0, address(0));
     }
 
+    function testUpdate(address nonWard) public {
+        _expectUnauthorized(nonWard);
+        syncRequests.update(0, bytes16(0), bytes(""));
+    }
+
     function _expectUnauthorized(address caller) internal {
         vm.assume(
             caller != address(root) && caller != address(poolManager) && caller != syncDepositVaultFactory

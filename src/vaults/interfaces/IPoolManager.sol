@@ -109,8 +109,8 @@ interface IPoolManager {
     event UnlinkVault(
         uint64 indexed poolId, bytes16 indexed scId, address indexed asset, uint256 tokenId, address vault
     );
-    event UpdateShareMaxPriceAge(uint64 indexed poolId, bytes16 indexed scId, uint64 maxPriceAge);
-    event UpdateAssetMaxPriceAge(
+    event UpdateMaxSharePriceAge(uint64 indexed poolId, bytes16 indexed scId, uint64 maxPriceAge);
+    event UpdateMaxAssetPriceAge(
         uint64 indexed poolId, bytes16 indexed scId, address indexed asset, uint256 tokenId, uint64 maxPriceAge
     );
 

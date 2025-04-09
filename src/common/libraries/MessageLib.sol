@@ -61,7 +61,8 @@ enum UpdateContractType {
     Invalid,
     VaultUpdate,
     Permission,
-    MaxPriceAge,
+    MaxAssetPriceAge,
+    MaxSharePriceAge,
     Valuation
 }
 
@@ -684,27 +685,48 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //   UpdateContract.MaxPriceAge (submsg)
+    //   UpdateContract.MaxAssetPriceAge (submsg)
     //---------------------------------------
 
-    struct UpdateContractMaxPriceAge {
-        /// @dev Set to zero to update share max price age
+    struct UpdateContractMaxAssetPriceAge {
         uint128 assetId;
         uint64 maxPriceAge;
     }
 
-    function deserializeUpdateContractMaxPriceAge(bytes memory data)
+    function deserializeUpdateContractMaxAssetPriceAge(bytes memory data)
         internal
         pure
-        returns (UpdateContractMaxPriceAge memory)
+        returns (UpdateContractMaxAssetPriceAge memory)
     {
-        require(updateContractType(data) == UpdateContractType.MaxPriceAge, UnknownMessageType());
+        require(updateContractType(data) == UpdateContractType.MaxAssetPriceAge, UnknownMessageType());
 
-        return UpdateContractMaxPriceAge({assetId: data.toUint128(1), maxPriceAge: data.toUint64(17)});
+        return UpdateContractMaxAssetPriceAge({assetId: data.toUint128(1), maxPriceAge: data.toUint64(17)});
     }
 
-    function serialize(UpdateContractMaxPriceAge memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(UpdateContractType.MaxPriceAge, t.assetId, t.maxPriceAge);
+    function serialize(UpdateContractMaxAssetPriceAge memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(UpdateContractType.MaxAssetPriceAge, t.assetId, t.maxPriceAge);
+    }
+
+    //---------------------------------------
+    //   UpdateContract.MaxSharePriceAge (submsg)
+    //---------------------------------------
+
+    struct UpdateContractMaxSharePriceAge {
+        uint64 maxPriceAge;
+    }
+
+    function deserializeUpdateContractMaxSharePriceAge(bytes memory data)
+        internal
+        pure
+        returns (UpdateContractMaxSharePriceAge memory)
+    {
+        require(updateContractType(data) == UpdateContractType.MaxSharePriceAge, UnknownMessageType());
+
+        return UpdateContractMaxSharePriceAge({maxPriceAge: data.toUint64(1)});
+    }
+
+    function serialize(UpdateContractMaxSharePriceAge memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(UpdateContractType.MaxSharePriceAge, t.maxPriceAge);
     }
 
     //---------------------------------------

@@ -218,8 +218,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
     /// @inheritdoc IPoolManagerGatewayHandler
     function updatePricePoolPerShare(uint64 poolId, bytes16 scId, uint128 price, uint64 computedAt) public auth {
-        ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
-        require(shareClass.shareToken != address(0), "PoolManager/share-token-does-not-exist");
+        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
         require(computedAt >= shareClass.pricePoolPerShare.computedAt, "PoolManager/cannot-set-older-price");
 
@@ -235,8 +234,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         uint128 poolPerAsset_,
         uint64 computedAt
     ) public auth {
-        ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
-        require(shareClass.shareToken != address(0), "PoolManager/share-token-does-not-exist");
+        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
         (address asset, uint256 tokenId) = idToAsset(assetId);
         Price storage poolPerAsset = shareClass.pricePoolPerAsset[asset][tokenId];
@@ -314,29 +312,24 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
                     revert("PoolManager/malformed-vault-update-msg");
                 }
             }
-        } else if (kind == uint8(UpdateContractType.MaxPriceAge)) {
-            MessageLib.UpdateContractMaxPriceAge memory m = MessageLib.deserializeUpdateContractMaxPriceAge(payload);
+        } else if (kind == uint8(UpdateContractType.MaxAssetPriceAge)) {
+            MessageLib.UpdateContractMaxAssetPriceAge memory m =
+                MessageLib.deserializeUpdateContractMaxAssetPriceAge(payload);
 
-            ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
-            require(shareClass.shareToken != address(0), "PoolManager/share-token-does-not-exist");
-
-            // Unset asset id acts as wildcard for setting share max price age
-            if (m.assetId == 0) {
-                (address asset, uint256 tokenId) = idToAsset(m.assetId);
-                shareClass.pricePoolPerAsset[asset][tokenId].maxAge = m.maxPriceAge;
-                emit UpdateAssetMaxPriceAge(poolId, scId, asset, tokenId, m.maxPriceAge);
-            } else {
-                shareClass.pricePoolPerShare.maxAge = m.maxPriceAge;
-                emit UpdateShareMaxPriceAge(poolId, scId, m.maxPriceAge);
-            }
-        } else if (kind == uint8(UpdateContractType.Valuation)) {
-            MessageLib.UpdateContractValuation memory m = MessageLib.deserializeUpdateContractValuation(payload);
+            ShareClassDetails storage shareClass = _shareClass(poolId, scId);
+            require(m.assetId != 0, "PoolManager/unknown-asset");
 
             (address asset, uint256 tokenId) = idToAsset(m.assetId);
-            ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
-            require(shareClass.shareToken != address(0), "PoolManager/share-token-does-not-exist");
+            shareClass.pricePoolPerAsset[asset][tokenId].maxAge = m.maxPriceAge;
+            emit UpdateMaxAssetPriceAge(poolId, scId, asset, tokenId, m.maxPriceAge);
+        } else if (kind == uint8(UpdateContractType.MaxSharePriceAge)) {
+            MessageLib.UpdateContractMaxSharePriceAge memory m =
+                MessageLib.deserializeUpdateContractMaxSharePriceAge(payload);
 
-            syncRequests.setValuation(m.poolId, m.scId, asset, tokenId, address(bytes20(m.valuation)));
+            ShareClassDetails storage shareClass = _shareClass(poolId, scId);
+
+            shareClass.pricePoolPerShare.maxAge = m.maxPriceAge;
+            emit UpdateMaxSharePriceAge(poolId, scId, m.maxPriceAge);
         } else {
             revert("PoolManager/unknown-update-contract-type");
         }
@@ -345,8 +338,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     // --- Public functions ---
     /// @inheritdoc IPoolManager
     function deployVault(uint64 poolId, bytes16 scId, uint128 assetId, address factory) public auth returns (address) {
-        ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
-        require(shareClass.shareToken != address(0), "PoolManager/share-token-does-not-exist");
+        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
         require(vaultFactory[factory], "PoolManager/invalid-factory");
 
         // Rely investment manager on vault so it can mint tokens
@@ -374,8 +366,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
     /// @inheritdoc IPoolManager
     function linkVault(uint64 poolId, bytes16 scId, uint128 assetId, address vault) public auth {
-        ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
-        require(shareClass.shareToken != address(0), "PoolManager/share-token-does-not-exist");
+        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
@@ -389,8 +380,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
     /// @inheritdoc IPoolManager
     function unlinkVault(uint64 poolId, bytes16 scId, uint128 assetId, address vault) public auth {
-        ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
-        require(shareClass.shareToken != address(0), "PoolManager/share-token-does-not-exist");
+        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
@@ -467,8 +457,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         view
         returns (D18 price, uint64 computedAt)
     {
-        ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
-        require(shareClass.shareToken != address(0), "PoolManager/share-token-does-not-exist");
+        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
         if (checkValidity) {
             require(shareClass.pricePoolPerShare.isValid(), "PoolManager/invalid-price");
@@ -499,8 +488,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         view
         returns (Price memory poolPerAsset, Price memory poolPerShare)
     {
-        ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
-        require(shareClass.shareToken != address(0), "PoolManager/share-token-does-not-exist");
+        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
         (address asset, uint256 tokenId) = idToAsset(assetId);
         poolPerAsset = shareClass.pricePoolPerAsset[asset][tokenId];
@@ -547,5 +535,10 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
             hook.staticcall(abi.encodeWithSelector(IERC165.supportsInterface.selector, type(IHook).interfaceId));
 
         return success && data.length == 32 && abi.decode(data, (bool));
+    }
+
+    function _shareClass(uint64 poolId, bytes16 scId) internal view returns (ShareClassDetails storage shareClass) {
+        shareClass = pools[poolId].shareClasses[scId];
+        require(shareClass.shareToken != address(0), "PoolManager/share-token-does-not-exist");
     }
 }

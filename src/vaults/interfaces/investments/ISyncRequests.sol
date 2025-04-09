@@ -17,7 +17,7 @@ struct SyncPriceData {
     D18 poolPerShare;
 }
 
-interface ISyncRequests is ISyncDepositManager {
+interface ISyncRequests is ISyncDepositManager, IUpdateContract {
     event SetValuation(uint64 indexed poolId, bytes16 indexed scId, address asset, uint256 tokenId, address oracle);
 
     error ExceedsMaxDeposit();

@@ -14,7 +14,7 @@ import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import {d18, D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -33,6 +33,7 @@ import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
+import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 
 /// @title  Sync Investment Manager
 /// @notice This is the main contract vaults interact with for
@@ -58,6 +59,23 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
         else revert("SyncRequests/file-unrecognized-param");
         emit File(what, data);
+    }
+
+    /// --- IUpdateContract ---
+    /// @inheritdoc IUpdateContract
+    function update(uint64 poolId, bytes16 scId, bytes memory payload) public auth {
+        uint8 kind = uint8(MessageLib.updateContractType(payload));
+
+        if (kind == uint8(UpdateContractType.Valuation)) {
+            MessageLib.UpdateContractValuation memory m = MessageLib.deserializeUpdateContractValuation(payload);
+
+            require(poolManager.shareToken(poolId, scId) != address(0), "SyncRequests/share-token-does-not-exist");
+            (address asset, uint256 tokenId) = poolManager.idToAsset(m.assetId);
+
+            this.setValuation(m.poolId, m.scId, asset, tokenId, address(bytes20(m.valuation)));
+        } else {
+            revert("SyncRequests/unknown-update-contract-type");
+        }
     }
 
     // --- IVaultManager ---

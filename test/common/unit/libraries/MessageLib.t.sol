@@ -280,12 +280,23 @@ contract TestMessageLibIdentities is Test {
         // This message is a submessage and has not static message length defined
     }
 
-    function testUpdateContractMaxPriceAge() public pure {
-        MessageLib.UpdateContractMaxPriceAge memory a =
-            MessageLib.UpdateContractMaxPriceAge({assetId: 1, maxPriceAge: 42});
-        MessageLib.UpdateContractMaxPriceAge memory b = MessageLib.deserializeUpdateContractMaxPriceAge(a.serialize());
+    function testUpdateContractMaxAssetPriceAge() public pure {
+        MessageLib.UpdateContractMaxAssetPriceAge memory a =
+            MessageLib.UpdateContractMaxAssetPriceAge({assetId: 1, maxPriceAge: 42});
+        MessageLib.UpdateContractMaxAssetPriceAge memory b =
+            MessageLib.deserializeUpdateContractMaxAssetPriceAge(a.serialize());
 
         assertEq(a.assetId, b.assetId);
+        assertEq(a.maxPriceAge, b.maxPriceAge);
+        // This message is a submessage and has not static message length defined
+    }
+
+    function testUpdateContractMaxSharePriceAge() public pure {
+        MessageLib.UpdateContractMaxSharePriceAge memory a =
+            MessageLib.UpdateContractMaxSharePriceAge({maxPriceAge: 42});
+        MessageLib.UpdateContractMaxSharePriceAge memory b =
+            MessageLib.deserializeUpdateContractMaxSharePriceAge(a.serialize());
+
         assertEq(a.maxPriceAge, b.maxPriceAge);
         // This message is a submessage and has not static message length defined
     }
