@@ -79,7 +79,7 @@ contract MinSubordination is Auth {
     }
 
     // --- Validation ---
-    function _checkRatio() internal {
+    function _checkRatio() internal view {
         (uint128 seniorIssuance,) = shareClassManager.shareClassPrice(poolId, seniorScId);
         (uint128 juniorIssuance,) = shareClassManager.shareClassPrice(poolId, juniorScId);
 
