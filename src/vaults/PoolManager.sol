@@ -44,10 +44,10 @@ import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 /// @notice This contract manages which pools & share classes exist,
 ///         as well as managing allowed pool currencies, and incoming and outgoing transfers.
 contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolManagerGatewayHandler {
+    using CastLib for *;
     using MessageLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;
-    using CastLib for *;
 
     uint8 internal constant MIN_DECIMALS = 2;
     uint8 internal constant MAX_DECIMALS = 18;
@@ -281,12 +281,10 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         MessageLib.UpdateContractVaultUpdate memory m = MessageLib.deserializeUpdateContractVaultUpdate(payload);
 
         if (m.kind == uint8(VaultUpdateKind.DeployAndLink)) {
-            address factory = address(bytes20(m.vaultOrFactory));
-
-            address vault = deployVault(poolId, scId, m.assetId, factory);
+            address vault = deployVault(poolId, scId, m.assetId, m.vaultOrFactory.toAddress());
             linkVault(poolId, scId, m.assetId, vault);
         } else {
-            address vault = address(bytes20(m.vaultOrFactory));
+            address vault = m.vaultOrFactory.toAddress();
 
             // Needed as safeguard against non-validated vaults
             // I.e. we only accept vaults that have been deployed by the pool manager

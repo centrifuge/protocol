@@ -14,11 +14,12 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
-import {IRestrictedTransfers} from "src/vaults/interfaces/token/IRestrictedTransfers.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
+
+import {IRestrictedTransfers} from "src/hooks/interfaces/IRestrictedTransfers.sol";
 
 contract PoolManagerTestHelper is BaseTest {
     uint64 poolId;

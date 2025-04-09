@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {CastLib} from "src/misc/libraries/CastLib.sol";
+
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
@@ -12,6 +14,8 @@ import {IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IHub} from "src/hub/interfaces/IHub.sol";
 
 contract Guardian is IGuardian {
+    using CastLib for address;
+
     IRoot public immutable root;
 
     ISafe public safe;
@@ -72,12 +76,12 @@ contract Guardian is IGuardian {
 
     /// @inheritdoc IGuardian
     function scheduleUpgrade(uint16 centrifugeId, address target) external onlySafe {
-        sender.sendScheduleUpgrade(centrifugeId, bytes32(bytes20(target)));
+        sender.sendScheduleUpgrade(centrifugeId, target.toBytes32());
     }
 
     /// @inheritdoc IGuardian
     function cancelUpgrade(uint16 centrifugeId, address target) external onlySafe {
-        sender.sendCancelUpgrade(centrifugeId, bytes32(bytes20(target)));
+        sender.sendCancelUpgrade(centrifugeId, target.toBytes32());
     }
 
     /// @inheritdoc IGuardian
@@ -89,9 +93,7 @@ contract Guardian is IGuardian {
         address to,
         uint256 amount
     ) external onlySafe {
-        sender.sendRecoverTokens(
-            centrifugeId, bytes32(bytes20(target)), bytes32(bytes20(token)), tokenId, bytes32(bytes20(to)), amount
-        );
+        sender.sendRecoverTokens(centrifugeId, target.toBytes32(), token.toBytes32(), tokenId, to.toBytes32(), amount);
     }
 
     /// @inheritdoc IGuardian
@@ -99,7 +101,7 @@ contract Guardian is IGuardian {
         external
         onlySafe
     {
-        sender.sendInitiateMessageRecovery(centrifugeId, adapterCentrifugeId, bytes32(bytes20(address(adapter))), hash);
+        sender.sendInitiateMessageRecovery(centrifugeId, adapterCentrifugeId, address(adapter).toBytes32(), hash);
     }
 
     /// @inheritdoc IGuardian
@@ -107,7 +109,7 @@ contract Guardian is IGuardian {
         external
         onlySafe
     {
-        sender.sendDisputeMessageRecovery(centrifugeId, adapterCentrifugeId, bytes32(bytes20(address(adapter))), hash);
+        sender.sendDisputeMessageRecovery(centrifugeId, adapterCentrifugeId, address(adapter).toBytes32(), hash);
     }
 
     // --- Helpers ---

@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BitmapLib} from "src/misc/libraries/BitmapLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
@@ -11,31 +12,30 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IHook, HookData} from "src/vaults/interfaces/token/IHook.sol";
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
-import {IRestrictedTransfers} from "src/vaults/interfaces/token/IRestrictedTransfers.sol";
 
-/// @title  Restricted Redemptions
+import {IRestrictedTransfers} from "src/hooks/interfaces/IRestrictedTransfers.sol";
+
+/// @title  Restriction Manager
 /// @notice Hook implementation that:
-///         * Allows any non-frozen account to receive tokens and transfer tokens
-///         * Requires accounts to be added as a member before submitting a redemption request
+///         * Requires adding accounts to the memberlist before they can receive tokens
 ///         * Supports freezing accounts which blocks transfers both to and from them
 ///         * Allows authTransferFrom calls
 ///
 /// @dev    The first 8 bytes (uint64) of hookData is used for the memberlist valid until date,
 ///         the last bit is used to denote whether the account is frozen.
-contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
+contract RestrictedTransfers is Auth, IRestrictedTransfers, IHook {
     using BitmapLib for *;
-    using BytesLib for bytes;
     using MessageLib for *;
+    using BytesLib for bytes;
+    using CastLib for bytes32;
 
     /// @dev Least significant bit
     uint8 public constant FREEZE_BIT = 0;
 
     IRoot public immutable root;
-    address public immutable escrow;
 
-    constructor(address root_, address escrow_, address deployer) Auth(deployer) {
+    constructor(address root_, address deployer) Auth(deployer) {
         root = IRoot(root_);
-        escrow = escrow_;
     }
 
     // --- Callback from share token ---
@@ -45,7 +45,7 @@ contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
         virtual
         returns (bytes4)
     {
-        require(checkERC20Transfer(from, to, value, hookData), "FreelyTransferable/transfer-blocked");
+        require(checkERC20Transfer(from, to, value, hookData), "RestrictedTransfers/transfer-blocked");
         return IHook.onERC20Transfer.selector;
     }
 
@@ -67,10 +67,14 @@ contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
         view
         returns (bool)
     {
-        uint128 fromHookData = uint128(hookData.from);
-        if (fromHookData.getBit(FREEZE_BIT) == true && !root.endorsed(from)) {
+        if (uint128(hookData.from).getBit(FREEZE_BIT) == true && !root.endorsed(from)) {
             // Source is frozen and not endorsed
             return false;
+        }
+
+        if (root.endorsed(to) || to == address(0)) {
+            // Destination is endorsed and source was already checked, so the transfer is allowed
+            return true;
         }
 
         uint128 toHookData = uint128(hookData.to);
@@ -79,13 +83,8 @@ contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
             return false;
         }
 
-        if (from == address(0) && to == escrow) {
-            // Deposit request fulfillment
-            return true;
-        }
-
-        if (to == escrow && fromHookData >> 64 < block.timestamp) {
-            // Destination is escrow, so it's a redemption request, and the user is not a member
+        if (toHookData >> 64 < block.timestamp) {
+            // Destination is not a member
             return false;
         }
 
@@ -99,22 +98,22 @@ contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
 
         if (updateId == UpdateRestrictionType.Member) {
             MessageLib.UpdateRestrictionMember memory m = payload.deserializeUpdateRestrictionMember();
-            updateMember(token, address(bytes20(m.user)), m.validUntil);
+            updateMember(token, m.user.toAddress(), m.validUntil);
         } else if (updateId == UpdateRestrictionType.Freeze) {
             MessageLib.UpdateRestrictionFreeze memory m = payload.deserializeUpdateRestrictionFreeze();
-            freeze(token, address(bytes20(m.user)));
+            freeze(token, m.user.toAddress());
         } else if (updateId == UpdateRestrictionType.Unfreeze) {
             MessageLib.UpdateRestrictionUnfreeze memory m = payload.deserializeUpdateRestrictionUnfreeze();
-            unfreeze(token, address(bytes20(m.user)));
+            unfreeze(token, m.user.toAddress());
         } else {
-            revert("FreelyTransferable/invalid-update");
+            revert("RestrictedTransfers/invalid-update");
         }
     }
 
     /// @inheritdoc IRestrictedTransfers
     function freeze(address token, address user) public auth {
-        require(user != address(0), "FreelyTransferable/cannot-freeze-zero-address");
-        require(!root.endorsed(user), "FreelyTransferable/endorsed-user-cannot-be-frozen");
+        require(user != address(0), "RestrictedTransfers/cannot-freeze-zero-address");
+        require(!root.endorsed(user), "RestrictedTransfers/endorsed-user-cannot-be-frozen");
 
         uint128 hookData = uint128(IShareToken(token).hookDataOf(user));
         IShareToken(token).setHookData(user, bytes16(hookData.setBit(FREEZE_BIT, true)));
@@ -138,8 +137,8 @@ contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
     // --- Managing members ---
     /// @inheritdoc IRestrictedTransfers
     function updateMember(address token, address user, uint64 validUntil) public auth {
-        require(block.timestamp <= validUntil, "FreelyTransferable/invalid-valid-until");
-        require(!root.endorsed(user), "FreelyTransferable/endorsed-user-cannot-be-updated");
+        require(block.timestamp <= validUntil, "RestrictedTransfers/invalid-valid-until");
+        require(!root.endorsed(user), "RestrictedTransfers/endorsed-user-cannot-be-updated");
 
         uint128 hookData = uint128(validUntil) << 64;
         hookData.setBit(FREEZE_BIT, isFrozen(token, user));

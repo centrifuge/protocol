@@ -7,6 +7,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {Multicall, IMulticall} from "src/misc/Multicall.sol";
+import {Recoverable} from "src/misc/Recoverable.sol";
 import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
@@ -27,12 +28,10 @@ import {IHoldings, Holding} from "src/hub/interfaces/IHoldings.sol";
 import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
 
 // @inheritdoc IHub
-contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
+contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
+    using CastLib for *;
     using MessageLib for *;
     using MathLib for uint256;
-    using CastLib for bytes;
-    using CastLib for bytes32;
-    using CastLib for address;
 
     /// @dev Represents the unlocked pool Id in the multicall
     PoolId public transient unlockedPoolId;
@@ -110,7 +109,7 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Permisionless methods
+    // Permissionless methods
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
@@ -523,7 +522,7 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
     }
 
     //----------------------------------------------------------------------------------------------
-    //  private methods
+    //  Internal methods
     //----------------------------------------------------------------------------------------------
 
     /// @dev Ensure the method is protected (see `_protected()`) and the pool is unlocked,
