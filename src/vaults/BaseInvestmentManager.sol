@@ -54,15 +54,13 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
         // TODO(wischli): Check if should be overwritten by SyncRequests using the custom valuation
         (D18 latestPrice,) =
             poolManager.priceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, true);
-        shares = uint256(
-            VaultPricingLib.calculateShares(
-                vault_.share(),
-                vaultDetails.asset,
-                vaultDetails.tokenId,
-                _assets.toUint128(),
-                latestPrice.raw(),
-                MathLib.Rounding.Down
-            )
+        shares = VaultPricingLib.calculateShares(
+            vault_.share(),
+            vaultDetails.asset,
+            vaultDetails.tokenId,
+            _assets.toUint128(),
+            latestPrice.raw(),
+            MathLib.Rounding.Down
         );
     }
 
@@ -74,15 +72,13 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
         // TODO(wischli): Check if should be overwritten by SyncRequests using the custom valuation
         (D18 latestPrice,) =
             poolManager.priceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, true);
-        assets = uint256(
-            VaultPricingLib.calculateAssets(
-                vault_.share(),
-                _shares.toUint128(),
-                vaultDetails.asset,
-                vaultDetails.tokenId,
-                latestPrice.raw(),
-                MathLib.Rounding.Down
-            )
+        assets = VaultPricingLib.calculateAssets(
+            vault_.share(),
+            _shares.toUint128(),
+            vaultDetails.asset,
+            vaultDetails.tokenId,
+            latestPrice.raw(),
+            MathLib.Rounding.Down
         );
     }
 
