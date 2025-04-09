@@ -68,11 +68,11 @@ contract LocalhostDeployer is FullDeployer {
             bytes32(bytes20(address(asyncVaultFactory))),
             VaultUpdateKind.DeployAndLink
         );
-        // TODO(follow-up): Enable after merging #184
-        // cs[c++] = abi.encodeWithSelector(hub.updatePricePoolPerShare.selector, scId, navPerShare);
-        // cs[c++] = abi.encodeWithSelector(hub.notifySharePrice.selector, scId, assetId);
 
-        //hub.execute{value: 0.001 ether}(poolId, cs);
+        cs[c++] = abi.encodeWithSelector(hub.updatePricePoolPerShare.selector, scId, navPerShare);
+        cs[c++] = abi.encodeWithSelector(hub.notifySharePrice.selector, scId, assetId);
+
+        hub.execute{value: 0.001 ether}(poolId, cs);
 
         // Submit deposit request
         IShareToken shareToken = IShareToken(poolManager.shareToken(poolId.raw(), scId.raw()));
