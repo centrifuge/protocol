@@ -53,7 +53,7 @@ contract Gateway is Auth, IGateway, Recoverable {
 
     // Messages
     mapping(uint16 centrifugeId => mapping(bytes32 messageHash => InboundBatch)) internal _inboundBatch;
-    mapping(uint16 centrifugeId => mapping(bytes32 messageHash => bool)) internal _failedMessages;
+    mapping(uint16 centrifugeId => mapping(bytes32 messageHash => uint256)) internal _failedMessages;
     mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 messageHash => uint256 timestamp)))
         public recoveries;
 
@@ -195,7 +195,7 @@ contract Gateway is Auth, IGateway, Recoverable {
             }
             catch (bytes memory err) {
                 bytes32 messageHash = keccak256(batch_);
-                _failedMessages[centrifugeId][messageHash] = true;
+                _failedMessages[centrifugeId][messageHash]++;
                 emit FailMessage(centrifugeId, message, err);
             }
         }
@@ -203,10 +203,10 @@ contract Gateway is Auth, IGateway, Recoverable {
 
     function retry(uint16 centrifugeId, bytes memory message) external {
         bytes32 messageHash = keccak256(message);
-        require(_failedMessages[centrifugeId][messageHash], NotFailedMessage());
+        require(_failedMessages[centrifugeId][messageHash] > 0, NotFailedMessage());
 
         processor.handle(centrifugeId, message);
-        delete _failedMessages[centrifugeId][messageHash];
+        _failedMessages[centrifugeId][messageHash]--;
 
         emit ExecuteMessage(centrifugeId, message);
     }
