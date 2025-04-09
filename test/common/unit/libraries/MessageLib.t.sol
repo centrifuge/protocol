@@ -104,7 +104,7 @@ contract TestMessageLibIdentities is Test {
     function testNotifyShareClass(
         uint64 poolId,
         bytes16 scId,
-        string calldata name,
+        bytes32 name,
         bytes32 symbol,
         uint8 decimals,
         bytes32 salt,
@@ -113,7 +113,7 @@ contract TestMessageLibIdentities is Test {
         MessageLib.NotifyShareClass memory a = MessageLib.NotifyShareClass({
             poolId: poolId,
             scId: scId,
-            name: name,
+            name: string(abi.encodePacked(name)),
             symbol: symbol,
             decimals: decimals,
             salt: salt,
@@ -156,12 +156,13 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
-    function testUpdateShareClassMetadata(uint64 poolId, bytes16 scId, string calldata name, bytes32 symbol)
-        public
-        pure
-    {
-        MessageLib.UpdateShareClassMetadata memory a =
-            MessageLib.UpdateShareClassMetadata({poolId: poolId, scId: scId, name: name, symbol: symbol});
+    function testUpdateShareClassMetadata(uint64 poolId, bytes16 scId, bytes32 name, bytes32 symbol) public pure {
+        MessageLib.UpdateShareClassMetadata memory a = MessageLib.UpdateShareClassMetadata({
+            poolId: poolId,
+            scId: scId,
+            name: string(abi.encodePacked(name)),
+            symbol: symbol
+        });
         MessageLib.UpdateShareClassMetadata memory b = MessageLib.deserializeUpdateShareClassMetadata(a.serialize());
 
         assertEq(a.poolId, b.poolId);
