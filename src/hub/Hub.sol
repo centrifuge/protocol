@@ -28,11 +28,9 @@ import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
 
 // @inheritdoc IHub
 contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
+    using CastLib for *;
     using MessageLib for *;
     using MathLib for uint256;
-    using CastLib for bytes;
-    using CastLib for bytes32;
-    using CastLib for address;
 
     /// @dev Represents the unlocked pool Id in the multicall
     PoolId public transient unlockedPoolId;
@@ -110,7 +108,7 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Permisionless methods
+    // Permissionless methods
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
@@ -523,7 +521,7 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
     }
 
     //----------------------------------------------------------------------------------------------
-    //  private methods
+    //  Internal methods
     //----------------------------------------------------------------------------------------------
 
     /// @dev Ensure the method is protected (see `_protected()`) and the pool is unlocked,

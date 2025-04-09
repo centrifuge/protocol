@@ -107,9 +107,9 @@ library MessageLib {
         (89  << uint8(MessageType.FulfilledCancelDepositRequest) * 8) +
         (89  << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (89  << uint8(MessageType.TriggerRedeemRequest) * 8) +
-        (114 << uint8(MessageType.UpdateHoldingAmount) * 8) +
+        (113 << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (65  << uint8(MessageType.UpdateHoldingValue) * 8) +
-        (98  << uint8(MessageType.UpdateShares) * 8) +
+        (97  << uint8(MessageType.UpdateShares) * 8) +
         (9   << uint8(MessageType.UpdateJournal) * 8) +
         (107 << uint8(MessageType.TriggerUpdateHoldingAmount) * 8) +
         (91  << uint8(MessageType.TriggerUpdateShares) * 8);
@@ -1105,7 +1105,6 @@ library MessageLib {
         uint128 amount;
         uint128 pricePerUnit;
         bool isIncrease; // Signals whether this is an increase or a decrease
-        bool asAllowance; // Signals whether the amount is transferred or allowed to who on the BSM
         JournalEntry[] debits; // As sequence of bytes
         JournalEntry[] credits; // As sequence of bytes
     }
@@ -1128,7 +1127,6 @@ library MessageLib {
             amount: data.toUint128(73),
             pricePerUnit: data.toUint128(89),
             isIncrease: data.toBool(105),
-            asAllowance: data.toBool(106),
             // Skip 2 bytes for sequence length at 107
             debits: data.toJournalEntries(109, debitsByteLen),
             // Skip 2 bytes for sequence length at 109 + debitsByteLen
@@ -1148,8 +1146,7 @@ library MessageLib {
             t.who,
             t.amount,
             t.pricePerUnit,
-            t.isIncrease,
-            t.asAllowance
+            t.isIncrease
         );
 
         // partial1 extracted to avoid stack too deep issue
@@ -1167,7 +1164,6 @@ library MessageLib {
         uint128 pricePerShare;
         uint128 shares;
         bool isIssuance;
-        bool asAllowance;
     }
 
     function deserializeTriggerUpdateShares(bytes memory data) internal pure returns (TriggerUpdateShares memory) {
@@ -1179,21 +1175,13 @@ library MessageLib {
             who: data.toBytes32(25),
             pricePerShare: data.toUint128(57),
             shares: data.toUint128(73),
-            isIssuance: data.toBool(89),
-            asAllowance: data.toBool(90)
+            isIssuance: data.toBool(89)
         });
     }
 
     function serialize(TriggerUpdateShares memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.TriggerUpdateShares,
-            t.poolId,
-            t.scId,
-            t.who,
-            t.pricePerShare,
-            t.shares,
-            t.isIssuance,
-            t.asAllowance
+            MessageType.TriggerUpdateShares, t.poolId, t.scId, t.who, t.pricePerShare, t.shares, t.isIssuance
         );
     }
 }

@@ -181,7 +181,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
                     address(bytes20(m.who)),
                     m.amount,
                     D18.wrap(m.pricePerUnit),
-                    m.asAllowance,
                     meta
                 );
             }
@@ -193,8 +192,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
                     ShareClassId.wrap(m.scId),
                     address(bytes20(m.who)),
                     D18.wrap(m.pricePerShare),
-                    m.shares,
-                    m.asAllowance
+                    m.shares
                 );
             } else {
                 balanceSheet.triggerRevokeShares(

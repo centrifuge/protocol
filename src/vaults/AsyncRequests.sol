@@ -36,10 +36,10 @@ import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
 contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
+    using CastLib for *;
+    using MessageLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;
-    using MessageLib for *;
-    using CastLib for *;
 
     IVaultMessageSender public sender;
 
