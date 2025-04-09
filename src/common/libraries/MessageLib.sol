@@ -115,8 +115,8 @@ library MessageLib {
         (65  << uint8(MessageType.UpdateHoldingValue) * 8) +
         (98  << uint8(MessageType.UpdateShares) * 8) +
         (9   << uint8(MessageType.UpdateJournal) * 8) +
-        (107 << uint8(MessageType.TriggerUpdateHoldingAmount) * 8) +
-        (91  << uint8(MessageType.TriggerUpdateShares) * 8);
+        (106 << uint8(MessageType.TriggerUpdateHoldingAmount) * 8) +
+        (90  << uint8(MessageType.TriggerUpdateShares) * 8);
 
     uint256 constant MESSAGE_LENGTHS_2 = 0;
     // (100 << (31 - uint8(MessageLib.NewMessage)) * 8);
@@ -1194,7 +1194,6 @@ library MessageLib {
         uint128 amount;
         uint128 pricePerUnit;
         bool isIncrease; // Signals whether this is an increase or a decrease
-        bool asAllowance; // Signals whether the amount is transferred or allowed to who on the BSM
         JournalEntry[] debits; // As sequence of bytes
         JournalEntry[] credits; // As sequence of bytes
     }
@@ -1206,8 +1205,8 @@ library MessageLib {
     {
         require(messageType(data) == MessageType.TriggerUpdateHoldingAmount, "UnknownMessageType");
 
-        uint16 debitsByteLen = data.toUint16(107);
-        uint16 creditsByteLen = data.toUint16(109 + debitsByteLen);
+        uint16 debitsByteLen = data.toUint16(106);
+        uint16 creditsByteLen = data.toUint16(108 + debitsByteLen);
 
         return TriggerUpdateHoldingAmount({
             poolId: data.toUint64(1),
@@ -1217,11 +1216,10 @@ library MessageLib {
             amount: data.toUint128(73),
             pricePerUnit: data.toUint128(89),
             isIncrease: data.toBool(105),
-            asAllowance: data.toBool(106),
-            // Skip 2 bytes for sequence length at 107
-            debits: data.toJournalEntries(109, debitsByteLen),
-            // Skip 2 bytes for sequence length at 109 + debitsByteLen
-            credits: data.toJournalEntries(111 + debitsByteLen, creditsByteLen)
+            // Skip 2 bytes for sequence length at 106
+            debits: data.toJournalEntries(108, debitsByteLen),
+            // Skip 2 bytes for sequence length at 107 + debitsByteLen
+            credits: data.toJournalEntries(110 + debitsByteLen, creditsByteLen)
         });
     }
 
@@ -1237,8 +1235,7 @@ library MessageLib {
             t.who,
             t.amount,
             t.pricePerUnit,
-            t.isIncrease,
-            t.asAllowance
+            t.isIncrease
         );
 
         // partial1 extracted to avoid stack too deep issue
@@ -1256,7 +1253,6 @@ library MessageLib {
         uint128 pricePerShare;
         uint128 shares;
         bool isIssuance;
-        bool asAllowance;
     }
 
     function deserializeTriggerUpdateShares(bytes memory data) internal pure returns (TriggerUpdateShares memory) {
@@ -1268,21 +1264,13 @@ library MessageLib {
             who: data.toBytes32(25),
             pricePerShare: data.toUint128(57),
             shares: data.toUint128(73),
-            isIssuance: data.toBool(89),
-            asAllowance: data.toBool(90)
+            isIssuance: data.toBool(89)
         });
     }
 
     function serialize(TriggerUpdateShares memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.TriggerUpdateShares,
-            t.poolId,
-            t.scId,
-            t.who,
-            t.pricePerShare,
-            t.shares,
-            t.isIssuance,
-            t.asAllowance
+            MessageType.TriggerUpdateShares, t.poolId, t.scId, t.who, t.pricePerShare, t.shares, t.isIssuance
         );
     }
 }

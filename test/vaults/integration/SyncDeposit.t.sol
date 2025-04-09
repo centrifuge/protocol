@@ -52,13 +52,9 @@ contract SyncDepositTestHelper is BaseTest {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault));
         JournalEntry[] memory journalEntries = new JournalEntry[](0);
 
-        vm.expectEmit(false, false, false, false);
-        emit IGateway.SendMessage(bytes(""));
         vm.expectEmit();
         emit IBalanceSheet.Issue(poolId, scId, self, pricePoolPerShare, shares);
 
-        vm.expectEmit(false, false, false, false);
-        emit IGateway.SendMessage(bytes(""));
         vm.expectEmit();
         emit IBalanceSheet.Deposit(
             poolId,

@@ -25,11 +25,8 @@ import {
 } from "src/hub/interfaces/IShareClassManager.sol";
 
 contract ShareClassManager is Auth, IShareClassManager {
-    using MathLib for D18;
-    using MathLib for uint128;
-    using MathLib for uint256;
-    using CastLib for bytes;
-    using CastLib for bytes32;
+    using MathLib for *;
+    using CastLib for *;
     using BytesLib for bytes;
 
     uint32 constant META_NAME_LENGTH = 128;

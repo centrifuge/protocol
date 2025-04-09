@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
-import {RestrictedTransfers} from "src/vaults/token/RestrictedTransfers.sol";
+import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 import "forge-std/Test.sol";
 import {MockRoot} from "test/common/mocks/MockRoot.sol";

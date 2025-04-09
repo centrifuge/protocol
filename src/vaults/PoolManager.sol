@@ -44,10 +44,10 @@ import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 /// @notice This contract manages which pools & share classes exist,
 ///         as well as managing allowed pool currencies, and incoming and outgoing transfers.
 contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolManagerGatewayHandler {
+    using CastLib for *;
     using MessageLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;
-    using CastLib for *;
 
     uint8 internal constant MIN_DECIMALS = 2;
     uint8 internal constant MAX_DECIMALS = 18;
@@ -366,7 +366,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
     /// @inheritdoc IPoolManager
     function linkVault(uint64 poolId, bytes16 scId, uint128 assetId, address vault) public auth {
-        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
+        _shareClass(poolId, scId);
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
@@ -380,7 +380,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
     /// @inheritdoc IPoolManager
     function unlinkVault(uint64 poolId, bytes16 scId, uint128 assetId, address vault) public auth {
-        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
+        _shareClass(poolId, scId);
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 

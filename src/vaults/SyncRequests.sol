@@ -282,7 +282,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         ShareClassId scId = ShareClassId.wrap(scId_);
 
         // Mint shares for receiver & notify CP about issued shares
-        balanceSheet.issue(poolId, scId, receiver, priceData.poolPerShare, shares, false);
+        balanceSheet.issue(poolId, scId, receiver, priceData.poolPerShare, shares);
 
         _updateHoldings(poolId, scId, vaultDetails, depositAssetAmount, priceData.assetPerShare);
     }

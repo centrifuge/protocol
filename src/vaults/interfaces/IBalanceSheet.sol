@@ -71,21 +71,13 @@ interface IBalanceSheet {
         address receiver,
         uint128 amount,
         D18 priceAssetPerShare,
-        bool asAllowance,
         Meta calldata m
     ) external;
 
-    function updateValue(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, D18 pricePoolPerAsset)
+    function updateValue(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, D18 priceAssetPerShare)
         external;
 
-    function issue(
-        PoolId poolId,
-        ShareClassId scId,
-        address to,
-        D18 pricePoolPerShare,
-        uint128 shares,
-        bool asAllowance
-    ) external;
+    function issue(PoolId poolId, ShareClassId scId, address to, D18 pricePoolPerShare, uint128 shares) external;
 
     function revoke(PoolId poolId, ShareClassId scId, address from, D18 pricePoolPerShare, uint128 shares) external;
 

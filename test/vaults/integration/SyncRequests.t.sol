@@ -235,7 +235,7 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
         SyncPriceData memory prices =
             syncRequests.prices(syncVault.poolId(), syncVault.trancheId(), assetId, syncVault.asset(), 0);
         D18 pricePost = syncRequests.priceAssetPerShare(syncVault.poolId(), syncVault.trancheId(), assetId);
-        // TODO(wischli): Investigate why precision exceeds assetUnitAmount == 1e6
+        // TODO: Investigate why precision exceeds assetUnitAmount == 1e6
         assertApproxEqAbs(
             prices.assetPerShare.inner(), priceAssetPerShare.inner(), 1e12, "priceAssetPerShare Approx mismatch"
         );

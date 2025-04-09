@@ -64,9 +64,7 @@ contract DepositTest is BaseTest {
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
         vm.expectRevert(bytes("AsyncRequests/no-pending-deposit-request"));
-        centrifugeChain.isFulfilledDepositRequest(
-            poolId, scId, bytes32(bytes20(self)), assetId, uint128(amount), shares
-        );
+        asyncRequests.fulfillDepositRequest(poolId, scId, self, assetId, uint128(amount), shares);
 
         // success
         erc20.approve(vault_, amount);
@@ -644,7 +642,7 @@ contract DepositTest is BaseTest {
         assertEq(erc20.balanceOf(address(self)), 0);
 
         vm.expectRevert(bytes("AsyncRequests/no-pending-cancel-deposit-request"));
-        centrifugeChain.isFulfilledCancelDepositRequest(poolId, scId, self.toBytes32(), assetId, uint128(amount));
+        asyncRequests.fulfillCancelDepositRequest(poolId, scId, self, assetId, uint128(amount), uint128(amount));
 
         // check message was send out to centchain
         vault.cancelDepositRequest(0, self);

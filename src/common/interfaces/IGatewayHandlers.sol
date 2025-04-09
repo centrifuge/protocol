@@ -284,18 +284,11 @@ interface IBalanceSheetGatewayHandler {
         address receiver,
         uint128 amount,
         D18 priceAssetPerShare,
-        bool asAllowance,
         Meta calldata m
     ) external;
 
-    function triggerIssueShares(
-        PoolId poolId,
-        ShareClassId scId,
-        address to,
-        D18 priceAssetPerShare,
-        uint128 shares,
-        bool asAllowance
-    ) external;
+    function triggerIssueShares(PoolId poolId, ShareClassId scId, address to, D18 priceAssetPerShare, uint128 shares)
+        external;
 
     function triggerRevokeShares(PoolId poolId, ShareClassId scId, address from, D18 pricePoolPerShare, uint128 shares)
         external;
