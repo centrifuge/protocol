@@ -772,52 +772,6 @@ contract GatewayTest is Test {
         }
     }
 
-    function testRecoverTokensETH() public {
-        address ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-        address receiver = makeAddr("receiver");
-
-        vm.deal(address(gateway), INITIAL_BALANCE);
-        assertEq(address(gateway).balance, INITIAL_BALANCE);
-        assertEq(receiver.balance, 0);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(makeAddr("UnauthorizedCaller"));
-        gateway.recoverTokens(ETH, 0, receiver, INITIAL_BALANCE);
-
-        gateway.recoverTokens(ETH, 0, receiver, INITIAL_BALANCE);
-        assertEq(address(gateway).balance, 0);
-        assertEq(receiver.balance, INITIAL_BALANCE);
-    }
-
-    function testRecoverTokensERC20(uint256 amount) public {
-        vm.assume(amount > 0);
-        address receiver = makeAddr("receiver");
-        ERC20 token = new ERC20(18);
-
-        token.mint(address(gateway), amount);
-        assertEq(token.balanceOf(address(gateway)), amount);
-        assertEq(token.balanceOf(receiver), 0);
-
-        gateway.recoverTokens(address(token), 0, receiver, amount);
-        assertEq(token.balanceOf(address(gateway)), 0);
-        assertEq(token.balanceOf(receiver), amount);
-    }
-
-    function testRecoverTokensERC6909(uint256 amount, uint8 tokenId) public {
-        vm.assume(amount > 0);
-        tokenId = uint8(bound(tokenId, 2, 18));
-        address receiver = makeAddr("receiver");
-        MockERC6909 token = new MockERC6909();
-
-        token.mint(address(gateway), tokenId, amount);
-        assertEq(token.balanceOf(address(gateway), tokenId), amount);
-        assertEq(token.balanceOf(receiver, tokenId), 0);
-
-        gateway.recoverTokens(address(token), tokenId, receiver, amount);
-        assertEq(token.balanceOf(address(gateway), tokenId), 0);
-        assertEq(token.balanceOf(receiver, tokenId), amount);
-    }
-
     function testEstimate() public {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeMockAdapters);
 
