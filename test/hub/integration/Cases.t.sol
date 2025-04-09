@@ -25,7 +25,7 @@ contract TestCases is BaseTest {
         cs[c++] = abi.encodeWithSelector(hub.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
         cs[c++] = abi.encodeWithSelector(hub.createHolding.selector, scId, USDC_C2, identityValuation, false, 0x01);
         cs[c++] =
-            abi.encodeWithSelector(hub.createHolding.selector, scId, EUR_STABLE_C2, identityValuation, false, 0x02);
+            abi.encodeWithSelector(hub.createHolding.selector, scId, EUR_STABLE_C2, transientValuation, false, 0x02);
         cs[c++] = abi.encodeWithSelector(
             hub.updateVault.selector,
             scId,
@@ -222,6 +222,10 @@ contract TestCases is BaseTest {
         (PoolId poolId, ShareClassId scId) = testPoolCreation();
         D18 sharePrice = d18(100, 1);
         D18 identityPrice = d18(1, 1);
+        D18 poolPerEurPrice = d18(4, 1);
+        AssetId poolCurrency = hubRegistry.currency(poolId);
+
+        transientValuation.setPrice(EUR_STABLE_C2.addr(), poolCurrency.addr(), poolPerEurPrice);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](4), 0);
         cs[c++] = abi.encodeWithSelector(hub.updatePricePoolPerShare.selector, scId, sharePrice, "");
@@ -252,7 +256,7 @@ contract TestCases is BaseTest {
         assertEq(m2.poolId, poolId.raw());
         assertEq(m2.scId, scId.raw());
         assertEq(m2.assetId, EUR_STABLE_C2.raw());
-        assertEq(m2.price, identityPrice.inner(), "EUR price mismatch");
+        assertEq(m2.price, poolPerEurPrice.inner(), "EUR price mismatch");
         assertEq(m2.timestamp, block.timestamp.toUint64());
     }
 }
