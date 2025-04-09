@@ -107,11 +107,11 @@ library MessageLib {
         (89  << uint8(MessageType.FulfilledCancelDepositRequest) * 8) +
         (89  << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (89  << uint8(MessageType.TriggerRedeemRequest) * 8) +
-        (113 << uint8(MessageType.UpdateHoldingAmount) * 8) +
+        (114 << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (65  << uint8(MessageType.UpdateHoldingValue) * 8) +
-        (97  << uint8(MessageType.UpdateShares) * 8) +
+        (98  << uint8(MessageType.UpdateShares) * 8) +
         (9   << uint8(MessageType.UpdateJournal) * 8) +
-        (107 << uint8(MessageType.TriggerUpdateHoldingAmount) * 8) +
+        (106 << uint8(MessageType.TriggerUpdateHoldingAmount) * 8) +
         (90  << uint8(MessageType.TriggerUpdateShares) * 8);
 
     uint256 constant MESSAGE_LENGTHS_2 = 0;
