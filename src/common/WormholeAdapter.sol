@@ -42,8 +42,6 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         emit File(what, centrifugeId, wormholeId, addr);
     }
 
-    event Log(address addr);
-
     // --- Incoming ---
     /// @inheritdoc IWormholeReceiver
     function receiveWormholeMessages(
