@@ -50,18 +50,22 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     }
 
     // --- Events ---
-    event ProcessMessage(uint16 centrifugeId, bytes message, IAdapter adapter);
+    event ProcessBatch(uint16 centrifugeId, bytes batch, IAdapter adapter);
     event ProcessProof(uint16 centrifugeId, bytes32 messageHash, IAdapter adapter);
     event ExecuteMessage(uint16 centrifugeId, bytes message);
     event FailMessage(uint16 centrifugeId, bytes message, bytes error);
-    event SendMessage(bytes message);
+    event SendBatch(uint16 centrifugeId, bytes batch);
+    event SendMessage(uint16 centrifugeId, PoolId poolId, bytes message);
+
     event RecoverMessage(IAdapter adapter, bytes message);
     event RecoverProof(IAdapter adapter, bytes32 messageHash);
     event InitiateMessageRecovery(uint16 centrifugeId, bytes32 messageHash, IAdapter adapter);
     event DisputeMessageRecovery(uint16 centrifugeId, bytes32 messageHash, IAdapter adapter);
     event ExecuteMessageRecovery(uint16 centrifugeId, bytes message, IAdapter adapter);
+
     event File(bytes32 indexed what, uint16 centrifugeId, IAdapter[] adapters);
     event File(bytes32 indexed what, address addr);
+
     event SubsidizePool(PoolId indexed poolId, address indexed sender, uint256 amount);
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
