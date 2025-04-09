@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {Auth} from "src/misc/Auth.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
@@ -28,6 +29,7 @@ import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayHandler, IUpdateContract {
     using MathLib for *;
+    using CastLib for bytes32;
 
     IPerPoolEscrow public immutable escrow;
 
@@ -62,7 +64,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
         PoolId poolId = PoolId.wrap(poolId_);
         ShareClassId scId = ShareClassId.wrap(scId_);
-        address who = address(bytes20(m.who));
+        address who = m.who.toAddress();
 
         permission[poolId][scId][who] = m.allowed;
 

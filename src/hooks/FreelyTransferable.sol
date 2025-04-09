@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {BitmapLib} from "src/misc/libraries/BitmapLib.sol";
 
@@ -25,8 +26,9 @@ import {IRestrictedTransfers} from "src/hooks/interfaces/IRestrictedTransfers.so
 ///         the last bit is used to denote whether the account is frozen.
 contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
     using BitmapLib for *;
-    using BytesLib for bytes;
     using MessageLib for *;
+    using BytesLib for bytes;
+    using CastLib for bytes32;
 
     /// @dev Least significant bit
     uint8 public constant FREEZE_BIT = 0;
@@ -100,13 +102,13 @@ contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
 
         if (updateId == UpdateRestrictionType.Member) {
             MessageLib.UpdateRestrictionMember memory m = payload.deserializeUpdateRestrictionMember();
-            updateMember(token, address(bytes20(m.user)), m.validUntil);
+            updateMember(token, m.user.toAddress(), m.validUntil);
         } else if (updateId == UpdateRestrictionType.Freeze) {
             MessageLib.UpdateRestrictionFreeze memory m = payload.deserializeUpdateRestrictionFreeze();
-            freeze(token, address(bytes20(m.user)));
+            freeze(token, m.user.toAddress());
         } else if (updateId == UpdateRestrictionType.Unfreeze) {
             MessageLib.UpdateRestrictionUnfreeze memory m = payload.deserializeUpdateRestrictionUnfreeze();
-            unfreeze(token, address(bytes20(m.user)));
+            unfreeze(token, m.user.toAddress());
         } else {
             revert("FreelyTransferable/invalid-update");
         }
