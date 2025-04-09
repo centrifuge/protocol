@@ -66,12 +66,6 @@ interface IHub {
     /// @notice Claim a redemption for an investor address located in the chain where the asset belongs
     function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external payable;
 
-    /// @notice Sets a temporary the price of an asset in the pool currency
-    /// @dev This price is set reflexive for both from asset to pool currency and from pool currency to asset
-    /// @param assetId The asset identifier
-    /// @param price The price of the asset
-    function setTransientPrice(AssetId assetId, D18 price) external payable;
-
     /// @notice Notify to a CV instance that a new pool is available
     /// @param centrifugeId Chain where CV instance lives
     function notifyPool(uint16 centrifugeId) external payable;

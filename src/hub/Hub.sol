@@ -156,15 +156,6 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
     //----------------------------------------------------------------------------------------------
     // Pool admin methods
     //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IHub
-    function setTransientPrice(AssetId assetId, D18 price) public payable {
-        _protectedAndUnlocked();
-
-        address poolCurrency = hubRegistry.currency(unlockedPoolId).addr();
-        transientValuation.setPrice(assetId.addr(), poolCurrency, price);
-    }
-
     /// @inheritdoc IHub
     function notifyPool(uint16 centrifugeId) external payable {
         _protectedAndUnlocked();

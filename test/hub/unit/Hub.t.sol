@@ -85,9 +85,6 @@ contract TestMainMethodsChecks is TestCommon {
 
     function testErrPoolLocked() public {
         vm.expectRevert(IHub.PoolLocked.selector);
-        hub.setTransientPrice(AssetId.wrap(0), D18.wrap(0));
-
-        vm.expectRevert(IHub.PoolLocked.selector);
         hub.notifyPool(0);
 
         vm.expectRevert(IHub.PoolLocked.selector);
