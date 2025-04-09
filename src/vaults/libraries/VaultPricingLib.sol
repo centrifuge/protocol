@@ -24,7 +24,8 @@ library VaultPricingLib {
         if (price == 0 || assets == 0) {
             shares = 0;
         } else {
-            (uint8 assetDecimals, uint8 shareDecimals) = getPoolDecimals(shareToken, asset, tokenId);
+            uint8 assetDecimals = getAssetDecimals(asset, tokenId);
+            uint8 shareDecimals = IERC20Metadata(shareToken).decimals();
 
             uint256 sharesInPriceDecimals =
                 toPriceDecimals(assets, assetDecimals).mulDiv(10 ** PRICE_DECIMALS, price, rounding);
@@ -45,7 +46,8 @@ library VaultPricingLib {
         if (price == 0 || shares == 0) {
             assets = 0;
         } else {
-            (uint8 assetDecimals, uint8 shareDecimals) = getPoolDecimals(shareToken, asset, tokenId);
+            uint8 assetDecimals = getAssetDecimals(asset, tokenId);
+            uint8 shareDecimals = IERC20Metadata(shareToken).decimals();
 
             uint256 assetsInPriceDecimals =
                 toPriceDecimals(shares, shareDecimals).mulDiv(price, 10 ** PRICE_DECIMALS, rounding);
@@ -64,7 +66,8 @@ library VaultPricingLib {
             return 0;
         }
 
-        (uint8 assetDecimals, uint8 shareDecimals) = getPoolDecimals(shareToken, asset, tokenId);
+        uint8 assetDecimals = getAssetDecimals(asset, tokenId);
+        uint8 shareDecimals = IERC20Metadata(shareToken).decimals();
         return toPriceDecimals(assets, assetDecimals).mulDiv(
             10 ** PRICE_DECIMALS, toPriceDecimals(shares, shareDecimals), MathLib.Rounding.Down
         );
@@ -81,16 +84,6 @@ library VaultPricingLib {
     function fromPriceDecimals(uint256 _value, uint8 decimals) internal pure returns (uint128) {
         if (PRICE_DECIMALS == decimals) return _value.toUint128();
         return (_value / 10 ** (PRICE_DECIMALS - decimals)).toUint128();
-    }
-
-    /// @dev    Returns the asset decimals and the share decimals
-    function getPoolDecimals(address shareToken, address asset, uint256 tokenId)
-        internal
-        view
-        returns (uint8 assetDecimals, uint8 shareDecimals)
-    {
-        assetDecimals = getAssetDecimals(asset, tokenId);
-        shareDecimals = IERC20Metadata(shareToken).decimals();
     }
 
     /// @dev    Returns the asset decimals
