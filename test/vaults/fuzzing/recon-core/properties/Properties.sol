@@ -320,10 +320,10 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Lists out all system addresses, used to check that no dust is left behind
     /// NOTE: A more advanced dust check would have 100% of actors withdraw, to ensure that the sum of operations is
     /// sound
-    function _getSystemAddresses() internal returns (address[] memory) {
+    function _getSystemAddresses() internal view returns (address[] memory systemAddresses) {
         uint256 SYSTEM_ADDRESSES_LENGTH = GOV_FUZZING ? 10 : 8;
 
-        address[] memory systemAddresses = new address[](SYSTEM_ADDRESSES_LENGTH);
+        systemAddresses = new address[](SYSTEM_ADDRESSES_LENGTH);
         
         // NOTE: Skipping escrow which can have non-zero bal
         systemAddresses[0] = address(vaultFactory);
@@ -340,11 +340,12 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             systemAddresses[9] = address(root);
         }
         
+        return systemAddresses;
     }
 
     /// @dev Can we donate to this address?
     /// We explicitly preventing donations since we check for exact balances
-    function _canDonate(address to) internal returns (bool) {
+    function _canDonate(address to) internal view returns (bool) {
         if (to == address(escrow)) {
             return false;
         }
@@ -353,7 +354,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     }
 
     /// @dev utility to ensure the target is not in the system addresses
-    function _isInSystemAddress(address x) internal returns (bool) {
+    function _isInSystemAddress(address x) internal view returns (bool) {
         address[] memory systemAddresses = _getSystemAddresses();
         uint256 SYSTEM_ADDRESSES_LENGTH = systemAddresses.length;
 

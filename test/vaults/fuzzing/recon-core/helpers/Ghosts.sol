@@ -48,18 +48,7 @@ abstract contract Ghosts is Setup {
     }
     
     function _getDepositAndRedeemPrice() internal view returns (uint256, uint256) {
-        (
-            uint128 maxMint,
-            uint128 maxWithdraw,
-            uint256 depositPrice,
-            uint256 redeemPrice,
-            uint128 pendingDepositRequest,
-            uint128 pendingRedeemRequest,
-            uint128 claimableCancelDepositRequest,
-            uint128 claimableCancelRedeemRequest,
-            bool pendingCancelDepositRequest,
-            bool pendingCancelRedeemRequest
-        ) = asyncRequests.investments(address(vault), address(_getActor()));
+        (,, uint256 depositPrice, uint256 redeemPrice,,,,,,) = asyncRequests.investments(address(vault), address(_getActor()));
 
         return (depositPrice, redeemPrice);
     }

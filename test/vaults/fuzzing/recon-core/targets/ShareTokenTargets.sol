@@ -50,7 +50,7 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
     }
 
     // Check
-    function token_transferFrom(address from, address to, uint256 value) public {
+    function token_transferFrom(address to, uint256 value) public {
         address from = _getActor();
         require(_canDonate(to), "never donate to escrow");
 

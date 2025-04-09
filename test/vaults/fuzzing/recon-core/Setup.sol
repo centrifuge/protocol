@@ -118,13 +118,16 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
 
     // NOTE: All of this will get dynamically replaced by Gov Fuzzing
     function doGovFuzzing() public onlyGovFuzzing {
-        TARGET.call{gas: GAS, value: VALUE}(DATA);
+        (bool success, ) = TARGET.call{gas: GAS, value: VALUE}(DATA);
+        require(success, "Call failed");
     }
 
     // MOCK++
     fallback() external payable {
         // Basically we will receive `root.rely, etc..`
     }
+
+    receive() external payable {}
 
     function setup() internal virtual override {
         // Put self so we can perform settings

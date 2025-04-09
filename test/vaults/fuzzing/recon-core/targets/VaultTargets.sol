@@ -238,7 +238,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
     function vault_redeem(uint256 shares, uint256 toEntropy) public updateGhosts {
         address to = _getRandomActor(toEntropy);
-        address vaultAsset = address(vault.asset());
 
         // Bal b4
         uint256 tokenUserB4 = assetErc20.balanceOf(_getActor());
