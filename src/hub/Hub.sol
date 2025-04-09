@@ -195,11 +195,11 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
         // Retrieve amount of 1 asset unit in pool currency
         uint128 assetUnitAmount = (10 ** hubRegistry.decimals(assetId.raw())).toUint128();
         uint128 poolUnitAmount = (10 ** hubRegistry.decimals(poolCurrency.raw())).toUint128();
-        uint128 assetAmountPerPool =
+        uint128 poolAmountPerAsset =
             valuation.getQuote(assetUnitAmount, assetId.addr(), poolCurrency.addr()).toUint128();
         
         // Retrieve price by normalizing by pool denomination
-        D18 pricePoolPerAsset = d18(assetAmountPerPool, poolUnitAmount);
+        D18 pricePoolPerAsset = d18(poolAmountPerAsset, poolUnitAmount);
         sender.sendNotifyPricePoolPerAsset(unlockedPoolId, scId, assetId, pricePoolPerAsset);
     }
 
@@ -514,7 +514,6 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
     ) external auth {
         accounting.unlock(poolId);
         address poolCurrency = hubRegistry.currency(poolId).addr();
-        // TODO(wischli): Investigate whether priceAssetPerShare is the correct provider from CV side
         transientValuation.setPrice(assetId.addr(), poolCurrency, pricePerUnit);
         uint128 valueChange = transientValuation.getQuote(amount, assetId.addr(), poolCurrency).toUint128();
 

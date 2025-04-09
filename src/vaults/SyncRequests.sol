@@ -240,10 +240,11 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
         (priceData.poolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
         priceData.assetPerShare = _priceAssetPerShare(poolId, scId, assetId, asset, tokenId, valuation_);
-        (priceData.poolPerShare,) = poolManager.pricePoolPerShare(poolId, scId, true);
 
-        if (address(valuation_) != address(0)) {
-            priceData.poolPerShare = priceData.poolPerAsset / priceData.poolPerShare;
+        if (address(valuation_) == address(0)) {
+            (priceData.poolPerShare,) = poolManager.pricePoolPerShare(poolId, scId, true);
+        } else {
+            priceData.poolPerShare = priceData.poolPerAsset * priceData.assetPerShare;
         }
     }
 
@@ -319,10 +320,10 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
             uint128 assetUnitAmount = uint128(10 ** VaultPricingLib.getAssetDecimals(asset, tokenId));
             uint128 shareUnitAmount = uint128(10 ** IERC20Metadata(shareToken).decimals());
-            uint128 assetAmountPerShare = valuation_.getQuote(assetUnitAmount, asset, shareToken).toUint128();
+            uint128 assetAmountPerShareUnit = valuation_.getQuote(shareUnitAmount, shareToken, asset).toUint128();
 
-            // Retrieve price by normalizing by share denomination
-            price = d18(assetAmountPerShare, shareUnitAmount);
+            // Retrieve price by normalizing by asset denomination
+            price = d18(assetAmountPerShareUnit, assetUnitAmount);
         }
     }
 }
