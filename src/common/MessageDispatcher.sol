@@ -6,6 +6,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
+import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
@@ -25,6 +26,7 @@ import {IVaultMessageSender, IPoolMessageSender, IRootMessageSender} from "src/c
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {ITokenRecoverer} from "src/common/interfaces/ITokenRecoverer.sol";
 
 interface IMessageDispatcher is IRootMessageSender, IVaultMessageSender, IPoolMessageSender {
     /// @notice Emitted when a call to `file()` was performed.
@@ -47,6 +49,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     IRoot public immutable root;
     IGateway public immutable gateway;
+    ITokenRecoverer public immutable tokenRecoverer;
 
     IHubGatewayHandler public hub;
     IPoolManagerGatewayHandler public poolManager;
@@ -55,10 +58,17 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     uint16 public localCentrifugeId;
 
-    constructor(uint16 localCentrifugeId_, IRoot root_, IGateway gateway_, address deployer) Auth(deployer) {
+    constructor(
+        uint16 localCentrifugeId_,
+        IRoot root_,
+        IGateway gateway_,
+        ITokenRecoverer tokenRecoverer_,
+        address deployer
+    ) Auth(deployer) {
         localCentrifugeId = localCentrifugeId_;
         root = root_;
         gateway = gateway_;
+        tokenRecoverer = tokenRecoverer_;
     }
 
     /// @inheritdoc IMessageDispatcher
@@ -267,6 +277,28 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             root.cancelRely(address(bytes20(target)));
         } else {
             gateway.send(centrifugeId, MessageLib.CancelUpgrade({target: target}).serialize());
+        }
+    }
+
+    /// @inheritdoc IRootMessageSender
+    function sendRecoverTokens(
+        uint16 centrifugeId,
+        bytes32 target,
+        bytes32 token,
+        uint256 tokenId,
+        bytes32 to,
+        uint256 amount
+    ) external auth {
+        if (centrifugeId == localCentrifugeId) {
+            tokenRecoverer.recoverTokens(
+                IRecoverable(address(bytes20(target))), address(bytes20(token)), tokenId, address(bytes20(to)), amount
+            );
+        } else {
+            gateway.send(
+                centrifugeId,
+                MessageLib.RecoverTokens({target: target, token: token, tokenId: tokenId, to: to, amount: amount})
+                    .serialize()
+            );
         }
     }
 

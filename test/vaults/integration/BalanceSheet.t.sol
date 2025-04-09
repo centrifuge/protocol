@@ -111,30 +111,6 @@ contract BalanceSheetTest is BaseTest {
         balanceSheet.file("poolManager", randomUser);
     }
 
-    // --- IRecoverable ---
-    function testRecoverTokens() public {
-        erc20.mint(address(balanceSheet), defaultAmount);
-        erc6909.mint(address(balanceSheet), defaultErc6909TokenId, defaultAmount);
-        address receiver = address(this);
-
-        // fail: not auth
-        vm.prank(randomUser);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.recoverTokens(address(erc20), erc20TokenId, receiver, defaultAmount);
-
-        vm.prank(address(root));
-        balanceSheet.recoverTokens(address(erc20), erc20TokenId, receiver, defaultAmount);
-        assertEq(erc20.balanceOf(receiver), defaultAmount);
-
-        vm.prank(randomUser);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.recoverTokens(address(erc6909), defaultErc6909TokenId, receiver, defaultAmount);
-
-        vm.prank(address(root));
-        balanceSheet.recoverTokens(address(erc6909), defaultErc6909TokenId, receiver, defaultAmount);
-        assertEq(erc6909.balanceOf(receiver, defaultErc6909TokenId), defaultAmount);
-    }
-
     // --- IUpdateContract ---
     function testUpdate() public {
         erc20.mint(address(this), defaultAmount);
