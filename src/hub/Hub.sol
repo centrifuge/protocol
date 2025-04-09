@@ -7,6 +7,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {Multicall, IMulticall} from "src/misc/Multicall.sol";
+import {Recoverable} from "src/misc/Recoverable.sol";
 import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
@@ -27,7 +28,7 @@ import {IHoldings, Holding} from "src/hub/interfaces/IHoldings.sol";
 import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
 
 // @inheritdoc IHub
-contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
+contract Hub is Multicall, Recoverable, IHub, IHubGatewayHandler {
     using CastLib for *;
     using MessageLib for *;
     using MathLib for uint256;

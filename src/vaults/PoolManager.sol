@@ -44,10 +44,10 @@ import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 /// @notice This contract manages which pools & share classes exist,
 ///         as well as managing allowed pool currencies, and incoming and outgoing transfers.
 contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolManagerGatewayHandler {
+    using CastLib for *;
     using MessageLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;
-    using CastLib for *;
 
     uint8 internal constant MIN_DECIMALS = 2;
     uint8 internal constant MAX_DECIMALS = 18;
