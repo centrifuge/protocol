@@ -47,48 +47,63 @@ abstract contract BaseInvestmentManager is Auth, IBaseInvestmentManager {
 
     // --- View functions ---
     /// @inheritdoc IBaseInvestmentManager
-    function convertToShares(address vaultAddr, uint256 _assets) public view returns (uint256 shares) {
+    function convertToShares(address vaultAddr, uint256 assets) public view virtual returns (uint256 shares) {
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-
-        // TODO(wischli): Check if should be overwritten by SyncRequests using the custom valuation
-        (D18 latestPrice,) =
+        (D18 priceAssetPerShare,) =
             poolManager.priceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, true);
-        shares = VaultPricingLib.calculateShares(
-            vault_.share(),
-            vaultDetails.asset,
-            vaultDetails.tokenId,
-            _assets.toUint128(),
-            latestPrice.raw(),
-            MathLib.Rounding.Down
-        );
+
+        return _convertToShares(vault_, vaultDetails, priceAssetPerShare, assets);
     }
 
     /// @inheritdoc IBaseInvestmentManager
-    function convertToAssets(address vaultAddr, uint256 _shares) public view returns (uint256 assets) {
+    function convertToAssets(address vaultAddr, uint256 shares) public view virtual returns (uint256 assets) {
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-
-        // TODO(wischli): Check if should be overwritten by SyncRequests using the custom valuation
-        (D18 latestPrice,) =
+        (D18 priceAssetPerShare,) =
             poolManager.priceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, true);
-        assets = VaultPricingLib.calculateAssets(
-            vault_.share(),
-            _shares.toUint128(),
-            vaultDetails.asset,
-            vaultDetails.tokenId,
-            latestPrice.raw(),
-            MathLib.Rounding.Down
-        );
+
+        return _convertToAssets(vault_, vaultDetails, priceAssetPerShare, shares);
     }
 
     /// @inheritdoc IBaseInvestmentManager
-    function priceLastUpdated(address vaultAddr) public view returns (uint64 lastUpdated) {
+    function priceLastUpdated(address vaultAddr) public view virtual returns (uint64 lastUpdated) {
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
-        // TODO(wischli): Check if should be overwritten by SyncRequests using the custom valuation
         (, lastUpdated) =
             poolManager.priceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, true);
+    }
+
+    function _convertToShares(
+        IBaseVault vault_,
+        VaultDetails memory vaultDetails,
+        D18 priceAssetPerShare,
+        uint256 assets
+    ) internal view returns (uint256 shares) {
+        return VaultPricingLib.calculateShares(
+            vault_.share(),
+            vaultDetails.asset,
+            vaultDetails.tokenId,
+            assets.toUint128(),
+            priceAssetPerShare.raw(),
+            MathLib.Rounding.Down
+        );
+    }
+
+    function _convertToAssets(
+        IBaseVault vault_,
+        VaultDetails memory vaultDetails,
+        D18 priceAssetPerShare,
+        uint256 shares
+    ) internal view returns (uint256 assets) {
+        return VaultPricingLib.calculateAssets(
+            vault_.share(),
+            shares.toUint128(),
+            vaultDetails.asset,
+            vaultDetails.tokenId,
+            priceAssetPerShare.raw(),
+            MathLib.Rounding.Down
+        );
     }
 }
