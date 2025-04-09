@@ -309,10 +309,11 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
             address shareToken = poolManager.shareToken(poolId, scId);
 
             uint128 assetUnitAmount = uint128(10 ** VaultPricingLib.getAssetDecimals(asset, tokenId));
+            uint128 shareUnitAmount = uint128(10 ** IERC20Metadata(shareToken).decimals());
             uint128 assetAmountPerShare = valuation_.getQuote(assetUnitAmount, asset, shareToken).toUint128();
 
-            // Retrieve price by normalizing by asset denomination
-            price = d18(assetAmountPerShare, assetUnitAmount);
+            // Retrieve price by normalizing by share denomination
+            price = d18(assetAmountPerShare, shareUnitAmount);
         }
     }
 }
