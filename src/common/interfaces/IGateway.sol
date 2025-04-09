@@ -54,8 +54,9 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     event ProcessProof(uint16 centrifugeId, bytes32 messageHash, IAdapter adapter);
     event ExecuteMessage(uint16 centrifugeId, bytes message);
     event FailMessage(uint16 centrifugeId, bytes message, bytes error);
-    event SendBatch(uint16 centrifugeId, bytes batch);
-    event SendMessage(uint16 centrifugeId, PoolId poolId, bytes message);
+    event SendBatch(uint16 centrifugeId, bytes batch, IAdapter adapter);
+    event SendProof(uint16 centrifugeId, bytes proof, IAdapter adapter);
+    event PrepareMessage(uint16 centrifugeId, PoolId poolId, bytes message);
 
     event RecoverMessage(IAdapter adapter, bytes message);
     event RecoverProof(IAdapter adapter, bytes32 messageHash);

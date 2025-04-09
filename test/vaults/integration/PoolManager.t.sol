@@ -861,7 +861,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         vm.expectEmit();
         emit IPoolManager.RegisterAsset(defaultAssetId, asset, 0, erc20.name(), erc20.symbol(), erc20.decimals());
         vm.expectEmit(false, false, false, false);
-        emit IGateway.SendMessage(OTHER_CHAIN_ID, PoolId.wrap(0), message);
+        emit IGateway.PrepareMessage(OTHER_CHAIN_ID, PoolId.wrap(0), message);
         uint128 assetId = poolManager.registerAsset(OTHER_CHAIN_ID, asset, 0);
 
         assertEq(assetId, defaultAssetId);
@@ -903,7 +903,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
             defaultAssetId, asset, tokenId, erc6909.name(tokenId), erc6909.symbol(tokenId), erc6909.decimals(tokenId)
         );
         vm.expectEmit(false, false, false, false);
-        emit IGateway.SendMessage(OTHER_CHAIN_ID, PoolId.wrap(0), message);
+        emit IGateway.PrepareMessage(OTHER_CHAIN_ID, PoolId.wrap(0), message);
         uint128 assetId = poolManager.registerAsset(OTHER_CHAIN_ID, asset, tokenId);
 
         assertEq(assetId, defaultAssetId);
@@ -931,8 +931,8 @@ contract PoolManagerRegisterAssetTest is BaseTest {
             defaultAssetId, address(erc20), 0, erc20.name(), erc20.symbol(), erc20.decimals()
         );
         vm.expectEmit(false, false, false, false);
-        emit IGateway.SendMessage(OTHER_CHAIN_ID, PoolId.wrap(0), bytes(""));
-        emit IGateway.SendMessage(OTHER_CHAIN_ID, PoolId.wrap(0), bytes(""));
+        emit IGateway.PrepareMessage(OTHER_CHAIN_ID, PoolId.wrap(0), bytes(""));
+        emit IGateway.PrepareMessage(OTHER_CHAIN_ID, PoolId.wrap(0), bytes(""));
         poolManager.registerAsset(OTHER_CHAIN_ID, address(erc20), 0);
         poolManager.registerAsset(OTHER_CHAIN_ID, address(erc20), 0);
     }

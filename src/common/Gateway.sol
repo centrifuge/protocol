@@ -246,7 +246,8 @@ contract Gateway is Auth, IGateway, Recoverable {
         require(message.length > 0, EmptyMessage());
 
         PoolId poolId = processor.messagePoolId(message);
-        emit SendMessage(centrifugeId, poolId, message);
+
+        emit PrepareMessage(centrifugeId, poolId, message);
 
         if (isBatching) {
             bytes storage previousMessage = outboundBatch[centrifugeId][poolId];
@@ -294,9 +295,14 @@ contract Gateway is Auth, IGateway, Recoverable {
             }
 
             currentAdapter.send{value: consumed}(centrifugeId, payload, gasLimit, address(this));
+
+            if (isPrimaryAdapter) {
+                emit SendBatch(centrifugeId, batch, currentAdapter);
+            } else {
+                emit SendProof(centrifugeId, proof, currentAdapter);
+            }
         }
 
-        emit SendBatch(centrifugeId, batch);
     }
 
     function subsidizePool(PoolId poolId) external payable {

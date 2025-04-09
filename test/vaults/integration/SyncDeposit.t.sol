@@ -93,12 +93,12 @@ contract SyncDepositTest is BaseTest {
         JournalEntry[] memory journalEntries = new JournalEntry[](0);
 
         vm.expectEmit(false, false, false, false);
-        emit IGateway.SendMessage(OTHER_CHAIN_ID, poolId, bytes(""));
+        emit IGateway.PrepareMessage(OTHER_CHAIN_ID, poolId, bytes(""));
         vm.expectEmit();
         emit IBalanceSheet.Issue(poolId, scId, self, pricePerShare, shares);
 
         vm.expectEmit(false, false, false, false);
-        emit IGateway.SendMessage(OTHER_CHAIN_ID, poolId, bytes(""));
+        emit IGateway.PrepareMessage(OTHER_CHAIN_ID, poolId, bytes(""));
         vm.expectEmit();
         emit IBalanceSheet.Deposit(
             poolId,
@@ -114,7 +114,7 @@ contract SyncDepositTest is BaseTest {
         );
 
         vm.expectEmit(false, false, false, false);
-        emit IGateway.SendMessage(OTHER_CHAIN_ID, poolId, bytes(""));
+        emit IGateway.PrepareMessage(OTHER_CHAIN_ID, poolId, bytes(""));
         vm.expectEmit();
         emit IBalanceSheet.UpdateValue(
             poolId, scId, vault.asset(), vaultDetails.tokenId, pricePerUnit, uint64(timestamp)
