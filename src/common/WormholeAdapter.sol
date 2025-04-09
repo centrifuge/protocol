@@ -52,7 +52,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         bytes32 /* deliveryHash */
     ) external payable {
         WormholeSource memory source = sources[sourceWormholeId];
-        require(source.addr == sourceAddress.toAddressLeftPadded(), InvalidSource());
+        require(source.addr != address(0) && source.addr == sourceAddress.toAddressLeftPadded(), InvalidSource());
         require(msg.sender == address(relayer), NotWormholeRelayer());
 
         gateway.handle(source.centrifugeId, payload);
