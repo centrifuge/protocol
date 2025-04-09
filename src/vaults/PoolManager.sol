@@ -9,9 +9,9 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {Recoverable} from "src/misc/Recoverable.sol";
 
 import {VaultUpdateKind, MessageLib} from "src/common/libraries/MessageLib.sol";
-import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IPoolManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
@@ -43,11 +43,11 @@ import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 /// @title  Pool Manager
 /// @notice This contract manages which pools & share classes exist,
 ///         as well as managing allowed pool currencies, and incoming and outgoing transfers.
-contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGatewayHandler {
+contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolManagerGatewayHandler {
+    using CastLib for *;
     using MessageLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;
-    using CastLib for *;
 
     uint8 internal constant MIN_DECIMALS = 2;
     uint8 internal constant MAX_DECIMALS = 18;
@@ -94,15 +94,6 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
             revert("PoolManager/file-unrecognized-param");
         }
         emit File(what, factory, status);
-    }
-
-    /// @inheritdoc IRecoverable
-    function recoverTokens(address token, uint256 tokenId, address to, uint256 amount) external auth {
-        if (tokenId == 0) {
-            SafeTransferLib.safeTransfer(token, to, amount);
-        } else {
-            IERC6909(token).transfer(to, tokenId, amount);
-        }
     }
 
     // --- Outgoing message handling ---
@@ -290,12 +281,10 @@ contract PoolManager is Auth, IPoolManager, IUpdateContract, IPoolManagerGateway
         MessageLib.UpdateContractVaultUpdate memory m = MessageLib.deserializeUpdateContractVaultUpdate(payload);
 
         if (m.kind == uint8(VaultUpdateKind.DeployAndLink)) {
-            address factory = address(bytes20(m.vaultOrFactory));
-
-            address vault = deployVault(poolId, scId, m.assetId, factory);
+            address vault = deployVault(poolId, scId, m.assetId, m.vaultOrFactory.toAddress());
             linkVault(poolId, scId, m.assetId, vault);
         } else {
-            address vault = address(bytes20(m.vaultOrFactory));
+            address vault = m.vaultOrFactory.toAddress();
 
             // Needed as safeguard against non-validated vaults
             // I.e. we only accept vaults that have been deployed by the pool manager

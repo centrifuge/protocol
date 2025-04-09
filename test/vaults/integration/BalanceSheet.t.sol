@@ -111,30 +111,6 @@ contract BalanceSheetTest is BaseTest {
         balanceSheet.file("poolManager", randomUser);
     }
 
-    // --- IRecoverable ---
-    function testRecoverTokens() public {
-        erc20.mint(address(balanceSheet), defaultAmount);
-        erc6909.mint(address(balanceSheet), defaultErc6909TokenId, defaultAmount);
-        address receiver = address(this);
-
-        // fail: not auth
-        vm.prank(randomUser);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.recoverTokens(address(erc20), erc20TokenId, receiver, defaultAmount);
-
-        vm.prank(address(root));
-        balanceSheet.recoverTokens(address(erc20), erc20TokenId, receiver, defaultAmount);
-        assertEq(erc20.balanceOf(receiver), defaultAmount);
-
-        vm.prank(randomUser);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.recoverTokens(address(erc6909), defaultErc6909TokenId, receiver, defaultAmount);
-
-        vm.prank(address(root));
-        balanceSheet.recoverTokens(address(erc6909), defaultErc6909TokenId, receiver, defaultAmount);
-        assertEq(erc6909.balanceOf(receiver, defaultErc6909TokenId), defaultAmount);
-    }
-
     // --- IUpdateContract ---
     function testUpdate() public {
         erc20.mint(address(this), defaultAmount);
@@ -265,7 +241,6 @@ contract BalanceSheetTest is BaseTest {
             address(this),
             defaultAmount,
             d18(100, 5),
-            false,
             _defaultMeta()
         );
 
@@ -292,74 +267,24 @@ contract BalanceSheetTest is BaseTest {
             address(this),
             defaultAmount,
             d18(100, 5),
-            false,
             _defaultMeta()
         );
 
-        assertEq(erc20.balanceOf(address(this)), defaultAmount);
-    }
-
-    function testWithdrawWithAllowance() public {
-        testDeposit();
-
-        vm.prank(randomUser);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.withdraw(
-            POOL_A,
-            defaultTypedShareClassId,
-            address(erc20),
-            erc20TokenId,
-            address(this),
-            defaultAmount,
-            d18(100, 5),
-            true,
-            _defaultMeta()
-        );
-
-        assertEq(erc20.balanceOf(address(this)), 0);
-
-        balanceSheet.withdraw(
-            POOL_A,
-            defaultTypedShareClassId,
-            address(erc20),
-            erc20TokenId,
-            address(this),
-            defaultAmount,
-            d18(100, 5),
-            true,
-            _defaultMeta()
-        );
-
-        erc20.transferFrom(address(balanceSheet), address(this), defaultAmount);
         assertEq(erc20.balanceOf(address(this)), defaultAmount);
     }
 
     function testIssue() public {
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount, false);
+        balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount);
 
         IERC20 token = IERC20(poolManager.shareToken(POOL_A.raw(), defaultShareClassId));
         assertEq(token.balanceOf(address(this)), 0);
 
         vm.expectEmit();
         emit IBalanceSheet.Issue(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount);
-        balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount, false);
+        balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount);
 
-        assertEq(token.balanceOf(address(this)), defaultAmount);
-    }
-
-    function testIssueAsAllowance() public {
-        vm.prank(randomUser);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount, true);
-
-        IERC20 token = IERC20(poolManager.shareToken(POOL_A.raw(), defaultShareClassId));
-        assertEq(token.balanceOf(address(this)), 0);
-
-        balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount, true);
-
-        token.transferFrom(address(balanceSheet), address(this), defaultAmount);
         assertEq(token.balanceOf(address(this)), defaultAmount);
     }
 

@@ -38,7 +38,7 @@ contract VaultRouterTest is BaseTest {
 
     function testInitialization() public {
         // redeploying within test to increase coverage
-        new VaultRouter(CHAIN_ID, address(routerEscrow), address(gateway), address(poolManager));
+        new VaultRouter(address(routerEscrow), address(gateway), address(poolManager), messageDispatcher);
 
         assertEq(address(vaultRouter.escrow()), address(routerEscrow));
         assertEq(address(vaultRouter.gateway()), address(gateway));
@@ -51,14 +51,6 @@ contract VaultRouterTest is BaseTest {
         vm.label(vault_, "vault");
 
         assertEq(vaultRouter.getVault(vault.poolId(), vault.trancheId(), address(erc20)), vault_);
-    }
-
-    function testRecoverTokens() public {
-        uint256 amount = 100;
-        erc20.mint(address(vaultRouter), amount);
-        vm.prank(address(root));
-        vaultRouter.recoverTokens(address(erc20), erc20TokenId, address(this), amount);
-        assertEq(erc20.balanceOf(address(this)), amount);
     }
 
     function testRequestDeposit() public {

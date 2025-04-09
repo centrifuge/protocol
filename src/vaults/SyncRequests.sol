@@ -179,7 +179,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     function update(uint64, bytes16, bytes calldata payload) external auth {
         MessageLib.UpdateContractMaxPriceAge memory m = MessageLib.deserializeUpdateContractMaxPriceAge(payload);
 
-        address vaultAddr = address(bytes20(m.vault));
+        address vaultAddr = m.vault.toAddress();
         maxPriceAge[vaultAddr] = m.maxPriceAge;
 
         emit MaxPriceAgeUpdate(vaultAddr, m.maxPriceAge);
@@ -209,7 +209,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         ShareClassId scId = ShareClassId.wrap(scId_);
 
         // Mint shares for receiver & notify CP about issued shares
-        balanceSheet.issue(poolId, scId, receiver, pricePerShare, shares, false);
+        balanceSheet.issue(poolId, scId, receiver, pricePerShare, shares);
 
         _updateHoldings(poolId, scId, vaultDetails, depositAssetAmount);
     }

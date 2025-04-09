@@ -11,7 +11,7 @@ import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
-import {RestrictedTransfers} from "src/vaults/token/RestrictedTransfers.sol";
+import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 import {Properties} from "../properties/Properties.sol";

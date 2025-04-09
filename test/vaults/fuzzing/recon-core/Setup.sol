@@ -18,7 +18,7 @@ import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 
-import {RestrictedTransfers} from "src/vaults/token/RestrictedTransfers.sol";
+import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 

@@ -38,7 +38,7 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
         uint64 activeSessionId;
     }
 
-    struct Message {
+    struct InboundBatch {
         /// @dev Counts are stored as integers (instead of boolean values) to accommodate duplicate
         ///      messages (e.g. two investments from the same user with the same amount) being
         ///      processed in parallel. The entire struct is packed in a single bytes32 slot.
@@ -46,21 +46,27 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
         uint16[MAX_ADAPTER_COUNT] votes;
         /// @notice Each time adapters are updated, a new session starts which invalidates old votes
         uint64 sessionId;
-        bytes pendingMessage;
+        bytes pendingBatch;
     }
 
     // --- Events ---
-    event ProcessMessage(uint16 centrifugeId, bytes message, IAdapter adapter);
-    event ProcessProof(uint16 centrifugeId, bytes32 messageHash, IAdapter adapter);
-    event ExecuteMessage(uint16 centrifugeId, bytes message, IAdapter adapter);
-    event SendMessage(bytes message);
+    event ProcessBatch(uint16 centrifugeId, bytes batch, IAdapter adapter);
+    event ProcessProof(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
+    event ExecuteMessage(uint16 centrifugeId, bytes message);
+    event FailMessage(uint16 centrifugeId, bytes message, bytes error);
+    event SendBatch(uint16 centrifugeId, bytes batch, IAdapter adapter);
+    event SendProof(uint16 centrifugeId, bytes proof, IAdapter adapter);
+    event PrepareMessage(uint16 centrifugeId, PoolId poolId, bytes message);
+
     event RecoverMessage(IAdapter adapter, bytes message);
-    event RecoverProof(IAdapter adapter, bytes32 messageHash);
-    event InitiateMessageRecovery(uint16 centrifugeId, bytes32 messageHash, IAdapter adapter);
-    event DisputeMessageRecovery(uint16 centrifugeId, bytes32 messageHash, IAdapter adapter);
+    event RecoverProof(IAdapter adapter, bytes32 batchHash);
+    event InitiateMessageRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
+    event DisputeMessageRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
     event ExecuteMessageRecovery(uint16 centrifugeId, bytes message, IAdapter adapter);
+
     event File(bytes32 indexed what, uint16 centrifugeId, IAdapter[] adapters);
     event File(bytes32 indexed what, address addr);
+
     event SubsidizePool(PoolId indexed poolId, address indexed sender, uint256 amount);
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
@@ -105,6 +111,9 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @notice Dispatched when a the gateway has not enough fuel to send a message.
     /// Only dispatched in PayTransaction method
     error NotEnoughTransactionGas();
+
+    /// @notice Dispatched when a message that has not failed is retried.
+    error NotFailedMessage();
 
     // --- Administration ---
     /// @notice Used to update an array of addresses ( state variable ) on very rare occasions.
@@ -166,8 +175,8 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     ///         the result of two or more independ request from the user of the same type.
     ///         i.e. Same user would like to deposit same underlying asset with the same amount more then once.
     /// @param  centrifugeId Chain where the adapter is configured for
-    /// @param  messageHash The hash value of the incoming message.
-    function votes(uint16 centrifugeId, bytes32 messageHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory);
+    /// @param  batchHash The hash value of the incoming batch message.
+    function votes(uint16 centrifugeId, bytes32 batchHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory);
 
     /// @notice Used to calculate overall cost for bridging a payload on the first adapter and settling
     ///         on the destination chain and bridging its payload proofs on n-1 adapter
@@ -192,7 +201,7 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
 
     /// @notice Returns the timestamp when the given recovery can be executed.
     /// @param  centrifugeId Chain where the adapter is configured for
-    function recoveries(uint16 centrifugeId, IAdapter adapter, bytes32 messageHash)
+    function recoveries(uint16 centrifugeId, IAdapter adapter, bytes32 batchHash)
         external
         view
         returns (uint256 timestamp);

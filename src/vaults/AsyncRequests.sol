@@ -13,7 +13,6 @@ import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
-import {IRecoverable} from "src/common/interfaces/IRoot.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
@@ -37,10 +36,10 @@ import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
 contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
+    using CastLib for *;
+    using MessageLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;
-    using MessageLib for *;
-    using CastLib for *;
 
     IVaultMessageSender public sender;
 

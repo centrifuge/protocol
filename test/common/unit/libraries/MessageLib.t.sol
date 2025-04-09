@@ -575,7 +575,6 @@ contract TestMessageLibIdentities is Test {
             amount: 100,
             pricePerUnit: 23,
             isIncrease: false,
-            asAllowance: true,
             debits: debits,
             credits: credits
         });
@@ -589,7 +588,6 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.amount, b.amount);
         assertEq(a.pricePerUnit, b.pricePerUnit);
         assertEq(a.isIncrease, b.isIncrease);
-        assertEq(a.asAllowance, b.asAllowance);
         _checkEntries(a.debits, b.debits);
         _checkEntries(a.credits, b.credits);
 
@@ -604,8 +602,7 @@ contract TestMessageLibIdentities is Test {
             who: bytes32("alice"),
             pricePerShare: 23,
             shares: 100,
-            isIssuance: false,
-            asAllowance: true
+            isIssuance: false
         });
 
         MessageLib.TriggerUpdateShares memory b = MessageLib.deserializeTriggerUpdateShares(a.serialize());
@@ -616,7 +613,6 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.pricePerShare, b.pricePerShare);
         assertEq(a.shares, b.shares);
         assertEq(a.isIssuance, b.isIssuance);
-        assertEq(a.asAllowance, b.asAllowance);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
