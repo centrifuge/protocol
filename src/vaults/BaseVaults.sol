@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IRecoverable} from "src/common/interfaces/IRoot.sol";
-import {IRoot} from "src/common/interfaces/IRoot.sol";
-
 import {Auth} from "src/misc/Auth.sol";
 import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import {EIP712Lib} from "src/misc/libraries/EIP712Lib.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {SignatureLib} from "src/misc/libraries/SignatureLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {Recoverable} from "src/misc/Recoverable.sol";
+
+import {IRoot} from "src/common/interfaces/IRoot.sol";
 
 import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IERC7575} from "src/vaults/interfaces/IERC7575.sol";
@@ -21,7 +21,7 @@ import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInv
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 
-abstract contract BaseVault is Auth, IBaseVault {
+abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
     uint256 internal constant REQUEST_ID = 0;
 
@@ -89,15 +89,6 @@ abstract contract BaseVault is Auth, IBaseVault {
         if (what == "manager") manager = IBaseInvestmentManager(data);
         else revert("AsyncVault/file-unrecognized-param");
         emit File(what, data);
-    }
-
-    /// @inheritdoc IRecoverable
-    function recoverTokens(address token, uint256 tokenId_, address to, uint256 amount) external auth {
-        if (tokenId_ == 0) {
-            SafeTransferLib.safeTransfer(token, to, amount);
-        } else {
-            IERC6909(token).transfer(to, tokenId_, amount);
-        }
     }
 
     /// @inheritdoc IERC7540Operator

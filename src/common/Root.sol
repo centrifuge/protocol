@@ -4,8 +4,9 @@ pragma solidity 0.8.28;
 import {Auth} from "src/misc/Auth.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
-import {IRoot, IRecoverable} from "src/common/interfaces/IRoot.sol";
+import {IRoot} from "src/common/interfaces/IRoot.sol";
 
 /// @title  Root
 /// @notice Core contract that is a ward on all other deployed contracts.
@@ -114,12 +115,5 @@ contract Root is Auth, IRoot {
     function denyContract(address target, address user) external auth {
         IAuth(target).deny(user);
         emit DenyContract(target, user);
-    }
-
-    /// --- Token recovery ---
-    /// @inheritdoc IRoot
-    function recoverTokens(address target, address token, uint256 tokenId, address to, uint256 amount) public auth {
-        IRecoverable(target).recoverTokens(token, tokenId, to, amount);
-        emit RecoverTokens(target, token, tokenId, to, amount);
     }
 }

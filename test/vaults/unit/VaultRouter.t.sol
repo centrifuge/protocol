@@ -53,14 +53,6 @@ contract VaultRouterTest is BaseTest {
         assertEq(vaultRouter.getVault(vault.poolId(), vault.trancheId(), address(erc20)), vault_);
     }
 
-    function testRecoverTokens() public {
-        uint256 amount = 100;
-        erc20.mint(address(vaultRouter), amount);
-        vm.prank(address(root));
-        vaultRouter.recoverTokens(address(erc20), erc20TokenId, address(this), amount);
-        assertEq(erc20.balanceOf(address(this)), amount);
-    }
-
     function testRequestDeposit() public {
         (, address vault_,) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");

@@ -6,7 +6,7 @@
 
 Centrifuge V3 is an open, decentralized protocol for onchain asset management. Built on immutable smart contracts, it enables permissionless deployment of customizable tokenization products.
 
-Build a wide range of use cases—from permissioned funds to onchain loans—while enabling fast, secure deployment. ERC-4626 and ERC-7540 vaults allow seamless integration into DeFi. 
+Build a wide range of use cases—from permissioned funds to onchain loans—while enabling fast, secure deployment. ERC-4626 and ERC-7540 vaults allow seamless integration into DeFi.
 
 Using protocol-level chain abstraction, tokenization issuers access liquidity across any network, all managed from one Hub chain of their choice.
 
@@ -21,6 +21,33 @@ Using protocol-level chain abstraction, tokenization issuers access liquidity ac
 * Manage and control your vaults from a single chain of your choice
 * Consolidate accounting of all your vaults in a single place
 * Manage both RWAs & DeFi-native assets
+
+## Project structure
+```
+.
+├── deployments
+├── docs
+│  └── audits
+├── script
+├── src
+│  ├── misc
+│  ├── common
+│  ├── hub
+│  └── vaults
+├── test
+├── foundry.toml
+└── README.json
+```
+- `deployments` contains the deployment information of the supported chains
+- `docs` documentation, diagrams and security audit reports
+- `script` deployment scripts used to deploy a part or the full system, along with adapters.
+- `src` main source containing all the contrats. Look for the interfaces and libraries inside of each module.
+  - `misc` generic contracts
+  - `common` common code to `hub` and `vaults`
+  - `hub` code related to Centrifuge Hub
+  - `vaults` code related to Centrifuge Vaults
+- `test` cotains all tests: unitary test, integration test per module, and end-to-end integration tests
+
 
 ## Contributing
 #### Getting started

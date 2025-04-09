@@ -269,7 +269,10 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
         external
         payable
     {
+
         _protectedAndUnlocked();
+
+        require(shareClassManager.exists(unlockedPoolId, scId), IShareClassManager.ShareClassNotFound());
 
         sender.sendUpdateContract(centrifugeId, unlockedPoolId, scId, target, payload);
     }
@@ -283,6 +286,8 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
         VaultUpdateKind kind
     ) public payable {
         _protectedAndUnlocked();
+
+        require(shareClassManager.exists(unlockedPoolId, scId), IShareClassManager.ShareClassNotFound());
 
         sender.sendUpdateContract(
             assetId.centrifugeId(),
@@ -518,7 +523,7 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
     }
 
     //----------------------------------------------------------------------------------------------
-    // view / pure methods
+    //  private methods
     //----------------------------------------------------------------------------------------------
 
     /// @dev Ensure the method is protected (see `_protected()`) and the pool is unlocked,
