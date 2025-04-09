@@ -75,12 +75,14 @@ library VaultPricingLib {
 
     /// @dev    When converting assets to shares using the price,
     ///         all values are normalized to PRICE_DECIMALS
+    /// @dev    NOTE: We require all assets to have 2 <= decimals <= 18, see `PoolManager.registerAsset`
     function toPriceDecimals(uint128 _value, uint8 decimals) internal pure returns (uint256) {
         if (PRICE_DECIMALS == decimals) return uint256(_value);
         return uint256(_value) * 10 ** (PRICE_DECIMALS - decimals);
     }
 
     /// @dev    Converts decimals of the value from the price decimals back to the intended decimals
+    /// @dev    NOTE: We require all assets to have 2 <= decimals <= 18, see `PoolManager.registerAsset`
     function fromPriceDecimals(uint256 _value, uint8 decimals) internal pure returns (uint128) {
         if (PRICE_DECIMALS == decimals) return _value.toUint128();
         return (_value / 10 ** (PRICE_DECIMALS - decimals)).toUint128();
