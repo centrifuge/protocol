@@ -52,7 +52,8 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     // --- Events ---
     event ProcessMessage(uint16 centrifugeId, bytes message, IAdapter adapter);
     event ProcessProof(uint16 centrifugeId, bytes32 messageHash, IAdapter adapter);
-    event ExecuteMessage(uint16 centrifugeId, bytes message, IAdapter adapter);
+    event ExecuteMessage(uint16 centrifugeId, bytes message);
+    event FailMessage(uint16 centrifugeId, bytes message, bytes error);
     event SendMessage(bytes message);
     event RecoverMessage(IAdapter adapter, bytes message);
     event RecoverProof(IAdapter adapter, bytes32 messageHash);
@@ -105,6 +106,9 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @notice Dispatched when a the gateway has not enough fuel to send a message.
     /// Only dispatched in PayTransaction method
     error NotEnoughTransactionGas();
+
+    /// @notice Dispatched when a message that has not failed is retried.
+    error NotFailedMessage();
 
     // --- Administration ---
     /// @notice Used to update an array of addresses ( state variable ) on very rare occasions.

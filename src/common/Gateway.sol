@@ -53,6 +53,7 @@ contract Gateway is Auth, IGateway, Recoverable {
 
     // Messages
     mapping(uint16 centrifugeId => mapping(bytes32 messageHash => Message)) internal _messages;
+    mapping(uint16 centrifugeId => mapping(bytes32 messageHash => bool)) internal _failedMessages;
     mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 messageHash => uint256 timestamp)))
         public recoveries;
 
@@ -135,7 +136,7 @@ contract Gateway is Auth, IGateway, Recoverable {
         bool isMessageProof = messageProofHash != bytes32(0);
         if (adapter.quorum == 1 && !isMessageProof) {
             // Special case for gas efficiency
-            _handleBatch(centrifugeId, payload, adapter_);
+            _handleBatch(centrifugeId, payload);
             return;
         }
 
@@ -167,10 +168,10 @@ contract Gateway is Auth, IGateway, Recoverable {
             state.votes.decreaseFirstNValues(adapter.quorum);
 
             if (isMessageProof) {
-                _handleBatch(centrifugeId, state.pendingMessage, adapter_);
+                _handleBatch(centrifugeId, state.pendingMessage);
             }
             else {
-                _handleBatch(centrifugeId, payload, adapter_);
+                _handleBatch(centrifugeId, payload);
             }
 
             // Only if there are no more pending messages, remove the pending message
@@ -182,16 +183,31 @@ contract Gateway is Auth, IGateway, Recoverable {
         }
     }
 
-    function _handleBatch(uint16 centrifugeId, bytes memory batch_, IAdapter adapter_) internal {
+    function _handleBatch(uint16 centrifugeId, bytes memory batch_) internal {
         bytes memory message = batch_;
         for (uint256 start; start < batch_.length;) {
             uint256 length = processor.messageLength(message);
             message = batch_.slice(start, length);
             start = length;
 
-            processor.handle(centrifugeId, message);
-            emit ExecuteMessage(centrifugeId, message, adapter_);
+            try processor.handle(centrifugeId, message) {
+                emit ExecuteMessage(centrifugeId, message);
+            }
+            catch (bytes memory err) {
+                bytes32 messageHash = keccak256(batch_);
+                _failedMessages[centrifugeId][messageHash] = true;
+                emit FailMessage(centrifugeId, message, err);
+            }
         }
+    }
+
+    function retry(uint16 centrifugeId, bytes memory message) external {
+        bytes32 messageHash = keccak256(message);
+        require(_failedMessages[centrifugeId][messageHash], NotFailedMessage());
+
+        processor.handle(centrifugeId, message);
+        delete _failedMessages[centrifugeId][messageHash];
+        emit ExecuteMessage(centrifugeId, message);
     }
 
     /// @inheritdoc IGatewayHandler
