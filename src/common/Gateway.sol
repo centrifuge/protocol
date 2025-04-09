@@ -52,9 +52,9 @@ contract Gateway is Auth, IGateway, Recoverable {
     mapping(uint16 centrifugeId => mapping(IAdapter adapter => Adapter)) internal _activeAdapters;
 
     // Messages
-    mapping(uint16 centrifugeId => mapping(bytes32 messageHash => InboundBatch)) internal _inboundBatch;
-    mapping(uint16 centrifugeId => mapping(bytes32 messageHash => uint256)) internal _failedMessages;
-    mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 messageHash => uint256 timestamp)))
+    mapping(uint16 centrifugeId => mapping(bytes32 batchHash => InboundBatch)) public inboundBatch;
+    mapping(uint16 centrifugeId => mapping(bytes32 messageHash => uint256)) public failedMessages;
+    mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 batchHash => uint256 timestamp)))
         public recoveries;
 
 
@@ -141,18 +141,18 @@ contract Gateway is Auth, IGateway, Recoverable {
         }
 
         // Verify adapter and parse message hash
-        bytes32 messageHash;
+        bytes32 batchHash;
         if (isMessageProof) {
             require(adapter.id != PRIMARY_ADAPTER_ID, NonProofAdapter());
-            messageHash = messageProofHash;
-            emit ProcessProof(centrifugeId, messageHash, adapter_);
+            batchHash = messageProofHash;
+            emit ProcessProof(centrifugeId, batchHash, adapter_);
         } else {
             require(adapter.id == PRIMARY_ADAPTER_ID, NonMessageAdapter());
-            messageHash = keccak256(payload);
+            batchHash = keccak256(payload);
             emit ProcessBatch(centrifugeId, payload, adapter_);
         }
 
-        InboundBatch storage state = _inboundBatch[centrifugeId][messageHash];
+        InboundBatch storage state = inboundBatch[centrifugeId][batchHash];
 
         if (adapter.activeSessionId != state.sessionId) {
             // Clear votes from previous session
@@ -194,8 +194,8 @@ contract Gateway is Auth, IGateway, Recoverable {
                 emit ExecuteMessage(centrifugeId, message);
             }
             catch (bytes memory err) {
-                bytes32 messageHash = keccak256(batch_);
-                _failedMessages[centrifugeId][messageHash]++;
+                bytes32 messageHash = keccak256(message);
+                failedMessages[centrifugeId][messageHash]++;
                 emit FailMessage(centrifugeId, message, err);
             }
         }
@@ -203,36 +203,36 @@ contract Gateway is Auth, IGateway, Recoverable {
 
     function retry(uint16 centrifugeId, bytes memory message) external {
         bytes32 messageHash = keccak256(message);
-        require(_failedMessages[centrifugeId][messageHash] > 0, NotFailedMessage());
+        require(failedMessages[centrifugeId][messageHash] > 0, NotFailedMessage());
 
         processor.handle(centrifugeId, message);
-        _failedMessages[centrifugeId][messageHash]--;
+        failedMessages[centrifugeId][messageHash]--;
 
         emit ExecuteMessage(centrifugeId, message);
     }
 
     /// @inheritdoc IGatewayHandler
-    function initiateMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 messageHash) external auth {
+    function initiateMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 batchHash) external auth {
         require(_activeAdapters[centrifugeId][adapter].id != 0, InvalidAdapter());
-        recoveries[centrifugeId][adapter][messageHash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
-        emit InitiateMessageRecovery(centrifugeId, messageHash, adapter);
+        recoveries[centrifugeId][adapter][batchHash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
+        emit InitiateMessageRecovery(centrifugeId, batchHash, adapter);
     }
 
     /// @inheritdoc IGatewayHandler
-    function disputeMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 messageHash) external auth {
-        delete recoveries[centrifugeId][adapter][messageHash];
-        emit DisputeMessageRecovery(centrifugeId, messageHash, adapter);
+    function disputeMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 batchHash) external auth {
+        delete recoveries[centrifugeId][adapter][batchHash];
+        emit DisputeMessageRecovery(centrifugeId, batchHash, adapter);
     }
 
     /// @inheritdoc IGateway
     function executeMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes calldata message) external {
-        bytes32 messageHash = keccak256(message);
-        uint256 recovery = recoveries[centrifugeId][adapter][messageHash];
+        bytes32 batchHash = keccak256(message);
+        uint256 recovery = recoveries[centrifugeId][adapter][batchHash];
 
         require(recovery != 0, MessageRecoveryNotInitiated());
         require(recovery <= block.timestamp, MessageRecoveryChallengePeriodNotEnded());
 
-        delete recoveries[centrifugeId][adapter][messageHash];
+        delete recoveries[centrifugeId][adapter][batchHash];
         _handle(centrifugeId, message, adapter, true);
         emit ExecuteMessageRecovery(centrifugeId, message, adapter);
     }
@@ -382,8 +382,8 @@ contract Gateway is Auth, IGateway, Recoverable {
     }
 
     /// @inheritdoc IGateway
-    function votes(uint16 centrifugeId, bytes32 messageHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory) {
-        return _inboundBatch[centrifugeId][messageHash].votes;
+    function votes(uint16 centrifugeId, bytes32 batchHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory) {
+        return inboundBatch[centrifugeId][batchHash].votes;
     }
 
     /// @inheritdoc IGateway

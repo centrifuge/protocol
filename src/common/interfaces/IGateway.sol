@@ -51,7 +51,7 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
 
     // --- Events ---
     event ProcessBatch(uint16 centrifugeId, bytes batch, IAdapter adapter);
-    event ProcessProof(uint16 centrifugeId, bytes32 messageHash, IAdapter adapter);
+    event ProcessProof(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
     event ExecuteMessage(uint16 centrifugeId, bytes message);
     event FailMessage(uint16 centrifugeId, bytes message, bytes error);
     event SendBatch(uint16 centrifugeId, bytes batch, IAdapter adapter);
@@ -59,9 +59,9 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     event PrepareMessage(uint16 centrifugeId, PoolId poolId, bytes message);
 
     event RecoverMessage(IAdapter adapter, bytes message);
-    event RecoverProof(IAdapter adapter, bytes32 messageHash);
-    event InitiateMessageRecovery(uint16 centrifugeId, bytes32 messageHash, IAdapter adapter);
-    event DisputeMessageRecovery(uint16 centrifugeId, bytes32 messageHash, IAdapter adapter);
+    event RecoverProof(IAdapter adapter, bytes32 batchHash);
+    event InitiateMessageRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
+    event DisputeMessageRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
     event ExecuteMessageRecovery(uint16 centrifugeId, bytes message, IAdapter adapter);
 
     event File(bytes32 indexed what, uint16 centrifugeId, IAdapter[] adapters);
@@ -175,8 +175,8 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     ///         the result of two or more independ request from the user of the same type.
     ///         i.e. Same user would like to deposit same underlying asset with the same amount more then once.
     /// @param  centrifugeId Chain where the adapter is configured for
-    /// @param  messageHash The hash value of the incoming message.
-    function votes(uint16 centrifugeId, bytes32 messageHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory);
+    /// @param  batchHash The hash value of the incoming batch message.
+    function votes(uint16 centrifugeId, bytes32 batchHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory);
 
     /// @notice Used to calculate overall cost for bridging a payload on the first adapter and settling
     ///         on the destination chain and bridging its payload proofs on n-1 adapter
@@ -201,7 +201,7 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
 
     /// @notice Returns the timestamp when the given recovery can be executed.
     /// @param  centrifugeId Chain where the adapter is configured for
-    function recoveries(uint16 centrifugeId, IAdapter adapter, bytes32 messageHash)
+    function recoveries(uint16 centrifugeId, IAdapter adapter, bytes32 batchHash)
         external
         view
         returns (uint256 timestamp);
