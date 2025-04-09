@@ -136,3 +136,39 @@ contract D18Test is Test {
         assertEq(raw(a), a_);
     }
 }
+
+contract D18ReciprocalFuzzTest is Test {
+    /// @dev Fuzz test reciprocal function ensuring accurate calculation and round-trip multiplication.
+    function testFuzzReciprocal(uint128 val) public pure {
+        // Avoid division-by-zero, keep input reasonable
+        val = uint128(bound(val, 1, type(uint128).max / 1e18));
+        D18 input = D18.wrap(val);
+        D18 result = input.reciprocal();
+
+        uint128 expected = 1e36 / val;
+        assertApproxEqAbs(result.inner(), expected, 1, "Reciprocal calculation mismatch");
+
+        D18 roundTrip = input * result;
+        uint128 tolerance = 1e3; // very small relative error (~1e-15)
+        assertApproxEqAbs(roundTrip.inner(), 1e18, tolerance, "Round-trip multiplication failed");
+    }
+
+    /// @dev Explicitly test edge case for reciprocal(1e18) == 1e18
+    function testReciprocalOne() public pure {
+        D18 one = D18.wrap(1e18);
+        D18 result = one.reciprocal();
+        assertEq(result.inner(), 1e18, "Reciprocal of 1e18 should be 1e18");
+    }
+
+    /// @dev Explicitly test rounding edge cases close to 1
+    function testReciprocalRoundingEdges() public pure {
+        D18 almostOneUp = D18.wrap(1e18 + 1);
+        D18 almostOneDown = D18.wrap(1e18 - 1);
+
+        D18 resultUp = almostOneUp.reciprocal();
+        D18 resultDown = almostOneDown.reciprocal();
+
+        assertApproxEqAbs(resultUp.inner(), 1e18 - 1, 1, "Rounding error (upward case)");
+        assertApproxEqAbs(resultDown.inner(), 1e18 + 1, 1, "Rounding error (downward case)");
+    }
+}

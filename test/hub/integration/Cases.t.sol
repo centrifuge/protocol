@@ -245,7 +245,7 @@ contract TestCases is BaseTest {
         assertEq(m1.poolId, poolId.raw());
         assertEq(m1.scId, scId.raw());
         assertEq(m1.assetId, USDC_C2.raw());
-        assertEq(m1.price, identityPrice.inner(), "USDC price mismatch"); // FIXME: 1e30 vs 1e18
+        assertEq(m1.price, identityPrice.inner(), "USDC price mismatch");
         assertEq(m1.timestamp, block.timestamp.toUint64());
 
         MessageLib.NotifyPricePoolPerAsset memory m2 = MessageLib.deserializeNotifyPricePoolPerAsset(cv.popMessage());
