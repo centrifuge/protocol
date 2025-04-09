@@ -52,8 +52,8 @@ contract Gateway is Auth, IGateway, Recoverable {
     mapping(uint16 centrifugeId => mapping(IAdapter adapter => Adapter)) internal _activeAdapters;
 
     // Messages
-    mapping(uint16 centrifugeId => mapping(bytes32 batchHash => InboundBatch)) public inboundBatch;
     mapping(uint16 centrifugeId => mapping(bytes32 messageHash => uint256)) public failedMessages;
+    mapping(uint16 centrifugeId => mapping(bytes32 batchHash => InboundBatch)) public inboundBatch;
     mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 batchHash => uint256 timestamp)))
         public recoveries;
 
