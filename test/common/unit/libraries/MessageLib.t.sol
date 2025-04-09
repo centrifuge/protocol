@@ -496,17 +496,10 @@ contract TestMessageLibIdentities is Test {
         uint128 amount,
         uint128 pricePerUnit,
         uint64 timestamp,
-        bool isIncrease
+        bool isIncrease,
+        JournalEntry[] memory debits,
+        JournalEntry[] memory credits
     ) public pure {
-        JournalEntry[] memory debits = new JournalEntry[](3);
-        debits[0] = JournalEntry({accountId: AccountId.wrap(9), amount: 1});
-        debits[1] = JournalEntry({accountId: AccountId.wrap(8), amount: 2});
-        debits[2] = JournalEntry({accountId: AccountId.wrap(7), amount: 3});
-
-        JournalEntry[] memory credits = new JournalEntry[](2);
-        credits[0] = JournalEntry({accountId: AccountId.wrap(1), amount: 4});
-        credits[1] = JournalEntry({accountId: AccountId.wrap(3), amount: 5});
-
         MessageLib.UpdateHoldingAmount memory a = MessageLib.UpdateHoldingAmount({
             poolId: poolId,
             scId: scId,
@@ -596,16 +589,10 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
-    function testUpdateJournal(uint64 poolId, bytes16 scId) public pure {
-        JournalEntry[] memory debits = new JournalEntry[](3);
-        debits[0] = JournalEntry({accountId: AccountId.wrap(9), amount: 1});
-        debits[1] = JournalEntry({accountId: AccountId.wrap(8), amount: 2});
-        debits[2] = JournalEntry({accountId: AccountId.wrap(7), amount: 3});
-
-        JournalEntry[] memory credits = new JournalEntry[](2);
-        credits[0] = JournalEntry({accountId: AccountId.wrap(1), amount: 4});
-        credits[1] = JournalEntry({accountId: AccountId.wrap(3), amount: 5});
-
+    function testUpdateJournal(uint64 poolId, bytes16 scId, JournalEntry[] memory debits, JournalEntry[] memory credits)
+        public
+        pure
+    {
         MessageLib.UpdateJournal memory a = MessageLib.UpdateJournal({poolId: poolId, debits: debits, credits: credits});
         MessageLib.UpdateJournal memory b = MessageLib.deserializeUpdateJournal(a.serialize());
 
@@ -624,17 +611,10 @@ contract TestMessageLibIdentities is Test {
         bytes32 who,
         uint128 amount,
         uint128 pricePerUnit,
-        bool isIncrease
+        bool isIncrease,
+        JournalEntry[] memory debits,
+        JournalEntry[] memory credits
     ) public pure {
-        JournalEntry[] memory debits = new JournalEntry[](3);
-        debits[0] = JournalEntry({accountId: AccountId.wrap(9), amount: 1});
-        debits[1] = JournalEntry({accountId: AccountId.wrap(8), amount: 2});
-        debits[2] = JournalEntry({accountId: AccountId.wrap(7), amount: 3});
-
-        JournalEntry[] memory credits = new JournalEntry[](2);
-        credits[0] = JournalEntry({accountId: AccountId.wrap(1), amount: 4});
-        credits[1] = JournalEntry({accountId: AccountId.wrap(3), amount: 5});
-
         MessageLib.TriggerUpdateHoldingAmount memory a = MessageLib.TriggerUpdateHoldingAmount({
             poolId: poolId,
             scId: scId,
