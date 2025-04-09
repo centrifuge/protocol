@@ -209,8 +209,8 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
         D18 pricePoolPerShare = d18(uint128(bound(pricePoolPerShare_, 1e8, 1e24)));
         D18 pricePoolPerAsset = d18(uint128(bound(pricePoolPerAsset_, 1e6, pricePoolPerShare.inner())));
         D18 priceAssetPerShare = pricePoolPerShare / pricePoolPerAsset;
+        vm.assume(priceAssetPerShare.inner() % 1e12 == 0);
         uint128 multiplier = uint128(bound(multiplier_, 2, 10));
-        vm.assume(priceAssetPerShare.inner() < type(uint128).max / multiplier);
 
         (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
         address shareToken = poolManager.shareToken(syncVault.poolId(), syncVault.trancheId());
@@ -235,11 +235,10 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
         SyncPriceData memory prices =
             syncRequests.prices(syncVault.poolId(), syncVault.trancheId(), assetId, syncVault.asset(), 0);
         D18 pricePost = syncRequests.priceAssetPerShare(syncVault.poolId(), syncVault.trancheId(), assetId);
-        // TODO: Investigate why precision exceeds assetUnitAmount == 1e6
-        assertApproxEqAbs(
-            prices.assetPerShare.inner(), priceAssetPerShare.inner(), 1e12, "priceAssetPerShare Approx mismatch"
+        assertEq(
+            prices.assetPerShare.inner(), priceAssetPerShare.inner(), "assetPerShare vs priceAssetPerShare mismatch"
         );
-        assertEq(prices.assetPerShare.inner(), pricePost.inner(), "priceAssetPerShare vs pricePost mismatch");
+        assertEq(prices.assetPerShare.inner(), pricePost.inner(), "assetPerShare vs pricePost mismatch");
         assertNotEq(prices.assetPerShare.inner(), pricePre.inner());
         assertEq(prices.poolPerAsset.inner(), pricePoolPerAsset.inner(), "pricePoolPerAsset 2mismatch");
         assertEq(prices.poolPerShare.inner(), pricePoolPerShare.inner(), "pricePoolPerShare mismatch");
