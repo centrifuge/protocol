@@ -62,7 +62,4 @@ interface IHubRegistry is IERC6909Decimals {
 
     /// @notice checks the existence of an asset
     function isRegistered(AssetId assetId) external view returns (bool);
-
-    /// @notice returns the unit amount for the given asset, i.e. 10 ** decimals
-    function unitAmount(AssetId assetId) external view returns (uint128);
 }

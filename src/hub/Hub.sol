@@ -202,7 +202,7 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
         IERC7726 valuation = holdings.valuation(unlockedPoolId, scId, assetId);
 
         // Retrieve amount of 1 asset unit in pool currency
-        uint128 assetUnitAmount = hubRegistry.unitAmount(assetId);
+        uint128 assetUnitAmount = (10 ** hubRegistry.decimals(assetId.raw())).toUint128();
         uint128 assetAmountPerPool =
             valuation.getQuote(assetUnitAmount, assetId.addr(), poolCurrency.addr()).toUint128();
         

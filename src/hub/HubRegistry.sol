@@ -108,9 +108,4 @@ contract HubRegistry is Auth, IHubRegistry {
     function isRegistered(AssetId assetId) public view returns (bool) {
         return _decimals[assetId] != 0;
     }
-
-    /// @inheritdoc IHubRegistry
-    function unitAmount(AssetId assetId) external view returns (uint128) {
-        return (10 ** this.decimals(assetId.raw())).toUint128();
-    }
 }
