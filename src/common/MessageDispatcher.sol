@@ -26,21 +26,8 @@ import {IVaultMessageSender, IPoolMessageSender, IRootMessageSender} from "src/c
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {IMessageDispatcher} from "src/common/interfaces/IMessageDispatcher.sol";
 import {ITokenRecoverer} from "src/common/interfaces/ITokenRecoverer.sol";
-
-interface IMessageDispatcher is IRootMessageSender, IVaultMessageSender, IPoolMessageSender {
-    /// @notice Emitted when a call to `file()` was performed.
-    event File(bytes32 indexed what, address addr);
-
-    /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
-    error FileUnrecognizedParam();
-
-    /// @notice Updates a contract parameter.
-    /// @param what Name of the parameter to update.
-    /// Accepts a `bytes32` representation of 'hubRegistry' string value.
-    /// @param data New value given to the `what` parameter
-    function file(bytes32 what, address data) external;
-}
 
 contract MessageDispatcher is Auth, IMessageDispatcher {
     using MessageLib for *;
@@ -80,6 +67,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
+    }
+
+    /// @inheritdoc IMessageDispatcher
+    function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 amount) {
+        if (centrifugeId == localCentrifugeId) return 0;
+        (, amount) = IGateway(gateway).estimate(centrifugeId, payload);
     }
 
     /// @inheritdoc IPoolMessageSender
