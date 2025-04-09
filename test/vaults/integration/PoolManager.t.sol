@@ -110,12 +110,6 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.file("sender", newSender);
         assertEq(address(poolManager.sender()), newSender);
 
-        address newSyncRequests = makeAddr("newSyncRequests");
-        vm.expectEmit();
-        emit IPoolManager.File("syncRequests", newSyncRequests);
-        poolManager.file("syncRequests", newSyncRequests);
-        assertEq(address(poolManager.syncRequests()), newSyncRequests);
-
         address newBalanceSheet = makeAddr("newBalanceSheet");
         vm.expectEmit();
         emit IPoolManager.File("balanceSheet", newBalanceSheet);
@@ -861,7 +855,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
     using CastLib for *;
     using BytesLib for *;
 
-    uint32 constant STORAGE_INDEX_ASSET_COUNTER = 4;
+    uint32 constant STORAGE_INDEX_ASSET_COUNTER = 3;
     uint256 constant STORAGE_OFFSET_ASSET_COUNTER = 20;
 
     function _assertAssetCounterEq(uint32 expected) internal view {

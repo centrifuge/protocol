@@ -23,8 +23,6 @@ import {IBaseVault, IAsyncRedeemVault} from "src/vaults/interfaces/IERC7540.sol"
 import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
-import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
-import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {ITokenFactory} from "src/vaults/interfaces/factories/ITokenFactory.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
@@ -57,7 +55,6 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     address public balanceSheet;
     IVaultMessageSender public sender;
     ITokenFactory public tokenFactory;
-    ISyncRequests public syncRequests;
 
     uint64 internal _assetCounter;
 
@@ -84,7 +81,6 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "tokenFactory") tokenFactory = ITokenFactory(data);
         else if (what == "balanceSheet") balanceSheet = data;
-        else if (what == "syncRequests") syncRequests = ISyncRequests(data);
         else revert("PoolManager/file-unrecognized-param");
         emit File(what, data);
     }
