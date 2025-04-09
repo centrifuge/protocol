@@ -137,7 +137,7 @@ contract D18Test is Test {
     }
 }
 
-contract D18ReciprocalFuzzTest is Test {
+contract D18ReciprocalTest is Test {
     /// @dev Fuzz test reciprocal function ensuring accurate calculation and round-trip multiplication.
     function testFuzzReciprocal(uint128 val) public pure {
         // Avoid division-by-zero, keep input reasonable
