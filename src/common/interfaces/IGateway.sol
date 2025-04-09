@@ -38,7 +38,7 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
         uint64 activeSessionId;
     }
 
-    struct Message {
+    struct InboundBatch {
         /// @dev Counts are stored as integers (instead of boolean values) to accommodate duplicate
         ///      messages (e.g. two investments from the same user with the same amount) being
         ///      processed in parallel. The entire struct is packed in a single bytes32 slot.
@@ -46,7 +46,7 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
         uint16[MAX_ADAPTER_COUNT] votes;
         /// @notice Each time adapters are updated, a new session starts which invalidates old votes
         uint64 sessionId;
-        bytes pendingMessage;
+        bytes pendingBatch;
     }
 
     // --- Events ---

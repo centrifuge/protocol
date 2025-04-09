@@ -39,7 +39,7 @@ contract Gateway is Auth, IGateway, Recoverable {
     // Batching
     bool public transient isBatching;
     BatchLocator[] public /*transient*/ batchLocators;
-    mapping(uint16 centrifugeId => mapping(PoolId => bytes)) public /*transient*/ batch;
+    mapping(uint16 centrifugeId => mapping(PoolId => bytes)) public /*transient*/ outboundBatch;
     mapping(uint16 centrifugeId => mapping(PoolId => uint64)) public /*transient*/ batchGasLimit;
 
     // Payment
@@ -52,7 +52,7 @@ contract Gateway is Auth, IGateway, Recoverable {
     mapping(uint16 centrifugeId => mapping(IAdapter adapter => Adapter)) internal _activeAdapters;
 
     // Messages
-    mapping(uint16 centrifugeId => mapping(bytes32 messageHash => Message)) internal _messages;
+    mapping(uint16 centrifugeId => mapping(bytes32 messageHash => InboundBatch)) internal _inboundBatch;
     mapping(uint16 centrifugeId => mapping(bytes32 messageHash => bool)) internal _failedMessages;
     mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 messageHash => uint256 timestamp)))
         public recoveries;
@@ -152,7 +152,7 @@ contract Gateway is Auth, IGateway, Recoverable {
             emit ProcessMessage(centrifugeId, payload, adapter_);
         }
 
-        Message storage state = _messages[centrifugeId][messageHash];
+        InboundBatch storage state = _inboundBatch[centrifugeId][messageHash];
 
         if (adapter.activeSessionId != state.sessionId) {
             // Clear votes from previous session
@@ -168,7 +168,7 @@ contract Gateway is Auth, IGateway, Recoverable {
             state.votes.decreaseFirstNValues(adapter.quorum);
 
             if (isMessageProof) {
-                _handleBatch(centrifugeId, state.pendingMessage);
+                _handleBatch(centrifugeId, state.pendingBatch);
             }
             else {
                 _handleBatch(centrifugeId, payload);
@@ -176,10 +176,10 @@ contract Gateway is Auth, IGateway, Recoverable {
 
             // Only if there are no more pending messages, remove the pending message
             if (state.votes.isEmpty()) {
-                delete state.pendingMessage;
+                delete state.pendingBatch;
             }
         } else if (!isMessageProof) {
-            state.pendingMessage = payload;
+            state.pendingBatch = payload;
         }
     }
 
@@ -246,15 +246,15 @@ contract Gateway is Auth, IGateway, Recoverable {
 
         PoolId poolId = processor.messagePoolId(message);
         if (isBatching) {
-            bytes storage previousMessage = batch[centrifugeId][poolId];
+            bytes storage previousMessage = outboundBatch[centrifugeId][poolId];
 
             batchGasLimit[centrifugeId][poolId] += gasService.gasLimit(centrifugeId, message);
 
             if (previousMessage.length == 0) {
                 batchLocators.push(BatchLocator(centrifugeId, poolId));
-                batch[centrifugeId][poolId] = message;
+                outboundBatch[centrifugeId][poolId] = message;
             } else {
-                batch[centrifugeId][poolId] = bytes.concat(previousMessage, message);
+                outboundBatch[centrifugeId][poolId] = bytes.concat(previousMessage, message);
             }
         } else {
             _send(centrifugeId, poolId, message);
@@ -318,8 +318,8 @@ contract Gateway is Auth, IGateway, Recoverable {
 
         for (uint256 i; i < batchLocators.length; i++) {
             BatchLocator memory locator = batchLocators[i];
-            _send(locator.centrifugeId, locator.poolId, batch[locator.centrifugeId][locator.poolId]);
-            delete batch[locator.centrifugeId][locator.poolId];
+            _send(locator.centrifugeId, locator.poolId, outboundBatch[locator.centrifugeId][locator.poolId]);
+            delete outboundBatch[locator.centrifugeId][locator.poolId];
             delete batchGasLimit[locator.centrifugeId][locator.poolId];
         }
 
@@ -374,7 +374,7 @@ contract Gateway is Auth, IGateway, Recoverable {
 
     /// @inheritdoc IGateway
     function votes(uint16 centrifugeId, bytes32 messageHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory) {
-        return _messages[centrifugeId][messageHash].votes;
+        return _inboundBatch[centrifugeId][messageHash].votes;
     }
 
     /// @inheritdoc IGateway
