@@ -2,16 +2,17 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
-import {BitmapLib} from "src/misc/libraries/BitmapLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
-
-import {UpdateRestrictionType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {BitmapLib} from "src/misc/libraries/BitmapLib.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IHook, HookData} from "src/vaults/interfaces/token/IHook.sol";
+import {UpdateRestrictionType, MessageLib} from "src/common/libraries/MessageLib.sol";
+
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
-import {IRestrictedTransfers} from "src/vaults/interfaces/token/IRestrictedTransfers.sol";
+import {IHook, HookData} from "src/vaults/interfaces/token/IHook.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+
+import {IRestrictedTransfers} from "src/hooks/interfaces/IRestrictedTransfers.sol";
 
 /// @title  Restricted Redemptions
 /// @notice Hook implementation that:

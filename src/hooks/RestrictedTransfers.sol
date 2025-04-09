@@ -11,7 +11,8 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IHook, HookData} from "src/vaults/interfaces/token/IHook.sol";
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
-import {IRestrictedTransfers} from "src/vaults/interfaces/token/IRestrictedTransfers.sol";
+
+import {IRestrictedTransfers} from "src/hooks/interfaces/IRestrictedTransfers.sol";
 
 /// @title  Restriction Manager
 /// @notice Hook implementation that:

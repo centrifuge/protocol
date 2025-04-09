@@ -11,8 +11,8 @@ import {BalanceSheet} from "src/vaults/BalanceSheet.sol";
 import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
-import {RestrictedTransfers} from "src/vaults/token/RestrictedTransfers.sol";
-import {FreelyTransferable} from "src/vaults/token/FreelyTransferable.sol";
+import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
+import {FreelyTransferable} from "src/hooks/FreelyTransferable.sol";
 import {SyncRequests} from "src/vaults/SyncRequests.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
@@ -32,17 +32,17 @@ contract VaultsDeployer is CommonDeployer {
     VaultRouter public vaultRouter;
     address public asyncVaultFactory;
     address public syncDepositVaultFactory;
+    address public tokenFactory;
+
+    // Hooks
     address public restrictedTransfers;
     address public freelyTransferable;
-    address public tokenFactory;
 
     function deployVaults(uint16 centrifugeId, ISafe adminSafe_, address deployer) public {
         deployCommon(centrifugeId, adminSafe_, deployer);
 
         escrow = new Escrow{salt: SALT}(deployer);
         routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow2"))}(deployer);
-        restrictedTransfers = address(new RestrictedTransfers{salt: SALT}(address(root), deployer));
-        freelyTransferable = address(new FreelyTransferable{salt: SALT}(address(root), address(escrow), deployer));
         tokenFactory = address(new TokenFactory{salt: SALT}(address(root), deployer));
         asyncRequests = new AsyncRequests(address(root), address(escrow));
         syncRequests = new SyncRequests(address(root), address(escrow));
@@ -56,6 +56,10 @@ contract VaultsDeployer is CommonDeployer {
         poolManager = new PoolManager(address(escrow), tokenFactory, vaultFactories);
         balanceSheet = new BalanceSheet(address(escrow));
         vaultRouter = new VaultRouter(address(routerEscrow), address(gateway), address(poolManager), messageDispatcher);
+
+        // Hooks
+        restrictedTransfers = address(new RestrictedTransfers{salt: SALT}(address(root), deployer));
+        freelyTransferable = address(new FreelyTransferable{salt: SALT}(address(root), address(escrow), deployer));
 
         _vaultsRegister();
         _vaultsEndorse();

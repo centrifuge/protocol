@@ -28,7 +28,7 @@ import {IHoldings, Holding} from "src/hub/interfaces/IHoldings.sol";
 import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
 
 // @inheritdoc IHub
-contract Hub is Multicall, Recoverable, IHub, IHubGatewayHandler {
+contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     using CastLib for *;
     using MessageLib for *;
     using MathLib for uint256;

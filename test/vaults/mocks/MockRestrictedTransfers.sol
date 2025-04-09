@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import "test/common/mocks/Mock.sol";
-import "src/vaults/token/RestrictedTransfers.sol";
+import "src/hooks/RestrictedTransfers.sol";
 
 contract MockRestrictedTransfers is RestrictedTransfers, Mock {
     constructor(address root_, address deployer) RestrictedTransfers(root_, deployer) {}
