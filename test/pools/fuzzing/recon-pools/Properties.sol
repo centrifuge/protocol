@@ -38,7 +38,7 @@ abstract contract Properties is BeforeAfter, Asserts {
     //     eq(_after.ghostCredited, 0, "credited not reset");
     // }
 
-    /// @dev Property: The total pending asset amount pendingDeposit[..] is always >= than the approved asset amount epochAmounts[..].depositApproved
+    /// @dev Property: The total pending asset amount pendingDeposit[..] is always >= the approved asset amount epochAmounts[..].depositApproved
     function property_total_pending_and_approved() public {
         for (uint256 i = 0; i < createdPools.length; i++) {
             PoolId poolId = createdPools[i];
@@ -145,6 +145,51 @@ abstract contract Properties is BeforeAfter, Asserts {
         }
     }
 
+    /// @dev Property:  account.totalDebit and account.totalCredit is always less than uint128(type(int128).max)
+    function property_account_totalDebit_and_totalCredit_leq_max_int128() public {
+        for (uint256 i = 0; i < createdPools.length; i++) {
+            PoolId poolId = createdPools[i];
+            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
+            // skip the first share class because it's never assigned
+            for (uint32 j = 1; j < shareClassCount; j++) {
+                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+                AssetId assetId = hubRegistry.currency(poolId);
+                // loop over all account types defined in IHub::AccountType
+                for(uint8 kind = 0; kind < 6; kind++) {
+                    AccountId accountId = holdings.accountId(poolId, scId, assetId, kind);
+                    (uint128 totalDebit, uint128 totalCredit,,,) = accounting.accounts(poolId, accountId);
+                    lte(totalDebit, uint128(type(int128).max), "totalDebit is greater than max int128");
+                    lte(totalCredit, uint128(type(int128).max), "totalCredit is greater than max int128");
+                }
+            }
+        }
+    }
+
+    /// @dev Property: Any decrease in valuation should not result in an increase in accountValue
+    function property_decrease_valuation_no_increase_in_accountValue() public {
+        for (uint256 i = 0; i < createdPools.length; i++) {
+            PoolId poolId = createdPools[i];
+            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
+            // skip the first share class because it's never assigned
+            for (uint32 j = 1; j < shareClassCount; j++) {
+                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+                AssetId assetId = hubRegistry.currency(poolId);
+
+                if(_before.ghostHolding[poolId][scId][assetId] > _after.ghostHolding[poolId][scId][assetId]) {
+                    // loop over all account types defined in IHub::AccountType
+                    for(uint8 kind = 0; kind < 6; kind++) {
+                        AccountId accountId = holdings.accountId(poolId, scId, assetId, kind);
+                        int128 accountValueBefore = _before.ghostAccountValue[poolId][accountId];
+                        int128 accountValueAfter = _after.ghostAccountValue[poolId][accountId];
+                        if(accountValueAfter > accountValueBefore) {
+                            t(false, "accountValue increased");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /// @dev Property: After FM performs approveDeposits and revokeShares with non-zero navPerShare, the total issuance totalIssuance[..] is increased
     /// @dev WIP, this may not be possible to prove because these calls are made via execute which makes determining the before and after state difficult
     // function property_total_issuance_increased_after_approve_deposits_and_revoke_shares() public {
@@ -167,6 +212,8 @@ abstract contract Properties is BeforeAfter, Asserts {
     //     //     shareClassManager.metrics(scId);
     //     // }
     // }
+
+
     /// Stateless Properties ///
 
     /// @dev Property: The sum of eligible user payoutShareAmount for an epoch is <= the number of issued shares epochAmounts[..].depositShares
@@ -345,26 +392,6 @@ abstract contract Properties is BeforeAfter, Asserts {
     //         }
     //     }
     // }
-
-    /// @dev Property:  account.totalDebit and account.totalCredit is always less than uint128(type(int128).max)
-    function property_account_totalDebit_and_totalCredit_leq_max_int128() public stateless {
-        for (uint256 i = 0; i < createdPools.length; i++) {
-            PoolId poolId = createdPools[i];
-            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
-            // skip the first share class because it's never assigned
-            for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-                AssetId assetId = hubRegistry.currency(poolId);
-                // loop over all account types defined in IHub::AccountType
-                for(uint8 kind = 0; kind < 6; kind++) {
-                    AccountId accountId = holdings.accountId(poolId, scId, assetId, kind);
-                    (uint128 totalDebit, uint128 totalCredit,,,) = accounting.accounts(poolId, accountId);
-                    lte(totalDebit, uint128(type(int128).max), "totalDebit is greater than max int128");
-                    lte(totalCredit, uint128(type(int128).max), "totalCredit is greater than max int128");
-                }
-            }
-        }
-    }
 
     /// Rounding Properties /// 
 

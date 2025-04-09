@@ -173,7 +173,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         return scId;
     }
 
-    function _checkIfCanCancel(uint32 lastUpdate, uint128 pending, uint128 latestApproval) internal view returns (bool) {
+    function _checkIfCanCancel(uint32 lastUpdate, uint128 pending, uint128 latestApproval) internal pure returns (bool) {
         return lastUpdate > latestApproval || pending == 0 || latestApproval == 0;
     }
 }

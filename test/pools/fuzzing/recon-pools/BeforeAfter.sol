@@ -6,6 +6,8 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {EpochPointers, UserOrder} from "src/hub/interfaces/IShareClassManager.sol";
 import {Helpers} from "test/pools/fuzzing/recon-pools/utils/Helpers.sol";
+import {AccountId} from "src/hub/interfaces/IAccounting.sol";
+import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 import {Setup} from "./Setup.sol";
 
 enum OpType {
@@ -25,6 +27,8 @@ abstract contract BeforeAfter is Setup {
         mapping(PoolId poolId => uint32) ghostEpochId;
         mapping(ShareClassId scId => mapping(AssetId payoutAssetId => mapping(bytes32 investor => UserOrder pending)))
             ghostRedeemRequest;
+        mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => uint128 assetAmountValue))) ghostHolding;
+        mapping(PoolId poolId => mapping(AccountId accountId => int128 accountValue)) ghostAccountValue;
     }
 
     Vars internal _before;
@@ -58,14 +62,20 @@ abstract contract BeforeAfter is Setup {
             for (uint32 j = 0; j < shareClassManager.shareClassCount(poolId); j++) {
                 ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
                 AssetId assetId = hubRegistry.currency(poolId);
-                
+
                 (,_before.ghostLatestRedeemApproval,,) = shareClassManager.epochPointers(scId, assetId);
-                
+                (, _before.ghostHolding[poolId][scId][assetId],,) = holdings.holding(poolId, scId, assetId);
                 // loop over all actors
                 for (uint256 k = 0; k < _actors.length; k++) {
                     bytes32 actor = Helpers.addressToBytes32(_actors[k]);
                     (uint128 pendingRedeem, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, actor);
                     _before.ghostRedeemRequest[scId][assetId][actor] = UserOrder({pending: pendingRedeem, lastUpdate: lastUpdate});
+                }
+
+                // loop over all account types defined in IHub::AccountType
+                for(uint8 kind = 0; kind < 6; kind++) {
+                    AccountId accountId = holdings.accountId(poolId, scId, assetId, kind);
+                    _before.ghostAccountValue[poolId][accountId] = accounting.accountValue(poolId, accountId);
                 }
             }
         }
@@ -86,12 +96,18 @@ abstract contract BeforeAfter is Setup {
                 AssetId assetId = hubRegistry.currency(poolId);
                 
                 (,_after.ghostLatestRedeemApproval,,) = shareClassManager.epochPointers(scId, assetId);
-                
+                (, _after.ghostHolding[poolId][scId][assetId],,) = holdings.holding(poolId, scId, assetId);
                 // loop over all actors
                 for (uint256 k = 0; k < _actors.length; k++) {
                     bytes32 actor = Helpers.addressToBytes32(_actors[k]);
                     (uint128 pendingRedeem, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, actor);
                     _after.ghostRedeemRequest[scId][assetId][actor] = UserOrder({pending: pendingRedeem, lastUpdate: lastUpdate});
+                }
+
+                // loop over all account types defined in IHub::AccountType
+                for(uint8 kind = 0; kind < 6; kind++) {
+                    AccountId accountId = holdings.accountId(poolId, scId, assetId, kind);
+                    _after.ghostAccountValue[poolId][accountId] = accounting.accountValue(poolId, accountId);
                 }
             }
         }
