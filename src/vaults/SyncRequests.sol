@@ -63,7 +63,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
     /// --- IUpdateContract ---
     /// @inheritdoc IUpdateContract
-    function update(uint64 poolId, bytes16 scId, bytes memory payload) public auth {
+    function update(uint64 poolId, bytes16 scId, bytes memory payload) external auth {
         uint8 kind = uint8(MessageLib.updateContractType(payload));
 
         if (kind == uint8(UpdateContractType.Valuation)) {
@@ -81,7 +81,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     // --- IVaultManager ---
     /// @inheritdoc IVaultManager
     function addVault(uint64 poolId, bytes16 scId, address vaultAddr, address asset_, uint128 assetId)
-        public
+        external
         override
         auth
     {
@@ -105,7 +105,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
     /// @inheritdoc IVaultManager
     function removeVault(uint64 poolId, bytes16 scId, address vaultAddr, address asset_, uint128 assetId)
-        public
+        external
         override
         auth
     {
