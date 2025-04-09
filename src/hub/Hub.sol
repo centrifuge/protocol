@@ -529,8 +529,8 @@ contract Hub is Auth, Multicall, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePerUnit) external auth {
-        transientValuation.setPrice(assetId.addr(), hubRegistry.currency(poolId).addr(), pricePerUnit);
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset) external auth {
+        transientValuation.setPrice(assetId.addr(), hubRegistry.currency(poolId).addr(), pricePoolPerAsset);
         IERC7726 _valuation = holdings.valuation(poolId, scId, assetId);
         holdings.updateValuation(poolId, scId, assetId, transientValuation);
 

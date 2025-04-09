@@ -449,15 +449,16 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         view
         returns (D18 price, uint64 computedAt)
     {
-        (Price memory pricePerAsset, Price memory pricePerShare) = _poolPer(poolId, scId, assetId);
+        (Price memory poolPerAsset, Price memory poolPerShare) = _poolPer(poolId, scId, assetId);
 
         if (checkValidity) {
-            require(pricePerAsset.isValid(), "PoolManager/invalid-price");
-            require(pricePerShare.isValid(), "PoolManager/invalid-price");
+            require(poolPerAsset.isValid(), "PoolManager/invalid-price");
+            require(poolPerShare.isValid(), "PoolManager/invalid-price");
         }
 
-        price = pricePerShare.asPrice() / pricePerAsset.asPrice();
-        computedAt = pricePerShare.computedAt;
+        // (POOL_UNIT/SHARE_UNIT) / (POOL_UNIT/ASSET_UNIT) = ASSET_UNIT/SHARE_UNIT
+        price = poolPerShare.asPrice() / poolPerAsset.asPrice();
+        computedAt = poolPerShare.computedAt;
     }
 
     /// @inheritdoc IPoolManager

@@ -2,11 +2,13 @@
 pragma solidity 0.8.28;
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {D18, d18} from "src/misc/types/D18.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
-import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
+import {ISyncRequests, SyncPriceData} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import {SyncRequests} from "src/vaults/SyncRequests.sol";
+import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 
 import "test/vaults/BaseTest.sol";
 
@@ -15,6 +17,22 @@ contract SyncRequestsBaseTest is BaseTest {
         vm.assume(
             nonWard != address(root) && nonWard != address(poolManager) && nonWard != address(syncDepositVaultFactory)
                 && nonWard != address(this)
+        );
+    }
+
+    function _deploySyncDepositVault(D18 pricePoolPerShare, D18 pricePoolPerAsset)
+        internal
+        returns (SyncDepositVault syncVault, uint128 assetId)
+    {
+        (, address syncVault_, uint128 assetId_) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
+        assetId = assetId_;
+        syncVault = SyncDepositVault(syncVault_);
+
+        centrifugeChain.updatePricePoolPerShare(
+            syncVault.poolId(), syncVault.trancheId(), pricePoolPerShare.inner(), uint64(block.timestamp)
+        );
+        centrifugeChain.updatePricePoolPerAsset(
+            syncVault.poolId(), syncVault.trancheId(), assetId, pricePoolPerAsset.inner(), uint64(block.timestamp)
         );
     }
 }
@@ -91,6 +109,11 @@ contract SyncRequestsUnauthorizedTest is SyncRequestsBaseTest {
         syncRequests.mint(address(0), 0, address(0), address(0));
     }
 
+    function testSetValuationUnauthorized(address nonWard) public {
+        _expectUnauthorized(nonWard);
+        syncRequests.setValuation(0, bytes16(0), address(0), 0, address(0));
+    }
+
     function _expectUnauthorized(address caller) internal {
         vm.assume(
             caller != address(root) && caller != address(poolManager) && caller != syncDepositVaultFactory
@@ -99,5 +122,21 @@ contract SyncRequestsUnauthorizedTest is SyncRequestsBaseTest {
 
         vm.prank(caller);
         vm.expectRevert(IAuth.NotAuthorized.selector);
+    }
+}
+
+contract SyncRequestsPrices is SyncRequestsBaseTest {
+    function testSyncPrices(uint128 pricePoolPerShare_, uint128 pricePoolPerAsset_) public {
+        D18 pricePoolPerShare = d18(uint128(bound(pricePoolPerShare_, 1e6, 1e24)));
+        D18 pricePoolPerAsset = d18(uint128(bound(pricePoolPerAsset_, 1e4, pricePoolPerShare.inner())));
+        D18 priceAssetPerShare = pricePoolPerShare / pricePoolPerAsset;
+
+        (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
+
+        SyncPriceData memory prices =
+            syncRequests.prices(syncVault.poolId(), syncVault.trancheId(), assetId, address(erc20), 0);
+        assertEq(prices.assetPerShare.inner(), priceAssetPerShare.inner(), "priceAssetPerShare mismatch");
+        assertEq(prices.poolPerShare.inner(), pricePoolPerShare.inner(), "pricePoolPerShare mismatch");
+        assertEq(prices.poolPerAsset.inner(), pricePoolPerAsset.inner(), "pricePoolPerAsset mismatch");
     }
 }

@@ -42,9 +42,9 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
         (D18 priceAssetPerShare,) =
-            poolManager.priceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, true);
+            poolManager.priceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, false);
 
-        return _convertToShares(vault_, vaultDetails, priceAssetPerShare, assets);
+        return _convertToShares(vault_, vaultDetails, priceAssetPerShare, assets, MathLib.Rounding.Down);
     }
 
     /// @inheritdoc IBaseInvestmentManager
@@ -52,9 +52,9 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
         (D18 priceAssetPerShare,) =
-            poolManager.priceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, true);
+            poolManager.priceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, false);
 
-        return _convertToAssets(vault_, vaultDetails, priceAssetPerShare, shares);
+        return _convertToAssets(vault_, vaultDetails, priceAssetPerShare, shares, MathLib.Rounding.Down);
     }
 
     /// @inheritdoc IBaseInvestmentManager
@@ -63,14 +63,15 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
         (, lastUpdated) =
-            poolManager.priceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, true);
+            poolManager.priceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, false);
     }
 
     function _convertToShares(
         IBaseVault vault_,
         VaultDetails memory vaultDetails,
         D18 priceAssetPerShare,
-        uint256 assets
+        uint256 assets,
+        MathLib.Rounding rounding
     ) internal view returns (uint256 shares) {
         return VaultPricingLib.calculateShares(
             vault_.share(),
@@ -78,7 +79,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
             vaultDetails.tokenId,
             assets.toUint128(),
             priceAssetPerShare.raw(),
-            MathLib.Rounding.Down
+            rounding
         );
     }
 
@@ -86,7 +87,8 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         IBaseVault vault_,
         VaultDetails memory vaultDetails,
         D18 priceAssetPerShare,
-        uint256 shares
+        uint256 shares,
+        MathLib.Rounding rounding
     ) internal view returns (uint256 assets) {
         return VaultPricingLib.calculateAssets(
             vault_.share(),
@@ -94,7 +96,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
             vaultDetails.asset,
             vaultDetails.tokenId,
             priceAssetPerShare.raw(),
-            MathLib.Rounding.Down
+            rounding
         );
     }
 }

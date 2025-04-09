@@ -158,7 +158,7 @@ interface IVaultMessageSender is ILocalCentrifugeId {
         PoolId poolId,
         ShareClassId scId,
         address receiver,
-        D18 pricePerShare,
+        D18 pricePoolPerShare,
         uint128 shares,
         bool isIssuance
     ) external;

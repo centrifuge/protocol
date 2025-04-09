@@ -708,7 +708,7 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //   UpdateContract.MaxPriceAge (submsg)
+    //   UpdateContract.Valuation (submsg)
     //---------------------------------------
 
     struct UpdateContractValuation {
