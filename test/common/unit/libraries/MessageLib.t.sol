@@ -450,7 +450,7 @@ contract TestMessageLibIdentities is Test {
             scId: scId,
             investor: investor,
             assetId: assetId,
-            cancelledShares: 8
+            cancelledShares: cancelledShares
         });
         MessageLib.FulfilledCancelRedeemRequest memory b =
             MessageLib.deserializeFulfilledCancelRedeemRequest(a.serialize());
@@ -474,7 +474,7 @@ contract TestMessageLibIdentities is Test {
             scId: scId,
             investor: investor,
             assetId: assetId,
-            shares: 8
+            shares: shares
         });
         MessageLib.TriggerRedeemRequest memory b = MessageLib.deserializeTriggerRedeemRequest(a.serialize());
 
@@ -589,7 +589,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
-    function testUpdateJournal(uint64 poolId, bytes16 scId, JournalEntry[] memory debits, JournalEntry[] memory credits)
+    function testUpdateJournal(uint64 poolId, JournalEntry[] memory debits, JournalEntry[] memory credits)
         public
         pure
     {
