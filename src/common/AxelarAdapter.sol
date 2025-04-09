@@ -58,7 +58,7 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
         bytes calldata payload
     ) public {
         AxelarSource memory source = sources[sourceAxelarId];
-        require(source.addr == sourceAddress.toAddress(), InvalidAddress());
+        require(source.addr != address(0) && source.addr == sourceAddress.toAddress(), InvalidAddress());
 
         require(
             axelarGateway.validateContractCall(commandId, sourceAxelarId, sourceAddress, keccak256(payload)),

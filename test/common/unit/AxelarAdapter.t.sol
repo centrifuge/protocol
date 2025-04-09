@@ -122,6 +122,11 @@ contract AxelarAdapterTest is Test {
         vm.expectRevert(IAxelarExecutable.InvalidAddress.selector);
         adapter.execute(commandId, AXELAR_CHAIN_ID, invalidAddress.toString(), payload);
 
+        // address(0) from invalid chain should fail
+        vm.prank(address(relayer));
+        vm.expectRevert(IAxelarExecutable.InvalidAddress.selector);
+        adapter.execute(commandId, invalidChain, address(0).toString(), payload);
+
         // Incorrect chain
         vm.prank(address(relayer));
         vm.expectRevert(IAxelarExecutable.InvalidAddress.selector);
