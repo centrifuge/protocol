@@ -199,7 +199,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function approveDeposits(ShareClassId scId, AssetId paymentAssetId, uint128 maxApproval, IERC7726 valuation)
+    function approveDeposits(ShareClassId scId, AssetId paymentAssetId, uint128 maxApproval)
         external
         payable
     {
@@ -229,11 +229,12 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     function issueShares(ShareClassId scId, AssetId depositAssetId, D18 navPerShare) external payable {
         _protectedAndUnlocked();
 
+        // TODO: transform shareprice here and pass on
         shareClassManager.issueShares(unlockedPoolId, scId, depositAssetId, navPerShare);
     }
 
     /// @inheritdoc IHub
-    function revokeShares(ShareClassId scId, AssetId payoutAssetId, D18 navPerShare, IERC7726 valuation)
+    function revokeShares(ShareClassId scId, AssetId payoutAssetId, D18 navPerShare)
         external
         payable
     {

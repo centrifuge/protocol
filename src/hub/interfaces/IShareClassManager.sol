@@ -7,21 +7,26 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-struct EpochAmounts {
-    /// @dev Total pending asset amount of deposit asset
-    uint128 depositPending;
-    /// @dev Total approved asset amount of deposit asset
-    uint128 depositApproved;
-    /// @dev Total approved pool amount of deposit asset
-    uint128 depositPool;
-    /// @dev Total number of share class tokens issued
-    uint128 depositShares;
-    /// @dev Amount of shares pending to be redeemed
-    uint128 redeemPending;
+struct EpochRedeemAmounts {
+    /// @dev Amount of shares pending to be redeemed at time of epoch
+    uint128 pendingShareAmount;
     /// @dev Total approved amount of redeemed share class tokens
-    uint128 redeemApproved;
+    uint128 approvedShareAmount;
     /// @dev Total asset amount of revoked share class tokens
-    uint128 redeemAssets;
+    uint128 payoutAssetAmount;
+    /// @dev block timestamp when shares of epoch were revoked
+    u64 timestampRevoked;
+}
+
+struct EpochInvestAmounts {
+    /// @dev Total pending asset amount of deposit asset at time of epoch
+    uint128 pendingAssetAmount;
+    /// @dev Total approved asset amount of deposit asset
+    uint128 approvedAssetAmount;
+    /// @dev Total approved pool amount of deposit asset
+    uint128 approvedPoolAmount;
+    /// @dev block timestamp when shares of epoch were issued
+    u64 issuedAt;
 }
 
 struct UserOrder {
@@ -29,17 +34,6 @@ struct UserOrder {
     uint128 pending;
     /// @dev Index of epoch in which last order was made
     uint32 lastUpdate;
-}
-
-struct EpochPointers {
-    /// @dev The last epoch in which a deposit approval was made
-    uint32 latestDepositApproval;
-    /// @dev The last epoch in which a redeem approval was made
-    uint32 latestRedeemApproval;
-    /// @dev The last epoch in which shares were issued
-    uint32 latestIssuance;
-    /// @dev The last epoch in which a shares were revoked
-    uint32 latestRevocation;
 }
 
 struct ShareClassMetadata {
@@ -105,7 +99,6 @@ interface IShareClassManager {
         uint128 nav,
         uint128 issuedShareAmount
     );
-
     event RevokeShares(
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -115,7 +108,6 @@ interface IShareClassManager {
         uint128 revokedShareAmount,
         uint128 revokedAssetAmount
     );
-
     event ClaimDeposit(
         PoolId indexed poolId,
         ShareClassId indexed scId,
