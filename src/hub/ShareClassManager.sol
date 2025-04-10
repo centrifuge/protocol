@@ -167,7 +167,9 @@ contract ShareClassManager is Auth, IShareClassManager {
         epochPointers[scId_][paymentAssetId].latestDepositApproval = approvalEpochId;
 
         // Reduce pending
-        pendingDeposit[scId_][paymentAssetId] -= approvedAssetAmount;
+        // pendingDeposit[scId_][paymentAssetId] -= approvedAssetAmount;
+        // @audit MUTATION: always redue by maxApproval without checking if less than _pendingDeposit
+        pendingDeposit[scId_][paymentAssetId] -= maxApproval;
         _pendingDeposit -= approvedAssetAmount;
 
         emit ApproveDeposits(
@@ -196,7 +198,9 @@ contract ShareClassManager is Auth, IShareClassManager {
 
         // Update epoch data
         EpochAmounts storage epochAmounts_ = epochAmounts[scId_][payoutAssetId][approvalEpochId];
-        epochAmounts_.redeemApproved = approvedShareAmount;
+        // epochAmounts_.redeemApproved = approvedShareAmount;
+        // @audit MUTATION: always set to maxApproval without checking if less than pendingShareAmount
+        epochAmounts_.redeemApproved = maxApproval;
         epochAmounts_.redeemPending = pendingShareAmount;
 
         // Reduce pending
