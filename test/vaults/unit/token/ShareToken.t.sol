@@ -13,6 +13,7 @@ import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 import "forge-std/Test.sol";
 import {MockRestrictedTransfers} from "test/vaults/mocks/MockRestrictedTransfers.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 interface ERC20Like {
     function balanceOf(address) external view returns (uint256);
@@ -43,7 +44,7 @@ contract ShareTokenTest is Test {
         address hook = makeAddr("hook");
 
         // fail: unrecognized param
-        vm.expectRevert(bytes("CentrifugeToken/file-unrecognized-param"));
+        vm.expectRevert(IShareToken.FileUnrecognizedParam.selector);
         token.file("random", hook);
 
         // success
@@ -57,7 +58,7 @@ contract ShareTokenTest is Test {
         token.deny(self);
 
         // auth fail
-        vm.expectRevert(bytes("CentrifugeToken/not-authorized"));
+        vm.expectRevert(IShareToken.NotAuthorizedOrHook.selector);
         token.file("hook", hook);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
