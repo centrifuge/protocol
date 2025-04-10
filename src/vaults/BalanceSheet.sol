@@ -184,11 +184,11 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     /// @inheritdoc IBalanceSheetGatewayHandler
-    function triggerIssueShares(PoolId poolId, ShareClassId scId, address to, D18 priceAssetPerShare, uint128 shares)
+    function triggerIssueShares(PoolId poolId, ShareClassId scId, address to, D18 pricePoolPerShare, uint128 shares)
         external
         auth
     {
-        _issue(poolId, scId, to, priceAssetPerShare, shares);
+        _issue(poolId, scId, to, pricePoolPerShare, shares);
     }
 
     /// @inheritdoc IBalanceSheetGatewayHandler

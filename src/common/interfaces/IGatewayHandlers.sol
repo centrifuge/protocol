@@ -287,7 +287,7 @@ interface IBalanceSheetGatewayHandler {
         Meta calldata m
     ) external;
 
-    function triggerIssueShares(PoolId poolId, ShareClassId scId, address to, D18 priceAssetPerShare, uint128 shares)
+    function triggerIssueShares(PoolId poolId, ShareClassId scId, address to, D18 pricePoolPerShare, uint128 shares)
         external;
 
     function triggerRevokeShares(PoolId poolId, ShareClassId scId, address from, D18 pricePoolPerShare, uint128 shares)
