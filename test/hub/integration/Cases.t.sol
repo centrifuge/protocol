@@ -18,14 +18,21 @@ contract TestCases is BaseTest {
 
         scId = shareClassManager.previewNextShareClassId(poolId);
 
-        (bytes[] memory cs, uint256 c) = (new bytes[](7), 0);
+        (bytes[] memory cs, uint256 c) = (new bytes[](12), 0);
         cs[c++] = abi.encodeWithSelector(hub.setPoolMetadata.selector, bytes("Testing pool"));
         cs[c++] = abi.encodeWithSelector(hub.addShareClass.selector, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
         cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, CHAIN_CV);
         cs[c++] = abi.encodeWithSelector(hub.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
-        cs[c++] = abi.encodeWithSelector(hub.createHolding.selector, scId, USDC_C2, identityValuation, false, 0x01);
+        cs[c++] = abi.encodeWithSelector(hub.createAccount.selector, 0x01, true);
+        cs[c++] = abi.encodeWithSelector(hub.createAccount.selector, 0x02, false);
+        cs[c++] = abi.encodeWithSelector(hub.createAccount.selector, 0x03, false);
+        cs[c++] = abi.encodeWithSelector(hub.createAccount.selector, 0x04, false);
+        cs[c++] = abi.encodeWithSelector(hub.createAccount.selector, 0x05, true);
         cs[c++] =
-            abi.encodeWithSelector(hub.createHolding.selector, scId, EUR_STABLE_C2, transientValuation, false, 0x02);
+            abi.encodeWithSelector(hub.createHolding.selector, scId, USDC_C2, identityValuation, 0x01, 0x02, 0x03, 0x04);
+        cs[c++] = abi.encodeWithSelector(
+            hub.createHolding.selector, scId, EUR_STABLE_C2, transientValuation, 0x05, 0x02, 0x03, 0x04
+        );
         cs[c++] = abi.encodeWithSelector(
             hub.updateVault.selector,
             scId,
@@ -134,7 +141,7 @@ contract TestCases is BaseTest {
     function testCalUpdateJournal() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation();
 
-        AccountId extraAccountId = newAccountId(123, uint8(AccountType.Asset));
+        AccountId extraAccountId = AccountId.wrap(123);
 
         (bytes[] memory cs, uint256 c) = (new bytes[](1), 0);
         cs[c++] = abi.encodeWithSelector(hub.createAccount.selector, extraAccountId, true);
@@ -176,10 +183,14 @@ contract TestCases is BaseTest {
             accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Equity))),
             int128(870 * poolDecimals)
         );
+        assertEq(
+            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Asset))),
+            int128(1000 * poolDecimals)
+        );
 
         (debits, i) = (new JournalEntry[](1), 0);
         debits[i++] =
-            JournalEntry(12 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Expense)));
+            JournalEntry(12 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Gain)));
         (credits, i) = (new JournalEntry[](1), 0);
         credits[i++] =
             JournalEntry(12 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Loss)));
@@ -189,11 +200,12 @@ contract TestCases is BaseTest {
         assertEq(holdings.amount(poolId, scId, USDC_C2), 500 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 500 * poolDecimals);
         assertEq(
-            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Loss))),
-            int128(12 * poolDecimals)
+            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Asset))),
+            // 1000 - 500 + 12 = 512
+            int128(512 * poolDecimals)
         );
         assertEq(
-            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Expense))),
+            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Loss))),
             int128(12 * poolDecimals)
         );
         assertEq(

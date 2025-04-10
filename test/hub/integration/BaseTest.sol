@@ -14,7 +14,7 @@ import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
 
 import {HubDeployer, ISafe} from "script/HubDeployer.s.sol";

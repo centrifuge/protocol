@@ -15,13 +15,23 @@ struct Holding {
     bool isLiability;
 }
 
+struct CreateHolding {
+    AccountId accountId;
+    uint8 kind;
+}
+
 interface IHoldings {
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 indexed what, address addr);
 
     /// @notice Emitted when a holding is created
     event Create(
-        PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, IERC7726 valuation, bool isLiability
+        PoolId indexed,
+        ShareClassId indexed scId,
+        AssetId indexed assetId,
+        IERC7726 valuation,
+        bool isLiability,
+        CreateHolding[] accounts
     );
 
     /// @notice Emitted when a holding is increased
@@ -51,7 +61,9 @@ interface IHoldings {
     event UpdateValuation(PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, IERC7726 valuation);
 
     /// @notice Emitted when an account is for a holding is set
-    event SetAccountId(PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, AccountId accountId);
+    event SetAccountId(
+        PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, uint8 kind, AccountId accountId
+    );
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedWhat();
@@ -81,7 +93,7 @@ interface IHoldings {
         AssetId assetId,
         IERC7726 valuation,
         bool isLiability,
-        AccountId[] memory accounts
+        CreateHolding[] memory accounts
     ) external;
 
     /// @notice Increments the amount of a holding and updates the value for that increment.
@@ -104,7 +116,8 @@ interface IHoldings {
     function updateValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation) external;
 
     /// @notice Sets an account id for an specific kind
-    function setAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, AccountId accountId) external;
+    function setAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId)
+        external;
 
     /// @notice Returns the value of this holding.
     function value(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (uint128 value);

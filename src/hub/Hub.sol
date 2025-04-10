@@ -18,14 +18,14 @@ import {IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
-import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
 import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {IHoldings, Holding} from "src/hub/interfaces/IHoldings.sol";
+import {IHoldings, Holding, CreateHolding} from "src/hub/interfaces/IHoldings.sol";
 import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
 
 // @inheritdoc IHub
@@ -337,30 +337,49 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, bool isLiability, uint24 prefix)
+    function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, AccountId assetAccount, AccountId equityAccount, AccountId lossAccount, AccountId gainAccount) 
         external
         payable
     {
         _protectedAndUnlocked();
 
         require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
+        require(
+            accounting.exists(unlockedPoolId, assetAccount) &&
+            accounting.exists(unlockedPoolId, equityAccount) &&
+            accounting.exists(unlockedPoolId, lossAccount) &&
+            accounting.exists(unlockedPoolId, gainAccount),
+            IAccounting.AccountDoesNotExist()
+        );
 
-        AccountId[] memory accounts = new AccountId[](6);
-        accounts[0] = newAccountId(prefix, uint8(AccountType.Asset));
-        accounts[1] = newAccountId(prefix, uint8(AccountType.Equity));
-        accounts[2] = newAccountId(prefix, uint8(AccountType.Loss));
-        accounts[3] = newAccountId(prefix, uint8(AccountType.Gain));
-        accounts[4] = newAccountId(prefix, uint8(AccountType.Expense));
-        accounts[5] = newAccountId(prefix, uint8(AccountType.Liability));
+        CreateHolding[] memory accounts = new CreateHolding[](4);
+        accounts[0] = CreateHolding(assetAccount, uint8(AccountType.Asset));
+        accounts[1] = CreateHolding(equityAccount, uint8(AccountType.Equity));
+        accounts[2] = CreateHolding(lossAccount, uint8(AccountType.Loss));
+        accounts[3] = CreateHolding(gainAccount, uint8(AccountType.Gain));
 
-        createAccount(accounts[0], true);
-        createAccount(accounts[1], false);
-        createAccount(accounts[2], false);
-        createAccount(accounts[3], false);
-        createAccount(accounts[4], true);
-        createAccount(accounts[5], false);
+        holdings.create(unlockedPoolId, scId, assetId, valuation, false, accounts);
+    }
 
-        holdings.create(unlockedPoolId, scId, assetId, valuation, isLiability, accounts);
+    /// @inheritdoc IHub
+    function createLiability(ShareClassId scId, AssetId assetId, IERC7726 valuation, AccountId expenseAccount, AccountId liabilityAccount)
+        external
+        payable
+    {
+        _protectedAndUnlocked();
+
+        require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
+        require(
+            accounting.exists(unlockedPoolId, expenseAccount) &&
+            accounting.exists(unlockedPoolId, liabilityAccount),
+            IAccounting.AccountDoesNotExist()
+        );
+
+        CreateHolding[] memory accounts = new CreateHolding[](2);
+        accounts[0] = CreateHolding(expenseAccount, uint8(AccountType.Expense));
+        accounts[1] = CreateHolding(liabilityAccount, uint8(AccountType.Liability));
+
+        holdings.create(unlockedPoolId, scId, assetId, valuation, true, accounts);
     }
 
     /// @inheritdoc IHub
@@ -412,10 +431,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function setHoldingAccountId(ShareClassId scId, AssetId assetId, AccountId accountId) external payable {
+    function setHoldingAccountId(ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId) external payable {
         _protectedAndUnlocked();
 
-        holdings.setAccountId(unlockedPoolId, scId, assetId, accountId);
+        holdings.setAccountId(unlockedPoolId, scId, assetId, kind, accountId);
     }
 
     /// @inheritdoc IHub
