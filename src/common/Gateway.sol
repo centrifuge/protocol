@@ -6,6 +6,7 @@ import {ArrayLib} from "src/misc/libraries/ArrayLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
@@ -134,7 +135,7 @@ contract Gateway is Auth, IGateway, Recoverable {
         bool isMessageProof = messageProofHash != bytes32(0);
         if (adapter.quorum == 1 && !isMessageProof) {
             // Special case for gas efficiency
-            _handleBatch(centrifugeId, payload);
+            _processBatch(centrifugeId, payload);
             return;
         }
 
@@ -143,11 +144,11 @@ contract Gateway is Auth, IGateway, Recoverable {
         if (isMessageProof) {
             require(adapter.id != PRIMARY_ADAPTER_ID, NonProofAdapter());
             batchHash = messageProofHash;
-            emit ProcessProof(centrifugeId, batchHash, adapter_);
+            emit HandleProof(centrifugeId, batchHash, adapter_);
         } else {
             require(adapter.id == PRIMARY_ADAPTER_ID, NonMessageAdapter());
             batchHash = keccak256(payload);
-            emit ProcessBatch(centrifugeId, payload, adapter_);
+            emit HandleBatch(centrifugeId, payload, adapter_);
         }
 
         InboundBatch storage state = inboundBatch[centrifugeId][batchHash];
@@ -166,7 +167,24 @@ contract Gateway is Auth, IGateway, Recoverable {
         }
     }
 
-    function _handleBatch(uint16 centrifugeId, bytes memory batch_) internal {
+    function executeBatch(uint16 centrifugeId, bytes32 batchHash) external {
+        InboundBatch storage state = inboundBatch[centrifugeId][batchHash];
+
+        uint8 quorum_ = quorum(centrifugeId);
+        if (state.votes.countNonZeroValues() >= quorum_) {
+            // Reduce votes by quorum
+            state.votes.decreaseFirstNValues(quorum_);
+
+            _processBatch(centrifugeId, state.pendingBatch);
+
+            // Only if there are no more pending messages, remove the pending message
+            if (state.votes.isEmpty()) {
+                delete state.pendingBatch;
+            }
+        }
+    }
+
+    function _processBatch(uint16 centrifugeId, bytes memory batch_) internal {
         bytes memory message = batch_;
         for (uint256 start; start < batch_.length;) {
             uint256 length = processor.messageLength(message);
@@ -189,29 +207,12 @@ contract Gateway is Auth, IGateway, Recoverable {
 
             if (subsidy[poolId] >= refunded) {
                 subsidy[poolId] -= refunded;
-                payable(msg.sender).transfer(refunded);
+                SafeTransferLib.safeTransferETH(msg.sender, refunded);
             }
         }
     }
 
-    function execute(uint16 centrifugeId, bytes32 batchHash) external {
-        InboundBatch storage state = inboundBatch[centrifugeId][batchHash];
-
-        uint8 quorum_ = quorum(centrifugeId);
-        if (state.votes.countNonZeroValues() >= quorum_) {
-            // Reduce votes by quorum
-            state.votes.decreaseFirstNValues(quorum_);
-
-            _handleBatch(centrifugeId, state.pendingBatch);
-
-            // Only if there are no more pending messages, remove the pending message
-            if (state.votes.isEmpty()) {
-                delete state.pendingBatch;
-            }
-        }
-    }
-
-    function retry(uint16 centrifugeId, bytes memory message) external {
+    function retryMessage(uint16 centrifugeId, bytes memory message) external {
         bytes32 messageHash = keccak256(message);
         require(failedMessages[centrifugeId][messageHash] > 0, NotFailedMessage());
 
@@ -235,16 +236,16 @@ contract Gateway is Auth, IGateway, Recoverable {
     }
 
     /// @inheritdoc IGateway
-    function executeMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes calldata message) external {
-        bytes32 batchHash = keccak256(message);
+    function executeMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes calldata payload) external {
+        bytes32 batchHash = keccak256(payload);
         uint256 recovery = recoveries[centrifugeId][adapter][batchHash];
 
         require(recovery != 0, MessageRecoveryNotInitiated());
         require(recovery <= block.timestamp, MessageRecoveryChallengePeriodNotEnded());
 
         delete recoveries[centrifugeId][adapter][batchHash];
-        _handle(centrifugeId, message, adapter, true);
-        emit ExecuteMessageRecovery(centrifugeId, message, adapter);
+        _handle(centrifugeId, payload, adapter, true);
+        emit ExecuteMessageRecovery(centrifugeId, payload, adapter);
     }
 
     //----------------------------------------------------------------------------------------------

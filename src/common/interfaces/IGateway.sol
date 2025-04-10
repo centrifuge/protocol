@@ -51,8 +51,8 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     }
 
     // --- Events ---
-    event ProcessBatch(uint16 centrifugeId, bytes batch, IAdapter adapter);
-    event ProcessProof(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
+    event HandleBatch(uint16 centrifugeId, bytes batch, IAdapter adapter);
+    event HandleProof(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
     event ExecuteMessage(uint16 centrifugeId, bytes message);
     event FailMessage(uint16 centrifugeId, bytes message, bytes error);
     event SendBatch(uint16 centrifugeId, bytes batch, IAdapter adapter);
@@ -131,11 +131,11 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     function file(bytes32 what, address data) external;
 
     /// @notice Retry a previous failed message to be execute again
-    function retry(uint16 centrifugeId, bytes memory message) external;
+    function retryMessage(uint16 centrifugeId, bytes memory message) external;
 
     /// @notice Execute a batch identified by batchHash.
     /// If some message in the batch fails, can be recovered using retry()
-    function execute(uint16 centrifugeId, bytes32 batchHash) external;
+    function executeBatch(uint16 centrifugeId, bytes32 batchHash) external;
 
     /// @notice Prepays for the TX cost for sending the messages through the adapters
     ///         Currently being called from Vault Router only.
@@ -157,8 +157,8 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     ///         these will need to be recovered serially (increasing the challenge period for each failed adapter).
     /// @param  centrifugeId Chain where the adapter is configured for
     /// @param  adapter Adapter's address that the recovery is targeting
-    /// @param  message Hash of the message to be recovered
-    function executeMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes calldata message) external;
+    /// @param  payload Hash of the message to be recovered
+    function executeMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes calldata payload) external;
 
     // --- Helpers ---
     /// @notice A view method of the number of adapters or quorum
