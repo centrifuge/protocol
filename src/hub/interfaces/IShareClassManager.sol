@@ -14,8 +14,10 @@ struct EpochRedeemAmounts {
     uint128 approvedShareAmount;
     /// @dev Total asset amount of revoked share class tokens
     uint128 payoutAssetAmount;
+    /// @dev
+    D18 priceAssetPerShare;
     /// @dev block timestamp when shares of epoch were revoked
-    u64 timestampRevoked;
+    u64 revokedAt;
 }
 
 struct EpochInvestAmounts {
@@ -25,6 +27,8 @@ struct EpochInvestAmounts {
     uint128 approvedAssetAmount;
     /// @dev Total approved pool amount of deposit asset
     uint128 approvedPoolAmount;
+    /// @dev
+    D18 priceAssetPerShare;
     /// @dev block timestamp when shares of epoch were issued
     u64 issuedAt;
 }
@@ -116,7 +120,8 @@ interface IShareClassManager {
         AssetId assetId,
         uint128 approvedAssetAmount,
         uint128 pendingAssetAmount,
-        uint128 claimedShareAmount
+        uint128 claimedShareAmount,
+        uint64 issuedAt
     );
     event ClaimRedeem(
         PoolId indexed poolId,
@@ -145,7 +150,8 @@ interface IShareClassManager {
 
     /// Errors
     error ApprovalRequired();
-    error AlreadyApproved();
+    error IssuanceRequired();
+    error RevocationRequired();
     error UnrecognizedFileParam();
     error ZeroApprovalAmount();
     error InvalidMetadataSize();
