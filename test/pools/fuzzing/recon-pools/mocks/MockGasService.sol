@@ -2,9 +2,8 @@
 pragma solidity 0.8.28;
 
 contract MockGasService {
-
     /// --- Estimations ---
-    function estimate(uint32, /*chainId*/ bytes calldata payload) public view returns (uint256) {
+    function estimate(uint32, /*chainId*/ bytes calldata /* payload */ ) public pure returns (uint256) {
         // uses propMaxGas from echidna config
         return 0;
     }

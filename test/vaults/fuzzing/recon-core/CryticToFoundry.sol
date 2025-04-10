@@ -17,9 +17,9 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     function test_deployNewTokenPoolAndShare_deposit() public {
         deployNewTokenPoolAndShare(18, 1_000_000e18);
 
-        poolManager_updateSharePrice(1e18, type(uint64).max);
+        poolManager_updatePricePoolPerShare(1e18, type(uint64).max);
         poolManager_updateMember(type(uint64).max);
-        
+
         vault_requestDeposit(1e18, 0);
     }
 }
