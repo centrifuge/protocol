@@ -93,7 +93,7 @@ contract Gateway is Auth, IGateway, Recoverable {
                 require(_activeAdapters[centrifugeId][addresses[j]].id == 0, NoDuplicatesAllowed());
 
                 // Ids are assigned sequentially starting at 1
-                _activeAdapters[centrifugeId][addresses[j]] = Adapter(j + 1, quorum_, sessionId);
+                _activeAdapters[centrifugeId][addresses[j]] = Adapter(j + 1, sessionId);
             }
 
             adapters[centrifugeId] = addresses;
@@ -133,11 +133,6 @@ contract Gateway is Auth, IGateway, Recoverable {
 
         bytes32 messageProofHash = processor.messageProofHash(payload);
         bool isMessageProof = messageProofHash != bytes32(0);
-        if (adapter.quorum == 1 && !isMessageProof) {
-            // Special case for gas efficiency
-            _processBatch(centrifugeId, payload);
-            return;
-        }
 
         // Verify adapter and parse message hash
         bytes32 batchHash;

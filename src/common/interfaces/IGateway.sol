@@ -32,8 +32,6 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     struct Adapter {
         /// @notice Starts at 1 and maps to id - 1 as the index on the adapters array
         uint8 id;
-        /// @notice Number of votes required for a message to be executed
-        uint8 quorum;
         /// @notice Each time the quorum is decreased, a new session starts which invalidates old votes
         uint64 activeSessionId;
     }
