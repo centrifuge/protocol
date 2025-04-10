@@ -216,8 +216,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
         AsyncInvestmentState storage state = investments[vault_][user];
         require(state.pendingDepositRequest != 0, "AsyncRequests/no-pending-deposit-request");
-        state.depositPrice =
-            VaultPricingLib.calculatePrice(vault_, _maxDeposit(vault_, user) + assets, state.maxMint + shares);
+        state.depositPrice = _calculatePrice(vault_, state.maxMint + shares, _maxDeposit(vault_, user) + assets);
         state.maxMint = state.maxMint + shares;
         state.pendingDepositRequest = state.pendingDepositRequest > assets ? state.pendingDepositRequest - assets : 0;
 
@@ -245,9 +244,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         require(state.pendingRedeemRequest != 0, "AsyncRequests/no-pending-redeem-request");
 
         // Calculate new weighted average redeem price and update order book values
-        state.redeemPrice = VaultPricingLib.calculatePrice(
-            vault_, state.maxWithdraw + assets, ((maxRedeem(vault_, user)) + shares).toUint128()
-        );
+        state.redeemPrice =
+            _calculatePrice(vault_, ((maxRedeem(vault_, user)) + shares).toUint128(), state.maxWithdraw + assets);
         state.maxWithdraw = state.maxWithdraw + assets;
         state.pendingRedeemRequest = state.pendingRedeemRequest > shares ? state.pendingRedeemRequest - shares : 0;
 
@@ -349,10 +347,9 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         require(assets <= _maxDeposit(vaultAddr, controller), "AsyncRequests/exceeds-max-deposit");
 
         AsyncInvestmentState storage state = investments[vaultAddr][controller];
-        uint128 sharesUp =
-            VaultPricingLib.calculateShares(assets.toUint128(), vaultAddr, state.depositPrice, MathLib.Rounding.Up);
-        uint128 sharesDown =
-            VaultPricingLib.calculateShares(assets.toUint128(), vaultAddr, state.depositPrice, MathLib.Rounding.Down);
+
+        uint128 sharesUp = _calculateShares(vaultAddr, assets.toUint128(), state.depositPrice, MathLib.Rounding.Up);
+        uint128 sharesDown = _calculateShares(vaultAddr, assets.toUint128(), state.depositPrice, MathLib.Rounding.Down);
         _processDeposit(state, sharesUp, sharesDown, vaultAddr, receiver);
         shares = uint256(sharesDown);
     }
@@ -366,7 +363,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         AsyncInvestmentState storage state = investments[vaultAddr][controller];
         uint128 shares_ = shares.toUint128();
         _processDeposit(state, shares_, shares_, vaultAddr, receiver);
-        assets = uint256(VaultPricingLib.calculateAssets(shares_, vaultAddr, state.depositPrice, MathLib.Rounding.Down));
+
+        assets = uint256(_calculateAssets(vaultAddr, shares_, state.depositPrice, MathLib.Rounding.Down));
     }
 
     function _processDeposit(
@@ -396,10 +394,9 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         require(shares <= maxRedeem(vaultAddr, controller), "AsyncRequests/exceeds-max-redeem");
 
         AsyncInvestmentState storage state = investments[vaultAddr][controller];
-        uint128 assetsUp =
-            VaultPricingLib.calculateAssets(shares.toUint128(), vaultAddr, state.redeemPrice, MathLib.Rounding.Up);
-        uint128 assetsDown =
-            VaultPricingLib.calculateAssets(shares.toUint128(), vaultAddr, state.redeemPrice, MathLib.Rounding.Down);
+
+        uint128 assetsUp = _calculateAssets(vaultAddr, shares.toUint128(), state.redeemPrice, MathLib.Rounding.Up);
+        uint128 assetsDown = _calculateAssets(vaultAddr, shares.toUint128(), state.redeemPrice, MathLib.Rounding.Down);
         _processRedeem(state, assetsUp, assetsDown, vaultAddr, receiver, controller);
         assets = uint256(assetsDown);
     }
@@ -413,7 +410,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         AsyncInvestmentState storage state = investments[vaultAddr][controller];
         uint128 assets_ = assets.toUint128();
         _processRedeem(state, assets_, assets_, vaultAddr, receiver, controller);
-        shares = uint256(VaultPricingLib.calculateShares(assets_, vaultAddr, state.redeemPrice, MathLib.Rounding.Down));
+
+        shares = uint256(_calculateShares(vaultAddr, assets_, state.redeemPrice, MathLib.Rounding.Down));
     }
 
     function _processRedeem(
@@ -509,7 +507,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
     function _maxDeposit(address vaultAddr, address user) internal view returns (uint128 assets) {
         AsyncInvestmentState memory state = investments[vaultAddr][user];
-        assets = VaultPricingLib.calculateAssets(state.maxMint, vaultAddr, state.depositPrice, MathLib.Rounding.Down);
+
+        assets = _calculateAssets(vaultAddr, state.maxMint, state.depositPrice, MathLib.Rounding.Down);
     }
 
     /// @inheritdoc IDepositManager
@@ -528,9 +527,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     function maxRedeem(address vaultAddr, address user) public view returns (uint256 shares) {
         if (!_canTransfer(vaultAddr, user, address(0), 0)) return 0;
         AsyncInvestmentState memory state = investments[vaultAddr][user];
-        shares = uint256(
-            VaultPricingLib.calculateShares(state.maxWithdraw, vaultAddr, state.redeemPrice, MathLib.Rounding.Down)
-        );
+
+        shares = uint256(_calculateShares(vaultAddr, state.maxWithdraw, state.redeemPrice, MathLib.Rounding.Down));
     }
 
     /// @inheritdoc IAsyncDepositManager
@@ -579,5 +577,38 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     function _canTransfer(address vaultAddr, address from, address to, uint256 value) internal view returns (bool) {
         IShareToken share = IShareToken(IAsyncVault(vaultAddr).share());
         return share.checkTransferRestriction(from, to, value);
+    }
+
+    function _calculateShares(address vaultAddr, uint128 assets, uint256 price, MathLib.Rounding rounding)
+        internal
+        view
+        returns (uint128 shares)
+    {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
+        address shareToken = IAsyncVault(vaultAddr).share();
+
+        return VaultPricingLib.calculateShares(
+            shareToken, vaultDetails.asset, vaultDetails.tokenId, assets, price, rounding
+        );
+    }
+
+    function _calculateAssets(address vaultAddr, uint128 shares, uint256 price, MathLib.Rounding rounding)
+        internal
+        view
+        returns (uint128 assets)
+    {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
+        address shareToken = IAsyncVault(vaultAddr).share();
+
+        return VaultPricingLib.calculateAssets(
+            shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, price, rounding
+        );
+    }
+
+    function _calculatePrice(address vaultAddr, uint128 shares, uint128 assets) internal view returns (uint256 price) {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
+        address shareToken = IAsyncVault(vaultAddr).share();
+
+        return VaultPricingLib.calculatePrice(shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, assets);
     }
 }

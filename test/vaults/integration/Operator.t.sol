@@ -17,7 +17,7 @@ contract OperatorTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
 
-        centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(vault.poolId(), vault.trancheId(), price, uint64(block.timestamp));
 
         erc20.mint(investor, amount);
 
@@ -66,12 +66,12 @@ contract OperatorTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
         (address controller, uint256 controllerPk) = makeAddrAndKey("controller");
         address operator = makeAddr("operator");
         AsyncVault vault = AsyncVault(vault_);
 
-        centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(vault.poolId(), vault.trancheId(), price, uint64(block.timestamp));
 
         erc20.mint(controller, amount);
 
@@ -149,8 +149,8 @@ contract OperatorTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
 
         deposit(vault_, investor, amount); // deposit funds first
-        centrifugeChain.updateSharePrice(
-            vault.poolId(), vault.trancheId(), assetId, defaultPrice, uint64(block.timestamp)
+        centrifugeChain.updatePricePoolPerShare(
+            vault.poolId(), vault.trancheId(), defaultPrice, uint64(block.timestamp)
         );
 
         vm.prank(operator);
@@ -191,12 +191,12 @@ contract OperatorTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
         (address controller, uint256 controllerPk) = makeAddrAndKey("controller");
         address operator = makeAddr("operator");
         AsyncVault vault = AsyncVault(vault_);
 
-        centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(vault.poolId(), vault.trancheId(), price, uint64(block.timestamp));
 
         erc20.mint(controller, amount);
 

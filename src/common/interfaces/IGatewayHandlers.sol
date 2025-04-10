@@ -103,10 +103,28 @@ interface IPoolManagerGatewayHandler {
     function updateShareMetadata(uint64 poolId, bytes16 scId, string memory tokenName, string memory tokenSymbol)
         external;
 
-    /// @notice  Updates the price of a share class token
+    /// @notice  Updates the price of a share class token, i.e. the factor of pool currency amount per share class token
     /// @dev     The function can only be executed by the gateway contract.
-    function updateSharePrice(uint64 poolId, bytes16 scId, uint128 assetId, uint128 price, uint64 computedAt)
-        external;
+    /// @param  poolId The pool id
+    /// @param  scId The share class id
+    /// @param  price The price of pool currency per share class token as factor.
+    /// @param  computedAt The timestamp when the price was computed
+    function updatePricePoolPerShare(uint64 poolId, bytes16 scId, uint128 price, uint64 computedAt) external;
+
+    /// @notice  Updates the price of an asset, i.e. the factor of pool currency amount per asset unit
+    /// @dev     The function can only be executed by the gateway contract.
+    /// @param  poolId The pool id
+    /// @param  scId The share class id
+    /// @param  assetId The asset id
+    /// @param  poolPerAsset The price of pool currency per asset unit as factor.
+    /// @param  computedAt The timestamp when the price was computed
+    function updatePricePoolPerAsset(
+        uint64 poolId,
+        bytes16 scId,
+        uint128 assetId,
+        uint128 poolPerAsset,
+        uint64 computedAt
+    ) external;
 
     /// @notice Updates the hook of a share class token
     /// @param  poolId The centrifuge pool id
@@ -255,7 +273,7 @@ interface IBalanceSheetGatewayHandler {
         AssetId assetId,
         address provider,
         uint128 amount,
-        D18 pricePerUnit,
+        D18 priceAssetPerShare,
         Meta calldata meta
     ) external;
 
@@ -265,13 +283,13 @@ interface IBalanceSheetGatewayHandler {
         AssetId assetId,
         address receiver,
         uint128 amount,
-        D18 pricePerUnit,
+        D18 priceAssetPerShare,
         Meta calldata m
     ) external;
 
-    function triggerIssueShares(PoolId poolId, ShareClassId scId, address to, D18 pricePerShare, uint128 shares)
+    function triggerIssueShares(PoolId poolId, ShareClassId scId, address to, D18 pricePoolPerShare, uint128 shares)
         external;
 
-    function triggerRevokeShares(PoolId poolId, ShareClassId scId, address from, D18 pricePerShare, uint128 shares)
+    function triggerRevokeShares(PoolId poolId, ShareClassId scId, address from, D18 pricePoolPerShare, uint128 shares)
         external;
 }
