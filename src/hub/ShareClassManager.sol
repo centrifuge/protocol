@@ -227,7 +227,8 @@ contract ShareClassManager is Auth, IShareClassManager {
         require(exists(poolId, scId_), ShareClassNotFound());
         require(endEpochId < epochId[poolId], EpochNotFound());
 
-        uint128 totalIssuance = metrics[scId_].totalIssuance;
+        ShareClassMetrics memory m = metrics[scId_];
+        (uint128 totalIssuance, D18 navPerShare_) = (m.totalIssuance, m.navPerShare);
 
         // First issuance is epoch 1 due to also initializing epochs with 1
         // Subsequent issuances equal latest pointer plus one
@@ -245,11 +246,11 @@ contract ShareClassManager is Auth, IShareClassManager {
             totalIssuance += issuedShareAmount;
             uint128 nav = navPerShare.mulUint128(totalIssuance);
 
-            emit IssueShares(poolId, scId_, epochId_, navPerShare, nav, issuedShareAmount);
+            emit IssueShares(poolId, scId_, epochId_, nav, navPerShare, totalIssuance, issuedShareAmount);
         }
 
         epochPointers[scId_][depositAssetId].latestIssuance = endEpochId;
-        metrics[scId_] = ShareClassMetrics(totalIssuance, navPerShare);
+        metrics[scId_] = ShareClassMetrics(totalIssuance, navPerShare_);
     }
 
     /// @inheritdoc IShareClassManager
@@ -278,7 +279,8 @@ contract ShareClassManager is Auth, IShareClassManager {
         require(exists(poolId, scId_), ShareClassNotFound());
         require(endEpochId < epochId[poolId], EpochNotFound());
 
-        uint128 totalIssuance = metrics[scId_].totalIssuance;
+        ShareClassMetrics storage metrics_ = metrics[scId_];
+        uint128 totalIssuance = metrics_.totalIssuance;
         address poolCurrency = hubRegistry.currency(poolId).addr();
 
         // First issuance is epoch 1 due to also initializing epochs with 1
@@ -311,7 +313,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         }
 
         epochPointers[scId_][payoutAssetId].latestRevocation = endEpochId;
-        metrics[scId_] = ShareClassMetrics(totalIssuance, navPerShare);
+        metrics[scId_].totalIssuance = totalIssuance;
     }
 
     /// @inheritdoc IShareClassManager
@@ -502,7 +504,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         uint128 newIssuance = metrics[scId_].totalIssuance + amount;
         metrics[scId_].totalIssuance = newIssuance;
 
-        emit IssueShares(poolId, scId_, epochId[poolId], navPerShare, navPerShare.mulUint128(newIssuance), amount);
+        emit IssueShares(poolId, scId_, epochId[poolId], navPerShare.mulUint128(newIssuance), navPerShare, newIssuance, amount);
     }
 
     /// @inheritdoc IShareClassManager
@@ -516,13 +518,26 @@ contract ShareClassManager is Auth, IShareClassManager {
         uint128 newIssuance = metrics[scId_].totalIssuance - amount;
         metrics[scId_].totalIssuance = newIssuance;
 
-        emit RevokeShares(poolId, scId_, epochId[poolId], navPerShare, navPerShare.mulUint128(newIssuance), amount, 0);
+        emit RevokeShares(poolId, scId_, epochId[poolId], navPerShare.mulUint128(newIssuance), navPerShare, newIssuance, amount, 0);
     }
 
     /// @inheritdoc IShareClassManager
-    function updateShareClassNav(PoolId poolId, ShareClassId scId_) external view auth returns (uint128, D18) {
+    function updateShareClass(PoolId poolId, ShareClassId scId_, D18 navPerShare, bytes calldata data) external auth returns (uint128, D18) {
         require(exists(poolId, scId_), ShareClassNotFound());
-        revert("unsupported");
+
+        ShareClassMetrics storage m = metrics[scId_];
+        m.navPerShare = navPerShare;
+        emit UpdateShareClass(poolId, scId_, navPerShare.mulUint128(m.totalIssuance), navPerShare, m.totalIssuance, data);
+
+        return (m.totalIssuance, navPerShare);
+    }
+
+    /// @inheritdoc IShareClassManager
+    function shareClassPrice(PoolId poolId, ShareClassId scId_) external view returns (uint128, D18) {
+        require(exists(poolId, scId_), ShareClassNotFound());
+
+        ShareClassMetrics memory m = metrics[scId_];
+        return (m.totalIssuance, m.navPerShare);
     }
 
     /// @inheritdoc IShareClassManager
@@ -537,7 +552,7 @@ contract ShareClassManager is Auth, IShareClassManager {
 
     /// @inheritdoc IShareClassManager
     function update(PoolId, bytes calldata) external pure {
-        revert("unsupported");
+        // No-op on purpose to allow higher level contract calls to this
     }
 
     /// @notice Revokes shares for a single epoch, updates epoch ratio and emits event.
@@ -569,9 +584,17 @@ contract ShareClassManager is Auth, IShareClassManager {
         epochAmounts_.redeemAssets =
             IERC7726(valuation).getQuote(payoutPoolAmount, poolCurrency, payoutAssetId.addr()).toUint128();
 
-        uint128 nav = navPerShare.mulUint128(totalIssuance - epochAmounts_.redeemApproved);
+        uint128 newIssuance = totalIssuance - epochAmounts_.redeemApproved;
+        uint128 nav = navPerShare.mulUint128(newIssuance);
         emit RevokeShares(
-            poolId, scId_, epochId_, navPerShare, nav, epochAmounts_.redeemApproved, epochAmounts_.redeemAssets
+            poolId,
+            scId_,
+            epochId_,
+            nav,
+            navPerShare,
+            newIssuance,
+            epochAmounts_.redeemApproved,
+            epochAmounts_.redeemAssets
         );
     }
 

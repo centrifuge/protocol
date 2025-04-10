@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {d18} from "src/misc/types/D18.sol";
 
 import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
@@ -138,9 +139,18 @@ contract MockCentrifugeChain is Test {
         execute(MessageLib.UpdateShareClassHook({poolId: poolId, scId: scId, hook: bytes32(bytes20(hook))}).serialize());
     }
 
-    function updateSharePrice(uint64 poolId, bytes16 scId, uint128 assetId, uint128 price, uint64 computedAt) public {
+    function updatePricePoolPerShare(uint64 poolId, bytes16 scId, uint128 price, uint64 computedAt) public {
         execute(
-            MessageLib.UpdateShareClassPrice({
+            MessageLib.NotifyPricePoolPerShare({poolId: poolId, scId: scId, price: price, timestamp: computedAt})
+                .serialize()
+        );
+    }
+
+    function updatePricePoolPerAsset(uint64 poolId, bytes16 scId, uint128 assetId, uint128 price, uint64 computedAt)
+        public
+    {
+        execute(
+            MessageLib.NotifyPricePoolPerAsset({
                 poolId: poolId,
                 scId: scId,
                 assetId: assetId,

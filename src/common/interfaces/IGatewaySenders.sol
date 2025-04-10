@@ -57,6 +57,14 @@ interface IPoolMessageSender is ILocalCentrifugeId {
     ) external;
 
     /// @notice Creates and send the message
+    function sendNotifyPricePoolPerShare(uint16 chainId, PoolId poolId, ShareClassId scId, D18 pricePerShare)
+        external;
+
+    /// @notice Creates and send the message
+    function sendNotifyPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePerShare)
+        external;
+
+    /// @notice Creates and send the message
     function sendFulfilledDepositRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -150,7 +158,7 @@ interface IVaultMessageSender is ILocalCentrifugeId {
         PoolId poolId,
         ShareClassId scId,
         address receiver,
-        D18 pricePerShare,
+        D18 pricePoolPerShare,
         uint128 shares,
         bool isIssuance
     ) external;

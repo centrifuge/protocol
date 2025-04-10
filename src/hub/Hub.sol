@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {D18} from "src/misc/types/D18.sol";
+import {D18, d18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {ConversionLib} from "src/misc/libraries/ConversionLib.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {Multicall, IMulticall} from "src/misc/Multicall.sol";
@@ -154,7 +155,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     //----------------------------------------------------------------------------------------------
     // Pool admin methods
     //----------------------------------------------------------------------------------------------
-
     /// @inheritdoc IHub
     function notifyPool(uint16 centrifugeId) external payable {
         _protectedAndUnlocked();
@@ -172,6 +172,34 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         uint8 decimals = hubRegistry.decimals(unlockedPoolId);
 
         sender.sendNotifyShareClass(centrifugeId, unlockedPoolId, scId, name, symbol, decimals, salt, hook);
+    }
+
+    /// @inheritdoc IHub
+    function notifySharePrice(uint16 centrifugeId, ShareClassId scId) public payable {
+        _protectedAndUnlocked();
+
+        (, D18 poolPerShare) = shareClassManager.shareClassPrice(unlockedPoolId, scId);
+
+        sender.sendNotifyPricePoolPerShare(centrifugeId, unlockedPoolId, scId, poolPerShare);
+    }
+
+    /// @inheritdoc IHub
+    function notifyAssetPrice(ShareClassId scId, AssetId assetId) public payable {
+        _protectedAndUnlocked();
+
+        AssetId poolCurrency = hubRegistry.currency(unlockedPoolId);
+        // NOTE: We assume symmetric prices are provided by holdings valuation
+        IERC7726 valuation = holdings.valuation(unlockedPoolId, scId, assetId);
+
+        // Retrieve amount of 1 asset unit in pool currency
+        uint128 assetUnitAmount = (10 ** hubRegistry.decimals(assetId.raw())).toUint128();
+        uint128 poolUnitAmount = (10 ** hubRegistry.decimals(poolCurrency.raw())).toUint128();
+        uint128 poolAmountPerAsset =
+            valuation.getQuote(assetUnitAmount, assetId.addr(), poolCurrency.addr()).toUint128();
+        
+        // Retrieve price by normalizing by pool denomination
+        D18 pricePoolPerAsset = d18(poolAmountPerAsset, poolUnitAmount);
+        sender.sendNotifyPricePoolPerAsset(unlockedPoolId, scId, assetId, pricePoolPerAsset);
     }
 
     /// @inheritdoc IHub
@@ -299,6 +327,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
                 kind: uint8(kind)
             }).serialize()
         );
+    }
+
+    /// @inheritdoc IHub
+    function updatePricePoolPerShare(ShareClassId scId, D18 navPerShare, bytes calldata data) public payable {
+        _protectedAndUnlocked();
+        
+        shareClassManager.updateShareClass(unlockedPoolId, scId, navPerShare, data);
     }
 
     /// @inheritdoc IHub
@@ -492,8 +527,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePerUnit) external auth {
-        transientValuation.setPrice(assetId.addr(), hubRegistry.currency(poolId).addr(), pricePerUnit);
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset) external auth {
+        transientValuation.setPrice(assetId.addr(), hubRegistry.currency(poolId).addr(), pricePoolPerAsset);
         IERC7726 _valuation = holdings.valuation(poolId, scId, assetId);
         holdings.updateValuation(poolId, scId, assetId, transientValuation);
 

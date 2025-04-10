@@ -27,7 +27,7 @@ interface IHubRegistry is IERC6909Decimals {
     function registerAsset(AssetId assetId, uint8 decimals_) external;
 
     /// @notice Register a new pool.
-    /// @return a PoolId to identify the new pool.
+    /// @return PoolId Id to identify the new pool.
     function registerPool(address admin, uint16 centrifugeId, AssetId currency) external returns (PoolId);
 
     /// @notice allow/disallow an address as an admin for the pool
@@ -51,7 +51,7 @@ interface IHubRegistry is IERC6909Decimals {
     /// @notice returns the dependency used in the system
     function dependency(bytes32 what) external view returns (address);
 
-    /// @notice returns the existance of an admin
+    /// @notice returns the existence of an admin
     function isAdmin(PoolId poolId, address admin) external view returns (bool);
 
     /// @notice returns the decimals for a pool
