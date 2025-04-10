@@ -167,6 +167,7 @@ contract VaultsDeployer is CommonDeployer {
         balanceSheet.file("poolManager", address(poolManager));
         balanceSheet.file("gateway", address(gateway));
         balanceSheet.file("sender", address(messageDispatcher));
+        balanceSheet.file("syncRequests", address(syncRequests));
     }
 
     function removeVaultsDeployerAccess(address deployer) public {

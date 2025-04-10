@@ -25,6 +25,7 @@ import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {IPerPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
+import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayHandler, IUpdateContract {
@@ -36,6 +37,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     IGateway public gateway;
     IPoolManager public poolManager;
     IVaultMessageSender public sender;
+    ISyncRequests public syncRequests;
 
     mapping(PoolId => mapping(ShareClassId => mapping(address => bool))) public permission;
 
@@ -54,6 +56,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         if (what == "gateway") gateway = IGateway(data);
         else if (what == "poolManager") poolManager = IPoolManager(data);
         else if (what == "sender") sender = IVaultMessageSender(data);
+        else if (what == "syncRequests") syncRequests = ISyncRequests(data);
         else revert("BalanceSheet/file-unrecognized-param");
         emit File(what, data);
     }
@@ -202,16 +205,15 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     /// @inheritdoc IBalanceSheetGatewayHandler
     function approvedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external auth {
         (address token, uint256 tokenId) = poolManager.idToAsset(assetId.raw());
-        // TODO(wischli): Rm hardcode post #187 merge
-        D18 pricePoolPerAsset = d18(1);
+        D18 priceAssetPerShare = syncRequests.priceAssetPerShare(poolId.raw(), scId.raw(), assetId.raw());
+
         JournalEntry[] memory journalEntries = new JournalEntry[](0);
         Meta memory meta = Meta(journalEntries, journalEntries);
 
         escrow.pendingDepositIncrease(token, tokenId, poolId.raw(), scId.raw(), assetAmount);
         sender.sendUpdateHoldingAmount(
-            poolId, scId, assetId, address(escrow), assetAmount, pricePoolPerAsset, true, meta
+            poolId, scId, assetId, address(escrow), assetAmount, priceAssetPerShare, true, meta
         );
-        this.updateValue(poolId, scId, token, tokenId, pricePoolPerAsset);
     }
 
     /// @inheritdoc IBalanceSheetGatewayHandler
