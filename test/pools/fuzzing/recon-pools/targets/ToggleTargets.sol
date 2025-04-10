@@ -1,12 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
 pragma solidity ^0.8.0;
 
-import {vm} from "@chimera/Hevm.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 
-import {MockERC20} from "@recon/MockERC20.sol";
-
-import {BeforeAfter} from "../BeforeAfter.sol";
 import {Properties} from "../Properties.sol";
 
 abstract contract ToggleTargets is

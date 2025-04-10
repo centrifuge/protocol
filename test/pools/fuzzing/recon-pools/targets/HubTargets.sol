@@ -2,18 +2,24 @@
 pragma solidity ^0.8.0;
 
 // Chimera deps
-import {vm} from "@chimera/Hevm.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {console2} from "forge-std/console2.sol";
-// Helpers
+
+// Recon Helpers
 import {Panic} from "@recon/Panic.sol";
 
-import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
+// Dependencies
 import {Hub} from "src/hub/Hub.sol";
+
+// Interfaces
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
+
+// Types
+import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
+// Test Utils
 import {Helpers} from "test/pools/fuzzing/recon-pools/utils/Helpers.sol";
 import {BeforeAfter, OpType} from "../BeforeAfter.sol";
 import {Properties} from "../Properties.sol";

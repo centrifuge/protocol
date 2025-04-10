@@ -2,22 +2,26 @@
 pragma solidity ^0.8.0;
 
 // Chimera deps
-import {vm} from "@chimera/Hevm.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 
 // Helpers
 import {Panic} from "@recon/Panic.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 
-// Source
+// Dependencies
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
+import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
+
+// Interfaces
+import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
+
+// Types
 import {AccountId} from "src/common/types/AccountId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {D18} from "src/misc/types/D18.sol";
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
-import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
+// Test Utils
 import {BeforeAfter, OpType} from "../BeforeAfter.sol";
 import {Properties} from "../Properties.sol";
 import {Helpers} from "../utils/Helpers.sol";
