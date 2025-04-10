@@ -46,6 +46,7 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
         uint16[MAX_ADAPTER_COUNT] votes;
         /// @notice Each time adapters are updated, a new session starts which invalidates old votes
         uint64 sessionId;
+        uint32 count;
         bytes pendingBatch;
     }
 
@@ -129,6 +130,13 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @param  data New address.
     function file(bytes32 what, address data) external;
 
+    /// @notice Retry a previous failed message to be execute again
+    function retry(uint16 centrifugeId, bytes memory message) external;
+
+    /// @notice Execute a batch identified by batchHash.
+    /// If some message in the batch fails, can be recovered using retry()
+    function execute(uint16 centrifugeId, bytes32 batchHash) external;
+
     /// @notice Prepays for the TX cost for sending the messages through the adapters
     ///         Currently being called from Vault Router only.
     ///         In order to prepay, the method MUST be called with `msg.value`.
@@ -153,12 +161,10 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     function executeMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes calldata message) external;
 
     // --- Helpers ---
-    /// @notice A view method of the current quorum.abi
+    /// @notice A view method of the number of adapters or quorum
     /// @dev    Quorum shows the amount of votes needed in order for a message to be dispatched further.
-    ///         The quorum is taken from the first adapter.
-    ///         Current quorum is the amount of all adapters.
     /// @param  centrifugeId Chain where the adapter is configured for
-    /// return  Needed amount
+    /// @return Number of adapters
     function quorum(uint16 centrifugeId) external view returns (uint8);
 
     /// @notice Gets the current active routers session id.
@@ -194,10 +200,6 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @notice Returns the address of the adapter at the given id.
     /// @param  centrifugeId Chain where the adapter is configured for
     function adapters(uint16 centrifugeId, uint256 id) external view returns (IAdapter);
-
-    /// @notice Returns the number of adapters.
-    /// @param  centrifugeId Chain where the adapter is configured for
-    function adapterCount(uint16 centrifugeId) external view returns (uint256);
 
     /// @notice Returns the timestamp when the given recovery can be executed.
     /// @param  centrifugeId Chain where the adapter is configured for

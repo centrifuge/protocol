@@ -163,22 +163,7 @@ contract Gateway is Auth, IGateway, Recoverable {
         // Increase vote
         state.votes[adapter.id - 1]++;
 
-        if (state.votes.countNonZeroValues() >= adapter.quorum) {
-            // Reduce votes by quorum
-            state.votes.decreaseFirstNValues(adapter.quorum);
-
-            if (isMessageProof) {
-                _handleBatch(centrifugeId, state.pendingBatch);
-            }
-            else {
-                _handleBatch(centrifugeId, payload);
-            }
-
-            // Only if there are no more pending messages, remove the pending message
-            if (state.votes.isEmpty()) {
-                delete state.pendingBatch;
-            }
-        } else if (!isMessageProof) {
+        if (!isMessageProof) {
             state.pendingBatch = payload;
         }
     }
@@ -210,6 +195,24 @@ contract Gateway is Auth, IGateway, Recoverable {
 
         emit ExecuteMessage(centrifugeId, message);
     }
+
+    function execute(uint16 centrifugeId, bytes32 batchHash) external {
+        InboundBatch storage state = inboundBatch[centrifugeId][batchHash];
+
+        uint8 quorum_ = quorum(centrifugeId);
+        if (state.votes.countNonZeroValues() >= quorum_) {
+            // Reduce votes by quorum
+            state.votes.decreaseFirstNValues(quorum_);
+
+            _handleBatch(centrifugeId, state.pendingBatch);
+
+            // Only if there are no more pending messages, remove the pending message
+            if (state.votes.isEmpty()) {
+                delete state.pendingBatch;
+            }
+        }
+    }
+
 
     /// @inheritdoc IGatewayHandler
     function initiateMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 batchHash) external auth {
@@ -370,9 +373,8 @@ contract Gateway is Auth, IGateway, Recoverable {
     }
 
     /// @inheritdoc IGateway
-    function quorum(uint16 centrifugeId) external view returns (uint8) {
-        Adapter memory adapter = _activeAdapters[centrifugeId][adapters[centrifugeId][0]];
-        return adapter.quorum;
+    function quorum(uint16 centrifugeId) public view returns (uint8) {
+        return uint8(adapters[centrifugeId].length);
     }
 
     /// @inheritdoc IGateway
@@ -384,10 +386,5 @@ contract Gateway is Auth, IGateway, Recoverable {
     /// @inheritdoc IGateway
     function votes(uint16 centrifugeId, bytes32 batchHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory) {
         return inboundBatch[centrifugeId][batchHash].votes;
-    }
-
-    /// @inheritdoc IGateway
-    function adapterCount(uint16 centrifugeId) external view returns (uint256) {
-        return adapters[centrifugeId].length;
     }
 }
