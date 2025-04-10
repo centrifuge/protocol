@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
+pragma solidity >=0.5.0;
 
 import {D18} from "src/misc/types/D18.sol";
 
@@ -15,16 +15,16 @@ import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 /// @notice Interface for Gateway methods called by messages
 interface IGatewayHandler {
     /// @notice Initialize the recovery of a message.
-    /// @param  chainId Chain where the adapter is configured for
+    /// @param  centrifugeId Chain where the adapter is configured for
     /// @param  adapter Adapter that the recovery was targeting
     /// @param  messageHash Hash of the message being disputed
-    function initiateMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) external;
+    function initiateMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 messageHash) external;
 
     /// @notice Cancel the recovery of a message.
-    /// @param  chainId Chain where the adapter is configured for
+    /// @param  centrifugeId Chain where the adapter is configured for
     /// @param  adapter Adapter that the recovery was targeting
     /// @param  messageHash Hash of the message being disputed
-    function disputeMessageRecovery(uint16 chainId, IAdapter adapter, bytes32 messageHash) external;
+    function disputeMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 messageHash) external;
 }
 
 /// -----------------------------------------------------
@@ -32,10 +32,9 @@ interface IGatewayHandler {
 /// -----------------------------------------------------
 
 /// @notice Interface for CP methods called by messages
-interface IPoolRouterGatewayHandler {
+interface IHubGatewayHandler {
     /// @notice Tells that an asset was already registered in CV, in order to perform the corresponding register.
-    /// @dev The same asset can be re-registered using this. Decimals can not change.
-    function registerAsset(AssetId assetId, string calldata name, string calldata symbol, uint8 decimals) external;
+    function registerAsset(AssetId assetId, uint8 decimals) external;
 
     /// @notice Perform a deposit that was requested from CV.
     function depositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId, uint128 amount)
@@ -104,10 +103,28 @@ interface IPoolManagerGatewayHandler {
     function updateShareMetadata(uint64 poolId, bytes16 scId, string memory tokenName, string memory tokenSymbol)
         external;
 
-    /// @notice  Updates the price of a share class token
+    /// @notice  Updates the price of a share class token, i.e. the factor of pool currency amount per share class token
     /// @dev     The function can only be executed by the gateway contract.
-    function updateSharePrice(uint64 poolId, bytes16 scId, uint128 assetId, uint128 price, uint64 computedAt)
-        external;
+    /// @param  poolId The pool id
+    /// @param  scId The share class id
+    /// @param  price The price of pool currency per share class token as factor.
+    /// @param  computedAt The timestamp when the price was computed
+    function updatePricePoolPerShare(uint64 poolId, bytes16 scId, uint128 price, uint64 computedAt) external;
+
+    /// @notice  Updates the price of an asset, i.e. the factor of pool currency amount per asset unit
+    /// @dev     The function can only be executed by the gateway contract.
+    /// @param  poolId The pool id
+    /// @param  scId The share class id
+    /// @param  assetId The asset id
+    /// @param  poolPerAsset The price of pool currency per asset unit as factor.
+    /// @param  computedAt The timestamp when the price was computed
+    function updatePricePoolPerAsset(
+        uint64 poolId,
+        bytes16 scId,
+        uint128 assetId,
+        uint128 poolPerAsset,
+        uint64 computedAt
+    ) external;
 
     /// @notice Updates the hook of a share class token
     /// @param  poolId The centrifuge pool id
@@ -249,14 +266,14 @@ interface IInvestmentManagerGatewayHandler {
 }
 
 /// @notice Interface for CV methods related to epoch called by messages
-interface IBalanceSheetManagerGatewayHandler {
+interface IBalanceSheetGatewayHandler {
     function triggerDeposit(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
         address provider,
         uint128 amount,
-        D18 pricePerUnit,
+        D18 priceAssetPerShare,
         Meta calldata meta
     ) external;
 
@@ -266,21 +283,14 @@ interface IBalanceSheetManagerGatewayHandler {
         AssetId assetId,
         address receiver,
         uint128 amount,
-        D18 pricePerUnit,
-        bool asAllowance,
+        D18 priceAssetPerShare,
         Meta calldata m
     ) external;
 
-    function triggerIssueShares(
-        PoolId poolId,
-        ShareClassId scId,
-        address to,
-        D18 pricePerShare,
-        uint128 shares,
-        bool asAllowance
-    ) external;
+    function triggerIssueShares(PoolId poolId, ShareClassId scId, address to, D18 pricePoolPerShare, uint128 shares)
+        external;
 
-    function triggerRevokeShares(PoolId poolId, ShareClassId scId, address from, D18 pricePerShare, uint128 shares)
+    function triggerRevokeShares(PoolId poolId, ShareClassId scId, address from, D18 pricePoolPerShare, uint128 shares)
         external;
 
     function approvedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external;

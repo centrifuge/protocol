@@ -12,7 +12,7 @@ import {vm} from "@chimera/Hevm.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
-import {RestrictedTransfers} from "src/vaults/token/RestrictedTransfers.sol";
+import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
 
 /// @dev Separate the 5 Callbacks that go from Gateway to AsyncRequests
 /**

@@ -7,17 +7,17 @@ import {D18, d18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IBaseValuation} from "src/misc/interfaces/IBaseValuation.sol";
-import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
+import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
 import {BaseValuation} from "src/misc/BaseValuation.sol";
 
 contract BaseValuationImpl is BaseValuation {
-    constructor(IERC6909MetadataExt assetRegistry, address deployer) BaseValuation(assetRegistry, deployer) {}
+    constructor(IERC6909Decimals assetRegistry, address deployer) BaseValuation(assetRegistry, deployer) {}
 
     function getQuote(uint256 baseAmount, address base, address quote) external view returns (uint256 quoteAmount) {}
 }
 
 contract TestFile is Test {
-    BaseValuationImpl valuation = new BaseValuationImpl(IERC6909MetadataExt(address(42)), address(this));
+    BaseValuationImpl valuation = new BaseValuationImpl(IERC6909Decimals(address(42)), address(this));
 
     function testSuccess() public {
         vm.expectEmit();

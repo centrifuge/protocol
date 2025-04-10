@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
+pragma solidity >=0.5.0;
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-
-import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
 interface ISafe {
     function isOwner(address signer) external view returns (bool);
@@ -31,12 +29,7 @@ interface IGuardian {
     function file(bytes32 what, address data) external;
 
     /// @notice Registers a new pool
-    function createPool(address admin, AssetId currency, IShareClassManager shareClassManager)
-        external
-        returns (PoolId poolId);
-
-    /// @notice Updates metadata for a chain
-    function setChain(uint16 chainId, string calldata name, string calldata symbol) external;
+    function createPool(address admin, AssetId currency) external returns (PoolId poolId);
 
     /// @notice Pause the protocol
     /// @dev callable by both safe and owners
@@ -54,19 +47,32 @@ interface IGuardian {
     /// @dev callable by safe only
     function cancelRely(address target) external;
 
-    /// @notice Schedule an upgrade (scheduled rely) on another chain
+    /// @notice Schedule an upgrade (scheduled rely) on a specific chain
     /// @dev    Only supports EVM targets today
-    function scheduleUpgrade(uint16 chainId, address target) external;
+    function scheduleUpgrade(uint16 centrifugeId, address target) external;
 
-    /// @notice Cancel an upgrade (scheduled rely) on another chain
+    /// @notice Cancel an upgrade (scheduled rely) on a specific chain
     /// @dev    Only supports EVM targets today
-    function cancelUpgrade(uint16 chainId, address target) external;
+    function cancelUpgrade(uint16 centrifugeId, address target) external;
 
-    /// @notice Initiate message recovery on another chain
+    /// @notice Recover tokens on a specific chain
     /// @dev    Only supports EVM targets today
-    function initiateMessageRecovery(uint16 chainId, uint16 adapterChainId, IAdapter adapter, bytes32 hash) external;
+    function recoverTokens(
+        uint16 centrifugeId,
+        address target,
+        address token,
+        uint256 tokenId,
+        address to,
+        uint256 amount
+    ) external;
 
-    /// @notice Dispute message recovery on another chain
+    /// @notice Initiate message recovery on a specific chain
     /// @dev    Only supports EVM targets today
-    function disputeMessageRecovery(uint16 chainId, uint16 adapterChainId, IAdapter adapter, bytes32 hash) external;
+    function initiateMessageRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
+        external;
+
+    /// @notice Dispute message recovery on a specific chain
+    /// @dev    Only supports EVM targets today
+    function disputeMessageRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
+        external;
 }

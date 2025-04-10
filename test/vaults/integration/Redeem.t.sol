@@ -18,8 +18,8 @@ contract RedeemTest is BaseTest {
         IShareToken shareToken = IShareToken(address(vault.share()));
 
         deposit(vault_, self, amount); // deposit funds first
-        centrifugeChain.updateSharePrice(
-            vault.poolId(), vault.trancheId(), assetId, defaultPrice, uint64(block.timestamp)
+        centrifugeChain.updatePricePoolPerShare(
+            vault.poolId(), vault.trancheId(), defaultPrice, uint64(block.timestamp)
         );
 
         // will fail - zero deposit not allowed
@@ -36,7 +36,7 @@ contract RedeemTest is BaseTest {
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
         vm.expectRevert(bytes("AsyncRequests/no-pending-redeem-request"));
-        centrifugeChain.isFulfilledRedeemRequest(poolId, scId, bytes32(bytes20(self)), assetId, assets, uint128(amount));
+        asyncRequests.fulfillRedeemRequest(poolId, scId, self, assetId, assets, uint128(amount));
 
         // success
         centrifugeChain.linkVault(vault.poolId(), vault.trancheId(), vault_);
@@ -93,8 +93,8 @@ contract RedeemTest is BaseTest {
         IShareToken shareToken = IShareToken(address(vault.share()));
 
         deposit(vault_, self, amount); // deposit funds first
-        centrifugeChain.updateSharePrice(
-            vault.poolId(), vault.trancheId(), assetId, defaultPrice, uint64(block.timestamp)
+        centrifugeChain.updatePricePoolPerShare(
+            vault.poolId(), vault.trancheId(), defaultPrice, uint64(block.timestamp)
         );
 
         vault.requestRedeem(amount, address(this), address(this));
@@ -229,11 +229,11 @@ contract RedeemTest is BaseTest {
 
         // Fail - Redeem amount too big
         vm.expectRevert(IERC20.InsufficientBalance.selector);
-        centrifugeChain.triggerIncreaseRedeemOrder(poolId, scId, investor, assetId, uint128(amount + 1));
+        asyncRequests.triggerRedeemRequest(poolId, scId, investor, assetId, uint128(amount + 1));
 
         //Fail - Share token amount zero
         vm.expectRevert(bytes("AsyncRequests/share-token-amount-is-zero"));
-        centrifugeChain.triggerIncreaseRedeemOrder(poolId, scId, investor, assetId, 0);
+        asyncRequests.triggerRedeemRequest(poolId, scId, investor, assetId, 0);
 
         // should work even if investor is frozen
         centrifugeChain.freeze(poolId, scId, investor); // freeze investor
@@ -305,7 +305,7 @@ contract RedeemTest is BaseTest {
 
         // Fail - Redeem amount too big
         vm.expectRevert(IERC20.InsufficientBalance.selector);
-        centrifugeChain.triggerIncreaseRedeemOrder(poolId, scId, investor, assetId, uint128(amount + 1));
+        asyncRequests.triggerRedeemRequest(poolId, scId, investor, assetId, uint128(amount + 1));
 
         // should work even if investor is frozen
         centrifugeChain.freeze(poolId, scId, investor); // freeze investor
@@ -342,7 +342,7 @@ contract RedeemTest is BaseTest {
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
         ERC20 asset = ERC20(address(vault.asset()));
-        centrifugeChain.updateSharePrice(poolId, scId, assetId, 1000000000000000000, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(poolId, scId, 1000000000000000000, uint64(block.timestamp));
 
         // invest
         uint256 investmentAmount = 100000000; // 100 * 10**6

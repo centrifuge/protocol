@@ -14,7 +14,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
 
-import {FullDeployer, PoolsDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
+import {FullDeployer, HubDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
 
 // Script to deploy CP and CP with an Localhost Adapter.
 contract LocalhostDeployer is FullDeployer {
@@ -37,44 +37,42 @@ contract LocalhostDeployer is FullDeployer {
 
     function _configureTestData(uint16 centrifugeId) internal {
         // Create pool
-        PoolId poolId = poolRouter.createPool(msg.sender, USD, multiShareClass);
-        ShareClassId scId = multiShareClass.previewNextShareClassId(poolId);
+        PoolId poolId = hub.createPool(msg.sender, USD);
+        ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
         // Deploy and register test USDC
         ERC20 token = new ERC20(6);
         token.file("name", "USD Coin");
         token.file("symbol", "USDC");
         token.mint(msg.sender, 10_000_000e6);
-        vaultRouter.registerAsset{value: 0.001 ether}(address(token), 0, centrifugeId);
+        vaultRouter.registerAsset{value: 0.001 ether}(centrifugeId, address(token), 0);
 
         // Deploy vault
         D18 navPerShare = d18(1, 1);
 
         AssetId assetId = newAssetId(centrifugeId, 1);
         (bytes[] memory cs, uint256 c) = (new bytes[](8), 0);
-        cs[c++] = abi.encodeWithSelector(poolRouter.setPoolMetadata.selector, bytes("Testing pool"));
-        cs[c++] = abi.encodeWithSelector(
-            poolRouter.addShareClass.selector, "Tokenized MMF", "MMF", bytes32(bytes("1")), bytes("")
-        );
-        cs[c++] = abi.encodeWithSelector(poolRouter.notifyPool.selector, centrifugeId);
-        cs[c++] = abi.encodeWithSelector(
-            poolRouter.notifyShareClass.selector, centrifugeId, scId, bytes32(bytes20(freelyTransferable))
-        );
+        cs[c++] = abi.encodeWithSelector(hub.setPoolMetadata.selector, bytes("Testing pool"));
         cs[c++] =
-            abi.encodeWithSelector(poolRouter.createHolding.selector, scId, assetId, identityValuation, false, 0x01);
+            abi.encodeWithSelector(hub.addShareClass.selector, "Tokenized MMF", "MMF", bytes32(bytes("1")), bytes(""));
+        cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, centrifugeId);
         cs[c++] = abi.encodeWithSelector(
-            poolRouter.updateVault.selector,
+            hub.notifyShareClass.selector, centrifugeId, scId, bytes32(bytes20(freelyTransferable))
+        );
+        cs[c++] = abi.encodeWithSelector(hub.createHolding.selector, scId, assetId, identityValuation, false, 0x01);
+        cs[c++] = abi.encodeWithSelector(
+            hub.updateVault.selector,
             scId,
             assetId,
             bytes32(bytes20(address(poolManager))),
             bytes32(bytes20(address(asyncVaultFactory))),
             VaultUpdateKind.DeployAndLink
         );
-        // TODO(follow-up): Enable after merging #184
-        // cs[c++] = abi.encodeWithSelector(poolRouter.updateSharePrice.selector, scId, navPerShare);
-        // cs[c++] = abi.encodeWithSelector(poolRouter.notifySharePrice.selector, scId, assetId);
 
-        //poolRouter.execute{value: 0.001 ether}(poolId, cs);
+        cs[c++] = abi.encodeWithSelector(hub.updatePricePoolPerShare.selector, scId, navPerShare);
+        cs[c++] = abi.encodeWithSelector(hub.notifySharePrice.selector, scId, assetId);
+
+        hub.execute{value: 0.001 ether}(poolId, cs);
 
         // Submit deposit request
         IShareToken shareToken = IShareToken(poolManager.shareToken(poolId.raw(), scId.raw()));
@@ -88,12 +86,12 @@ contract LocalhostDeployer is FullDeployer {
         IERC7726 valuation = holdings.valuation(poolId, scId, assetId);
 
         (bytes[] memory cs2, uint256 c2) = (new bytes[](2), 0);
-        cs2[c2++] = abi.encodeWithSelector(poolRouter.approveDeposits.selector, scId, assetId, investAmount, valuation);
-        cs2[c2++] = abi.encodeWithSelector(poolRouter.issueShares.selector, scId, assetId, navPerShare);
+        cs2[c2++] = abi.encodeWithSelector(hub.approveDeposits.selector, scId, assetId, investAmount, valuation);
+        cs2[c2++] = abi.encodeWithSelector(hub.issueShares.selector, scId, assetId, navPerShare);
 
-        poolRouter.execute{value: 0.001 ether}(poolId, cs2);
+        hub.execute{value: 0.001 ether}(poolId, cs2);
 
-        poolRouter.claimDeposit{value: 0.001 ether}(poolId, scId, assetId, bytes32(bytes20(msg.sender)));
+        hub.claimDeposit{value: 0.001 ether}(poolId, scId, assetId, bytes32(bytes20(msg.sender)));
 
         // Claim deposit request
         vault.mint(investAmount, msg.sender);

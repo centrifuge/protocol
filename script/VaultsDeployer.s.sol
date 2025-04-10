@@ -7,12 +7,12 @@ import {ISafe} from "src/common/Guardian.sol";
 import {Gateway} from "src/common/Gateway.sol";
 
 import {AsyncRequests} from "src/vaults/AsyncRequests.sol";
-import {BalanceSheetManager} from "src/vaults/BalanceSheetManager.sol";
+import {BalanceSheet} from "src/vaults/BalanceSheet.sol";
 import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
-import {RestrictedTransfers} from "src/vaults/token/RestrictedTransfers.sol";
-import {FreelyTransferable} from "src/vaults/token/FreelyTransferable.sol";
+import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
+import {FreelyTransferable} from "src/hooks/FreelyTransferable.sol";
 import {SyncRequests} from "src/vaults/SyncRequests.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
@@ -23,7 +23,7 @@ import "forge-std/Script.sol";
 import {CommonDeployer} from "script/CommonDeployer.s.sol";
 
 contract VaultsDeployer is CommonDeployer {
-    BalanceSheetManager public balanceSheetManager;
+    BalanceSheet public balanceSheet;
     AsyncRequests public asyncRequests;
     SyncRequests public syncRequests;
     PoolManager public poolManager;
@@ -32,17 +32,17 @@ contract VaultsDeployer is CommonDeployer {
     VaultRouter public vaultRouter;
     address public asyncVaultFactory;
     address public syncDepositVaultFactory;
-    address public restrictedTransfers;
-    address public freelyTransferable;
     address public tokenFactory;
 
-    function deployVaults(uint16 chainId, ISafe adminSafe_, address deployer) public {
-        deployCommon(chainId, adminSafe_, deployer);
+    // Hooks
+    address public restrictedTransfers;
+    address public freelyTransferable;
+
+    function deployVaults(uint16 centrifugeId, ISafe adminSafe_, address deployer) public {
+        deployCommon(centrifugeId, adminSafe_, deployer);
 
         escrow = new Escrow{salt: SALT}(deployer);
         routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow2"))}(deployer);
-        restrictedTransfers = address(new RestrictedTransfers{salt: SALT}(address(root), deployer));
-        freelyTransferable = address(new FreelyTransferable{salt: SALT}(address(root), address(escrow), deployer));
         tokenFactory = address(new TokenFactory{salt: SALT}(address(root), deployer));
         asyncRequests = new AsyncRequests(address(root), address(escrow));
         syncRequests = new SyncRequests(address(root), address(escrow));
@@ -54,8 +54,12 @@ contract VaultsDeployer is CommonDeployer {
         vaultFactories[1] = syncDepositVaultFactory;
 
         poolManager = new PoolManager(address(escrow), tokenFactory, vaultFactories);
-        balanceSheetManager = new BalanceSheetManager(address(escrow));
-        vaultRouter = new VaultRouter(chainId, address(routerEscrow), address(gateway), address(poolManager));
+        balanceSheet = new BalanceSheet(address(escrow));
+        vaultRouter = new VaultRouter(address(routerEscrow), address(gateway), address(poolManager), messageDispatcher);
+
+        // Hooks
+        restrictedTransfers = address(new RestrictedTransfers{salt: SALT}(address(root), deployer));
+        freelyTransferable = address(new FreelyTransferable{salt: SALT}(address(root), address(escrow), deployer));
 
         _vaultsRegister();
         _vaultsEndorse();
@@ -83,7 +87,7 @@ contract VaultsDeployer is CommonDeployer {
     }
 
     function _vaultsRely() private {
-        // Rely on PoolManager
+        // Rely PoolManager
         escrow.rely(address(poolManager));
         IAuth(asyncVaultFactory).rely(address(poolManager));
         IAuth(syncDepositVaultFactory).rely(address(poolManager));
@@ -94,23 +98,23 @@ contract VaultsDeployer is CommonDeployer {
         IAuth(freelyTransferable).rely(address(poolManager));
         messageDispatcher.rely(address(poolManager));
 
-        // Rely on async investment manager
+        // Rely async investment manager
         messageDispatcher.rely(address(asyncRequests));
 
-        // Rely on sync investment manager
-        balanceSheetManager.rely(address(syncRequests));
+        // Rely sync investment manager
+        balanceSheet.rely(address(syncRequests));
         asyncRequests.rely(address(syncRequests));
 
-        // Rely on BalanceSheetManager
-        messageDispatcher.rely(address(balanceSheetManager));
-        escrow.rely(address(balanceSheetManager));
+        // Rely BalanceSheet
+        messageDispatcher.rely(address(balanceSheet));
+        escrow.rely(address(balanceSheet));
 
-        // Rely on Root
+        // Rely Root
         vaultRouter.rely(address(root));
         poolManager.rely(address(root));
         asyncRequests.rely(address(root));
         syncRequests.rely(address(root));
-        balanceSheetManager.rely(address(root));
+        balanceSheet.rely(address(root));
         escrow.rely(address(root));
         routerEscrow.rely(address(root));
         IAuth(asyncVaultFactory).rely(address(root));
@@ -119,25 +123,25 @@ contract VaultsDeployer is CommonDeployer {
         IAuth(restrictedTransfers).rely(address(root));
         IAuth(freelyTransferable).rely(address(root));
 
-        // Rely on gateway
+        // Rely gateway
         asyncRequests.rely(address(gateway));
         poolManager.rely(address(gateway));
 
-        // Rely on others
+        // Rely others
         routerEscrow.rely(address(vaultRouter));
         syncRequests.rely(address(syncDepositVaultFactory));
 
-        // Rely on messageProcessor
+        // Rely messageProcessor
         poolManager.rely(address(messageProcessor));
         asyncRequests.rely(address(messageProcessor));
-        balanceSheetManager.rely(address(messageProcessor));
+        balanceSheet.rely(address(messageProcessor));
 
-        // Rely on messageDispatcher
+        // Rely messageDispatcher
         poolManager.rely(address(messageDispatcher));
         asyncRequests.rely(address(messageDispatcher));
-        balanceSheetManager.rely(address(messageDispatcher));
+        balanceSheet.rely(address(messageDispatcher));
 
-        // Rely on VaultRouter
+        // Rely VaultRouter
         gateway.rely(address(vaultRouter));
         poolManager.rely(address(vaultRouter));
     }
@@ -145,24 +149,24 @@ contract VaultsDeployer is CommonDeployer {
     function _vaultsFile() public {
         messageDispatcher.file("poolManager", address(poolManager));
         messageDispatcher.file("investmentManager", address(asyncRequests));
-        messageDispatcher.file("balanceSheetManager", address(asyncRequests));
+        messageDispatcher.file("balanceSheet", address(asyncRequests));
 
         messageProcessor.file("poolManager", address(poolManager));
         messageProcessor.file("investmentManager", address(asyncRequests));
-        messageProcessor.file("balanceSheetManager", address(asyncRequests));
+        messageProcessor.file("balanceSheet", address(asyncRequests));
 
-        poolManager.file("balanceSheetManager", address(balanceSheetManager));
+        poolManager.file("balanceSheet", address(balanceSheet));
         poolManager.file("sender", address(messageDispatcher));
 
         asyncRequests.file("poolManager", address(poolManager));
         asyncRequests.file("sender", address(messageDispatcher));
 
         syncRequests.file("poolManager", address(poolManager));
-        syncRequests.file("balanceSheetManager", address(balanceSheetManager));
+        syncRequests.file("balanceSheet", address(balanceSheet));
 
-        balanceSheetManager.file("poolManager", address(poolManager));
-        balanceSheetManager.file("gateway", address(gateway));
-        balanceSheetManager.file("sender", address(messageDispatcher));
+        balanceSheet.file("poolManager", address(poolManager));
+        balanceSheet.file("gateway", address(gateway));
+        balanceSheet.file("sender", address(messageDispatcher));
     }
 
     function removeVaultsDeployerAccess(address deployer) public {
@@ -176,7 +180,7 @@ contract VaultsDeployer is CommonDeployer {
         asyncRequests.deny(deployer);
         syncRequests.deny(deployer);
         poolManager.deny(deployer);
-        balanceSheetManager.deny(deployer);
+        balanceSheet.deny(deployer);
         escrow.deny(deployer);
         routerEscrow.deny(deployer);
         vaultRouter.deny(deployer);

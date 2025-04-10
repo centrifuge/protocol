@@ -4,43 +4,56 @@
 [foundry]: https://getfoundry.sh
 [foundry-badge]: https://img.shields.io/badge/Built%20with-Foundry-FFDB1C.svg
 
-TODO: A main definition of what Centrifuge Protocol V3 is.
+Centrifuge V3 is an open, decentralized protocol for onchain asset management. Built on immutable smart contracts, it enables permissionless deployment of customizable tokenization products.
 
-*Centrifuge Protocol V3* has two sides: *Centrifuge Pools* and *Centrifuge Vaults*. Both are deployed per chain, and enables cross-chain investment in pools. Different instances of *Centrifuge Vaults* in different chains can be used to invest in a single pool allocated in one instance of *Centrifuge Pools*.
+Build a wide range of use cases—from permissioned funds to onchain loans—while enabling fast, secure deployment. ERC-4626 and ERC-7540 vaults allow seamless integration into DeFi.
 
-## Centrifuge Pools
+Using protocol-level chain abstraction, tokenization issuers access liquidity across any network, all managed from one Hub chain of their choice.
 
-TODO: How Centrifuge Pools works
+### Centrifuge Vaults
 
-### How it works
+* Tokenize ownership using ERC-20 — customizable with modules of your choice
+* Distribute to DeFi with ERC-4626 and ERC-7540 vaults
+* Support 1:1 token transfers between chains using burn-and-mint process
 
-TODO: Explain how Centrifuge Pools works
+### Centrifuge Hub
 
-## Centrifuge Vaults
+* Manage and control your vaults from a single chain of your choice
+* Consolidate accounting of all your vaults in a single place
+* Manage both RWAs & DeFi-native assets
 
-Centrifuge Vaults enable seamless deployment of Centrifuge pools on any EVM-compatible blockchain. The multi-chain protocol was designed specifically to tokenize RWAs as ERC20 tokens featuring customizable and gas-efficient permissioning. Investors deposit and redeem onchain using the ERC7540 asynchronous tokenized vault standard. Issuers can plug-and-play custom investment features through ERC20 wrapper support and accept multiple stablecoins using ERC7575. The smart contracts are immutable, rigorously audited, and controlled by onchain governance.
+## Project structure
+```
+.
+├── deployments
+├── docs
+│  └── audits
+├── script
+├── src
+│  ├── misc
+│  ├── common
+│  ├── hub
+│  └── vaults
+├── test
+├── foundry.toml
+└── README.json
+```
+- `deployments` contains the deployment information of the supported chains
+- `docs` documentation, diagrams and security audit reports
+- `script` deployment scripts used to deploy a part or the full system, along with adapters.
+- `src` main source containing all the contrats. Look for the interfaces and libraries inside of each module.
+  - `misc` generic contracts
+  - `common` common code to `hub` and `vaults`
+  - `hub` code related to Centrifuge Hub
+  - `vaults` code related to Centrifuge Vaults
+- `test` cotains all tests: unitary test, integration test per module, and end-to-end integration tests
 
-### How it works
 
-![Architecture](https://cloudflare-ipfs.com/ipfs/QmW7N8beQ6TF5efwqkMndouxGub2J1jqsEhv5gXDbyqA2K)
-
-Investors can invest in multiple share classes for each RWA pool. Each of these share classes is a separate deployment of an [ERC-7540](https://eips.ethereum.org/EIPS/eip-7540) Vault and a Share Token.
-- [**AsyncVault**](https://github.com/centrifuge/protocol-v3/blob/main/src/vaults/AsyncVault.sol): An [ERC-7540](https://eips.ethereum.org/EIPS/eip-7540) (extension of [ERC-4626](https://ethereum.org/en/developers/docs/standards/tokens/erc-4626/)) compatible contract that enables investors to deposit and withdraw stablecoins to invest in share classes of pools.
-- [**Share Class Token**](https://github.com/centrifuge/protocol-v3/blob/main/src/vaults/token/ShareToken.sol): An [ERC-20](https://ethereum.org/en/developers/docs/standards/tokens/erc-20/) token for the share class, linked to a [`RestrictedTransfers`](https://github.com/centrifuge/protocol-v3/blob/main/src/vaults/token/RestrictedTransfers.sol) that manages transfer restrictions. Prices for share class tokens are computed on Centrifuge.
-
-The deployment of these share classes and the management of investments is controlled by the underlying AsyncRequests, PoolManager, Gateway and Adapters.
-- [**Async Requests**](https://github.com/centrifuge/protocol-v3/blob/main/src/vaults/AsyncRequests.sol): The core business logic contract that handles pool creation, share class deployment, managing investments and sending tokens to the [`Escrow`](https://github.com/centrifuge/protocol-v3/blob/main/src/vaults/Escrow.sol), and more.
-- [**Pool Manager**](https://github.com/centrifuge/protocol-v3/blob/main/src/vaults/PoolManager.sol): The second business logic contract that handles asset bookkeeping, and transferring share class tokens as well as assets.
-- [**Gateway**](https://github.com/centrifuge/protocol-v3/blob/main/src/vaults/gateway/Gateway.sol): Multi-Message Aggregation (MMA) implementation, receiving messages from managers, sending these messages as full payload to 1 adapter and a proof to n-1 adapters, and verifying incoming payloads and proofs and sending back to managers.
-- [**Adapters**](https://github.com/centrifuge/protocol-v3/tree/main/src/vaults/gateway/adapters): Adapter implementations for messaging layers.
-
-
-## Developing
+## Contributing
 #### Getting started
 ```sh
 git clone git@github.com:centrifuge/protocol-v3.git
 cd protocol-v3
-forge update
 ```
 
 #### Testing

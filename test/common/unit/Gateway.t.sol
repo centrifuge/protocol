@@ -11,7 +11,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
-import {Gateway, IRoot, IGasService} from "src/common/Gateway.sol";
+import {Gateway, IRoot, IGasService, IGateway} from "src/common/Gateway.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 
@@ -141,7 +141,7 @@ contract GatewayTest is Test {
     // --- Administration ---
     function testFile() public {
         // fail: unrecognized param
-        vm.expectRevert(bytes("Gateway/file-unrecognized-param"));
+        vm.expectRevert(IGateway.FileUnrecognizedParam.selector);
         gateway.file("random", self);
 
         assertEq(address(gateway.processor()), address(handler));
@@ -166,7 +166,7 @@ contract GatewayTest is Test {
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
 
-        vm.expectRevert(bytes("Gateway/invalid-adapter"));
+        vm.expectRevert(IGateway.InvalidAdapter.selector);
         vm.prank(makeAddr("randomUser"));
         gateway.handle(REMOTE_CENTRIFUGE_ID, message);
 
@@ -200,13 +200,13 @@ contract GatewayTest is Test {
         vm.expectRevert(bytes(""));
         assertEq(address(gateway.adapters(REMOTE_CENTRIFUGE_ID, 3)), address(0));
 
-        vm.expectRevert(bytes("Gateway/exceeds-max"));
+        vm.expectRevert(IGateway.ExceedsMax.selector);
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, nineMockAdapters);
 
-        vm.expectRevert(bytes("Gateway/file-unrecognized-param"));
+        vm.expectRevert(IGateway.FileUnrecognizedParam.selector);
         gateway.file("notAdapters", REMOTE_CENTRIFUGE_ID, nineMockAdapters);
 
-        vm.expectRevert(bytes("Gateway/no-duplicates-allowed"));
+        vm.expectRevert(IGateway.NoDuplicatesAllowed.selector);
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, twoDuplicateMockAdapters);
 
         gateway.deny(address(this));
@@ -217,10 +217,10 @@ contract GatewayTest is Test {
     function testUseBeforeInitialization() public {
         bytes memory message = MessageLib.NotifyPool(1).serialize();
 
-        vm.expectRevert(bytes("Gateway/invalid-adapter"));
+        vm.expectRevert(IGateway.InvalidAdapter.selector);
         gateway.handle(REMOTE_CENTRIFUGE_ID, message);
 
-        vm.expectRevert(bytes("Gateway/not-initialized"));
+        vm.expectRevert(IGateway.EmptyAdapterSet.selector);
         gateway.send(REMOTE_CENTRIFUGE_ID, message);
     }
 
@@ -230,7 +230,7 @@ contract GatewayTest is Test {
         bytes memory firstMessage = MessageLib.NotifyPool(1).serialize();
         bytes memory firstProof = _formatMessageProof(firstMessage);
 
-        vm.expectRevert(bytes("Gateway/invalid-adapter"));
+        vm.expectRevert(IGateway.InvalidAdapter.selector);
         gateway.handle(REMOTE_CENTRIFUGE_ID, firstMessage);
 
         // Executes after quorum is reached
@@ -308,7 +308,7 @@ contract GatewayTest is Test {
         bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = _formatMessageProof(message);
 
-        vm.expectRevert(bytes("Gateway/invalid-adapter"));
+        vm.expectRevert(IGateway.InvalidAdapter.selector);
         gateway.handle(REMOTE_CENTRIFUGE_ID, message);
 
         // Confirm two messages by payload first
@@ -382,11 +382,10 @@ contract GatewayTest is Test {
     function testPrepayment() public {
         uint256 topUpAmount = 1 gwei;
 
-        vm.expectRevert(bytes("Gateway/cannot-topup-with-nothing"));
-        gateway.topUp{value: 0}();
+        gateway.payTransaction{value: 0}();
 
         uint256 balanceBeforeTopUp = address(gateway).balance;
-        gateway.topUp{value: topUpAmount}();
+        gateway.payTransaction{value: topUpAmount}();
         uint256 balanceAfterTopUp = address(gateway).balance;
         assertEq(balanceAfterTopUp, balanceBeforeTopUp + topUpAmount);
     }
@@ -400,9 +399,9 @@ contract GatewayTest is Test {
         uint256 balanceBeforeTx = address(gateway).balance;
         uint256 topUpAmount = 10 wei;
 
-        gateway.topUp{value: topUpAmount}();
+        gateway.payTransaction{value: topUpAmount}();
 
-        vm.expectRevert(bytes("Gateway/not-enough-gas-funds"));
+        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
         gateway.send(REMOTE_CENTRIFUGE_ID, message);
 
         assertEq(adapter1.calls("pay"), 0);
@@ -425,7 +424,7 @@ contract GatewayTest is Test {
         uint256 balanceBeforeTx = address(gateway).balance;
 
         (uint256[] memory tokens, uint256 total) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
-        gateway.topUp{value: total}();
+        gateway.payTransaction{value: total}();
 
         gateway.send(REMOTE_CENTRIFUGE_ID, message);
 
@@ -454,7 +453,7 @@ contract GatewayTest is Test {
         (uint256[] memory tokens, uint256 total) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
         uint256 extra = 10 wei;
         uint256 topUpAmount = total + extra;
-        gateway.topUp{value: topUpAmount}();
+        gateway.payTransaction{value: topUpAmount}();
 
         gateway.send(REMOTE_CENTRIFUGE_ID, message);
 
@@ -571,7 +570,7 @@ contract GatewayTest is Test {
         adapter3.execute(proof);
         assertEq(handler.received(message), 0);
 
-        vm.expectRevert(bytes("Gateway/message-recovery-not-initiated"));
+        vm.expectRevert(IGateway.MessageRecoveryNotInitiated.selector);
         gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter1, message);
 
         // Initiate recovery
@@ -584,7 +583,7 @@ contract GatewayTest is Test {
         );
         */
 
-        vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
+        vm.expectRevert(IGateway.MessageRecoveryChallengePeriodNotEnded.selector);
         gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter1, message);
 
         // Execute recovery
@@ -606,7 +605,7 @@ contract GatewayTest is Test {
         _send(adapter2, proof);
         assertEq(handler.received(message), 0);
 
-        vm.expectRevert(bytes("Gateway/message-recovery-not-initiated"));
+        vm.expectRevert(IGateway.MessageRecoveryNotInitiated.selector);
         gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter3, proof);
 
         // Initiate recovery
@@ -619,7 +618,7 @@ contract GatewayTest is Test {
         );
         */
 
-        vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
+        vm.expectRevert(IGateway.MessageRecoveryChallengePeriodNotEnded.selector);
         gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter3, proof);
         vm.warp(block.timestamp + gateway.RECOVERY_CHALLENGE_PERIOD());
 
@@ -652,8 +651,10 @@ contract GatewayTest is Test {
         vm.warp(block.timestamp + gateway.RECOVERY_CHALLENGE_PERIOD());
 
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneMockAdapter);
-        vm.expectRevert(bytes("Gateway/invalid-adapter"));
+
+        vm.expectRevert(IGateway.InvalidAdapter.selector);
         gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter3, proof);
+
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeMockAdapters);
     }
 
@@ -678,7 +679,7 @@ contract GatewayTest is Test {
         );
         */
 
-        vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
+        vm.expectRevert(IGateway.MessageRecoveryChallengePeriodNotEnded.selector);
         gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter3, proof);
 
         // Dispute recovery
@@ -692,7 +693,7 @@ contract GatewayTest is Test {
         */
 
         // Check that recovery is not possible anymore
-        vm.expectRevert(bytes("Gateway/message-recovery-not-initiated"));
+        vm.expectRevert(IGateway.MessageRecoveryNotInitiated.selector);
         gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter3, proof);
         assertEq(handler.received(message), 0);
     }
@@ -719,7 +720,7 @@ contract GatewayTest is Test {
 
         vm.warp(block.timestamp + gateway.RECOVERY_CHALLENGE_PERIOD());
 
-        vm.expectRevert(bytes("Gateway/no-recursion"));
+        vm.expectRevert(IGateway.RecoveryMessageRecovered.selector);
         gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, adapter1, message);
         assertEq(handler.received(message), 0);
     }
@@ -769,52 +770,6 @@ contract GatewayTest is Test {
         for (uint256 j = 0; j < numParallelDuplicateMessages; j++) {
             assertEq(handler.received(message), numParallelDuplicateMessages);
         }
-    }
-
-    function testRecoverTokensETH() public {
-        address ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-        address receiver = makeAddr("receiver");
-
-        vm.deal(address(gateway), INITIAL_BALANCE);
-        assertEq(address(gateway).balance, INITIAL_BALANCE);
-        assertEq(receiver.balance, 0);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(makeAddr("UnauthorizedCaller"));
-        gateway.recoverTokens(ETH, 0, receiver, INITIAL_BALANCE);
-
-        gateway.recoverTokens(ETH, 0, receiver, INITIAL_BALANCE);
-        assertEq(address(gateway).balance, 0);
-        assertEq(receiver.balance, INITIAL_BALANCE);
-    }
-
-    function testRecoverTokensERC20(uint256 amount) public {
-        vm.assume(amount > 0);
-        address receiver = makeAddr("receiver");
-        ERC20 token = new ERC20(18);
-
-        token.mint(address(gateway), amount);
-        assertEq(token.balanceOf(address(gateway)), amount);
-        assertEq(token.balanceOf(receiver), 0);
-
-        gateway.recoverTokens(address(token), 0, receiver, amount);
-        assertEq(token.balanceOf(address(gateway)), 0);
-        assertEq(token.balanceOf(receiver), amount);
-    }
-
-    function testRecoverTokensERC6909(uint256 amount, uint8 tokenId) public {
-        vm.assume(amount > 0);
-        tokenId = uint8(bound(tokenId, 2, 18));
-        address receiver = makeAddr("receiver");
-        MockERC6909 token = new MockERC6909();
-
-        token.mint(address(gateway), tokenId, amount);
-        assertEq(token.balanceOf(address(gateway), tokenId), amount);
-        assertEq(token.balanceOf(receiver, tokenId), 0);
-
-        gateway.recoverTokens(address(token), tokenId, receiver, amount);
-        assertEq(token.balanceOf(address(gateway), tokenId), 0);
-        assertEq(token.balanceOf(receiver, tokenId), amount);
     }
 
     function testEstimate() public {

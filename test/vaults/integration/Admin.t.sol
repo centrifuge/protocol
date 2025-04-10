@@ -5,7 +5,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {IGuardian} from "src/common/Guardian.sol";
+import {IGuardian, IGateway} from "src/common/Guardian.sol";
 
 import "test/vaults/BaseTest.sol";
 
@@ -222,34 +222,6 @@ contract AdminTest is BaseTest {
         assertEq(asyncRequests.wards(address(this)), 1);
     }
 
-    //------ Token Recovery tests ------///
-    function testRecoverTokens() public {
-        deploySimpleVault(VaultKind.Async);
-        address clumsyUser = vm.addr(0x1234);
-        address vault_ =
-            asyncRequests.vault(POOL_A.raw(), bytes16(bytes("1")), poolManager.assetToId(address(erc20), erc20TokenId));
-        AsyncVault vault = AsyncVault(vault_);
-        address asset_ = vault.asset();
-        ERC20 asset = ERC20(asset_);
-        deal(asset_, clumsyUser, 300);
-        vm.startPrank(clumsyUser);
-        asset.transfer(vault_, 100);
-        asset.transfer(address(poolManager), 100);
-        asset.transfer(address(asyncRequests), 100);
-        vm.stopPrank();
-        assertEq(asset.balanceOf(vault_), 100);
-        assertEq(asset.balanceOf(address(poolManager)), 100);
-        assertEq(asset.balanceOf(address(asyncRequests)), 100);
-        assertEq(asset.balanceOf(clumsyUser), 0);
-        centrifugeChain.recoverTokens(vault_, asset_, erc20TokenId, clumsyUser, 100);
-        centrifugeChain.recoverTokens(address(poolManager), asset_, erc20TokenId, clumsyUser, 100);
-        centrifugeChain.recoverTokens(address(asyncRequests), asset_, erc20TokenId, clumsyUser, 100);
-        assertEq(asset.balanceOf(clumsyUser), 300);
-        assertEq(asset.balanceOf(vault_), 0);
-        assertEq(asset.balanceOf(address(poolManager)), 0);
-        assertEq(asset.balanceOf(address(asyncRequests)), 0);
-    }
-
     //Endorsements
     function testEndorseVeto() public {
         address endorser = makeAddr("endorser");
@@ -293,7 +265,7 @@ contract AdminTest is BaseTest {
                 .serialize()
         );
 
-        vm.expectRevert(bytes("Gateway/challenge-period-has-not-ended"));
+        vm.expectRevert(IGateway.MessageRecoveryChallengePeriodNotEnded.selector);
         gateway.executeMessageRecovery(OTHER_CHAIN_ID, adapter3, proof);
 
         vm.prank(makeAddr("unauthorized"));
@@ -305,7 +277,7 @@ contract AdminTest is BaseTest {
         guardian.disputeMessageRecovery(THIS_CHAIN_ID, OTHER_CHAIN_ID, adapter3, keccak256(proof));
 
         // Check that recovery is not possible anymore
-        vm.expectRevert(bytes("Gateway/message-recovery-not-initiated"));
+        vm.expectRevert(IGateway.MessageRecoveryNotInitiated.selector);
         gateway.executeMessageRecovery(OTHER_CHAIN_ID, adapter3, proof);
     }
 

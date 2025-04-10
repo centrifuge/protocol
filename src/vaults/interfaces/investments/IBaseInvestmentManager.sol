@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IRecoverable} from "src/common/interfaces/IRoot.sol";
-
-interface IBaseInvestmentManager is IRecoverable {
+interface IBaseInvestmentManager {
     // --- Events ---
     event File(bytes32 indexed what, address data);
 

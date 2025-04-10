@@ -63,7 +63,7 @@ contract WormholeAdapterTest is Test {
     function testDeploy() public view {
         assertEq(address(adapter.gateway()), address(GATEWAY));
         assertEq(address(adapter.relayer()), address(relayer));
-        assertEq(adapter.refundChain(), 2);
+        assertEq(adapter.refundWormholeId(), 2);
 
         assertEq(adapter.wards(address(this)), 1);
     }
@@ -121,6 +121,11 @@ contract WormholeAdapterTest is Test {
         adapter.receiveWormholeMessages(
             payload, vaas, invalidAddress.toBytes32LeftPadded(), WORMHOLE_CHAIN_ID, bytes32(0)
         );
+
+        // address(0) from invalid chain should fail
+        vm.prank(address(relayer));
+        vm.expectRevert(IWormholeAdapter.InvalidSource.selector);
+        adapter.receiveWormholeMessages(payload, vaas, address(0).toBytes32LeftPadded(), invalidChain, bytes32(0));
 
         // Incorrect chain
         vm.expectRevert(IWormholeAdapter.NotWormholeRelayer.selector);

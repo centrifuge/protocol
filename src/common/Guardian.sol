@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {CastLib} from "src/misc/libraries/CastLib.sol";
+
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
@@ -8,18 +10,17 @@ import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
 import {IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-import {IShareClassManager} from "src/pools/interfaces/IShareClassManager.sol";
 
-import {IPoolRouter} from "src/pools/interfaces/IPoolRouter.sol";
-import {IAssetRegistry} from "src/pools/interfaces/IAssetRegistry.sol";
+import {IHub} from "src/hub/interfaces/IHub.sol";
 
 contract Guardian is IGuardian {
+    using CastLib for address;
+
     IRoot public immutable root;
 
     ISafe public safe;
-    IPoolRouter public poolRouter;
+    IHub public hub;
     IRootMessageSender public sender;
-    IAssetRegistry public assetRegistry;
 
     constructor(ISafe safe_, IRoot root_, IRootMessageSender messageDispatcher_) {
         root = root_;
@@ -41,8 +42,7 @@ contract Guardian is IGuardian {
     function file(bytes32 what, address data) external onlySafe {
         if (what == "safe") safe = ISafe(data);
         else if (what == "sender") sender = IRootMessageSender(data);
-        else if (what == "poolRouter") poolRouter = IPoolRouter(data);
-        else if (what == "assetRegistry") assetRegistry = IAssetRegistry(data);
+        else if (what == "hub") hub = IHub(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -50,17 +50,8 @@ contract Guardian is IGuardian {
 
     // --- Admin actions ---
     /// @inheritdoc IGuardian
-    function createPool(address admin, AssetId currency, IShareClassManager shareClassManager)
-        external
-        onlySafe
-        returns (PoolId poolId)
-    {
-        return poolRouter.createPool(admin, currency, shareClassManager);
-    }
-
-    /// @inheritdoc IGuardian
-    function setChain(uint16 chainId, string calldata name, string calldata symbol) external onlySafe {
-        assetRegistry.setChain(chainId, name, symbol);
+    function createPool(address admin, AssetId currency) external onlySafe returns (PoolId poolId) {
+        return hub.createPool(admin, currency);
     }
 
     /// @inheritdoc IGuardian
@@ -84,29 +75,41 @@ contract Guardian is IGuardian {
     }
 
     /// @inheritdoc IGuardian
-    function scheduleUpgrade(uint16 chainId, address target) external onlySafe {
-        sender.sendScheduleUpgrade(chainId, bytes32(bytes20(target)));
+    function scheduleUpgrade(uint16 centrifugeId, address target) external onlySafe {
+        sender.sendScheduleUpgrade(centrifugeId, target.toBytes32());
     }
 
     /// @inheritdoc IGuardian
-    function cancelUpgrade(uint16 chainId, address target) external onlySafe {
-        sender.sendCancelUpgrade(chainId, bytes32(bytes20(target)));
+    function cancelUpgrade(uint16 centrifugeId, address target) external onlySafe {
+        sender.sendCancelUpgrade(centrifugeId, target.toBytes32());
     }
 
     /// @inheritdoc IGuardian
-    function initiateMessageRecovery(uint16 chainId, uint16 adapterChainId, IAdapter adapter, bytes32 hash)
+    function recoverTokens(
+        uint16 centrifugeId,
+        address target,
+        address token,
+        uint256 tokenId,
+        address to,
+        uint256 amount
+    ) external onlySafe {
+        sender.sendRecoverTokens(centrifugeId, target.toBytes32(), token.toBytes32(), tokenId, to.toBytes32(), amount);
+    }
+
+    /// @inheritdoc IGuardian
+    function initiateMessageRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
         external
         onlySafe
     {
-        sender.sendInitiateMessageRecovery(chainId, adapterChainId, bytes32(bytes20(address(adapter))), hash);
+        sender.sendInitiateMessageRecovery(centrifugeId, adapterCentrifugeId, address(adapter).toBytes32(), hash);
     }
 
     /// @inheritdoc IGuardian
-    function disputeMessageRecovery(uint16 chainId, uint16 adapterChainId, IAdapter adapter, bytes32 hash)
+    function disputeMessageRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
         external
         onlySafe
     {
-        sender.sendDisputeMessageRecovery(chainId, adapterChainId, bytes32(bytes20(address(adapter))), hash);
+        sender.sendDisputeMessageRecovery(centrifugeId, adapterCentrifugeId, address(adapter).toBytes32(), hash);
     }
 
     // --- Helpers ---

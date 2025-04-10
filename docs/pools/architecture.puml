@@ -1,29 +1,6 @@
 @startuml
 circle Vaults
 
-interface IERC6909 {
-    + transfer(assetId, addr, amount)
-    + transferFrom(assetId, origin, addr, amount)
-}
-
-abstract ERC6909 { }
-
-ERC6909 --|> IERC6909
-
-class IERC6909Fungible<wards = PoolManager> {
-    + mint(assetId, addr, amount)
-    + burn(assetId, addr, amount)
-    + authTransfer(assetId, sendAddr, recvAddr, amount)
-}
-
-IERC6909Fungible --|> ERC6909
-
-class AssetRegistry {
-    + registerAsset(assetId, name, decimals, symbol)
-}
-
-AssetRegistry --|> IERC6909Fungible
-
 class Holdings<wards = PoolManager> <<(C, lightskyblue)>> {
     + create(poolId, scId, assetId, valuation, accounts)
     + increase(poolId, scId, assetId, valuation) -> increasedValue
@@ -33,7 +10,8 @@ class Holdings<wards = PoolManager> <<(C, lightskyblue)>> {
     + setAccountId(poolId, scId, assetId)
 }
 
-class PoolRegistry<wards = PoolManager> {
+class HubRegistry<wards = PoolManager> {
+    + registerAsset(assetId, decimals)
     + registerPool(admin, currencyId, shareClassManagerAddress) -> poolId
     + updateDependency(poolId, what, dependency)
     + updateCurrency(poolId, currency)
@@ -42,7 +20,7 @@ class PoolRegistry<wards = PoolManager> {
     + setMetadata(poolId, metadata)
 }
 
-interface IShareClassManager {
+class ShareClassManager<wards = PoolManager> <<(C, lightskyblue)>>{
     + addShareClass(poolId, name, symbol, data) -> newScId
     + requestDeposit(poolId, scId, assetId, investor, amount)
     + cancelDepositRequest(poolId, scId, assetId, investor) -> (cancelled)
@@ -58,9 +36,6 @@ interface IShareClassManager {
     + update(poolId, data)
     + updateMetadata(poolId, scId, name, symbol, data)
 }
-
-class MultiShareClass<wards = PoolManager> <<(C, lightskyblue)>>{ }
-MultiShareClass -down|> IShareClassManager
 
 class Accounting<wards = PoolManager> {
     + createAccount(poolId, account, isDebitNormal)
@@ -139,10 +114,9 @@ PoolManager -up-|> IPoolManagerHandler
 PoolManager -up--|> PoolLocker
 PoolManager -up-> EscrowType
 PoolManager -up-> AccountType
-PoolManager -down---> PoolRegistry
+PoolManager -down---> HubRegistry
 PoolManager -left-> IShareClassManager
 PoolManager -down--> Accounting
-PoolManager -down-> AssetRegistry
 PoolManager -down--> Holdings
 PoolManager -right-> Gateway
 

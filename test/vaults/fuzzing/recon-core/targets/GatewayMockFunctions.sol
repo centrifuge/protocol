@@ -12,7 +12,7 @@ import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
-import {RestrictedTransfers} from "src/vaults/token/RestrictedTransfers.sol";
+import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 // @dev A way to separately code and maintain a mocked implementation of `Gateway`
@@ -113,7 +113,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
 
     // Step 2
     function poolManager_registerAsset(address assetAddress, uint256 erc6909TokenId) public returns (uint128 assetId) {
-        assetId = poolManager.registerAsset(assetAddress, erc6909TokenId, DEFAULT_DESTINATION_CHAIN);
+        assetId = poolManager.registerAsset(DEFAULT_DESTINATION_CHAIN, assetAddress, erc6909TokenId);
 
         // Only if successful
         assetAddressToAssetId[assetAddress] = assetId;
@@ -158,8 +158,9 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     }
 
     // TODO: Price is capped at u64 to test overflows
-    function poolManager_updateSharePrice(uint64 price, uint64 computedAt) public {
-        poolManager.updateSharePrice(poolId, scId, assetId, price, computedAt);
+    function poolManager_updatePricePoolPerShare(uint64 price, uint64 computedAt) public {
+        poolManager.updatePricePoolPerShare(poolId, scId, price, computedAt);
+        poolManager.updatePricePoolPerAsset(poolId, scId, assetId, price, computedAt);
     }
 
     function poolManager_updateShareMetadata(string memory tokenName, string memory tokenSymbol) public {

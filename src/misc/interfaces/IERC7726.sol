@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
+pragma solidity >=0.5.0;
 
 /// [ERC-7726](https://eips.ethereum.org/EIPS/eip-7726): Common Quote Oracle
 /// Interface for asset conversions.

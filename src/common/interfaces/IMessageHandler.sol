@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
+pragma solidity >=0.5.0;
 
 /// @notice Generic interface for entities that handle incoming messages
 interface IMessageHandler {
@@ -7,6 +7,7 @@ interface IMessageHandler {
     error InvalidMessage(uint8 code);
 
     /// @notice Handling incoming messages.
+    /// @param centrifugeId Source chain
     /// @param message Incoming message
-    function handle(uint16 chainId, bytes calldata message) external;
+    function handle(uint16 centrifugeId, bytes calldata message) external;
 }

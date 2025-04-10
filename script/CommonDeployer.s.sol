@@ -10,20 +10,25 @@ import {Guardian, ISafe} from "src/common/Guardian.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {MessageProcessor} from "src/common/MessageProcessor.sol";
 import {MessageDispatcher} from "src/common/MessageDispatcher.sol";
+import {TokenRecoverer} from "src/common/TokenRecoverer.sol";
 
 import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
 
 import "forge-std/Script.sol";
 
+string constant MESSAGE_COST_ENV = "MESSAGE_COST";
+string constant PROOF_COST_ENV = "PROOF_COST";
+
 abstract contract CommonDeployer is Script, JsonRegistry {
     uint256 constant DELAY = 48 hours;
     bytes32 immutable SALT;
-    uint256 constant BASE_MSG_COST = 20000000000000000; // in Weight
+    uint64 constant FALLBACK_MSG_COST = 20000000000000000; // in Weight
 
     IAdapter[] adapters;
 
-    Root public root;
     ISafe public adminSafe;
+    Root public root;
+    TokenRecoverer public tokenRecoverer;
     Guardian public guardian;
     GasService public gasService;
     Gateway public gateway;
@@ -38,22 +43,23 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         );
     }
 
-    function deployCommon(uint16 chainId, ISafe adminSafe_, address deployer) public {
+    function deployCommon(uint16 centrifugeId, ISafe adminSafe_, address deployer) public {
         if (address(root) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
 
+        uint64 messageGasLimit = uint64(vm.envOr(MESSAGE_COST_ENV, FALLBACK_MSG_COST));
+        uint64 proofGasLimit = uint64(vm.envOr(PROOF_COST_ENV, FALLBACK_MSG_COST));
+
         root = new Root(DELAY, deployer);
+        tokenRecoverer = new TokenRecoverer(root, deployer);
 
-        uint64 messageGasLimit = uint64(vm.envOr("MESSAGE_COST", BASE_MSG_COST));
-        uint64 proofGasLimit = uint64(vm.envOr("PROOF_COST", BASE_MSG_COST));
+        messageProcessor = new MessageProcessor(root, tokenRecoverer, deployer);
 
-        messageProcessor = new MessageProcessor(root, gasService, deployer);
-
-        gasService = new GasService(messageGasLimit, proofGasLimit, messageProcessor);
+        gasService = new GasService(messageGasLimit, proofGasLimit);
         gateway = new Gateway(root, gasService);
 
-        messageDispatcher = new MessageDispatcher(chainId, root, gateway, deployer);
+        messageDispatcher = new MessageDispatcher(centrifugeId, root, gateway, tokenRecoverer, deployer);
 
         adminSafe = adminSafe_;
 
@@ -78,7 +84,6 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     }
 
     function _commonRely() private {
-        gasService.rely(address(root));
         root.rely(address(guardian));
         root.rely(address(messageProcessor));
         root.rely(address(messageDispatcher));
@@ -86,8 +91,11 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         gateway.rely(address(guardian));
         gateway.rely(address(messageDispatcher));
         gateway.rely(address(messageProcessor));
+        messageDispatcher.rely(address(root));
         messageProcessor.rely(address(gateway));
         messageDispatcher.rely(address(guardian));
+        tokenRecoverer.rely(address(messageDispatcher));
+        tokenRecoverer.rely(address(messageProcessor));
     }
 
     function _commonFile() private {
@@ -95,9 +103,9 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         gateway.file("processor", address(messageProcessor));
     }
 
-    function wire(uint16 chainId, IAdapter adapter, address deployer) public {
+    function wire(uint16 centrifugeId, IAdapter adapter, address deployer) public {
         adapters.push(adapter);
-        gateway.file("adapters", chainId, adapters);
+        gateway.file("adapters", centrifugeId, adapters);
         IAuth(address(adapter)).rely(address(root));
         IAuth(address(adapter)).deny(deployer);
     }
@@ -110,7 +118,6 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         guardian.file("safe", address(adminSafe));
 
         root.deny(deployer);
-        gasService.deny(deployer);
         gateway.deny(deployer);
         messageProcessor.deny(deployer);
         messageDispatcher.deny(deployer);

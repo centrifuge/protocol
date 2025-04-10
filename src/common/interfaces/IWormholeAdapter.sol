@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
+pragma solidity >=0.5.0;
 
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
@@ -112,7 +112,7 @@ interface IWormholeReceiver {
 }
 
 struct WormholeSource {
-    uint16 centrifugeChainId;
+    uint16 centrifugeId;
     address addr;
 }
 
@@ -133,5 +133,5 @@ interface IWormholeAdapter is IAdapter, IWormholeReceiver {
     /// @param what Can be "sources" or "destinations".
     /// @param addr if what == "sources", it represents the source
     /// @param addr if what == "destinations", it represents the destination
-    function file(bytes32 what, uint16 centrifugeChainId, uint16 wormholeId, address addr) external;
+    function file(bytes32 what, uint16 centrifugeId, uint16 wormholeId, address addr) external;
 }

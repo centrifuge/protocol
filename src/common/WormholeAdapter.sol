@@ -18,26 +18,28 @@ import {
 contract WormholeAdapter is Auth, IWormholeAdapter {
     using CastLib for bytes32;
 
-    uint16 public immutable refundChain;
+    uint16 public immutable refundWormholeId;
     IMessageHandler public immutable gateway;
     IWormholeRelayer public immutable relayer;
 
     mapping(uint16 wormholeId => WormholeSource) public sources;
-    mapping(uint16 centrifugeChainId => WormholeDestination) public destinations;
+    mapping(uint16 centrifugeId => WormholeDestination) public destinations;
 
-    constructor(IMessageHandler gateway_, address relayer_, uint16 refundChain_, address deployer) Auth(deployer) {
+    constructor(IMessageHandler gateway_, address relayer_, uint16 refundWormholeId_, address deployer)
+        Auth(deployer)
+    {
         gateway = gateway_;
         relayer = IWormholeRelayer(relayer_);
-        refundChain = refundChain_;
+        refundWormholeId = refundWormholeId_;
     }
 
     // --- Administrative ---
     /// @inheritdoc IWormholeAdapter
-    function file(bytes32 what, uint16 centrifugeChainId, uint16 wormholeId, address addr) external auth {
-        if (what == "sources") sources[wormholeId] = WormholeSource(centrifugeChainId, addr);
-        else if (what == "destinations") destinations[centrifugeChainId] = WormholeDestination(wormholeId, addr);
+    function file(bytes32 what, uint16 centrifugeId, uint16 wormholeId, address addr) external auth {
+        if (what == "sources") sources[wormholeId] = WormholeSource(centrifugeId, addr);
+        else if (what == "destinations") destinations[centrifugeId] = WormholeDestination(wormholeId, addr);
         else revert FileUnrecognizedParam();
-        emit File(what, centrifugeChainId, wormholeId, addr);
+        emit File(what, centrifugeId, wormholeId, addr);
     }
 
     // --- Incoming ---
@@ -50,33 +52,30 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         bytes32 /* deliveryHash */
     ) external payable {
         WormholeSource memory source = sources[sourceWormholeId];
-        require(source.addr == sourceAddress.toAddressLeftPadded(), InvalidSource());
+        require(source.addr != address(0) && source.addr == sourceAddress.toAddressLeftPadded(), InvalidSource());
         require(msg.sender == address(relayer), NotWormholeRelayer());
 
-        gateway.handle(source.centrifugeChainId, payload);
+        gateway.handle(source.centrifugeId, payload);
     }
 
     // --- Outgoing ---
     /// @inheritdoc IAdapter
-    function send(uint16 centrifugeChainId, bytes calldata payload, uint256 gasLimit, address refund)
-        external
-        payable
-    {
+    function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, address refund) external payable {
         require(msg.sender == address(gateway), NotGateway());
-        WormholeDestination memory destination = destinations[centrifugeChainId];
+        WormholeDestination memory destination = destinations[centrifugeId];
         require(destination.wormholeId != 0, UnknownChainId());
 
         relayer.sendPayloadToEvm{value: msg.value}(
-            destination.wormholeId, destination.addr, payload, 0, gasLimit, refundChain, refund
+            destination.wormholeId, destination.addr, payload, 0, gasLimit, refundWormholeId, refund
         );
     }
 
     /// @inheritdoc IAdapter
-    function estimate(uint16 centrifugeChainId, bytes calldata, uint256 gasLimit)
+    function estimate(uint16 centrifugeId, bytes calldata, uint256 gasLimit)
         public
         view
         returns (uint256 nativePriceQuote)
     {
-        (nativePriceQuote,) = relayer.quoteEVMDeliveryPrice(destinations[centrifugeChainId].wormholeId, 0, gasLimit);
+        (nativePriceQuote,) = relayer.quoteEVMDeliveryPrice(destinations[centrifugeId].wormholeId, 0, gasLimit);
     }
 }

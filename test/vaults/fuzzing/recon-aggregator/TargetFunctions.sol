@@ -28,8 +28,8 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BiasedTarg
     //     routerAggregator.file(what, routers_);
     // }
 
-    function routerAggregator_handle(uint16 chainId, bytes memory payload) public {
-        routerAggregator.handle(chainId, payload);
+    function routerAggregator_handle(uint16 centrifugeId, bytes memory payload) public {
+        routerAggregator.handle(centrifugeId, payload);
     }
 
     // @todo: re-enable
@@ -37,7 +37,7 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BiasedTarg
     //     routerAggregator.rely(user);
     // }
 
-    function routerAggregator_send(uint16 chainId, bytes memory message) public {
-        routerAggregator.send(chainId, message);
+    function routerAggregator_send(uint16 centrifugeId, bytes memory message) public {
+        routerAggregator.send(centrifugeId, message);
     }
 }

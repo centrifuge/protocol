@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
+pragma solidity >=0.5.0;
 
 import {IGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
@@ -11,10 +11,22 @@ uint8 constant MAX_ADAPTER_COUNT = 8;
 
 /// @notice Interface for dispatch-only gateway
 interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
-    /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
-    error FileUnrecognizedWhat();
+    /// @notice Defines the current payment method
+    enum PaymentMethod {
+        /// @notice The payment is done by subdized pools
+        Subsidized,
+        /// @notice The payment is done in the same transaction
+        Transaction
+    }
 
-    error NoBatched();
+    /// @notice Identifies a Batch
+    struct BatchLocator {
+        /// @notice chain associated to the batch
+        uint16 centrifugeId;
+        /// @notice pools associated to the batch.
+        /// NOTE: poolId == 0 represent a batch of messages pool-unrelated
+        PoolId poolId;
+    }
 
     /// @dev Each adapter struct is packed with the quorum to reduce SLOADs on handle
     struct Adapter {
@@ -26,7 +38,7 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
         uint64 activeSessionId;
     }
 
-    struct Message {
+    struct InboundBatch {
         /// @dev Counts are stored as integers (instead of boolean values) to accommodate duplicate
         ///      messages (e.g. two investments from the same user with the same amount) being
         ///      processed in parallel. The entire struct is packed in a single bytes32 slot.
@@ -34,30 +46,82 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
         uint16[MAX_ADAPTER_COUNT] votes;
         /// @notice Each time adapters are updated, a new session starts which invalidates old votes
         uint64 sessionId;
-        bytes pendingMessage;
+        bytes pendingBatch;
     }
 
     // --- Events ---
-    event ProcessMessage(uint16 chainId, bytes message, IAdapter adapter);
-    event ProcessProof(uint16 chainId, bytes32 messageHash, IAdapter adapter);
-    event ExecuteMessage(uint16 chainId, bytes message, IAdapter adapter);
-    event SendMessage(bytes message);
+    event ProcessBatch(uint16 centrifugeId, bytes batch, IAdapter adapter);
+    event ProcessProof(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
+    event ExecuteMessage(uint16 centrifugeId, bytes message);
+    event FailMessage(uint16 centrifugeId, bytes message, bytes error);
+    event SendBatch(uint16 centrifugeId, bytes batch, IAdapter adapter);
+    event SendProof(uint16 centrifugeId, bytes proof, IAdapter adapter);
+    event PrepareMessage(uint16 centrifugeId, PoolId poolId, bytes message);
+
     event RecoverMessage(IAdapter adapter, bytes message);
-    event RecoverProof(IAdapter adapter, bytes32 messageHash);
-    event InitiateMessageRecovery(uint16 chainId, bytes32 messageHash, IAdapter adapter);
-    event DisputeMessageRecovery(uint16 chainId, bytes32 messageHash, IAdapter adapter);
-    event ExecuteMessageRecovery(uint16 chainId, bytes message, IAdapter adapter);
-    event File(bytes32 indexed what, uint16 chainId, IAdapter[] adapters);
+    event RecoverProof(IAdapter adapter, bytes32 batchHash);
+    event InitiateMessageRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
+    event DisputeMessageRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
+    event ExecuteMessageRecovery(uint16 centrifugeId, bytes message, IAdapter adapter);
+
+    event File(bytes32 indexed what, uint16 centrifugeId, IAdapter[] adapters);
     event File(bytes32 indexed what, address addr);
-    event ReceiveNativeTokens(PoolId indexed poolId, address indexed sender, uint256 amount);
+
+    event SubsidizePool(PoolId indexed poolId, address indexed sender, uint256 amount);
+
+    /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
+    error FileUnrecognizedParam();
+
+    /// @notice Dispatched when the batch is ended without starting it.
+    error NoBatched();
+
+    /// @notice Dispatched when the gateway is paused.
+    error Paused();
+
+    /// @notice Dispatched when the gateway is configured with a number of adapter exceeding the maximum.
+    error ExceedsMax();
+
+    /// @notice Dispatched when the gateway is configured with an empty adapter set.
+    error EmptyAdapterSet();
+
+    /// @notice Dispatched when the gateway is configured with duplicate adapters.
+    error NoDuplicatesAllowed();
+
+    /// @notice Dispatched when the gateway tries to handle a message from an adaptet not contained in the adapter set.
+    error InvalidAdapter();
+
+    /// @notice Dispatched when the gateway tries to recover a recovery message, which is not allowed.
+    error RecoveryMessageRecovered();
+
+    /// @notice Dispatched when the gateway tries to handle a proof from a non proof adapter.
+    error NonProofAdapter();
+
+    /// @notice Dispatched when the gateway tries to handle a message from a non message adapter.
+    error NonMessageAdapter();
+
+    /// @notice Dispatched when a recovery message is executed without being initiated.
+    error MessageRecoveryNotInitiated();
+
+    /// @notice Dispatched when a recovery message is executed without waiting the challenge period.
+    error MessageRecoveryChallengePeriodNotEnded();
+
+    /// @notice Dispatched when a the gateway tries to send an empty message.
+    error EmptyMessage();
+
+    /// @notice Dispatched when a the gateway has not enough fuel to send a message.
+    /// Only dispatched in PayTransaction method
+    error NotEnoughTransactionGas();
+
+    /// @notice Dispatched when a message that has not failed is retried.
+    error NotFailedMessage();
 
     // --- Administration ---
     /// @notice Used to update an array of addresses ( state variable ) on very rare occasions.
     /// @dev    Currently it is used to update the supported adapters.
     /// @param  what The name of the variable to be updated.
-    /// @param  chainId Chain ID.
+    /// @param  centrifugeId Chain where the adapters are associated to.
     /// @param  value New addresses.
-    function file(bytes32 what, uint16 chainId, IAdapter[] calldata value) external;
+    function file(bytes32 what, uint16 centrifugeId, IAdapter[] calldata value) external;
 
     /// @notice Used to update an address ( state variable ) on very rare occasions.
     /// @dev    Currently used to update addresses of contract instances.
@@ -65,11 +129,17 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @param  data New address.
     function file(bytes32 what, address data) external;
 
+    /// @notice Prepays for the TX cost for sending the messages through the adapters
+    ///         Currently being called from Vault Router only.
+    ///         In order to prepay, the method MUST be called with `msg.value`.
+    ///         Called is assumed to have called IGateway.estimate before calling this.
+    function payTransaction() external payable;
+
     /// @notice Initialize batching message
-    function startBatch() external;
+    function startBatching() external;
 
     /// @notice Finalize batching messages and send the resulting batch message
-    function endBatch() external;
+    function endBatching() external;
 
     /// @notice Execute message recovery. After the challenge period, the recovery can be executed.
     ///         If a malign adapter initiates message recovery,
@@ -77,27 +147,19 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     ///
     ///         Only 1 recovery can be outstanding per message hash. If multiple adapters fail at the same time,
     ///         these will need to be recovered serially (increasing the challenge period for each failed adapter).
-    /// @param  chainId Chain where the adapter is configured for
+    /// @param  centrifugeId Chain where the adapter is configured for
     /// @param  adapter Adapter's address that the recovery is targeting
     /// @param  message Hash of the message to be recovered
-    function executeMessageRecovery(uint16 chainId, IAdapter adapter, bytes calldata message) external;
-
-    /// @notice Prepays for the TX cost for sending through the adapters
-    ///         and Centrifuge Chain
-    /// @dev    It can be called only through endorsed contracts.
-    ///         Currently being called from Vault Router only.
-    ///         In order to prepay, the method MUST be called with `msg.value`.
-    ///         Called is assumed to have called IGateway.estimate before calling this.
-    function topUp() external payable;
+    function executeMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes calldata message) external;
 
     // --- Helpers ---
     /// @notice A view method of the current quorum.abi
     /// @dev    Quorum shows the amount of votes needed in order for a message to be dispatched further.
     ///         The quorum is taken from the first adapter.
     ///         Current quorum is the amount of all adapters.
-    /// @param  chainId Chain where the adapter is configured for
+    /// @param  centrifugeId Chain where the adapter is configured for
     /// return  Needed amount
-    function quorum(uint16 chainId) external view returns (uint8);
+    function quorum(uint16 centrifugeId) external view returns (uint8);
 
     /// @notice Gets the current active routers session id.
     /// @dev    When the adapters are updated with new ones,
@@ -105,16 +167,16 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     ///         Currently it uses sessionId of the previous set and
     ///         increments it by 1. The idea of an activeSessionId is
     ///         to invalidate any incoming messages from previously used adapters.
-    /// @param  chainId Chain where the adapter is configured for
-    function activeSessionId(uint16 chainId) external view returns (uint64);
+    /// @param  centrifugeId Chain where the adapter is configured for
+    function activeSessionId(uint16 centrifugeId) external view returns (uint64);
 
     /// @notice Counts how many times each incoming messages has been received per adapter.
     /// @dev    It supports parallel messages ( duplicates ). That means that the incoming messages could be
     ///         the result of two or more independ request from the user of the same type.
     ///         i.e. Same user would like to deposit same underlying asset with the same amount more then once.
-    /// @param  chainId Chain where the adapter is configured for
-    /// @param  messageHash The hash value of the incoming message.
-    function votes(uint16 chainId, bytes32 messageHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory);
+    /// @param  centrifugeId Chain where the adapter is configured for
+    /// @param  batchHash The hash value of the incoming batch message.
+    function votes(uint16 centrifugeId, bytes32 batchHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory);
 
     /// @notice Used to calculate overall cost for bridging a payload on the first adapter and settling
     ///         on the destination chain and bridging its payload proofs on n-1 adapter
@@ -124,22 +186,22 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @return perAdapter An array of cost values per adapter. Each value is how much it's going to cost
     ///         for a message / proof to be passed through one router and executed on the recipient chain
     /// @return total Total cost for sending one message and corresponding proofs on through all adapters
-    function estimate(uint16 chainId, bytes calldata payload)
+    function estimate(uint16 centrifugeId, bytes calldata payload)
         external
         view
         returns (uint256[] memory perAdapter, uint256 total);
 
     /// @notice Returns the address of the adapter at the given id.
-    /// @param  chainId Chain where the adapter is configured for
-    function adapters(uint16 chainId, uint256 id) external view returns (IAdapter);
+    /// @param  centrifugeId Chain where the adapter is configured for
+    function adapters(uint16 centrifugeId, uint256 id) external view returns (IAdapter);
 
     /// @notice Returns the number of adapters.
-    /// @param  chainId Chain where the adapter is configured for
-    function adapterCount(uint16 chainId) external view returns (uint256);
+    /// @param  centrifugeId Chain where the adapter is configured for
+    function adapterCount(uint16 centrifugeId) external view returns (uint256);
 
     /// @notice Returns the timestamp when the given recovery can be executed.
-    /// @param  chainId Chain where the adapter is configured for
-    function recoveries(uint16 chainId, IAdapter adapter, bytes32 messageHash)
+    /// @param  centrifugeId Chain where the adapter is configured for
+    function recoveries(uint16 centrifugeId, IAdapter adapter, bytes32 batchHash)
         external
         view
         returns (uint256 timestamp);

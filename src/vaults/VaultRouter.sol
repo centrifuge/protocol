@@ -8,9 +8,10 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC20, IERC20Permit, IERC20Wrapper} from "src/misc/interfaces/IERC20.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
+import {Recoverable} from "src/misc/Recoverable.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {IRecoverable} from "src/common/interfaces/IRoot.sol";
+import {IMessageDispatcher} from "src/common/interfaces/IMessageDispatcher.sol";
 
 import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
@@ -26,7 +27,7 @@ import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 ///         the multicall functionality which batches message calls into a single one.
 /// @dev    It is critical to ensure that at the end of any transaction, no funds remain in the
 ///         VaultRouter. Any funds that do remain are at risk of being taken by other users.
-contract VaultRouter is Auth, Multicall, IVaultRouter {
+contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     using CastLib for address;
 
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
@@ -34,17 +35,19 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
 
     IEscrow public immutable escrow;
     IGateway public immutable gateway;
-    uint16 public immutable localCentrifugeId;
     IPoolManager public immutable poolManager;
+    IMessageDispatcher public immutable messageDispatcher;
 
     /// @inheritdoc IVaultRouter
     mapping(address controller => mapping(address vault => uint256 amount)) public lockedRequests;
 
-    constructor(uint16 localCentrifugeId_, address escrow_, address gateway_, address poolManager_) Auth(msg.sender) {
-        localCentrifugeId = localCentrifugeId_;
+    constructor(address escrow_, address gateway_, address poolManager_, IMessageDispatcher messageDispatcher_)
+        Auth(msg.sender)
+    {
         escrow = IEscrow(escrow_);
         gateway = IGateway(gateway_);
         poolManager = IPoolManager(poolManager_);
+        messageDispatcher = messageDispatcher_;
     }
 
     // --- Administration ---
@@ -53,23 +56,14 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
     function multicall(bytes[] calldata data) public payable override(Multicall, IMulticall) {
         bool wasBatching = gateway.isBatching();
         if (!wasBatching) {
-            gateway.startBatch();
+            gateway.startBatching();
+            gateway.payTransaction{value: msg.value}();
         }
 
         super.multicall(data);
 
         if (!wasBatching) {
-            gateway.topUp{value: msg.value}();
-            gateway.endBatch();
-        }
-    }
-
-    /// @inheritdoc IRecoverable
-    function recoverTokens(address token, uint256 tokenId, address to, uint256 amount) external auth {
-        if (tokenId == 0) {
-            SafeTransferLib.safeTransfer(token, to, amount);
-        } else {
-            IERC6909(token).transfer(to, tokenId, amount);
+            gateway.endBatching();
         }
     }
 
@@ -249,28 +243,33 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
 
     // --- Transfer ---
     /// @inheritdoc IVaultRouter
-    function transferShares(address vault, uint16 chainId, bytes32 receiver, uint128 amount) public payable protected {
+    function transferShares(uint16 centrifugeId, address vault, bytes32 receiver, uint128 amount)
+        public
+        payable
+        protected
+    {
         SafeTransferLib.safeTransferFrom(IAsyncVault(vault).share(), msg.sender, address(this), amount);
         _approveMax(IAsyncVault(vault).share(), 0, address(poolManager));
         _pay();
         IPoolManager(poolManager).transferShares(
-            IAsyncVault(vault).poolId(), IAsyncVault(vault).trancheId(), chainId, receiver, amount
+            centrifugeId, IAsyncVault(vault).poolId(), IAsyncVault(vault).trancheId(), receiver, amount
         );
     }
 
     /// @inheritdoc IVaultRouter
-    function transferShares(address vault, uint16 chainId, address receiver, uint128 amount)
+    function transferShares(uint16 centrifugeId, address vault, address receiver, uint128 amount)
         external
         payable
         protected
     {
-        transferShares(vault, chainId, receiver.toBytes32(), amount);
+        transferShares(centrifugeId, vault, receiver.toBytes32(), amount);
     }
 
     // --- Register Asset ---
-    function registerAsset(address asset, uint256 tokenId, uint16 chainId) public payable {
+    /// @inheritdoc IVaultRouter
+    function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId) public payable {
         _pay();
-        IPoolManager(poolManager).registerAsset(asset, tokenId, chainId);
+        IPoolManager(poolManager).registerAsset(centrifugeId, asset, tokenId);
     }
 
     // --- ERC20 permits ---
@@ -310,9 +309,8 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
     }
 
     /// @inheritdoc IVaultRouter
-    function estimate(uint16 chainId, bytes calldata payload) external view returns (uint256 amount) {
-        if (chainId == localCentrifugeId) return 0;
-        (, amount) = IGateway(gateway).estimate(chainId, payload);
+    function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256) {
+        return messageDispatcher.estimate(centrifugeId, payload);
     }
 
     /// @inheritdoc IVaultRouter
@@ -338,7 +336,7 @@ contract VaultRouter is Auth, Multicall, IVaultRouter {
     /// @notice Send native tokens to the gateway for transaction payment if it's not in a multicall.
     function _pay() internal {
         if (!gateway.isBatching()) {
-            gateway.topUp{value: msg.value}();
+            gateway.payTransaction{value: msg.value}();
         }
     }
 

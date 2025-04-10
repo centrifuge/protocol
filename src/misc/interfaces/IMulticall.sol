@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
+pragma solidity >=0.5.0;
 
 /// @notice Allows to call several calls of the same contract in a single transaction
 interface IMulticall {

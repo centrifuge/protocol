@@ -24,7 +24,7 @@ import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {RestrictedTransfers} from "src/vaults/token/RestrictedTransfers.sol";
+import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
 import {VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 
 // scripts
@@ -38,9 +38,8 @@ import {MockSafe} from "test/vaults/mocks/MockSafe.sol";
 
 // test env
 import "forge-std/Test.sol";
-import {GasSnapshot} from "forge-gas-snapshot/GasSnapshot.sol";
 
-contract BaseTest is VaultsDeployer, GasSnapshot, Test {
+contract BaseTest is VaultsDeployer, Test {
     using MessageLib for *;
 
     MockCentrifugeChain centrifugeChain;
@@ -118,7 +117,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         vm.label(address(asyncRequests), "AsyncRequests");
         vm.label(address(asyncRequests), "SyncRequests");
         vm.label(address(poolManager), "PoolManager");
-        vm.label(address(balanceSheetManager), "BalanceSheetManager");
+        vm.label(address(balanceSheet), "BalanceSheet");
         vm.label(address(gateway), "Gateway");
         vm.label(address(messageProcessor), "MessageProcessor");
         vm.label(address(messageDispatcher), "MessageDispatcher");
@@ -142,7 +141,7 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         excludeContract(address(root));
         excludeContract(address(asyncRequests));
         excludeContract(address(syncRequests));
-        excludeContract(address(balanceSheetManager));
+        excludeContract(address(balanceSheet));
         excludeContract(address(poolManager));
         excludeContract(address(gateway));
         excludeContract(address(erc20));
@@ -170,20 +169,23 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
         uint256 assetTokenId,
         uint16 /* TODO: destinationChain */
     ) public returns (uint64 poolId, address vaultAddress, uint128 assetId) {
-        if (poolManager.assetToId(asset, assetTokenId) == 0) {
-            assetId = poolManager.registerAsset(asset, assetTokenId, OTHER_CHAIN_ID);
-        } else {
-            assetId = poolManager.assetToId(asset, assetTokenId);
-        }
-
-        if (poolManager.shareToken(POOL_A.raw(), scId) == address(0)) {
+        try poolManager.shareToken(POOL_A.raw(), scId) {}
+        catch {
             if (poolManager.pools(POOL_A.raw()) == 0) {
                 centrifugeChain.addPool(POOL_A.raw());
             }
             centrifugeChain.addShareClass(POOL_A.raw(), scId, "name", "symbol", shareTokenDecimals, hook);
+            centrifugeChain.updatePricePoolPerShare(POOL_A.raw(), scId, uint128(10 ** 18), uint64(block.timestamp));
         }
 
-        poolManager.updateSharePrice(POOL_A.raw(), scId, assetId, uint128(10 ** 18), uint64(block.timestamp));
+        try poolManager.assetToId(asset, assetTokenId) {
+            assetId = poolManager.assetToId(asset, assetTokenId);
+        } catch {
+            assetId = poolManager.registerAsset(OTHER_CHAIN_ID, asset, assetTokenId);
+            centrifugeChain.updatePricePoolPerAsset(
+                POOL_A.raw(), scId, assetId, uint128(10 ** 18), uint64(block.timestamp)
+            );
+        }
 
         bytes32 vaultFactory = _vaultKindToVaultFactory(vaultKind);
 
@@ -241,49 +243,11 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     }
 
     // Helpers
-    function _addressToBytes32(address x) internal pure returns (bytes32) {
-        return bytes32(bytes20(x));
-    }
-
     function _newErc20(string memory name, string memory symbol, uint8 decimals) internal returns (ERC20) {
         ERC20 asset = new ERC20(decimals);
         asset.file("name", name);
         asset.file("symbol", symbol);
         return asset;
-    }
-
-    function _bytes16ToString(bytes16 _bytes16) public pure returns (string memory) {
-        uint8 i = 0;
-        while (i < 16 && _bytes16[i] != 0) {
-            i++;
-        }
-        bytes memory bytesArray = new bytes(i);
-        for (i = 0; i < 16 && _bytes16[i] != 0; i++) {
-            bytesArray[i] = _bytes16[i];
-        }
-        return string(bytesArray);
-    }
-
-    function _uint256ToString(uint256 _i) internal pure returns (string memory _uintAsString) {
-        if (_i == 0) {
-            return "0";
-        }
-        uint256 j = _i;
-        uint256 len;
-        while (j != 0) {
-            len++;
-            j /= 10;
-        }
-        bytes memory bstr = new bytes(len);
-        uint256 k = len;
-        while (_i != 0) {
-            k = k - 1;
-            uint8 temp = (48 + uint8(_i - _i / 10 * 10));
-            bytes1 b1 = bytes1(temp);
-            bstr[k] = b1;
-            _i /= 10;
-        }
-        return string(bstr);
     }
 
     function random(uint256 maxValue, uint256 nonce) internal view returns (uint256) {
@@ -311,9 +275,5 @@ contract BaseTest is VaultsDeployer, GasSnapshot, Test {
     // assumptions
     function amountAssumption(uint256 amount) public pure returns (bool) {
         return (amount > 1 && amount < MAX_UINT128);
-    }
-
-    function addressAssumption(address user) public view returns (bool) {
-        return (user != address(0) && user != address(erc20) && user.code.length == 0);
     }
 }

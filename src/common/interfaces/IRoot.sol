@@ -1,18 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
+pragma solidity >=0.5.0;
 
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-
-interface IRecoverable {
-    /// @notice Used to recover any ERC-20 token.
-    /// @dev    This method is called only by authorized entities
-    /// @param  token It could be 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
-    ///         to recover locked native ETH or token compatible with ERC20 or ERC6909.
-    /// @param  tokenId The token id, i.e. non-zero if the underlying token is ERC6909 and else zero.
-    /// @param  to Receiver of the funds
-    /// @param  amount Amount to send to the receiver.
-    function recoverTokens(address token, uint256 tokenId, address to, uint256 amount) external;
-}
 
 interface IRoot {
     // --- Events ---
@@ -23,9 +12,6 @@ interface IRoot {
     event CancelRely(address indexed target);
     event RelyContract(address indexed target, address indexed user);
     event DenyContract(address indexed target, address indexed user);
-    event RecoverTokens(
-        address indexed target, address indexed token, uint256 tokenId, address indexed to, uint256 amount
-    );
     event Endorse(address indexed user);
     event Veto(address indexed user);
 
@@ -88,8 +74,4 @@ interface IRoot {
 
     /// @notice Removes an address as a ward on any contract that Root is a ward on
     function denyContract(address target, address user) external;
-
-    /// --- Token Recovery ---
-    /// @notice Allows Governance to recover tokens sent to the wrong contract by mistake
-    function recoverTokens(address target, address token, uint256 tokenId, address to, uint256 amount) external;
 }

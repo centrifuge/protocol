@@ -31,7 +31,7 @@ contract DepositTest is BaseTest {
         (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
-        centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(vault.poolId(), vault.trancheId(), price, uint64(block.timestamp));
 
         erc20.mint(self, amount);
 
@@ -64,18 +64,16 @@ contract DepositTest is BaseTest {
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
         vm.expectRevert(bytes("AsyncRequests/no-pending-deposit-request"));
-        centrifugeChain.isFulfilledDepositRequest(
-            poolId, scId, bytes32(bytes20(self)), assetId, uint128(amount), shares
-        );
+        asyncRequests.fulfillDepositRequest(poolId, scId, self, assetId, uint128(amount), shares);
 
         // success
         erc20.approve(vault_, amount);
         if (snap) {
-            snapStart("AsyncVault_requestDeposit");
+            vm.startSnapshotGas("AsyncVault", "requestDeposit");
         }
         vault.requestDeposit(amount, self, self);
         if (snap) {
-            snapEnd();
+            vm.stopSnapshotGas();
         }
 
         // fail: no asset left
@@ -91,13 +89,13 @@ contract DepositTest is BaseTest {
         // trigger executed collectInvest
         assertApproxEqAbs(shares, amount / 2, 2);
         if (snap) {
-            snapStart("AsyncRequests_fulfillDepositRequest");
+            vm.startSnapshotGas("AsyncVault", "fulfillDepositRequest");
         }
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), assetId, uint128(amount), shares
         );
         if (snap) {
-            snapEnd();
+            vm.stopSnapshotGas();
         }
 
         // assert deposit & mint values adjusted
@@ -150,7 +148,7 @@ contract DepositTest is BaseTest {
         vm.assume(amount % 2 == 0);
         vm.deal(address(this), 1 ether);
 
-        (, uint256 gasPerMessage) = gateway.estimate(OTHER_CHAIN_ID, "PAYLOAD_IS_IRRELEVANT");
+        (, uint256 gasPerMessage) = gateway.estimate(OTHER_CHAIN_ID, MessageLib.NotifyPool(1).serialize());
         gateway.subsidizePool{value: gasPerMessage}(POOL_A);
 
         assertEq(gateway.subsidy(POOL_A), gasPerMessage);
@@ -170,9 +168,7 @@ contract DepositTest is BaseTest {
             VaultKind.Async, SHARE_TOKEN_DECIMALS, restrictedTransfers, bytes16(bytes("1")), address(asset), 0, 0
         );
         AsyncVault vault = AsyncVault(vault_);
-        centrifugeChain.updateSharePrice(
-            poolId, vault.trancheId(), assetId, 1000000000000000000, uint64(block.timestamp)
-        );
+        centrifugeChain.updatePricePoolPerShare(poolId, vault.trancheId(), 1000000000000000000, uint64(block.timestamp));
 
         // invest
         uint256 investmentAmount = 100000000; // 100 * 10**6
@@ -180,13 +176,12 @@ contract DepositTest is BaseTest {
         asset.approve(vault_, investmentAmount);
         asset.mint(self, investmentAmount);
         vault.requestDeposit(investmentAmount, self, self);
-        uint128 _assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
 
         // first trigger executed collectInvest of the first 50% at a price of 1.4
         uint128 assets = 50000000; // 50 * 10**6
         uint128 firstSharePayout = 35714285714285714285; // 50 * 10**18 / 1.4, rounded down
         centrifugeChain.isFulfilledDepositRequest(
-            poolId, vault.trancheId(), bytes32(bytes20(self)), _assetId, assets, firstSharePayout
+            poolId, vault.trancheId(), bytes32(bytes20(self)), assetId, assets, firstSharePayout
         );
 
         (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
@@ -195,7 +190,7 @@ contract DepositTest is BaseTest {
         // second trigger executed collectInvest of the second 50% at a price of 1.2
         uint128 secondSharePayout = 41666666666666666666; // 50 * 10**18 / 1.2, rounded down
         centrifugeChain.isFulfilledDepositRequest(
-            poolId, vault.trancheId(), bytes32(bytes20(self)), _assetId, assets, secondSharePayout
+            poolId, vault.trancheId(), bytes32(bytes20(self)), assetId, assets, secondSharePayout
         );
 
         (,, depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
@@ -324,8 +319,7 @@ contract DepositTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
 
-        centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
-
+        centrifugeChain.updatePricePoolPerShare(vault.poolId(), vault.trancheId(), price, uint64(block.timestamp));
         erc20.mint(self, amount);
 
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max); // add user as member
@@ -376,7 +370,7 @@ contract DepositTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
 
-        centrifugeChain.updateSharePrice(vault.poolId(), vault.trancheId(), assetId, price, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(vault.poolId(), vault.trancheId(), price, uint64(block.timestamp));
 
         erc20.mint(self, amount);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max); // add user as member
@@ -431,9 +425,7 @@ contract DepositTest is BaseTest {
             VaultKind.Async, SHARE_TOKEN_DECIMALS, restrictedTransfers, bytes16(bytes("1")), address(asset), 0, 0
         );
         AsyncVault vault = AsyncVault(vault_);
-        centrifugeChain.updateSharePrice(
-            poolId, vault.trancheId(), assetId, 1000000000000000000, uint64(block.timestamp)
-        );
+        centrifugeChain.updatePricePoolPerShare(poolId, vault.trancheId(), 1000000000000000000, uint64(block.timestamp));
 
         // invest
         uint256 investmentAmount = 100000000; // 100 * 10**6
@@ -443,11 +435,10 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(investmentAmount, self, self);
 
         // trigger executed collectInvest of the first 50% at a price of 1.2
-        uint128 _assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
         uint128 assets = 50000000; // 50 * 10**6
         uint128 firstSharePayout = 41666666666666666666; // 50 * 10**18 / 1.2, rounded down
         centrifugeChain.isFulfilledDepositRequest(
-            poolId, vault.trancheId(), bytes32(bytes20(self)), _assetId, assets, firstSharePayout
+            poolId, vault.trancheId(), bytes32(bytes20(self)), assetId, assets, firstSharePayout
         );
 
         // assert deposit & mint values adjusted
@@ -462,7 +453,7 @@ contract DepositTest is BaseTest {
         assets = 50000000; // 50 * 10**6
         uint128 secondSharePayout = 35714285714285714285; // 50 * 10**18 / 1.4, rounded down
         centrifugeChain.isFulfilledDepositRequest(
-            poolId, vault.trancheId(), bytes32(bytes20(self)), _assetId, assets, secondSharePayout
+            poolId, vault.trancheId(), bytes32(bytes20(self)), assetId, assets, secondSharePayout
         );
 
         // collect the share class tokens
@@ -481,7 +472,7 @@ contract DepositTest is BaseTest {
         asset.mint(address(escrow), assets - investmentAmount);
 
         centrifugeChain.isFulfilledRedeemRequest(
-            poolId, vault.trancheId(), bytes32(bytes20(self)), _assetId, assets, firstSharePayout + secondSharePayout
+            poolId, vault.trancheId(), bytes32(bytes20(self)), assetId, assets, firstSharePayout + secondSharePayout
         );
 
         // redeem price should now be ~1.5*10**18.
@@ -495,7 +486,7 @@ contract DepositTest is BaseTest {
             deployVault(VaultKind.Async, 6, restrictedTransfers, scId, address(asset), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
-        centrifugeChain.updateSharePrice(poolId, scId, assetId, 1000000000000000000000000000, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(poolId, scId, 1000000000000000000000000000, uint64(block.timestamp));
 
         // invest
         uint256 investmentAmount = 100000000000000000000; // 100 * 10**18
@@ -505,11 +496,10 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(investmentAmount, self, self);
 
         // trigger executed collectInvest of the first 50% at a price of 1.2
-        uint128 _assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
         uint128 assets = 50000000000000000000; // 50 * 10**18
         uint128 firstSharePayout = 41666666; // 50 * 10**6 / 1.2, rounded down
         centrifugeChain.isFulfilledDepositRequest(
-            poolId, scId, bytes32(bytes20(self)), _assetId, assets, firstSharePayout
+            poolId, scId, bytes32(bytes20(self)), assetId, assets, firstSharePayout
         );
 
         // assert deposit & mint values adjusted
@@ -524,7 +514,7 @@ contract DepositTest is BaseTest {
         assets = 50000000000000000000; // 50 * 10**18
         uint128 secondSharePayout = 35714285; // 50 * 10**6 / 1.4, rounded down
         centrifugeChain.isFulfilledDepositRequest(
-            poolId, scId, bytes32(bytes20(self)), _assetId, assets, secondSharePayout
+            poolId, scId, bytes32(bytes20(self)), assetId, assets, secondSharePayout
         );
 
         // collect the share class tokens
@@ -543,7 +533,7 @@ contract DepositTest is BaseTest {
         asset.mint(address(escrow), assets - investmentAmount);
 
         centrifugeChain.isFulfilledRedeemRequest(
-            poolId, scId, bytes32(bytes20(self)), _assetId, assets, firstSharePayout + secondSharePayout
+            poolId, scId, bytes32(bytes20(self)), assetId, assets, firstSharePayout + secondSharePayout
         );
 
         // redeem price should now be ~1.5*10**18.
@@ -566,7 +556,7 @@ contract DepositTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
 
         // price = (100*10**18) /  (99 * 10**18) = 101.010101 * 10**18
-        centrifugeChain.updateSharePrice(poolId, scId, assetId, 1010101010101010101, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(poolId, scId, 1010101010101010101, uint64(block.timestamp));
 
         // invest
         uint256 investmentAmount = 100000000; // 100 * 10**6
@@ -576,15 +566,14 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(investmentAmount, self, self);
 
         // trigger executed collectInvest at a share class token price of 1.2
-        uint128 _assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
         uint128 assets = 99000000; // 99 * 10**6
 
         // invested amount in dai is 99 * 10**18
         // executed at price of 1.2, leads to a share class token payout of
         // 99 * 10**18 / 1.2 = 82500000000000000000
         uint128 shares = 82500000000000000000;
-        centrifugeChain.isFulfilledDepositRequest(poolId, scId, bytes32(bytes20(self)), _assetId, assets, shares);
-        centrifugeChain.updateSharePrice(poolId, scId, assetId, 1200000000000000000, uint64(block.timestamp));
+        centrifugeChain.isFulfilledDepositRequest(poolId, scId, bytes32(bytes20(self)), assetId, assets, shares);
+        centrifugeChain.updatePricePoolPerShare(poolId, scId, 1200000000000000000, uint64(block.timestamp));
 
         // assert deposit & mint values adjusted
         assertEq(vault.maxDeposit(self), assets);
@@ -606,7 +595,7 @@ contract DepositTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
 
         // price = (100*10**18) /  (99 * 10**18) = 101.010101 * 10**18
-        centrifugeChain.updateSharePrice(poolId, scId, assetId, 1010101010101010101, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(poolId, scId, 1010101010101010101, uint64(block.timestamp));
 
         // invest
         uint256 investmentAmount = 100000000000000000000; // 100 * 10**18
@@ -616,15 +605,14 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(investmentAmount, self, self);
 
         // trigger executed collectInvest at a share class token price of 1.2
-        uint128 _assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
         uint128 assets = 99000000000000000000; // 99 * 10**18
 
         // invested amount in dai is 99 * 10**18
         // executed at price of 1.2, leads to a share class token payout of
         // 99 * 10**6 / 1.2 = 82500000
         uint128 shares = 82500000;
-        centrifugeChain.isFulfilledDepositRequest(poolId, scId, bytes32(bytes20(self)), _assetId, assets, shares);
-        centrifugeChain.updateSharePrice(poolId, scId, assetId, 1200000000000000000, uint64(block.timestamp));
+        centrifugeChain.isFulfilledDepositRequest(poolId, scId, bytes32(bytes20(self)), assetId, assets, shares);
+        centrifugeChain.updatePricePoolPerShare(poolId, scId, 1200000000000000000, uint64(block.timestamp));
 
         // assert deposit & mint values adjusted
         assertEq(vault.maxDeposit(self), assets);
@@ -643,7 +631,7 @@ contract DepositTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
-        centrifugeChain.updateSharePrice(poolId, scId, assetId, price, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp));
         erc20.mint(self, amount);
         erc20.approve(vault_, amount);
         centrifugeChain.updateMember(poolId, scId, self, type(uint64).max);
@@ -654,7 +642,7 @@ contract DepositTest is BaseTest {
         assertEq(erc20.balanceOf(address(self)), 0);
 
         vm.expectRevert(bytes("AsyncRequests/no-pending-cancel-deposit-request"));
-        centrifugeChain.isFulfilledCancelDepositRequest(poolId, scId, self.toBytes32(), assetId, uint128(amount));
+        asyncRequests.fulfillCancelDepositRequest(poolId, scId, self, assetId, uint128(amount), uint128(amount));
 
         // check message was send out to centchain
         vault.cancelDepositRequest(0, self);
@@ -699,13 +687,13 @@ contract DepositTest is BaseTest {
         asset.approve(address(vault), investmentAmount);
         asset.mint(self, investmentAmount);
         vault.requestDeposit(investmentAmount, self, self);
-        uint128 _assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
+        uint128 assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
 
         // first trigger executed collectInvest of the first 50% at a price of 1.4
         uint128 assets = 50000000; // 50 * 10**6
         uint128 firstSharePayout = 35714285714285714285; // 50 * 10**18 / 1.4, rounded down
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId(), scId, bytes32(bytes20(self)), _assetId, assets, firstSharePayout
+            vault.poolId(), scId, bytes32(bytes20(self)), assetId, assets, firstSharePayout
         );
 
         (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
@@ -714,7 +702,7 @@ contract DepositTest is BaseTest {
         // second trigger executed collectInvest of the second 50% at a price of 1.2
         uint128 secondSharePayout = 41666666666666666666; // 50 * 10**18 / 1.2, rounded down
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId(), scId, bytes32(bytes20(self)), _assetId, assets, secondSharePayout
+            vault.poolId(), scId, bytes32(bytes20(self)), assetId, assets, secondSharePayout
         );
 
         (,, depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
