@@ -6,6 +6,7 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import "test/vaults/BaseTest.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 
 contract DepositTest is BaseTest {
     using MessageLib for *;
@@ -340,10 +341,10 @@ contract DepositTest is BaseTest {
         assertEq(shareToken.balanceOf(address(escrow)), shares);
 
         // deposit 1/2 funds to receiver
-        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
+        vm.expectRevert(IHook.TransferBlocked.selector);
         vault.deposit(amount / 2, receiver, self); // mint half the amount
 
-        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
+        vm.expectRevert(IHook.TransferBlocked.selector);
         vault.mint(amount / 2, receiver); // mint half the amount
 
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), receiver, type(uint64).max); // add receiver

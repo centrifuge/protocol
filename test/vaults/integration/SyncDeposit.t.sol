@@ -16,6 +16,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
+import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
@@ -113,7 +114,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
         erc20.approve(address(syncVault), amount);
 
         // Will fail - user not member: can not send funds
-        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
+        vm.expectRevert(IHook.TransferBlocked.selector);
         syncVault.deposit(amount, self);
 
         assertEq(syncVault.isPermissioned(self), false);

@@ -48,7 +48,7 @@ contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
         virtual
         returns (bytes4)
     {
-        require(checkERC20Transfer(from, to, value, hookData), "FreelyTransferable/transfer-blocked");
+        require(checkERC20Transfer(from, to, value, hookData), TransferBlocked());
         return IHook.onERC20Transfer.selector;
     }
 
@@ -110,14 +110,14 @@ contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
             MessageLib.UpdateRestrictionUnfreeze memory m = payload.deserializeUpdateRestrictionUnfreeze();
             unfreeze(token, m.user.toAddress());
         } else {
-            revert("FreelyTransferable/invalid-update");
+            revert InvalidUpdate();
         }
     }
 
     /// @inheritdoc IRestrictedTransfers
     function freeze(address token, address user) public auth {
-        require(user != address(0), "FreelyTransferable/cannot-freeze-zero-address");
-        require(!root.endorsed(user), "FreelyTransferable/endorsed-user-cannot-be-frozen");
+        require(user != address(0), CannotFreezeZeroAddress());
+        require(!root.endorsed(user), EndorsedUserCannotBeFrozen());
 
         uint128 hookData = uint128(IShareToken(token).hookDataOf(user));
         IShareToken(token).setHookData(user, bytes16(hookData.setBit(FREEZE_BIT, true)));
@@ -141,8 +141,8 @@ contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
     // --- Managing members ---
     /// @inheritdoc IRestrictedTransfers
     function updateMember(address token, address user, uint64 validUntil) public auth {
-        require(block.timestamp <= validUntil, "FreelyTransferable/invalid-valid-until");
-        require(!root.endorsed(user), "FreelyTransferable/endorsed-user-cannot-be-updated");
+        require(block.timestamp <= validUntil, InvalidValidUntil());
+        require(!root.endorsed(user), EndorsedUserCannotBeUpdated());
 
         uint128 hookData = uint128(validUntil) << 64;
         hookData.setBit(FREEZE_BIT, isFrozen(token, user));
