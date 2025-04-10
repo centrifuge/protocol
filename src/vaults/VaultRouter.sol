@@ -222,11 +222,6 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         } else {
             IAsyncVault(vault).withdraw(maxWithdraw, receiver, controller);
         }
-
-        // TODO(wischli): Either here or in AsyncRequests (probably here): Call to BSM to execute
-        // escrow.withdraw();
-        // bsm.updateHoldings();
-        // bsm.updateHoldingsValue();
     }
 
     /// @inheritdoc IVaultRouter

@@ -10,6 +10,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
+import {D18} from "src/misc/types/D18.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
@@ -18,17 +19,21 @@ import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IInvestmentManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
+import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {IAsyncRequests, AsyncInvestmentState} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {IAsyncDepositManager} from "src/vaults/interfaces/investments/IAsyncDepositManager.sol";
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
 import {IRedeemManager} from "src/vaults/interfaces/investments/IRedeemManager.sol";
+import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IAsyncVault, IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 
@@ -42,6 +47,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     using MathLib for uint256;
 
     IVaultMessageSender public sender;
+    IBalanceSheet public balanceSheet;
+    ISyncRequests public syncRequests;
 
     mapping(address vault => mapping(address investor => AsyncInvestmentState)) public investments;
     mapping(uint64 poolId => mapping(bytes16 scId => mapping(uint128 assetId => address vault))) public vault;
@@ -52,6 +59,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     function file(bytes32 what, address data) external override(IBaseInvestmentManager, BaseInvestmentManager) auth {
         if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "poolManager") poolManager = IPoolManager(data);
+        else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
+        else if (what == "syncRequests") syncRequests = ISyncRequests(data);
         else revert("AsyncRequests/file-unrecognized-param");
         emit File(what, data);
     }
@@ -422,7 +431,6 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         address receiver,
         address controller
     ) internal {
-        IAsyncVault vault_ = IAsyncVault(vaultAddr);
         if (controller != receiver) {
             require(
                 _canTransfer(vaultAddr, controller, receiver, convertToShares(vaultAddr, assetsDown)),
@@ -439,14 +447,31 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         state.maxWithdraw = state.maxWithdraw > assetsUp ? state.maxWithdraw - assetsUp : 0;
 
         if (assetsDown > 0) {
-            VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-
-            if (vaultDetails.tokenId == 0) {
-                SafeTransferLib.safeTransferFrom(vaultDetails.asset, address(escrow), receiver, assetsDown);
-            } else {
-                IERC6909(vaultDetails.asset).transferFrom(address(escrow), receiver, vaultDetails.tokenId, assetsDown);
-            }
+            _withdraw(vaultAddr, receiver, assetsDown);
         }
+    }
+
+    function _withdraw(address vaultAddr, address receiver, uint128 assets) internal {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
+
+        IAsyncVault vault_ = IAsyncVault(vaultAddr);
+        uint64 poolId = vault_.poolId();
+        bytes16 scId = vault_.trancheId();
+        JournalEntry[] memory journalEntries = new JournalEntry[](0);
+        Meta memory meta = Meta(journalEntries, journalEntries);
+
+        D18 priceAssetPerShare = syncRequests.priceAssetPerShare(poolId, scId, vaultDetails.assetId);
+
+        balanceSheet.withdraw(
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            vaultDetails.asset,
+            vaultDetails.tokenId,
+            receiver,
+            assets,
+            priceAssetPerShare,
+            meta
+        );
     }
 
     /// @inheritdoc IAsyncDepositManager

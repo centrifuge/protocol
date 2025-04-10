@@ -99,6 +99,7 @@ contract VaultsDeployer is CommonDeployer {
         messageDispatcher.rely(address(poolManager));
 
         // Rely async investment manager
+        balanceSheet.rely(address(asyncRequests));
         messageDispatcher.rely(address(asyncRequests));
 
         // Rely sync investment manager
@@ -160,6 +161,8 @@ contract VaultsDeployer is CommonDeployer {
 
         asyncRequests.file("poolManager", address(poolManager));
         asyncRequests.file("sender", address(messageDispatcher));
+        asyncRequests.file("balanceSheet", address(balanceSheet));
+        asyncRequests.file("syncRequests", address(syncRequests));
 
         syncRequests.file("poolManager", address(poolManager));
         syncRequests.file("balanceSheet", address(balanceSheet));
