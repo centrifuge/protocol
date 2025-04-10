@@ -380,7 +380,9 @@ contract ShareClassManager is Auth, IShareClassManager {
             // claimable for an epoch.
             if (claimableShareAmount > 0) {
                 userOrder.pending -= approvedAssetAmount;
-                payoutShareAmount += claimableShareAmount;
+                // payoutShareAmount += claimableShareAmount;
+                // @audit MUTATION: add 1 more than it should
+                payoutShareAmount += (claimableShareAmount + 1);
                 paymentAssetAmount += approvedAssetAmount;
             }
 
@@ -460,8 +462,12 @@ contract ShareClassManager is Auth, IShareClassManager {
             // However, in practice, it should be extremely unlikely to have users with non-zero pending but zero
             // claimable for an epoch.
             if (claimableAssetAmount > 0) {
-                paymentShareAmount += approvedShareAmount;
-                payoutAssetAmount += claimableAssetAmount;
+                // paymentShareAmount += approvedShareAmount;
+                // @audit MUTATION: add 1 more than it should
+                paymentShareAmount += (approvedShareAmount + 1);
+                // payoutAssetAmount += claimableAssetAmount;
+                // @audit MUTATION: add 1 more than it should
+                payoutAssetAmount += (claimableAssetAmount + 1);
                 userOrder.pending -= approvedShareAmount;
             }
 
@@ -838,7 +844,9 @@ contract ShareClassManager is Auth, IShareClassManager {
         QueuedOrder memory queued
     ) private {
         uint128 pendingTotal = pendingRedeem[scId_][assetId];
-        pendingRedeem[scId_][assetId] = isIncrement ? pendingTotal + amount : pendingTotal - amount;
+        // pendingRedeem[scId_][assetId] = isIncrement ? pendingTotal + amount : pendingTotal - amount;
+        // @audit MUTATION: increase user's pendingRedeem by 1 more than it should
+        pendingRedeem[scId_][assetId] = isIncrement ? (pendingTotal + amount) + 1 : (pendingTotal - amount) + 1;
         pendingTotal = pendingRedeem[scId_][assetId];
 
         emit UpdateRequest(

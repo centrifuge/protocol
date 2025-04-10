@@ -145,7 +145,7 @@ abstract contract Properties is BeforeAfter, Asserts {
         }
     }
 
-    /// @dev Property:  account.totalDebit and account.totalCredit is always less than uint128(type(int128).max)
+    /// @dev Property: account.totalDebit and account.totalCredit is always less than uint128(type(int128).max)
     function property_account_totalDebit_and_totalCredit_leq_max_int128() public {
         for (uint256 i = 0; i < createdPools.length; i++) {
             PoolId poolId = createdPools[i];
