@@ -173,6 +173,8 @@ contract Gateway is Auth, IGateway, Recoverable {
             message = batch_.slice(start, length);
             start += length;
 
+            uint256 previousGas = gasleft();
+
             try processor.handle(centrifugeId, message) {
                 emit ExecuteMessage(centrifugeId, message);
             }
@@ -180,6 +182,14 @@ contract Gateway is Auth, IGateway, Recoverable {
                 bytes32 messageHash = keccak256(message);
                 failedMessages[centrifugeId][messageHash]++;
                 emit FailMessage(centrifugeId, message, err);
+            }
+
+            PoolId poolId = processor.messagePoolId(message);
+            uint256 refunded = (gasleft() - previousGas) * tx.gasprice;
+
+            if (subsidy[poolId] >= refunded) {
+                subsidy[poolId] -= refunded;
+                payable(msg.sender).transfer(refunded);
             }
         }
     }
