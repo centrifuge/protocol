@@ -11,14 +11,6 @@ uint8 constant MAX_ADAPTER_COUNT = 8;
 
 /// @notice Interface for dispatch-only gateway
 interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
-    /// @notice Defines the current payment method
-    enum PaymentMethod {
-        /// @notice The payment is done by subdized pools
-        Subsidized,
-        /// @notice The payment is done in the same transaction
-        Transaction
-    }
-
     /// @notice Identifies a Batch
     struct BatchLocator {
         /// @notice chain associated to the batch
@@ -133,7 +125,7 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     ///         Currently being called from Vault Router only.
     ///         In order to prepay, the method MUST be called with `msg.value`.
     ///         Called is assumed to have called IGateway.estimate before calling this.
-    function payTransaction() external payable;
+    function payTransaction(address payer) external payable;
 
     /// @notice Initialize batching message
     function startBatching() external;
