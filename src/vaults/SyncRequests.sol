@@ -28,7 +28,8 @@ import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
-import {ISyncRequests, Prices} from "src/vaults/interfaces/investments/ISyncRequests.sol";
+import {ISharePriceProvider, Prices} from "src/vaults/interfaces/investments/ISharePriceProvider.sol";
+import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
@@ -242,13 +243,15 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         return super._convertToAssets(vault_, vaultDetails, priceAssetPerShare_, shares, MathLib.Rounding.Up);
     }
 
-    /// @inheritdoc ISyncRequests
+    // --- ISharePriceProvider Overwrites ---
+    /// @inheritdoc ISharePriceProvider
     function priceAssetPerShare(uint64 poolId, bytes16 scId, uint128 assetId) public view returns (D18 price) {
         (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
 
         return _priceAssetPerShare(poolId, scId, assetId, asset, tokenId);
     }
 
+    /// @inheritdoc ISharePriceProvider
     function prices(uint64 poolId, bytes16 scId, uint128 assetId, address asset, uint256 tokenId)
         public
         view

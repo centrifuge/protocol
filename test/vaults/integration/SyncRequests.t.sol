@@ -8,7 +8,8 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
-import {ISyncRequests, Prices} from "src/vaults/interfaces/investments/ISyncRequests.sol";
+import {Prices} from "src/vaults/interfaces/investments/ISharePriceProvider.sol";
+import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import {SyncRequests} from "src/vaults/SyncRequests.sol";
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";

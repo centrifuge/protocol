@@ -163,7 +163,7 @@ contract VaultsDeployer is CommonDeployer {
         asyncRequests.file("poolManager", address(poolManager));
         asyncRequests.file("sender", address(messageDispatcher));
         asyncRequests.file("balanceSheet", address(balanceSheet));
-        asyncRequests.file("syncRequests", address(syncRequests));
+        asyncRequests.file("sharePriceProvider", address(syncRequests));
 
         syncRequests.file("poolManager", address(poolManager));
         syncRequests.file("balanceSheet", address(balanceSheet));
@@ -171,7 +171,7 @@ contract VaultsDeployer is CommonDeployer {
         balanceSheet.file("poolManager", address(poolManager));
         balanceSheet.file("gateway", address(gateway));
         balanceSheet.file("sender", address(messageDispatcher));
-        balanceSheet.file("syncRequests", address(syncRequests));
+        balanceSheet.file("sharePriceProvider", address(syncRequests));
     }
 
     function removeVaultsDeployerAccess(address deployer) public {

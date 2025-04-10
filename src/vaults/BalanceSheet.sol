@@ -13,7 +13,7 @@ import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
 import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 import {IVaultMessageSender} from "../common/interfaces/IGatewaySenders.sol";
 import {IBalanceSheetGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
@@ -25,7 +25,7 @@ import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {IPerPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
-import {ISyncRequests, Prices} from "src/vaults/interfaces/investments/ISyncRequests.sol";
+import {ISharePriceProvider, Prices} from "src/vaults/interfaces/investments/ISharePriceProvider.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayHandler, IUpdateContract {
@@ -37,7 +37,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     IGateway public gateway;
     IPoolManager public poolManager;
     IVaultMessageSender public sender;
-    ISyncRequests public syncRequests;
+    ISharePriceProvider public sharePriceProvider;
 
     mapping(PoolId => mapping(ShareClassId => mapping(address => bool))) public permission;
 
@@ -56,7 +56,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         if (what == "gateway") gateway = IGateway(data);
         else if (what == "poolManager") poolManager = IPoolManager(data);
         else if (what == "sender") sender = IVaultMessageSender(data);
-        else if (what == "syncRequests") syncRequests = ISyncRequests(data);
+        else if (what == "sharePriceProvider") sharePriceProvider = ISharePriceProvider(data);
         else revert("BalanceSheet/file-unrecognized-param");
         emit File(what, data);
     }
@@ -211,7 +211,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     /// @inheritdoc IBalanceSheetGatewayHandler
     function approvedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external auth {
         (address asset, uint256 tokenId) = poolManager.idToAsset(assetId.raw());
-        Prices memory prices = syncRequests.prices(poolId.raw(), scId.raw(), assetId.raw(), asset, tokenId);
+        Prices memory prices = sharePriceProvider.prices(poolId.raw(), scId.raw(), assetId.raw(), asset, tokenId);
 
         JournalEntry[] memory journalEntries = new JournalEntry[](0);
         Meta memory meta = Meta(journalEntries, journalEntries);
