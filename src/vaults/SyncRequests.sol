@@ -72,7 +72,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
             require(poolManager.shareToken(poolId, scId) != address(0), "SyncRequests/share-token-does-not-exist");
             (address asset, uint256 tokenId) = poolManager.idToAsset(m.assetId);
 
-            this.setValuation(m.poolId, m.scId, asset, tokenId, address(bytes20(m.valuation)));
+            setValuation(m.poolId, m.scId, asset, tokenId, m.valuation.toAddress());
         } else {
             revert("SyncRequests/unknown-update-contract-type");
         }
@@ -153,7 +153,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
     /// @inheritdoc ISyncRequests
     function setValuation(uint64 poolId, bytes16 scId, address asset, uint256 tokenId, address valuation_)
-        external
+        public
         auth
     {
         valuation[poolId][scId][asset][tokenId] = IERC7726(valuation_);

@@ -289,12 +289,12 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
             MessageLib.UpdateContractVaultUpdate memory m = MessageLib.deserializeUpdateContractVaultUpdate(payload);
 
             if (m.kind == uint8(VaultUpdateKind.DeployAndLink)) {
-                address factory = address(bytes20(m.vaultOrFactory));
+                address factory = m.vaultOrFactory.toAddress();
 
                 address vault = deployVault(poolId, scId, m.assetId, factory);
                 linkVault(poolId, scId, m.assetId, vault);
             } else {
-                address vault = address(bytes20(m.vaultOrFactory));
+                address vault = m.vaultOrFactory.toAddress();
 
                 // Needed as safeguard against non-validated vaults
                 // I.e. we only accept vaults that have been deployed by the pool manager
