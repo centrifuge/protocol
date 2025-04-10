@@ -84,7 +84,7 @@ contract VaultRouterTest is BaseTest {
         erc20.mint(self, amount);
         erc20.approve(address(vaultRouter), amount);
 
-        vm.expectRevert("PoolManager/unknown-vault");
+        vm.expectRevert(IPoolManager.UnknownVault.selector);
         vaultRouter.lockDepositRequest(makeAddr("maliciousVault"), amount, self, self);
 
         vaultRouter.lockDepositRequest(vault_, amount, self, self);
