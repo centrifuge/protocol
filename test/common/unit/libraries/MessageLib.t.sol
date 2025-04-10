@@ -629,9 +629,9 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
-    function testApprovedDeposits() public pure {
+    function testApprovedDeposits(uint64 poolId, bytes16 scId, uint128 assetId, uint128 assetAmount) public pure {
         MessageLib.ApprovedDeposits memory a =
-            MessageLib.ApprovedDeposits({poolId: 1, scId: bytes16("sc"), assetId: 12345, assetAmount: 456789});
+            MessageLib.ApprovedDeposits({poolId: poolId, scId: scId, assetId: assetId, assetAmount: assetAmount});
 
         MessageLib.ApprovedDeposits memory b = MessageLib.deserializeApprovedDeposits(a.serialize());
 
@@ -644,9 +644,9 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
-    function testRevokedShares() public pure {
+    function testRevokedShares(uint64 poolId, bytes16 scId, uint128 assetId, uint128 assetAmount) public pure {
         MessageLib.RevokedShares memory a =
-            MessageLib.RevokedShares({poolId: 1, scId: bytes16("sc"), assetId: 12345, assetAmount: 456789});
+            MessageLib.RevokedShares({poolId: poolId, scId: scId, assetId: assetId, assetAmount: assetAmount});
 
         MessageLib.RevokedShares memory b = MessageLib.deserializeRevokedShares(a.serialize());
 
