@@ -75,6 +75,18 @@ interface IHub {
     /// @param hook The hook address of the share class
     function notifyShareClass(uint16 centrifugeId, ShareClassId scId, bytes32 hook) external payable;
 
+    /// @notice Notify to a CV instance the latest available price in POOL_UNIT / SHARE_UNIT
+    /// @dev The receiving chainId is derived from the provided assetId
+    /// @param chainId Chain to where the share price is notified
+    /// @param scId Identifier of the share class
+    function notifySharePrice(uint16 chainId, ShareClassId scId) external payable;
+
+    /// @notice Notify to a CV instance the latest available price in POOL_UNIT / ASSET_UNIT
+    /// @dev The receiving chainId is derived from the provided assetId
+    /// @param scId Identifier of the share class
+    /// @param assetId Identifier of the asset
+    function notifyAssetPrice(ShareClassId scId, AssetId assetId) external payable;
+
     /// @notice Attach custom data to a pool
     function setPoolMetadata(bytes calldata metadata) external payable;
 
@@ -142,6 +154,13 @@ interface IHub {
         bytes32 vaultOrFactory,
         VaultUpdateKind kind
     ) external payable;
+
+    /// @notice Update the price per share of a share class
+    /// @dev the provide price does not need to be the final price of the share class. This price can be retrieved via
+    /// the IShareClassManager.shareClassPrice() method
+    /// @param scId The share class identifier
+    /// @param pricePerShare The new price per share
+    function updatePricePoolPerShare(ShareClassId scId, D18 pricePerShare, bytes calldata data) external payable;
 
     /// @notice Create a new holding associated to the asset in a share class.
     /// It will generate and register the different accounts used for holdings.

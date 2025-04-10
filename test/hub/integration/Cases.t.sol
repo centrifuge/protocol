@@ -11,18 +11,21 @@ contract TestCases is BaseTest {
     /// forge-config: default.isolate = true
     function testPoolCreation() public returns (PoolId poolId, ShareClassId scId) {
         cv.registerAsset(USDC_C2, 6);
+        cv.registerAsset(EUR_STABLE_C2, 12);
 
         vm.prank(ADMIN);
         poolId = guardian.createPool(FM, USD);
 
         scId = shareClassManager.previewNextShareClassId(poolId);
 
-        (bytes[] memory cs, uint256 c) = (new bytes[](6), 0);
+        (bytes[] memory cs, uint256 c) = (new bytes[](7), 0);
         cs[c++] = abi.encodeWithSelector(hub.setPoolMetadata.selector, bytes("Testing pool"));
         cs[c++] = abi.encodeWithSelector(hub.addShareClass.selector, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
         cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, CHAIN_CV);
         cs[c++] = abi.encodeWithSelector(hub.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
         cs[c++] = abi.encodeWithSelector(hub.createHolding.selector, scId, USDC_C2, identityValuation, false, 0x01);
+        cs[c++] =
+            abi.encodeWithSelector(hub.createHolding.selector, scId, EUR_STABLE_C2, transientValuation, false, 0x02);
         cs[c++] = abi.encodeWithSelector(
             hub.updateVault.selector,
             scId,
@@ -213,5 +216,47 @@ contract TestCases is BaseTest {
 
         (uint128 totalIssuance2,) = shareClassManager.metrics(scId);
         assertEq(totalIssuance2, 55);
+    }
+
+    function testNotifyPricePoolPerShare() public {
+        (PoolId poolId, ShareClassId scId) = testPoolCreation();
+        D18 sharePrice = d18(100, 1);
+        D18 identityPrice = d18(1, 1);
+        D18 poolPerEurPrice = d18(4, 1);
+        AssetId poolCurrency = hubRegistry.currency(poolId);
+
+        transientValuation.setPrice(EUR_STABLE_C2.addr(), poolCurrency.addr(), poolPerEurPrice);
+
+        (bytes[] memory cs, uint256 c) = (new bytes[](4), 0);
+        cs[c++] = abi.encodeWithSelector(hub.updatePricePoolPerShare.selector, scId, sharePrice, "");
+        cs[c++] = abi.encodeWithSelector(hub.notifyAssetPrice.selector, scId, EUR_STABLE_C2);
+        cs[c++] = abi.encodeWithSelector(hub.notifyAssetPrice.selector, scId, USDC_C2);
+        cs[c++] = abi.encodeWithSelector(hub.notifySharePrice.selector, CHAIN_CV, scId);
+        assertEq(c, cs.length);
+
+        vm.prank(FM);
+        hub.execute{value: 3 * GAS}(poolId, cs);
+
+        assertEq(cv.messageCount(), 3);
+
+        MessageLib.NotifyPricePoolPerShare memory m0 = MessageLib.deserializeNotifyPricePoolPerShare(cv.popMessage());
+        assertEq(m0.poolId, poolId.raw());
+        assertEq(m0.scId, scId.raw());
+        assertEq(m0.price, sharePrice.raw(), "Share price mismatch");
+        assertEq(m0.timestamp, block.timestamp.toUint64());
+
+        MessageLib.NotifyPricePoolPerAsset memory m1 = MessageLib.deserializeNotifyPricePoolPerAsset(cv.popMessage());
+        assertEq(m1.poolId, poolId.raw());
+        assertEq(m1.scId, scId.raw());
+        assertEq(m1.assetId, USDC_C2.raw());
+        assertEq(m1.price, identityPrice.inner(), "USDC price mismatch");
+        assertEq(m1.timestamp, block.timestamp.toUint64());
+
+        MessageLib.NotifyPricePoolPerAsset memory m2 = MessageLib.deserializeNotifyPricePoolPerAsset(cv.popMessage());
+        assertEq(m2.poolId, poolId.raw());
+        assertEq(m2.scId, scId.raw());
+        assertEq(m2.assetId, EUR_STABLE_C2.raw());
+        assertEq(m2.price, poolPerEurPrice.inner(), "EUR price mismatch");
+        assertEq(m2.timestamp, block.timestamp.toUint64());
     }
 }

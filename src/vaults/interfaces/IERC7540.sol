@@ -4,7 +4,6 @@ pragma solidity >=0.5.0;
 import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
 import {IERC7575, IERC165} from "src/vaults/interfaces/IERC7575.sol";
-import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 

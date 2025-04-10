@@ -11,7 +11,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 struct Holding {
     uint128 assetAmount;
     uint128 assetAmountValue;
-    IERC7726 valuation; // Used for existance
+    IERC7726 valuation; // Used for existence
     bool isLiability;
 }
 

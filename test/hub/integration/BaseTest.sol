@@ -39,6 +39,7 @@ contract BaseTest is HubDeployer, Test {
     bytes32 immutable INVESTOR = bytes32("Investor");
 
     AssetId immutable USDC_C2 = newAssetId(CHAIN_CV, 1);
+    AssetId immutable EUR_STABLE_C2 = newAssetId(CHAIN_CV, 2);
 
     uint128 constant INVESTOR_AMOUNT = 100 * 1e6; // USDC_C2
     uint128 constant SHARE_AMOUNT = 10 * 1e18; // Share from USD

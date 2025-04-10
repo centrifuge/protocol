@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {D18} from "src/misc/types/D18.sol";
@@ -33,6 +34,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     using CastLib for *;
     using MessageLib for *;
     using BytesLib for bytes;
+    using MathLib for uint256;
 
     IRoot public immutable root;
     IGateway public immutable gateway;
@@ -108,6 +110,45 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     decimals: decimals,
                     salt: salt,
                     hook: hook
+                }).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendNotifyPricePoolPerShare(uint16 chainId, PoolId poolId, ShareClassId scId, D18 sharePrice)
+        external
+        auth
+    {
+        uint64 timestamp = block.timestamp.toUint64();
+        if (chainId == localCentrifugeId) {
+            poolManager.updatePricePoolPerShare(poolId.raw(), scId.raw(), sharePrice.raw(), timestamp);
+        } else {
+            gateway.send(
+                chainId,
+                MessageLib.NotifyPricePoolPerShare({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    price: sharePrice.raw(),
+                    timestamp: timestamp
+                }).serialize()
+            );
+        }
+    }
+
+    function sendNotifyPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 price) external auth {
+        uint64 timestamp = block.timestamp.toUint64();
+        if (assetId.centrifugeId() == localCentrifugeId) {
+            poolManager.updatePricePoolPerAsset(poolId.raw(), scId.raw(), assetId.raw(), price.raw(), timestamp);
+        } else {
+            gateway.send(
+                assetId.centrifugeId(),
+                MessageLib.NotifyPricePoolPerAsset({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    assetId: assetId.raw(),
+                    price: price.raw(),
+                    timestamp: timestamp
                 }).serialize()
             );
         }
@@ -417,12 +458,14 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         AssetId assetId,
         address provider,
         uint128 amount,
-        D18 pricePerUnit,
+        D18 priceAssetPerShare,
         bool isIncrease,
         Meta calldata meta
     ) external auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.updateHoldingAmount(poolId, scId, assetId, amount, pricePerUnit, isIncrease, meta.debits, meta.credits);
+            hub.updateHoldingAmount(
+                poolId, scId, assetId, amount, priceAssetPerShare, isIncrease, meta.debits, meta.credits
+            );
         } else {
             gateway.send(
                 poolId.centrifugeId(),
@@ -432,7 +475,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     assetId: assetId.raw(),
                     who: provider.toBytes32(),
                     amount: amount,
-                    pricePerUnit: pricePerUnit.raw(),
+                    pricePerUnit: priceAssetPerShare.raw(),
                     timestamp: uint64(block.timestamp),
                     isIncrease: isIncrease,
                     debits: meta.debits,
@@ -443,12 +486,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendUpdateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePerUnit)
+    function sendUpdateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset)
         external
         auth
     {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.updateHoldingValue(poolId, scId, assetId, pricePerUnit);
+            hub.updateHoldingValue(poolId, scId, assetId, pricePoolPerAsset);
         } else {
             gateway.send(
                 poolId.centrifugeId(),
@@ -456,7 +499,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     assetId: assetId.raw(),
-                    pricePerUnit: pricePerUnit.raw(),
+                    pricePerUnit: pricePoolPerAsset.raw(),
                     timestamp: uint64(block.timestamp)
                 }).serialize()
             );
@@ -468,15 +511,15 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         PoolId poolId,
         ShareClassId scId,
         address receiver,
-        D18 pricePerShare,
+        D18 pricePoolPerShare,
         uint128 shares,
         bool isIssuance
     ) external auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
             if (isIssuance) {
-                hub.increaseShareIssuance(poolId, scId, pricePerShare, shares);
+                hub.increaseShareIssuance(poolId, scId, pricePoolPerShare, shares);
             } else {
-                hub.decreaseShareIssuance(poolId, scId, pricePerShare, shares);
+                hub.decreaseShareIssuance(poolId, scId, pricePoolPerShare, shares);
             }
         } else {
             gateway.send(
@@ -485,7 +528,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     who: receiver.toBytes32(),
-                    pricePerShare: pricePerShare.raw(),
+                    pricePerShare: pricePoolPerShare.raw(),
                     shares: shares,
                     timestamp: uint64(block.timestamp),
                     isIssuance: isIssuance

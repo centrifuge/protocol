@@ -11,6 +11,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {D18} from "src/misc/types/D18.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
@@ -108,6 +109,12 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         emit IPoolManager.File("sender", newSender);
         poolManager.file("sender", newSender);
         assertEq(address(poolManager.sender()), newSender);
+
+        address newBalanceSheet = makeAddr("newBalanceSheet");
+        vm.expectEmit();
+        emit IPoolManager.File("balanceSheet", newBalanceSheet);
+        poolManager.file("balanceSheet", newBalanceSheet);
+        assertEq(poolManager.balanceSheet(), newBalanceSheet);
 
         address newTokenFactory = makeAddr("newTokenFactory");
         vm.expectEmit();
@@ -489,13 +496,14 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.updateRestriction(poolId, scId, update);
     }
 
-    function testupdateSharePriceWorks(
+    function testUpdatePricePoolPerShareWorks(
         uint64 poolId,
         uint8 decimals,
         string memory tokenName,
         string memory tokenSymbol,
         bytes16 scId,
-        uint128 price
+        uint128 price,
+        bytes32 salt
     ) public {
         decimals = uint8(bound(decimals, 2, 18));
         vm.assume(poolId > 0);
@@ -506,27 +514,42 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         address hook = address(new MockHook());
 
         vm.expectRevert(bytes("PoolManager/share-token-does-not-exist"));
-        poolManager.updateSharePrice(poolId, scId, assetId, price, uint64(block.timestamp));
+        poolManager.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp));
 
-        poolManager.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, bytes32(0), hook);
+        poolManager.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, salt, hook);
 
-        vm.expectRevert("PoolManager/unknown-price");
-        poolManager.sharePrice(poolId, scId, assetId);
+        poolManager.updatePricePoolPerAsset(poolId, scId, assetId, 1e18, uint64(block.timestamp));
+
+        vm.expectRevert("PoolManager/invalid-price");
+        poolManager.priceAssetPerShare(poolId, scId, assetId, true);
 
         // Allows us to go back in time later
         vm.warp(block.timestamp + 1 days);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
-        poolManager.updateSharePrice(poolId, scId, assetId, price, uint64(block.timestamp));
+        poolManager.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(randomUser);
+        poolManager.updatePricePoolPerAsset(poolId, scId, assetId, price, uint64(block.timestamp));
 
-        poolManager.updateSharePrice(poolId, scId, assetId, price, uint64(block.timestamp));
-        (uint256 latestPrice, uint64 priceComputedAt) = poolManager.sharePrice(poolId, scId, assetId);
-        assertEq(latestPrice, price);
-        assertEq(priceComputedAt, block.timestamp);
+        poolManager.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp));
+        (D18 latestPrice, uint64 lastUpdated) = poolManager.priceAssetPerShare(poolId, scId, assetId, false);
+        assertEq(latestPrice.raw(), price);
+        assertEq(lastUpdated, block.timestamp);
 
         vm.expectRevert(bytes("PoolManager/cannot-set-older-price"));
-        poolManager.updateSharePrice(poolId, scId, assetId, price, uint64(block.timestamp - 1));
+        poolManager.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp - 1));
+
+        // NOTE: We have no maxAge set, so price is invalid after timestamp of block increases
+        vm.warp(block.timestamp + 1);
+        vm.expectRevert("PoolManager/invalid-price");
+        poolManager.priceAssetPerShare(poolId, scId, assetId, true);
+
+        // NOTE: Unchecked version will work
+        (latestPrice, lastUpdated) = poolManager.priceAssetPerShare(poolId, scId, assetId, false);
+        assertEq(latestPrice.raw(), price);
+        assertEq(lastUpdated, block.timestamp - 1);
     }
 
     function testVaultMigration() public {

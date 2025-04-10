@@ -169,20 +169,23 @@ contract BaseTest is VaultsDeployer, Test {
         uint256 assetTokenId,
         uint16 /* TODO: destinationChain */
     ) public returns (uint64 poolId, address vaultAddress, uint128 assetId) {
-        if (poolManager.assetToId(asset, assetTokenId) == 0) {
-            assetId = poolManager.registerAsset(OTHER_CHAIN_ID, asset, assetTokenId);
-        } else {
-            assetId = poolManager.assetToId(asset, assetTokenId);
-        }
-
-        if (poolManager.shareToken(POOL_A.raw(), scId) == address(0)) {
+        try poolManager.shareToken(POOL_A.raw(), scId) {}
+        catch {
             if (poolManager.pools(POOL_A.raw()) == 0) {
                 centrifugeChain.addPool(POOL_A.raw());
             }
             centrifugeChain.addShareClass(POOL_A.raw(), scId, "name", "symbol", shareTokenDecimals, hook);
+            centrifugeChain.updatePricePoolPerShare(POOL_A.raw(), scId, uint128(10 ** 18), uint64(block.timestamp));
         }
 
-        poolManager.updateSharePrice(POOL_A.raw(), scId, assetId, uint128(10 ** 18), uint64(block.timestamp));
+        try poolManager.assetToId(asset, assetTokenId) {
+            assetId = poolManager.assetToId(asset, assetTokenId);
+        } catch {
+            assetId = poolManager.registerAsset(OTHER_CHAIN_ID, asset, assetTokenId);
+            centrifugeChain.updatePricePoolPerAsset(
+                POOL_A.raw(), scId, assetId, uint128(10 ** 18), uint64(block.timestamp)
+            );
+        }
 
         bytes32 vaultFactory = _vaultKindToVaultFactory(vaultKind);
 

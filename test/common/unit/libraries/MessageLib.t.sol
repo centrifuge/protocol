@@ -128,15 +128,28 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
-    function testUpdateShareClassPrice() public pure {
-        MessageLib.UpdateShareClassPrice memory a = MessageLib.UpdateShareClassPrice({
+    function testNotifyPricePoolPerShare() public pure {
+        MessageLib.NotifyPricePoolPerShare memory a =
+            MessageLib.NotifyPricePoolPerShare({poolId: 1, scId: bytes16("sc"), price: 42, timestamp: 0x12345678});
+        MessageLib.NotifyPricePoolPerShare memory b = MessageLib.deserializeNotifyPricePoolPerShare(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.price, b.price);
+        assertEq(a.timestamp, b.timestamp);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+    }
+
+    function testNotifyPricePoolPerAsset() public pure {
+        MessageLib.NotifyPricePoolPerAsset memory a = MessageLib.NotifyPricePoolPerAsset({
             poolId: 1,
             scId: bytes16("sc"),
             assetId: 5,
             price: 42,
             timestamp: 0x12345678
         });
-        MessageLib.UpdateShareClassPrice memory b = MessageLib.deserializeUpdateShareClassPrice(a.serialize());
+        MessageLib.NotifyPricePoolPerAsset memory b = MessageLib.deserializeNotifyPricePoolPerAsset(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
@@ -267,13 +280,40 @@ contract TestMessageLibIdentities is Test {
         // This message is a submessage and has not static message length defined
     }
 
-    function testUpdateContractMaxPriceAge() public pure {
-        MessageLib.UpdateContractMaxPriceAge memory a =
-            MessageLib.UpdateContractMaxPriceAge({vault: bytes32("address"), maxPriceAge: 42});
-        MessageLib.UpdateContractMaxPriceAge memory b = MessageLib.deserializeUpdateContractMaxPriceAge(a.serialize());
+    function testUpdateContractMaxAssetPriceAge() public pure {
+        MessageLib.UpdateContractMaxAssetPriceAge memory a =
+            MessageLib.UpdateContractMaxAssetPriceAge({assetId: 1, maxPriceAge: 42});
+        MessageLib.UpdateContractMaxAssetPriceAge memory b =
+            MessageLib.deserializeUpdateContractMaxAssetPriceAge(a.serialize());
 
-        assertEq(a.vault, b.vault);
+        assertEq(a.assetId, b.assetId);
         assertEq(a.maxPriceAge, b.maxPriceAge);
+        // This message is a submessage and has not static message length defined
+    }
+
+    function testUpdateContractMaxSharePriceAge() public pure {
+        MessageLib.UpdateContractMaxSharePriceAge memory a =
+            MessageLib.UpdateContractMaxSharePriceAge({maxPriceAge: 42});
+        MessageLib.UpdateContractMaxSharePriceAge memory b =
+            MessageLib.deserializeUpdateContractMaxSharePriceAge(a.serialize());
+
+        assertEq(a.maxPriceAge, b.maxPriceAge);
+        // This message is a submessage and has not static message length defined
+    }
+
+    function testUpdateContractValuation() public pure {
+        MessageLib.UpdateContractValuation memory a = MessageLib.UpdateContractValuation({
+            poolId: 42,
+            scId: bytes16("sc"),
+            assetId: 1337,
+            valuation: bytes32("valuation")
+        });
+        MessageLib.UpdateContractValuation memory b = MessageLib.deserializeUpdateContractValuation(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.assetId, b.assetId);
+        assertEq(a.valuation, b.valuation);
         // This message is a submessage and has not static message length defined
     }
 

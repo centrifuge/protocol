@@ -94,9 +94,12 @@ contract MessageProcessor is Auth, IMessageProcessor {
             poolManager.addShareClass(
                 m.poolId, m.scId, m.name, m.symbol.toString(), m.decimals, m.salt, m.hook.toAddress()
             );
-        } else if (kind == MessageType.UpdateShareClassPrice) {
-            MessageLib.UpdateShareClassPrice memory m = MessageLib.deserializeUpdateShareClassPrice(message);
-            poolManager.updateSharePrice(m.poolId, m.scId, m.assetId, m.price, m.timestamp);
+        } else if (kind == MessageType.NotifyPricePoolPerShare) {
+            MessageLib.NotifyPricePoolPerShare memory m = MessageLib.deserializeNotifyPricePoolPerShare(message);
+            poolManager.updatePricePoolPerShare(m.poolId, m.scId, m.price, m.timestamp);
+        } else if (kind == MessageType.NotifyPricePoolPerAsset) {
+            MessageLib.NotifyPricePoolPerAsset memory m = MessageLib.deserializeNotifyPricePoolPerAsset(message);
+            poolManager.updatePricePoolPerAsset(m.poolId, m.scId, m.assetId, m.price, m.timestamp);
         } else if (kind == MessageType.UpdateShareClassMetadata) {
             MessageLib.UpdateShareClassMetadata memory m = MessageLib.deserializeUpdateShareClassMetadata(message);
             poolManager.updateShareMetadata(m.poolId, m.scId, m.name, m.symbol.toString());

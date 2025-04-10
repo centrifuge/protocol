@@ -17,8 +17,8 @@ contract RedeemTest is BaseTest {
         FreelyTransferable hook = FreelyTransferable(freelyTransferable);
         IShareToken shareToken = IShareToken(address(vault.share()));
 
-        centrifugeChain.updateSharePrice(
-            vault.poolId(), vault.trancheId(), assetId, defaultPrice, uint64(block.timestamp)
+        centrifugeChain.updatePricePoolPerShare(
+            vault.poolId(), vault.trancheId(), defaultPrice, uint64(block.timestamp)
         );
 
         // Anyone can deposit
