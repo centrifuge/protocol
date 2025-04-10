@@ -19,6 +19,7 @@ import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol
 import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
+import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 
 import {IRestrictedTransfers} from "src/hooks/interfaces/IRestrictedTransfers.sol";
 
@@ -278,7 +279,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         IShareToken shareToken = IShareToken(address(vault.share()));
 
-        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
+        vm.expectRevert(IHook.TransferBlocked.selector);
         poolManager.handleTransferShares(poolId, scId, destinationAddress, amount);
         poolManager.updateRestriction(
             poolId, scId, MessageLib.UpdateRestrictionMember(destinationAddress.toBytes32(), validUntil).serialize()
@@ -357,7 +358,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         );
         assertTrue(shareToken.checkTransferRestriction(address(0), randomUser, 0));
 
-        vm.expectRevert(bytes("RestrictedTransfers/endorsed-user-cannot-be-updated"));
+        vm.expectRevert(IRestrictedTransfers.EndorsedUserCannotBeUpdated.selector);
         poolManager.updateRestriction(
             poolId, scId, MessageLib.UpdateRestrictionMember(address(escrow).toBytes32(), validUntil).serialize()
         );
@@ -372,7 +373,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         uint64 validUntil = uint64(block.timestamp + 7 days);
         address secondUser = makeAddr("secondUser");
 
-        vm.expectRevert(bytes("RestrictedTransfers/endorsed-user-cannot-be-frozen"));
+        vm.expectRevert(IRestrictedTransfers.EndorsedUserCannotBeFrozen.selector);
         poolManager.updateRestriction(
             poolId, scId, MessageLib.UpdateRestrictionFreeze(address(escrow).toBytes32()).serialize()
         );
@@ -614,7 +615,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         );
         assertFalse(shareToken.checkTransferRestriction(address(this), destinationAddress, 0));
 
-        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
+        vm.expectRevert(IHook.TransferBlocked.selector);
         poolManager.transferShares(OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount);
         assertEq(shareToken.balanceOf(address(this)), amount);
 
