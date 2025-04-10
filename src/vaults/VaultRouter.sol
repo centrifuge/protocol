@@ -83,7 +83,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         payable
         protected
     {
-        require(owner == msg.sender || owner == address(this), "VaultRouter/invalid-owner");
+        require(owner == msg.sender || owner == address(this), InvalidOwner());
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
         if (owner == address(this)) {
@@ -100,7 +100,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         payable
         protected
     {
-        require(owner == msg.sender || owner == address(this), "VaultRouter/invalid-owner");
+        require(owner == msg.sender || owner == address(this), InvalidOwner());
 
         lockedRequests[controller][vault] += amount;
 
@@ -136,7 +136,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     /// @inheritdoc IVaultRouter
     function unlockDepositRequest(address vault, address receiver) external payable protected {
         uint256 lockedRequest = lockedRequests[msg.sender][vault];
-        require(lockedRequest != 0, "VaultRouter/no-locked-balance");
+        require(lockedRequest != 0, NoLockedBalance());
         lockedRequests[msg.sender][vault] = 0;
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
@@ -154,7 +154,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     /// @inheritdoc IVaultRouter
     function executeLockedDepositRequest(address vault, address controller) external payable protected {
         uint256 lockedRequest = lockedRequests[controller][vault];
-        require(lockedRequest != 0, "VaultRouter/no-locked-request");
+        require(lockedRequest != 0, NoLockedRequest());
         lockedRequests[controller][vault] = 0;
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
@@ -204,7 +204,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         payable
         protected
     {
-        require(owner == msg.sender || owner == address(this), "VaultRouter/invalid-owner");
+        require(owner == msg.sender || owner == address(this), InvalidOwner());
         _pay();
         IAsyncVault(vault).requestRedeem(amount, controller, owner);
     }
@@ -279,22 +279,22 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
 
     // --- ERC20 wrapping ---
     function wrap(address wrapper, uint256 amount, address receiver, address owner) public payable protected {
-        require(owner == msg.sender || owner == address(this), "VaultRouter/invalid-owner");
+        require(owner == msg.sender || owner == address(this), InvalidOwner());
         address underlying = IERC20Wrapper(wrapper).underlying();
 
         amount = MathLib.min(amount, IERC20(underlying).balanceOf(owner));
-        require(amount != 0, "VaultRouter/zero-balance");
+        require(amount != 0, ZeroBalance());
         SafeTransferLib.safeTransferFrom(underlying, owner, address(this), amount);
 
         _approveMax(underlying, 0, wrapper);
-        require(IERC20Wrapper(wrapper).depositFor(receiver, amount), "VaultRouter/wrap-failed");
+        require(IERC20Wrapper(wrapper).depositFor(receiver, amount), WrapFailed());
     }
 
     function unwrap(address wrapper, uint256 amount, address receiver) public payable protected {
         amount = MathLib.min(amount, IERC20(wrapper).balanceOf(address(this)));
-        require(amount != 0, "VaultRouter/zero-balance");
+        require(amount != 0, ZeroBalance());
 
-        require(IERC20Wrapper(wrapper).withdrawTo(receiver, amount), "VaultRouter/unwrap-failed");
+        require(IERC20Wrapper(wrapper).withdrawTo(receiver, amount), UnwrapFailed());
     }
 
     // --- View Methods ---
@@ -338,9 +338,6 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     /// @notice Ensures msg.sender is either the controller, or can permissionlessly claim
     ///         on behalf of the controller.
     function _canClaim(address vault, address receiver, address controller) internal view {
-        require(
-            controller == msg.sender || (controller == receiver && isEnabled(vault, controller)),
-            "VaultRouter/invalid-sender"
-        );
+        require(controller == msg.sender || (controller == receiver && isEnabled(vault, controller)), InvalidSender());
     }
 }
