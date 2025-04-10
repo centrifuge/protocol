@@ -104,7 +104,7 @@ contract TestMessageLibIdentities is Test {
     function testNotifyShareClass(
         uint64 poolId,
         bytes16 scId,
-        bytes32 name,
+        string calldata name,
         bytes32 symbol,
         uint8 decimals,
         bytes32 salt,
@@ -113,7 +113,7 @@ contract TestMessageLibIdentities is Test {
         MessageLib.NotifyShareClass memory a = MessageLib.NotifyShareClass({
             poolId: poolId,
             scId: scId,
-            name: string(abi.encodePacked(name)),
+            name: name,
             symbol: symbol,
             decimals: decimals,
             salt: salt,
@@ -121,9 +121,11 @@ contract TestMessageLibIdentities is Test {
         });
         MessageLib.NotifyShareClass memory b = MessageLib.deserializeNotifyShareClass(a.serialize());
 
+        string calldata slicedName = bytes(name).length > 128 ? name[0:128] : name;
+
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
-        assertEq(a.name, b.name);
+        assertEq(slicedName, b.name);
         assertEq(a.symbol, b.symbol);
         assertEq(a.decimals, b.decimals);
         assertEq(a.salt, b.salt);
@@ -169,18 +171,19 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
-    function testUpdateShareClassMetadata(uint64 poolId, bytes16 scId, bytes32 name, bytes32 symbol) public pure {
-        MessageLib.UpdateShareClassMetadata memory a = MessageLib.UpdateShareClassMetadata({
-            poolId: poolId,
-            scId: scId,
-            name: string(abi.encodePacked(name)),
-            symbol: symbol
-        });
+    function testUpdateShareClassMetadata(uint64 poolId, bytes16 scId, string calldata name, bytes32 symbol)
+        public
+        pure
+    {
+        MessageLib.UpdateShareClassMetadata memory a =
+            MessageLib.UpdateShareClassMetadata({poolId: poolId, scId: scId, name: name, symbol: symbol});
         MessageLib.UpdateShareClassMetadata memory b = MessageLib.deserializeUpdateShareClassMetadata(a.serialize());
+
+        string calldata slicedName = bytes(name).length > 128 ? name[0:128] : name;
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
-        assertEq(a.name, b.name);
+        assertEq(slicedName, b.name);
         assertEq(a.symbol, b.symbol);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
