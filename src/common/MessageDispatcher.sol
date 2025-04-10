@@ -495,13 +495,13 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         AssetId assetId,
         address provider,
         uint128 amount,
-        D18 priceAssetPerShare,
+        D18 pricePoolPerAsset,
         bool isIncrease,
         Meta calldata meta
     ) external auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
             hub.updateHoldingAmount(
-                poolId, scId, assetId, amount, priceAssetPerShare, isIncrease, meta.debits, meta.credits
+                poolId, scId, assetId, amount, pricePoolPerAsset, isIncrease, meta.debits, meta.credits
             );
         } else {
             gateway.send(
@@ -512,7 +512,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     assetId: assetId.raw(),
                     who: provider.toBytes32(),
                     amount: amount,
-                    pricePerUnit: priceAssetPerShare.raw(),
+                    pricePerUnit: pricePoolPerAsset.raw(),
                     timestamp: uint64(block.timestamp),
                     isIncrease: isIncrease,
                     debits: meta.debits,

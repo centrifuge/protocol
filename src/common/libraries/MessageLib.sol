@@ -118,12 +118,12 @@ library MessageLib {
         (98  << uint8(MessageType.UpdateShares) * 8) +
         (57  << uint8(MessageType.ApprovedDeposits) * 8) +
         (57  << uint8(MessageType.RevokedShares) * 8) +
-        (9   << uint8(MessageType.UpdateJournal) * 8) +
-        (106 << uint8(MessageType.TriggerUpdateHoldingAmount) * 8) +
-        (90  << uint8(MessageType.TriggerUpdateShares) * 8);
+        (9   << uint8(MessageType.UpdateJournal) * 8);
 
-    uint256 constant MESSAGE_LENGTHS_2 = 0;
-    // (100 << (31 - uint8(MessageLib.NewMessage)) * 8);
+    // forgefmt: disable-next-item
+    uint256 constant MESSAGE_LENGTHS_2 = 
+        (106 << (uint8(MessageType.TriggerUpdateHoldingAmount) - 32) * 8) +
+        (90  << (uint8(MessageType.TriggerUpdateShares) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -1160,7 +1160,6 @@ library MessageLib {
         uint64 poolId;
         bytes16 scId;
         uint128 assetId;
-        // TODO: Maybe include pricePoolPerAsset for BSM response
         uint128 assetAmount;
     }
 

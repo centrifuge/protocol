@@ -591,6 +591,21 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
+    function testRevokedShares() public pure {
+        MessageLib.RevokedShares memory a =
+            MessageLib.RevokedShares({poolId: 1, scId: bytes16("sc"), assetId: 12345, assetAmount: 456789});
+
+        MessageLib.RevokedShares memory b = MessageLib.deserializeRevokedShares(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.assetId, b.assetId);
+        assertEq(a.assetAmount, b.assetAmount);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+    }
+
     function testUpdateJournal() public pure {
         JournalEntry[] memory debits = new JournalEntry[](3);
         debits[0] = JournalEntry({accountId: AccountId.wrap(9), amount: 1});

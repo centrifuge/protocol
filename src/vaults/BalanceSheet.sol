@@ -25,7 +25,7 @@ import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {IPerPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
-import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
+import {ISyncRequests, Prices} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayHandler, IUpdateContract {
@@ -85,7 +85,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         uint256 tokenId,
         address provider,
         uint128 amount,
-        D18 priceAssetPerShare,
+        D18 pricePoolPerAsset,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
         _deposit(
@@ -96,7 +96,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             tokenId,
             provider,
             amount,
-            priceAssetPerShare,
+            pricePoolPerAsset,
             m
         );
     }
@@ -109,7 +109,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         uint256 tokenId,
         address receiver,
         uint128 amount,
-        D18 priceAssetPerShare,
+        D18 pricePoolPerAsset,
         Meta calldata m
     ) external authOrPermission(poolId, scId) {
         _withdraw(
@@ -120,7 +120,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             tokenId,
             receiver,
             amount,
-            priceAssetPerShare,
+            pricePoolPerAsset,
             m
         );
     }
@@ -206,15 +206,15 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     /// @inheritdoc IBalanceSheetGatewayHandler
     function approvedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external auth {
-        (address token, uint256 tokenId) = poolManager.idToAsset(assetId.raw());
-        D18 priceAssetPerShare = syncRequests.priceAssetPerShare(poolId.raw(), scId.raw(), assetId.raw());
+        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId.raw());
+        Prices memory prices = syncRequests.prices(poolId.raw(), scId.raw(), assetId.raw(), asset, tokenId);
 
         JournalEntry[] memory journalEntries = new JournalEntry[](0);
         Meta memory meta = Meta(journalEntries, journalEntries);
 
-        escrow.deposit(token, tokenId, poolId.raw(), scId.raw(), assetAmount);
+        escrow.deposit(asset, tokenId, poolId.raw(), scId.raw(), assetAmount);
         sender.sendUpdateHoldingAmount(
-            poolId, scId, assetId, address(escrow), assetAmount, priceAssetPerShare, true, meta
+            poolId, scId, assetId, address(escrow), assetAmount, prices.poolPerAsset, true, meta
         );
     }
 
@@ -249,10 +249,10 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         uint256 tokenId,
         address receiver,
         uint128 amount,
-        D18 priceAssetPerShare,
+        D18 pricePoolPerAsset,
         Meta calldata m
     ) internal {
-        _ensureBalancedEntries(priceAssetPerShare.mulUint128(amount), m);
+        _ensureBalancedEntries(pricePoolPerAsset.mulUint128(amount), m);
         escrow.withdraw(asset, tokenId, poolId.raw(), scId.raw(), amount);
 
         if (tokenId == 0) {
@@ -261,7 +261,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             IERC6909(asset).transferFrom(address(escrow), receiver, tokenId, amount);
         }
 
-        sender.sendUpdateHoldingAmount(poolId, scId, assetId, receiver, amount, priceAssetPerShare, true, m);
+        sender.sendUpdateHoldingAmount(poolId, scId, assetId, receiver, amount, pricePoolPerAsset, true, m);
 
         emit Withdraw(
             poolId,
@@ -270,7 +270,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             tokenId,
             receiver,
             amount,
-            priceAssetPerShare,
+            pricePoolPerAsset,
             uint64(block.timestamp),
             m.debits,
             m.credits
@@ -285,10 +285,10 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         uint256 tokenId,
         address provider,
         uint128 amount,
-        D18 priceAssetPerShare,
+        D18 pricePoolPerAsset,
         Meta calldata m
     ) internal {
-        _ensureBalancedEntries(priceAssetPerShare.mulUint128(amount), m);
+        _ensureBalancedEntries(pricePoolPerAsset.mulUint128(amount), m);
         escrow.pendingDepositIncrease(asset, tokenId, poolId.raw(), scId.raw(), amount);
 
         if (tokenId == 0) {
@@ -298,7 +298,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         }
 
         escrow.deposit(asset, tokenId, poolId.raw(), scId.raw(), amount);
-        sender.sendUpdateHoldingAmount(poolId, scId, assetId, provider, amount, priceAssetPerShare, false, m);
+        sender.sendUpdateHoldingAmount(poolId, scId, assetId, provider, amount, pricePoolPerAsset, false, m);
 
         emit Deposit(
             poolId,
@@ -307,7 +307,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             tokenId,
             provider,
             amount,
-            priceAssetPerShare,
+            pricePoolPerAsset,
             uint64(block.timestamp),
             m.debits,
             m.credits

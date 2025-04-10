@@ -28,7 +28,7 @@ import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
-import {ISyncRequests, SyncPriceData} from "src/vaults/interfaces/investments/ISyncRequests.sol";
+import {ISyncRequests, Prices} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
@@ -252,7 +252,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     function prices(uint64 poolId, bytes16 scId, uint128 assetId, address asset, uint256 tokenId)
         public
         view
-        returns (SyncPriceData memory priceData)
+        returns (Prices memory priceData)
     {
         IERC7726 valuation_ = valuation[poolId][scId][asset][tokenId];
 
@@ -275,8 +275,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         bytes16 scId_ = vault_.trancheId();
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
 
-        SyncPriceData memory priceData =
-            prices(poolId_, scId_, vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId);
+        Prices memory priceData = prices(poolId_, scId_, vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId);
 
         PoolId poolId = PoolId.wrap(poolId_);
         ShareClassId scId = ShareClassId.wrap(scId_);
@@ -284,7 +283,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         // Mint shares for receiver & notify CP about issued shares
         balanceSheet.issue(poolId, scId, receiver, priceData.poolPerShare, shares);
 
-        _updateHoldings(poolId, scId, vaultDetails, depositAssetAmount, priceData.assetPerShare);
+        _updateHoldings(poolId, scId, vaultDetails, depositAssetAmount, priceData.poolPerAsset);
     }
 
     /// @dev Instructs the balance sheet manager to update holdings and the corresponding value.
@@ -294,7 +293,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         ShareClassId scId,
         VaultDetails memory vaultDetails,
         uint128 depositAssetAmount,
-        D18 priceAssetPerShare_
+        D18 pricePoolPerAsset
     ) internal {
         // NOTE: We want CP to use the default accounting accounts
         JournalEntry[] memory journalEntries = new JournalEntry[](0);
@@ -308,7 +307,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
             vaultDetails.tokenId,
             escrow,
             depositAssetAmount,
-            priceAssetPerShare_,
+            pricePoolPerAsset,
             depositMeta
         );
     }

@@ -8,7 +8,7 @@ import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 
 /// @dev Solely used locally as protection against stack-too-deep
-struct SyncPriceData {
+struct Prices {
     /// @dev Price of 1 asset unit per share unit
     D18 assetPerShare;
     /// @dev Price of 1 pool unit per asset unit
@@ -52,5 +52,5 @@ interface ISyncRequests is ISyncDepositManager, IUpdateContract {
     function prices(uint64 poolId, bytes16 scId, uint128 assetId, address asset, uint256 tokenId)
         external
         view
-        returns (SyncPriceData memory priceData);
+        returns (Prices memory priceData);
 }

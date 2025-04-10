@@ -29,7 +29,7 @@ import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedee
 import {IAsyncDepositManager} from "src/vaults/interfaces/investments/IAsyncDepositManager.sol";
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
 import {IRedeemManager} from "src/vaults/interfaces/investments/IRedeemManager.sol";
-import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
+import {ISyncRequests, Prices} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
@@ -463,7 +463,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         JournalEntry[] memory journalEntries = new JournalEntry[](0);
         Meta memory meta = Meta(journalEntries, journalEntries);
 
-        D18 priceAssetPerShare = syncRequests.priceAssetPerShare(poolId, scId, vaultDetails.assetId);
+        Prices memory prices =
+            syncRequests.prices(poolId, scId, vaultDetails.assetId, vaultDetails.asset, vaultDetails.tokenId);
         balanceSheet.escrow().reserveDecrease(vaultDetails.asset, vaultDetails.tokenId, poolId, scId, assets);
 
         balanceSheet.withdraw(
@@ -473,7 +474,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
             vaultDetails.tokenId,
             receiver,
             assets,
-            priceAssetPerShare,
+            prices.poolPerAsset,
             meta
         );
     }
