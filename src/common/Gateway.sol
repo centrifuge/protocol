@@ -43,7 +43,7 @@ contract Gateway is Auth, IGateway, Recoverable {
     mapping(uint16 centrifugeId => mapping(PoolId => uint64)) public /*transient*/ batchGasLimit;
 
     // Payment
-    PaymentMethod public transient paymentMethod;
+    address public transient transactionPayer;
     uint256 public transient fuel;
     mapping(PoolId => uint256) public subsidy;
 
@@ -283,7 +283,7 @@ contract Gateway is Auth, IGateway, Recoverable {
 
             uint256 consumed = currentAdapter.estimate(centrifugeId, payload, gasLimit);
 
-            if (paymentMethod == PaymentMethod.Transaction) {
+            if (transactionPayer != address(0)) {
                 require(consumed <= fuel, NotEnoughTransactionGas());
                 fuel -= consumed;
             } else {
@@ -294,7 +294,12 @@ contract Gateway is Auth, IGateway, Recoverable {
                 }
             }
 
-            currentAdapter.send{value: consumed}(centrifugeId, payload, gasLimit, address(this));
+            currentAdapter.send{value: consumed}(
+                centrifugeId,
+                payload,
+                gasLimit,
+                transactionPayer != address(0) ? transactionPayer : address(this)
+            );
 
             if (isPrimaryAdapter) {
                 emit SendBatch(centrifugeId, batch, currentAdapter);
@@ -311,8 +316,8 @@ contract Gateway is Auth, IGateway, Recoverable {
     }
 
     /// @inheritdoc IGateway
-    function payTransaction() external payable auth {
-        paymentMethod = PaymentMethod.Transaction;
+    function payTransaction(address payer) external payable auth {
+        transactionPayer = payer;
         fuel += msg.value;
     }
 
