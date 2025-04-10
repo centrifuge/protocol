@@ -492,14 +492,14 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         ShareClassId scId,
         AssetId assetId,
         uint128 amount,
-        D18 pricePerUnit,
+        D18 pricePoolPerAsset,
         bool isIncrease,
         JournalEntry[] memory debits,
         JournalEntry[] memory credits
     ) external auth {
         accounting.unlock(poolId);
         address poolCurrency = hubRegistry.currency(poolId).addr();
-        transientValuation.setPrice(assetId.addr(), poolCurrency, pricePerUnit);
+        transientValuation.setPrice(assetId.addr(), poolCurrency, pricePoolPerAsset);
         uint128 valueChange = transientValuation.getQuote(amount, assetId.addr(), poolCurrency).toUint128();
 
         (uint128 debited, uint128 credited) = _updateJournal(debits, credits);

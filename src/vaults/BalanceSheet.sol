@@ -72,6 +72,8 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         permission[poolId][scId][who] = m.allowed;
 
         emit Permission(poolId, scId, who, m.allowed);
+
+        // TODO: Revert if payload is other message?
     }
 
     /// --- External ---
@@ -210,7 +212,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         JournalEntry[] memory journalEntries = new JournalEntry[](0);
         Meta memory meta = Meta(journalEntries, journalEntries);
 
-        escrow.pendingDepositIncrease(token, tokenId, poolId.raw(), scId.raw(), assetAmount);
+        escrow.deposit(token, tokenId, poolId.raw(), scId.raw(), assetAmount);
         sender.sendUpdateHoldingAmount(
             poolId, scId, assetId, address(escrow), assetAmount, priceAssetPerShare, true, meta
         );
@@ -218,8 +220,8 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     /// @inheritdoc IBalanceSheetGatewayHandler
     function revokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external auth {
-        (address token, uint256 tokenId) = poolManager.idToAsset(assetId.raw());
-        escrow.reserveIncrease(token, tokenId, poolId.raw(), scId.raw(), assetAmount);
+        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId.raw());
+        escrow.reserveIncrease(asset, tokenId, poolId.raw(), scId.raw(), assetAmount);
     }
 
     // --- Internal ---

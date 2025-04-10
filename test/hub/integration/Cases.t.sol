@@ -98,12 +98,12 @@ contract TestCases is BaseTest {
         // Simulate ApprovedDeposits response messages from CV
         JournalEntry[] memory meta = new JournalEntry[](0);
         // TODO(wischli): Rm hardcode post #187 merge
-        D18 pricePerPoolAsset = d18(1);
+        D18 pricePoolPerAsset = d18(1e18);
 
-        cv.updateHoldingAmount(poolId, scId, USDC_C2, INVESTOR_AMOUNT, pricePerPoolAsset, true, meta, meta);
+        cv.updateHoldingAmount(poolId, scId, USDC_C2, INVESTOR_AMOUNT, pricePoolPerAsset, true, meta, meta);
 
         // FIXME(wischli): Pool unlocked and locked in updateHoldingAmount
-        cv.updateHoldingValue(poolId, scId, USDC_C2, pricePerPoolAsset);
+        cv.updateHoldingValue(poolId, scId, USDC_C2, pricePoolPerAsset);
 
         cv.resetMessages();
     }

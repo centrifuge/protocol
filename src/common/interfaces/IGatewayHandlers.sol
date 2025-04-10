@@ -52,7 +52,7 @@ interface IHubGatewayHandler {
     function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId) external;
 
     /// @notice Performs a manual update of the holdings value given the provided price
-    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePerUnit) external;
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset) external;
 
     /// @notice Update a holding by request from CAL.
     function updateHoldingAmount(
@@ -60,7 +60,7 @@ interface IHubGatewayHandler {
         ShareClassId scId,
         AssetId assetId,
         uint128 amount,
-        D18 pricePerUnit,
+        D18 pricePoolPerAsset,
         bool isIncrease,
         JournalEntry[] memory debits,
         JournalEntry[] memory credits

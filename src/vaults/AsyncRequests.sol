@@ -102,15 +102,20 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         auth
         returns (bool)
     {
-        IAsyncVault vault_ = IAsyncVault(vaultAddr);
         uint128 _assets = assets.toUint128();
         require(_assets != 0, "AsyncRequests/zero-amount-not-allowed");
 
-        address asset = vault_.asset();
-        require(
-            poolManager.isLinked(vault_.poolId(), vault_.trancheId(), asset, vaultAddr),
-            "AsyncRequests/asset-not-allowed"
-        );
+        return _processDepositRequest(vaultAddr, _assets, controller);
+    }
+
+    /// @dev Necessary because of stack-too-deep
+    function _processDepositRequest(address vaultAddr, uint128 assets, address controller) internal returns (bool) {
+        IAsyncVault vault_ = IAsyncVault(vaultAddr);
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
+        uint64 poolId = vault_.poolId();
+        bytes16 scId = vault_.trancheId();
+
+        require(poolManager.isLinked(poolId, scId, vaultDetails.asset, vaultAddr), "AsyncRequests/asset-not-allowed");
 
         require(
             _canTransfer(vaultAddr, address(0), controller, convertToShares(vaultAddr, assets)),
@@ -120,12 +125,9 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         AsyncInvestmentState storage state = investments[vaultAddr][controller];
         require(state.pendingCancelDepositRequest != true, "AsyncRequests/cancellation-is-pending");
 
-        state.pendingDepositRequest = state.pendingDepositRequest + _assets;
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-
-        sender.sendDepositRequest(
-            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId, _assets
-        );
+        state.pendingDepositRequest += assets;
+        balanceSheet.escrow().pendingDepositIncrease(vaultDetails.asset, vaultDetails.tokenId, poolId, scId, assets);
+        sender.sendDepositRequest(poolId, scId, controller.toBytes32(), vaultDetails.assetId, assets);
 
         return true;
     }
@@ -451,6 +453,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         }
     }
 
+    /// @dev Transfer funds from escrow to receiver and update holdings
     function _withdraw(address vaultAddr, address receiver, uint128 assets) internal {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
 
@@ -461,6 +464,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         Meta memory meta = Meta(journalEntries, journalEntries);
 
         D18 priceAssetPerShare = syncRequests.priceAssetPerShare(poolId, scId, vaultDetails.assetId);
+        balanceSheet.escrow().reserveDecrease(vaultDetails.asset, vaultDetails.tokenId, poolId, scId, assets);
 
         balanceSheet.withdraw(
             PoolId.wrap(poolId),
