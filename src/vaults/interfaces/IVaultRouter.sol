@@ -11,6 +11,14 @@ interface IVaultRouter is IMulticall {
     event UnlockDepositRequest(address indexed vault, address indexed controller, address indexed receiver);
     event ExecuteLockedDepositRequest(address indexed vault, address indexed controller, address sender);
 
+    error InvalidOwner();
+    error NoLockedBalance();
+    error NoLockedRequest();
+    error ZeroBalance();
+    error WrapFailed();
+    error UnwrapFailed();
+    error InvalidSender();
+
     /// @notice Check how much of the `vault`'s asset is locked for the current `controller`.
     /// @dev    This is a getter method
     function lockedRequests(address controller, address vault) external view returns (uint256 amount);
