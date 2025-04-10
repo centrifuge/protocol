@@ -14,6 +14,8 @@ import "test/vaults/BaseTest.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 import "src/vaults/interfaces/IERC7540.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
+import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
+import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
 import {MockReentrantERC20Wrapper1, MockReentrantERC20Wrapper2} from "test/vaults/mocks/MockReentrantERC20Wrapper.sol";
 
@@ -62,7 +64,7 @@ contract VaultRouterTest is BaseTest {
         address nonOwner = makeAddr("NonOwner");
         vm.deal(nonOwner, 10 ether);
         vm.prank(nonOwner);
-        vm.expectRevert(bytes("VaultRouter/invalid-owner"));
+        vm.expectRevert(IVaultRouter.InvalidOwner.selector);
         vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
 
         if (snap) {
@@ -217,7 +219,7 @@ contract VaultRouterTest is BaseTest {
         address nonOwner = makeAddr("NonOwner");
         vm.deal(nonOwner, 10 ether);
         vm.prank(nonOwner);
-        vm.expectRevert(bytes("VaultRouter/invalid-owner"));
+        vm.expectRevert(IVaultRouter.InvalidOwner.selector);
         vaultRouter.requestRedeem{value: fuel}(vault_, sharePayout, self, self);
 
         // redeem
@@ -659,7 +661,7 @@ contract VaultRouterTest is BaseTest {
         assertEq(erc20.balanceOf(self), 0);
 
         // Testing with empty balance for both wrapped and underlying
-        vm.expectRevert(bytes("VaultRouter/zero-balance"));
+        vm.expectRevert(IVaultRouter.ZeroBalance.selector);
         vaultRouter.enableLockDepositRequest(vault_, wrappedAmount);
     }
 
@@ -683,7 +685,7 @@ contract VaultRouterTest is BaseTest {
         vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
         vaultRouter.requestDeposit{value: lessGas}(vault_, amount, self, self);
 
-        vm.expectRevert("PoolManager/unknown-vault");
+        vm.expectRevert(IPoolManager.UnknownVault.selector);
         vaultRouter.requestDeposit{value: lessGas}(makeAddr("maliciousVault"), amount, self, self);
 
         bytes[] memory calls = new bytes[](2);
