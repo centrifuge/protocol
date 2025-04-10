@@ -32,7 +32,6 @@ import {VaultsDeployer} from "script/VaultsDeployer.s.sol";
 
 // mocks
 import {MockCentrifugeChain} from "test/vaults/mocks/MockCentrifugeChain.sol";
-import {MockGasService} from "test/common/mocks/MockGasService.sol";
 import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
 import {MockSafe} from "test/vaults/mocks/MockSafe.sol";
 
@@ -43,7 +42,6 @@ contract BaseTest is VaultsDeployer, Test {
     using MessageLib for *;
 
     MockCentrifugeChain centrifugeChain;
-    MockGasService mockedGasService;
     MockAdapter adapter1;
     MockAdapter adapter2;
     MockAdapter adapter3;
@@ -103,14 +101,11 @@ contract BaseTest is VaultsDeployer, Test {
         // removeVaultsDeployerAccess(address(adapter)); // need auth permissions in tests
 
         centrifugeChain = new MockCentrifugeChain(testAdapters, poolManager);
-        mockedGasService = new MockGasService();
         erc20 = _newErc20("X's Dollar", "USDX", 6);
         erc6909 = new MockERC6909();
 
         gateway.file("adapters", OTHER_CHAIN_ID, testAdapters);
-        gateway.file("gasService", address(mockedGasService));
-
-        mockedGasService.setReturn("estimate", uint256(0.5 gwei));
+        gateway.file("gasLimit", address(bytes20(uint160(uint64(0.5 gwei)))));
 
         // Label contracts
         vm.label(address(root), "Root");
@@ -128,8 +123,6 @@ contract BaseTest is VaultsDeployer, Test {
         vm.label(address(erc6909), "ERC6909");
         vm.label(address(centrifugeChain), "CentrifugeChain");
         vm.label(address(vaultRouter), "VaultRouter");
-        vm.label(address(gasService), "GasService");
-        vm.label(address(mockedGasService), "MockGasService");
         vm.label(address(escrow), "Escrow");
         vm.label(address(routerEscrow), "RouterEscrow");
         vm.label(address(guardian), "Guardian");

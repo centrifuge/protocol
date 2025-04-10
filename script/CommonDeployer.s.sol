@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {Root} from "src/common/Root.sol";
-import {GasService} from "src/common/GasService.sol";
 import {Gateway} from "src/common/Gateway.sol";
 import {Guardian, ISafe} from "src/common/Guardian.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
@@ -16,13 +15,12 @@ import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
 
 import "forge-std/Script.sol";
 
-string constant MESSAGE_COST_ENV = "MESSAGE_COST";
-string constant PROOF_COST_ENV = "PROOF_COST";
+string constant HANDLE_PAYLOAD_COST_ENV = "HANDLE_PAYLOAD_COST";
 
 abstract contract CommonDeployer is Script, JsonRegistry {
     uint256 constant DELAY = 48 hours;
     bytes32 immutable SALT;
-    uint64 constant FALLBACK_MSG_COST = 20000000000000000; // in Weight
+    uint64 constant FALLBACK_HANDLE_PAYLOAD_COST = 20000000000000000; // in Weight
 
     IAdapter[] adapters;
 
@@ -30,7 +28,6 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     Root public root;
     TokenRecoverer public tokenRecoverer;
     Guardian public guardian;
-    GasService public gasService;
     Gateway public gateway;
     MessageProcessor public messageProcessor;
     MessageDispatcher public messageDispatcher;
@@ -48,16 +45,14 @@ abstract contract CommonDeployer is Script, JsonRegistry {
             return; // Already deployed. Make this method idempotent.
         }
 
-        uint64 messageGasLimit = uint64(vm.envOr(MESSAGE_COST_ENV, FALLBACK_MSG_COST));
-        uint64 proofGasLimit = uint64(vm.envOr(PROOF_COST_ENV, FALLBACK_MSG_COST));
+        uint64 gasLimit = uint64(vm.envOr(HANDLE_PAYLOAD_COST_ENV, FALLBACK_HANDLE_PAYLOAD_COST));
 
         root = new Root(DELAY, deployer);
         tokenRecoverer = new TokenRecoverer(root, deployer);
 
         messageProcessor = new MessageProcessor(root, tokenRecoverer, deployer);
 
-        gasService = new GasService(messageGasLimit, proofGasLimit);
-        gateway = new Gateway(root, gasService);
+        gateway = new Gateway(root, gasLimit);
 
         messageDispatcher = new MessageDispatcher(centrifugeId, root, gateway, tokenRecoverer, deployer);
 
@@ -77,7 +72,6 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         register("root", address(root));
         register("adminSafe", address(adminSafe));
         register("guardian", address(guardian));
-        register("gasService", address(gasService));
         register("gateway", address(gateway));
         register("messageProcessor", address(messageProcessor));
         register("messageDispatcher", address(messageDispatcher));

@@ -60,7 +60,7 @@ abstract contract Setup is BaseSetup, Asserts {
     }
 
     function setup() internal virtual override {
-        routerAggregator = new Gateway(IRoot(address(0)), IGasService(address(0)));
+        routerAggregator = new Gateway(IRoot(address(0)), 0);
 
         // Given config, add adapters
         for (uint256 i = 0; i < RECON_ADAPTERS; i++) {

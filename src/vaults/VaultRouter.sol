@@ -304,8 +304,8 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     }
 
     /// @inheritdoc IVaultRouter
-    function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256) {
-        return messageDispatcher.estimate(centrifugeId, payload);
+    function estimate(uint16 centrifugeId, bytes calldata batch) external view returns (uint256) {
+        return messageDispatcher.estimate(centrifugeId, batch);
     }
 
     /// @inheritdoc IVaultRouter

@@ -11,13 +11,12 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
-import {Gateway, IRoot, IGasService, IGateway} from "src/common/Gateway.sol";
+import {Gateway, IRoot, IGateway} from "src/common/Gateway.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 
 import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
 import {MockRoot} from "test/common/mocks/MockRoot.sol";
-import {MockGasService} from "test/common/mocks/MockGasService.sol";
 
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
@@ -77,7 +76,6 @@ contract GatewayTest is Test {
 
     MockRoot root;
     MockProcessor handler;
-    MockGasService gasService;
     MockAdapter adapter1;
     MockAdapter adapter2;
     MockAdapter adapter3;
@@ -93,8 +91,7 @@ contract GatewayTest is Test {
         self = address(this);
         root = new MockRoot();
         handler = new MockProcessor();
-        gasService = new MockGasService();
-        gateway = new Gateway(IRoot(address(root)), IGasService(address(gasService)));
+        gateway = new Gateway(IRoot(address(root)), uint64(BASE_MESSAGE_ESTIMATE));
         gateway.file("processor", address(handler));
 
         adapter1 = new MockAdapter(REMOTE_CENTRIFUGE_ID, gateway);
@@ -109,9 +106,6 @@ contract GatewayTest is Test {
         adapter1.setReturn("estimate", FIRST_ADAPTER_ESTIMATE);
         adapter2.setReturn("estimate", SECOND_ADAPTER_ESTIMATE);
         adapter3.setReturn("estimate", THIRD_ADAPTER_ESTIMATE);
-
-        gasService.setReturn("message_estimate", BASE_MESSAGE_ESTIMATE);
-        gasService.setReturn("proof_estimate", BASE_PROOF_ESTIMATE);
 
         oneMockAdapter.push(adapter1);
 
@@ -145,13 +139,12 @@ contract GatewayTest is Test {
         gateway.file("random", self);
 
         assertEq(address(gateway.processor()), address(handler));
-        assertEq(address(gateway.gasService()), address(gasService));
 
         // success
         gateway.file("processor", self);
         assertEq(address(gateway.processor()), self);
-        gateway.file("gasService", self);
-        assertEq(address(gateway.gasService()), self);
+        gateway.file("gasLimit", address(bytes20(uint160(23))));
+        assertEq(gateway.gasLimit(), 23);
 
         // remove self from wards
         gateway.deny(self);

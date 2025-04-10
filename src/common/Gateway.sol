@@ -8,7 +8,6 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {IGasService} from "src/common/interfaces/IGasService.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
@@ -33,16 +32,15 @@ contract Gateway is Auth, IGateway, Recoverable {
 
     // Dependencies
     IRoot public immutable root;
-    IGasService public gasService;
     IMessageProcessor public processor;
 
     // Batching
     bool public transient isBatching;
     BatchLocator[] public /*transient*/ batchLocators;
     mapping(uint16 centrifugeId => mapping(PoolId => bytes)) public /*transient*/ outboundBatch;
-    mapping(uint16 centrifugeId => mapping(PoolId => uint64)) public /*transient*/ batchGasLimit;
 
     // Payment
+    uint64 public gasLimit;
     PaymentMethod public transient paymentMethod;
     uint256 public transient fuel;
     mapping(PoolId => uint256) public subsidy;
@@ -58,9 +56,9 @@ contract Gateway is Auth, IGateway, Recoverable {
         public recoveries;
 
 
-    constructor(IRoot root_, IGasService gasService_) Auth(msg.sender) {
+    constructor(IRoot root_, uint64 gasLimit_) Auth(msg.sender) {
         root = root_;
-        gasService = gasService_;
+        gasLimit = gasLimit_;
     }
 
     modifier pauseable() {
@@ -107,8 +105,8 @@ contract Gateway is Auth, IGateway, Recoverable {
 
     /// @inheritdoc IGateway
     function file(bytes32 what, address instance) external auth {
-        if (what == "gasService") gasService = IGasService(instance);
-        else if (what == "processor") processor = IMessageProcessor(instance);
+        if (what == "processor") processor = IMessageProcessor(instance);
+        else if (what == "gasLimit") gasLimit = uint64(uint160(bytes20(instance)));
         else revert FileUnrecognizedParam();
 
         emit File(what, instance);
@@ -186,16 +184,6 @@ contract Gateway is Auth, IGateway, Recoverable {
         }
     }
 
-    function retry(uint16 centrifugeId, bytes memory message) external {
-        bytes32 messageHash = keccak256(message);
-        require(failedMessages[centrifugeId][messageHash] > 0, NotFailedMessage());
-
-        processor.handle(centrifugeId, message);
-        failedMessages[centrifugeId][messageHash]--;
-
-        emit ExecuteMessage(centrifugeId, message);
-    }
-
     function execute(uint16 centrifugeId, bytes32 batchHash) external {
         InboundBatch storage state = inboundBatch[centrifugeId][batchHash];
 
@@ -213,6 +201,15 @@ contract Gateway is Auth, IGateway, Recoverable {
         }
     }
 
+    function retry(uint16 centrifugeId, bytes memory message) external {
+        bytes32 messageHash = keccak256(message);
+        require(failedMessages[centrifugeId][messageHash] > 0, NotFailedMessage());
+
+        processor.handle(centrifugeId, message);
+        failedMessages[centrifugeId][messageHash]--;
+
+        emit ExecuteMessage(centrifugeId, message);
+    }
 
     /// @inheritdoc IGatewayHandler
     function initiateMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 batchHash) external auth {
@@ -255,8 +252,6 @@ contract Gateway is Auth, IGateway, Recoverable {
         if (isBatching) {
             bytes storage previousMessage = outboundBatch[centrifugeId][poolId];
 
-            batchGasLimit[centrifugeId][poolId] += gasService.gasLimit(centrifugeId, message);
-
             if (previousMessage.length == 0) {
                 batchLocators.push(BatchLocator(centrifugeId, poolId));
                 outboundBatch[centrifugeId][poolId] = message;
@@ -274,15 +269,10 @@ contract Gateway is Auth, IGateway, Recoverable {
         IAdapter[] memory adapters_ = adapters[centrifugeId];
         require(adapters[centrifugeId].length != 0, EmptyAdapterSet());
 
-        uint64 batchGasLimit_ =
-            (isBatching) ? batchGasLimit[centrifugeId][poolId] : gasService.gasLimit(centrifugeId, batch);
-        uint64 proofGasLimit = gasService.gasLimit(centrifugeId, proof);
-
         for (uint256 i; i < adapters_.length; i++) {
             IAdapter currentAdapter = IAdapter(adapters_[i]);
             bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
             bytes memory payload = isPrimaryAdapter ? batch : proof;
-            uint64 gasLimit = isPrimaryAdapter ? batchGasLimit_ : proofGasLimit;
 
             uint256 consumed = currentAdapter.estimate(centrifugeId, payload, gasLimit);
 
@@ -332,7 +322,6 @@ contract Gateway is Auth, IGateway, Recoverable {
             BatchLocator memory locator = batchLocators[i];
             _send(locator.centrifugeId, locator.poolId, outboundBatch[locator.centrifugeId][locator.poolId]);
             delete outboundBatch[locator.centrifugeId][locator.poolId];
-            delete batchGasLimit[locator.centrifugeId][locator.poolId];
         }
 
         delete batchLocators;
@@ -344,29 +333,18 @@ contract Gateway is Auth, IGateway, Recoverable {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IGateway
-    function estimate(uint16 centrifugeId, bytes calldata payload)
+    function estimate(uint16 centrifugeId, bytes calldata batch)
         external
         view
         returns (uint256[] memory perAdapter, uint256 total)
     {
-        bytes memory proof = processor.createMessageProof(payload);
-
-        uint256 proofGasLimit = gasService.gasLimit(centrifugeId, proof);
-
-        uint256 messageGasLimit = 0;
-        for (uint256 pos; pos < payload.length;) {
-            bytes calldata inner = payload[pos:payload.length];
-            messageGasLimit += gasService.gasLimit(centrifugeId, inner);
-            pos += processor.messageLength(inner);
-        }
-
+        bytes memory proof = processor.createMessageProof(batch);
         perAdapter = new uint256[](adapters[centrifugeId].length);
 
         uint256 adaptersCount = adapters[centrifugeId].length;
         for (uint256 i; i < adaptersCount; i++) {
-            uint256 gasLimit_ = i == PRIMARY_ADAPTER_ID - 1 ? messageGasLimit : proofGasLimit;
-            bytes memory message = i == PRIMARY_ADAPTER_ID - 1 ? payload : proof;
-            uint256 estimated = IAdapter(adapters[centrifugeId][i]).estimate(centrifugeId, message, gasLimit_);
+            bytes memory message = i == PRIMARY_ADAPTER_ID - 1 ? batch : proof;
+            uint256 estimated = IAdapter(adapters[centrifugeId][i]).estimate(centrifugeId, message, gasLimit);
             perAdapter[i] = estimated;
             total += estimated;
         }

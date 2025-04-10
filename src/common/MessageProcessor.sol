@@ -16,7 +16,6 @@ import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {IGasService} from "src/common/interfaces/IGasService.sol";
 import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 import {
     IGatewayHandler,

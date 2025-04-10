@@ -14,7 +14,7 @@ import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import "src/vaults/interfaces/IPoolManager.sol";
 
 import {FullDeployer, HubDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
-import {CommonDeployer, MESSAGE_COST_ENV, PROOF_COST_ENV} from "script/CommonDeployer.s.sol";
+import {CommonDeployer, HANDLE_PAYLOAD_COST_ENV} from "script/CommonDeployer.s.sol";
 
 import {LocalAdapter} from "test/integration/adapters/LocalAdapter.sol";
 
@@ -34,8 +34,7 @@ contract TestEndToEnd is Test {
     FullDeployer deployB = new FullDeployer();
 
     function setUp() public {
-        vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS));
-        vm.setEnv(PROOF_COST_ENV, vm.toString(GAS));
+        vm.setEnv(HANDLE_PAYLOAD_COST_ENV, vm.toString(GAS));
 
         LocalAdapter adapterA = _deployChain(deployA, CENTRIFUGE_ID_A, CENTRIFUGE_ID_B, safeAdminA);
         LocalAdapter adapterB = _deployChain(deployB, CENTRIFUGE_ID_B, CENTRIFUGE_ID_A, safeAdminB);

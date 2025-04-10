@@ -79,11 +79,7 @@ contract VaultRouterTest is BaseTest {
             assertEq(payCalls.length, 2);
             assertEq(
                 payCalls[1],
-                adapter.estimate(
-                    OTHER_CHAIN_ID,
-                    PAYLOAD_FOR_GAS_ESTIMATION,
-                    mockedGasService.gasLimit(OTHER_CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION)
-                ),
+                adapter.estimate(OTHER_CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION, gateway.gasLimit()),
                 "payload gas mismatch"
             );
         }
