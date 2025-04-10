@@ -114,6 +114,26 @@ interface IPoolManager {
         uint64 indexed poolId, bytes16 indexed scId, address indexed asset, uint256 tokenId, uint64 maxPriceAge
     );
 
+    error FileUnrecognizedParam();
+    error TooFewDecimals();
+    error TooManyDecimals();
+    error PoolAlreadyAdded();
+    error InvalidPool();
+    error ShareClassAlreadyRegistered();
+    error InvalidHook();
+    error OldMetadata();
+    error CannotSetOlderPrice();
+    error OldHook();
+    error UnknownVault();
+    error UnknownAsset();
+    error MalformedVaultUpdateMessage();
+    error UnknownToken();
+    error UnknownUpdateContractType();
+    error InvalidFactory();
+    error InvalidPrice();
+    error AssetMissingDecimals();
+    error ShareTokenDoesNotExist();
+
     /// @notice Returns the asset address and tokenId associated with a given asset id.
     /// @dev Reverts if asset id does not exist
     ///

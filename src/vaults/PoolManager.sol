@@ -53,8 +53,8 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     IEscrow public immutable escrow;
 
     address public balanceSheet;
-    IVaultMessageSender public sender;
     ITokenFactory public tokenFactory;
+    IVaultMessageSender public sender;
 
     uint64 internal _assetCounter;
 
@@ -81,7 +81,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "tokenFactory") tokenFactory = ITokenFactory(data);
         else if (what == "balanceSheet") balanceSheet = data;
-        else revert("PoolManager/file-unrecognized-param");
+        else revert FileUnrecognizedParam();
         emit File(what, data);
     }
 
@@ -89,7 +89,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         if (what == "vaultFactory") {
             vaultFactory[factory] = status;
         } else {
-            revert("PoolManager/file-unrecognized-param");
+            revert FileUnrecognizedParam();
         }
         emit File(what, factory, status);
     }
@@ -119,8 +119,8 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         uint8 decimals;
 
         decimals = _safeGetAssetDecimals(asset, tokenId);
-        require(decimals >= MIN_DECIMALS, "PoolManager/too-few-asset-decimals");
-        require(decimals <= MAX_DECIMALS, "PoolManager/too-many-asset-decimals");
+        require(decimals >= MIN_DECIMALS, TooFewDecimals());
+        require(decimals <= MAX_DECIMALS, TooManyDecimals());
 
         if (tokenId == 0) {
             IERC20Metadata meta = IERC20Metadata(asset);
@@ -157,7 +157,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     /// @inheritdoc IPoolManagerGatewayHandler
     function addPool(uint64 poolId) public auth {
         Pool storage pool = pools[poolId];
-        require(pool.createdAt == 0, "PoolManager/pool-already-added");
+        require(pool.createdAt == 0, PoolAlreadyAdded());
         pool.createdAt = block.timestamp;
         emit AddPool(poolId);
     }
@@ -172,13 +172,13 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         bytes32 salt,
         address hook
     ) public auth returns (address) {
-        require(decimals >= MIN_DECIMALS, "PoolManager/too-few-token-decimals");
-        require(decimals <= MAX_DECIMALS, "PoolManager/too-many-token-decimals");
-        require(isPoolActive(poolId), "PoolManager/invalid-pool");
-        require(pools[poolId].shareClasses[scId].shareToken == address(0), "PoolManager/share-class-already-exists");
+        require(decimals >= MIN_DECIMALS, TooFewDecimals());
+        require(decimals <= MAX_DECIMALS, TooManyDecimals());
+        require(isPoolActive(poolId), InvalidPool());
+        require(pools[poolId].shareClasses[scId].shareToken == address(0), ShareClassAlreadyRegistered());
 
         // Hook can be address zero if the share token is fully permissionless and has no custom logic
-        require(hook == address(0) || _isValidHook(hook), "PoolManager/invalid-hook");
+        require(hook == address(0) || _isValidHook(hook), InvalidHook());
 
         address[] memory tokenWards = new address[](2);
         tokenWards[0] = address(this);
@@ -205,7 +205,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         require(
             keccak256(bytes(shareToken_.name())) != keccak256(bytes(name))
                 || keccak256(bytes(shareToken_.symbol())) != keccak256(bytes(symbol)),
-            "PoolManager/old-metadata"
+            OldMetadata()
         );
 
         shareToken_.file("name", name);
@@ -216,7 +216,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     function updatePricePoolPerShare(uint64 poolId, bytes16 scId, uint128 price, uint64 computedAt) public auth {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
-        require(computedAt >= shareClass.pricePoolPerShare.computedAt, "PoolManager/cannot-set-older-price");
+        require(computedAt >= shareClass.pricePoolPerShare.computedAt, CannotSetOlderPrice());
 
         shareClass.pricePoolPerShare = Price(price, computedAt, shareClass.pricePoolPerShare.maxAge);
         emit PriceUpdate(poolId, scId, price, computedAt);
@@ -234,7 +234,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
         (address asset, uint256 tokenId) = idToAsset(assetId);
         Price storage poolPerAsset = shareClass.pricePoolPerAsset[asset][tokenId];
-        require(computedAt >= poolPerAsset.computedAt, "PoolManager/cannot-set-older-price");
+        require(computedAt >= poolPerAsset.computedAt, CannotSetOlderPrice());
 
         poolPerAsset.price = poolPerAsset_;
         poolPerAsset.computedAt = computedAt;
@@ -246,7 +246,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     function updateRestriction(uint64 poolId, bytes16 scId, bytes memory update_) public auth {
         IShareToken shareToken_ = IShareToken(shareToken(poolId, scId));
         address hook = shareToken_.hook();
-        require(hook != address(0), "PoolManager/invalid-hook");
+        require(hook != address(0), InvalidHook());
         IHook(hook).updateRestriction(address(shareToken_), update_);
     }
 
@@ -264,7 +264,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     /// @inheritdoc IPoolManagerGatewayHandler
     function updateShareHook(uint64 poolId, bytes16 scId, address hook) public auth {
         IShareToken shareToken_ = IShareToken(shareToken(poolId, scId));
-        require(hook != shareToken_.hook(), "PoolManager/old-hook");
+        require(hook != shareToken_.hook(), OldHook());
         shareToken_.file("hook", hook);
     }
 
@@ -298,14 +298,14 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
                 // Needed as safeguard against non-validated vaults
                 // I.e. we only accept vaults that have been deployed by the pool manager
-                require(_vaultDetails[vault].asset != address(0), "PoolManager/unknown-vault");
+                require(_vaultDetails[vault].asset != address(0), UnknownVault());
 
                 if (m.kind == uint8(VaultUpdateKind.Link)) {
                     linkVault(poolId, scId, m.assetId, vault);
                 } else if (m.kind == uint8(VaultUpdateKind.Unlink)) {
                     unlinkVault(poolId, scId, m.assetId, vault);
                 } else {
-                    revert("PoolManager/malformed-vault-update-msg");
+                    revert MalformedVaultUpdateMessage();
                 }
             }
         } else if (kind == uint8(UpdateContractType.MaxAssetPriceAge)) {
@@ -313,7 +313,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
                 MessageLib.deserializeUpdateContractMaxAssetPriceAge(payload);
 
             ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-            require(m.assetId != 0, "PoolManager/unknown-asset");
+            require(m.assetId != 0, UnknownAsset());
 
             (address asset, uint256 tokenId) = idToAsset(m.assetId);
             shareClass.pricePoolPerAsset[asset][tokenId].maxAge = m.maxPriceAge;
@@ -327,7 +327,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
             shareClass.pricePoolPerShare.maxAge = m.maxPriceAge;
             emit UpdateMaxSharePriceAge(poolId, scId, m.maxPriceAge);
         } else {
-            revert("PoolManager/unknown-update-contract-type");
+            revert UnknownUpdateContractType();
         }
     }
 
@@ -335,7 +335,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     /// @inheritdoc IPoolManager
     function deployVault(uint64 poolId, bytes16 scId, uint128 assetId, address factory) public auth returns (address) {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-        require(vaultFactory[factory], "PoolManager/invalid-factory");
+        require(vaultFactory[factory], InvalidFactory());
 
         // Rely investment manager on vault so it can mint tokens
         address[] memory vaultWards = new address[](0);
@@ -397,14 +397,14 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     /// @inheritdoc IPoolManager
     function shareToken(uint64 poolId, bytes16 scId) public view returns (address) {
         ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
-        require(shareClass.shareToken != address(0), "PoolManager/unknown-token");
+        require(shareClass.shareToken != address(0), UnknownToken());
         return shareClass.shareToken;
     }
 
     /// @inheritdoc IPoolManager
     function vaultDetails(address vault) public view returns (VaultDetails memory details) {
         details = _vaultDetails[vault];
-        require(details.asset != address(0), "PoolManager/unknown-vault");
+        require(details.asset != address(0), UnknownVault());
     }
 
     /// @inheritdoc IPoolManager
@@ -419,14 +419,14 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     /// @inheritdoc IPoolManager
     function idToAsset(uint128 assetId) public view returns (address asset, uint256 tokenId) {
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
-        require(assetIdKey.asset != address(0), "PoolManager/unknown-asset");
+        require(assetIdKey.asset != address(0), UnknownAsset());
         return (assetIdKey.asset, assetIdKey.tokenId);
     }
 
     /// @inheritdoc IPoolManager
     function assetToId(address asset, uint256 tokenId) public view returns (uint128 assetId) {
         assetId = _assetToId[asset][tokenId];
-        require(assetId != 0, "PoolManager/unknown-asset");
+        require(assetId != 0, UnknownAsset());
     }
 
     /// @inheritdoc IPoolManager
@@ -438,8 +438,8 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         (Price memory poolPerAsset, Price memory poolPerShare) = _poolPer(poolId, scId, assetId);
 
         if (checkValidity) {
-            require(poolPerAsset.isValid(), "PoolManager/invalid-price");
-            require(poolPerShare.isValid(), "PoolManager/invalid-price");
+            require(poolPerAsset.isValid(), InvalidPrice());
+            require(poolPerShare.isValid(), InvalidPrice());
         }
 
         // (POOL_UNIT/SHARE_UNIT) / (POOL_UNIT/ASSET_UNIT) = ASSET_UNIT/SHARE_UNIT
@@ -456,7 +456,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
         if (checkValidity) {
-            require(shareClass.pricePoolPerShare.isValid(), "PoolManager/invalid-price");
+            require(shareClass.pricePoolPerShare.isValid(), InvalidPrice());
         }
 
         price = shareClass.pricePoolPerShare.asPrice();
@@ -472,7 +472,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         (Price memory poolPerAsset,) = _poolPer(poolId, scId, assetId);
 
         if (checkValidity) {
-            require(poolPerAsset.isValid(), "PoolManager/invalid-price");
+            require(poolPerAsset.isValid(), InvalidPrice());
         }
 
         price = poolPerAsset.asPrice();
@@ -521,7 +521,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         }
 
         (bool success, bytes memory data) = asset.staticcall(callData);
-        require(success && data.length >= 32, "PoolManager/asset-missing-decimals");
+        require(success && data.length >= 32, AssetMissingDecimals());
 
         return abi.decode(data, (uint8));
     }
@@ -535,6 +535,6 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
     function _shareClass(uint64 poolId, bytes16 scId) internal view returns (ShareClassDetails storage shareClass) {
         shareClass = pools[poolId].shareClasses[scId];
-        require(shareClass.shareToken != address(0), "PoolManager/share-token-does-not-exist");
+        require(shareClass.shareToken != address(0), ShareTokenDoesNotExist());
     }
 }

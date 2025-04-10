@@ -12,7 +12,7 @@ contract MockRestrictedTransfers is RestrictedTransfers, Mock {
         override
         returns (bytes4)
     {
-        require(checkERC20Transfer(from, to, value, hookData), "RestrictedTransfers/transfer-blocked");
+        require(checkERC20Transfer(from, to, value, hookData), TransferBlocked());
 
         values_address["onERC20Transfer_from"] = from;
         values_address["onERC20Transfer_to"] = to;

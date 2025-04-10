@@ -7,6 +7,12 @@ interface IRestrictedTransfers {
     event Freeze(address indexed token, address indexed user);
     event Unfreeze(address indexed token, address indexed user);
 
+    // --- Errors ---
+    error InvalidValidUntil();
+    error CannotFreezeZeroAddress();
+    error EndorsedUserCannotBeFrozen();
+    error EndorsedUserCannotBeUpdated();
+
     // --- Handling freezes ---
     /// @notice Freeze a user balance. Frozen users cannot receive nor send tokens
     function freeze(address token, address user) external;
