@@ -8,7 +8,8 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
-import {ISyncRequests, SyncPriceData} from "src/vaults/interfaces/investments/ISyncRequests.sol";
+import {Prices} from "src/vaults/interfaces/investments/ISharePriceProvider.sol";
+import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import {SyncRequests} from "src/vaults/SyncRequests.sol";
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
@@ -148,7 +149,7 @@ contract SyncRequestsPrices is SyncRequestsBaseTest {
 
         (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
 
-        SyncPriceData memory prices =
+        Prices memory prices =
             syncRequests.prices(syncVault.poolId(), syncVault.trancheId(), assetId, syncVault.asset(), 0);
         assertEq(prices.assetPerShare.inner(), priceAssetPerShare.inner(), "priceAssetPerShare mismatch");
         assertEq(prices.poolPerShare.inner(), pricePoolPerShare.inner(), "pricePoolPerShare mismatch");
@@ -191,7 +192,7 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
             abi.encode(assetPerShareAmount)
         );
 
-        SyncPriceData memory prices =
+        Prices memory prices =
             syncRequests.prices(syncVault.poolId(), syncVault.trancheId(), assetId, syncVault.asset(), 0);
         D18 pricePost = syncRequests.priceAssetPerShare(syncVault.poolId(), syncVault.trancheId(), assetId);
         assertEq(prices.assetPerShare.inner(), priceAssetPerShare.inner(), "priceAssetPerShare mismatch");
@@ -232,7 +233,7 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
             abi.encode(assetPerShareAmount)
         );
 
-        SyncPriceData memory prices =
+        Prices memory prices =
             syncRequests.prices(syncVault.poolId(), syncVault.trancheId(), assetId, syncVault.asset(), 0);
         D18 pricePost = syncRequests.priceAssetPerShare(syncVault.poolId(), syncVault.trancheId(), assetId);
         assertEq(

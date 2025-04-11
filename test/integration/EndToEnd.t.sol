@@ -82,12 +82,7 @@ contract TestEndToEnd is Test {
         PoolId poolId = guardian.createPool(FM, usd);
 
         vm.startPrank(FM);
-
-        (bytes[] memory c, uint256 i) = (new bytes[](1), 0);
-        c[i++] = abi.encodeWithSelector(Hub.notifyPool.selector, cvChainId);
-        assertEq(i, c.length);
-
-        ch.hub().execute{value: GAS}(poolId, c);
+        ch.hub().notifyPool{value: GAS}(poolId, cvChainId);
 
         assert(cv.poolManager().pools(poolId.raw()) != 0);
     }

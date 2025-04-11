@@ -629,6 +629,36 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
+    function testApprovedDeposits(uint64 poolId, bytes16 scId, uint128 assetId, uint128 assetAmount) public pure {
+        MessageLib.ApprovedDeposits memory a =
+            MessageLib.ApprovedDeposits({poolId: poolId, scId: scId, assetId: assetId, assetAmount: assetAmount});
+
+        MessageLib.ApprovedDeposits memory b = MessageLib.deserializeApprovedDeposits(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.assetId, b.assetId);
+        assertEq(a.assetAmount, b.assetAmount);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+    }
+
+    function testRevokedShares(uint64 poolId, bytes16 scId, uint128 assetId, uint128 assetAmount) public pure {
+        MessageLib.RevokedShares memory a =
+            MessageLib.RevokedShares({poolId: poolId, scId: scId, assetId: assetId, assetAmount: assetAmount});
+
+        MessageLib.RevokedShares memory b = MessageLib.deserializeRevokedShares(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.assetId, b.assetId);
+        assertEq(a.assetAmount, b.assetAmount);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+    }
+
     function testUpdateJournal(uint64 poolId, JournalEntry[] memory debits, JournalEntry[] memory credits)
         public
         pure
