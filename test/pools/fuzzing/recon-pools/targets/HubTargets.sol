@@ -48,10 +48,10 @@ abstract contract HubTargets is
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
     /// @dev Property: after successfully calling claimDeposit for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
-    function hub_claimDeposit(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint32 isoCode) public updateGhosts asActor {
+    function hub_claimDeposit(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint) public updateGhosts asActor {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        AssetId assetId = newAssetId(isoCode);
+        AssetId assetId = AssetId.wrap(assetIdAsUint);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
         
         hub.claimDeposit(poolId, scId, assetId, investor);
@@ -62,12 +62,20 @@ abstract contract HubTargets is
         eq(lastUpdate, epochId, "lastUpdate is not equal to epochId");
     }
 
+    function hub_claimDeposit_clamped(uint64 poolIdAsUint, uint32 scIdEntropy) public updateGhosts asActor {
+        PoolId poolId = _getRandomPoolId(poolIdAsUint);
+        ShareClassId scId = _getRandomShareClassIdForPool(poolId, scIdEntropy);
+        AssetId assetId = hubRegistry.currency(poolId);
+
+        hub_claimDeposit(poolId.raw(), scId.raw(), assetId.raw());
+    }
+
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
     /// @dev Property: After successfully calling claimRedeem for an investor, their redeemRequest[..].lastUpdate equals the current epoch id epochId[poolId]
-    function hub_claimRedeem(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint32 isoCode) public updateGhosts asActor {
+    function hub_claimRedeem(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint) public updateGhosts asActor {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        AssetId assetId = newAssetId(isoCode);
+        AssetId assetId = AssetId.wrap(assetIdAsUint);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
         
         hub.claimRedeem(poolId, scId, assetId, investor);
@@ -76,6 +84,14 @@ abstract contract HubTargets is
         uint32 epochId = shareClassManager.epochId(poolId);
 
         eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId");
+    }
+
+    function hub_claimRedeem_clamped(uint64 poolIdAsUint, uint32 scIdEntropy) public updateGhosts asActor {
+        PoolId poolId = _getRandomPoolId(poolIdAsUint);
+        ShareClassId scId = _getRandomShareClassIdForPool(poolId, scIdEntropy);
+        AssetId assetId = hubRegistry.currency(poolId);
+
+        hub_claimRedeem(poolId.raw(), scId.raw(), assetId.raw());
     }
 
     /// === EXECUTION FUNCTIONS === ///

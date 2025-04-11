@@ -66,14 +66,14 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_execute_clamped(poolId.raw());
         
         // request deposit
-        hub_depositRequest(poolId.raw(), scId.raw(), 123, INVESTOR_AMOUNT);
+        hub_depositRequest(poolId.raw(), scId.raw(), INVESTOR_AMOUNT);
         
         hub_approveDeposits(scId.raw(), assetId.raw(), APPROVED_INVESTOR_AMOUNT, identityValuation);
         hub_issueShares(scId.raw(), assetId.raw(), NAV_PER_SHARE);
         hub_execute_clamped(poolId.raw());
 
         // claim deposit
-        hub_claimDeposit(poolId.raw(), scId.raw(), 123);
+        hub_claimDeposit(poolId.raw(), scId.raw(), assetId.raw());
 
         return (poolId, scId);
     }
@@ -85,8 +85,9 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_redeemRequest(poolId.raw(), scId.raw(), 123, SHARE_AMOUNT);
 
         // executed via the PoolRouter
-        hub_approveRedeems(scId.raw(), 123, uint128(10000000));
-        hub_revokeShares(scId.raw(), 123, d18(10000000), identityValuation);
+        assetId = newAssetId(123);
+        hub_approveRedeems(scId.raw(), assetId.raw(), uint128(10000000));
+        hub_revokeShares(scId.raw(), assetId.raw(), d18(10000000), identityValuation);
         hub_execute_clamped(poolId.raw());
 
         // claim redemption

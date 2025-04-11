@@ -79,7 +79,7 @@ abstract contract TargetFunctions is
         );
 
         // request deposit
-        hub_depositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode, amount);
+        hub_depositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), amount);
         
         // approve and issue shares as the pool admin
         shortcut_approve_and_issue_shares(
@@ -108,8 +108,9 @@ abstract contract TargetFunctions is
             isIdentityValuation, prefix, amount, maxApproval, navPerShare
         );
 
+        AssetId assetId = newAssetId(isoCode);
         // claim deposit as actor
-        hub_claimDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
+        hub_claimDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw());
 
         return (poolId, scId);
     }
@@ -133,7 +134,8 @@ abstract contract TargetFunctions is
         );
 
         // claim deposit as actor
-        hub_claimDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
+        AssetId assetId = newAssetId(isoCode);
+        hub_claimDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw());
 
         // cancel deposit
         hub_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
@@ -184,7 +186,8 @@ abstract contract TargetFunctions is
         );
 
         // claim deposit as actor
-        hub_claimDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
+        AssetId assetId = newAssetId(isoCode);
+        hub_claimDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw());
 
         // cancel deposit
         hub_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
@@ -216,7 +219,8 @@ abstract contract TargetFunctions is
         uint32 isoCode
     ) public clearQueuedCalls {        
         // claim redemption as actor
-        hub_claimRedeem(poolId, scId, isoCode);
+        AssetId assetId = newAssetId(isoCode);
+        hub_claimRedeem(poolId, scId, assetId.raw());
     }
 
     function shortcut_redeem_and_claim(
@@ -231,7 +235,8 @@ abstract contract TargetFunctions is
         shortcut_redeem(poolId, scId, shareAmount, isoCode, maxApproval, navPerShare, isIdentityValuation);
         
         // claim redemption as actor
-        hub_claimRedeem(poolId, scId, isoCode); 
+        AssetId assetId = newAssetId(isoCode);
+        hub_claimRedeem(poolId, scId, assetId.raw()); 
     }
 
     // deposit and redeem in one call
@@ -265,7 +270,8 @@ abstract contract TargetFunctions is
         
 
         // claim redemption as actor
-        hub_claimRedeem(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
+        AssetId assetId = newAssetId(isoCode);
+        hub_claimRedeem(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw());
     }
 
     // deposit and cancel redemption in one call
@@ -506,8 +512,9 @@ abstract contract TargetFunctions is
     ) public  {        
         IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
         
-        hub_approveRedeems(scId, isoCode, maxApproval);
-        hub_revokeShares(scId, isoCode, navPerShare, valuation);
+        AssetId assetId = newAssetId(isoCode);
+        hub_approveRedeems(scId, assetId.raw(), maxApproval);
+        hub_revokeShares(scId, assetId.raw(), navPerShare, valuation);
         hub_execute_clamped(poolId);
 
         // reset the epoch increment to 0 so that the next approval is in a "new tx"
