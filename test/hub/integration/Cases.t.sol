@@ -83,13 +83,21 @@ contract TestCases is BaseTest {
         vm.deal(ANY, GAS);
         hub.claimDeposit{value: GAS}(poolId, scId, USDC_C2, INVESTOR);
 
-        MessageLib.FulfilledDepositRequest memory m0 = MessageLib.deserializeFulfilledDepositRequest(cv.lastMessages(0));
+        assertEq(cv.messageCount(), 2);
+
+        MessageLib.ApprovedDeposits memory m0 = MessageLib.deserializeApprovedDeposits(cv.lastMessages(0));
         assertEq(m0.poolId, poolId.raw());
         assertEq(m0.scId, scId.raw());
-        assertEq(m0.investor, INVESTOR);
         assertEq(m0.assetId, USDC_C2.raw());
         assertEq(m0.assetAmount, APPROVED_INVESTOR_AMOUNT);
-        assertEq(m0.shareAmount, SHARE_AMOUNT);
+
+        MessageLib.FulfilledDepositRequest memory m1 = MessageLib.deserializeFulfilledDepositRequest(cv.lastMessages(1));
+        assertEq(m1.poolId, poolId.raw());
+        assertEq(m1.scId, scId.raw());
+        assertEq(m1.investor, INVESTOR);
+        assertEq(m1.assetId, USDC_C2.raw());
+        assertEq(m1.assetAmount, APPROVED_INVESTOR_AMOUNT);
+        assertEq(m1.shareAmount, SHARE_AMOUNT);
 
         cv.resetMessages();
     }
@@ -101,6 +109,8 @@ contract TestCases is BaseTest {
         cv.requestRedeem(poolId, scId, USDC_C2, INVESTOR, SHARE_AMOUNT);
 
         IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
+        uint128 revokedAssetAmount =
+            NAV_PER_SHARE.mulUint128(uint128(valuation.getQuote(APPROVED_SHARE_AMOUNT, USD.addr(), USDC_C2.addr())));
 
         vm.startPrank(FM);
         hub.approveRedeems(poolId, scId, USDC_C2, APPROVED_SHARE_AMOUNT);
@@ -111,16 +121,21 @@ contract TestCases is BaseTest {
         vm.deal(ANY, GAS);
         hub.claimRedeem{value: GAS}(poolId, scId, USDC_C2, INVESTOR);
 
-        MessageLib.FulfilledRedeemRequest memory m0 = MessageLib.deserializeFulfilledRedeemRequest(cv.lastMessages(0));
+        assertEq(cv.messageCount(), 2);
+
+        MessageLib.RevokedShares memory m0 = MessageLib.deserializeRevokedShares(cv.lastMessages(0));
         assertEq(m0.poolId, poolId.raw());
         assertEq(m0.scId, scId.raw());
-        assertEq(m0.investor, INVESTOR);
         assertEq(m0.assetId, USDC_C2.raw());
-        assertEq(
-            m0.assetAmount,
-            NAV_PER_SHARE.mulUint128(uint128(valuation.getQuote(APPROVED_SHARE_AMOUNT, USD.addr(), USDC_C2.addr())))
-        );
-        assertEq(m0.shareAmount, APPROVED_SHARE_AMOUNT);
+        assertEq(m0.assetAmount, revokedAssetAmount);
+
+        MessageLib.FulfilledRedeemRequest memory m1 = MessageLib.deserializeFulfilledRedeemRequest(cv.lastMessages(1));
+        assertEq(m1.poolId, poolId.raw());
+        assertEq(m1.scId, scId.raw());
+        assertEq(m1.investor, INVESTOR);
+        assertEq(m1.assetId, USDC_C2.raw());
+        assertEq(m1.assetAmount, revokedAssetAmount);
+        assertEq(m1.shareAmount, APPROVED_SHARE_AMOUNT);
     }
 
     /// forge-config: default.isolate = true

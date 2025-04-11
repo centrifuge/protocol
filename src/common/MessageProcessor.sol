@@ -233,6 +233,16 @@ contract MessageProcessor is Auth, IMessageProcessor {
                     PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), D18.wrap(m.pricePerShare), m.shares
                 );
             }
+        } else if (kind == MessageType.ApprovedDeposits) {
+            MessageLib.ApprovedDeposits memory m = message.deserializeApprovedDeposits();
+            balanceSheet.approvedDeposits(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.assetAmount
+            );
+        } else if (kind == MessageType.RevokedShares) {
+            MessageLib.RevokedShares memory m = message.deserializeRevokedShares();
+            balanceSheet.revokedShares(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.assetAmount
+            );
         } else {
             revert InvalidMessage(uint8(kind));
         }

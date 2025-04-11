@@ -10,6 +10,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
+import {D18} from "src/misc/types/D18.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
@@ -18,17 +19,21 @@ import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IInvestmentManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
+import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {IAsyncRequests, AsyncInvestmentState} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {IAsyncDepositManager} from "src/vaults/interfaces/investments/IAsyncDepositManager.sol";
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
 import {IRedeemManager} from "src/vaults/interfaces/investments/IRedeemManager.sol";
+import {ISharePriceProvider, Prices} from "src/vaults/interfaces/investments/ISharePriceProvider.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IAsyncVault, IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 
@@ -42,6 +47,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     using MathLib for uint256;
 
     IVaultMessageSender public sender;
+    IBalanceSheet public balanceSheet;
+    ISharePriceProvider public sharePriceProvider;
 
     mapping(address vault => mapping(address investor => AsyncInvestmentState)) public investments;
     mapping(uint64 poolId => mapping(bytes16 scId => mapping(uint128 assetId => address vault))) public vault;
@@ -52,6 +59,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     function file(bytes32 what, address data) external override(IBaseInvestmentManager, BaseInvestmentManager) auth {
         if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "poolManager") poolManager = IPoolManager(data);
+        else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
+        else if (what == "sharePriceProvider") sharePriceProvider = ISharePriceProvider(data);
         else revert("AsyncRequests/file-unrecognized-param");
         emit File(what, data);
     }
@@ -93,15 +102,20 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         auth
         returns (bool)
     {
-        IAsyncVault vault_ = IAsyncVault(vaultAddr);
         uint128 _assets = assets.toUint128();
         require(_assets != 0, "AsyncRequests/zero-amount-not-allowed");
 
-        address asset = vault_.asset();
-        require(
-            poolManager.isLinked(vault_.poolId(), vault_.trancheId(), asset, vaultAddr),
-            "AsyncRequests/asset-not-allowed"
-        );
+        return _processDepositRequest(vaultAddr, _assets, controller);
+    }
+
+    /// @dev Necessary because of stack-too-deep
+    function _processDepositRequest(address vaultAddr, uint128 assets, address controller) internal returns (bool) {
+        IAsyncVault vault_ = IAsyncVault(vaultAddr);
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
+        uint64 poolId = vault_.poolId();
+        bytes16 scId = vault_.trancheId();
+
+        require(poolManager.isLinked(poolId, scId, vaultDetails.asset, vaultAddr), "AsyncRequests/asset-not-allowed");
 
         require(
             _canTransfer(vaultAddr, address(0), controller, convertToShares(vaultAddr, assets)),
@@ -111,12 +125,9 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         AsyncInvestmentState storage state = investments[vaultAddr][controller];
         require(state.pendingCancelDepositRequest != true, "AsyncRequests/cancellation-is-pending");
 
-        state.pendingDepositRequest = state.pendingDepositRequest + _assets;
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-
-        sender.sendDepositRequest(
-            vault_.poolId(), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId, _assets
-        );
+        state.pendingDepositRequest += assets;
+        balanceSheet.escrow().pendingDepositIncrease(vaultDetails.asset, vaultDetails.tokenId, poolId, scId, assets);
+        sender.sendDepositRequest(poolId, scId, controller.toBytes32(), vaultDetails.assetId, assets);
 
         return true;
     }
@@ -422,7 +433,6 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         address receiver,
         address controller
     ) internal {
-        IAsyncVault vault_ = IAsyncVault(vaultAddr);
         if (controller != receiver) {
             require(
                 _canTransfer(vaultAddr, controller, receiver, convertToShares(vaultAddr, assetsDown)),
@@ -439,14 +449,34 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         state.maxWithdraw = state.maxWithdraw > assetsUp ? state.maxWithdraw - assetsUp : 0;
 
         if (assetsDown > 0) {
-            VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-
-            if (vaultDetails.tokenId == 0) {
-                SafeTransferLib.safeTransferFrom(vaultDetails.asset, address(escrow), receiver, assetsDown);
-            } else {
-                IERC6909(vaultDetails.asset).transferFrom(address(escrow), receiver, vaultDetails.tokenId, assetsDown);
-            }
+            _withdraw(vaultAddr, receiver, assetsDown);
         }
+    }
+
+    /// @dev Transfer funds from escrow to receiver and update holdings
+    function _withdraw(address vaultAddr, address receiver, uint128 assets) internal {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
+
+        IAsyncVault vault_ = IAsyncVault(vaultAddr);
+        uint64 poolId = vault_.poolId();
+        bytes16 scId = vault_.trancheId();
+        JournalEntry[] memory journalEntries = new JournalEntry[](0);
+        Meta memory meta = Meta(journalEntries, journalEntries);
+
+        Prices memory prices =
+            sharePriceProvider.prices(poolId, scId, vaultDetails.assetId, vaultDetails.asset, vaultDetails.tokenId);
+        balanceSheet.escrow().reserveDecrease(vaultDetails.asset, vaultDetails.tokenId, poolId, scId, assets);
+
+        balanceSheet.withdraw(
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            vaultDetails.asset,
+            vaultDetails.tokenId,
+            receiver,
+            assets,
+            prices.poolPerAsset,
+            meta
+        );
     }
 
     /// @inheritdoc IAsyncDepositManager

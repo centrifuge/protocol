@@ -232,12 +232,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         (uint128 approvedAssetAmount,) =
             shareClassManager.approveDeposits(poolId, scId, maxApproval, paymentAssetId, valuation);
 
-        uint128 valueChange = holdings.increase(poolId, scId, paymentAssetId, valuation, approvedAssetAmount);
-
-        accounting.addCredit(holdings.accountId(poolId, scId, paymentAssetId, uint8(AccountType.Equity)), valueChange);
-        accounting.addDebit(holdings.accountId(poolId, scId, paymentAssetId, uint8(AccountType.Asset)), valueChange);
-
-        accounting.lock();
+        sender.sendApprovedDeposits(poolId, scId, paymentAssetId, approvedAssetAmount);
     }
 
     /// @inheritdoc IHub
@@ -269,12 +264,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         (uint128 payoutAssetAmount,) =
             shareClassManager.revokeShares(poolId, scId, payoutAssetId, navPerShare, valuation);
 
-        uint128 valueChange = holdings.decrease(poolId, scId, payoutAssetId, valuation, payoutAssetAmount);
-
-        accounting.addCredit(holdings.accountId(poolId, scId, payoutAssetId, uint8(AccountType.Asset)), valueChange);
-        accounting.addDebit(holdings.accountId(poolId, scId, payoutAssetId, uint8(AccountType.Equity)), valueChange);
-
-        accounting.lock();
+        sender.sendRevokedShares(poolId, scId, payoutAssetId, payoutAssetAmount);
     }
 
     /// @inheritdoc IHub
@@ -462,7 +452,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         ShareClassId scId,
         AssetId assetId,
         uint128 amount,
-        D18 pricePerUnit,
+        D18 pricePoolPerAsset,
         bool isIncrease,
         JournalEntry[] memory debits,
         JournalEntry[] memory credits
@@ -472,7 +462,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         accounting.unlock(poolId);
 
         address poolCurrency = hubRegistry.currency(poolId).addr();
-        transientValuation.setPrice(assetId.addr(), poolCurrency, pricePerUnit);
+        transientValuation.setPrice(assetId.addr(), poolCurrency, pricePoolPerAsset);
         uint128 valueChange = transientValuation.getQuote(amount, assetId.addr(), poolCurrency).toUint128();
 
         (uint128 debited, uint128 credited) = _updateJournal(debits, credits);

@@ -89,7 +89,7 @@ contract MockVaults is Test, Auth, IAdapter {
         ShareClassId scId,
         AssetId assetId,
         uint128 amount,
-        D18 pricePerUnit,
+        D18 pricePoolPerAsset,
         bool isIncrease,
         JournalEntry[] memory debits,
         JournalEntry[] memory credits
@@ -102,7 +102,7 @@ contract MockVaults is Test, Auth, IAdapter {
                 assetId: assetId.raw(),
                 who: bytes32(0),
                 amount: amount,
-                pricePerUnit: pricePerUnit.raw(),
+                pricePerUnit: pricePoolPerAsset.raw(),
                 timestamp: 0,
                 isIncrease: isIncrease,
                 debits: debits,
@@ -111,14 +111,14 @@ contract MockVaults is Test, Auth, IAdapter {
         );
     }
 
-    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePerUnit) public {
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset) public {
         handler.handle(
             sourceChainId,
             MessageLib.UpdateHoldingValue({
                 poolId: poolId.raw(),
                 scId: scId.raw(),
                 assetId: assetId.raw(),
-                pricePerUnit: pricePerUnit.raw(),
+                pricePerUnit: pricePoolPerAsset.raw(),
                 timestamp: 0
             }).serialize()
         );
