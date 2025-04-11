@@ -102,32 +102,26 @@ interface IHub {
     /// deposit asset id.
     /// @param scId Identifier of the share class
     /// @param paymentAssetId Identifier of the asset locked for the deposit request
-    /// @param maxApproval Sum of deposit request amounts in asset amount which is desired to be approved
-    /// @param valuation Used to transform between payment assets and pool currency
-    function approveDeposits(ShareClassId scId, AssetId paymentAssetId, uint128 maxApproval, IERC7726 valuation)
-        external
-        payable;
+    /// @param approvedAssetAmount Ampunt of assets that will be approved
+    function approveDeposits(ShareClassId scId, AssetId paymentAssetId, uint128 approvedAssetAmount) external payable;
 
     /// @notice Approves a percentage of all redemption requests for the given triplet of pool id, share class id and
     /// deposit asset id.
     /// @param scId Identifier of the share class
     /// @param payoutAssetId Identifier of the asset for which all requests want to exchange their share class tokens
-    /// @param maxApproval Sum of redeem request amounts in share class token amount which is desired to be approved
-    function approveRedeems(ShareClassId scId, AssetId payoutAssetId, uint128 maxApproval) external payable;
+    /// @param approvedShareAmount Amount of shares that will be approved
+    function approveRedeems(ShareClassId scId, AssetId payoutAssetId, uint128 approvedShareAmount) external payable;
 
     /// @notice Emits new shares for the given identifier based on the provided NAV per share.
     /// @param depositAssetId Identifier of the deposit asset for which shares should be issued
-    /// @param navPerShare Total value of assets of the share class per share
-    function issueShares(ShareClassId id, AssetId depositAssetId, D18 navPerShare) external payable;
+    /// @param navPoolPerShare Total value of assets of the share class per share
+    function issueShares(ShareClassId id, AssetId depositAssetId, D18 navPoolPerShare) external payable;
 
     /// @notice Take back shares for the given identifier based on the provided NAV per share.
     /// deposit asset id.
     /// @param payoutAssetId Identifier of the asset for which all requests want to exchange their share class tokens
-    /// @param navPerShare Total value of assets of the share class per share
-    /// @param valuation Used to transform between payout assets and pool currency
-    function revokeShares(ShareClassId scId, AssetId payoutAssetId, D18 navPerShare, IERC7726 valuation)
-        external
-        payable;
+    /// @param navPoolPerShare Total value of assets of the share class per share
+    function revokeShares(ShareClassId scId, AssetId payoutAssetId, D18 navPoolPerShare) external payable;
 
     /// @notice Update remotely a restriction.
     /// @param centrifugeId Chain where CV instance lives.
@@ -159,8 +153,8 @@ interface IHub {
     /// @dev the provide price does not need to be the final price of the share class. This price can be retrieved via
     /// the IShareClassManager.shareClassPrice() method
     /// @param scId The share class identifier
-    /// @param pricePerShare The new price per share
-    function updatePricePoolPerShare(ShareClassId scId, D18 pricePerShare, bytes calldata data) external payable;
+    /// @param pricePoolPerShare The new price per share
+    function updatePricePoolPerShare(ShareClassId scId, D18 pricePoolPerShare) external payable;
 
     /// @notice Create a new holding associated to the asset in a share class.
     /// It will generate and register the different accounts used for holdings.

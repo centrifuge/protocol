@@ -8,7 +8,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {ShareClassIdTest} from "../../../test/common/types/ShareClassId.t.sol";
 
-    struct EpochRedeemAmounts {
+struct EpochRedeemAmounts {
     /// @dev Amount of shares pending to be redeemed at time of epoch
     uint128 pendingShareAmount;
     /// @dev Total approved amount of redeemed share class tokens
@@ -98,16 +98,15 @@ interface IShareClassManager {
         ShareClassId indexed scId,
         uint32 indexed epoch,
         AssetId assetId,
-        uint128 approvedShareClassAmount,
-        uint128 pendingShareClassAmount
+        uint128 approvedShareAmount,
+        uint128 pendingShareAmount
     );
     event IssueShares(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         uint32 indexed epoch,
-        uint128 nav,
-        D18 navPerShare,
-        uint128 newTotalIssuance,
+        D18 navPoolPerShare,
+        D18 navAssetPerShare,
         uint128 issuedShareAmount
     );
     event RemoteIssueShares(PoolId indexed poolId, ShareClassId indexed scId, uint128 issedShareAmount);
@@ -115,11 +114,11 @@ interface IShareClassManager {
         PoolId indexed poolId,
         ShareClassId indexed scId,
         uint32 indexed epoch,
-        uint128 nav,
-        D18 navPerShare,
-        uint128 newTotalIssuance,
+        D18 navPoolPerShare,
+        D18 navAssetPerShare,
         uint128 revokedShareAmount,
-        uint128 revokedAssetAmount
+        uint128 paymentAssetAmount,
+        uint128 paymentPoolAmount
     );
     event RemoteRevokeShares(PoolId indexed poolId, ShareClassId indexed scId, uint128 revokedAssetAmount);
     event ClaimDeposit(
@@ -141,17 +140,17 @@ interface IShareClassManager {
         AssetId assetId,
         uint128 approvedShareClassAmount,
         uint128 pendingShareClassAmount,
-        uint128 claimedAssetAmount
+        uint128 claimedAssetAmount,
+        uint64 revokedAt
     );
+    event AddShareClass(PoolId indexed poolId, ShareClassId indexed scId, uint32 indexed index);
     event UpdateShareClass(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         uint128 nav,
-        D18 navPerShare,
-        uint128 totalIssuance,
-        bytes data
+        D18 navPoolPerShare,
+        uint128 totalIssuance
     );
-    event AddShareClass(PoolId indexed poolId, ShareClassId indexed scId, uint32 indexed index);
     event UpdateRequest(
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -238,57 +237,62 @@ interface IShareClassManager {
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
-    /// @param maxApproval Sum of deposit request amounts in asset amount which is desired to be approved
-    /// @param paymentAssetId Identifier of the asset locked for the deposit request
-    /// @param valuation Source of truth for quotas, e.g. the price of an asset amount to pool amount
-    /// @return approvedAssetAmount Sum of deposit request amounts in pool amount which was approved bound to at most
-    /// the total pending amount
-    /// @return approvedPoolAmount Sum of deposit request amounts in pool amount which was approved
+    /// @param approvedAssetAmount Amount of assets that will be approved for deposit
+    /// @param depositAssetId Identifier of the asset locked for the deposit request
+    /// @param pricePoolPerAsset Amount of pool unit one gets for a unit of asset
+    /// @return pendingAssetAmount Amount of assets still pending for deposit
+    /// @return approvedPoolAmount  Amount of pool units approved for deposit
     function approveDeposits(
         PoolId poolId,
         ShareClassId scId,
-        uint128 maxApproval,
-        AssetId paymentAssetId,
-        IERC7726 valuation
-    ) external returns (uint128 approvedAssetAmount, uint128 approvedPoolAmount);
+        uint128 approvedAssetAmount,
+        AssetId depositAssetId,
+        D18 pricePoolPerAsset
+    ) external returns (uint128 pendingAssetAmount, uint128 approvedPoolAmount);
 
     /// @notice Approves a share class token amount of all redeem requests for the given triplet of pool id, share class
     /// id and payout asset id.
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
-    /// @param maxApproval Sum of redeem request amounts in share class token amount which is desired to be approved
+    /// @param approvedShareAmount Amount of shares that will be approved for redemption
     /// @param payoutAssetId Identifier of the asset for which all requests want to exchange their share class tokens
     /// for
-    /// @return approvedShareAmount Sum of redemption request amounts in share class token which was approved bound to
-    /// at most the total pending amount
+    /// @param pricePoolPerAsset Amount of pool unit one gets for a unit of asset
     /// @return pendingShareAmount Sum of redemption request amounts in share class token amount which was not approved
-    function approveRedeems(PoolId poolId, ShareClassId scId, uint128 maxApproval, AssetId payoutAssetId)
-        external
-        returns (uint128 approvedShareAmount, uint128 pendingShareAmount);
+    function approveRedeems(
+        PoolId poolId,
+        ShareClassId scId,
+        uint128 approvedShareAmount,
+        AssetId payoutAssetId,
+        D18 pricePoolPerAsset
+    ) external returns (uint128 pendingShareAmount);
 
     /// @notice Emits new shares for the given identifier based on the provided NAV per share.
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     /// @param depositAssetId Identifier of the deposit asset for which shares should be issued
-    /// @param navPerShare The nav per share value of the share class (in the pool currency denomination. Conversion to
-    /// asset price is done onchain based on the valuation of the asset)
-    function issueShares(PoolId poolId, ShareClassId scId, AssetId depositAssetId, D18 navPerShare) external;
+    /// @param navPoolPerShare The nav per share value of the share class (in the pool currency denomination. Conversion
+    /// to asset price is done onchain based on the valuation of the asset at approval)
+    /// @return issuedShareAmount Amount of shares that have been issued
+    function issueShares(PoolId poolId, ShareClassId scId, AssetId depositAssetId, D18 navPoolPerShare)
+        external
+        returns (uint128 issuedShareAmount, uint128 paymentAssetAmount, uint128 paymentPoolAmount);
 
     /// @notice Take back shares for the given identifier based on the provided NAV per share.
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     /// @param payoutAssetId Identifier of the payout asset
-    /// @param navPerShare The nav per share value of the share class (in the pool currency denomination. Conversion to
-    /// asset price is done onchain based on the valuation of the asset)
-    /// @param valuation Source of truth for quotas, e.g. the price of a share class token amount to pool amount
+    /// @param navPoolPerShare The nav per share value of the share class (in the pool currency denomination. Conversion
+    /// to asset price is done onchain based on the valuation of the asset at approval)
+    /// @return revokedShareAmount Amount of shares that have been revoked
     /// @return payoutAssetAmount Converted amount of payout asset based on number of revoked shares
     /// @return payoutPoolAmount Converted amount of pool currency based on number of revoked shares
-    function revokeShares(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, D18 navPerShare, IERC7726 valuation)
+    function revokeShares(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, D18 navPoolPerShare)
         external
-        returns (uint128 payoutAssetAmount, uint128 payoutPoolAmount);
+        returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount);
 
     /// @notice Collects shares for an investor after their deposit request was (partially) approved and new shares were
     /// issued.
@@ -300,9 +304,15 @@ interface IShareClassManager {
     /// @return payoutShareAmount Amount of shares which the investor receives
     /// @return paymentAssetAmount Amount of deposit asset which was taken as payment
     /// @return cancelledAssetAmount Amount of deposit asset which was cancelled due to being queued
+    /// @return canClaimAgain Whether another call to claimRedeem is needed until investor has fully claimed investments
     function claimDeposit(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
         external
-        returns (uint128 payoutShareAmount, uint128 paymentAssetAmount, uint128 cancelledAssetAmount);
+        returns (
+            uint128 payoutShareAmount,
+            uint128 paymentAssetAmount,
+            uint128 cancelledAssetAmount,
+            bool canClaimAgain
+        );
 
     /// @notice Collects an asset amount for an investor after their redeem request was (partially) approved and shares
     /// were revoked.
@@ -315,116 +325,29 @@ interface IShareClassManager {
     /// @return payoutAssetAmount Amount of payout amount which the investor receives
     /// @return paymentShareAmount Amount of shares which the investor redeemed
     /// @return cancelledShareAmount Amount of shares which were cancelled due to being queued
+    /// @return canClaimAgain Whether another call to claimRedeem is needed until investor has fully claimed redemptions
     function claimRedeem(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
         external
-        returns (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelledShareAmount);
-
-    /// @notice Updates the NAV of a share class of a pool and returns it per share as well as the issuance.
-    /// @dev the nav per share provided does not need to match the nave per share returned. The nav per share returned
-    /// is the new nav per share
-    ///
-    /// @param poolId Identifier of the pool
-    /// @param scId Identifier of the share class
-    /// @param navPerShare Externally provided NAV per share
-    /// @param data Additional data for the update
-    /// @return issuance Total issuance of the share class
-    /// @return navPerShare The new NAV per share
-    function updateShareClass(PoolId poolId, ShareClassId scId, D18 navPerShare, bytes calldata data)
-        external
-        returns (uint128, D18);
+        returns (
+            uint128 payoutAssetAmount,
+            uint128 paymentShareAmount,
+            uint128 cancelledShareAmount,
+            bool canClaimAgain
+        );
 
     /// @notice Increases the share class issuance
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     /// @param amount The amount to increase the share class issuance by
-    function increaseShareClassIssuance(PoolId poolId, ShareClassId scId, D18 navPerShare, uint128 amount) external;
+    function increaseShareClassIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external;
 
     /// @notice Decreases the share class issuance
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     /// @param amount The amount to decrease the share class issuance by
-    function decreaseShareClassIssuance(PoolId poolId, ShareClassId scId, D18 navPerShare, uint128 amount) external;
-
-    /// @notice Emits new shares for the given identifier based on the provided NAV up to the desired epoch.
-    ///
-    /// @param poolId Identifier of the pool
-    /// @param scId Identifier of the share class
-    /// @param navPerShare Total value of assets of the pool and share class per share
-    /// @param endEpochId Identifier of the maximum epoch until which shares are issued
-    function issueSharesUntilEpoch(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId depositAssetId,
-        D18 navPerShare,
-        uint32 endEpochId
-    ) external;
-
-    /// @notice Revokes shares for an epoch span and sets the price based on amount of approved redemption shares and
-    /// the provided NAV.
-    ///
-    /// @param poolId Identifier of the pool
-    /// @param scId Identifier of the share class
-    /// @param payoutAssetId Identifier of the payout asset
-    /// @param navPerShare Total value of assets of the pool and share class per share
-    /// @param valuation Source of truth for quotas, e.g. the price of a share class token amount to pool amount
-    /// @param endEpochId Identifier of the maximum epoch until which shares are revoked
-    /// @return payoutAssetAmount Converted amount of payout asset based on number of revoked shares
-    /// @return payoutPoolAmount Converted amount of pool currency based on number of revoked shares
-    function revokeSharesUntilEpoch(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId payoutAssetId,
-        D18 navPerShare,
-        IERC7726 valuation,
-        uint32 endEpochId
-    ) external returns (uint128 payoutAssetAmount, uint128 payoutPoolAmount);
-
-    /// @notice Collects shares for an investor after their deposit request was (partially) approved and new shares were
-    /// issued until the provided epoch.
-    ///
-    /// @param poolId Identifier of the pool
-    /// @param scId Identifier of the share class
-    /// @param investor Centrifuge Vault address of the recipient of the claimed share class tokens
-    /// @param depositAssetId Identifier of the asset which the investor used for their deposit request
-    /// @param endEpochId Identifier of the maximum epoch until it is claimed claim
-    /// @return payoutShareAmount Amount of shares which the investor receives
-    /// @return paymentAssetAmount Amount of deposit asset which was taken as payment
-    /// @return cancelledAssetAmount Amount of deposit asset which was cancelled as a result of a queued cancellation
-    function claimDepositUntilEpoch(
-        PoolId poolId,
-        ShareClassId scId,
-        bytes32 investor,
-        AssetId depositAssetId,
-        uint32 endEpochId
-    ) external returns (uint128 payoutShareAmount, uint128 paymentAssetAmount, uint128 cancelledAssetAmount);
-
-    /// @notice Reduces the share class token count of the investor in exchange for collecting an amount of payment
-    /// asset for the specified range of epochs.
-    ///
-    /// @param poolId Identifier of the pool
-    /// @param scId Identifier of the share class
-    /// @param investor Centrifuge Vault address of the recipient of the claimed payout asset amount
-    /// @param payoutAssetId Identifier of the asset which the investor committed to as payout when requesting the
-    /// redemption
-    /// @param endEpochId Identifier of the maximum epoch until it is claimed claim
-    /// @return payoutAssetAmount Amount of payout asset which the investor receives
-    /// @return paymentShareAmount Amount of shares which the investor redeemed
-    /// @return cancelledShareAmount Amount of shares which were cancelled as a result of a queued cancellation
-    function claimRedeemUntilEpoch(
-        PoolId poolId,
-        ShareClassId scId,
-        bytes32 investor,
-        AssetId payoutAssetId,
-        uint32 endEpochId
-    ) external returns (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelledShareAmount);
-
-    /// @notice Generic update function for a pool.
-    ///
-    /// @param poolId Identifier of the pool
-    /// @param data Payload of the update
-    function update(PoolId poolId, bytes calldata data) external;
+    function decreaseShareClassIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external;
 
     /// @notice Adds a new share class to the given pool.
     ///
@@ -441,6 +364,14 @@ interface IShareClassManager {
         bytes32 salt,
         bytes calldata data
     ) external returns (ShareClassId scId);
+
+
+    /// @notice Updates the price pool unit per share unit of a share class
+    ///
+    /// @param poolId Identifier of the pool
+    /// @param scId Identifier of the share class
+    /// @param pricePoolPerShare The price per share of the share class (in the pool currency denomination)
+    function updateShareClassPrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare) external;
 
     /// @notice Updates the metadata of a share class.
     ///
@@ -465,19 +396,17 @@ interface IShareClassManager {
     /// @return count Number of share classes for the given pool
     function shareClassCount(PoolId poolId) external view returns (uint32 count);
 
-    /// @notice Returns the share class price and issuance
-    ///
-    /// @param poolId Identifier of the pool
-    /// @param scId Identifier of the share class
-    /// @return issuance Total issuance of the share class
-    /// @return price Price per share of the share class
-    function shareClassPrice(PoolId poolId, ShareClassId scId) external view returns (uint128 issuance, D18 price);
-
     /// @notice Checks the existence of a share class.
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     function exists(PoolId poolId, ShareClassId scId) external view returns (bool);
+
+    /// @notice Exposes relevant metrics for a share class
+    ///
+    /// @return totalIssuance The total number of shares known to the CP side
+    /// @return pricePoolPerShare The amount of pool units per unit share
+    function metrics(ShareClassId scId) external view returns (uint128 totalIssuance, D18 pricePoolPerShare);
 
     /// @notice Determines the next share class id for the given pool.
     ///

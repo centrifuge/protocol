@@ -4,7 +4,8 @@ pragma solidity 0.8.28;
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {Auth} from "src/misc/Auth.sol";
-import {d18} from "src/misc/types/D18.sol";
+import {d18, D18} from "src/misc/types/D18.sol";
+import {ConversionLib} from "src/misc/libraries/ConversionLib.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -56,7 +57,7 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @inheritdoc IHoldings
-    function increase(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount_)
+    function increase(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset, uint128 amount_)
         external
         auth
         returns (uint128 amountValue)
@@ -64,18 +65,18 @@ contract Holdings is Auth, IHoldings {
         Holding storage holding_ = holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
-        // TODO: Fix to take price as parameter and use here instead
-        amountValue = holding_.valuation.getQuote(amount_, assetId.addr(), hubRegistry.currency(poolId).addr()).toUint128();
+        amountValue = ConversionLib.convertWithPrice(
+            amount_, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), pricePoolPerAsset
+        ).toUint128();
 
         holding_.assetAmount += amount_;
         holding_.assetAmountValue += amountValue;
 
-        // TODO: Use price from parameter
-        emit Increase(poolId, scId, assetId, d18(1,1), amount_, amountValue);
+        emit Increase(poolId, scId, assetId, pricePoolPerAsset, amount_, amountValue);
     }
 
     /// @inheritdoc IHoldings
-    function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount_)
+    function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset, uint128 amount_)
         external
         auth
         returns (uint128 amountValue)
@@ -83,14 +84,14 @@ contract Holdings is Auth, IHoldings {
         Holding storage holding_ = holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
-        // TODO: Fix to take price as parameter and use here instead
-        amountValue = holding.valuation_.getQuote(amount_, assetId.addr(), hubRegistry.currency(poolId).addr()).toUint128();
+        amountValue = ConversionLib.convertWithPrice(
+            amount_, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), pricePoolPerAsset
+        ).toUint128();
 
         holding_.assetAmount -= amount_;
         holding_.assetAmountValue -= amountValue;
 
-        // TODO: Use price from parameter
-        emit Decrease(poolId, scId, assetId, d18(1,1), amount_, amountValue);
+        emit Decrease(poolId, scId, assetId, pricePoolPerAsset, amount_, amountValue);
     }
 
     /// @inheritdoc IHoldings
