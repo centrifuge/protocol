@@ -358,6 +358,13 @@ abstract contract AdminTargets is
         hub.updateHoldingValue(poolId, scId, assetId, pricePerUnit);
     }
 
+    function hub_updateHoldingValue_clamped(uint64 poolEntropy, uint32 scEntropy, D18 pricePerUnit) public updateGhosts {
+        PoolId poolId = _getRandomPoolId(poolEntropy);
+        ShareClassId scId = _getRandomShareClassIdForPool(poolId, scEntropy);
+        AssetId assetId = hubRegistry.currency(poolId);
+        hub_updateHoldingValue(poolId.raw(), scId.raw(), assetId.raw(), pricePerUnit);
+    }
+
     function hub_updateJournal(uint64 poolIdAsUint, JournalEntry[] memory debits, JournalEntry[] memory credits) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         hub.updateJournal(poolId, debits, credits);
