@@ -65,7 +65,8 @@ enum UpdateContractType {
     Permission,
     MaxAssetPriceAge,
     MaxSharePriceAge,
-    Valuation
+    Valuation,
+    SyncDepositMaxReserve
 }
 
 /// @dev Used internally in the VaultUpdateMessage (not represent a submessage)
@@ -761,6 +762,36 @@ library MessageLib {
 
     function serialize(UpdateContractValuation memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(UpdateContractType.Valuation, t.poolId, t.scId, t.assetId, t.valuation);
+    }
+
+    //---------------------------------------
+    //   UpdateContract.SyncDepositMaxReserve (submsg)
+    //---------------------------------------
+
+    struct UpdateContractSyncDepositMaxReserve {
+        uint64 poolId;
+        bytes16 scId;
+        uint128 assetId;
+        uint128 maxReserve;
+    }
+
+    function deserializeUpdateContractSyncDepositMaxReserve(bytes memory data)
+        internal
+        pure
+        returns (UpdateContractSyncDepositMaxReserve memory)
+    {
+        require(updateContractType(data) == UpdateContractType.SyncDepositMaxReserve, UnknownMessageType());
+
+        return UpdateContractSyncDepositMaxReserve({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            assetId: data.toUint128(25),
+            maxReserve: data.toUint128(41)
+        });
+    }
+
+    function serialize(UpdateContractSyncDepositMaxReserve memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(UpdateContractType.SyncDepositMaxReserve, t.poolId, t.scId, t.assetId, t.maxReserve);
     }
 
     //---------------------------------------

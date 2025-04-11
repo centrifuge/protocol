@@ -10,6 +10,9 @@ import {ISharePriceProvider} from "src/vaults/interfaces/investments/ISharePrice
 
 interface ISyncRequests is ISyncDepositManager, ISharePriceProvider, IUpdateContract {
     event SetValuation(uint64 indexed poolId, bytes16 indexed scId, address asset, uint256 tokenId, address oracle);
+    event SetMaxReserve(
+        uint64 indexed poolId, bytes16 indexed scId, address asset, uint256 tokenId, uint128 maxReserve
+    );
 
     error ExceedsMaxDeposit();
     error AssetNotAllowed();
@@ -22,4 +25,13 @@ interface ISyncRequests is ISyncDepositManager, ISharePriceProvider, IUpdateCont
     /// @param tokenId The asset token id, i.e. 0 for ERC20, or the token id for ERC6909
     /// @param valuation The address of the valuation contract
     function setValuation(uint64 poolId, bytes16 scId, address asset, uint256 tokenId, address valuation) external;
+
+    /// @notice Sets the max reserve for a specific pool, share class and asset.
+    ///
+    /// @param poolId The id of the pool
+    /// @param scId The id of the share class
+    /// @param asset The address of the asset
+    /// @param tokenId The asset token id, i.e. 0 for ERC20, or the token id for ERC6909
+    /// @param maxReserve The amount of maximum reserve
+    function setMaxReserve(uint64 poolId, bytes16 scId, address asset, uint256 tokenId, uint128 maxReserve) external;
 }
