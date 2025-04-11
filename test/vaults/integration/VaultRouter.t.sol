@@ -18,6 +18,7 @@ import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
 import {MockReentrantERC20Wrapper1, MockReentrantERC20Wrapper2} from "test/vaults/mocks/MockReentrantERC20Wrapper.sol";
+import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 
 contract VaultRouterTest is BaseTest {
     using MessageLib for *;
@@ -51,7 +52,7 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: 1 wei}(vault_, amount, self, self);
 
         vaultRouter.enable(vault_);
-        vm.expectRevert(bytes("AsyncRequests/transfer-not-allowed"));
+        vm.expectRevert(IAsyncRequests.TransferNotAllowed.selector);
         vaultRouter.requestDeposit{value: 1 wei}(vault_, amount, self, self);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
 
