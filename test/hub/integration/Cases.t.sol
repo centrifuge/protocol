@@ -7,6 +7,7 @@ contract TestCases is BaseTest {
     using CastLib for string;
     using CastLib for bytes32;
     using MathLib for *;
+    using MessageLib for *;
 
     /// forge-config: default.isolate = true
     function testPoolCreation() public returns (PoolId poolId, ShareClassId scId) {
@@ -25,8 +26,16 @@ contract TestCases is BaseTest {
         hub.notifyShareClass{value: GAS}(poolId, CHAIN_CV, scId, SC_HOOK);
         hub.createHolding(poolId, scId, USDC_C2, identityValuation, false, 0x01);
         hub.createHolding(poolId, scId, EUR_STABLE_C2, transientValuation, false, 0x02);
-        hub.updateVault{value: GAS}(
-            poolId, scId, USDC_C2, bytes32("target"), bytes32("factory"), VaultUpdateKind.DeployAndLink
+        hub.updateContract{value: GAS}(
+            poolId,
+            CHAIN_CV,
+            scId,
+            bytes32("target"),
+            MessageLib.UpdateContractVaultUpdate({
+                vaultOrFactory: bytes32("factory"),
+                assetId: USDC_C2.raw(),
+                kind: uint8(VaultUpdateKind.DeployAndLink)
+            }).serialize()
         );
         vm.stopPrank();
 

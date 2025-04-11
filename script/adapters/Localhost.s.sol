@@ -10,6 +10,7 @@ import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {MessageLib, UpdateContractType, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
@@ -18,6 +19,8 @@ import {FullDeployer, HubDeployer, VaultsDeployer} from "script/FullDeployer.s.s
 
 // Script to deploy CP and CP with an Localhost Adapter.
 contract LocalhostDeployer is FullDeployer {
+    using MessageLib for *;
+
     function run() public {
         uint16 centrifugeId = uint16(vm.envUint("CENTRIFUGE_ID"));
 
@@ -57,13 +60,16 @@ contract LocalhostDeployer is FullDeployer {
         hub.notifyShareClass{value: 0.001 ether}(poolId, centrifugeId, scId, bytes32(bytes20(freelyTransferable)));
         hub.createHolding(poolId, scId, assetId, identityValuation, false, 0x01);
 
-        hub.updateVault(
+        hub.updateContract(
             poolId,
+            centrifugeId,
             scId,
-            assetId,
             bytes32(bytes20(address(poolManager))),
-            bytes32(bytes20(address(asyncVaultFactory))),
-            VaultUpdateKind.DeployAndLink
+            MessageLib.UpdateContractVaultUpdate({
+                vaultOrFactory: bytes32(bytes20(address(asyncVaultFactory))),
+                assetId: assetId.raw(),
+                kind: uint8(VaultUpdateKind.DeployAndLink)
+            }).serialize()
         );
 
         hub.updatePricePoolPerShare(poolId, scId, navPerShare, "");
