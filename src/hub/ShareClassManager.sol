@@ -142,7 +142,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         uint128 approvedAssetAmount,
         AssetId paymentAssetId,
         D18 pricePoolPerAsset
-    ) external auth returns (uint128 approvedAssetAmount, uint128 approvedPoolAmount) {
+    ) external auth returns (uint128 approvedPoolAmount) {
         require(exists(poolId, scId_), ShareClassNotFound());
         uint32 epochId = investEpochId[poolId][paymentAssetId] + 1;
         emit NewInvestEpoch(epochId, paymentAssetId);
@@ -153,11 +153,12 @@ contract ShareClassManager is Auth, IShareClassManager {
         require(approvedAssetAmount > 0, ZeroApprovalAmount());
 
         // Update epoch data
-        EpochInvestAmounts storage epochAmounts_ = epochInvestAmounts[scId_][paymentAssetId][epochId];
-        epochAmounts_.approvedAssetAmount = approvedAssetAmount;
-        eppchAmounts_.approvedPoolAmount =
+        EpochInvestAmounts storage epochAmounts = epochInvestAmounts[scId_][paymentAssetId][epochId];
+        epochAmounts.approvedAssetAmount = approvedAssetAmount;
+        epochAmounts.approvedPoolAmount =
             ConversionLib.convertWithPrice(approvedAssetAmount, asset, pool, pricePoolPerAsset);
-        epochAmounts_.pendingAssetAmount = pendingAssetAmount;
+        epochAmounts.pendingAssetAmount = pendingAssetAmount;
+        epochAmounts.pricePoolPerAsset = pricePoolPerAsset;
 
         // Reduce pending
         pendingDeposit[scId_][paymentAssetId] -= approvedAssetAmount;
@@ -207,8 +208,7 @@ contract ShareClassManager is Auth, IShareClassManager {
 
         EpochInvestAmount storage epochAmounts = epochInvestAmounts[scId_][depositAssetId][epochId];
 
-        //TODO: Calculate navAssetPerShare with approvedPoolAmount and approvedAssetAmount
-        D18 navAssetPerShare = navPoolPerShare;
+        D18 navAssetPerShare = navPoolPerShare / epochAmounts.pricePoolPerAsset;
         uint128 issuedShareAmount =
             ConversionLib.convertWithPrice(epochAmounts.approvedAssetAmount, asset, pool, navAssetPerShare);
         metrics[scId_].totalIssuance += issuedShareAmount;

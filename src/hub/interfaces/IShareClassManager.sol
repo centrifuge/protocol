@@ -28,7 +28,7 @@ struct EpochInvestAmounts {
     /// @dev Total approved pool amount of deposit asset
     uint128 approvedPoolAmount;
     /// @dev
-    D18 priceAssetPerShare;
+    D18 pricePoolPerAsset;
     /// @dev block timestamp when shares of epoch were issued
     u64 issuedAt;
 }
