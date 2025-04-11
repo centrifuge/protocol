@@ -39,20 +39,24 @@ contract LocalhostDeployer is FullDeployer {
     }
 
     function _configureTestData(uint16 centrifugeId) internal {
-        // Create pool
-        PoolId poolId = hub.createPool(msg.sender, USD);
-        ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
-
         // Deploy and register test USDC
         ERC20 token = new ERC20(6);
         token.file("name", "USD Coin");
         token.file("symbol", "USDC");
         token.mint(msg.sender, 10_000_000e6);
-        vaultRouter.registerAsset{value: 0.001 ether}(centrifugeId, address(token), 0);
 
-        // Deploy vault
-        D18 navPerShare = d18(1, 1);
+        vaultRouter.registerAsset{value: 0.001 ether}(centrifugeId, address(token), 0);
         AssetId assetId = newAssetId(centrifugeId, 1);
+
+        _deployAsyncVault(centrifugeId, token, assetId);
+        _deploySyncVault(centrifugeId, token, assetId);
+    }
+
+    function _deployAsyncVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
+        PoolId poolId = hub.createPool(msg.sender, USD);
+        ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
+
+        D18 navPerShare = d18(1, 1);
 
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, "Tokenized MMF", "MMF", bytes32(bytes("1")), bytes(""));
@@ -93,5 +97,41 @@ contract LocalhostDeployer is FullDeployer {
 
         // Claim deposit request
         vault.mint(investAmount, msg.sender);
+    }
+
+    function _deploySyncVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
+        PoolId poolId = hub.createPool(msg.sender, USD);
+        ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
+
+        D18 navPerShare = d18(1, 1);
+
+        hub.setPoolMetadata(poolId, bytes("Testing pool"));
+        hub.addShareClass(poolId, "RWA Portfolio", "RWA", bytes32(bytes("2")), bytes(""));
+        hub.notifyPool{value: 0.001 ether}(poolId, centrifugeId);
+        hub.notifyShareClass{value: 0.001 ether}(poolId, centrifugeId, scId, bytes32(bytes20(freelyTransferable)));
+        hub.createHolding(poolId, scId, assetId, identityValuation, false, 0x01);
+
+        hub.updateContract(
+            poolId,
+            centrifugeId,
+            scId,
+            bytes32(bytes20(address(poolManager))),
+            MessageLib.UpdateContractVaultUpdate({
+                vaultOrFactory: bytes32(bytes20(address(syncDepositVaultFactory))),
+                assetId: assetId.raw(),
+                kind: uint8(VaultUpdateKind.DeployAndLink)
+            }).serialize()
+        );
+
+        hub.updatePricePoolPerShare(poolId, scId, navPerShare, "");
+        hub.notifySharePrice(poolId, centrifugeId, scId);
+
+        // Deposit
+        IShareToken shareToken = IShareToken(poolManager.shareToken(poolId.raw(), scId.raw()));
+        IAsyncVault vault = IAsyncVault(shareToken.vault(address(token)));
+
+        uint128 investAmount = 1_000_000e6;
+        token.approve(address(vault), investAmount);
+        vault.deposit(investAmount, msg.sender);
     }
 }
