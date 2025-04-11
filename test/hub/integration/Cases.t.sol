@@ -7,6 +7,7 @@ contract TestCases is BaseTest {
     using CastLib for string;
     using CastLib for bytes32;
     using MathLib for *;
+    using MessageLib for *;
 
     /// forge-config: default.isolate = true
     function testPoolCreation() public returns (PoolId poolId, ShareClassId scId) {
@@ -18,26 +19,25 @@ contract TestCases is BaseTest {
 
         scId = shareClassManager.previewNextShareClassId(poolId);
 
-        (bytes[] memory cs, uint256 c) = (new bytes[](7), 0);
-        cs[c++] = abi.encodeWithSelector(hub.setPoolMetadata.selector, bytes("Testing pool"));
-        cs[c++] = abi.encodeWithSelector(hub.addShareClass.selector, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
-        cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, CHAIN_CV);
-        cs[c++] = abi.encodeWithSelector(hub.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
-        cs[c++] = abi.encodeWithSelector(hub.createHolding.selector, scId, USDC_C2, identityValuation, false, 0x01);
-        cs[c++] =
-            abi.encodeWithSelector(hub.createHolding.selector, scId, EUR_STABLE_C2, transientValuation, false, 0x02);
-        cs[c++] = abi.encodeWithSelector(
-            hub.updateVault.selector,
+        vm.startPrank(FM);
+        hub.setPoolMetadata(poolId, bytes("Testing pool"));
+        hub.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
+        hub.notifyPool{value: GAS}(poolId, CHAIN_CV);
+        hub.notifyShareClass{value: GAS}(poolId, CHAIN_CV, scId, SC_HOOK);
+        hub.createHolding(poolId, scId, USDC_C2, identityValuation, false, 0x01);
+        hub.createHolding(poolId, scId, EUR_STABLE_C2, transientValuation, false, 0x02);
+        hub.updateContract{value: GAS}(
+            poolId,
+            CHAIN_CV,
             scId,
-            USDC_C2,
             bytes32("target"),
-            bytes32("factory"),
-            VaultUpdateKind.DeployAndLink
+            MessageLib.UpdateContractVaultUpdate({
+                vaultOrFactory: bytes32("factory"),
+                assetId: USDC_C2.raw(),
+                kind: uint8(VaultUpdateKind.DeployAndLink)
+            }).serialize()
         );
-        assertEq(c, cs.length);
-
-        vm.prank(FM);
-        hub.execute{value: GAS * 3}(poolId, cs);
+        vm.stopPrank();
 
         assertEq(hubRegistry.metadata(poolId), "Testing pool");
         assertEq(shareClassManager.exists(poolId, scId), true);
@@ -74,14 +74,10 @@ contract TestCases is BaseTest {
 
         IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
 
-        (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
-        cs[c++] =
-            abi.encodeWithSelector(hub.approveDeposits.selector, scId, USDC_C2, APPROVED_INVESTOR_AMOUNT, valuation);
-        cs[c++] = abi.encodeWithSelector(hub.issueShares.selector, scId, USDC_C2, NAV_PER_SHARE);
-        assertEq(c, cs.length);
-
-        vm.prank(FM);
-        hub.execute(poolId, cs);
+        vm.startPrank(FM);
+        hub.approveDeposits(poolId, scId, USDC_C2, APPROVED_INVESTOR_AMOUNT, valuation);
+        hub.issueShares(poolId, scId, USDC_C2, NAV_PER_SHARE);
+        vm.stopPrank();
 
         vm.prank(ANY);
         vm.deal(ANY, GAS);
@@ -106,13 +102,10 @@ contract TestCases is BaseTest {
 
         IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
 
-        (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
-        cs[c++] = abi.encodeWithSelector(hub.approveRedeems.selector, scId, USDC_C2, APPROVED_SHARE_AMOUNT);
-        cs[c++] = abi.encodeWithSelector(hub.revokeShares.selector, scId, USDC_C2, NAV_PER_SHARE, valuation);
-        assertEq(c, cs.length);
-
-        vm.prank(FM);
-        hub.execute(poolId, cs);
+        vm.startPrank(FM);
+        hub.approveRedeems(poolId, scId, USDC_C2, APPROVED_SHARE_AMOUNT);
+        hub.revokeShares(poolId, scId, USDC_C2, NAV_PER_SHARE, valuation);
+        vm.stopPrank();
 
         vm.prank(ANY);
         vm.deal(ANY, GAS);
@@ -136,10 +129,8 @@ contract TestCases is BaseTest {
 
         AccountId extraAccountId = newAccountId(123, uint8(AccountType.Asset));
 
-        (bytes[] memory cs, uint256 c) = (new bytes[](1), 0);
-        cs[c++] = abi.encodeWithSelector(hub.createAccount.selector, extraAccountId, true);
         vm.prank(FM);
-        hub.execute(poolId, cs);
+        hub.createAccount(poolId, extraAccountId, true);
 
         (JournalEntry[] memory debits, uint256 i) = (new JournalEntry[](3), 0);
         debits[i++] = JournalEntry(1000, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Asset)));
@@ -227,15 +218,12 @@ contract TestCases is BaseTest {
 
         transientValuation.setPrice(EUR_STABLE_C2.addr(), poolCurrency.addr(), poolPerEurPrice);
 
-        (bytes[] memory cs, uint256 c) = (new bytes[](4), 0);
-        cs[c++] = abi.encodeWithSelector(hub.updatePricePoolPerShare.selector, scId, sharePrice, "");
-        cs[c++] = abi.encodeWithSelector(hub.notifyAssetPrice.selector, scId, EUR_STABLE_C2);
-        cs[c++] = abi.encodeWithSelector(hub.notifyAssetPrice.selector, scId, USDC_C2);
-        cs[c++] = abi.encodeWithSelector(hub.notifySharePrice.selector, CHAIN_CV, scId);
-        assertEq(c, cs.length);
-
-        vm.prank(FM);
-        hub.execute{value: 3 * GAS}(poolId, cs);
+        vm.startPrank(FM);
+        hub.updatePricePoolPerShare(poolId, scId, sharePrice, "");
+        hub.notifyAssetPrice{value: GAS}(poolId, scId, EUR_STABLE_C2);
+        hub.notifyAssetPrice{value: GAS}(poolId, scId, USDC_C2);
+        hub.notifySharePrice{value: GAS}(poolId, CHAIN_CV, scId);
+        vm.stopPrank();
 
         assertEq(cv.messageCount(), 3);
 

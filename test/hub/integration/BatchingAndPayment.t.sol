@@ -6,42 +6,10 @@ import "test/hub/integration/BaseTest.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 
 contract TestBatchingAndPayment is BaseTest {
-    /// forge-config: default.isolate = true
-    function testExecuteNoSendNoPay() public {
-        vm.prank(ADMIN);
-        PoolId poolId = guardian.createPool(FM, USD);
-
-        vm.startPrank(FM);
-
-        bytes[] memory cs = new bytes[](1);
-        cs[0] = abi.encodeWithSelector(hub.setPoolMetadata.selector, "");
-
-        hub.execute(poolId, cs);
-
-        // Check no messages were sent as intended
-        assertEq(cv.messageCount(), 0);
-    }
-
-    /// forge-config: default.isolate = true
-    function testExecuteSendNoPay() public {
-        vm.prank(ADMIN);
-        PoolId poolId = guardian.createPool(FM, USD);
-
-        vm.startPrank(FM);
-
-        bytes[] memory cs = new bytes[](1);
-        cs[0] = abi.encodeWithSelector(hub.notifyPool.selector, CHAIN_CV);
-
-        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
-        hub.execute(poolId, cs);
-    }
-
     /// Test the following:
     /// - multicall()
-    ///   - execute(poolA)
-    ///      - notifyPool()
-    ///   - execute(poolA)
-    ///      - notifyPool()
+    ///    - notifyPool(poolA)
+    ///    - notifyPool(poolA)
     ///
     /// will send one message. The batch sent is [NotifyPool, NotifyPool].
     ///
@@ -52,12 +20,9 @@ contract TestBatchingAndPayment is BaseTest {
 
         vm.startPrank(FM);
 
-        bytes[] memory innerCalls = new bytes[](1);
-        innerCalls[0] = abi.encodeWithSelector(hub.notifyPool.selector, CHAIN_CV);
-
         (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
-        cs[c++] = abi.encodeWithSelector(hub.execute.selector, poolA, innerCalls);
-        cs[c++] = abi.encodeWithSelector(hub.execute.selector, poolA, innerCalls);
+        cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, poolA, CHAIN_CV);
+        cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, poolA, CHAIN_CV);
         assertEq(c, cs.length);
 
         hub.multicall{value: GAS * 2}(cs);
@@ -65,10 +30,8 @@ contract TestBatchingAndPayment is BaseTest {
 
     /// Test the following:
     /// - multicall()
-    ///   - execute(poolA)
-    ///      - notifyPool()
-    ///   - execute(poolB) <- different
-    ///      - notifyPool()
+    ///    - notifyPool(poolA)
+    ///    - notifyPool(poolB)
     ///
     /// will send two messages because they are different pools.
     ///
@@ -81,12 +44,9 @@ contract TestBatchingAndPayment is BaseTest {
 
         vm.startPrank(FM);
 
-        bytes[] memory innerCalls = new bytes[](1);
-        innerCalls[0] = abi.encodeWithSelector(hub.notifyPool.selector, CHAIN_CV);
-
         (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
-        cs[c++] = abi.encodeWithSelector(hub.execute.selector, poolA, innerCalls);
-        cs[c++] = abi.encodeWithSelector(hub.execute.selector, poolB, innerCalls);
+        cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, poolA, CHAIN_CV);
+        cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, poolB, CHAIN_CV);
         assertEq(c, cs.length);
 
         hub.multicall{value: GAS * 2}(cs);
