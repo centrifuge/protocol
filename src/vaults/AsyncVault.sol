@@ -34,16 +34,15 @@ contract AsyncVault is AsyncRedeemVault, IAsyncVault {
     // --- ERC-7540 methods ---
     /// @inheritdoc IERC7540Deposit
     function requestDeposit(uint256 assets, address controller, address owner) public returns (uint256) {
-        require(owner == msg.sender || isOperator[owner][msg.sender], "AsyncVault/invalid-owner");
+        require(owner == msg.sender || isOperator[owner][msg.sender], InvalidOwner());
         require(
             tokenId == 0 && IERC20(asset).balanceOf(owner) >= assets
                 || tokenId > 0 && IERC6909(asset).balanceOf(owner, tokenId) >= assets,
-            "AsyncVault/insufficient-balance"
+            InsufficientBalance()
         );
 
         require(
-            asyncManager().requestDeposit(address(this), assets, controller, owner, msg.sender),
-            "AsyncVault/request-deposit-failed"
+            asyncManager().requestDeposit(address(this), assets, controller, owner, msg.sender), RequestDepositFailed()
         );
 
         if (tokenId == 0) {

@@ -65,7 +65,7 @@ contract VaultRouterTest is BaseTest {
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
         uint256 gas = estimateGas();
 
-        vm.expectRevert("AsyncVault/invalid-owner");
+        vm.expectRevert(IAsyncVault.InvalidOwner.selector);
         vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
         vaultRouter.enable(vault_);
 

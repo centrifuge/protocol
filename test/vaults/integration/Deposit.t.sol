@@ -14,7 +14,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
-import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IBaseVault, IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
 
 contract DepositTest is BaseTest {
     using MessageLib for *;
@@ -66,7 +66,7 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(0, self, self);
 
         // will fail - owner != msg.sender not allowed
-        vm.expectRevert(bytes("AsyncVault/invalid-owner"));
+        vm.expectRevert(IAsyncVault.InvalidOwner.selector);
         vault.requestDeposit(amount, self, nonMember);
 
         // will fail - cannot fulfill if there is no pending request
@@ -87,7 +87,7 @@ contract DepositTest is BaseTest {
         }
 
         // fail: no asset left
-        vm.expectRevert(bytes("AsyncVault/insufficient-balance"));
+        vm.expectRevert(IBaseVault.InsufficientBalance.selector);
         vault.requestDeposit(amount, self, self);
 
         // ensure funds are locked in escrow
@@ -413,7 +413,7 @@ contract DepositTest is BaseTest {
         root.endorse(router);
 
         vm.startPrank(router);
-        vm.expectRevert(bytes("AsyncVault/cannot-set-self-as-operator"));
+        vm.expectRevert(IBaseVault.CannotSetSelfAsOperator.selector);
         vault.setEndorsedOperator(address(router), true);
 
         vault.setEndorsedOperator(address(this), true);

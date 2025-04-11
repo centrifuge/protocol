@@ -48,7 +48,7 @@ contract VaultRouterTest is BaseTest {
 
         erc20.mint(self, amount);
 
-        vm.expectRevert(bytes("AsyncVault/invalid-owner"));
+        vm.expectRevert(IAsyncVault.InvalidOwner.selector);
         vaultRouter.requestDeposit{value: 1 wei}(vault_, amount, self, self);
 
         vaultRouter.enable(vault_);

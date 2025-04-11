@@ -338,6 +338,9 @@ interface IAsyncVault is IERC7540Deposit, IERC7540CancelDeposit, IAsyncRedeemVau
     event DepositClaimable(address indexed controller, uint256 indexed requestId, uint256 assets, uint256 shares);
     event CancelDepositClaimable(address indexed controller, uint256 indexed requestId, uint256 assets);
 
+    error InvalidOwner();
+    error RequestDepositFailed();
+
     /// @notice Callback when a deposit Request becomes claimable
     function onDepositClaimable(address owner, uint256 assets, uint256 shares) external;
 

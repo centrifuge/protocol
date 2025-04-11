@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import "test/vaults/BaseTest.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
-import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IBaseVault, IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
 
 contract OperatorTest is BaseTest {
     function testDepositAsOperator(uint256 amount) public {
@@ -27,7 +27,7 @@ contract OperatorTest is BaseTest {
         erc20.approve(vault_, amount);
 
         vm.prank(operator);
-        vm.expectRevert(bytes("AsyncVault/invalid-owner"));
+        vm.expectRevert(IAsyncVault.InvalidOwner.selector);
         vault.requestDeposit(amount, investor, investor);
 
         vm.prank(investor);
@@ -57,7 +57,7 @@ contract OperatorTest is BaseTest {
         vault.setOperator(operator, false);
 
         vm.prank(operator);
-        vm.expectRevert(bytes("AsyncVault/invalid-owner"));
+        vm.expectRevert(IAsyncVault.InvalidOwner.selector);
         vault.requestDeposit(amount, investor, investor);
     }
 
@@ -81,7 +81,7 @@ contract OperatorTest is BaseTest {
         erc20.approve(vault_, amount);
 
         vm.prank(operator);
-        vm.expectRevert(bytes("AsyncVault/invalid-owner"));
+        vm.expectRevert(IAsyncVault.InvalidOwner.selector);
         vault.requestDeposit(amount, controller, controller);
 
         uint256 deadline = type(uint64).max;
@@ -206,7 +206,7 @@ contract OperatorTest is BaseTest {
         erc20.approve(vault_, amount);
 
         vm.prank(operator);
-        vm.expectRevert(bytes("AsyncVault/invalid-owner"));
+        vm.expectRevert(IAsyncVault.InvalidOwner.selector);
         vault.requestDeposit(amount, controller, controller);
 
         uint256 deadline = type(uint64).max;
