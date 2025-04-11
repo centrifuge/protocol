@@ -155,20 +155,6 @@ interface IHub {
         bytes calldata payload
     ) external payable;
 
-    /// @notice Deploy a vault in the Vaults side.
-    /// @param assetId Asset used in the vault.
-    /// @param target contract where to execute this action in CV. Check IUpdateContract interface.
-    /// @param vaultOrFactory Vault or Factory address, depending on kind. Check `IVaultFactory` interface.
-    /// @param kind The action to do with the vault. See `VaultUpdateKind`
-    // function updateVault(
-    //     PoolId poolId,
-    //     ShareClassId scId,
-    //     AssetId assetId,
-    //     bytes32 target,
-    //     bytes32 vaultOrFactory,
-    //     VaultUpdateKind kind
-    // ) external payable;
-
     /// @notice Update the price per share of a share class
     /// @dev the provide price does not need to be the final price of the share class. This price can be retrieved via
     /// the IShareClassManager.shareClassPrice() method
