@@ -76,7 +76,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
             require(poolManager.shareToken(poolId, scId) != address(0), "SyncRequests/share-token-does-not-exist");
             (address asset, uint256 tokenId) = poolManager.idToAsset(m.assetId);
 
-            setValuation(m.poolId, m.scId, asset, tokenId, m.valuation.toAddress());
+            setValuation(poolId, scId, asset, tokenId, m.valuation.toAddress());
         } else if (kind == uint8(UpdateContractType.SyncDepositMaxReserve)) {
             MessageLib.UpdateContractSyncDepositMaxReserve memory m =
                 MessageLib.deserializeUpdateContractSyncDepositMaxReserve(payload);
@@ -84,7 +84,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
             require(poolManager.shareToken(poolId, scId) != address(0), "SyncRequests/share-token-does-not-exist");
             (address asset, uint256 tokenId) = poolManager.idToAsset(m.assetId);
 
-            setMaxReserve(m.poolId, m.scId, asset, tokenId, m.maxReserve);
+            setMaxReserve(poolId, scId, asset, tokenId, m.maxReserve);
         } else {
             revert("SyncRequests/unknown-update-contract-type");
         }
