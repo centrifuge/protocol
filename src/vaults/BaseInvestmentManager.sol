@@ -32,7 +32,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
     /// @inheritdoc IBaseInvestmentManager
     function file(bytes32 what, address data) external virtual auth {
         if (what == "poolManager") poolManager = IPoolManager(data);
-        else revert("BaseInvestmentManager/file-unrecognized-param");
+        else revert FileUnrecognizedParam();
         emit File(what, data);
     }
 

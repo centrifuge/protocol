@@ -31,7 +31,6 @@ struct AsyncInvestmentState {
 }
 
 interface IAsyncRequests is IAsyncDepositManager, IAsyncRedeemManager, IInvestmentManagerGatewayHandler {
-    error FileUnrecognizedParam();
     error AssetMismatch();
     error VaultAlreadyExists();
     error VaultDoesNotExist();

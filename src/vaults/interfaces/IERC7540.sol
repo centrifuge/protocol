@@ -284,6 +284,8 @@ interface IERC7714 {
 /// @notice Interface for the all vault contracts
 /// @dev Must be implemented by all vaults
 interface IBaseVault is IERC7540Operator, IERC7741, IERC7714, IERC7575, IRecoverable {
+    error FileUnrecognizedParam();
+
     /// @notice Identifier of the Centrifuge pool
     function poolId() external view returns (uint64);
 
