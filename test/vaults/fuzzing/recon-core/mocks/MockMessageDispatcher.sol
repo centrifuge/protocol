@@ -48,11 +48,6 @@ contract MockMessageDispatcher {
         bytes32 salt,
         bytes32 hook
     ) external  {
-        if (chainId == localCentrifugeId) {
-            poolManager.addShareClass(poolId.raw(), scId.raw(), name, symbol, decimals, salt, address(bytes20(hook)));
-        } else {
-            
-        }
     }
 
     function sendFulfilledDepositRequest(
@@ -180,6 +175,10 @@ contract MockMessageDispatcher {
     function sendCancelRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId) external  {
        
     }
+
+    function sendApprovedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount)
+        external
+    {}
 
     function sendUpdateHoldingAmount(
         PoolId poolId,

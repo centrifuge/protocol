@@ -25,10 +25,6 @@ abstract contract Properties is BeforeAfter, Asserts {
 
     /// === Global Properties === ///
 
-    function property_unlockedPoolId_transient_reset() public {
-        eq(_after.ghostUnlockedPoolId.raw(), 0, "unlockedPoolId not reset");
-    }
-
     // NOTE: these are commented out because they don't actually get reset after calls, only when there's a call to unlock or a new tx
     // function property_debited_transient_reset() public {
     //     eq(_after.ghostDebited, 0, "debited not reset");

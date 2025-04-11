@@ -316,8 +316,6 @@ abstract contract TargetFunctions is
         AssetId assetId = newAssetId(isoCode);
 
         transientValuation_setPrice(address(assetId.addr()), hubRegistry.currency(poolId).addr(), newPrice);
-        hub_updateHolding(ShareClassId.unwrap(scId), assetId.raw());
-        hub_execute_clamped(PoolId.unwrap(poolId));
     }
 
     function shortcut_create_pool_and_update_holding_amount(
@@ -404,24 +402,6 @@ abstract contract TargetFunctions is
         }
     }
 
-    // change price and update holding for most recent poolId
-    function shortcut_update_holding(
-        uint32 isoCode, 
-        D18 newPrice
-    ) public clearQueuedCalls  {
-        PoolId poolId = newPoolId(CENTIFUGE_CHAIN_ID, hubRegistry.latestId());
-        
-        ShareClassId nextScId = shareClassManager.previewNextShareClassId(poolId);
-        // get the current share class id by decrementing the next share class id
-        ShareClassId scId = ShareClassId.wrap(bytes16(uint128(nextScId.raw()) - 1)); 
-
-        AssetId assetId = newAssetId(isoCode);
-        transientValuation_setPrice(address(assetId.addr()), address(assetId.addr()), newPrice);
-
-        hub_updateHolding(scId.raw(), assetId.raw());
-        hub_execute_clamped(poolId.raw());
-    }
-
     function shortcut_update_valuation(
         uint8 decimals,
         uint32 isoCode,
@@ -435,8 +415,7 @@ abstract contract TargetFunctions is
         (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, salt, isIdentityValuation, prefix);
     
         AssetId assetId = newAssetId(isoCode);
-        hub_updateHoldingValuation(ShareClassId.unwrap(scId), assetId.raw(), isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation)));
-        hub_execute_clamped(PoolId.unwrap(poolId));
+        hub_updateHoldingValuation(poolId.raw(), ShareClassId.unwrap(scId), assetId.raw(), isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation)));
     }
 
     function shortcut_notify_share_class(
@@ -455,8 +434,7 @@ abstract contract TargetFunctions is
         (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(decimals, isoCode, salt, isIdentityValuation, prefix, depositAmount, shareAmount, navPerShare);
 
         // set chainId and hook to constants because we're mocking Gateway so they're not needed
-        hub_notifyShareClass(0, ShareClassId.unwrap(scId), bytes32("ExampleHookData"));
-        hub_execute_clamped(PoolId.unwrap(poolId));
+        hub_notifyShareClass(poolId.raw(), CENTIFUGE_CHAIN_ID, ShareClassId.unwrap(scId), bytes32("ExampleHookData"));
     }
 
     /// === POOL ADMIN SHORTCUTS === ///
@@ -470,14 +448,13 @@ abstract contract TargetFunctions is
         bool isIdentityValuation,
         uint24 prefix
     ) public  {
-        hub_addShareClass(salt);
+        hub_addShareClass(poolId, salt);
 
         IERC7726 valuation = isIdentityValuation ? 
             IERC7726(address(identityValuation)) : 
             IERC7726(address(transientValuation));
 
-        hub_createHolding(scId, assetId, valuation, IS_LIABILITY, prefix);
-        hub_execute_clamped(poolId);
+        hub_createHolding(poolId, scId, assetId, valuation, IS_LIABILITY, prefix);
     }
 
     function shortcut_approve_and_issue_shares(
@@ -494,9 +471,8 @@ abstract contract TargetFunctions is
 
         transientValuation.setPrice(address(assetId.addr()), address(assetId.addr()), INITIAL_PRICE);
 
-        hub_approveDeposits(scId, assetId.raw(), maxApproval, valuation);
-        hub_issueShares(scId, assetId.raw(), navPerShare);
-        hub_execute_clamped(poolId);
+        hub_approveDeposits(poolId, scId, assetId.raw(), maxApproval, valuation);
+        hub_issueShares(poolId, scId, assetId.raw(), navPerShare);
 
         // reset the epoch increment to 0 so that the next approval is in a "new tx"
         _setEpochIncrement(0);
@@ -513,9 +489,8 @@ abstract contract TargetFunctions is
         IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
         
         AssetId assetId = newAssetId(isoCode);
-        hub_approveRedeems(scId, assetId.raw(), maxApproval);
-        hub_revokeShares(scId, assetId.raw(), navPerShare, valuation);
-        hub_execute_clamped(poolId);
+        hub_approveRedeems(poolId, scId, assetId.raw(), maxApproval);
+        hub_revokeShares(poolId, scId, assetId.raw(), navPerShare, valuation);
 
         // reset the epoch increment to 0 so that the next approval is in a "new tx"
         _setEpochIncrement(0);
@@ -533,8 +508,7 @@ abstract contract TargetFunctions is
             
             // get a random share class id
             ShareClassId scId = shareClassManager.previewShareClassId(poolId, shareClassEntropy % shareClassCount);
-            hub_updateRestriction(CENTIFUGE_CHAIN_ID, scId.raw(), payload);
-            hub_execute_clamped(poolId.raw());
+            hub_updateRestriction(poolId.raw(), CENTIFUGE_CHAIN_ID, scId.raw(), payload);
         }
     }
 

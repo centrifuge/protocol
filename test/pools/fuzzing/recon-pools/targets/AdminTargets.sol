@@ -37,31 +37,36 @@ abstract contract AdminTargets is
     /// @dev These explicitly clamp the investor to always be one of the actors
     /// @dev Queuing calls is done by the admin even though there is no asAdmin modifier applied because there are no external calls so using asAdmin creates errors  
 
-    function hub_addCredit(uint32 accountAsInt, uint128 amount) public {
+    function hub_addCredit(uint64 poolIdAsUint, uint32 accountAsInt, uint128 amount) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
         AccountId account = AccountId.wrap(accountAsInt);
-        queuedCalls.push(abi.encodeWithSelector(hub.addCredit.selector, account, amount));
+        hub.addCredit(poolId, account, amount);
     }
 
-    function hub_addDebit(uint32 accountAsInt, uint128 amount) public {
+    function hub_addDebit(uint64 poolIdAsUint, uint32 accountAsInt, uint128 amount) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
         AccountId account = AccountId.wrap(accountAsInt);
-        queuedCalls.push(abi.encodeWithSelector(hub.addDebit.selector, account, amount));
+        hub.addDebit(poolId, account, amount);
     }
 
-    function hub_addShareClass(bytes32 salt) public {
+    function hub_addShareClass(uint64 poolIdAsUint, bytes32 salt) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
         string memory name = "Test ShareClass";
         string memory symbol = "TSC";
         bytes memory data = "not-used";
-        queuedCalls.push(abi.encodeWithSelector(hub.addShareClass.selector, name, symbol, salt, data));
+        hub.addShareClass(poolId, name, symbol, salt, data);
     }
 
-    function hub_allowPoolAdmin(address account, bool allow) public {
-        queuedCalls.push(abi.encodeWithSelector(hub.allowPoolAdmin.selector, account, allow));
+    function hub_allowPoolAdmin(uint64 poolIdAsUint, address account, bool allow) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
+        hub.allowPoolAdmin(poolId, account, allow);
     }
 
-    function hub_approveDeposits(bytes16 scIdAsBytes, uint128 paymentAssetIdAsUint, uint128 maxApproval, IERC7726 valuation) public {
+    function hub_approveDeposits(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 paymentAssetIdAsUint, uint128 maxApproval, IERC7726 valuation) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId paymentAssetId = AssetId.wrap(paymentAssetIdAsUint);
-        queuedCalls.push(abi.encodeWithSelector(hub.approveDeposits.selector, scId, paymentAssetId, maxApproval, valuation));
+        hub.approveDeposits(poolId, scId, paymentAssetId, maxApproval, valuation);
     }
 
     function hub_approveDeposits_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 maxApproval, bool isIdentityValuation) public {
@@ -69,61 +74,66 @@ abstract contract AdminTargets is
         ShareClassId scId = _getRandomShareClassIdForPool(poolId, scEntropy);
         AssetId paymentAssetId = hubRegistry.currency(poolId);
         IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
-        queuedCalls.push(abi.encodeWithSelector(hub.approveDeposits.selector, scId, paymentAssetId, maxApproval, valuation));
+        hub.approveDeposits(poolId, scId, paymentAssetId, maxApproval, valuation);
     }
 
-    function hub_approveRedeems(bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 maxApproval) public {
+    function hub_approveRedeems(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 maxApproval) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId payoutAssetId = AssetId.wrap(assetIdAsUint);
-        
-        queuedCalls.push(abi.encodeWithSelector(hub.approveRedeems.selector, scId, payoutAssetId, maxApproval));
+        hub.approveRedeems(poolId, scId, payoutAssetId, maxApproval);
     }
 
     function hub_approveRedeems_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 maxApproval) public {
         PoolId poolId = _getRandomPoolId(poolIdEntropy);
         ShareClassId scId = _getRandomShareClassIdForPool(poolId, scEntropy);
         AssetId payoutAssetId = hubRegistry.currency(poolId);
-        hub_approveRedeems(scId.raw(), payoutAssetId.raw(), maxApproval);
+        hub.approveRedeems(poolId, scId, payoutAssetId, maxApproval);
     }
 
-    function hub_createAccount(uint32 accountAsInt, bool isDebitNormal) public {
+    function hub_createAccount(uint64 poolIdAsUint, uint32 accountAsInt, bool isDebitNormal) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
         AccountId account = AccountId.wrap(accountAsInt);
-        queuedCalls.push(abi.encodeWithSelector(hub.createAccount.selector, account, isDebitNormal));
+        hub.createAccount(poolId, account, isDebitNormal);
     }
 
-    function hub_createHolding(bytes16 scIdAsBytes, uint128 assetIdAsUint, IERC7726 valuation, bool isLiability, uint24 prefix) public {
+    function hub_createHolding(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, IERC7726 valuation, bool isLiability, uint24 prefix) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
-        queuedCalls.push(abi.encodeWithSelector(hub.createHolding.selector, scId, assetId, valuation, isLiability, prefix));
+        hub.createHolding(poolId, scId, assetId, valuation, isLiability, prefix);
     }
 
-    function hub_issueShares(bytes16 scIdAsBytes, uint128 assetIdAsUint, D18 navPerShare) public {
+    function hub_issueShares(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, D18 navPerShare) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
-        queuedCalls.push(abi.encodeWithSelector(hub.issueShares.selector, scId, assetId, navPerShare));
+        hub.issueShares(poolId, scId, assetId, navPerShare);
     }
 
     function hub_issueShares_clamped(uint64 poolIdEntropy, uint32 scEntropy, D18 navPerShare) public {
         PoolId poolId = _getRandomPoolId(poolIdEntropy);
         ShareClassId scId = _getRandomShareClassIdForPool(poolId, scEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
-        hub_issueShares(scId.raw(), assetId.raw(), navPerShare);
+        hub.issueShares(poolId, scId, assetId, navPerShare);
     }
 
-    function hub_notifyPool(uint32 chainId) public {
-        queuedCalls.push(abi.encodeWithSelector(hub.notifyPool.selector, chainId));
+    function hub_notifyPool(uint64 poolIdAsUint, uint16 centrifugeId) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
+        hub.notifyPool(poolId, centrifugeId);
     }
 
-    function hub_notifyShareClass(uint32 chainId, bytes16 scIdAsBytes, bytes32 hook) public {
+    function hub_notifyShareClass(uint64 poolIdAsUint, uint16 centrifugeId, bytes16 scIdAsBytes, bytes32 hook) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        queuedCalls.push(abi.encodeWithSelector(hub.notifyShareClass.selector, chainId, scId, hook));
+        hub.notifyShareClass(poolId, centrifugeId, scId, hook);
     }
 
-    function hub_revokeShares(bytes16 scIdAsBytes, uint128 assetIdAsUint, D18 navPerShare, IERC7726 valuation) public {
+    function hub_revokeShares(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, D18 navPerShare, IERC7726 valuation) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId payoutAssetId = AssetId.wrap(assetIdAsUint);
-
-        queuedCalls.push(abi.encodeWithSelector(hub.revokeShares.selector, scId, payoutAssetId, navPerShare, valuation));
+        hub.revokeShares(poolId, scId, payoutAssetId, navPerShare, valuation);
     }
 
     function hub_revokeShares_clamped(uint64 poolIdEntropy, uint32 scEntropy, D18 navPerShare, bool isIdentityValuation) public {
@@ -131,45 +141,39 @@ abstract contract AdminTargets is
         ShareClassId scId = _getRandomShareClassIdForPool(poolId, scEntropy);
         AssetId payoutAssetId = hubRegistry.currency(poolId);
         IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
-        hub_revokeShares(scId.raw(), payoutAssetId.raw(), navPerShare, valuation);
+        hub.revokeShares(poolId, scId, payoutAssetId, navPerShare, valuation);
     }
 
-    function hub_setAccountMetadata(uint32 accountAsInt, bytes memory metadata) public {
+    function hub_setAccountMetadata(uint64 poolIdAsUint, uint32 accountAsInt, bytes memory metadata) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
         AccountId account = AccountId.wrap(accountAsInt);
-        queuedCalls.push(abi.encodeWithSelector(hub.setAccountMetadata.selector, account, metadata));
+        hub.setAccountMetadata(poolId, account, metadata);
     }
 
-    function hub_setHoldingAccountId(bytes16 scIdAsBytes, uint128 assetIdAsUint, uint32 accountIdAsInt) public {
+    function hub_setHoldingAccountId(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint32 accountIdAsInt) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
         AccountId accountId = AccountId.wrap(accountIdAsInt);
-        queuedCalls.push(abi.encodeWithSelector(hub.setHoldingAccountId.selector, scId, assetId, accountId));
+        hub.setHoldingAccountId(poolId, scId, assetId, accountId);
     }
 
-    function hub_setPoolMetadata(bytes memory metadata) public {
-        queuedCalls.push(abi.encodeWithSelector(hub.setPoolMetadata.selector, metadata));
+    function hub_setPoolMetadata(uint64 poolIdAsUint, bytes memory metadata) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
+        hub.setPoolMetadata(poolId, metadata);
     }
 
-    function hub_updateHolding(bytes16 scIdAsBytes, uint128 assetIdAsUint) public {
+    function hub_updateHoldingValuation(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, IERC7726 valuation) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
-        queuedCalls.push(abi.encodeWithSelector(hub.updateHolding.selector, scId, assetId));
-
-        // state space enrichment to help get coverage over this function
-        if(poolCreated && deposited) { 
-            emit LogString("poolCreated && deposited should allow updateHolding");
-        }
+        hub.updateHoldingValuation(poolId, scId, assetId, valuation);
     }
 
-    function hub_updateHoldingValuation(bytes16 scIdAsBytes, uint128 assetIdAsUint, IERC7726 valuation) public {
+    function hub_updateRestriction(uint64 poolIdAsUint, uint16 chainId, bytes16 scIdAsBytes, bytes calldata payload) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        AssetId assetId = AssetId.wrap(assetIdAsUint);
-        queuedCalls.push(abi.encodeWithSelector(hub.updateHoldingValuation.selector, scId, assetId, valuation));
-    }
-
-    function hub_updateRestriction(uint16 chainId, bytes16 scIdAsBytes, bytes calldata payload) public {
-        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        queuedCalls.push(abi.encodeWithSelector(hub.updateRestriction.selector, chainId, scId, payload));
+        hub.updateRestriction(poolId, chainId, scId, payload);
     }
 
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
@@ -383,22 +387,7 @@ abstract contract AdminTargets is
         hub.decreaseShareIssuance(poolId, scId, pricePerShare, amount);
     }
 
-    // === PoolRouter === //
-
-    function hub_execute(uint64 poolIdAsUint, bytes[] memory data) public payable updateGhostsWithType(OpType.BATCH) asAdmin {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        hub.execute{value: msg.value}(poolId, data);
-    }
-
-    /// @dev Makes a call directly to the unclamped handler so doesn't include asAdmin modifier or else would cause errors with foundry testing
-    function hub_execute_clamped(uint64 poolIdAsUint) public payable {
-        // TODO: clamp poolId here to one of the created pools
-        this.hub_execute{value: msg.value}(poolIdAsUint, queuedCalls);
-
-        queuedCalls = new bytes[](0);
-    }
-
-    // === MultiShareClass === //
+    // === ShareClassManager === //
 
     function shareClassManager_claimDepositUntilEpoch(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint32 endEpochId) public updateGhosts asAdmin {
         PoolId poolId = PoolId.wrap(poolIdAsUint);

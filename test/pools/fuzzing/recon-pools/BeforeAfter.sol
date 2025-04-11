@@ -25,7 +25,6 @@ enum OpType {
 // ghost variables for tracking state variable values before and after function calls
 abstract contract BeforeAfter is Setup {
     struct Vars {
-        PoolId ghostUnlockedPoolId;
         uint128 ghostDebited;
         uint128 ghostCredited;
         uint32 ghostLatestRedeemApproval;
@@ -55,7 +54,6 @@ abstract contract BeforeAfter is Setup {
     }
 
     function __before() internal {
-        _before.ghostUnlockedPoolId = hub.unlockedPoolId();
         _before.ghostDebited = accounting.debited();
         _before.ghostCredited = accounting.credited();
         
@@ -91,7 +89,6 @@ abstract contract BeforeAfter is Setup {
     }
 
     function __after() internal {
-        _after.ghostUnlockedPoolId = hub.unlockedPoolId();
         _after.ghostDebited = accounting.debited();
         _after.ghostCredited = accounting.credited();
         

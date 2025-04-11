@@ -61,16 +61,14 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         assetId = newAssetId(123);
 
         // necessary setup via the PoolRouter
-        hub_addShareClass(SC_SALT);
-        hub_createHolding(scId.raw(), assetId.raw(), identityValuation, IS_LIABILITY, 0x01);
-        hub_execute_clamped(poolId.raw());
+        hub_addShareClass(poolId.raw(), SC_SALT);
+        hub_createHolding(poolId.raw(), scId.raw(), assetId.raw(), identityValuation, IS_LIABILITY, 0x01);
         
         // request deposit
         hub_depositRequest(poolId.raw(), scId.raw(), INVESTOR_AMOUNT);
         
-        hub_approveDeposits(scId.raw(), assetId.raw(), APPROVED_INVESTOR_AMOUNT, identityValuation);
-        hub_issueShares(scId.raw(), assetId.raw(), NAV_PER_SHARE);
-        hub_execute_clamped(poolId.raw());
+        hub_approveDeposits(poolId.raw(), scId.raw(), assetId.raw(), APPROVED_INVESTOR_AMOUNT, identityValuation);
+        hub_issueShares(poolId.raw(), scId.raw(), assetId.raw(), NAV_PER_SHARE);
 
         // claim deposit
         hub_claimDeposit(poolId.raw(), scId.raw(), assetId.raw());
@@ -86,22 +84,13 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         // executed via the PoolRouter
         assetId = newAssetId(123);
-        hub_approveRedeems(scId.raw(), assetId.raw(), uint128(10000000));
-        hub_revokeShares(scId.raw(), assetId.raw(), d18(10000000), identityValuation);
-        hub_execute_clamped(poolId.raw());
+        hub_approveRedeems(poolId.raw(), scId.raw(), assetId.raw(), uint128(10000000));
+        hub_revokeShares(poolId.raw(), scId.raw(), assetId.raw(), d18(10000000), identityValuation);
 
         // claim redemption
         hub_claimRedeem(poolId.raw(), scId.raw(), 123);
 
         return (poolId, scId);
-    }
-
-    function test_shortcut_create_pool_and_update_holding() public {
-        (poolId, scId) = shortcut_create_pool_and_holding(18, 123, SC_SALT, true, 0x01);
-    
-        assetId = newAssetId(123);
-        hub_updateHolding(scId.raw(), assetId.raw());
-        hub_execute_clamped(poolId.raw()); 
     }
 
     function test_shortcut_deposit_and_claim() public {
@@ -117,8 +106,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     function test_notify_share_class() public {
         (poolId, scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
 
-        hub_notifyShareClass(CHAIN_CV, scId.raw(), SC_HOOK);
-        hub_execute_clamped(poolId.raw());
+        hub_notifyShareClass(poolId.raw(), CENTIFUGE_CHAIN_ID, scId.raw(), SC_HOOK);
     }
 
     function test_shortcut_deposit_claim_and_cancel() public {
@@ -143,12 +131,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_redeemRequest(poolId.raw(), scId.raw(), 123, SHARE_AMOUNT);
 
         hub_cancelRedeemRequest(poolId.raw(), scId.raw(), 123);
-    }
-
-    function test_shortcut_update_holding() public {
-        shortcut_deposit_and_claim(18, 123, SC_SALT, false, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
-
-        shortcut_update_holding(123, d18(20e18));
     }
 
     function test_shortcut_notify_share_class() public {
