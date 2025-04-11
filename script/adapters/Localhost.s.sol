@@ -78,6 +78,7 @@ contract LocalhostDeployer is FullDeployer {
 
         hub.updatePricePoolPerShare(poolId, scId, navPerShare, "");
         hub.notifySharePrice(poolId, centrifugeId, scId);
+        hub.notifyAssetPrice(poolId, scId, assetId);
 
         // Submit deposit request
         IShareToken shareToken = IShareToken(poolManager.shareToken(poolId.raw(), scId.raw()));
@@ -125,6 +126,7 @@ contract LocalhostDeployer is FullDeployer {
 
         hub.updatePricePoolPerShare(poolId, scId, navPerShare, "");
         hub.notifySharePrice(poolId, centrifugeId, scId);
+        hub.notifyAssetPrice(poolId, scId, assetId);
 
         // Deposit
         IShareToken shareToken = IShareToken(poolManager.shareToken(poolId.raw(), scId.raw()));

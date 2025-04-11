@@ -227,8 +227,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     ) external payable {
         _protected(poolId);
 
-        accounting.unlock(poolId);
-
         (uint128 approvedAssetAmount,) =
             shareClassManager.approveDeposits(poolId, scId, maxApproval, paymentAssetId, valuation);
 
@@ -258,8 +256,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         payable
     {
         _protected(poolId);
-
-        accounting.unlock(poolId);
 
         (uint128 payoutAssetAmount,) =
             shareClassManager.revokeShares(poolId, scId, payoutAssetId, navPerShare, valuation);
