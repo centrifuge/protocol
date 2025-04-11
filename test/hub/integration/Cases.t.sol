@@ -18,26 +18,15 @@ contract TestCases is BaseTest {
 
         scId = shareClassManager.previewNextShareClassId(poolId);
 
-        (bytes[] memory cs, uint256 c) = (new bytes[](7), 0);
-        cs[c++] = abi.encodeWithSelector(hub.setPoolMetadata.selector, bytes("Testing pool"));
-        cs[c++] = abi.encodeWithSelector(hub.addShareClass.selector, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
-        cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, CHAIN_CV);
-        cs[c++] = abi.encodeWithSelector(hub.notifyShareClass.selector, CHAIN_CV, scId, SC_HOOK);
-        cs[c++] = abi.encodeWithSelector(hub.createHolding.selector, scId, USDC_C2, identityValuation, false, 0x01);
-        cs[c++] =
-            abi.encodeWithSelector(hub.createHolding.selector, scId, EUR_STABLE_C2, transientValuation, false, 0x02);
-        cs[c++] = abi.encodeWithSelector(
-            hub.updateVault.selector,
-            scId,
-            USDC_C2,
-            bytes32("target"),
-            bytes32("factory"),
-            VaultUpdateKind.DeployAndLink
-        );
-        assertEq(c, cs.length);
-
-        vm.prank(FM);
-        hub.execute{value: GAS * 3}(poolId, cs);
+        vm.startPrank(FM);
+        hub.setPoolMetadata(poolId, bytes("Testing pool"));
+        hub.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
+        hub.notifyPool(poolId, CHAIN_CV);
+        hub.notifyShareClass(poolId, CHAIN_CV, scId, SC_HOOK);
+        hub.createHolding(poolId, scId, USDC_C2, identityValuation, false, 0x01);
+        hub.createHolding(poolId, scId, EUR_STABLE_C2, transientValuation, false, 0x02);
+        hub.updateVault(poolId, scId, USDC_C2, bytes32("target"), bytes32("factory"), VaultUpdateKind.DeployAndLink);
+        vm.stopPrank();
 
         assertEq(hubRegistry.metadata(poolId), "Testing pool");
         assertEq(shareClassManager.exists(poolId, scId), true);
