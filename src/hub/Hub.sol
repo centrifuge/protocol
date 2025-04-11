@@ -92,16 +92,16 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         }
     }
 
-    //----------------------------------------------------------------------------------------------
-    // Permissionless methods
-    //----------------------------------------------------------------------------------------------
-
     /// @inheritdoc IHub
     function createPool(address admin, AssetId currency) external payable returns (PoolId poolId) {
         _auth();
 
         poolId = hubRegistry.registerPool(admin, sender.localCentrifugeId(), currency);
     }
+
+    //----------------------------------------------------------------------------------------------
+    // Permissionless methods
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
     function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
