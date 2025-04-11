@@ -59,7 +59,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         transientValuation = transientValuation_;
     }
 
-    /// @inheritdoc IHub
     modifier unlocked(PoolId poolId) {
         require(hubRegistry.isAdmin(poolId, msg.sender), IHub.NotAuthorizedAdmin());
 

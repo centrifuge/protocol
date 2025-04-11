@@ -63,14 +63,10 @@ contract TestCases is BaseTest {
 
         IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
 
-        (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
-        cs[c++] =
-            abi.encodeWithSelector(hub.approveDeposits.selector, scId, USDC_C2, APPROVED_INVESTOR_AMOUNT, valuation);
-        cs[c++] = abi.encodeWithSelector(hub.issueShares.selector, scId, USDC_C2, NAV_PER_SHARE);
-        assertEq(c, cs.length);
-
-        vm.prank(FM);
-        hub.execute(poolId, cs);
+        vm.startPrank(FM);
+        hub.approveDeposits(poolId, scId, USDC_C2, APPROVED_INVESTOR_AMOUNT, valuation);
+        hub.issueShares(poolId, scId, USDC_C2, NAV_PER_SHARE);
+        vm.stopPrank();
 
         vm.prank(ANY);
         vm.deal(ANY, GAS);
@@ -95,13 +91,10 @@ contract TestCases is BaseTest {
 
         IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
 
-        (bytes[] memory cs, uint256 c) = (new bytes[](2), 0);
-        cs[c++] = abi.encodeWithSelector(hub.approveRedeems.selector, scId, USDC_C2, APPROVED_SHARE_AMOUNT);
-        cs[c++] = abi.encodeWithSelector(hub.revokeShares.selector, scId, USDC_C2, NAV_PER_SHARE, valuation);
-        assertEq(c, cs.length);
-
-        vm.prank(FM);
-        hub.execute(poolId, cs);
+        vm.startPrank(FM);
+        hub.approveRedeems(poolId, scId, USDC_C2, APPROVED_SHARE_AMOUNT);
+        hub.revokeShares(poolId, scId, USDC_C2, NAV_PER_SHARE, valuation);
+        vm.stopPrank();
 
         vm.prank(ANY);
         vm.deal(ANY, GAS);
@@ -125,10 +118,8 @@ contract TestCases is BaseTest {
 
         AccountId extraAccountId = newAccountId(123, uint8(AccountType.Asset));
 
-        (bytes[] memory cs, uint256 c) = (new bytes[](1), 0);
-        cs[c++] = abi.encodeWithSelector(hub.createAccount.selector, extraAccountId, true);
         vm.prank(FM);
-        hub.execute(poolId, cs);
+        hub.createAccount(poolId, extraAccountId, true);
 
         (JournalEntry[] memory debits, uint256 i) = (new JournalEntry[](3), 0);
         debits[i++] = JournalEntry(1000, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Asset)));
@@ -216,15 +207,12 @@ contract TestCases is BaseTest {
 
         transientValuation.setPrice(EUR_STABLE_C2.addr(), poolCurrency.addr(), poolPerEurPrice);
 
-        (bytes[] memory cs, uint256 c) = (new bytes[](4), 0);
-        cs[c++] = abi.encodeWithSelector(hub.updatePricePoolPerShare.selector, scId, sharePrice, "");
-        cs[c++] = abi.encodeWithSelector(hub.notifyAssetPrice.selector, scId, EUR_STABLE_C2);
-        cs[c++] = abi.encodeWithSelector(hub.notifyAssetPrice.selector, scId, USDC_C2);
-        cs[c++] = abi.encodeWithSelector(hub.notifySharePrice.selector, CHAIN_CV, scId);
-        assertEq(c, cs.length);
-
-        vm.prank(FM);
-        hub.execute{value: 3 * GAS}(poolId, cs);
+        vm.startPrank(FM);
+        hub.updatePricePoolPerShare(poolId, scId, sharePrice, "");
+        hub.notifyAssetPrice(poolId, scId, EUR_STABLE_C2);
+        hub.notifyAssetPrice(poolId, scId, USDC_C2);
+        hub.notifySharePrice(poolId, CHAIN_CV, scId);
+        vm.stopPrank();
 
         assertEq(cv.messageCount(), 3);
 
