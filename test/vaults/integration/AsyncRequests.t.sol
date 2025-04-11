@@ -51,6 +51,9 @@ contract AsyncRequestsTest is BaseTest {
         assertEq(asyncRequests.wards(address(messageProcessor)), 1);
         assertEq(asyncRequests.wards(address(messageDispatcher)), 1);
         assertEq(asyncRequests.wards(nonWard), 0);
+
+        assertEq(balanceSheet.wards(address(asyncRequests)), 1);
+        assertEq(messageDispatcher.wards(address(asyncRequests)), 1);
     }
 
     // --- Administration ---
@@ -65,6 +68,8 @@ contract AsyncRequestsTest is BaseTest {
         assertEq(address(asyncRequests.sender()), randomUser);
         asyncRequests.file("poolManager", randomUser);
         assertEq(address(asyncRequests.poolManager()), randomUser);
+        asyncRequests.file("balanceSheet", randomUser);
+        assertEq(address(asyncRequests.balanceSheet()), randomUser);
 
         // remove self from wards
         asyncRequests.deny(self);

@@ -2,6 +2,12 @@
 pragma solidity 0.8.28;
 
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {d18} from "src/misc/types/D18.sol";
+
+import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 
 import "test/vaults/BaseTest.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
@@ -11,6 +17,7 @@ import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 contract DepositTest is BaseTest {
     using MessageLib for *;
     using CastLib for *;
+    using MathLib for uint256;
 
     /// forge-config: default.isolate = true
     function testDepositMint() public {
@@ -490,14 +497,14 @@ contract DepositTest is BaseTest {
         centrifugeChain.updatePricePoolPerShare(poolId, scId, 1000000000000000000000000000, uint64(block.timestamp));
 
         // invest
-        uint256 investmentAmount = 100000000000000000000; // 100 * 10**18
+        uint256 investmentAmount = 100e18;
         centrifugeChain.updateMember(poolId, scId, self, type(uint64).max);
         asset.approve(vault_, investmentAmount);
         asset.mint(self, investmentAmount);
         vault.requestDeposit(investmentAmount, self, self);
 
         // trigger executed collectInvest of the first 50% at a price of 1.2
-        uint128 assets = 50000000000000000000; // 50 * 10**18
+        uint128 assets = 50e18;
         uint128 firstSharePayout = 41666666; // 50 * 10**6 / 1.2, rounded down
         centrifugeChain.isFulfilledDepositRequest(
             poolId, scId, bytes32(bytes20(self)), assetId, assets, firstSharePayout
@@ -512,7 +519,7 @@ contract DepositTest is BaseTest {
         assertEq(depositPrice, 1200000019200000307);
 
         // trigger executed collectInvest of the second 50% at a price of 1.4
-        assets = 50000000000000000000; // 50 * 10**18
+        assets = 50e18; // 50 * 10**18
         uint128 secondSharePayout = 35714285; // 50 * 10**6 / 1.4, rounded down
         centrifugeChain.isFulfilledDepositRequest(
             poolId, scId, bytes32(bytes20(self)), assetId, assets, secondSharePayout
@@ -527,11 +534,14 @@ contract DepositTest is BaseTest {
 
         // trigger executed collectRedeem at a price of 1.5
         // 50% invested at 1.2 and 50% invested at 1.4 leads to ~77 share class tokens
-        // when redeeming at a price of 1.5, this leads to ~115.5 asset
-        assets = 115500000000000000000; // 115.5*10**18
+        // when redeeming at a price of 1.5, this leads to ~115.5 assets
+        // assets = 115500000000000000000; // 115.5*10**18
+        assets = 115.5e18; // 115.5*10**18
 
-        // mint interest into escrow
-        asset.mint(address(escrow), assets - investmentAmount);
+        // Adjust escrow for interest
+        // NOTE: In reality, the FM would have allocate the interest;
+        asset.approve(address(balanceSheet.escrow()), type(uint256).max);
+        _topUpEscrow(poolId, scId, asset, assets - investmentAmount);
 
         centrifugeChain.isFulfilledRedeemRequest(
             poolId, scId, bytes32(bytes20(self)), assetId, assets, firstSharePayout + secondSharePayout
@@ -747,5 +757,22 @@ contract DepositTest is BaseTest {
 
         assertEq(shareToken.balanceOf(investor), amount);
         assertEq(shares, amount);
+    }
+
+    function _topUpEscrow(uint64 poolId, bytes16 scId, ERC20 asset, uint256 assetAmount) internal {
+        asset.mint(address(balanceSheet.escrow()), assetAmount);
+        JournalEntry[] memory journalEntries = new JournalEntry[](0);
+        Meta memory meta = Meta(journalEntries, journalEntries);
+
+        balanceSheet.deposit(
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            address(asset),
+            0,
+            address(balanceSheet.escrow()),
+            assetAmount.toUint128(),
+            d18(0), // NOTE: Price irrelevant here
+            meta
+        );
     }
 }
