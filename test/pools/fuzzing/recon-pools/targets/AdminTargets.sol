@@ -292,15 +292,16 @@ abstract contract AdminTargets is
 
         JournalEntry[] memory debits = new JournalEntry[](1);
         debits[0] = JournalEntry({
-            accountId: _getRandomAccountId(poolId, scId, assetId, ACCOUNT_TO_UPDATE % 6),
+            accountId: _getRandomAccountId(poolId, scId, assetId, accountEntropy),
             amount: amount
         });
         JournalEntry[] memory credits = new JournalEntry[](1);
         credits[0] = JournalEntry({
-            accountId: _getRandomAccountId(poolId, scId, assetId, ACCOUNT_TO_UPDATE % 6),
+            accountId: _getRandomAccountId(poolId, scId, assetId, accountEntropy),
             amount: amount
         });
-        hub.updateHoldingAmount(poolId, scId, assetId, amount, pricePerUnit, isIncrease, debits, credits);
+
+        hub_updateHoldingAmount(poolId.raw(), scId.raw(), assetId.raw(), amount, pricePerUnit, isIncrease, debits, credits);
     }
 
     function hub_updateHoldingValue(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, D18 pricePerUnit) public updateGhosts {
