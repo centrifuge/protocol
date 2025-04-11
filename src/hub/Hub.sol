@@ -519,7 +519,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         bool isIncrease,
         JournalEntry[] memory debits,
         JournalEntry[] memory credits
-    ) external auth unlocked(poolId) {
+    ) external auth {
+        accounting.unlock(poolId);
+
         address poolCurrency = hubRegistry.currency(poolId).addr();
         transientValuation.setPrice(assetId.addr(), poolCurrency, pricePerUnit);
         uint128 valueChange = transientValuation.getQuote(amount, assetId.addr(), poolCurrency).toUint128();
@@ -531,29 +533,34 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         _updateHoldingWithPartialDebitsAndCredits(
             poolId, scId, assetId, amount, isIncrease, debitValueLeft, creditValueLeft
         );
+
+        accounting.lock();
     }
 
     /// @inheritdoc IHubGatewayHandler
     function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset)
         external
         auth
-        unlocked(poolId)
     {
+        accounting.unlock(poolId);
+
         transientValuation.setPrice(assetId.addr(), hubRegistry.currency(poolId).addr(), pricePoolPerAsset);
         IERC7726 _valuation = holdings.valuation(poolId, scId, assetId);
         holdings.updateValuation(poolId, scId, assetId, transientValuation);
 
         updateHolding(poolId, scId, assetId);
         holdings.updateValuation(poolId, scId, assetId, _valuation);
+
+        accounting.lock();
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits)
-        external
-        auth
-        unlocked(poolId)
-    {
+    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external auth {
+        accounting.unlock(poolId);
+
         _updateJournal(debits, credits);
+
+        accounting.lock();
     }
 
     /// @inheritdoc IHubGatewayHandler

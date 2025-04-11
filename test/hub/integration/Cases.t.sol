@@ -21,11 +21,13 @@ contract TestCases is BaseTest {
         vm.startPrank(FM);
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
-        hub.notifyPool(poolId, CHAIN_CV);
-        hub.notifyShareClass(poolId, CHAIN_CV, scId, SC_HOOK);
+        hub.notifyPool{value: GAS}(poolId, CHAIN_CV);
+        hub.notifyShareClass{value: GAS}(poolId, CHAIN_CV, scId, SC_HOOK);
         hub.createHolding(poolId, scId, USDC_C2, identityValuation, false, 0x01);
         hub.createHolding(poolId, scId, EUR_STABLE_C2, transientValuation, false, 0x02);
-        hub.updateVault(poolId, scId, USDC_C2, bytes32("target"), bytes32("factory"), VaultUpdateKind.DeployAndLink);
+        hub.updateVault{value: GAS}(
+            poolId, scId, USDC_C2, bytes32("target"), bytes32("factory"), VaultUpdateKind.DeployAndLink
+        );
         vm.stopPrank();
 
         assertEq(hubRegistry.metadata(poolId), "Testing pool");
@@ -209,9 +211,9 @@ contract TestCases is BaseTest {
 
         vm.startPrank(FM);
         hub.updatePricePoolPerShare(poolId, scId, sharePrice, "");
-        hub.notifyAssetPrice(poolId, scId, EUR_STABLE_C2);
-        hub.notifyAssetPrice(poolId, scId, USDC_C2);
-        hub.notifySharePrice(poolId, CHAIN_CV, scId);
+        hub.notifyAssetPrice{value: GAS}(poolId, scId, EUR_STABLE_C2);
+        hub.notifyAssetPrice{value: GAS}(poolId, scId, USDC_C2);
+        hub.notifySharePrice{value: GAS}(poolId, CHAIN_CV, scId);
         vm.stopPrank();
 
         assertEq(cv.messageCount(), 3);
