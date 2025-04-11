@@ -91,6 +91,12 @@ contract TestMainMethodsChecks is TestCommon {
         hub.notifyShareClass(0, ShareClassId.wrap(0), bytes32(""));
 
         vm.expectRevert(IHub.PoolLocked.selector);
+        hub.notifySharePrice(0, ShareClassId.wrap(0));
+
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.notifyAssetPrice(ShareClassId.wrap(0), AssetId.wrap(0));
+
+        vm.expectRevert(IHub.PoolLocked.selector);
         hub.setPoolMetadata(bytes(""));
 
         vm.expectRevert(IHub.PoolLocked.selector);
@@ -119,6 +125,9 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IHub.PoolLocked.selector);
         hub.updateVault(ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), bytes32(0), VaultUpdateKind(0));
+
+        vm.expectRevert(IHub.PoolLocked.selector);
+        hub.updatePricePoolPerShare(ShareClassId.wrap(0), D18.wrap(0), bytes(""));
 
         vm.expectRevert(IHub.PoolLocked.selector);
         hub.createHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), false, 0);
@@ -150,12 +159,6 @@ contract TestMainMethodsChecks is TestCommon {
 
 contract TestNotifyShareClass is TestCommon {
     function testErrShareClassNotFound() public {
-        vm.mockCall(
-            address(hubRegistry),
-            abi.encodeWithSelector(hubRegistry.dependency.selector, POOL_A, bytes32("shareClassManager")),
-            abi.encode(scm)
-        );
-
         vm.mockCall(address(scm), abi.encodeWithSelector(scm.exists.selector, POOL_A, SC_A), abi.encode(false));
 
         bytes[] memory cs = new bytes[](1);

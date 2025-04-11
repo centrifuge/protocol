@@ -382,10 +382,10 @@ contract GatewayTest is Test {
     function testPrepayment() public {
         uint256 topUpAmount = 1 gwei;
 
-        gateway.payTransaction{value: 0}();
+        gateway.payTransaction{value: 0}(address(this));
 
         uint256 balanceBeforeTopUp = address(gateway).balance;
-        gateway.payTransaction{value: topUpAmount}();
+        gateway.payTransaction{value: topUpAmount}(address(this));
         uint256 balanceAfterTopUp = address(gateway).balance;
         assertEq(balanceAfterTopUp, balanceBeforeTopUp + topUpAmount);
     }
@@ -399,7 +399,7 @@ contract GatewayTest is Test {
         uint256 balanceBeforeTx = address(gateway).balance;
         uint256 topUpAmount = 10 wei;
 
-        gateway.payTransaction{value: topUpAmount}();
+        gateway.payTransaction{value: topUpAmount}(address(this));
 
         vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
         gateway.send(REMOTE_CENTRIFUGE_ID, message);
@@ -424,7 +424,7 @@ contract GatewayTest is Test {
         uint256 balanceBeforeTx = address(gateway).balance;
 
         (uint256[] memory tokens, uint256 total) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
-        gateway.payTransaction{value: total}();
+        gateway.payTransaction{value: total}(address(this));
 
         gateway.send(REMOTE_CENTRIFUGE_ID, message);
 
@@ -453,7 +453,7 @@ contract GatewayTest is Test {
         (uint256[] memory tokens, uint256 total) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
         uint256 extra = 10 wei;
         uint256 topUpAmount = total + extra;
-        gateway.payTransaction{value: topUpAmount}();
+        gateway.payTransaction{value: topUpAmount}(address(this));
 
         gateway.send(REMOTE_CENTRIFUGE_ID, message);
 

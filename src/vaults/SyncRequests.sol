@@ -9,11 +9,12 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
-import {IERC20} from "src/misc/interfaces/IERC20.sol";
+import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
+import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import {d18, D18} from "src/misc/types/D18.sol";
+import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -21,17 +22,18 @@ import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 
 import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IERC7540Redeem, IAsyncRedeemVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IERC7540Redeem, IAsyncRedeemVault, IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
-import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
+import {ISyncRequests, SyncPriceData} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
+import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 
 /// @title  Sync Investment Manager
 /// @notice This is the main contract vaults interact with for
@@ -44,9 +46,9 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
     IBalanceSheet public balanceSheet;
 
-    mapping(address vaultAddr => uint64) public maxPriceAge;
-    // TODO(follow-up PR): Support multiple vaults
     mapping(uint64 poolId => mapping(bytes16 scId => mapping(uint128 assetId => address vault))) public vault;
+    mapping(uint64 poolId => mapping(bytes16 scId => mapping(address asset => mapping(uint256 tokenId => IERC7726))))
+        public valuation;
 
     constructor(address root_, address escrow_) BaseInvestmentManager(root_, escrow_) {}
 
@@ -59,10 +61,27 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         emit File(what, data);
     }
 
+    /// --- IUpdateContract ---
+    /// @inheritdoc IUpdateContract
+    function update(uint64 poolId, bytes16 scId, bytes memory payload) external auth {
+        uint8 kind = uint8(MessageLib.updateContractType(payload));
+
+        if (kind == uint8(UpdateContractType.Valuation)) {
+            MessageLib.UpdateContractValuation memory m = MessageLib.deserializeUpdateContractValuation(payload);
+
+            require(poolManager.shareToken(poolId, scId) != address(0), "SyncRequests/share-token-does-not-exist");
+            (address asset, uint256 tokenId) = poolManager.idToAsset(m.assetId);
+
+            setValuation(m.poolId, m.scId, asset, tokenId, m.valuation.toAddress());
+        } else {
+            revert("SyncRequests/unknown-update-contract-type");
+        }
+    }
+
     // --- IVaultManager ---
     /// @inheritdoc IVaultManager
     function addVault(uint64 poolId, bytes16 scId, address vaultAddr, address asset_, uint128 assetId)
-        public
+        external
         override
         auth
     {
@@ -86,7 +105,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
     /// @inheritdoc IVaultManager
     function removeVault(uint64 poolId, bytes16 scId, address vaultAddr, address asset_, uint128 assetId)
-        public
+        external
         override
         auth
     {
@@ -108,7 +127,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         }
     }
 
-    // --- IDepositManager ---
+    // --- IDepositManager Writes ---
     /// @inheritdoc IDepositManager
     function mint(address vaultAddr, uint256 shares, address receiver, address owner)
         external
@@ -132,6 +151,36 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         _issueShares(vaultAddr, shares.toUint128(), receiver, assets.toUint128());
     }
 
+    /// @inheritdoc ISyncRequests
+    function setValuation(uint64 poolId, bytes16 scId, address asset, uint256 tokenId, address valuation_)
+        public
+        auth
+    {
+        valuation[poolId][scId][asset][tokenId] = IERC7726(valuation_);
+
+        emit SetValuation(poolId, scId, asset, tokenId, address(valuation_));
+    }
+
+    // --- ISyncDepositManager Reads ---
+    /// @inheritdoc ISyncDepositManager
+    function previewMint(address vaultAddr, address, /* sender */ uint256 shares)
+        public
+        view
+        returns (uint256 assets)
+    {
+        return convertToAssets(vaultAddr, shares);
+    }
+
+    /// @inheritdoc ISyncDepositManager
+    function previewDeposit(address vaultAddr, address, /* sender */ uint256 assets)
+        public
+        view
+        returns (uint256 shares)
+    {
+        return convertToShares(vaultAddr, assets);
+    }
+
+    // --- IDepositManager Reads ---
     /// @inheritdoc IDepositManager
     function maxMint(address, /* vaultAddr */ address /* owner */ ) public pure returns (uint256) {
         // TODO(follow-up PR): implement rate limit
@@ -144,45 +193,10 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         return type(uint256).max;
     }
 
-    /// @inheritdoc ISyncDepositManager
-    function previewMint(address vaultAddr, address, /* sender */ uint256 shares)
-        public
-        view
-        returns (uint256 assets)
-    {
-        SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
-        uint128 assetId = poolManager.vaultDetails(vaultAddr).assetId;
-
-        uint128 latestPrice = _pricePerShare(vaultAddr, vault_.poolId(), vault_.trancheId(), assetId);
-        assets = VaultPricingLib.calculateAssets(shares.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down);
-    }
-
-    /// @inheritdoc ISyncDepositManager
-    function previewDeposit(address vaultAddr, address, /* sender */ uint256 assets)
-        public
-        view
-        returns (uint256 shares)
-    {
-        SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
-        uint128 assetId = poolManager.vaultDetails(vaultAddr).assetId;
-
-        uint128 latestPrice = _pricePerShare(vaultAddr, vault_.poolId(), vault_.trancheId(), assetId);
-        shares = VaultPricingLib.calculateShares(assets.toUint128(), vaultAddr, latestPrice, MathLib.Rounding.Down);
-    }
-
+    // --- IVaultManager Views ---
     /// @inheritdoc IVaultManager
     function vaultByAssetId(uint64 poolId, bytes16 scId, uint128 assetId) public view returns (address) {
         return vault[poolId][scId][assetId];
-    }
-
-    /// --- IUpdateContract ---
-    function update(uint64, bytes16, bytes calldata payload) external auth {
-        MessageLib.UpdateContractMaxPriceAge memory m = MessageLib.deserializeUpdateContractMaxPriceAge(payload);
-
-        address vaultAddr = m.vault.toAddress();
-        maxPriceAge[vaultAddr] = m.maxPriceAge;
-
-        emit MaxPriceAgeUpdate(vaultAddr, m.maxPriceAge);
     }
 
     /// @inheritdoc IVaultManager
@@ -194,24 +208,83 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         }
     }
 
+    // --- IBaseInvestmentManager Overwrites ---
+    /// @inheritdoc IBaseInvestmentManager
+    function convertToShares(address vaultAddr, uint256 assets)
+        public
+        view
+        override(IBaseInvestmentManager, BaseInvestmentManager)
+        returns (uint256 shares)
+    {
+        IBaseVault vault_ = IBaseVault(vaultAddr);
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
+        D18 priceAssetPerShare_ = _priceAssetPerShare(
+            vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId
+        );
+
+        return super._convertToShares(vault_, vaultDetails, priceAssetPerShare_, assets, MathLib.Rounding.Down);
+    }
+
+    // --- IBaseInvestmentManager Overwrites ---
+    /// @inheritdoc IBaseInvestmentManager
+    function convertToAssets(address vaultAddr, uint256 shares)
+        public
+        view
+        override(IBaseInvestmentManager, BaseInvestmentManager)
+        returns (uint256 assets)
+    {
+        IBaseVault vault_ = IBaseVault(vaultAddr);
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
+        D18 priceAssetPerShare_ = _priceAssetPerShare(
+            vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId
+        );
+
+        return super._convertToAssets(vault_, vaultDetails, priceAssetPerShare_, shares, MathLib.Rounding.Up);
+    }
+
+    /// @inheritdoc ISyncRequests
+    function priceAssetPerShare(uint64 poolId, bytes16 scId, uint128 assetId) public view returns (D18 price) {
+        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
+
+        return _priceAssetPerShare(poolId, scId, assetId, asset, tokenId);
+    }
+
+    function prices(uint64 poolId, bytes16 scId, uint128 assetId, address asset, uint256 tokenId)
+        public
+        view
+        returns (SyncPriceData memory priceData)
+    {
+        IERC7726 valuation_ = valuation[poolId][scId][asset][tokenId];
+
+        (priceData.poolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
+        priceData.assetPerShare = _priceAssetPerShare(poolId, scId, assetId, asset, tokenId, valuation_);
+
+        if (address(valuation_) == address(0)) {
+            (priceData.poolPerShare,) = poolManager.pricePoolPerShare(poolId, scId, true);
+        } else {
+            priceData.poolPerShare = priceData.poolPerAsset * priceData.assetPerShare;
+        }
+    }
+
     /// --- Internal methods ---
     /// @dev Issues shares to the receiver and instruct the Balance Sheet Manager to react on the issuance and the
     /// updated holding
     function _issueShares(address vaultAddr, uint128 shares, address receiver, uint128 depositAssetAmount) internal {
         SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
-
         uint64 poolId_ = vault_.poolId();
         bytes16 scId_ = vault_.trancheId();
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
-        D18 pricePerShare = d18(_pricePerShare(vaultAddr, poolId_, scId_, vaultDetails.assetId));
+
+        SyncPriceData memory priceData =
+            prices(poolId_, scId_, vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId);
 
         PoolId poolId = PoolId.wrap(poolId_);
         ShareClassId scId = ShareClassId.wrap(scId_);
 
         // Mint shares for receiver & notify CP about issued shares
-        balanceSheet.issue(poolId, scId, receiver, pricePerShare, shares);
+        balanceSheet.issue(poolId, scId, receiver, priceData.poolPerShare, shares);
 
-        _updateHoldings(poolId, scId, vaultDetails, depositAssetAmount);
+        _updateHoldings(poolId, scId, vaultDetails, depositAssetAmount, priceData.assetPerShare);
     }
 
     /// @dev Instructs the balance sheet manager to update holdings and the corresponding value.
@@ -220,10 +293,10 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         PoolId poolId,
         ShareClassId scId,
         VaultDetails memory vaultDetails,
-        uint128 depositAssetAmount
+        uint128 depositAssetAmount,
+        D18 priceAssetPerShare_
     ) internal {
-        // TODO(follow-up PR): Remove hardcoding
-        D18 pricePerAssetInPoolCurrency = d18(1);
+        // NOTE: We want CP to use the default accounting accounts
         JournalEntry[] memory journalEntries = new JournalEntry[](0);
         Meta memory depositMeta = Meta(journalEntries, journalEntries);
 
@@ -235,22 +308,40 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
             vaultDetails.tokenId,
             escrow,
             depositAssetAmount,
-            pricePerAssetInPoolCurrency,
+            priceAssetPerShare_,
             depositMeta
         );
-
-        // Notify CP about updated holding value
-        balanceSheet.updateValue(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, pricePerAssetInPoolCurrency);
     }
 
-    /// @dev Retrieve the latest price for the share class token
-    function _pricePerShare(address vaultAddr, uint64 poolId, bytes16 scId, uint128 assetId)
+    function _priceAssetPerShare(uint64 poolId, bytes16 scId, uint128 assetId, address asset, uint256 tokenId)
         internal
         view
-        returns (uint128 latestPrice)
+        returns (D18 price)
     {
-        (uint128 price, uint64 computedAt) = poolManager.sharePrice(poolId, scId, assetId);
-        require(block.timestamp - computedAt <= maxPriceAge[vaultAddr], PriceTooOld());
-        return price;
+        IERC7726 valuation_ = valuation[poolId][scId][asset][tokenId];
+
+        return _priceAssetPerShare(poolId, scId, assetId, asset, tokenId, valuation_);
+    }
+
+    function _priceAssetPerShare(
+        uint64 poolId,
+        bytes16 scId,
+        uint128 assetId,
+        address asset,
+        uint256 tokenId,
+        IERC7726 valuation_
+    ) internal view returns (D18 price) {
+        if (address(valuation_) == address(0)) {
+            (price,) = poolManager.priceAssetPerShare(poolId, scId, assetId, true);
+        } else {
+            address shareToken = poolManager.shareToken(poolId, scId);
+
+            uint128 assetUnitAmount = uint128(10 ** VaultPricingLib.getAssetDecimals(asset, tokenId));
+            uint128 shareUnitAmount = uint128(10 ** IERC20Metadata(shareToken).decimals());
+            uint128 assetAmountPerShareUnit = valuation_.getQuote(shareUnitAmount, shareToken, asset).toUint128();
+
+            // Retrieve price by normalizing by asset denomination
+            price = d18(assetAmountPerShareUnit, assetUnitAmount);
+        }
     }
 }

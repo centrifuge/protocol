@@ -15,6 +15,10 @@ uint8 constant ERROR_CODE_ID = 1;
 string constant ERROR_MESSAGE = "transfer-blocked";
 
 interface IHook is IERC165 {
+    // --- Errors ---
+    error TransferBlocked();
+    error InvalidUpdate();
+
     /// @notice Callback on standard ERC20 transfer.
     /// @dev    MUST return bytes4(keccak256("onERC20Transfer(address,address,uint256,(bytes16,bytes16))"))
     ///         if successful

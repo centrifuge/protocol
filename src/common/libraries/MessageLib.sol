@@ -22,7 +22,8 @@ enum MessageType {
     RegisterAsset,
     NotifyPool,
     NotifyShareClass,
-    UpdateShareClassPrice,
+    NotifyPricePoolPerShare,
+    NotifyPricePoolPerAsset,
     UpdateShareClassMetadata,
     UpdateShareClassHook,
     TransferShares,
@@ -60,7 +61,9 @@ enum UpdateContractType {
     Invalid,
     VaultUpdate,
     Permission,
-    MaxPriceAge
+    MaxAssetPriceAge,
+    MaxSharePriceAge,
+    Valuation
 }
 
 /// @dev Used internally in the VaultUpdateMessage (not represent a submessage)
@@ -92,7 +95,8 @@ library MessageLib {
         (18  << uint8(MessageType.RegisterAsset) * 8) +
         (9   << uint8(MessageType.NotifyPool) * 8) +
         (250 << uint8(MessageType.NotifyShareClass) * 8) +
-        (65  << uint8(MessageType.UpdateShareClassPrice) * 8) +
+        (49  << uint8(MessageType.NotifyPricePoolPerShare) * 8) +
+        (65  << uint8(MessageType.NotifyPricePoolPerAsset) * 8) +
         (185 << uint8(MessageType.UpdateShareClassMetadata) * 8) +
         (57  << uint8(MessageType.UpdateShareClassHook) * 8) +
         (73  << uint8(MessageType.TransferShares) * 8) +
@@ -375,10 +379,39 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //    UpdateShareClassPrice
+    //    NotifyPricePoolPerShare
     //---------------------------------------
 
-    struct UpdateShareClassPrice {
+    struct NotifyPricePoolPerShare {
+        uint64 poolId;
+        bytes16 scId;
+        uint128 price;
+        uint64 timestamp;
+    }
+
+    function deserializeNotifyPricePoolPerShare(bytes memory data)
+        internal
+        pure
+        returns (NotifyPricePoolPerShare memory)
+    {
+        require(messageType(data) == MessageType.NotifyPricePoolPerShare, UnknownMessageType());
+        return NotifyPricePoolPerShare({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            price: data.toUint128(25),
+            timestamp: data.toUint64(41)
+        });
+    }
+
+    function serialize(NotifyPricePoolPerShare memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.NotifyPricePoolPerShare, t.poolId, t.scId, t.price, t.timestamp);
+    }
+
+    //---------------------------------------
+    //    NotifyPricePoolPerAsset
+    //---------------------------------------
+
+    struct NotifyPricePoolPerAsset {
         uint64 poolId;
         bytes16 scId;
         uint128 assetId;
@@ -386,9 +419,13 @@ library MessageLib {
         uint64 timestamp;
     }
 
-    function deserializeUpdateShareClassPrice(bytes memory data) internal pure returns (UpdateShareClassPrice memory) {
-        require(messageType(data) == MessageType.UpdateShareClassPrice, UnknownMessageType());
-        return UpdateShareClassPrice({
+    function deserializeNotifyPricePoolPerAsset(bytes memory data)
+        internal
+        pure
+        returns (NotifyPricePoolPerAsset memory)
+    {
+        require(messageType(data) == MessageType.NotifyPricePoolPerAsset, UnknownMessageType());
+        return NotifyPricePoolPerAsset({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
@@ -397,8 +434,8 @@ library MessageLib {
         });
     }
 
-    function serialize(UpdateShareClassPrice memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.UpdateShareClassPrice, t.poolId, t.scId, t.assetId, t.price, t.timestamp);
+    function serialize(NotifyPricePoolPerAsset memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.NotifyPricePoolPerAsset, t.poolId, t.scId, t.assetId, t.price, t.timestamp);
     }
 
     //---------------------------------------
@@ -648,26 +685,78 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //   UpdateContract.MaxPriceAge (submsg)
+    //   UpdateContract.MaxAssetPriceAge (submsg)
     //---------------------------------------
 
-    struct UpdateContractMaxPriceAge {
-        bytes32 vault;
+    struct UpdateContractMaxAssetPriceAge {
+        uint128 assetId;
         uint64 maxPriceAge;
     }
 
-    function deserializeUpdateContractMaxPriceAge(bytes memory data)
+    function deserializeUpdateContractMaxAssetPriceAge(bytes memory data)
         internal
         pure
-        returns (UpdateContractMaxPriceAge memory)
+        returns (UpdateContractMaxAssetPriceAge memory)
     {
-        require(updateContractType(data) == UpdateContractType.MaxPriceAge, UnknownMessageType());
+        require(updateContractType(data) == UpdateContractType.MaxAssetPriceAge, UnknownMessageType());
 
-        return UpdateContractMaxPriceAge({vault: data.toBytes32(1), maxPriceAge: data.toUint64(33)});
+        return UpdateContractMaxAssetPriceAge({assetId: data.toUint128(1), maxPriceAge: data.toUint64(17)});
     }
 
-    function serialize(UpdateContractMaxPriceAge memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(UpdateContractType.MaxPriceAge, t.vault, t.maxPriceAge);
+    function serialize(UpdateContractMaxAssetPriceAge memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(UpdateContractType.MaxAssetPriceAge, t.assetId, t.maxPriceAge);
+    }
+
+    //---------------------------------------
+    //   UpdateContract.MaxSharePriceAge (submsg)
+    //---------------------------------------
+
+    struct UpdateContractMaxSharePriceAge {
+        uint64 maxPriceAge;
+    }
+
+    function deserializeUpdateContractMaxSharePriceAge(bytes memory data)
+        internal
+        pure
+        returns (UpdateContractMaxSharePriceAge memory)
+    {
+        require(updateContractType(data) == UpdateContractType.MaxSharePriceAge, UnknownMessageType());
+
+        return UpdateContractMaxSharePriceAge({maxPriceAge: data.toUint64(1)});
+    }
+
+    function serialize(UpdateContractMaxSharePriceAge memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(UpdateContractType.MaxSharePriceAge, t.maxPriceAge);
+    }
+
+    //---------------------------------------
+    //   UpdateContract.Valuation (submsg)
+    //---------------------------------------
+
+    struct UpdateContractValuation {
+        uint64 poolId;
+        bytes16 scId;
+        uint128 assetId;
+        bytes32 valuation;
+    }
+
+    function deserializeUpdateContractValuation(bytes memory data)
+        internal
+        pure
+        returns (UpdateContractValuation memory)
+    {
+        require(updateContractType(data) == UpdateContractType.Valuation, UnknownMessageType());
+
+        return UpdateContractValuation({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            assetId: data.toUint128(25),
+            valuation: data.toBytes32(41)
+        });
+    }
+
+    function serialize(UpdateContractValuation memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(UpdateContractType.Valuation, t.poolId, t.scId, t.assetId, t.valuation);
     }
 
     //---------------------------------------

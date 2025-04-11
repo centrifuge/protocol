@@ -158,4 +158,12 @@ contract MockVaults is Test, Auth, IAdapter {
     function messageCount() external view returns (uint256) {
         return lastMessages.length;
     }
+
+    function popMessage() external returns (bytes memory) {
+        require(lastMessages.length > 0, "mockVaults/no-msgs");
+
+        bytes memory popped = lastMessages[lastMessages.length - 1];
+        lastMessages.pop();
+        return popped;
+    }
 }
