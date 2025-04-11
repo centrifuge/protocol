@@ -261,6 +261,7 @@ contract MockCentrifugeChain is Test {
         );
     }
 
+    /// @dev Simulates incoming FulfilledDepositRequest with prepended ApprovedDeposits message
     function isFulfilledDepositRequest(
         uint64 poolId,
         bytes16 scId,
@@ -269,6 +270,8 @@ contract MockCentrifugeChain is Test {
         uint128 assets,
         uint128 shares
     ) public {
+        isApprovedDeposits(poolId, scId, assetId, assets);
+
         execute(
             MessageLib.FulfilledDepositRequest({
                 poolId: poolId,
@@ -281,6 +284,7 @@ contract MockCentrifugeChain is Test {
         );
     }
 
+    /// @dev Simulates incoming FulfilledRedeemRequest with prepended RevokedShares message
     function isFulfilledRedeemRequest(
         uint64 poolId,
         bytes16 scId,
@@ -289,6 +293,7 @@ contract MockCentrifugeChain is Test {
         uint128 assets,
         uint128 shares
     ) public {
+        isRevokedShares(poolId, scId, assetId, assets);
         execute(
             MessageLib.FulfilledRedeemRequest({
                 poolId: poolId,
@@ -298,6 +303,20 @@ contract MockCentrifugeChain is Test {
                 assetAmount: assets,
                 shareAmount: shares
             }).serialize()
+        );
+    }
+
+    /// @dev Implicitly called by isFulfilledDepositRequest
+    function isApprovedDeposits(uint64 poolId, bytes16 scId, uint128 assetId, uint128 assets) public {
+        execute(
+            MessageLib.ApprovedDeposits({poolId: poolId, scId: scId, assetId: assetId, assetAmount: assets}).serialize()
+        );
+    }
+
+    /// @dev Implicitly called by isFulfilledRedeemRequest
+    function isRevokedShares(uint64 poolId, bytes16 scId, uint128 assetId, uint128 assets) public {
+        execute(
+            MessageLib.RevokedShares({poolId: poolId, scId: scId, assetId: assetId, assetAmount: assets}).serialize()
         );
     }
 

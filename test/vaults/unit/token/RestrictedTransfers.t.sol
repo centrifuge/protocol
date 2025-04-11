@@ -7,6 +7,8 @@ import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 import "forge-std/Test.sol";
 import {MockRoot} from "test/common/mocks/MockRoot.sol";
+import {IHook} from "src/vaults/interfaces/token/IHook.sol";
+import {IRestrictedTransfers} from "src/hooks/interfaces/IRestrictedTransfers.sol";
 
 contract RestrictedTransfersTest is Test {
     MockRoot root;
@@ -21,14 +23,14 @@ contract RestrictedTransfersTest is Test {
     }
 
     function testHandleInvalidMessage() public {
-        vm.expectRevert(bytes("RestrictedTransfers/invalid-update"));
+        vm.expectRevert(IHook.InvalidUpdate.selector);
         restrictedTransfers.updateRestriction(address(token), abi.encodePacked(uint8(0)));
     }
 
     function testAddMember(uint64 validUntil) public {
         vm.assume(validUntil >= block.timestamp);
 
-        vm.expectRevert("RestrictedTransfers/invalid-valid-until");
+        vm.expectRevert(IRestrictedTransfers.InvalidValidUntil.selector);
         restrictedTransfers.updateMember(address(token), address(this), uint64(block.timestamp - 1));
 
         restrictedTransfers.updateMember(address(token), address(this), validUntil);
@@ -52,7 +54,7 @@ contract RestrictedTransfersTest is Test {
     }
 
     function testFreezingZeroAddress() public {
-        vm.expectRevert("RestrictedTransfers/cannot-freeze-zero-address");
+        vm.expectRevert(IRestrictedTransfers.CannotFreezeZeroAddress.selector);
         restrictedTransfers.freeze(address(token), address(0));
         assertEq(restrictedTransfers.isFrozen(address(token), address(0)), false);
     }

@@ -19,6 +19,7 @@ import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol
 import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
+import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 
 import {IRestrictedTransfers} from "src/hooks/interfaces/IRestrictedTransfers.sol";
 
@@ -134,10 +135,10 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assertEq(poolManager.vaultFactory(newVaultFactory), false);
 
         address newEscrow = makeAddr("newEscrow");
-        vm.expectRevert("PoolManager/file-unrecognized-param");
+        vm.expectRevert(IPoolManager.FileUnrecognizedParam.selector);
         poolManager.file("escrow", newEscrow);
 
-        vm.expectRevert("PoolManager/file-unrecognized-param");
+        vm.expectRevert(IPoolManager.FileUnrecognizedParam.selector);
         poolManager.file("escrow", newEscrow, true);
 
         vm.prank(makeAddr("unauthorized"));
@@ -152,7 +153,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
     function testAddPool(uint64 poolId) public {
         poolManager.addPool(poolId);
 
-        vm.expectRevert(bytes("PoolManager/pool-already-added"));
+        vm.expectRevert(IPoolManager.PoolAlreadyAdded.selector);
         poolManager.addPool(poolId);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -174,7 +175,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         address hook = address(new MockHook());
 
-        vm.expectRevert(bytes("PoolManager/invalid-pool"));
+        vm.expectRevert(IPoolManager.InvalidPool.selector);
         poolManager.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, salt, hook);
         poolManager.addPool(poolId);
 
@@ -182,13 +183,13 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         vm.prank(randomUser);
         poolManager.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, salt, hook);
 
-        vm.expectRevert(bytes("PoolManager/too-few-token-decimals"));
+        vm.expectRevert(IPoolManager.TooFewDecimals.selector);
         poolManager.addShareClass(poolId, scId, tokenName, tokenSymbol, 0, bytes32(0), hook);
 
-        vm.expectRevert(bytes("PoolManager/too-many-token-decimals"));
+        vm.expectRevert(IPoolManager.TooManyDecimals.selector);
         poolManager.addShareClass(poolId, scId, tokenName, tokenSymbol, 19, bytes32(0), hook);
 
-        vm.expectRevert(bytes("PoolManager/invalid-hook"));
+        vm.expectRevert(IPoolManager.InvalidHook.selector);
         poolManager.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, salt, address(1));
 
         poolManager.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, salt, hook);
@@ -198,7 +199,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assertEq(decimals, shareToken.decimals());
         assertEq(hook, shareToken.hook());
 
-        vm.expectRevert(bytes("PoolManager/share-class-already-exists"));
+        vm.expectRevert(IPoolManager.ShareClassAlreadyRegistered.selector);
         poolManager.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, salt, hook);
     }
 
@@ -248,7 +249,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         // fails for invalid share class token
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
-        vm.expectRevert(bytes("PoolManager/unknown-token"));
+        vm.expectRevert(IPoolManager.UnknownToken.selector);
         poolManager.transferShares(OTHER_CHAIN_ID, poolId + 1, scId, centChainAddress, amount);
 
         // send the transfer from EVM -> Cent Chain
@@ -278,13 +279,13 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         IShareToken shareToken = IShareToken(address(vault.share()));
 
-        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
+        vm.expectRevert(IHook.TransferBlocked.selector);
         poolManager.handleTransferShares(poolId, scId, destinationAddress, amount);
         poolManager.updateRestriction(
             poolId, scId, MessageLib.UpdateRestrictionMember(destinationAddress.toBytes32(), validUntil).serialize()
         );
 
-        vm.expectRevert(bytes("PoolManager/unknown-token"));
+        vm.expectRevert(IPoolManager.UnknownToken.selector);
         poolManager.handleTransferShares(poolId + 1, scId, destinationAddress, amount);
 
         assertTrue(shareToken.checkTransferRestriction(address(0), destinationAddress, 0));
@@ -321,7 +322,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         // fails for invalid share class token
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
-        vm.expectRevert(bytes("PoolManager/unknown-token"));
+        vm.expectRevert(IPoolManager.UnknownToken.selector);
         poolManager.transferShares(OTHER_CHAIN_ID, poolId + 1, scId, destinationAddress.toBytes32(), amount);
 
         // Approve and transfer amount from this address to destinationAddress
@@ -345,7 +346,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         vm.prank(randomUser);
         hook.updateMember(address(shareToken), randomUser, validUntil);
 
-        vm.expectRevert(bytes("PoolManager/unknown-token"));
+        vm.expectRevert(IPoolManager.UnknownToken.selector);
         poolManager.updateRestriction(
             100,
             bytes16(bytes("100")),
@@ -357,7 +358,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         );
         assertTrue(shareToken.checkTransferRestriction(address(0), randomUser, 0));
 
-        vm.expectRevert(bytes("RestrictedTransfers/endorsed-user-cannot-be-updated"));
+        vm.expectRevert(IRestrictedTransfers.EndorsedUserCannotBeUpdated.selector);
         poolManager.updateRestriction(
             poolId, scId, MessageLib.UpdateRestrictionMember(address(escrow).toBytes32(), validUntil).serialize()
         );
@@ -372,17 +373,17 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         uint64 validUntil = uint64(block.timestamp + 7 days);
         address secondUser = makeAddr("secondUser");
 
-        vm.expectRevert(bytes("RestrictedTransfers/endorsed-user-cannot-be-frozen"));
+        vm.expectRevert(IRestrictedTransfers.EndorsedUserCannotBeFrozen.selector);
         poolManager.updateRestriction(
             poolId, scId, MessageLib.UpdateRestrictionFreeze(address(escrow).toBytes32()).serialize()
         );
 
-        vm.expectRevert(bytes("PoolManager/unknown-token"));
+        vm.expectRevert(IPoolManager.UnknownToken.selector);
         poolManager.updateRestriction(
             poolId + 1, scId, MessageLib.UpdateRestrictionFreeze(randomUser.toBytes32()).serialize()
         );
 
-        vm.expectRevert(bytes("PoolManager/unknown-token"));
+        vm.expectRevert(IPoolManager.UnknownToken.selector);
         poolManager.updateRestriction(
             poolId + 1, scId, MessageLib.UpdateRestrictionUnfreeze(randomUser.toBytes32()).serialize()
         );
@@ -426,7 +427,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         string memory updatedTokenName = "newName";
         string memory updatedTokenSymbol = "newSymbol";
 
-        vm.expectRevert(bytes("PoolManager/unknown-token"));
+        vm.expectRevert(IPoolManager.UnknownToken.selector);
         poolManager.updateShareMetadata(100, bytes16(bytes("100")), updatedTokenName, updatedTokenSymbol);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -440,7 +441,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assertEq(shareToken.name(), updatedTokenName);
         assertEq(shareToken.symbol(), updatedTokenSymbol);
 
-        vm.expectRevert(bytes("PoolManager/old-metadata"));
+        vm.expectRevert(IPoolManager.OldMetadata.selector);
         poolManager.updateShareMetadata(poolId, scId, updatedTokenName, updatedTokenSymbol);
     }
 
@@ -453,7 +454,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         address newHook = makeAddr("NewHook");
 
-        vm.expectRevert(bytes("PoolManager/unknown-token"));
+        vm.expectRevert(IPoolManager.UnknownToken.selector);
         poolManager.updateShareHook(100, bytes16(bytes("100")), newHook);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -465,7 +466,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.updateShareHook(poolId, scId, newHook);
         assertEq(shareToken.hook(), newHook);
 
-        vm.expectRevert(bytes("PoolManager/old-hook"));
+        vm.expectRevert(IPoolManager.OldHook.selector);
         poolManager.updateShareHook(poolId, scId, newHook);
     }
 
@@ -478,7 +479,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         bytes memory update = MessageLib.UpdateRestrictionFreeze(makeAddr("User").toBytes32()).serialize();
 
-        vm.expectRevert(bytes("PoolManager/unknown-token"));
+        vm.expectRevert(IPoolManager.UnknownToken.selector);
         poolManager.updateRestriction(100, bytes16(bytes("100")), update);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -488,7 +489,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         address hook = shareToken.hook();
         poolManager.updateShareHook(poolId, scId, address(0));
 
-        vm.expectRevert(bytes("PoolManager/invalid-hook"));
+        vm.expectRevert(IPoolManager.InvalidHook.selector);
         poolManager.updateRestriction(poolId, scId, update);
 
         poolManager.updateShareHook(poolId, scId, hook);
@@ -513,14 +514,14 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         address hook = address(new MockHook());
 
-        vm.expectRevert(bytes("PoolManager/share-token-does-not-exist"));
+        vm.expectRevert(IPoolManager.ShareTokenDoesNotExist.selector);
         poolManager.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp));
 
         poolManager.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, salt, hook);
 
         poolManager.updatePricePoolPerAsset(poolId, scId, assetId, 1e18, uint64(block.timestamp));
 
-        vm.expectRevert("PoolManager/invalid-price");
+        vm.expectRevert(IPoolManager.InvalidPrice.selector);
         poolManager.priceAssetPerShare(poolId, scId, assetId, true);
 
         // Allows us to go back in time later
@@ -538,12 +539,12 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assertEq(latestPrice.raw(), price);
         assertEq(lastUpdated, block.timestamp);
 
-        vm.expectRevert(bytes("PoolManager/cannot-set-older-price"));
+        vm.expectRevert(IPoolManager.CannotSetOlderPrice.selector);
         poolManager.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp - 1));
 
         // NOTE: We have no maxAge set, so price is invalid after timestamp of block increases
         vm.warp(block.timestamp + 1);
-        vm.expectRevert("PoolManager/invalid-price");
+        vm.expectRevert(IPoolManager.InvalidPrice.selector);
         poolManager.priceAssetPerShare(poolId, scId, assetId, true);
 
         // NOTE: Unchecked version will work
@@ -614,7 +615,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         );
         assertFalse(shareToken.checkTransferRestriction(address(this), destinationAddress, 0));
 
-        vm.expectRevert(bytes("RestrictedTransfers/transfer-blocked"));
+        vm.expectRevert(IHook.TransferBlocked.selector);
         poolManager.transferShares(OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount);
         assertEq(shareToken.balanceOf(address(this)), amount);
 
@@ -626,12 +627,12 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
     }
 
     function testLinkVaultInvalidShare(uint64 poolId, bytes16 scId) public {
-        vm.expectRevert("PoolManager/share-token-does-not-exist");
+        vm.expectRevert(IPoolManager.ShareTokenDoesNotExist.selector);
         poolManager.linkVault(poolId, scId, defaultAssetId, address(0));
     }
 
     function testUnlinkVaultInvalidShare(uint64 poolId, bytes16 scId) public {
-        vm.expectRevert("PoolManager/share-token-does-not-exist");
+        vm.expectRevert(IPoolManager.ShareTokenDoesNotExist.selector);
         poolManager.unlinkVault(poolId, scId, defaultAssetId, address(0));
     }
 
@@ -826,7 +827,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
     }
 
     function testDeploVaultInvalidShare(uint64 poolId, bytes16 scId) public {
-        vm.expectRevert("PoolManager/share-token-does-not-exist");
+        vm.expectRevert(IPoolManager.ShareTokenDoesNotExist.selector);
         poolManager.deployVault(poolId, scId, defaultAssetId, asyncVaultFactory);
     }
 
@@ -839,7 +840,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
     ) public {
         setUpPoolAndShare(poolId_, decimals_, tokenName_, tokenSymbol_, scId_);
 
-        vm.expectRevert("PoolManager/invalid-factory");
+        vm.expectRevert(IPoolManager.InvalidFactory.selector);
         poolManager.deployVault(poolId, scId, defaultAssetId, address(0));
     }
 
@@ -963,36 +964,36 @@ contract PoolManagerRegisterAssetTest is BaseTest {
 
     function testRegisterAsset_decimalsMissing() public {
         address asset = address(new MockERC6909());
-        vm.expectRevert("PoolManager/asset-missing-decimals");
+        vm.expectRevert(IPoolManager.AssetMissingDecimals.selector);
         poolManager.registerAsset(OTHER_CHAIN_ID, asset, 0);
     }
 
     function testRegisterAsset_invalidContract(uint256 tokenId) public {
-        vm.expectRevert("PoolManager/asset-missing-decimals");
+        vm.expectRevert(IPoolManager.AssetMissingDecimals.selector);
         poolManager.registerAsset(OTHER_CHAIN_ID, address(0), tokenId);
     }
 
     function testRegisterAssetERC20_decimalDeficit() public {
         ERC20 asset = _newErc20("", "", 1);
-        vm.expectRevert("PoolManager/too-few-asset-decimals");
+        vm.expectRevert(IPoolManager.TooFewDecimals.selector);
         poolManager.registerAsset(OTHER_CHAIN_ID, address(asset), 0);
     }
 
     function testRegisterAssetERC20_decimalExcess() public {
         ERC20 asset = _newErc20("", "", 19);
-        vm.expectRevert("PoolManager/too-many-asset-decimals");
+        vm.expectRevert(IPoolManager.TooManyDecimals.selector);
         poolManager.registerAsset(OTHER_CHAIN_ID, address(asset), 0);
     }
 
     function testRegisterAssetERC6909_decimalDeficit() public {
         MockERC6909 asset = new MockERC6909();
-        vm.expectRevert("PoolManager/too-few-asset-decimals");
+        vm.expectRevert(IPoolManager.TooFewDecimals.selector);
         poolManager.registerAsset(OTHER_CHAIN_ID, address(asset), 1);
     }
 
     function testRegisterAssetERC6909_decimalExcess() public {
         MockERC6909 asset = new MockERC6909();
-        vm.expectRevert("PoolManager/too-many-asset-decimals");
+        vm.expectRevert(IPoolManager.TooManyDecimals.selector);
         poolManager.registerAsset(OTHER_CHAIN_ID, address(asset), 19);
     }
 
@@ -1063,7 +1064,7 @@ contract PoolManagerUpdateContract is BaseTest, PoolManagerTestHelper {
         registerAssetErc20();
         bytes memory vaultUpdate = _serializedUpdateContractNewVault(address(1));
 
-        vm.expectRevert("PoolManager/invalid-factory");
+        vm.expectRevert(IPoolManager.InvalidFactory.selector);
         poolManager.updateContract(poolId, scId, address(poolManager), vaultUpdate);
     }
 
@@ -1082,7 +1083,7 @@ contract PoolManagerUpdateContract is BaseTest, PoolManagerTestHelper {
             kind: uint8(VaultUpdateKind.Link)
         }).serialize();
 
-        vm.expectRevert("PoolManager/unknown-vault");
+        vm.expectRevert(IPoolManager.UnknownVault.selector);
         poolManager.updateContract(poolId, scId, address(poolManager), vaultUpdate);
     }
 
@@ -1090,7 +1091,7 @@ contract PoolManagerUpdateContract is BaseTest, PoolManagerTestHelper {
         poolManager.addPool(poolId);
         bytes memory vaultUpdate = _serializedUpdateContractNewVault(asyncVaultFactory);
 
-        vm.expectRevert("PoolManager/share-token-does-not-exist");
+        vm.expectRevert(IPoolManager.ShareTokenDoesNotExist.selector);
         poolManager.updateContract(poolId, scId, address(poolManager), vaultUpdate);
     }
 

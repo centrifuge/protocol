@@ -8,6 +8,8 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
+import {IPerPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
+
 interface IBalanceSheet {
     // --- Errors ---
     error EntriesUnbalanced();
@@ -22,7 +24,7 @@ interface IBalanceSheet {
         uint256 tokenId,
         address receiver,
         uint128 amount,
-        D18 priceAssetPerShare,
+        D18 pricePoolPerAsset,
         uint64 timestamp,
         JournalEntry[] debits,
         JournalEntry[] credits
@@ -34,7 +36,7 @@ interface IBalanceSheet {
         uint256 tokenId,
         address provider,
         uint128 amount,
-        D18 priceAssetPerShare,
+        D18 pricePoolPerAsset,
         uint64 timestamp,
         JournalEntry[] debits,
         JournalEntry[] credits
@@ -59,7 +61,7 @@ interface IBalanceSheet {
         uint256 tokenId,
         address provider,
         uint128 amount,
-        D18 priceAssetPerShare,
+        D18 pricePoolPerAsset,
         Meta calldata meta
     ) external;
 
@@ -70,11 +72,11 @@ interface IBalanceSheet {
         uint256 tokenId,
         address receiver,
         uint128 amount,
-        D18 priceAssetPerShare,
+        D18 pricePoolPerAsset,
         Meta calldata m
     ) external;
 
-    function updateValue(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, D18 priceAssetPerShare)
+    function updateValue(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, D18 pricePoolPerAsset)
         external;
 
     function issue(PoolId poolId, ShareClassId scId, address to, D18 pricePoolPerShare, uint128 shares) external;
@@ -82,4 +84,6 @@ interface IBalanceSheet {
     function revoke(PoolId poolId, ShareClassId scId, address from, D18 pricePoolPerShare, uint128 shares) external;
 
     function journalEntry(PoolId poolId, ShareClassId scId, Meta calldata m) external;
+
+    function escrow() external view returns (IPerPoolEscrow);
 }

@@ -9,7 +9,9 @@ import {ISafe} from "src/common/interfaces/IGuardian.sol";
 import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {MessageLib, UpdateContractType, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
@@ -18,6 +20,8 @@ import {FullDeployer, HubDeployer, VaultsDeployer} from "script/FullDeployer.s.s
 
 // Script to deploy CP and CP with an Localhost Adapter.
 contract LocalhostDeployer is FullDeployer {
+    using MessageLib for *;
+
     function run() public {
         uint16 centrifugeId = uint16(vm.envUint("CENTRIFUGE_ID"));
 
@@ -49,47 +53,47 @@ contract LocalhostDeployer is FullDeployer {
 
         // Deploy vault
         D18 navPerShare = d18(1, 1);
-
         AssetId assetId = newAssetId(centrifugeId, 1);
-        (bytes[] memory cs, uint256 c) = (new bytes[](8), 0);
-        cs[c++] = abi.encodeWithSelector(hub.setPoolMetadata.selector, bytes("Testing pool"));
-        cs[c++] =
-            abi.encodeWithSelector(hub.addShareClass.selector, "Tokenized MMF", "MMF", bytes32(bytes("1")), bytes(""));
-        cs[c++] = abi.encodeWithSelector(hub.notifyPool.selector, centrifugeId);
-        cs[c++] = abi.encodeWithSelector(
-            hub.notifyShareClass.selector, centrifugeId, scId, bytes32(bytes20(freelyTransferable))
-        );
-        cs[c++] = abi.encodeWithSelector(hub.createHolding.selector, scId, assetId, identityValuation, false, 0x01);
-        cs[c++] = abi.encodeWithSelector(
-            hub.updateVault.selector,
+
+        hub.setPoolMetadata(poolId, bytes("Testing pool"));
+        hub.addShareClass(poolId, "Tokenized MMF", "MMF", bytes32(bytes("1")), bytes(""));
+        hub.notifyPool{value: 0.001 ether}(poolId, centrifugeId);
+        hub.notifyShareClass{value: 0.001 ether}(poolId, centrifugeId, scId, bytes32(bytes20(freelyTransferable)));
+
+        hub.createAccount(poolId, AccountId.wrap(0x01), true);
+        hub.createAccount(poolId, AccountId.wrap(0x02), false);
+        hub.createAccount(poolId, AccountId.wrap(0x03), false);
+        hub.createAccount(poolId, AccountId.wrap(0x04), false);
+        hub.createHolding(poolId, scId, assetId, identityValuation, AccountId.wrap(0x01), AccountId.wrap(0x02), AccountId.wrap(0x03), AccountId.wrap(0x04));
+
+        hub.updateContract(
+            poolId,
+            centrifugeId,
             scId,
-            assetId,
             bytes32(bytes20(address(poolManager))),
-            bytes32(bytes20(address(asyncVaultFactory))),
-            VaultUpdateKind.DeployAndLink
+            MessageLib.UpdateContractVaultUpdate({
+                vaultOrFactory: bytes32(bytes20(address(asyncVaultFactory))),
+                assetId: assetId.raw(),
+                kind: uint8(VaultUpdateKind.DeployAndLink)
+            }).serialize()
         );
 
-        cs[c++] = abi.encodeWithSelector(hub.updatePricePoolPerShare.selector, scId, navPerShare);
-        cs[c++] = abi.encodeWithSelector(hub.notifySharePrice.selector, scId, assetId);
-
-        hub.execute{value: 0.001 ether}(poolId, cs);
+        hub.updatePricePoolPerShare(poolId, scId, navPerShare, "");
+        hub.notifySharePrice(poolId, centrifugeId, scId);
 
         // Submit deposit request
         IShareToken shareToken = IShareToken(poolManager.shareToken(poolId.raw(), scId.raw()));
         IAsyncVault vault = IAsyncVault(shareToken.vault(address(token)));
 
-        uint256 investAmount = 1_000_000e6;
+        uint128 investAmount = 1_000_000e6;
         token.approve(address(vault), investAmount);
         vault.requestDeposit(investAmount, msg.sender, msg.sender);
 
         // Fulfill deposit request
         IERC7726 valuation = holdings.valuation(poolId, scId, assetId);
 
-        (bytes[] memory cs2, uint256 c2) = (new bytes[](2), 0);
-        cs2[c2++] = abi.encodeWithSelector(hub.approveDeposits.selector, scId, assetId, investAmount, valuation);
-        cs2[c2++] = abi.encodeWithSelector(hub.issueShares.selector, scId, assetId, navPerShare);
-
-        hub.execute{value: 0.001 ether}(poolId, cs2);
+        hub.approveDeposits(poolId, scId, assetId, investAmount, valuation);
+        hub.issueShares(poolId, scId, assetId, navPerShare);
 
         hub.claimDeposit{value: 0.001 ether}(poolId, scId, assetId, bytes32(bytes20(msg.sender)));
 

@@ -32,7 +32,7 @@ contract CentrifugeToken is ERC20, IShareToken {
     constructor(uint8 decimals_) ERC20(decimals_) {}
 
     modifier authOrHook() {
-        require(wards[msg.sender] == 1 || msg.sender == hook, "CentrifugeToken/not-authorized");
+        require(wards[msg.sender] == 1 || msg.sender == hook, NotAuthorizedOrHook());
         _;
     }
 
@@ -40,7 +40,7 @@ contract CentrifugeToken is ERC20, IShareToken {
     /// @inheritdoc IShareToken
     function file(bytes32 what, address data) external authOrHook {
         if (what == "hook") hook = data;
-        else revert("CentrifugeToken/file-unrecognized-param");
+        else revert FileUnrecognizedParam();
         emit File(what, data);
     }
 
@@ -94,7 +94,7 @@ contract CentrifugeToken is ERC20, IShareToken {
     /// @inheritdoc IShareToken
     function mint(address to, uint256 value) public override(ERC20, IShareToken) {
         super.mint(to, value);
-        require(totalSupply <= type(uint128).max, "CentrifugeToken/exceeds-max-supply");
+        require(totalSupply <= type(uint128).max, ExceedsMaxSupply());
         _onTransfer(address(0), to, value);
     }
 
@@ -110,7 +110,7 @@ contract CentrifugeToken is ERC20, IShareToken {
             hook_ == address(0)
                 || IHook(hook_).onERC20Transfer(from, to, value, HookData(hookDataOf(from), hookDataOf(to)))
                     == IHook.onERC20Transfer.selector,
-            "CentrifugeToken/restrictions-failed"
+            RestrictionsFailed()
         );
     }
 
@@ -126,7 +126,7 @@ contract CentrifugeToken is ERC20, IShareToken {
             hook_ == address(0)
                 || IHook(hook_).onERC20AuthTransfer(sender, from, to, value, HookData(hookDataOf(from), hookDataOf(to)))
                     == IHook.onERC20AuthTransfer.selector,
-            "CentrifugeToken/restrictions-failed"
+            RestrictionsFailed()
         );
     }
 
