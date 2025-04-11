@@ -41,7 +41,7 @@ contract AsyncVaultTest is BaseTest {
         root.relyContract(vault_, self);
         vault.file("manager", self);
 
-        vm.expectRevert(bytes("AsyncVault/file-unrecognized-param"));
+        vm.expectRevert(IBaseVault.FileUnrecognizedParam.selector);
         vault.file("random", self);
     }
 

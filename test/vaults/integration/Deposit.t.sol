@@ -14,6 +14,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
+import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 
 contract DepositTest is BaseTest {
     using MessageLib for *;
@@ -125,7 +126,7 @@ contract DepositTest is BaseTest {
         vm.assume(randomUser != self);
         // deposit 50% of the amount
         vm.startPrank(randomUser); // try to claim deposit on behalf of user and set the wrong user as receiver
-        vm.expectRevert(bytes("AsyncVault/invalid-controller"));
+        vm.expectRevert(IBaseVault.InvalidController.selector);
         vault.deposit(amount / 2, randomUser, self);
         vm.stopPrank();
 
@@ -404,7 +405,7 @@ contract DepositTest is BaseTest {
         address router = makeAddr("router");
 
         vm.startPrank(router);
-        vm.expectRevert(bytes("AsyncVault/invalid-controller")); // fail without endorsement
+        vm.expectRevert(IBaseVault.InvalidController.selector); // fail without endorsement
         vault.deposit(amount, receiver, address(this));
         vm.stopPrank();
 

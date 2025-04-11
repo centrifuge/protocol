@@ -120,7 +120,7 @@ contract VaultRouterTest is BaseTest {
         vm.label(vault_, "vault");
 
         root.veto(address(vaultRouter));
-        vm.expectRevert(bytes("AsyncVault/not-endorsed"));
+        vm.expectRevert(IBaseVault.NotEndorsed.selector);
         vaultRouter.enable(vault_);
         assertEq(vault.isOperator(address(this), address(vaultRouter)), false);
         assertEq(vaultRouter.isEnabled(vault_, address(this)), false);
@@ -131,7 +131,7 @@ contract VaultRouterTest is BaseTest {
         assertEq(vaultRouter.isEnabled(vault_, address(this)), true);
 
         root.veto(address(vaultRouter));
-        vm.expectRevert(bytes("AsyncVault/not-endorsed"));
+        vm.expectRevert(IBaseVault.NotEndorsed.selector);
         vaultRouter.disable(vault_);
         assertEq(vault.isOperator(address(this), address(vaultRouter)), true);
         assertEq(vaultRouter.isEnabled(vault_, address(this)), true);

@@ -6,6 +6,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
+import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 
 contract RedeemTest is BaseTest {
     using MessageLib for *;
@@ -47,7 +48,7 @@ contract RedeemTest is BaseTest {
         assertEq(vault.claimableRedeemRequest(0, self), 0);
 
         // fail: no tokens left
-        vm.expectRevert(bytes("AsyncVault/insufficient-balance"));
+        vm.expectRevert(IBaseVault.InsufficientBalance.selector);
         vault.requestRedeem(amount, address(this), address(this));
 
         // trigger executed collectRedeem

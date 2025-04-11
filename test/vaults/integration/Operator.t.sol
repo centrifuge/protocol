@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import "test/vaults/BaseTest.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
+import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 
 contract OperatorTest is BaseTest {
     function testDepositAsOperator(uint256 amount) public {
@@ -30,7 +31,7 @@ contract OperatorTest is BaseTest {
         vault.requestDeposit(amount, investor, investor);
 
         vm.prank(investor);
-        vm.expectRevert(bytes("AsyncVault/cannot-set-self-as-operator"));
+        vm.expectRevert(IBaseVault.CannotSetSelfAsOperator.selector);
         vault.setOperator(investor, true);
 
         assertEq(vault.isOperator(investor, operator), false);
@@ -105,7 +106,7 @@ contract OperatorTest is BaseTest {
         );
         bytes memory signature = abi.encodePacked(r, s, v);
         vm.prank(controller);
-        vm.expectRevert(bytes("AsyncVault/cannot-set-self-as-operator"));
+        vm.expectRevert(IBaseVault.CannotSetSelfAsOperator.selector);
         vault.authorizeOperator(controller, controller, true, bytes32("nonce"), deadline, signature);
 
         (v, r, s) = vm.sign(
@@ -232,7 +233,7 @@ contract OperatorTest is BaseTest {
 
         assertEq(vault.authorizations(controller, nonce), true);
 
-        vm.expectRevert(bytes("AsyncVault/authorization-used"));
+        vm.expectRevert(IBaseVault.AlreadyUsedAuthorization.selector);
         vm.prank(operator);
         vault.authorizeOperator(controller, operator, true, nonce, deadline, signature);
         assertEq(vault.isOperator(controller, operator), false);

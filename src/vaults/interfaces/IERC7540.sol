@@ -285,6 +285,15 @@ interface IERC7714 {
 /// @dev Must be implemented by all vaults
 interface IBaseVault is IERC7540Operator, IERC7741, IERC7714, IERC7575, IRecoverable {
     error FileUnrecognizedParam();
+    error NotEndorsed();
+    error CannotSetSelfAsOperator();
+    error ExpiredAuthorization();
+    error AlreadyUsedAuthorization();
+    error InvalidAuthorization();
+    error InvalidController();
+    error InsufficientBalance();
+    error RequestRedeemFailed();
+    error TransferFromFailed();
 
     /// @notice Identifier of the Centrifuge pool
     function poolId() external view returns (uint64);
