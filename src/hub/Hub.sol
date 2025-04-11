@@ -96,7 +96,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
-    function createPool(address admin, AssetId currency) external payable auth returns (PoolId poolId) {
+    function createPool(address admin, AssetId currency) external payable returns (PoolId poolId) {
+        _auth();
+
         poolId = hubRegistry.registerPool(admin, sender.localCentrifugeId(), currency);
     }
 
@@ -446,31 +448,36 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHubGatewayHandler
-    function registerAsset(AssetId assetId, uint8 decimals) external auth {
+    function registerAsset(AssetId assetId, uint8 decimals) external {
+        _auth();
+
         hubRegistry.registerAsset(assetId, decimals);
     }
 
     /// @inheritdoc IHubGatewayHandler
     function depositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId, uint128 amount)
         external
-        auth
     {
+        _auth();
+
         shareClassManager.requestDeposit(poolId, scId, amount, investor, depositAssetId);
     }
 
     /// @inheritdoc IHubGatewayHandler
     function redeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId, uint128 amount)
         external
-        auth
     {
+        _auth();
+
         shareClassManager.requestRedeem(poolId, scId, amount, investor, payoutAssetId);
     }
 
     /// @inheritdoc IHubGatewayHandler
     function cancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
         external
-        auth
     {
+        _auth();
+
         uint128 cancelledAssetAmount = shareClassManager.cancelDepositRequest(poolId, scId, investor, depositAssetId);
 
         // Cancellation might have been queued such that it will be executed in the future during claiming
@@ -480,10 +487,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
-        external
-        auth
-    {
+    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId) external {
+        _auth();
+
         uint128 cancelledShareAmount = shareClassManager.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
 
         // Cancellation might have been queued such that it will be executed in the future during claiming
@@ -502,7 +508,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         bool isIncrease,
         JournalEntry[] memory debits,
         JournalEntry[] memory credits
-    ) external auth {
+    ) external {
+        _auth();
+
         accounting.unlock(poolId);
 
         address poolCurrency = hubRegistry.currency(poolId).addr();
@@ -521,10 +529,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset)
-        external
-        auth
-    {
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset) external {
+        _auth();
+
         accounting.unlock(poolId);
 
         transientValuation.setPrice(assetId.addr(), hubRegistry.currency(poolId).addr(), pricePoolPerAsset);
@@ -538,7 +545,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external auth {
+    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external {
+        _auth();
+
         accounting.unlock(poolId);
 
         _updateJournal(debits, credits);
@@ -547,18 +556,25 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function increaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare, uint128 amount) external auth {
+    function increaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare, uint128 amount) external {
+        _auth();
+
         shareClassManager.increaseShareClassIssuance(poolId, scId, pricePerShare, amount);
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare, uint128 amount) external auth {
+    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare, uint128 amount) external {
+        _auth();
+
         shareClassManager.decreaseShareClassIssuance(poolId, scId, pricePerShare, amount);
     }
 
     //----------------------------------------------------------------------------------------------
     //  Internal methods
     //----------------------------------------------------------------------------------------------
+
+    /// @dev Ensure the sender is authorized
+    function _auth() internal auth {}
 
     /// @dev Ensure the method can be used without reentrancy issues, and the sender is a pool admin
     function _protected(PoolId poolId) internal protected {
