@@ -6,18 +6,21 @@ import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {ShareClassIdTest} from "../../../test/common/types/ShareClassId.t.sol";
 
-struct EpochRedeemAmounts {
+    struct EpochRedeemAmounts {
     /// @dev Amount of shares pending to be redeemed at time of epoch
     uint128 pendingShareAmount;
     /// @dev Total approved amount of redeemed share class tokens
     uint128 approvedShareAmount;
     /// @dev Total asset amount of revoked share class tokens
     uint128 payoutAssetAmount;
-    /// @dev
-    D18 priceAssetPerShare;
+    /// @dev The amount of pool currency per unit of asset at time of approval
+    D18 pricePoolPerAsset;
+    /// @dev The amount of pool currency per unit of share at time of revocation
+    D18 navPoolPerShare;
     /// @dev block timestamp when shares of epoch were revoked
-    u64 revokedAt;
+    uint64 revokedAt;
 }
 
 struct EpochInvestAmounts {
@@ -27,10 +30,12 @@ struct EpochInvestAmounts {
     uint128 approvedAssetAmount;
     /// @dev Total approved pool amount of deposit asset
     uint128 approvedPoolAmount;
-    /// @dev
+    /// @dev The amount of pool currency per unit of asset at time of approval
     D18 pricePoolPerAsset;
+    /// @dev The amount of pool currency per unit of share at time of issuance
+    D18 navPoolPerShare;
     /// @dev block timestamp when shares of epoch were issued
-    u64 issuedAt;
+    uint64 issuedAt;
 }
 
 struct UserOrder {
@@ -77,7 +82,8 @@ interface IShareClassManager {
         PoolId indexed poolId, ShareClassId indexed scId, uint32 indexed index, string name, string symbol, bytes32 salt
     );
     event UpdateMetadata(PoolId indexed poolId, ShareClassId indexed scId, string name, string symbol, bytes32 salt);
-    event NewEpoch(PoolId poolId, uint32 newIndex);
+    event NewInvestEpoch(PoolId indexed poolId, AssetId indexed assetId, uint32 newIndex);
+    event NewRedeemEpoch(PoolId indexed poolId, AssetId indexed assetId, uint32 newIndex);
     event ApproveDeposits(
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -104,6 +110,7 @@ interface IShareClassManager {
         uint128 newTotalIssuance,
         uint128 issuedShareAmount
     );
+    event RemoteIssueShares(PoolId indexed poolId, ShareClassId indexed scId, uint128 issedShareAmount);
     event RevokeShares(
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -114,6 +121,7 @@ interface IShareClassManager {
         uint128 revokedShareAmount,
         uint128 revokedAssetAmount
     );
+    event RemoteRevokeShares(PoolId indexed poolId, ShareClassId indexed scId, uint128 revokedAssetAmount);
     event ClaimDeposit(
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -158,8 +166,10 @@ interface IShareClassManager {
     );
 
     /// Errors
+    error NotEnoughPending();
     error ApprovalRequired();
     error IssuanceRequired();
+    error AlreadyIssued();
     error RevocationRequired();
     error UnrecognizedFileParam();
     error ZeroApprovalAmount();

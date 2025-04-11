@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {Auth} from "src/misc/Auth.sol";
+import {d18} from "src/misc/types/D18.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -55,41 +56,41 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @inheritdoc IHoldings
-    function increase(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation_, uint128 amount_)
+    function increase(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount_)
         external
         auth
         returns (uint128 amountValue)
     {
-        require(address(valuation_) != address(0), WrongValuation());
-
         Holding storage holding_ = holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
-        amountValue = valuation_.getQuote(amount_, assetId.addr(), hubRegistry.currency(poolId).addr()).toUint128();
+        // TODO: Fix to take price as parameter and use here instead
+        amountValue = holding_.valuation.getQuote(amount_, assetId.addr(), hubRegistry.currency(poolId).addr()).toUint128();
 
         holding_.assetAmount += amount_;
         holding_.assetAmountValue += amountValue;
 
-        emit Increase(poolId, scId, assetId, valuation_, amount_, amountValue);
+        // TODO: Use price from parameter
+        emit Increase(poolId, scId, assetId, d18(1,1), amount_, amountValue);
     }
 
     /// @inheritdoc IHoldings
-    function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation_, uint128 amount_)
+    function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount_)
         external
         auth
         returns (uint128 amountValue)
     {
-        require(address(valuation_) != address(0), WrongValuation());
-
         Holding storage holding_ = holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
-        amountValue = valuation_.getQuote(amount_, assetId.addr(), hubRegistry.currency(poolId).addr()).toUint128();
+        // TODO: Fix to take price as parameter and use here instead
+        amountValue = holding.valuation_.getQuote(amount_, assetId.addr(), hubRegistry.currency(poolId).addr()).toUint128();
 
         holding_.assetAmount -= amount_;
         holding_.assetAmountValue -= amountValue;
 
-        emit Decrease(poolId, scId, assetId, valuation_, amount_, amountValue);
+        // TODO: Use price from parameter
+        emit Decrease(poolId, scId, assetId, d18(1,1), amount_, amountValue);
     }
 
     /// @inheritdoc IHoldings

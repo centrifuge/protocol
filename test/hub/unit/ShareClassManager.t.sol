@@ -15,14 +15,14 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {
-    IShareClassManager,
-    EpochAmounts,
-    UserOrder,
-    EpochPointers,
-    ShareClassMetadata,
-    ShareClassMetrics,
-    QueuedOrder,
-    RequestType
+IShareClassManager,
+EpochInvestAmounts,
+EpochRedeemAmounts,
+UserOrder,
+ShareClassMetadata,
+ShareClassMetrics,
+QueuedOrder,
+RequestType
 } from "src/hub/interfaces/IShareClassManager.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
