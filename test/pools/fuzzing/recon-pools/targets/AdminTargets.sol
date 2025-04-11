@@ -285,6 +285,24 @@ abstract contract AdminTargets is
         hub.updateHoldingAmount(poolId, scId, assetId, amount, pricePerUnit, isIncrease, debits, credits);
     }
 
+    function hub_updateHoldingAmount_clamped(uint64 poolEntropy, uint32 scEntropy, uint8 accountEntropy, uint128 amount, D18 pricePerUnit, bool isIncrease) public updateGhosts {
+        PoolId poolId = _getRandomPoolId(poolEntropy);
+        ShareClassId scId = _getRandomShareClassIdForPool(poolId, scEntropy);
+        AssetId assetId = hubRegistry.currency(poolId);
+
+        JournalEntry[] memory debits = new JournalEntry[](1);
+        debits[0] = JournalEntry({
+            accountId: _getRandomAccountId(poolId, scId, assetId, ACCOUNT_TO_UPDATE % 6),
+            amount: amount
+        });
+        JournalEntry[] memory credits = new JournalEntry[](1);
+        credits[0] = JournalEntry({
+            accountId: _getRandomAccountId(poolId, scId, assetId, ACCOUNT_TO_UPDATE % 6),
+            amount: amount
+        });
+        hub.updateHoldingAmount(poolId, scId, assetId, amount, pricePerUnit, isIncrease, debits, credits);
+    }
+
     function hub_updateHoldingValue(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, D18 pricePerUnit) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);

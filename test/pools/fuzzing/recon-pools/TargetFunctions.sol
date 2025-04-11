@@ -470,7 +470,6 @@ abstract contract TargetFunctions is
             IERC7726(address(identityValuation)) : 
             IERC7726(address(transientValuation));
 
-        // hub_createHolding(scId, assetId, valuation, prefix);
         hub_createHolding(scId, assetId, valuation, IS_LIABILITY, prefix);
         hub_execute_clamped(poolId);
     }

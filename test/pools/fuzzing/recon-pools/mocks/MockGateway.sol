@@ -71,7 +71,7 @@ contract MockGateway {
     function endBatching() external {
     }
 
-    function payTransaction() external payable {
+    function payTransaction(address sender) external payable {
     }
 
 

@@ -25,6 +25,8 @@ import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 import {MessageProcessor} from "src/common/MessageProcessor.sol";
 import {Root} from "src/common/Root.sol";
 import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 
 // Interfaces
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
@@ -35,6 +37,7 @@ import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.s
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 
 // Types
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -173,6 +176,11 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
 
         ShareClassId scId = shareClassManager.previewShareClassId(poolId, randomIndex);
         return scId;
+    }
+
+    function _getRandomAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 accountEntropy) internal view returns (AccountId) {
+        uint8 accountType = accountEntropy % 6;
+        return holdings.accountId(poolId, scId, assetId, accountType);
     }
 
     function _checkIfCanCancel(uint32 lastUpdate, uint128 pending, uint128 latestApproval) internal pure returns (bool) {

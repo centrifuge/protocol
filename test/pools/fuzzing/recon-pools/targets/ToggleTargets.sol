@@ -25,6 +25,6 @@ abstract contract ToggleTargets is
     /// @dev helper to toggle the accountToUpdate uint8 for testing
     /// @dev this is defined like this because implementing it directly as a param in the functions throws a stack too deep error
     function toggle_AccountToUpdate(uint8 accountToUpdate) public {
-        ACCOUNT_TO_UPDATE = accountToUpdate;
+        ACCOUNT_TO_UPDATE = accountToUpdate % 6;
     }
 }

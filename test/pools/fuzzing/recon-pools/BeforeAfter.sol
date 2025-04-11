@@ -1,13 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0
 pragma solidity ^0.8.0;
 
+// Interfaces
+import {EpochPointers, UserOrder} from "src/hub/interfaces/IShareClassManager.sol";
+import {AccountId} from "src/hub/interfaces/IAccounting.sol";
+import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
+
+// Types
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
-import {EpochPointers, UserOrder} from "src/hub/interfaces/IShareClassManager.sol";
+
+// Recon Utils
 import {Helpers} from "test/pools/fuzzing/recon-pools/utils/Helpers.sol";
-import {AccountId} from "src/hub/interfaces/IAccounting.sol";
-import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 import {Setup} from "./Setup.sol";
 
 enum OpType {
@@ -75,7 +80,11 @@ abstract contract BeforeAfter is Setup {
                 // loop over all account types defined in IHub::AccountType
                 for(uint8 kind = 0; kind < 6; kind++) {
                     AccountId accountId = holdings.accountId(poolId, scId, assetId, kind);
-                    _before.ghostAccountValue[poolId][accountId] = accounting.accountValue(poolId, accountId);
+                    (,,,uint64 lastUpdated,) = accounting.accounts(poolId, accountId);
+                    // accountValue is only set if the account has been updated
+                    if(lastUpdated != 0) {
+                        _before.ghostAccountValue[poolId][accountId] = accounting.accountValue(poolId, accountId);
+                    }
                 }
             }
         }
@@ -107,7 +116,11 @@ abstract contract BeforeAfter is Setup {
                 // loop over all account types defined in IHub::AccountType
                 for(uint8 kind = 0; kind < 6; kind++) {
                     AccountId accountId = holdings.accountId(poolId, scId, assetId, kind);
-                    _after.ghostAccountValue[poolId][accountId] = accounting.accountValue(poolId, accountId);
+                    (,,,uint64 lastUpdated,) = accounting.accounts(poolId, accountId);
+                    // accountValue is only set if the account has been updated
+                    if(lastUpdated != 0) {
+                        _after.ghostAccountValue[poolId][accountId] = accounting.accountValue(poolId, accountId);
+                    }
                 }
             }
         }
