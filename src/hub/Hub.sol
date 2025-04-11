@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {D18, d18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {ConversionLib} from "src/misc/libraries/ConversionLib.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {Auth} from "src/misc/Auth.sol";
@@ -30,7 +29,6 @@ import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
 
 // @inheritdoc IHub
 contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
-    using CastLib for *;
     using MathLib for uint256;
 
     IGateway public gateway;
@@ -63,7 +61,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
-    function file(bytes32 what, address data) external auth {
+    function file(bytes32 what, address data) external {
+        _auth();
+
         if (what == "sender") sender = IPoolMessageSender(data);
         else if (what == "holdings") holdings = IHoldings(data);
         else if (what == "hubRegistry") hubRegistry = IHubRegistry(data);
@@ -144,16 +144,14 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     //----------------------------------------------------------------------------------------------
     /// @inheritdoc IHub
     function notifyPool(PoolId poolId, uint16 centrifugeId) external payable {
-        _protected(poolId);
-        _pay();
+        _protectedAndPaid(poolId);
 
         sender.sendNotifyPool(centrifugeId, poolId);
     }
 
     /// @inheritdoc IHub
     function notifyShareClass(PoolId poolId, uint16 centrifugeId, ShareClassId scId, bytes32 hook) external payable {
-        _protected(poolId);
-        _pay();
+        _protectedAndPaid(poolId);
 
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
@@ -165,8 +163,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
     /// @inheritdoc IHub
     function notifySharePrice(PoolId poolId, uint16 centrifugeId, ShareClassId scId) public payable {
-        _protected(poolId);
-        _pay();
+        _protectedAndPaid(poolId);
 
         (, D18 poolPerShare) = shareClassManager.shareClassPrice(poolId, scId);
 
@@ -175,8 +172,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
     /// @inheritdoc IHub
     function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId) public payable {
-        _protected(poolId);
-        _pay();
+        _protectedAndPaid(poolId);
 
         AssetId poolCurrency = hubRegistry.currency(poolId);
         // NOTE: We assume symmetric prices are provided by holdings valuation
@@ -285,8 +281,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         external
         payable
     {
-        _protected(poolId);
-        _pay();
+        _protectedAndPaid(poolId);
 
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
@@ -301,8 +296,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         bytes32 target,
         bytes calldata payload
     ) external payable {
-        _protected(poolId);
-        _pay();
+        _protectedAndPaid(poolId);
 
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
@@ -350,43 +344,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         accounting.createAccount(poolId, accounts[5], false);
 
         holdings.create(poolId, scId, assetId, valuation, isLiability, accounts);
-
-        accounting.lock();
-    }
-
-    /// @inheritdoc IHub
-    function updateHolding(PoolId poolId, ShareClassId scId, AssetId assetId) public payable {
-        _protected(poolId);
-
-        accounting.unlock(poolId);
-
-        int128 diff = holdings.update(poolId, scId, assetId);
-
-        if (diff > 0) {
-            if (holdings.isLiability(poolId, scId, assetId)) {
-                accounting.addCredit(
-                    holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), uint128(diff)
-                );
-                accounting.addDebit(
-                    holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)), uint128(diff)
-                );
-            } else {
-                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Gain)), uint128(diff));
-                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset)), uint128(diff));
-            }
-        } else if (diff < 0) {
-            if (holdings.isLiability(poolId, scId, assetId)) {
-                accounting.addCredit(
-                    holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)), uint128(diff)
-                );
-                accounting.addDebit(
-                    holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), uint128(diff)
-                );
-            } else {
-                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset)), uint128(diff));
-                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Loss)), uint128(diff));
-            }
-        }
 
         accounting.lock();
     }
@@ -538,7 +495,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         IERC7726 _valuation = holdings.valuation(poolId, scId, assetId);
         holdings.updateValuation(poolId, scId, assetId, transientValuation);
 
-        updateHolding(poolId, scId, assetId);
+        _updateHolding(poolId, scId, assetId);
         holdings.updateValuation(poolId, scId, assetId, _valuation);
 
         accounting.lock();
@@ -581,6 +538,12 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         require(hubRegistry.isAdmin(poolId, msg.sender), IHub.NotAuthorizedAdmin());
     }
 
+    /// @dev Ensure the sender is authorized
+    function _protectedAndPaid(PoolId poolId) internal {
+        _protected(poolId);
+        _pay();
+    }
+
     /// @notice Send native tokens to the gateway for transaction payment if it's not in a multicall.
     function _pay() internal {
         if (!gateway.isBatching()) {
@@ -601,6 +564,37 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         for (uint256 i; i < credits.length; i++) {
             accounting.addCredit(credits[i].accountId, credits[i].amount);
             credited += credits[i].amount;
+        }
+    }
+
+    /// @dev Assumes accounting is already unlocked
+    function _updateHolding(PoolId poolId, ShareClassId scId, AssetId assetId) internal {
+        int128 diff = holdings.update(poolId, scId, assetId);
+
+        if (diff > 0) {
+            if (holdings.isLiability(poolId, scId, assetId)) {
+                accounting.addCredit(
+                    holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), uint128(diff)
+                );
+                accounting.addDebit(
+                    holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)), uint128(diff)
+                );
+            } else {
+                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Gain)), uint128(diff));
+                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset)), uint128(diff));
+            }
+        } else if (diff < 0) {
+            if (holdings.isLiability(poolId, scId, assetId)) {
+                accounting.addCredit(
+                    holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)), uint128(diff)
+                );
+                accounting.addDebit(
+                    holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), uint128(diff)
+                );
+            } else {
+                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset)), uint128(diff));
+                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Loss)), uint128(diff));
+            }
         }
     }
 
