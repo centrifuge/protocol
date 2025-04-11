@@ -111,8 +111,11 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external payable {
-        _protected();
+    function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
+        external
+        payable
+        protected
+    {
         _pay();
 
         (uint128 shares, uint128 tokens, uint128 cancelledAssetAmount) =
@@ -126,8 +129,11 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external payable {
-        _protected();
+    function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
+        external
+        payable
+        protected
+    {
         _pay();
 
         (uint128 tokens, uint128 shares, uint128 cancelledShareAmount) =
@@ -145,19 +151,17 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     // Pool admin methods
     //----------------------------------------------------------------------------------------------
     /// @inheritdoc IHub
-    function notifyPool(PoolId poolId, uint16 centrifugeId) external payable unlocked(poolId) {
-        _protected();
+    function notifyPool(PoolId poolId, uint16 centrifugeId) external payable {
+        _protected(poolId);
+        _pay();
 
         sender.sendNotifyPool(centrifugeId, poolId);
     }
 
     /// @inheritdoc IHub
-    function notifyShareClass(PoolId poolId, uint16 centrifugeId, ShareClassId scId, bytes32 hook)
-        external
-        payable
-        unlocked(poolId)
-    {
-        _protected();
+    function notifyShareClass(PoolId poolId, uint16 centrifugeId, ShareClassId scId, bytes32 hook) external payable {
+        _protected(poolId);
+        _pay();
 
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
@@ -168,8 +172,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function notifySharePrice(PoolId poolId, uint16 centrifugeId, ShareClassId scId) public payable unlocked(poolId) {
-        _protected();
+    function notifySharePrice(PoolId poolId, uint16 centrifugeId, ShareClassId scId) public payable {
+        _protected(poolId);
+        _pay();
 
         (, D18 poolPerShare) = shareClassManager.shareClassPrice(poolId, scId);
 
@@ -177,8 +182,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId) public payable unlocked(poolId) {
-        _protected();
+    function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId) public payable {
+        _protected(poolId);
+        _pay();
 
         AssetId poolCurrency = hubRegistry.currency(poolId);
         // NOTE: We assume symmetric prices are provided by holdings valuation
@@ -196,15 +202,15 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable unlocked(poolId) {
-        _protected();
+    function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable {
+        _protected(poolId);
 
         hubRegistry.setMetadata(poolId, metadata);
     }
 
     /// @inheritdoc IHub
-    function allowPoolAdmin(PoolId poolId, address account, bool allow) external payable unlocked(poolId) {
-        _protected();
+    function allowPoolAdmin(PoolId poolId, address account, bool allow) external payable {
+        _protected(poolId);
 
         hubRegistry.updateAdmin(poolId, account, allow);
     }
@@ -216,8 +222,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         string calldata symbol,
         bytes32 salt,
         bytes calldata data
-    ) external payable unlocked(poolId) {
-        _protected();
+    ) external payable {
+        _protected(poolId);
 
         shareClassManager.addShareClass(poolId, name, symbol, salt, data);
     }
@@ -230,7 +236,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         uint128 maxApproval,
         IERC7726 valuation
     ) external payable unlocked(poolId) {
-        _protected();
+        _protected(poolId);
 
         (uint128 approvedAssetAmount,) =
             shareClassManager.approveDeposits(poolId, scId, maxApproval, paymentAssetId, valuation);
@@ -245,20 +251,15 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     function approveRedeems(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, uint128 maxApproval)
         external
         payable
-        unlocked(poolId)
     {
-        _protected();
+        _protected(poolId);
 
         shareClassManager.approveRedeems(poolId, scId, maxApproval, payoutAssetId);
     }
 
     /// @inheritdoc IHub
-    function issueShares(PoolId poolId, ShareClassId scId, AssetId depositAssetId, D18 navPerShare)
-        external
-        payable
-        unlocked(poolId)
-    {
-        _protected();
+    function issueShares(PoolId poolId, ShareClassId scId, AssetId depositAssetId, D18 navPerShare) external payable {
+        _protected(poolId);
 
         shareClassManager.issueShares(poolId, scId, depositAssetId, navPerShare);
     }
@@ -269,7 +270,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         payable
         unlocked(poolId)
     {
-        _protected();
+        _protected(poolId);
 
         (uint128 payoutAssetAmount,) =
             shareClassManager.revokeShares(poolId, scId, payoutAssetId, navPerShare, valuation);
@@ -284,9 +285,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     function updateRestriction(PoolId poolId, uint16 centrifugeId, ShareClassId scId, bytes calldata payload)
         external
         payable
-        unlocked(poolId)
     {
-        _protected();
+        _protected(poolId);
+        _pay();
 
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
@@ -300,8 +301,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         ShareClassId scId,
         bytes32 target,
         bytes calldata payload
-    ) external payable unlocked(poolId) {
-        _protected();
+    ) external payable {
+        _protected(poolId);
+        _pay();
 
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
@@ -317,7 +319,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         bytes32 vaultOrFactory,
         VaultUpdateKind kind
     ) public payable protected {
-        _protected();
+        _protected(poolId);
+        _pay();
 
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
@@ -338,9 +341,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     function updatePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 navPerShare, bytes calldata data)
         public
         payable
-        unlocked(poolId)
     {
-        _protected();
+        _protected(poolId);
 
         shareClassManager.updateShareClass(poolId, scId, navPerShare, data);
     }
@@ -354,7 +356,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         bool isLiability,
         uint24 prefix
     ) external payable unlocked(poolId) {
-        _protected();
+        _protected(poolId);
 
         require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
 
@@ -378,7 +380,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
     /// @inheritdoc IHub
     function updateHolding(PoolId poolId, ShareClassId scId, AssetId assetId) public payable unlocked(poolId) {
-        _protected();
+        _protected(poolId);
 
         int128 diff = holdings.update(poolId, scId, assetId);
 
@@ -413,9 +415,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation)
         external
         payable
-        unlocked(poolId)
     {
-        _protected();
+        _protected(poolId);
 
         holdings.updateValuation(poolId, scId, assetId, valuation);
     }
@@ -424,41 +425,36 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     function setHoldingAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, AccountId accountId)
         external
         payable
-        unlocked(poolId)
     {
-        _protected();
+        _protected(poolId);
 
         holdings.setAccountId(poolId, scId, assetId, accountId);
     }
 
     /// @inheritdoc IHub
-    function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) public payable unlocked(poolId) {
-        _protected();
+    function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) public payable {
+        _protected(poolId);
 
         accounting.createAccount(poolId, account, isDebitNormal);
     }
 
     /// @inheritdoc IHub
-    function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata)
-        external
-        payable
-        unlocked(poolId)
-    {
-        _protected();
+    function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external payable {
+        _protected(poolId);
 
         accounting.setAccountMetadata(poolId, account, metadata);
     }
 
     /// @inheritdoc IHub
     function addDebit(PoolId poolId, AccountId account, uint128 amount) external payable unlocked(poolId) {
-        _protected();
+        _protected(poolId);
 
         accounting.addDebit(account, amount);
     }
 
     /// @inheritdoc IHub
     function addCredit(PoolId poolId, AccountId account, uint128 amount) external payable unlocked(poolId) {
-        _protected();
+        _protected(poolId);
 
         accounting.addCredit(account, amount);
     }
@@ -575,8 +571,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     //  Internal methods
     //----------------------------------------------------------------------------------------------
 
-    /// @dev Ensure the method can be used without reentrancy issues
-    function _protected() internal protected {}
+    /// @dev Ensure the method can be used without reentrancy issues, and the sender is a pool admin
+    function _protected(PoolId poolId) internal protected {
+        require(hubRegistry.isAdmin(poolId, msg.sender), IHub.NotAuthorizedAdmin());
+    }
 
     /// @notice Send native tokens to the gateway for transaction payment if it's not in a multicall.
     function _pay() internal {
