@@ -324,7 +324,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         address asset,
         uint256 tokenId,
         uint128 depositAssetAmount
-    ) internal {
+    ) internal view {
         uint256 availableBalance = IPerPoolEscrow(escrow).availableBalanceOf(asset, tokenId, poolId.raw(), scId.raw());
         require(
             availableBalance + depositAssetAmount <= maxReserve[poolId.raw()][scId.raw()][asset][tokenId],
