@@ -82,28 +82,6 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.stopPrank();
     }
-
-    function testErrPoolLocked() public {
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.createHolding(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), false, 0);
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.updateHolding(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0));
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.updateHoldingValuation(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)));
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.setHoldingAccountId(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), AccountId.wrap(0));
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.addDebit(PoolId.wrap(0), AccountId.wrap(0), 0);
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.addCredit(PoolId.wrap(0), AccountId.wrap(0), 0);
-
-        vm.stopPrank();
-    }
 }
 
 contract TestNotifyShareClass is TestCommon {

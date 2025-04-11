@@ -60,8 +60,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     modifier unlocked(PoolId poolId) {
-        require(hubRegistry.isAdmin(poolId, msg.sender), IHub.NotAuthorizedAdmin());
-
         accounting.unlock(poolId);
         _;
         accounting.lock();
