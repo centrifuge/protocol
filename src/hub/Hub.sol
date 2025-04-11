@@ -34,9 +34,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     using MessageLib for *;
     using MathLib for uint256;
 
-    /// @dev Represents the unlocked pool Id in the multicall
-    PoolId public transient unlockedPoolId;
-
     IGateway public gateway;
     IHoldings public holdings;
     IAccounting public accounting;
@@ -60,6 +57,15 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         holdings = holdings_;
         gateway = gateway_;
         transientValuation = transientValuation_;
+    }
+
+    /// @inheritdoc IHub
+    modifier unlocked(PoolId poolId) {
+        require(hubRegistry.isAdmin(poolId, msg.sender), IHub.NotAuthorizedAdmin());
+
+        accounting.unlock(poolId);
+        _;
+        accounting.lock();
     }
 
     //----------------------------------------------------------------------------------------------
@@ -93,20 +99,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         if (!wasBatching) {
             gateway.endBatching();
         }
-    }
-
-    /// @inheritdoc IHub
-    function execute(PoolId poolId, bytes[] calldata data) external payable {
-        require(unlockedPoolId.isNull(), IHub.PoolAlreadyUnlocked());
-        require(hubRegistry.isAdmin(poolId, msg.sender), IHub.NotAuthorizedAdmin());
-
-        accounting.unlock(poolId);
-        unlockedPoolId = poolId;
-
-        multicall(data);
-
-        accounting.lock();
-        unlockedPoolId = PoolId.wrap(0);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -153,40 +145,44 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     // Pool admin methods
     //----------------------------------------------------------------------------------------------
     /// @inheritdoc IHub
-    function notifyPool(uint16 centrifugeId) external payable {
-        _protectedAndUnlocked();
+    function notifyPool(PoolId poolId, uint16 centrifugeId) external payable unlocked(poolId) {
+        _protected();
 
-        sender.sendNotifyPool(centrifugeId, unlockedPoolId);
+        sender.sendNotifyPool(centrifugeId, poolId);
     }
 
     /// @inheritdoc IHub
-    function notifyShareClass(uint16 centrifugeId, ShareClassId scId, bytes32 hook) external payable {
-        _protectedAndUnlocked();
+    function notifyShareClass(PoolId poolId, uint16 centrifugeId, ShareClassId scId, bytes32 hook)
+        external
+        payable
+        unlocked(poolId)
+    {
+        _protected();
 
-        require(shareClassManager.exists(unlockedPoolId, scId), IShareClassManager.ShareClassNotFound());
+        require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
         (string memory name, string memory symbol, bytes32 salt) = shareClassManager.metadata(scId);
-        uint8 decimals = hubRegistry.decimals(unlockedPoolId);
+        uint8 decimals = hubRegistry.decimals(poolId);
 
-        sender.sendNotifyShareClass(centrifugeId, unlockedPoolId, scId, name, symbol, decimals, salt, hook);
+        sender.sendNotifyShareClass(centrifugeId, poolId, scId, name, symbol, decimals, salt, hook);
     }
 
     /// @inheritdoc IHub
-    function notifySharePrice(uint16 centrifugeId, ShareClassId scId) public payable {
-        _protectedAndUnlocked();
+    function notifySharePrice(PoolId poolId, uint16 centrifugeId, ShareClassId scId) public payable unlocked(poolId) {
+        _protected();
 
-        (, D18 poolPerShare) = shareClassManager.shareClassPrice(unlockedPoolId, scId);
+        (, D18 poolPerShare) = shareClassManager.shareClassPrice(poolId, scId);
 
-        sender.sendNotifyPricePoolPerShare(centrifugeId, unlockedPoolId, scId, poolPerShare);
+        sender.sendNotifyPricePoolPerShare(centrifugeId, poolId, scId, poolPerShare);
     }
 
     /// @inheritdoc IHub
-    function notifyAssetPrice(ShareClassId scId, AssetId assetId) public payable {
-        _protectedAndUnlocked();
+    function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId) public payable unlocked(poolId) {
+        _protected();
 
-        AssetId poolCurrency = hubRegistry.currency(unlockedPoolId);
+        AssetId poolCurrency = hubRegistry.currency(poolId);
         // NOTE: We assume symmetric prices are provided by holdings valuation
-        IERC7726 valuation = holdings.valuation(unlockedPoolId, scId, assetId);
+        IERC7726 valuation = holdings.valuation(poolId, scId, assetId);
 
         // Retrieve amount of 1 asset unit in pool currency
         uint128 assetUnitAmount = (10 ** hubRegistry.decimals(assetId.raw())).toUint128();
@@ -196,123 +192,138 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
         // Retrieve price by normalizing by pool denomination
         D18 pricePoolPerAsset = d18(poolAmountPerAsset, poolUnitAmount);
-        sender.sendNotifyPricePoolPerAsset(unlockedPoolId, scId, assetId, pricePoolPerAsset);
+        sender.sendNotifyPricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset);
     }
 
     /// @inheritdoc IHub
-    function setPoolMetadata(bytes calldata metadata) external payable {
-        _protectedAndUnlocked();
+    function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable unlocked(poolId) {
+        _protected();
 
-        hubRegistry.setMetadata(unlockedPoolId, metadata);
+        hubRegistry.setMetadata(poolId, metadata);
     }
 
     /// @inheritdoc IHub
-    function allowPoolAdmin(address account, bool allow) external payable {
-        _protectedAndUnlocked();
+    function allowPoolAdmin(PoolId poolId, address account, bool allow) external payable unlocked(poolId) {
+        _protected();
 
-        hubRegistry.updateAdmin(unlockedPoolId, account, allow);
+        hubRegistry.updateAdmin(poolId, account, allow);
     }
 
     /// @inheritdoc IHub
-    function addShareClass(string calldata name, string calldata symbol, bytes32 salt, bytes calldata data)
-        external
-        payable
-    {
-        _protectedAndUnlocked();
+    function addShareClass(
+        PoolId poolId,
+        string calldata name,
+        string calldata symbol,
+        bytes32 salt,
+        bytes calldata data
+    ) external payable unlocked(poolId) {
+        _protected();
 
-        shareClassManager.addShareClass(unlockedPoolId, name, symbol, salt, data);
+        shareClassManager.addShareClass(poolId, name, symbol, salt, data);
     }
 
     /// @inheritdoc IHub
-    function approveDeposits(ShareClassId scId, AssetId paymentAssetId, uint128 maxApproval, IERC7726 valuation)
-        external
-        payable
-    {
-        _protectedAndUnlocked();
+    function approveDeposits(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId paymentAssetId,
+        uint128 maxApproval,
+        IERC7726 valuation
+    ) external payable unlocked(poolId) {
+        _protected();
 
         (uint128 approvedAssetAmount,) =
-            shareClassManager.approveDeposits(unlockedPoolId, scId, maxApproval, paymentAssetId, valuation);
+            shareClassManager.approveDeposits(poolId, scId, maxApproval, paymentAssetId, valuation);
 
-        uint128 valueChange = holdings.increase(unlockedPoolId, scId, paymentAssetId, valuation, approvedAssetAmount);
+        uint128 valueChange = holdings.increase(poolId, scId, paymentAssetId, valuation, approvedAssetAmount);
 
-        accounting.addCredit(
-            holdings.accountId(unlockedPoolId, scId, paymentAssetId, uint8(AccountType.Equity)), valueChange
-        );
-        accounting.addDebit(
-            holdings.accountId(unlockedPoolId, scId, paymentAssetId, uint8(AccountType.Asset)), valueChange
-        );
+        accounting.addCredit(holdings.accountId(poolId, scId, paymentAssetId, uint8(AccountType.Equity)), valueChange);
+        accounting.addDebit(holdings.accountId(poolId, scId, paymentAssetId, uint8(AccountType.Asset)), valueChange);
     }
 
     /// @inheritdoc IHub
-    function approveRedeems(ShareClassId scId, AssetId payoutAssetId, uint128 maxApproval) external payable {
-        _protectedAndUnlocked();
-
-        shareClassManager.approveRedeems(unlockedPoolId, scId, maxApproval, payoutAssetId);
-    }
-
-    /// @inheritdoc IHub
-    function issueShares(ShareClassId scId, AssetId depositAssetId, D18 navPerShare) external payable {
-        _protectedAndUnlocked();
-
-        shareClassManager.issueShares(unlockedPoolId, scId, depositAssetId, navPerShare);
-    }
-
-    /// @inheritdoc IHub
-    function revokeShares(ShareClassId scId, AssetId payoutAssetId, D18 navPerShare, IERC7726 valuation)
+    function approveRedeems(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, uint128 maxApproval)
         external
         payable
+        unlocked(poolId)
     {
-        _protectedAndUnlocked();
+        _protected();
+
+        shareClassManager.approveRedeems(poolId, scId, maxApproval, payoutAssetId);
+    }
+
+    /// @inheritdoc IHub
+    function issueShares(PoolId poolId, ShareClassId scId, AssetId depositAssetId, D18 navPerShare)
+        external
+        payable
+        unlocked(poolId)
+    {
+        _protected();
+
+        shareClassManager.issueShares(poolId, scId, depositAssetId, navPerShare);
+    }
+
+    /// @inheritdoc IHub
+    function revokeShares(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, D18 navPerShare, IERC7726 valuation)
+        external
+        payable
+        unlocked(poolId)
+    {
+        _protected();
 
         (uint128 payoutAssetAmount,) =
-            shareClassManager.revokeShares(unlockedPoolId, scId, payoutAssetId, navPerShare, valuation);
+            shareClassManager.revokeShares(poolId, scId, payoutAssetId, navPerShare, valuation);
 
-        uint128 valueChange = holdings.decrease(unlockedPoolId, scId, payoutAssetId, valuation, payoutAssetAmount);
+        uint128 valueChange = holdings.decrease(poolId, scId, payoutAssetId, valuation, payoutAssetAmount);
 
-        accounting.addCredit(
-            holdings.accountId(unlockedPoolId, scId, payoutAssetId, uint8(AccountType.Asset)), valueChange
-        );
-        accounting.addDebit(
-            holdings.accountId(unlockedPoolId, scId, payoutAssetId, uint8(AccountType.Equity)), valueChange
-        );
+        accounting.addCredit(holdings.accountId(poolId, scId, payoutAssetId, uint8(AccountType.Asset)), valueChange);
+        accounting.addDebit(holdings.accountId(poolId, scId, payoutAssetId, uint8(AccountType.Equity)), valueChange);
     }
 
     /// @inheritdoc IHub
-    function updateRestriction(uint16 centrifugeId, ShareClassId scId, bytes calldata payload) external payable {
-        _protectedAndUnlocked();
-
-        require(shareClassManager.exists(unlockedPoolId, scId), IShareClassManager.ShareClassNotFound());
-
-        sender.sendUpdateRestriction(centrifugeId, unlockedPoolId, scId, payload);
-    }
-
-    /// @inheritdoc IHub
-    function updateContract(uint16 centrifugeId, ShareClassId scId, bytes32 target, bytes calldata payload)
+    function updateRestriction(PoolId poolId, uint16 centrifugeId, ShareClassId scId, bytes calldata payload)
         external
         payable
+        unlocked(poolId)
     {
-        _protectedAndUnlocked();
+        _protected();
 
-        require(shareClassManager.exists(unlockedPoolId, scId), IShareClassManager.ShareClassNotFound());
+        require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
-        sender.sendUpdateContract(centrifugeId, unlockedPoolId, scId, target, payload);
+        sender.sendUpdateRestriction(centrifugeId, poolId, scId, payload);
+    }
+
+    /// @inheritdoc IHub
+    function updateContract(
+        PoolId poolId,
+        uint16 centrifugeId,
+        ShareClassId scId,
+        bytes32 target,
+        bytes calldata payload
+    ) external payable unlocked(poolId) {
+        _protected();
+
+        require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
+
+        sender.sendUpdateContract(centrifugeId, poolId, scId, target, payload);
     }
 
     /// @inheritdoc IHub
     function updateVault(
+        PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
         bytes32 target,
         bytes32 vaultOrFactory,
         VaultUpdateKind kind
-    ) public payable {
-        _protectedAndUnlocked();
+    ) public payable protected {
+        _protected();
 
-        require(shareClassManager.exists(unlockedPoolId, scId), IShareClassManager.ShareClassNotFound());
+        require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
         sender.sendUpdateContract(
             assetId.centrifugeId(),
-            unlockedPoolId,
+            poolId,
             scId,
             target,
             MessageLib.UpdateContractVaultUpdate({
@@ -324,18 +335,26 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function updatePricePoolPerShare(ShareClassId scId, D18 navPerShare, bytes calldata data) public payable {
-        _protectedAndUnlocked();
+    function updatePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 navPerShare, bytes calldata data)
+        public
+        payable
+        unlocked(poolId)
+    {
+        _protected();
 
-        shareClassManager.updateShareClass(unlockedPoolId, scId, navPerShare, data);
+        shareClassManager.updateShareClass(poolId, scId, navPerShare, data);
     }
 
     /// @inheritdoc IHub
-    function createHolding(ShareClassId scId, AssetId assetId, IERC7726 valuation, bool isLiability, uint24 prefix)
-        external
-        payable
-    {
-        _protectedAndUnlocked();
+    function createHolding(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        IERC7726 valuation,
+        bool isLiability,
+        uint24 prefix
+    ) external payable unlocked(poolId) {
+        _protected();
 
         require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
 
@@ -347,95 +366,99 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         accounts[4] = newAccountId(prefix, uint8(AccountType.Expense));
         accounts[5] = newAccountId(prefix, uint8(AccountType.Liability));
 
-        createAccount(accounts[0], true);
-        createAccount(accounts[1], false);
-        createAccount(accounts[2], false);
-        createAccount(accounts[3], false);
-        createAccount(accounts[4], true);
-        createAccount(accounts[5], false);
+        accounting.createAccount(poolId, accounts[0], true);
+        accounting.createAccount(poolId, accounts[1], false);
+        accounting.createAccount(poolId, accounts[2], false);
+        accounting.createAccount(poolId, accounts[3], false);
+        accounting.createAccount(poolId, accounts[4], true);
+        accounting.createAccount(poolId, accounts[5], false);
 
-        holdings.create(unlockedPoolId, scId, assetId, valuation, isLiability, accounts);
+        holdings.create(poolId, scId, assetId, valuation, isLiability, accounts);
     }
 
     /// @inheritdoc IHub
-    function updateHolding(ShareClassId scId, AssetId assetId) public payable {
-        _protectedAndUnlocked();
+    function updateHolding(PoolId poolId, ShareClassId scId, AssetId assetId) public payable unlocked(poolId) {
+        _protected();
 
-        int128 diff = holdings.update(unlockedPoolId, scId, assetId);
+        int128 diff = holdings.update(poolId, scId, assetId);
 
         if (diff > 0) {
-            if (holdings.isLiability(unlockedPoolId, scId, assetId)) {
+            if (holdings.isLiability(poolId, scId, assetId)) {
                 accounting.addCredit(
-                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.Liability)), uint128(diff)
+                    holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), uint128(diff)
                 );
                 accounting.addDebit(
-                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.Expense)), uint128(diff)
+                    holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)), uint128(diff)
                 );
             } else {
-                accounting.addCredit(
-                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.Gain)), uint128(diff)
-                );
-                accounting.addDebit(
-                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.Asset)), uint128(diff)
-                );
+                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Gain)), uint128(diff));
+                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset)), uint128(diff));
             }
         } else if (diff < 0) {
-            if (holdings.isLiability(unlockedPoolId, scId, assetId)) {
+            if (holdings.isLiability(poolId, scId, assetId)) {
                 accounting.addCredit(
-                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.Expense)), uint128(diff)
+                    holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)), uint128(diff)
                 );
                 accounting.addDebit(
-                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.Liability)), uint128(diff)
+                    holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), uint128(diff)
                 );
             } else {
-                accounting.addCredit(
-                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.Asset)), uint128(diff)
-                );
-                accounting.addDebit(
-                    holdings.accountId(unlockedPoolId, scId, assetId, uint8(AccountType.Loss)), uint128(diff)
-                );
+                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset)), uint128(diff));
+                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Loss)), uint128(diff));
             }
         }
     }
 
     /// @inheritdoc IHub
-    function updateHoldingValuation(ShareClassId scId, AssetId assetId, IERC7726 valuation) external payable {
-        _protectedAndUnlocked();
+    function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation)
+        external
+        payable
+        unlocked(poolId)
+    {
+        _protected();
 
-        holdings.updateValuation(unlockedPoolId, scId, assetId, valuation);
+        holdings.updateValuation(poolId, scId, assetId, valuation);
     }
 
     /// @inheritdoc IHub
-    function setHoldingAccountId(ShareClassId scId, AssetId assetId, AccountId accountId) external payable {
-        _protectedAndUnlocked();
+    function setHoldingAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, AccountId accountId)
+        external
+        payable
+        unlocked(poolId)
+    {
+        _protected();
 
-        holdings.setAccountId(unlockedPoolId, scId, assetId, accountId);
+        holdings.setAccountId(poolId, scId, assetId, accountId);
     }
 
     /// @inheritdoc IHub
-    function createAccount(AccountId account, bool isDebitNormal) public payable {
-        _protectedAndUnlocked();
+    function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) public payable unlocked(poolId) {
+        _protected();
 
-        accounting.createAccount(unlockedPoolId, account, isDebitNormal);
+        accounting.createAccount(poolId, account, isDebitNormal);
     }
 
     /// @inheritdoc IHub
-    function setAccountMetadata(AccountId account, bytes calldata metadata) external payable {
-        _protectedAndUnlocked();
+    function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata)
+        external
+        payable
+        unlocked(poolId)
+    {
+        _protected();
 
-        accounting.setAccountMetadata(unlockedPoolId, account, metadata);
+        accounting.setAccountMetadata(poolId, account, metadata);
     }
 
     /// @inheritdoc IHub
-    function addDebit(AccountId account, uint128 amount) external payable {
-        _protectedAndUnlocked();
+    function addDebit(PoolId poolId, AccountId account, uint128 amount) external payable unlocked(poolId) {
+        _protected();
 
         accounting.addDebit(account, amount);
     }
 
     /// @inheritdoc IHub
-    function addCredit(AccountId account, uint128 amount) external payable {
-        _protectedAndUnlocked();
+    function addCredit(PoolId poolId, AccountId account, uint128 amount) external payable unlocked(poolId) {
+        _protected();
 
         accounting.addCredit(account, amount);
     }
@@ -501,8 +524,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         bool isIncrease,
         JournalEntry[] memory debits,
         JournalEntry[] memory credits
-    ) external auth {
-        accounting.unlock(poolId);
+    ) external auth unlocked(poolId) {
         address poolCurrency = hubRegistry.currency(poolId).addr();
         transientValuation.setPrice(assetId.addr(), poolCurrency, pricePerUnit);
         uint128 valueChange = transientValuation.getQuote(amount, assetId.addr(), poolCurrency).toUint128();
@@ -514,30 +536,29 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         _updateHoldingWithPartialDebitsAndCredits(
             poolId, scId, assetId, amount, isIncrease, debitValueLeft, creditValueLeft
         );
-        accounting.lock();
     }
 
     /// @inheritdoc IHubGatewayHandler
     function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset)
         external
         auth
+        unlocked(poolId)
     {
         transientValuation.setPrice(assetId.addr(), hubRegistry.currency(poolId).addr(), pricePoolPerAsset);
         IERC7726 _valuation = holdings.valuation(poolId, scId, assetId);
         holdings.updateValuation(poolId, scId, assetId, transientValuation);
 
-        accounting.unlock(poolId);
-        updateHolding(scId, assetId);
-        accounting.lock();
-
+        updateHolding(poolId, scId, assetId);
         holdings.updateValuation(poolId, scId, assetId, _valuation);
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external auth {
-        accounting.unlock(poolId);
+    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits)
+        external
+        auth
+        unlocked(poolId)
+    {
         _updateJournal(debits, credits);
-        accounting.lock();
     }
 
     /// @inheritdoc IHubGatewayHandler
@@ -553,12 +574,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     //----------------------------------------------------------------------------------------------
     //  Internal methods
     //----------------------------------------------------------------------------------------------
-
-    /// @dev Ensure the method is protected (see `_protected()`) and the pool is unlocked,
-    /// which mean the method must be called though `execute()`
-    function _protectedAndUnlocked() internal protected {
-        require(!unlockedPoolId.isNull(), IHub.PoolLocked());
-    }
 
     /// @dev Ensure the method can be used without reentrancy issues
     function _protected() internal protected {}
