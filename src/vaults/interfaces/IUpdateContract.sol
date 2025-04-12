@@ -2,6 +2,8 @@
 pragma solidity >=0.5.0;
 
 interface IUpdateContract {
+    error UnknownUpdateContractType();
+
     /// @notice Triggers an update on the target contract.
     /// @param  poolId The centrifuge pool id
     /// @param  scId The share class id

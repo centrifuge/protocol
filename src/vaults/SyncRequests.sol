@@ -61,7 +61,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     function file(bytes32 what, address data) external override(IBaseInvestmentManager, BaseInvestmentManager) auth {
         if (what == "poolManager") poolManager = IPoolManager(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
-        else revert("SyncRequests/file-unrecognized-param");
+        else revert FileUnrecognizedParam();
         emit File(what, data);
     }
 
@@ -73,7 +73,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         if (kind == uint8(UpdateContractType.Valuation)) {
             MessageLib.UpdateContractValuation memory m = MessageLib.deserializeUpdateContractValuation(payload);
 
-            require(poolManager.shareToken(poolId, scId) != address(0), "SyncRequests/share-token-does-not-exist");
+            require(poolManager.shareToken(poolId, scId) != address(0), ShareTokenDoesNotExist());
             (address asset, uint256 tokenId) = poolManager.idToAsset(m.assetId);
 
             setValuation(poolId, scId, asset, tokenId, m.valuation.toAddress());
@@ -86,7 +86,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
             setMaxReserve(poolId, scId, asset, tokenId, m.maxReserve);
         } else {
-            revert("SyncRequests/unknown-update-contract-type");
+            revert UnknownUpdateContractType();
         }
     }
 
@@ -99,8 +99,8 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     {
         SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
 
-        require(vault_.asset() == asset_, "SyncRequests/asset-mismatch");
-        require(vault[poolId][scId][assetId] == address(0), "SyncRequests/vault-already-exists");
+        require(vault_.asset() == asset_, AssetMismatch());
+        require(vault[poolId][scId][assetId] == address(0), VaultAlreadyExists());
 
         address token = vault_.share();
         vault[poolId][scId][assetId] = vaultAddr;
@@ -127,8 +127,8 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
         address token = vault_.share();
 
-        require(vault_.asset() == asset_, "SyncRequests/asset-mismatch");
-        require(vault[poolId][scId][assetId] != address(0), "SyncRequests/vault-does-not-exist");
+        require(vault_.asset() == asset_, AssetMismatch());
+        require(vault[poolId][scId][assetId] != address(0), VaultDoesNotExist());
 
         delete vault[poolId][scId][assetId];
 

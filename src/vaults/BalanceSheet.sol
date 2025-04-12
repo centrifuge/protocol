@@ -57,7 +57,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         else if (what == "poolManager") poolManager = IPoolManager(data);
         else if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "sharePriceProvider") sharePriceProvider = ISharePriceProvider(data);
-        else revert("BalanceSheet/file-unrecognized-param");
+        else revert FileUnrecognizedParam();
         emit File(what, data);
     }
 
@@ -76,7 +76,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
             emit Permission(poolId, scId, who, m.allowed);
         } else {
-            revert("BalanceSheet/unknown-update-contract-type");
+            revert UnknownUpdateContractType();
         }
     }
 

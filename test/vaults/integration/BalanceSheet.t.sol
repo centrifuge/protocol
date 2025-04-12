@@ -92,7 +92,7 @@ contract BalanceSheetTest is BaseTest {
     // --- Administration ---
     function testFile() public {
         // fail: unrecognized param
-        vm.expectRevert(bytes("BalanceSheet/file-unrecognized-param"));
+        vm.expectRevert(IBalanceSheet.FileUnrecognizedParam.selector);
         balanceSheet.file("random", self);
 
         assertEq(address(balanceSheet.gateway()), address(gateway));

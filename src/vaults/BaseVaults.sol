@@ -87,13 +87,13 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     // --- Administration ---
     function file(bytes32 what, address data) external auth {
         if (what == "manager") manager = IBaseInvestmentManager(data);
-        else revert("AsyncVault/file-unrecognized-param");
+        else revert FileUnrecognizedParam();
         emit File(what, data);
     }
 
     /// @inheritdoc IERC7540Operator
     function setOperator(address operator, bool approved) public virtual returns (bool success) {
-        require(msg.sender != operator, "AsyncVault/cannot-set-self-as-operator");
+        require(msg.sender != operator, CannotSetSelfAsOperator());
         isOperator[msg.sender][operator] = approved;
         emit OperatorSet(msg.sender, operator, approved);
         success = true;
@@ -101,8 +101,8 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
 
     /// @inheritdoc IBaseVault
     function setEndorsedOperator(address owner, bool approved) public virtual {
-        require(msg.sender != owner, "AsyncVault/cannot-set-self-as-operator");
-        require(root.endorsed(msg.sender), "AsyncVault/not-endorsed");
+        require(msg.sender != owner, CannotSetSelfAsOperator());
+        require(root.endorsed(msg.sender), NotEndorsed());
         isOperator[owner][msg.sender] = approved;
         emit OperatorSet(owner, msg.sender, approved);
     }
@@ -123,9 +123,9 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         uint256 deadline,
         bytes memory signature
     ) external returns (bool success) {
-        require(controller != operator, "AsyncVault/cannot-set-self-as-operator");
-        require(block.timestamp <= deadline, "AsyncVault/expired");
-        require(!authorizations[controller][nonce], "AsyncVault/authorization-used");
+        require(controller != operator, CannotSetSelfAsOperator());
+        require(block.timestamp <= deadline, ExpiredAuthorization());
+        require(!authorizations[controller][nonce], AlreadyUsedAuthorization());
 
         authorizations[controller][nonce] = true;
 
@@ -137,7 +137,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
             )
         );
 
-        require(SignatureLib.isValidSignature(controller, digest, signature), "AsyncVault/invalid-authorization");
+        require(SignatureLib.isValidSignature(controller, digest, signature), InvalidAuthorization());
 
         isOperator[controller][operator] = approved;
         emit OperatorSet(controller, operator, approved);
@@ -196,7 +196,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
 
     /// @notice Ensures msg.sender can operate on behalf of controller.
     function _validateController(address controller) internal view {
-        require(controller == msg.sender || isOperator[controller][msg.sender], "AsyncVault/invalid-controller");
+        require(controller == msg.sender || isOperator[controller][msg.sender], InvalidController());
     }
 }
 
@@ -210,22 +210,21 @@ abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     // --- ERC-7540 methods ---
     /// @inheritdoc IERC7540Redeem
     function requestRedeem(uint256 shares, address controller, address owner) public returns (uint256) {
-        require(IShareToken(share).balanceOf(owner) >= shares, "AsyncVault/insufficient-balance");
+        require(IShareToken(share).balanceOf(owner) >= shares, InsufficientBalance());
 
         // If msg.sender is operator of owner, the transfer is executed as if
         // the sender is the owner, to bypass the allowance check
         address sender = isOperator[owner][msg.sender] ? owner : msg.sender;
 
         require(
-            asyncRedeemManager.requestRedeem(address(this), shares, controller, owner, sender),
-            "AsyncVault/request-redeem-failed"
+            asyncRedeemManager.requestRedeem(address(this), shares, controller, owner, sender), RequestRedeemFailed()
         );
 
         address escrow = asyncRedeemManager.escrow();
         try IShareToken(share).authTransferFrom(sender, owner, escrow, shares) returns (bool) {}
         catch {
             // Support share class tokens that block authTransferFrom. In this case ERC20 approval needs to be set
-            require(IShareToken(share).transferFrom(owner, escrow, shares), "AsyncVault/transfer-from-failed");
+            require(IShareToken(share).transferFrom(owner, escrow, shares), TransferFromFailed());
         }
 
         emit RedeemRequest(controller, owner, REQUEST_ID, msg.sender, shares);

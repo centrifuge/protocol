@@ -7,6 +7,8 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
+import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 
 import "test/vaults/BaseTest.sol";
 
@@ -59,7 +61,7 @@ contract AsyncRequestsTest is BaseTest {
     // --- Administration ---
     function testFile() public {
         // fail: unrecognized param
-        vm.expectRevert(bytes("AsyncRequests/file-unrecognized-param"));
+        vm.expectRevert(IBaseInvestmentManager.FileUnrecognizedParam.selector);
         asyncRequests.file("random", self);
 
         assertEq(address(asyncRequests.poolManager()), address(poolManager));
