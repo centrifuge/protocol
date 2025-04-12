@@ -52,6 +52,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
     IEscrow public immutable escrow;
 
+    IGateway public gateway;
     address public balanceSheet;
     ITokenFactory public tokenFactory;
     IVaultMessageSender public sender;
@@ -80,6 +81,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     function file(bytes32 what, address data) external auth {
         if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "tokenFactory") tokenFactory = ITokenFactory(data);
+        else if (what == "gateway") gateway = IGateway(data);
         else if (what == "balanceSheet") balanceSheet = data;
         else revert FileUnrecognizedParam();
         emit File(what, data);
@@ -98,11 +100,17 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     /// @inheritdoc IPoolManager
     function transferShares(uint16 centrifugeId, uint64 poolId, bytes16 scId, bytes32 receiver, uint128 amount)
         external
-        auth
+        payable
     {
         IShareToken shareToken_ = IShareToken(shareToken(poolId, scId));
-        shareToken_.burn(msg.sender, amount);
+        require(
+            shareToken_.checkTransferRestriction(address(0), address(uint160(centrifugeId)), amount),
+            CrossChainTransferNotAllowed()
+        );
 
+        gateway.payTransaction{value: msg.value}(msg.sender);
+
+        shareToken_.burn(msg.sender, amount);
         sender.sendTransferShares(centrifugeId, poolId, scId, receiver, amount);
 
         emit TransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);

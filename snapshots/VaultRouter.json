@@ -1,8 +1,7 @@
 {
-  "claimDeposit": "1162763",
+  "claimDeposit": "1162913",
   "enable": "60953",
-  "lockDepositRequest": "92343",
-  "requestDeposit": "584255",
-  "requestRedeem": "2138584",
-  "transferShares": "489235"
+  "lockDepositRequest": "92365",
+  "requestDeposit": "584365",
+  "requestRedeem": "2138866"
 }

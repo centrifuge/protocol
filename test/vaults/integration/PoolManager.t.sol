@@ -246,6 +246,13 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.handleTransferShares(vault.poolId(), vault.trancheId(), address(this), amount);
         assertEq(shareToken.balanceOf(address(this)), amount); // Verify the address(this) has the expected amount
 
+        poolManager.updateRestriction(
+            vault.poolId(),
+            vault.trancheId(),
+            MessageLib.UpdateRestrictionMember(address(uint160(OTHER_CHAIN_ID)).toBytes32(), type(uint64).max).serialize(
+            )
+        );
+
         // fails for invalid share class token
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
@@ -615,8 +622,18 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         );
         assertFalse(shareToken.checkTransferRestriction(address(this), destinationAddress, 0));
 
-        vm.expectRevert(IHook.TransferBlocked.selector);
+        vm.expectRevert(IPoolManager.CrossChainTransferNotAllowed.selector);
         poolManager.transferShares(OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount);
+
+        poolManager.updateRestriction(
+            vault.poolId(),
+            vault.trancheId(),
+            MessageLib.UpdateRestrictionMember(address(uint160(OTHER_CHAIN_ID)).toBytes32(), type(uint64).max).serialize(
+            )
+        );
+
+        vm.expectRevert(IHook.TransferBlocked.selector);
+        poolManager.transferShares{value: 1 ether}(OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount);
         assertEq(shareToken.balanceOf(address(this)), amount);
 
         poolManager.updateRestriction(
@@ -856,7 +873,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
     using CastLib for *;
     using BytesLib for *;
 
-    uint32 constant STORAGE_INDEX_ASSET_COUNTER = 3;
+    uint32 constant STORAGE_INDEX_ASSET_COUNTER = 4;
     uint256 constant STORAGE_OFFSET_ASSET_COUNTER = 20;
 
     function _assertAssetCounterEq(uint32 expected) internal view {
