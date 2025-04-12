@@ -6,6 +6,7 @@ import "src/vaults/interfaces/IERC7575.sol";
 import "src/vaults/interfaces/IERC7540.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 
 contract AsyncVaultTest is BaseTest {
     // Deployment
@@ -40,7 +41,7 @@ contract AsyncVaultTest is BaseTest {
         root.relyContract(vault_, self);
         vault.file("manager", self);
 
-        vm.expectRevert(bytes("AsyncVault/file-unrecognized-param"));
+        vm.expectRevert(IBaseVault.FileUnrecognizedParam.selector);
         vault.file("random", self);
     }
 
@@ -58,7 +59,7 @@ contract AsyncVaultTest is BaseTest {
         vm.expectRevert(MathLib.Uint128_Overflow.selector);
         vault.convertToAssets(amount);
 
-        vm.expectRevert(bytes("AsyncRequests/exceeds-max-deposit"));
+        vm.expectRevert(IAsyncRequests.ExceedsMaxDeposit.selector);
         vault.deposit(amount, randomUser, self);
 
         vm.expectRevert(MathLib.Uint128_Overflow.selector);
@@ -67,7 +68,7 @@ contract AsyncVaultTest is BaseTest {
         vm.expectRevert(MathLib.Uint128_Overflow.selector);
         vault.withdraw(amount, randomUser, self);
 
-        vm.expectRevert(bytes("AsyncRequests/exceeds-max-redeem"));
+        vm.expectRevert(IAsyncRequests.ExceedsMaxRedeem.selector);
         vault.redeem(amount, randomUser, self);
 
         erc20.mint(address(this), amount);

@@ -11,9 +11,6 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {IPerPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 
 interface IBalanceSheet {
-    // --- Errors ---
-    error EntriesUnbalanced();
-
     // --- Events ---
     event File(bytes32 indexed what, address data);
     event Permission(PoolId indexed poolId, ShareClassId indexed scId, address contractAddr, bool allowed);
@@ -52,6 +49,10 @@ interface IBalanceSheet {
         D18 pricePoolPerAsset,
         uint64 timestamp
     );
+
+    // --- Errors ---
+    error EntriesUnbalanced();
+    error FileUnrecognizedParam();
 
     // Overloaded increase
     function deposit(

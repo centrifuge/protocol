@@ -18,6 +18,7 @@ import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
 import {MockReentrantERC20Wrapper1, MockReentrantERC20Wrapper2} from "test/vaults/mocks/MockReentrantERC20Wrapper.sol";
+import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 
 contract VaultRouterTest is BaseTest {
     using MessageLib for *;
@@ -47,11 +48,11 @@ contract VaultRouterTest is BaseTest {
 
         erc20.mint(self, amount);
 
-        vm.expectRevert(bytes("AsyncVault/invalid-owner"));
+        vm.expectRevert(IAsyncVault.InvalidOwner.selector);
         vaultRouter.requestDeposit{value: 1 wei}(vault_, amount, self, self);
 
         vaultRouter.enable(vault_);
-        vm.expectRevert(bytes("AsyncRequests/transfer-not-allowed"));
+        vm.expectRevert(IAsyncRequests.TransferNotAllowed.selector);
         vaultRouter.requestDeposit{value: 1 wei}(vault_, amount, self, self);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
 
@@ -119,7 +120,7 @@ contract VaultRouterTest is BaseTest {
         vm.label(vault_, "vault");
 
         root.veto(address(vaultRouter));
-        vm.expectRevert(bytes("AsyncVault/not-endorsed"));
+        vm.expectRevert(IBaseVault.NotEndorsed.selector);
         vaultRouter.enable(vault_);
         assertEq(vault.isOperator(address(this), address(vaultRouter)), false);
         assertEq(vaultRouter.isEnabled(vault_, address(this)), false);
@@ -130,7 +131,7 @@ contract VaultRouterTest is BaseTest {
         assertEq(vaultRouter.isEnabled(vault_, address(this)), true);
 
         root.veto(address(vaultRouter));
-        vm.expectRevert(bytes("AsyncVault/not-endorsed"));
+        vm.expectRevert(IBaseVault.NotEndorsed.selector);
         vaultRouter.disable(vault_);
         assertEq(vault.isOperator(address(this), address(vaultRouter)), true);
         assertEq(vaultRouter.isEnabled(vault_, address(this)), true);
