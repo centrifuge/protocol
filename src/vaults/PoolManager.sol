@@ -102,16 +102,21 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         external
         payable
     {
-        IShareToken shareToken_ = IShareToken(shareToken(poolId, scId));
+        IShareToken share = IShareToken(shareToken(poolId, scId));
         require(
-            shareToken_.checkTransferRestriction(msg.sender, address(uint160(centrifugeId)), amount),
+            share.checkTransferRestriction(msg.sender, address(uint160(centrifugeId)), amount),
             CrossChainTransferNotAllowed()
         );
 
         gateway.payTransaction{value: msg.value}(msg.sender);
 
-        require(shareToken_.authTransferFrom(msg.sender, msg.sender, address(this), amount), ShareTokenTransferFailed());
-        shareToken_.burn(address(this), amount);
+        try share.authTransferFrom(msg.sender, msg.sender, address(this), amount) returns (bool) {}
+        catch {
+            // Support share class tokens that block authTransferFrom. In this case ERC20 approval needs to be set
+            require(share.transferFrom(msg.sender, address(this), amount), TransferFromFailed());
+        }
+
+        share.burn(address(this), amount);
 
         sender.sendTransferShares(centrifugeId, poolId, scId, receiver, amount);
 

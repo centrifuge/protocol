@@ -134,6 +134,7 @@ interface IPoolManager {
     error ShareTokenDoesNotExist();
     error CrossChainTransferNotAllowed();
     error ShareTokenTransferFailed();
+    error TransferFromFailed();
 
     /// @notice Returns the asset address and tokenId associated with a given asset id.
     /// @dev Reverts if asset id does not exist

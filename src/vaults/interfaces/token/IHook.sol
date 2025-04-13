@@ -16,11 +16,11 @@ string constant ERROR_MESSAGE = "transfer-blocked";
 
 /// @notice Hook interface to customize share token behaviour
 /// @dev    To detect specific system actions:
-///           Deposit request:      address(0)          -> address(user)
-///           Deposit claim:        address(escrow)     -> address(user)
-///           Redeem request:       address(user)       -> address(escrow)
-///           Redeem claim:         address(user)       -> address(0)
-///           Cross-chain transfer: address(user)       -> address(uint160(chainId))
+///           Deposit request:      address(0)      -> address(user)
+///           Deposit claim:        address(escrow) -> address(user)
+///           Redeem request:       address(user)   -> address(escrow)
+///           Redeem claim:         address(user)   -> address(0)
+///           Cross-chain transfer: address(user)   -> address(uint160(chainId))
 interface IHook is IERC165 {
     // --- Errors ---
     error TransferBlocked();
