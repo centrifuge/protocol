@@ -119,23 +119,26 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external payable {
+    function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims) external payable {
         _protected();
         _pay();
 
-        bool canClaimAgain = true;
         uint128 totalShares;
         uint128 totalTokens;
         uint128 totalCancelledAssetAmount;
 
-        while (canClaimAgain) {
-            (uint128 shares, uint128 tokens, uint128 cancelledAssetAmount, bool again) =
+        for(uint32 i = 0; i < maxClaims; i++) {
+            (uint128 shares, uint128 tokens, uint128 cancelledAssetAmount, bool canClaimAgain) =
                 shareClassManager.claimDeposit(poolId, scId, investor, assetId);
 
             canClaimAgain = again;
             totalShares += shares;
             totalTokens += tokens;
             totalCancelledAssetAmount = cancelledAssetAmount;
+
+            if (!canClaimAgain) {
+                break;
+            }
         }
 
         sender.sendFulfilledDepositRequest(poolId, scId, assetId, investor, totalTokens, totalShares);
@@ -151,19 +154,22 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         _protected();
         _pay();
 
-        bool canClaimAgain = true;
         uint128 totalShares;
         uint128 totalTokens;
         uint128 totalCancelledShareAmount;
 
-        while (canClaimAgain) {
-            (uint128 tokens, uint128 shares, uint128 cancelledShareAmount, bool again) =
+        for(uint32 i = 0; i < maxClaims; i++) {
+            (uint128 tokens, uint128 shares, uint128 cancelledShareAmount, bool canClaimAgain) =
                 shareClassManager.claimRedeem(poolId, scId, investor, assetId);
 
             canClaimAgain = again;
             totalShares += shares;
             totalTokens += tokens;
             totalCancelledShareAmount = cancelledShareAmount;
+
+            if (!canClaimAgain) {
+                break;
+            }
         }
 
         sender.sendFulfilledRedeemRequest(poolId, scId, assetId, investor, totalTokens, totalShares);
