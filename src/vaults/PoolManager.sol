@@ -98,6 +98,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
     // --- Outgoing message handling ---
     /// @inheritdoc IPoolManager
+    // TODO: change to use address token as input
     function transferShares(uint16 centrifugeId, uint64 poolId, bytes16 scId, bytes32 receiver, uint128 amount)
         external
         payable
@@ -119,7 +120,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     // @inheritdoc IPoolManagerGatewayHandler
     function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId)
         external
-        auth
+        payable
         returns (uint128 assetId)
     {
         string memory name;
@@ -129,6 +130,8 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         decimals = _safeGetAssetDecimals(asset, tokenId);
         require(decimals >= MIN_DECIMALS, TooFewDecimals());
         require(decimals <= MAX_DECIMALS, TooManyDecimals());
+
+        gateway.payTransaction{value: msg.value}(msg.sender);
 
         if (tokenId == 0) {
             IERC20Metadata meta = IERC20Metadata(asset);

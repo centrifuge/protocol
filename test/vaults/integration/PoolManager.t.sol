@@ -257,22 +257,16 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
         vm.expectRevert(IPoolManager.UnknownToken.selector);
-        poolManager.transferShares(OTHER_CHAIN_ID, poolId + 1, scId, centChainAddress, amount);
+        poolManager.transferShares{value: 0.1 ether}(OTHER_CHAIN_ID, poolId + 1, scId, centChainAddress, amount);
 
         // send the transfer from EVM -> Cent Chain
         shareToken.approve(address(poolManager), amount);
-        poolManager.transferShares(OTHER_CHAIN_ID, poolId, scId, centChainAddress, amount);
+        poolManager.transferShares{value: 0.1 ether}(OTHER_CHAIN_ID, poolId, scId, centChainAddress, amount);
         assertEq(shareToken.balanceOf(address(this)), 0);
 
         // Finally, verify the connector called `adapter.send`
         bytes memory message = MessageLib.TransferShares(poolId, scId, centChainAddress, amount).serialize();
         assertEq(adapter1.sent(message), 1);
-    }
-
-    function testTransferSharesUnauthorized() public {
-        vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolManager.transferShares(0, 0, bytes16(0), 0, 0);
     }
 
     function testTransferSharesFromCentrifuge(uint128 amount) public {
@@ -326,15 +320,24 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.handleTransferShares(vault.poolId(), vault.trancheId(), address(this), amount);
         assertEq(shareToken.balanceOf(address(this)), amount);
 
+        poolManager.updateRestriction(
+            vault.poolId(),
+            vault.trancheId(),
+            MessageLib.UpdateRestrictionMember(address(uint160(OTHER_CHAIN_ID)).toBytes32(), type(uint64).max).serialize(
+            )
+        );
+
         // fails for invalid share class token
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
         vm.expectRevert(IPoolManager.UnknownToken.selector);
-        poolManager.transferShares(OTHER_CHAIN_ID, poolId + 1, scId, destinationAddress.toBytes32(), amount);
+        poolManager.transferShares{value: 0.1 ether}(
+            OTHER_CHAIN_ID, poolId + 1, scId, destinationAddress.toBytes32(), amount
+        );
 
         // Approve and transfer amount from this address to destinationAddress
         shareToken.approve(address(poolManager), amount);
-        poolManager.transferShares(
+        poolManager.transferShares{value: 0.1 ether}(
             OTHER_CHAIN_ID, vault.poolId(), vault.trancheId(), destinationAddress.toBytes32(), amount
         );
         assertEq(shareToken.balanceOf(address(this)), 0);
@@ -623,7 +626,9 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assertFalse(shareToken.checkTransferRestriction(address(this), destinationAddress, 0));
 
         vm.expectRevert(IPoolManager.CrossChainTransferNotAllowed.selector);
-        poolManager.transferShares(OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount);
+        poolManager.transferShares{value: 0.1 ether}(
+            OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount
+        );
 
         poolManager.updateRestriction(
             vault.poolId(),
@@ -633,13 +638,17 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         );
 
         vm.expectRevert(IHook.TransferBlocked.selector);
-        poolManager.transferShares{value: 1 ether}(OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount);
+        poolManager.transferShares{value: 0.1 ether}(
+            OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount
+        );
         assertEq(shareToken.balanceOf(address(this)), amount);
 
         poolManager.updateRestriction(
             poolId, scId, MessageLib.UpdateRestrictionUnfreeze(address(this).toBytes32()).serialize()
         );
-        poolManager.transferShares(OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount);
+        poolManager.transferShares{value: 0.1 ether}(
+            OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount
+        );
         assertEq(shareToken.balanceOf(address(escrow)), 0);
     }
 
@@ -1012,12 +1021,6 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         MockERC6909 asset = new MockERC6909();
         vm.expectRevert(IPoolManager.TooManyDecimals.selector);
         poolManager.registerAsset(OTHER_CHAIN_ID, address(asset), 19);
-    }
-
-    function testRegisterAsset_unauthorized() public {
-        vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolManager.registerAsset(0, address(0), 0);
     }
 }
 

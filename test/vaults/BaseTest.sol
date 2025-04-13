@@ -181,7 +181,7 @@ contract BaseTest is VaultsDeployer, Test {
         try poolManager.assetToId(asset, assetTokenId) {
             assetId = poolManager.assetToId(asset, assetTokenId);
         } catch {
-            assetId = poolManager.registerAsset(OTHER_CHAIN_ID, asset, assetTokenId);
+            assetId = poolManager.registerAsset{value: 0.1 ether}(OTHER_CHAIN_ID, asset, assetTokenId);
             centrifugeChain.updatePricePoolPerAsset(
                 POOL_A.raw(), scId, assetId, uint128(10 ** 18), uint64(block.timestamp)
             );

@@ -178,7 +178,10 @@ interface IPoolManager {
     /// @param asset The address of the asset to be registered
     /// @param tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
     /// @return assetId The underlying internal uint128 assetId.
-    function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId) external returns (uint128 assetId);
+    function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId)
+        external
+        payable
+        returns (uint128 assetId);
 
     /// @notice Deploys a new vault
     ///
