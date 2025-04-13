@@ -383,6 +383,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         require(exists(poolId, scId_), ShareClassNotFound());
 
         UserOrder storage userOrder = redeemRequest[scId_][payoutAssetId][investor];
+        require(userOrder.lastUpdate != 0, NoOrderFound());
         require(userOrder.lastUpdate <= revokeEpochId[scId_][payoutAssetId], RevocationRequired());
         uint32 epochId = userOrder.lastUpdate;
         userOrder.lastUpdate += 1;
@@ -524,6 +525,18 @@ contract ShareClassManager is Auth, IShareClassManager {
         return shareClassIds[poolId][scId_];
     }
 
+    /// @inheritdoc IShareClassManager
+    function investClaims(PoolId poolId, ShareClassId scId_, AssetId assetId, address investor) returns (uint32 claims) {
+        // TODO: lastUpdated = 1; -> first epoch, current epoch 1 -> one claim
+        // lastUpdated = 0; no order
+        // lastUpdated = 1; currencEpoch = 2 -> two claims
+    }
+
+    /// @inheritdoc IShareClassManager
+    function redeemClaims(PoolId poolId, ShareClassId scId_, AssetId assetId, address investor) returns (uint32 claims) {
+
+    }
+
     function _updateMetadata(ShareClassId scId_, string calldata name, string calldata symbol, bytes32 salt) private {
         uint256 nLen = bytes(name).length;
         require(nLen > 0 && nLen <= 128, InvalidMetadataName());
@@ -624,9 +637,10 @@ contract ShareClassManager is Auth, IShareClassManager {
         cancelledAmount = isIncrement ? 0 : amount;
         userOrder.pending = isIncrement ? userOrder.pending + amount : userOrder.pending - amount;
 
-        uint32 currentEpoch =
+        uint32 lastEpoch =
             requestType == RequestType.Deposit ? investEpochId[scId_][assetId] : redeemEpochId[scId_][assetId];
-        userOrder.lastUpdate = currentEpoch;
+        // currentEpoch is lastEpoch + 1
+        userOrder.lastUpdate = lastEpoch + 1;
 
         if (requestType == RequestType.Deposit) {
             _updatePendingDeposit(poolId, scId_, amount, isIncrement, investor, assetId, userOrder, queued);
@@ -658,11 +672,12 @@ contract ShareClassManager is Auth, IShareClassManager {
         QueuedOrder storage queued,
         RequestType requestType
     ) private returns (bool skipPendingUpdate) {
-        uint32 currentEpoch =
+        uint32 lastEpoch =
             requestType == RequestType.Deposit ? issueEpochId[scId_][assetId] : redeemEpochId[scId_][assetId];
+        uint32 currentEpoch = lastEpoch + 1;
 
         // Short circuit if user can mutate pending, i.e. last update happened after latest approval or is first update
-        if (userOrder.lastUpdate == currentEpoch || userOrder.pending == 0 || currentEpoch == 0) {
+        if (userOrder.lastUpdate == currentEpoch || userOrder.pending == 0 || lastEpoch == 0) {
             return false;
         }
 
@@ -712,7 +727,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         emit UpdateRequest(
             poolId,
             scId_,
-            issueEpochId[scId_][assetId],
+            issueEpochId[scId_][assetId] + 1,
             RequestType.Deposit,
             investor,
             assetId,
@@ -740,7 +755,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         emit UpdateRequest(
             poolId,
             scId_,
-            redeemEpochId[scId_][assetId],
+            redeemEpochId[scId_][assetId] + 1,
             RequestType.Redeem,
             investor,
             assetId,
