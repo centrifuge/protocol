@@ -634,9 +634,9 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         return VaultPricingLib.calculatePrice(shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, assets);
     }
 
-    function _mapPoolId(uint64 poolId) external view returns (uint64 mappedPoolId) {
+    function _mapPoolId(uint64 poolId) internal view returns (uint64 mappedPoolId) {
         uint16 legacyCentrifugeId = 1;
-        if (poolId == 4139607887) return newPoolId(legacyCentrifugeId, 1);
+        if (poolId == 4139607887) return newPoolId(legacyCentrifugeId, 1).raw();
         return poolId;
     }
 }
