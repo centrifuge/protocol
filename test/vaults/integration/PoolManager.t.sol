@@ -260,7 +260,6 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.transferShares{value: defaultGas}(OTHER_CHAIN_ID, poolId + 1, scId, centChainAddress, amount);
 
         // send the transfer from EVM -> Cent Chain
-        shareToken.approve(address(poolManager), amount);
         poolManager.transferShares{value: defaultGas}(OTHER_CHAIN_ID, poolId, scId, centChainAddress, amount);
         assertEq(shareToken.balanceOf(address(this)), 0);
 
@@ -335,8 +334,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
             OTHER_CHAIN_ID, poolId + 1, scId, destinationAddress.toBytes32(), amount
         );
 
-        // Approve and transfer amount from this address to destinationAddress
-        shareToken.approve(address(poolManager), amount);
+        // Transfer amount from this address to destinationAddress
         poolManager.transferShares{value: defaultGas}(
             OTHER_CHAIN_ID, vault.poolId(), vault.trancheId(), destinationAddress.toBytes32(), amount
         );
@@ -637,7 +635,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
             )
         );
 
-        vm.expectRevert(IHook.TransferBlocked.selector);
+        vm.expectRevert(IPoolManager.CrossChainTransferNotAllowed.selector);
         poolManager.transferShares{value: defaultGas}(
             OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount
         );

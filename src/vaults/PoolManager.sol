@@ -98,20 +98,21 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
     // --- Outgoing message handling ---
     /// @inheritdoc IPoolManager
-    // TODO: change to use address token as input
     function transferShares(uint16 centrifugeId, uint64 poolId, bytes16 scId, bytes32 receiver, uint128 amount)
         external
         payable
     {
         IShareToken shareToken_ = IShareToken(shareToken(poolId, scId));
         require(
-            shareToken_.checkTransferRestriction(address(0), address(uint160(centrifugeId)), amount),
+            shareToken_.checkTransferRestriction(msg.sender, address(uint160(centrifugeId)), amount),
             CrossChainTransferNotAllowed()
         );
 
         gateway.payTransaction{value: msg.value}(msg.sender);
 
-        shareToken_.burn(msg.sender, amount);
+        require(shareToken_.authTransferFrom(msg.sender, msg.sender, address(this), amount), ShareTokenTransferFailed());
+        shareToken_.burn(address(this), amount);
+
         sender.sendTransferShares(centrifugeId, poolId, scId, receiver, amount);
 
         emit TransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
