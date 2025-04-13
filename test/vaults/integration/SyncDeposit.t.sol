@@ -126,7 +126,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
             syncVault.poolId(), syncVault.trancheId(), address(syncVault), uint128(amount / 2)
         );
 
-        vm.expectRevert(bytes("SyncRequests/exceeds-max-reserve"));
+        vm.expectRevert(ISyncRequests.ExceedsMaxReserve.selector);
         syncVault.deposit(amount, self);
 
         centrifugeChain.updateMaxReserve(syncVault.poolId(), syncVault.trancheId(), address(syncVault), uint128(amount));

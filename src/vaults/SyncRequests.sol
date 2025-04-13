@@ -81,7 +81,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
             MessageLib.UpdateContractSyncDepositMaxReserve memory m =
                 MessageLib.deserializeUpdateContractSyncDepositMaxReserve(payload);
 
-            require(poolManager.shareToken(poolId, scId) != address(0), "SyncRequests/share-token-does-not-exist");
+            require(poolManager.shareToken(poolId, scId) != address(0), ShareTokenDoesNotExist());
             (address asset, uint256 tokenId) = poolManager.idToAsset(m.assetId);
 
             setMaxReserve(poolId, scId, asset, tokenId, m.maxReserve);
@@ -328,7 +328,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         uint256 availableBalance = IPerPoolEscrow(escrow).availableBalanceOf(asset, tokenId, poolId.raw(), scId.raw());
         require(
             availableBalance + depositAssetAmount <= maxReserve[poolId.raw()][scId.raw()][asset][tokenId],
-            "SyncRequests/exceeds-max-reserve"
+            ExceedsMaxReserve()
         );
     }
 
