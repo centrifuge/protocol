@@ -635,6 +635,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     }
 
     function _mapPoolId(uint64 poolId) internal view returns (uint64 mappedPoolId) {
+        // TODO: update legacyCentrifugeId and add all pools before deployment
         uint16 legacyCentrifugeId = 1;
         if (poolId == 4139607887) return newPoolId(legacyCentrifugeId, 1).raw();
         return poolId;
