@@ -43,12 +43,12 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         );
     }
 
-    function deployCommon(uint16 centrifugeId, ISafe adminSafe_, address deployer) public {
+    function deployCommon(uint16 centrifugeId, ISafe adminSafe_, address deployer, bool isTests) public {
         if (address(root) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
 
-        startDeploymentOutput();
+        startDeploymentOutput(isTests);
 
         uint64 messageGasLimit = uint64(vm.envOr(MESSAGE_COST_ENV, FALLBACK_MSG_COST));
         uint64 proofGasLimit = uint64(vm.envOr(PROOF_COST_ENV, FALLBACK_MSG_COST));

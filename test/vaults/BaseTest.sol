@@ -81,7 +81,7 @@ contract BaseTest is VaultsDeployer, Test {
         ISafe adminSafe = new MockSafe(pausers, 1);
 
         // deploy core contracts
-        deployVaults(THIS_CHAIN_ID, adminSafe, address(this));
+        deployVaults(THIS_CHAIN_ID, adminSafe, address(this), true);
         guardian.file("safe", address(adminSafe));
 
         // deploy mock adapters

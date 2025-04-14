@@ -18,12 +18,14 @@ contract JsonRegistry is Script {
         registeredContracts += 1;
     }
 
-    function startDeploymentOutput() public {
+    function startDeploymentOutput(bool isTests) public {
         deploymentOutput = '{\n  "contracts": {\n';
 
-        console.log(
-            "\n\n---------\n\nStarting deployment: %s_%s\n\n", vm.toString(block.chainid), vm.toString(startTime)
-        );
+        if (!isTests) {
+            console.log(
+                "\n\n---------\n\nStarting deployment: %s_%s\n\n", vm.toString(block.chainid), vm.toString(startTime)
+            );
+        }
     }
 
     function saveDeploymentOutput() public {
