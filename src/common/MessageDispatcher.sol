@@ -39,12 +39,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     IGateway public immutable gateway;
     ITokenRecoverer public immutable tokenRecoverer;
 
+    uint16 public immutable localCentrifugeId;
+
     IHubGatewayHandler public hub;
     IPoolManagerGatewayHandler public poolManager;
     IInvestmentManagerGatewayHandler public investmentManager;
     IBalanceSheetGatewayHandler public balanceSheet;
-
-    uint16 public localCentrifugeId;
 
     constructor(
         uint16 localCentrifugeId_,

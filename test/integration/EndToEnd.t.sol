@@ -54,7 +54,7 @@ contract TestEndToEnd is Test {
         public
         returns (LocalAdapter adapter)
     {
-        deploy.deployFull(localCentrifugeId, safeAdmin, address(deploy));
+        deploy.deployFull(localCentrifugeId, safeAdmin, address(deploy), true);
 
         adapter = new LocalAdapter(localCentrifugeId, deploy.gateway(), address(deploy));
         deploy.wire(remoteCentrifugeId, adapter, address(deploy));

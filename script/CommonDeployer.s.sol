@@ -42,10 +42,12 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         );
     }
 
-    function deployCommon(uint16 centrifugeId, ISafe adminSafe_, address deployer) public {
+    function deployCommon(uint16 centrifugeId, ISafe adminSafe_, address deployer, bool isTests) public {
         if (address(root) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
+
+        startDeploymentOutput(isTests);
 
         uint64 messageGasLimit = uint64(vm.envOr(MESSAGE_COST_ENV, FALLBACK_MSG_COST));
 
@@ -55,7 +57,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         messageProcessor = new MessageProcessor(root, tokenRecoverer, deployer);
 
         gasService = new GasService(messageGasLimit);
-        gateway = new Gateway(root, gasService);
+        gateway = new Gateway(centrifugeId, root, gasService);
 
         messageDispatcher = new MessageDispatcher(centrifugeId, root, gateway, tokenRecoverer, deployer);
 
@@ -70,8 +72,6 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     }
 
     function _commonRegister() private {
-        startDeploymentOutput();
-
         register("root", address(root));
         register("adminSafe", address(adminSafe));
         register("guardian", address(guardian));

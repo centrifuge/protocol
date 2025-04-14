@@ -1086,7 +1086,7 @@ library MessageLib {
         });
     }
 
-    function serialize(UpdateHoldingAmount memory t) public pure returns (bytes memory) {
+    function serialize(UpdateHoldingAmount memory t) internal pure returns (bytes memory) {
         bytes memory debits = t.debits.toBytes();
         bytes memory credits = t.credits.toBytes();
 

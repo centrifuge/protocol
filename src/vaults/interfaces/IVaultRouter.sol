@@ -152,27 +152,6 @@ interface IVaultRouter is IMulticall {
     /// @param  controller Check  IERC7540CancelRedeem.claimCancelRedeemRequest.controller
     function claimCancelRedeemRequest(address vault, address receiver, address controller) external payable;
 
-    // --- Transfer ---
-    /// @notice Check `IPoolManager.transferShares`.
-    /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
-    ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
-    ///
-    /// @param  centrifugeId Chain to where transfer the shares
-    /// @param  vault The vault for the corresponding share class token
-    /// @param  receiver Check `IPoolManager.transferShares.receiver`
-    /// @param  amount Check `IPoolManager.transferShares.amount`
-    function transferShares(uint16 centrifugeId, address vault, bytes32 receiver, uint128 amount) external payable;
-
-    /// @notice This is a more friendly version where the receiver is and EVM address
-    /// @dev    The receiver address is padded to 32 bytes internally
-    function transferShares(uint16 centrifugeId, address vault, address receiver, uint128 amount) external payable;
-
-    /// @notice Register an asset to be used in a pool existing in centrifugeId
-    /// @param centrifugeId Where the asset will be registered
-    /// @param asset If tokenId == 0, an ERC20 address, if tokenId != 0, an ERC6909 address
-    /// @param tokenId An ERC6909 tokenId
-    function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId) external payable;
-
     // --- ERC20 permit ---
     /// @notice Check IERC20.permit
     function permit(address asset, address spender, uint256 assets, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
