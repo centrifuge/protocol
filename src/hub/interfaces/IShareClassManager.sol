@@ -377,7 +377,7 @@ interface IShareClassManager {
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     /// @param pricePoolPerShare The price per share of the share class (in the pool currency denomination)
-    function updateShareClassPrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare) external;
+    function updatePricePerShare(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare) external;
 
     /// @notice Updates the metadata of a share class.
     ///
