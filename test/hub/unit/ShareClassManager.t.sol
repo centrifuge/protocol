@@ -884,19 +884,19 @@ contract ShareClassManagerRedeemsNonTransientTest is ShareClassManagerBaseTest {
             vm.expectEmit(true, true, true, true);
             emit IShareClassManager.ClaimRedeem(poolId, scId, 1, investor, USDC, approvedRedeem, pendingRedeem, payout);
         }
-        (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelledAmount) =
+        (uint128 payoutAssetAmount, uint128 depositShareAmount, uint128 cancelledAmount) =
             shareClass.claimRedeem(poolId, scId, investor, USDC);
 
         assertEq(payout, payoutAssetAmount, "payout asset amount mismatch");
-        assertEq(payout > 0 ? approvedRedeem : 0, paymentShareAmount, "payment shares mismatch");
+        assertEq(payout > 0 ? approvedRedeem : 0, depositShareAmount, "payment shares mismatch");
         _assertRedeemRequestEq(
             scId, USDC, investor, UserOrder(payout > 0 ? pendingRedeem : pendingRedeem + approvedRedeem, 2)
         );
         assertEq(cancelledAmount, 0, "no queued cancellation");
 
         // Ensure another claim has no impact
-        (payoutAssetAmount, paymentShareAmount, cancelledAmount) = shareClass.claimRedeem(poolId, scId, investor, USDC);
-        assertEq(payoutAssetAmount + paymentShareAmount, 0, "replay must not be possible");
+        (payoutAssetAmount, depositShareAmount, cancelledAmount) = shareClass.claimRedeem(poolId, scId, investor, USDC);
+        assertEq(payoutAssetAmount + depositShareAmount, 0, "replay must not be possible");
         assertEq(cancelledAmount, 0, "no queued cancellation");
     }
 
@@ -1343,11 +1343,11 @@ contract ShareClassManagerTransientTest is ShareClassManagerBaseTest {
                 poolId, scId, i, investor, USDC, epochApproved, pendingRedeem, epochPayout
             );
         }
-        (uint128 payoutAssetAmount, uint128 paymentShareAmount,) = shareClass.claimRedeem(poolId, scId, investor, USDC);
+        (uint128 payoutAssetAmount, uint128 depositShareAmount,) = shareClass.claimRedeem(poolId, scId, investor, USDC);
 
         assertEq(totalApproved + pendingRedeem, redeemAmount, "approved + pending must equal request amount");
         assertEq(payout, payoutAssetAmount, "payout asset amount mismatch");
-        assertEq(totalApproved, paymentShareAmount, "payment shares mismatch");
+        assertEq(totalApproved, depositShareAmount, "payment shares mismatch");
 
         UserOrder memory userOrder = UserOrder(pendingRedeem, maxEpochId);
         _assertRedeemRequestEq(scId, USDC, investor, userOrder);

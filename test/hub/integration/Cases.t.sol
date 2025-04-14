@@ -97,7 +97,7 @@ contract TestCases is BaseTest {
         assertEq(m1.investor, INVESTOR);
         assertEq(m1.assetId, USDC_C2.raw());
         assertEq(m1.assetAmount, APPROVED_INVESTOR_AMOUNT);
-        assertEq(m1.shareAmount, SHARE_AMOUNT);
+        assertEq(m1.shareAmount, NAV_PER_SHARE.reciprocalMulUint128(SHARE_AMOUNT));
 
         cv.resetMessages();
     }

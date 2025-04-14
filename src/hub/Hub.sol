@@ -232,17 +232,17 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function approveDeposits(PoolId poolId, ShareClassId scId, AssetId paymentAssetId, uint128 approvedAssetAmount)
+    function approveDeposits(PoolId poolId, ShareClassId scId, AssetId depositAssetId, uint128 approvedAssetAmount)
         external
         payable
     {
         _protected(poolId);
 
         shareClassManager.approveDeposits(
-            poolId, scId, approvedAssetAmount, paymentAssetId, _pricePoolPerAsset(poolId, scId, paymentAssetId)
+            poolId, scId, approvedAssetAmount, depositAssetId, _pricePoolPerAsset(poolId, scId, depositAssetId)
         );
 
-        sender.sendApprovedDeposits(poolId, scId, paymentAssetId, approvedAssetAmount);
+        sender.sendApprovedDeposits(poolId, scId, depositAssetId, approvedAssetAmount);
     }
 
     /// @inheritdoc IHub
@@ -262,7 +262,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     {
         _protected(poolId);
 
-        shareClassManager.issueShares(poolId, scId, depositAssetId, navPoolPerShare);
+        (uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 paymentPoolAmount) = shareClassManager.issueShares(poolId, scId, depositAssetId, navPoolPerShare);
+        require(issuedShareAmount == 0);
+        require(depositAssetAmount == 0);
+        require(paymentPoolAmount == 0);
     }
 
     /// @inheritdoc IHub

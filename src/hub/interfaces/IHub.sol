@@ -58,7 +58,7 @@ interface IHub {
     function createPool(address admin, AssetId currency) external payable returns (PoolId);
 
     /// @notice Claim a deposit for an investor address located in the chain where the asset belongs
-    function claimDeposit(PoolId poolId, ShareClassId scId, AssetId paymentAssetId, bytes32 investor, uint32 maxClaims)
+    function claimDeposit(PoolId poolId, ShareClassId scId, AssetId depositAssetId, bytes32 investor, uint32 maxClaims)
         external
         payable;
 
@@ -106,9 +106,9 @@ interface IHub {
     /// @notice Approves an asset amount of all deposit requests for the given triplet of pool id, share class id and
     /// deposit asset id.
     /// @param scId Identifier of the share class
-    /// @param paymentAssetId Identifier of the asset locked for the deposit request
+    /// @param depositAssetId Identifier of the asset locked for the deposit request
     /// @param approvedAssetAmount Ampunt of assets that will be approved
-    function approveDeposits(PoolId poolId, ShareClassId scId, AssetId paymentAssetId, uint128 approvedAssetAmount)
+    function approveDeposits(PoolId poolId, ShareClassId scId, AssetId depositAssetId, uint128 approvedAssetAmount)
         external
         payable;
 
