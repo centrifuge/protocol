@@ -277,7 +277,7 @@ contract Gateway is Auth, IGateway, Recoverable {
     }
 
     function _send(uint16 centrifugeId, PoolId poolId, bytes memory batch) private {
-        bytes memory proof = processor.createMessageProof(batch);
+        bytes memory proof = processor.createMessageProof(keccak256(batch));
 
         IAdapter[] memory adapters_ = adapters[centrifugeId];
         require(adapters[centrifugeId].length != 0, EmptyAdapterSet());
@@ -358,12 +358,8 @@ contract Gateway is Auth, IGateway, Recoverable {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IGateway
-    function estimate(uint16 centrifugeId, bytes calldata payload)
-        external
-        view
-        returns (uint256 total)
-    {
-        bytes memory proof = processor.createMessageProof(payload);
+    function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 total) {
+        bytes memory proof = processor.createMessageProof(keccak256(payload));
 
         uint256 gasLimit = 0;
         for (uint256 pos; pos < payload.length;) {

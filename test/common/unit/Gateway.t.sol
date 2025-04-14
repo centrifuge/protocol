@@ -53,8 +53,8 @@ contract MockProcessor is Mock, IMessageHandler, IMessageProperties {
             : bytes32(0);
     }
 
-    function createMessageProof(bytes calldata message) external pure returns (bytes memory) {
-        return MessageLib.MessageProof({hash: keccak256(message)}).serialize();
+    function createMessageProof(bytes32 hash) external pure returns (bytes memory) {
+        return MessageLib.MessageProof({hash: hash}).serialize();
     }
 }
 

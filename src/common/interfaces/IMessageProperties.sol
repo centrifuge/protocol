@@ -18,6 +18,6 @@ interface IMessageProperties {
     /// If the message is not a proof, return 0.
     function messageProofHash(bytes calldata message) external pure returns (bytes32);
 
-    /// @notice Creates an encoded proof message from a message
-    function createMessageProof(bytes calldata message) external pure returns (bytes memory);
+    /// @notice Creates an encoded proof message from a hash
+    function createMessageProof(bytes32 hash) external pure returns (bytes memory);
 }
