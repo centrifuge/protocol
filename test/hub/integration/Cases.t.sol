@@ -85,7 +85,9 @@ contract TestCases is BaseTest {
 
         vm.prank(ANY);
         vm.deal(ANY, GAS);
-        hub.claimDeposit{value: GAS}(poolId, scId, USDC_C2, INVESTOR);
+        hub.claimDeposit{value: GAS}(
+            poolId, scId, USDC_C2, INVESTOR, shareClassManager.maxDepositClaims(scId, INVESTOR, USDC_C2)
+        );
 
         MessageLib.FulfilledDepositRequest memory m0 = MessageLib.deserializeFulfilledDepositRequest(cv.lastMessages(0));
         assertEq(m0.poolId, poolId.raw());
@@ -116,7 +118,9 @@ contract TestCases is BaseTest {
 
         vm.prank(ANY);
         vm.deal(ANY, GAS);
-        hub.claimRedeem{value: GAS}(poolId, scId, USDC_C2, INVESTOR);
+        hub.claimRedeem{value: GAS}(
+            poolId, scId, USDC_C2, INVESTOR, shareClassManager.maxRedeemClaims(scId, INVESTOR, USDC_C2)
+        );
 
         MessageLib.FulfilledRedeemRequest memory m0 = MessageLib.deserializeFulfilledRedeemRequest(cv.lastMessages(0));
         assertEq(m0.poolId, poolId.raw());

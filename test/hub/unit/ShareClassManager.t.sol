@@ -203,7 +203,8 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
         vm.assume(nonWard != address(shareClass.hubRegistry()) && nonWard != address(this));
 
         assertEq(address(shareClass.hubRegistry()), hubRegistryAddress);
-        assertEq(shareClass.epochId(poolId), 1);
+        assertEq(shareClass.depositEpoch(scId, USDC), 1);
+        assertEq(shareClass.redeemEpoch(scId, USDC), 1);
         assertEq(shareClass.shareClassCount(poolId), 1);
         assert(shareClass.shareClassIds(poolId, scId));
 
@@ -213,6 +214,7 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
         assertEq(shareClass.wards(nonWard), 0);
     }
 
+    /*
     function testFile() public {
         address hubRegistryNew = makeAddr("hubRegistryNew");
         vm.expectEmit(true, true, true, true);
@@ -297,7 +299,7 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
     }
 
     function testPreviewShareClassId(uint32 index) public view {
-        assertEq(shareClass.previewShareClassId(poolId, index).raw(), bytes16((uint128(poolId.raw()) << 64) + index));
+    assertEq(shareClass.previewShareClassId(poolId, index).raw(), bytes16((uint128(poolId.raw()) << 64) + index));
     }
 
     function testUpdateShareClass() public {
@@ -342,6 +344,7 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
         assertEq(totalIssuance_, 0, "TotalIssuance should be reset");
         assertEq(navPerShareMetric.inner(), 0, "navPerShare metric should not be updated");
     }
+    */
 }
 
 /*

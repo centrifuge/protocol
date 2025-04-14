@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
+import {d18} from "src/misc/types/D18.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -109,13 +110,11 @@ contract TestCreate is TestCommon {
 contract TestIncrease is TestCommon {
     function testSuccess() public {
         holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
-        mockGetQuote(customValuation, 20, 200);
-        holdings.increase(POOL_A, SC_1, ASSET_A, customValuation, 20);
+        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20);
 
-        mockGetQuote(customValuation, 8, 50);
         vm.expectEmit();
-        emit IHoldings.Increase(POOL_A, SC_1, ASSET_A, customValuation, 8, 50);
-        uint128 value = holdings.increase(POOL_A, SC_1, ASSET_A, customValuation, 8);
+        emit IHoldings.Increase(POOL_A, SC_1, ASSET_A, d18(50, 8), 8, 50);
+        uint128 value = holdings.increase(POOL_A, SC_1, ASSET_A, d18(50, 8), 8);
 
         assertEq(value, 50);
 
@@ -130,32 +129,30 @@ contract TestIncrease is TestCommon {
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        holdings.increase(POOL_A, SC_1, ASSET_A, itemValuation, 0);
+        holdings.increase(POOL_A, SC_1, ASSET_A, d18(1, 1), 0);
     }
 
     function testErrWrongValuation() public {
         holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
 
         vm.expectRevert(IHoldings.WrongValuation.selector);
-        holdings.increase(POOL_A, SC_1, ASSET_A, IERC7726(address(0)), 0);
+        holdings.increase(POOL_A, SC_1, ASSET_A, d18(1, 1), 0);
     }
 
     function testErrHoldingNotFound() public {
         vm.expectRevert(IHoldings.HoldingNotFound.selector);
-        holdings.increase(POOL_A, SC_1, ASSET_A, itemValuation, 0);
+        holdings.increase(POOL_A, SC_1, ASSET_A, d18(1, 1), 0);
     }
 }
 
 contract TestDecrease is TestCommon {
     function testSuccess() public {
         holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
-        mockGetQuote(customValuation, 20, 200);
-        holdings.increase(POOL_A, SC_1, ASSET_A, customValuation, 20);
+        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20);
 
-        mockGetQuote(customValuation, 8, 50);
         vm.expectEmit();
-        emit IHoldings.Decrease(POOL_A, SC_1, ASSET_A, customValuation, 8, 50);
-        uint128 value = holdings.decrease(POOL_A, SC_1, ASSET_A, customValuation, 8);
+        emit IHoldings.Decrease(POOL_A, SC_1, ASSET_A, d18(50, 8), 8, 50);
+        uint128 value = holdings.decrease(POOL_A, SC_1, ASSET_A, d18(50, 8), 8);
 
         assertEq(value, 50);
 
@@ -170,27 +167,26 @@ contract TestDecrease is TestCommon {
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        holdings.decrease(POOL_A, SC_1, ASSET_A, itemValuation, 0);
+        holdings.decrease(POOL_A, SC_1, ASSET_A, d18(1, 1), 0);
     }
 
     function testErrWrongValuation() public {
         holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
 
         vm.expectRevert(IHoldings.WrongValuation.selector);
-        holdings.decrease(POOL_A, SC_1, ASSET_A, IERC7726(address(0)), 0);
+        holdings.decrease(POOL_A, SC_1, ASSET_A, d18(1, 1), 0);
     }
 
     function testErrHoldingNotFound() public {
         vm.expectRevert(IHoldings.HoldingNotFound.selector);
-        holdings.decrease(POOL_A, SC_1, ASSET_A, itemValuation, 0);
+        holdings.decrease(POOL_A, SC_1, ASSET_A, d18(1, 1), 0);
     }
 }
 
 contract TestUpdate is TestCommon {
     function testUpdateMore() public {
         holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
-        mockGetQuote(customValuation, 20, 200);
-        holdings.increase(POOL_A, SC_1, ASSET_A, customValuation, 20);
+        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20);
 
         vm.expectEmit();
         emit IHoldings.Update(POOL_A, SC_1, ASSET_A, 50);
@@ -205,8 +201,7 @@ contract TestUpdate is TestCommon {
 
     function testUpdateLess() public {
         holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
-        mockGetQuote(customValuation, 20, 200);
-        holdings.increase(POOL_A, SC_1, ASSET_A, customValuation, 20);
+        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20);
 
         vm.expectEmit();
         emit IHoldings.Update(POOL_A, SC_1, ASSET_A, -50);
@@ -221,8 +216,7 @@ contract TestUpdate is TestCommon {
 
     function testUpdateEquals() public {
         holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
-        mockGetQuote(customValuation, 20, 200);
-        holdings.increase(POOL_A, SC_1, ASSET_A, customValuation, 20);
+        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20);
 
         vm.expectEmit();
         emit IHoldings.Update(POOL_A, SC_1, ASSET_A, 0);
@@ -311,8 +305,7 @@ contract TestSetAccountId is TestCommon {
 contract TestValue is TestCommon {
     function testSuccess() public {
         holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
-        mockGetQuote(itemValuation, 20, 200);
-        holdings.increase(POOL_A, SC_1, ASSET_A, itemValuation, 20);
+        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20);
 
         uint128 value = holdings.value(POOL_A, SC_1, ASSET_A);
 
@@ -328,8 +321,7 @@ contract TestValue is TestCommon {
 contract TestAmount is TestCommon {
     function testSuccess() public {
         holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
-        mockGetQuote(itemValuation, 20, 200);
-        holdings.increase(POOL_A, SC_1, ASSET_A, itemValuation, 20);
+        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20);
 
         uint128 value = holdings.amount(POOL_A, SC_1, ASSET_A);
 

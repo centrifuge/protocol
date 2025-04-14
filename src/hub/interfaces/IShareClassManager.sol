@@ -82,13 +82,11 @@ interface IShareClassManager {
         PoolId indexed poolId, ShareClassId indexed scId, uint32 indexed index, string name, string symbol, bytes32 salt
     );
     event UpdateMetadata(PoolId indexed poolId, ShareClassId indexed scId, string name, string symbol, bytes32 salt);
-    event NewInvestEpoch(PoolId indexed poolId, AssetId indexed assetId, uint32 newIndex);
-    event NewRedeemEpoch(PoolId indexed poolId, AssetId indexed assetId, uint32 newIndex);
     event ApproveDeposits(
         PoolId indexed poolId,
         ShareClassId indexed scId,
-        uint32 indexed epoch,
-        AssetId assetId,
+        AssetId indexed paymentAssetId,
+        uint32 epoch,
         uint128 approvedPoolAmount,
         uint128 approvedAssetAmount,
         uint128 pendingAssetAmount
@@ -96,15 +94,16 @@ interface IShareClassManager {
     event ApproveRedeems(
         PoolId indexed poolId,
         ShareClassId indexed scId,
-        uint32 indexed epoch,
-        AssetId assetId,
+        AssetId indexed payoutAssetId,
+        uint32 epoch,
         uint128 approvedShareAmount,
         uint128 pendingShareAmount
     );
     event IssueShares(
         PoolId indexed poolId,
         ShareClassId indexed scId,
-        uint32 indexed epoch,
+        AssetId indexed paymentAssetId,
+        uint32 epoch,
         D18 navPoolPerShare,
         D18 navAssetPerShare,
         uint128 issuedShareAmount
@@ -113,7 +112,8 @@ interface IShareClassManager {
     event RevokeShares(
         PoolId indexed poolId,
         ShareClassId indexed scId,
-        uint32 indexed epoch,
+        AssetId indexed payoutAssetId,
+        uint32 epoch,
         D18 navPoolPerShare,
         D18 navAssetPerShare,
         uint128 revokedShareAmount,
@@ -124,9 +124,9 @@ interface IShareClassManager {
     event ClaimDeposit(
         PoolId indexed poolId,
         ShareClassId indexed scId,
-        uint32 indexed epoch,
+        uint32 epoch,
         bytes32 investor,
-        AssetId assetId,
+        AssetId indexed paymentAssetId,
         uint128 approvedAssetAmount,
         uint128 pendingAssetAmount,
         uint128 claimedShareAmount,
@@ -135,36 +135,43 @@ interface IShareClassManager {
     event ClaimRedeem(
         PoolId indexed poolId,
         ShareClassId indexed scId,
-        uint32 indexed epoch,
+        uint32 epoch,
         bytes32 investor,
-        AssetId assetId,
-        uint128 approvedShareClassAmount,
-        uint128 pendingShareClassAmount,
+        AssetId indexed payoutAssetId,
+        uint128 approvedShareAmount,
+        uint128 pendingShareAmount,
         uint128 claimedAssetAmount,
         uint64 revokedAt
     );
     event AddShareClass(PoolId indexed poolId, ShareClassId indexed scId, uint32 indexed index);
     event UpdateShareClass(
-        PoolId indexed poolId,
-        ShareClassId indexed scId,
-        uint128 nav,
-        D18 navPoolPerShare,
-        uint128 totalIssuance
+        PoolId indexed poolId, ShareClassId indexed scId, uint128 nav, D18 navPoolPerShare, uint128 totalIssuance
     );
-    event UpdateRequest(
+    event UpdateDepositRequest(
         PoolId indexed poolId,
         ShareClassId indexed scId,
-        uint32 indexed epoch,
-        RequestType requestType,
+        AssetId indexed paymentAssetId,
+        uint32 epoch,
         bytes32 investor,
-        AssetId assetId,
-        uint128 pendingUserAmount,
-        uint128 pendingTotalAmount,
-        uint128 queuedAmount,
+        uint128 pendingUserAssetAmount,
+        uint128 pendingTotalAssetAmount,
+        uint128 queuedUserAssetAmount,
+        bool pendingCancellation
+    );
+    event UpdateRedeemRequest(
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
+        AssetId indexed payoutAssetId,
+        uint32 epoch,
+        bytes32 investor,
+        uint128 pendingUserShareAmount,
+        uint128 pendingTotalShareAmount,
+        uint128 queuedUserShareAmount,
         bool pendingCancellation
     );
 
     /// Errors
+    error NoOrderFound();
     error NotEnoughPending();
     error ApprovalRequired();
     error IssuanceRequired();
@@ -365,7 +372,6 @@ interface IShareClassManager {
         bytes calldata data
     ) external returns (ShareClassId scId);
 
-
     /// @notice Updates the price pool unit per share unit of a share class
     ///
     /// @param poolId Identifier of the pool
@@ -401,6 +407,38 @@ interface IShareClassManager {
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     function exists(PoolId poolId, ShareClassId scId) external view returns (bool);
+
+    /// @notice Returns the current ongoing epoch id for deposits
+    ///
+    /// @param scId Identifier of the share class
+    /// @param paymentAssetId AssetId of the payment asset
+    function depositEpoch(ShareClassId scId, AssetId paymentAssetId) external view returns (uint32);
+
+    /// @notice Returns the current ongoing epoch id for deposits
+    ///
+    /// @param scId Identifier of the share class
+    /// @param payoutAssetId AssetId of the payment asset
+    function redeemEpoch(ShareClassId scId, AssetId payoutAssetId) external view returns (uint32);
+
+    /// @notice Returns an upper bound for possible calls to `function claimDeposit(..)`
+    ///
+    /// @param scId Identifier of the share class
+    /// @param investor Recipient of the share class tokens
+    /// @param paymentAssetId AssetId of the payment asset
+    function maxDepositClaims(ShareClassId scId, bytes32 investor, AssetId paymentAssetId)
+        external
+        view
+        returns (uint32 maxClaims);
+
+    /// @notice Returns an upper bound for possible calls to `function claimRedeem(..)`
+    ///
+    /// @param scId Identifier of the share class
+    /// @param investor Recipient of the payout assets
+    /// @param payoutAssetId AssetId of the payout asset
+    function maxRedeemClaims(ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
+        external
+        view
+        returns (uint32 maxClaims);
 
     /// @notice Exposes relevant metrics for a share class
     ///

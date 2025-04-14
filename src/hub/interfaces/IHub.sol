@@ -61,10 +61,14 @@ interface IHub {
     function createPool(address admin, AssetId currency) external payable returns (PoolId);
 
     /// @notice Claim a deposit for an investor address located in the chain where the asset belongs
-    function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external payable;
+    function claimDeposit(PoolId poolId, ShareClassId scId, AssetId paymentAssetId, bytes32 investor, uint32 maxClaims)
+        external
+        payable;
 
     /// @notice Claim a redemption for an investor address located in the chain where the asset belongs
-    function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external payable;
+    function claimRedeem(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, bytes32 investor, uint32 maxClaims)
+        external
+        payable;
 
     /// @notice Notify to a CV instance that a new pool is available
     /// @param centrifugeId Chain where CV instance lives

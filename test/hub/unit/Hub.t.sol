@@ -106,7 +106,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.addShareClass("", "", bytes32(0), bytes(""));
 
         vm.expectRevert(IHub.PoolLocked.selector);
-        hub.approveDeposits(ShareClassId.wrap(0), AssetId.wrap(0), 0, IERC7726(address(0)));
+        hub.approveDeposits(ShareClassId.wrap(0), AssetId.wrap(0), 0);
 
         vm.expectRevert(IHub.PoolLocked.selector);
         hub.approveRedeems(ShareClassId.wrap(0), AssetId.wrap(0), 0);
@@ -115,7 +115,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.issueShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
 
         vm.expectRevert(IHub.PoolLocked.selector);
-        hub.revokeShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
+        hub.revokeShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
 
         vm.expectRevert(IHub.PoolLocked.selector);
         hub.updateRestriction(0, ShareClassId.wrap(0), bytes(""));
@@ -127,7 +127,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateVault(ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), bytes32(0), VaultUpdateKind(0));
 
         vm.expectRevert(IHub.PoolLocked.selector);
-        hub.updatePricePoolPerShare(ShareClassId.wrap(0), D18.wrap(0), bytes(""));
+        hub.updatePricePoolPerShare(ShareClassId.wrap(0), D18.wrap(0));
 
         vm.expectRevert(IHub.PoolLocked.selector);
         hub.createHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), false, 0);

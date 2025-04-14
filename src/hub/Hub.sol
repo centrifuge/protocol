@@ -119,7 +119,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims) external payable {
+    function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
+        external
+        payable
+    {
         _protected();
         _pay();
 
@@ -127,11 +130,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         uint128 totalTokens;
         uint128 totalCancelledAssetAmount;
 
-        for(uint32 i = 0; i < maxClaims; i++) {
+        for (uint32 i = 0; i < maxClaims; i++) {
             (uint128 shares, uint128 tokens, uint128 cancelledAssetAmount, bool canClaimAgain) =
                 shareClassManager.claimDeposit(poolId, scId, investor, assetId);
 
-            canClaimAgain = again;
             totalShares += shares;
             totalTokens += tokens;
             totalCancelledAssetAmount = cancelledAssetAmount;
@@ -150,7 +152,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external payable {
+    function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
+        external
+        payable
+    {
         _protected();
         _pay();
 
@@ -158,11 +163,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         uint128 totalTokens;
         uint128 totalCancelledShareAmount;
 
-        for(uint32 i = 0; i < maxClaims; i++) {
+        for (uint32 i = 0; i < maxClaims; i++) {
             (uint128 tokens, uint128 shares, uint128 cancelledShareAmount, bool canClaimAgain) =
                 shareClassManager.claimRedeem(poolId, scId, investor, assetId);
 
-            canClaimAgain = again;
             totalShares += shares;
             totalTokens += tokens;
             totalCancelledShareAmount = cancelledShareAmount;
@@ -246,11 +250,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         _protectedAndUnlocked();
 
         D18 pricePoolPerAsset = _pricePoolPerAsset(scId, paymentAssetId);
-        shareClassManager.approveDeposits(
-            unlockedPoolId, scId, approvedAssetAmount, paymentAssetId, pricePoolPerAsset
-        );
+        shareClassManager.approveDeposits(unlockedPoolId, scId, approvedAssetAmount, paymentAssetId, pricePoolPerAsset);
 
-        uint128 valueChange = holdings.increase(unlockedPoolId, scId, paymentAssetId, pricePoolPerAsset, approvedAssetAmount);
+        uint128 valueChange =
+            holdings.increase(unlockedPoolId, scId, paymentAssetId, pricePoolPerAsset, approvedAssetAmount);
 
         accounting.addCredit(
             holdings.accountId(unlockedPoolId, scId, paymentAssetId, uint8(AccountType.Equity)), valueChange
@@ -280,9 +283,12 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     function revokeShares(ShareClassId scId, AssetId payoutAssetId, D18 navPerShare) external payable {
         _protectedAndUnlocked();
 
-        (,uint128 payoutAssetAmount,) = shareClassManager.revokeShares(unlockedPoolId, scId, payoutAssetId, navPerShare);
+        (, uint128 payoutAssetAmount,) =
+            shareClassManager.revokeShares(unlockedPoolId, scId, payoutAssetId, navPerShare);
 
-        uint128 valueChange = holdings.decrease(unlockedPoolId, scId, payoutAssetId, _pricePoolPerAsset(scId, payoutAssetId), payoutAssetAmount);
+        uint128 valueChange = holdings.decrease(
+            unlockedPoolId, scId, payoutAssetId, _pricePoolPerAsset(scId, payoutAssetId), payoutAssetAmount
+        );
 
         accounting.addCredit(
             holdings.accountId(unlockedPoolId, scId, payoutAssetId, uint8(AccountType.Asset)), valueChange
@@ -518,7 +524,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         JournalEntry[] memory credits
     ) external auth {
         accounting.unlock(poolId);
-        uint128 valueChange = ConversionLib.convertWithPrice(amount, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), pricePoolPerAsset).toUint128();
+        uint128 valueChange = ConversionLib.convertWithPrice(
+            amount, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), pricePoolPerAsset
+        ).toUint128();
 
         (uint128 debited, uint128 credited) = _updateJournal(debits, credits);
         uint128 debitValueLeft = valueChange - debited;
@@ -555,13 +563,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
     /// @inheritdoc IHubGatewayHandler
     // TODO: Fix message to NOT contain price anymore
-    function increaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare, uint128 amount) external auth {
+    function increaseShareIssuance(PoolId poolId, ShareClassId scId, D18, /* pricePerShare */ uint128 amount) external auth {
         shareClassManager.increaseShareClassIssuance(poolId, scId, amount);
     }
 
     /// @inheritdoc IHubGatewayHandler
     // TODO: Fix message to NOT contain price anymore
-    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare, uint128 amount) external auth {
+    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, D18, /* pricePerShare */  uint128 amount) external auth {
         shareClassManager.decreaseShareClassIssuance(poolId, scId, amount);
     }
 
@@ -627,7 +635,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         }
     }
 
-    function _pricePoolPerAsset(ShareClassId scId, AssetId assetId) internal returns (D18) {
+    function _pricePoolPerAsset(ShareClassId scId, AssetId assetId) internal view returns (D18) {
         AssetId poolCurrency = hubRegistry.currency(unlockedPoolId);
         // NOTE: We assume symmetric prices are provided by holdings valuation
         IERC7726 valuation = holdings.valuation(unlockedPoolId, scId, assetId);
