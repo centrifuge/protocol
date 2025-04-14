@@ -2,18 +2,24 @@
 pragma solidity ^0.8.0;
 
 import {Asserts} from "@chimera/Asserts.sol";
+import {console2} from "forge-std/console2.sol";
 
+// Libraries
+import {MathLib} from "src/misc/libraries/MathLib.sol";
+
+// Interfaces
+import {AccountType} from "src/hub/interfaces/IHub.sol";
+
+// Types
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 
+// Utils
 import {Helpers} from "test/pools/fuzzing/recon-pools/utils/Helpers.sol";
 import {BeforeAfter, OpType} from "./BeforeAfter.sol";
-
-import {console2} from "forge-std/console2.sol";
 
 abstract contract Properties is BeforeAfter, Asserts {
     using MathLib for D18;
@@ -185,6 +191,166 @@ abstract contract Properties is BeforeAfter, Asserts {
             }
         }
     }
+
+    /// @dev Property: Value of Holdings == accountValue(Asset)
+    function property_accounting_and_holdings_soundness() public {
+        for (uint256 i = 0; i < createdPools.length; i++) {
+            PoolId poolId = createdPools[i];
+            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
+            // skip the first share class because it's never assigned
+            for (uint32 j = 1; j < shareClassCount; j++) {
+                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+                AssetId assetId = hubRegistry.currency(poolId);
+                AccountId accountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Asset));
+                
+                uint128 assets = uint128(accounting.accountValue(poolId, accountId));
+                uint128 holdingsValue = holdings.value(poolId, scId, assetId);
+                
+                // This property holds all of the system accounting together
+                eq(assets, holdingsValue, "Assets and Holdings value must match");
+            }
+        }
+    }
+
+    /// @dev Property: Total Yield = assets - equity
+    function property_total_yield() public {
+        for (uint256 i = 0; i < createdPools.length; i++) {
+            PoolId poolId = createdPools[i];
+            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
+            // skip the first share class because it's never assigned   
+            for (uint32 j = 1; j < shareClassCount; j++) {
+                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+                AssetId assetId = hubRegistry.currency(poolId);
+                
+                // get the account ids for each account
+                AccountId assetAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Asset));
+                AccountId equityAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Equity));
+                AccountId gainAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Gain));
+                AccountId lossAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Loss));
+
+                int128 assets = accounting.accountValue(poolId, assetAccountId);
+                int128 equity = accounting.accountValue(poolId, equityAccountId);
+
+                if(assets > equity) {
+                    // Yield
+                    int128 yield = accounting.accountValue(poolId, gainAccountId);
+                    t(yield == assets - equity, "property_total_yield gain");
+                } else if (assets < equity) {
+                    // Loss
+                    int128 loss = accounting.accountValue(poolId, lossAccountId);
+                    t(loss == assets - equity, "property_total_yield loss"); // Loss is negative
+                }
+            }       
+        }
+    }
+
+    /// @dev Property: assets = equity + gain + loss
+    function property_asset_soundness() public {
+        for (uint256 i = 0; i < createdPools.length; i++) {
+            PoolId poolId = createdPools[i];
+            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
+            // skip the first share class because it's never assigned
+            for (uint32 j = 1; j < shareClassCount; j++) {
+                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+                AssetId assetId = hubRegistry.currency(poolId);
+
+                // get the account ids for each account
+                AccountId assetAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Asset));
+                AccountId equityAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Equity));
+                AccountId gainAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Gain));
+                AccountId lossAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Loss));
+
+                int128 assets = accounting.accountValue(poolId, assetAccountId);
+                int128 equity = accounting.accountValue(poolId, equityAccountId);
+                int128 gain = accounting.accountValue(poolId, gainAccountId);
+                int128 loss = accounting.accountValue(poolId, lossAccountId);
+
+                // assets = accountValue(Equity) + accountValue(Gain) - accountValue(Loss)
+                t(assets == equity + gain + loss, "property_asset_soundness"); // Loss is already negative
+            }
+        }
+    }
+
+    /// @dev Property: equity = assets - loss - gain
+    function property_equity_soundness() public {
+        for (uint256 i = 0; i < createdPools.length; i++) {
+            PoolId poolId = createdPools[i];
+            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
+            // skip the first share class because it's never assigned
+            for (uint32 j = 1; j < shareClassCount; j++) {
+                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+                AssetId assetId = hubRegistry.currency(poolId);
+
+                // get the account ids for each account
+                AccountId assetAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Asset));
+                AccountId equityAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Equity));
+                AccountId gainAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Gain));
+                AccountId lossAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Loss));
+
+                int128 assets = accounting.accountValue(poolId, assetAccountId);
+                int128 equity = accounting.accountValue(poolId, equityAccountId);
+                int128 gain = accounting.accountValue(poolId, gainAccountId);
+                int128 loss = accounting.accountValue(poolId, lossAccountId);
+                
+                // equity = accountValue(Asset) + (ABS(accountValue(Loss)) - accountValue(Gain) // Loss comes back, gain is subtracted
+                t(equity == assets + (-loss) - gain, "property_equity_soundness"); // Loss comes back, gain is subtracted, since loss is negative we need to negate it                
+            }
+        }
+    }
+
+    /// @dev Property: gain = totalYield + loss
+    function property_gain_soundness() public {
+        for (uint256 i = 0; i < createdPools.length; i++) {
+            PoolId poolId = createdPools[i];
+            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
+            // skip the first share class because it's never assigned
+            for (uint32 j = 1; j < shareClassCount; j++) {
+                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+                AssetId assetId = hubRegistry.currency(poolId);
+                
+                // get the account ids for each account
+                AccountId assetAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Asset));
+                AccountId equityAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Equity));
+                AccountId gainAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Gain));
+                AccountId lossAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Loss));
+                
+                int128 assets = accounting.accountValue(poolId, assetAccountId);
+                int128 equity = accounting.accountValue(poolId, equityAccountId);
+                int128 gain = accounting.accountValue(poolId, gainAccountId);
+                int128 loss = accounting.accountValue(poolId, lossAccountId);
+
+                int128 totalYield = assets - equity; // Can be positive or negative
+                t(gain == totalYield + (-loss), "property_gain_soundness");
+            }   
+        }
+    }
+
+    /// @dev Property: loss = totalYield - gain
+    function property_loss_soundness() public {
+        for (uint256 i = 0; i < createdPools.length; i++) {
+            PoolId poolId = createdPools[i];
+            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
+            // skip the first share class because it's never assigned
+            for (uint32 j = 1; j < shareClassCount; j++) {
+                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+                AssetId assetId = hubRegistry.currency(poolId);
+                
+                // get the account ids for each account
+                AccountId assetAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Asset));
+                AccountId equityAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Equity));
+                AccountId gainAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Gain));
+                AccountId lossAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Loss));
+                
+                int128 assets = accounting.accountValue(poolId, assetAccountId);
+                int128 equity = accounting.accountValue(poolId, equityAccountId);
+                int128 gain = accounting.accountValue(poolId, gainAccountId);
+                int128 loss = accounting.accountValue(poolId, lossAccountId);   
+                
+                int128 totalYield = assets - equity; // Can be positive or negative
+                t(loss == totalYield - gain, "property_loss_soundness");    
+            }
+        }
+    } 
 
     /// @dev Property: After FM performs approveDeposits and revokeShares with non-zero navPerShare, the total issuance totalIssuance[..] is increased
     /// @dev WIP, this may not be possible to prove because these calls are made via execute which makes determining the before and after state difficult
