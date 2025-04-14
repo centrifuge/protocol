@@ -82,7 +82,7 @@ contract BaseTest is VaultsDeployer, Test {
         ISafe adminSafe = new MockSafe(pausers, 1);
 
         // deploy core contracts
-        deployVaults(THIS_CHAIN_ID, adminSafe, address(this));
+        deployVaults(THIS_CHAIN_ID, adminSafe, address(this), true);
         guardian.file("safe", address(adminSafe));
 
         // deploy mock adapters
@@ -103,7 +103,7 @@ contract BaseTest is VaultsDeployer, Test {
         // remove deployer access
         // removeVaultsDeployerAccess(address(adapter)); // need auth permissions in tests
 
-        centrifugeChain = new MockCentrifugeChain(testAdapters, poolManager);
+        centrifugeChain = new MockCentrifugeChain(testAdapters, poolManager, syncRequests);
         mockedGasService = new MockGasService();
         erc20 = _newErc20("X's Dollar", "USDX", 6);
         erc6909 = new MockERC6909();
@@ -118,7 +118,7 @@ contract BaseTest is VaultsDeployer, Test {
         // Label contracts
         vm.label(address(root), "Root");
         vm.label(address(asyncRequests), "AsyncRequests");
-        vm.label(address(asyncRequests), "SyncRequests");
+        vm.label(address(syncRequests), "SyncRequests");
         vm.label(address(poolManager), "PoolManager");
         vm.label(address(balanceSheet), "BalanceSheet");
         vm.label(address(gateway), "Gateway");

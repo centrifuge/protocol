@@ -65,7 +65,8 @@ enum UpdateContractType {
     Permission,
     MaxAssetPriceAge,
     MaxSharePriceAge,
-    Valuation
+    Valuation,
+    SyncDepositMaxReserve
 }
 
 /// @dev Used internally in the VaultUpdateMessage (not represent a submessage)
@@ -738,8 +739,6 @@ library MessageLib {
     //---------------------------------------
 
     struct UpdateContractValuation {
-        uint64 poolId;
-        bytes16 scId;
         uint128 assetId;
         bytes32 valuation;
     }
@@ -751,16 +750,34 @@ library MessageLib {
     {
         require(updateContractType(data) == UpdateContractType.Valuation, UnknownMessageType());
 
-        return UpdateContractValuation({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            assetId: data.toUint128(25),
-            valuation: data.toBytes32(41)
-        });
+        return UpdateContractValuation({assetId: data.toUint128(1), valuation: data.toBytes32(17)});
     }
 
     function serialize(UpdateContractValuation memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(UpdateContractType.Valuation, t.poolId, t.scId, t.assetId, t.valuation);
+        return abi.encodePacked(UpdateContractType.Valuation, t.assetId, t.valuation);
+    }
+
+    //---------------------------------------
+    //   UpdateContract.SyncDepositMaxReserve (submsg)
+    //---------------------------------------
+
+    struct UpdateContractSyncDepositMaxReserve {
+        uint128 assetId;
+        uint128 maxReserve;
+    }
+
+    function deserializeUpdateContractSyncDepositMaxReserve(bytes memory data)
+        internal
+        pure
+        returns (UpdateContractSyncDepositMaxReserve memory)
+    {
+        require(updateContractType(data) == UpdateContractType.SyncDepositMaxReserve, UnknownMessageType());
+
+        return UpdateContractSyncDepositMaxReserve({assetId: data.toUint128(1), maxReserve: data.toUint128(17)});
+    }
+
+    function serialize(UpdateContractSyncDepositMaxReserve memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(UpdateContractType.SyncDepositMaxReserve, t.assetId, t.maxReserve);
     }
 
     //---------------------------------------
@@ -1069,7 +1086,7 @@ library MessageLib {
         });
     }
 
-    function serialize(UpdateHoldingAmount memory t) public pure returns (bytes memory) {
+    function serialize(UpdateHoldingAmount memory t) internal pure returns (bytes memory) {
         bytes memory debits = t.debits.toBytes();
         bytes memory credits = t.credits.toBytes();
 
