@@ -319,12 +319,13 @@ contract Gateway is Auth, IGateway, Recoverable {
     function _closeTransaction() internal {
         if (transactionPayer != address(0)) {
             if (fuel > 0) {
-                // try SafeTransferLib.safeTransferETH(transactionPayer, fuel) {
-                // } catch {
-                //     // If refund fails, move remaining fuel to global pot
-                //     subsidy[PoolId.wrap(0)].value += uint96(fuel);
-                //     emit SubsidizePool(PoolId.wrap(0), address(0), fuel);
-                // }
+                (bool success,) = transactionPayer.call{value: fuel}(new bytes(0));
+                
+                if (!success) {
+                    // If refund fails, move remaining fuel to global pot
+                    subsidy[PoolId.wrap(0)].value += uint96(fuel);
+                    emit SubsidizePool(PoolId.wrap(0), address(0), fuel);
+                }
                     
                 fuel = 0;
             }
