@@ -57,6 +57,11 @@ abstract contract AdminTargets is
         hub.addShareClass(poolId, name, symbol, salt, data);
     }
 
+    function hub_addShareClass_clamped(uint64 poolIdEntropy, bytes32 salt) public {
+        PoolId poolId = _getRandomPoolId(poolIdEntropy);
+        hub_addShareClass(poolId.raw(), salt);
+    }
+
     function hub_allowPoolAdmin(uint64 poolIdAsUint, address account, bool allow) public {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         hub.allowPoolAdmin(poolId, account, allow);
@@ -102,6 +107,14 @@ abstract contract AdminTargets is
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
         hub.createHolding(poolId, scId, assetId, valuation, isLiability, prefix);
+    }
+
+    function hub_createHolding_clamped(uint64 poolIdEntropy, uint32 scEntropy, bool isIdentityValuation, bool isLiability, uint24 prefix) public {
+        PoolId poolId = _getRandomPoolId(poolIdEntropy);
+        ShareClassId scId = _getRandomShareClassIdForPool(poolId, scEntropy);
+        AssetId assetId = hubRegistry.currency(poolId);
+        IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
+        hub_createHolding(poolId.raw(), scId.raw(), assetId.raw(), valuation, isLiability, prefix);
     }
 
     function hub_issueShares(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, D18 navPerShare) public {
