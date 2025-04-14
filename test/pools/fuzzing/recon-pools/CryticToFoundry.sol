@@ -21,7 +21,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     bytes32 INVESTOR = bytes32("Investor");
     string SC_NAME = "ExampleName";
     string SC_SYMBOL = "ExampleSymbol";
-    bytes32 SC_SALT = bytes32("ExampleSalt");
+    uint256 SC_SALT = 123;
     bytes32 SC_HOOK = bytes32("ExampleHookData");
     uint32 CHAIN_CV = 6;
 
@@ -235,192 +235,12 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     // }
 
-    // forge test --match-test test_property_total_pending_redeem_geq_sum_pending_user_redeem_1 -vvv 
-    // function test_property_total_pending_redeem_geq_sum_pending_user_redeem_1() public {
+    // forge test --match-test test_hub_depositRequest_clamped_0 -vvv 
+    function test_hub_depositRequest_clamped_0() public {
 
-    //     shortcut_deposit_redeem_and_claim(6,1,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,1,1,1,d18(1));
+        shortcut_deposit(6,1, 123,false,0,1,1,d18(1));
 
-    //     hub_addShareClass(hex"4e554c",hex"4e554c",hex"4e554d",hex"");
+        hub_depositRequest_clamped(0,0,0);
 
-    //     uint32 unsafePoolId;
-    //     assembly {
-    //         unsafePoolId := 4294967297
-    //     }
-    //     hub_execute_clamped(newPoolId(CENTIFUGE_CHAIN_ID, unsafePoolId));
-
-    //     property_total_pending_redeem_geq_sum_pending_user_redeem();
-
-    // }
-
-    // function test_property_epochId_strictly_greater_than_any_latest_pointer_0() public {
-    //     // First deposit and cancel
-    //     shortcut_deposit_and_cancel(
-    //         11, 
-    //         231625,
-    //         hex"4e554c", // NUL
-    //         hex"4e554c", // NUL
-    //         hex"4e554c", // NUL
-    //         hex"",
-    //         false,
-    //         40,
-    //         186274820,
-    //         21064724530200365952599476352700964209,
-    //         d18(7599135)
-    //     );
-
-    //     // Second deposit
-    //     shortcut_deposit(155,17830390,hex"4e554c",hex"4e554c",hex"4e554c",hex"4e554c4e554c",false,8194,970970,89489842622818510814187366251834293,d18(8000723674554975097995165562484974407));
-
-    //     // Request deposit and cancel
-    //     shortcut_request_deposit_and_cancel(
-    //         7,
-    //         1972975575,
-    //         hex"4e554c",
-    //         hex"4e554c",
-    //         hex"4e554c",
-    //         hex"",
-    //         false,
-    //         1843183,
-    //         1,
-    //         123302058802511609732387337468765464524,
-    //         d18(8)
-    //     );
-
-    //     // Create pool
-    //     hub_createPool(
-    //         address(0x00000000000000000000000000000000DeaDBeef),
-    //         1023699,
-    //         IShareClassManager(address(0x00000000000000000000000000000000DeaDBeef))
-    //     );
-
-    //     // Another request deposit and cancel
-    //     shortcut_request_deposit_and_cancel(
-    //         43,
-    //         4370001,
-    //         hex"4e554c",
-    //         hex"4e554c",
-    //         hex"4e554c",
-    //         hex"",
-    //         false,
-    //         471154
-    //     );
-
-    //     // Create pool and update holding
-    //     shortcut_create_pool_and_update_holding(
-    //         12,
-    //         4369999,
-    //         hex"4e554c",
-    //         hex"4e554c",
-    //         hex"4e554c",
-    //         hex"",
-    //         false,
-    //         4369999,
-    //         19923839938303255665225135416549532091
-    //     );
-
-    //     // Deposit redeem and claim
-    //     shortcut_deposit_redeem_and_claim(
-    //         20,
-    //         4369999,
-    //         hex"4e554c",
-    //         hex"4e554c",
-    //         hex"4e554c",
-    //         hex"",
-    //         false,
-    //         141414,
-    //         94020619615429788657416085770482785784,
-    //         250944993137682155761303781233570772911,
-    //         90431958653484416703417109440850164570,
-    //         340282366920938463463374607431768211454
-    //     );
-
-    //     // Add share class
-    //     hub_addShareClass(
-    //         hex"4e554c",
-    //         hex"4e554c",
-    //         hex"4e554c",
-    //         hex""
-    //     );
-
-    //     // Add share class and holding
-    //     shortcut_add_share_class_and_holding(
-    //         newPoolId(CENTIFUGE_CHAIN_ID, 4294967302),
-    //         hex"4e554c",
-    //         "ffee414fb773cbbccce6fa",
-    //         hex"4e554c",
-    //         hex"4e554c",
-    //         hex"",
-    //         newAssetId(4370001),
-    //         false,
-    //         471154
-    //     );
-
-    //     // Check property
-    //     property_epochId_strictly_greater_than_any_latest_pointer();
-    // }
-    
-    // forge test --match-test test_property_total_pending_and_approved_1 -vvv 
-    // function test_property_total_pending_and_approved_1() public {
-
-    //     shortcut_deposit_and_cancel(13,34043220,hex"4e554c",hex"4e554c",hex"4e554c",hex"4e554c",false,30637,13664773,19288649223584090130307761987587327128,d18(574011315));
-
-    //     shortcut_deposit(11,5101,hex"4e554c",hex"4e554c",hex"4e554d",hex"",false,5257,130,1846860118252866097254605272929929290,d18(4172300155504997405390627055677731889));
-
-    //     console2.log("here 1");
-    //     shortcut_request_deposit_and_cancel(7,5690176,hex"4e554c",hex"4e554c",hex"4e554e",hex"",false,2284391,7,46022909005592245925175521490221428955,d18(1));
-
-    //     console2.log("here 2");
-    //     hub_createPool(0x00000000000000000000000000000000DeaDBeef,1045068,IShareClassManager(address(0x00000000000000000000000000000000DeaDBeef)));
-
-    //     console2.log("here 3");
-    //     shortcut_request_deposit_and_cancel(
-    //         251,
-    //         4370001,
-    //         "dd2631eb87857b5ea5e7a1e399e376c7cdb2695ed43ccc2636bb790f03c79ed7742d",
-    //         "placeholder",
-    //         hex"4e554f",
-    //         hex"",
-    //         false,
-    //         1155411,
-    //         227814729679397614415470769389471609097,
-    //         271322649206203999124031367669938254,
-    //         d18(273667469541612969616800276769160738)
-    //     );
-
-    //     console2.log("here 4");
-    //     shortcut_deposit_redeem_and_claim(
-    //         128,
-    //         4369999,
-    //         hex"4e554c4e554c4e554c4e554c4e554c4e554c",
-    //         "placeholder",
-    //         hex"4e55",
-    //         hex"4e554c4e554cb2",
-    //         false,
-    //         779198,
-    //         88070234755801575843541645624506187549,
-    //         11658423912668426775158231870156279758,
-    //         6164197134070440692987190595473481941,
-    //         d18(79957049650174916258680150891679403807)
-    //     );
-
-    //     console2.log("here 5");
-    //     hub_addShareClass(hex"4e554c",hex"4e554c",hex"4e554c",hex"");
-
-    //     console2.log("here 6");
-    //     shortcut_add_share_class_and_holding(
-    //         PoolId.wrap(4294967302),
-    //         hex"4e554c5372",
-    //         hex"4e554c",
-    //         hex"4e554c",
-    //         hex"4e554c",
-    //         ShareClassId.wrap(hex"4e554c"),
-    //         AssetId.wrap(4370001),
-    //         false,
-    //         343206
-    //     );
-
-    //     console2.log("here 7");
-    //     property_total_pending_and_approved();
-
-    // }
+    }
 }

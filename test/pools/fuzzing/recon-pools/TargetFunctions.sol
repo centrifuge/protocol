@@ -37,7 +37,7 @@ abstract contract TargetFunctions is
     function shortcut_create_pool_and_holding(
         uint8 decimals,
         uint32 isoCode,
-        bytes32 salt, 
+        uint256 salt, 
         bool isIdentityValuation,
         uint24 prefix
     ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
@@ -62,7 +62,7 @@ abstract contract TargetFunctions is
     function shortcut_deposit(
         uint8 decimals,
         uint32 isoCode,
-        bytes32 salt,
+        uint256 salt,
         bool isIdentityValuation,
         uint24 prefix,
         uint128 amount,
@@ -93,7 +93,7 @@ abstract contract TargetFunctions is
     function shortcut_deposit_and_claim(
         uint8 decimals,
         uint32 isoCode,
-        bytes32 salt,
+        uint256 salt,
         bool isIdentityValuation,
         uint24 prefix,
         uint128 amount,
@@ -118,7 +118,7 @@ abstract contract TargetFunctions is
     function shortcut_deposit_claim_and_cancel(
         uint8 decimals,
         uint32 isoCode,
-        bytes32 salt,
+        uint256 salt,
         bool isIdentityValuation,
         uint24 prefix,
         uint128 amount,
@@ -146,7 +146,7 @@ abstract contract TargetFunctions is
     function shortcut_deposit_and_cancel(
         uint8 decimals,
         uint32 isoCode,
-        bytes32 salt,
+        uint256 salt,
         bool isIdentityValuation,
         uint24 prefix,
         uint128 amount,
@@ -170,7 +170,7 @@ abstract contract TargetFunctions is
     function shortcut_request_deposit_and_cancel(
         uint8 decimals,
         uint32 isoCode,
-        bytes32 salt,
+        uint256 salt,
         bool isIdentityValuation,
         uint24 prefix,
         uint128 amount,
@@ -244,7 +244,7 @@ abstract contract TargetFunctions is
     function shortcut_deposit_redeem_and_claim(
         uint8 decimals,
         uint32 isoCode,
-        bytes32 salt,
+        uint256 salt,
         bool isIdentityValuation,
         uint24 prefix,
         uint128 depositAmount,
@@ -279,7 +279,7 @@ abstract contract TargetFunctions is
     function shortcut_deposit_cancel_redemption(
         uint8 decimals,
         uint32 isoCode,
-        bytes32 salt,
+        uint256 salt,
         bool isIdentityValuation,
         uint24 prefix,
         uint128 depositAmount,
@@ -304,7 +304,7 @@ abstract contract TargetFunctions is
     function shortcut_create_pool_and_update_holding(
         uint8 decimals,
         uint32 isoCode,
-        bytes32 salt, 
+        uint256 salt, 
         bool isIdentityValuation,
         uint24 prefix,
         D18 newPrice
@@ -321,7 +321,7 @@ abstract contract TargetFunctions is
     function shortcut_create_pool_and_update_holding_amount(
         uint8 decimals,
         uint32 isoCode,
-        bytes32 salt, 
+        uint256 salt, 
         bool isIdentityValuation,
         uint24 prefix,
         uint128 amount,
@@ -355,7 +355,7 @@ abstract contract TargetFunctions is
     function shortcut_create_pool_and_update_holding_value(
         uint8 decimals,
         uint32 isoCode,
-        bytes32 salt, 
+        uint256 salt, 
         bool isIdentityValuation,
         uint24 prefix,
         D18 newPrice
@@ -373,7 +373,7 @@ abstract contract TargetFunctions is
     function shortcut_create_pool_and_update_journal(
         uint8 decimals,
         uint32 isoCode,
-        bytes32 salt, 
+        uint256 salt, 
         bool isIdentityValuation,
         uint24 prefix,
         uint8 accountToUpdate,
@@ -405,7 +405,7 @@ abstract contract TargetFunctions is
     function shortcut_update_valuation(
         uint8 decimals,
         uint32 isoCode,
-        bytes32 salt, 
+        uint256 salt, 
         bool isIdentityValuation,
         uint24 prefix
     ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
@@ -421,7 +421,7 @@ abstract contract TargetFunctions is
     function shortcut_notify_share_class(
         uint8 decimals,
         uint32 isoCode,
-        bytes32 salt,
+        uint256 salt,
         bool isIdentityValuation,
         uint24 prefix,
         uint128 depositAmount,
@@ -442,7 +442,7 @@ abstract contract TargetFunctions is
 
     function shortcut_add_share_class_and_holding(
         uint64 poolId,
-        bytes32 salt,
+        uint256 salt,
         bytes16 scId,
         uint128 assetId,
         bool isIdentityValuation,

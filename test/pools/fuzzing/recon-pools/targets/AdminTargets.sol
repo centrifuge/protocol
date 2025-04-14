@@ -1,4 +1,4 @@
- // SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 pragma solidity ^0.8.0;
 
 // Chimera deps
@@ -49,15 +49,15 @@ abstract contract AdminTargets is
         hub.addDebit(poolId, account, amount);
     }
 
-    function hub_addShareClass(uint64 poolIdAsUint, bytes32 salt) public {
+    function hub_addShareClass(uint64 poolIdAsUint, uint256 salt) public {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         string memory name = "Test ShareClass";
         string memory symbol = "TSC";
         bytes memory data = "not-used";
-        hub.addShareClass(poolId, name, symbol, salt, data);
+        hub.addShareClass(poolId, name, symbol, bytes32(salt), data);
     }
 
-    function hub_addShareClass_clamped(uint64 poolIdEntropy, bytes32 salt) public {
+    function hub_addShareClass_clamped(uint64 poolIdEntropy, uint256 salt) public {
         PoolId poolId = _getRandomPoolId(poolIdEntropy);
         hub_addShareClass(poolId.raw(), salt);
     }
