@@ -8,6 +8,7 @@ import {
     IWormholeAdapter,
     IAdapter,
     IWormholeRelayer,
+    IWormholeDeliveryProvider,
     IWormholeReceiver,
     WormholeSource,
     WormholeDestination
@@ -18,19 +19,19 @@ import {
 contract WormholeAdapter is Auth, IWormholeAdapter {
     using CastLib for bytes32;
 
-    uint16 public immutable refundWormholeId;
+    uint16 public immutable localWormholeId;
     IMessageHandler public immutable gateway;
     IWormholeRelayer public immutable relayer;
 
     mapping(uint16 wormholeId => WormholeSource) public sources;
     mapping(uint16 centrifugeId => WormholeDestination) public destinations;
 
-    constructor(IMessageHandler gateway_, address relayer_, uint16 refundWormholeId_, address deployer)
-        Auth(deployer)
-    {
+    constructor(IMessageHandler gateway_, address relayer_, address deployer) Auth(deployer) {
         gateway = gateway_;
         relayer = IWormholeRelayer(relayer_);
-        refundWormholeId = refundWormholeId_;
+
+        IWormholeDeliveryProvider deliveryProvider = IWormholeDeliveryProvider(relayer.getDefaultDeliveryProvider());
+        localWormholeId = deliveryProvider.chainId();
     }
 
     // --- Administrative ---
@@ -66,7 +67,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         require(destination.wormholeId != 0, UnknownChainId());
 
         relayer.sendPayloadToEvm{value: msg.value}(
-            destination.wormholeId, destination.addr, payload, 0, gasLimit, refundWormholeId, refund
+            destination.wormholeId, destination.addr, payload, 0, gasLimit, localWormholeId, refund
         );
     }
 
