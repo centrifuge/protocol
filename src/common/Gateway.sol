@@ -339,6 +339,7 @@ contract Gateway is Auth, IGateway, Recoverable {
         }
 
         delete batchLocators;
+        transactionPayer = address(0);
         isBatching = false;
     }
 
