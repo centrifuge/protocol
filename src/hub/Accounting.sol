@@ -63,7 +63,7 @@ contract Accounting is Auth, IAccounting {
         debited = 0;
         credited = 0;
         _currentPoolId = poolId;
-        
+
         if (TransientJournal.journalId(poolId) == 0) {
             TransientJournal.setJournalId(poolId, _generateJournalId(poolId));
         }

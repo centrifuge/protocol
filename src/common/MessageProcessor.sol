@@ -221,7 +221,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.UpdateJournal) {
             MessageLib.UpdateJournal memory m = message.deserializeUpdateJournal();
-            hub.updateJournal(PoolId.wrap(m.poolId), m.debits, m.credits);
+            hub.updateJournalEntries(PoolId.wrap(m.poolId), m.debits, m.credits);
         } else if (kind == MessageType.UpdateShares) {
             MessageLib.UpdateShares memory m = message.deserializeUpdateShares();
             if (m.isIssuance) {

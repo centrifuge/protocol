@@ -580,7 +580,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         auth
     {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.updateJournal(poolId, debits, credits);
+            hub.updateJournalEntries(poolId, debits, credits);
         } else {
             gateway.send(
                 poolId.centrifugeId(),

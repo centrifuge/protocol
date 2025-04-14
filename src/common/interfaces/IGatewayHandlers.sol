@@ -67,7 +67,8 @@ interface IHubGatewayHandler {
     ) external;
 
     /// @notice Perform accounting entries by request from CAL.
-    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external;
+    function updateJournalEntries(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits)
+        external;
 
     /// @notice Increases the total issuance of shares by request from CAL.
     function increaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare, uint128 amount) external;

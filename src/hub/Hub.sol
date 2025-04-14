@@ -370,20 +370,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function addDebit(PoolId poolId, AccountId account, uint128 amount) external payable {
+    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external {
         _protected(poolId);
 
         accounting.unlock(poolId);
-        accounting.addDebit(account, amount);
-        accounting.lock();
-    }
 
-    /// @inheritdoc IHub
-    function addCredit(PoolId poolId, AccountId account, uint128 amount) external payable {
-        _protected(poolId);
+        _updateJournal(debits, credits);
 
-        accounting.unlock(poolId);
-        accounting.addCredit(account, amount);
         accounting.lock();
     }
 
@@ -489,7 +482,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external {
+    function updateJournalEntries(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external {
         _auth();
 
         accounting.unlock(poolId);
