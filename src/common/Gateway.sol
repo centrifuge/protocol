@@ -328,7 +328,7 @@ contract Gateway is Auth, IGateway, Recoverable {
             if (!success) {
                 // If refund fails, move remaining fuel to global pot
                 subsidy[PoolId.wrap(0)].value += uint96(fuel);
-                emit SubsidizePool(PoolId.wrap(0), address(0), fuel);
+                emit SubsidizePool(PoolId.wrap(0), address(this), fuel);
             }
                 
             fuel = 0;
