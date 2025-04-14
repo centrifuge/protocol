@@ -65,6 +65,8 @@ contract Gateway is Auth, IGateway, Recoverable {
         localCentrifugeId = localCentrifugeId_;
         root = root_;
         gasService = gasService_;
+
+        setRefundAddress(PoolId.wrap(0), address(this));
     }
 
     modifier pauseable() {
@@ -263,6 +265,7 @@ contract Gateway is Auth, IGateway, Recoverable {
             bytes storage previousMessage = outboundBatch[centrifugeId][poolId];
 
             batchGasLimit[centrifugeId][poolId] += gasService.gasLimit(centrifugeId, message);
+            require(batchGasLimit[centrifugeId][poolId] <= gasService.maxBatchSize(centrifugeId), ExceedsMaxBatchSize());
 
             if (previousMessage.length == 0) {
                 batchLocators.push(BatchLocator(centrifugeId, poolId));
