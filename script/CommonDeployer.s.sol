@@ -48,6 +48,8 @@ abstract contract CommonDeployer is Script, JsonRegistry {
             return; // Already deployed. Make this method idempotent.
         }
 
+        startDeploymentOutput();
+
         uint64 messageGasLimit = uint64(vm.envOr(MESSAGE_COST_ENV, FALLBACK_MSG_COST));
         uint64 proofGasLimit = uint64(vm.envOr(PROOF_COST_ENV, FALLBACK_MSG_COST));
 
@@ -72,8 +74,6 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     }
 
     function _commonRegister() private {
-        startDeploymentOutput();
-
         register("root", address(root));
         register("adminSafe", address(adminSafe));
         register("guardian", address(guardian));
