@@ -308,7 +308,7 @@ contract Gateway is Auth, IGateway, Recoverable {
             }
         }
 
-        transactionPayer = address(0);
+        if (!isBatching) transactionPayer = address(0);
     }
 
     function subsidizePool(PoolId poolId) external payable {
