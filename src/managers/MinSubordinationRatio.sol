@@ -81,10 +81,13 @@ contract MinSubordination is Auth {
 
     // --- Validation ---
     function _checkRatio() internal view {
-        (uint128 seniorIssuance,) = shareClassManager.shareClassPrice(poolId, seniorScId);
-        (uint128 juniorIssuance,) = shareClassManager.shareClassPrice(poolId, juniorScId);
+        (uint128 seniorIssuance, D18 seniorPrice) = shareClassManager.shareClassPrice(poolId, seniorScId);
+        (uint128 juniorIssuance, D18 juniorPrice) = shareClassManager.shareClassPrice(poolId, juniorScId);
 
-        D18 juniorRatio = d18(juniorIssuance) / (d18(seniorIssuance) + d18(juniorIssuance));
+        D18 seniorValue = d18(seniorIssuance) * seniorPrice;
+        D18 juniorValue = d18(juniorIssuance) * juniorPrice;
+
+        D18 juniorRatio = juniorValue / (seniorValue + juniorValue);
         require(juniorRatio >= minJuniorRatio, InvalidJuniorRatio(juniorRatio, minJuniorRatio));
     }
 }
