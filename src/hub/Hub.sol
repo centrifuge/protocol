@@ -252,7 +252,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     {
         _protected(poolId);
 
-        shareClassManager.approveRedeems(poolId, scId, approvedShareAmount, payoutAssetId, _pricePoolPerAsset(poolId, scId, payoutAssetId));
+        shareClassManager.approveRedeems(
+            poolId, scId, approvedShareAmount, payoutAssetId, _pricePoolPerAsset(poolId, scId, payoutAssetId)
+        );
     }
 
     /// @inheritdoc IHub
@@ -262,10 +264,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     {
         _protected(poolId);
 
-        (uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 paymentPoolAmount) = shareClassManager.issueShares(poolId, scId, depositAssetId, navPoolPerShare);
-        require(issuedShareAmount == 0);
-        require(depositAssetAmount == 0);
-        require(paymentPoolAmount == 0);
+        shareClassManager.issueShares(poolId, scId, depositAssetId, navPoolPerShare);
     }
 
     /// @inheritdoc IHub

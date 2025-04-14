@@ -412,13 +412,13 @@ interface IShareClassManager {
     ///
     /// @param scId Identifier of the share class
     /// @param depositAssetId AssetId of the payment asset
-    function depositEpoch(ShareClassId scId, AssetId depositAssetId) external view returns (uint32);
+    function nowDepositEpoch(ShareClassId scId, AssetId depositAssetId) external view returns (uint32);
 
     /// @notice Returns the current ongoing epoch id for deposits
     ///
     /// @param scId Identifier of the share class
     /// @param payoutAssetId AssetId of the payment asset
-    function redeemEpoch(ShareClassId scId, AssetId payoutAssetId) external view returns (uint32);
+    function nowRedeemEpoch(ShareClassId scId, AssetId payoutAssetId) external view returns (uint32);
 
     /// @notice Returns an upper bound for possible calls to `function claimDeposit(..)`
     ///

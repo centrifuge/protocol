@@ -203,8 +203,8 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
         vm.assume(nonWard != address(shareClass.hubRegistry()) && nonWard != address(this));
 
         assertEq(address(shareClass.hubRegistry()), hubRegistryAddress);
-        assertEq(shareClass.depositEpoch(scId, USDC), 1);
-        assertEq(shareClass.redeemEpoch(scId, USDC), 1);
+        assertEq(shareClass.nowDepositEpoch(scId, USDC), 1);
+        assertEq(shareClass.nowRedeemEpoch(scId, USDC), 1);
         assertEq(shareClass.shareClassCount(poolId), 1);
         assert(shareClass.shareClassIds(poolId, scId));
 

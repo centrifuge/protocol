@@ -8,6 +8,7 @@ contract TestCases is BaseTest {
     using CastLib for bytes32;
     using MathLib for *;
     using MessageLib for *;
+    using ConversionLib for *;
 
     /// forge-config: default.isolate = true
     function testPoolCreation() public returns (PoolId poolId, ShareClassId scId) {
@@ -84,7 +85,6 @@ contract TestCases is BaseTest {
         );
 
         assertEq(cv.messageCount(), 2);
-
         MessageLib.ApprovedDeposits memory m0 = MessageLib.deserializeApprovedDeposits(cv.lastMessages(0));
         assertEq(m0.poolId, poolId.raw());
         assertEq(m0.scId, scId.raw());
@@ -97,7 +97,15 @@ contract TestCases is BaseTest {
         assertEq(m1.investor, INVESTOR);
         assertEq(m1.assetId, USDC_C2.raw());
         assertEq(m1.assetAmount, APPROVED_INVESTOR_AMOUNT);
-        assertEq(m1.shareAmount, NAV_PER_SHARE.reciprocalMulUint128(SHARE_AMOUNT));
+        assertEq(
+            m1.shareAmount,
+            ConversionLib.convertWithPrice(
+                APPROVED_INVESTOR_AMOUNT,
+                hubRegistry.decimals(USDC_C2),
+                hubRegistry.decimals(poolId),
+                NAV_PER_SHARE.reciprocal()
+            ).toUint128()
+        );
 
         cv.resetMessages();
     }
@@ -109,8 +117,9 @@ contract TestCases is BaseTest {
         cv.requestRedeem(poolId, scId, USDC_C2, INVESTOR, SHARE_AMOUNT);
 
         IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
-        uint128 revokedAssetAmount =
-            NAV_PER_SHARE.mulUint128(uint128(valuation.getQuote(APPROVED_SHARE_AMOUNT, USD.addr(), USDC_C2.addr())));
+        uint128 revokedAssetAmount = ConversionLib.convertWithPrice(
+            APPROVED_SHARE_AMOUNT, hubRegistry.decimals(poolId), hubRegistry.decimals(USDC_C2), NAV_PER_SHARE
+        ).toUint128();
 
         vm.startPrank(FM);
         hub.approveRedeems(poolId, scId, USDC_C2, APPROVED_SHARE_AMOUNT);
