@@ -317,21 +317,21 @@ contract Gateway is Auth, IGateway, Recoverable {
     }
 
     function _closeTransaction() internal {
-        if (transactionPayer != address(0)) {
-            if (fuel > 0) {
-                (bool success,) = transactionPayer.call{value: fuel}(new bytes(0));
-                
-                if (!success) {
-                    // If refund fails, move remaining fuel to global pot
-                    subsidy[PoolId.wrap(0)].value += uint96(fuel);
-                    emit SubsidizePool(PoolId.wrap(0), address(0), fuel);
-                }
-                    
-                fuel = 0;
-            }
+        if (transactionPayer == address(0)) return;
 
-            transactionPayer = address(0);
+        if (fuel > 0) {
+            (bool success,) = transactionPayer.call{value: fuel}(new bytes(0));
+
+            if (!success) {
+                // If refund fails, move remaining fuel to global pot
+                subsidy[PoolId.wrap(0)].value += uint96(fuel);
+                emit SubsidizePool(PoolId.wrap(0), address(0), fuel);
+            }
+                
+            fuel = 0;
         }
+
+        transactionPayer = address(0);
     }
 
     function setRefundAddress(PoolId poolId, address refund) public auth {
