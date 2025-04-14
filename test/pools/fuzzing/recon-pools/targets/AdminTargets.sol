@@ -215,10 +215,9 @@ abstract contract AdminTargets is
         try hub.depositRequest(poolId, scId, investor, depositAssetId, amount) {
             deposited = true;
 
-            (, uint32 lastUpdate) = shareClassManager.depositRequest(scId, depositAssetId, investor);
+            (uint128 pending, uint32 lastUpdate) = shareClassManager.depositRequest(scId, depositAssetId, investor);
             uint32 epochId = shareClassManager.epochId(poolId);
-
-            eq(lastUpdate, epochId, "lastUpdate is not equal to epochId"); 
+            (uint32 latestApproval,,,) = shareClassManager.epochPointers(scId, depositAssetId);
 
             address[] memory _actors = _getActors();
             uint128 totalPendingDeposit = shareClassManager.pendingDeposit(scId, depositAssetId);
@@ -229,7 +228,11 @@ abstract contract AdminTargets is
                 totalPendingUserDeposit += pendingUserDeposit;
             }
 
-            gte(totalPendingDeposit, totalPendingUserDeposit, "total pending deposit is less than sum of pending user deposit amounts"); 
+            // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
+            if(_canMutate(lastUpdate, pending, latestApproval)) {
+                eq(lastUpdate, epochId, "lastUpdate is not equal to epochId"); 
+                gte(totalPendingDeposit, totalPendingUserDeposit, "total pending deposit is less than sum of pending user deposit amounts"); 
+            }
         } catch (bytes memory reason) {
             bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
             t(!arithmeticRevert, "depositRequest reverts with arithmetic panic");
@@ -287,7 +290,7 @@ abstract contract AdminTargets is
             uint32 epochId = shareClassManager.epochId(poolId);
 
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
-            if(_checkIfCanCancel(lastUpdateBefore, pendingBefore, latestApproval)) {
+            if(_canMutate(lastUpdateBefore, pendingBefore, latestApproval)) {
                 eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId");
                 eq(pending, 0, "pending is not zero");
             }

@@ -183,7 +183,8 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         return holdings.accountId(poolId, scId, assetId, accountType);
     }
 
-    function _checkIfCanCancel(uint32 lastUpdate, uint128 pending, uint128 latestApproval) internal pure returns (bool) {
+    /// @dev performs the same check as SCM::_updateQueued
+    function _canMutate(uint32 lastUpdate, uint128 pending, uint128 latestApproval) internal pure returns (bool) {
         return lastUpdate > latestApproval || pending == 0 || latestApproval == 0;
     }
 }
