@@ -17,22 +17,25 @@ import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
 
 import {FullDeployer, HubDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
 
-// Script to deploy CP and CP with an Localhost Adapter.
+// Script to deploy Hub and Vaults with a Localhost Adapter.
 contract LocalhostDeployer is FullDeployer {
     using MessageLib for *;
+
+    uint256 defaultGas;
 
     function run() public {
         uint16 centrifugeId = uint16(vm.envUint("CENTRIFUGE_ID"));
 
         vm.startBroadcast();
 
-        deployFull(centrifugeId, ISafe(vm.envAddress("ADMIN")), msg.sender);
+        deployFull(centrifugeId, ISafe(vm.envAddress("ADMIN")), msg.sender, false);
 
         // Since `wire()` is not called, separately adding the safe here
         guardian.file("safe", address(adminSafe));
 
         saveDeploymentOutput();
 
+        (, defaultGas) = gateway.estimate(centrifugeId, MessageLib.NotifyPool(1).serialize());
         _configureTestData(centrifugeId);
 
         vm.stopBroadcast();
@@ -45,23 +48,24 @@ contract LocalhostDeployer is FullDeployer {
         token.file("symbol", "USDC");
         token.mint(msg.sender, 10_000_000e6);
 
-        vaultRouter.registerAsset{value: 0.001 ether}(centrifugeId, address(token), 0);
+        vaultRouter.registerAsset{value: defaultGas}(centrifugeId, address(token), 0);
         AssetId assetId = newAssetId(centrifugeId, 1);
 
         _deployAsyncVault(centrifugeId, token, assetId);
-        _deploySyncVault(centrifugeId, token, assetId);
+        _deploySyncDepositVault(centrifugeId, token, assetId);
     }
 
     function _deployAsyncVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
         PoolId poolId = hub.createPool(msg.sender, USD);
+        hub.allowPoolAdmin(poolId, vm.envAddress("ADMIN"), true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
         D18 navPerShare = d18(1, 1);
 
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, "Tokenized MMF", "MMF", bytes32(bytes("1")), bytes(""));
-        hub.notifyPool{value: 0.001 ether}(poolId, centrifugeId);
-        hub.notifyShareClass{value: 0.001 ether}(poolId, centrifugeId, scId, bytes32(bytes20(freelyTransferable)));
+        hub.notifyPool{value: defaultGas}(poolId, centrifugeId);
+        hub.notifyShareClass{value: defaultGas}(poolId, centrifugeId, scId, bytes32(bytes20(freelyTransferable)));
         hub.createHolding(poolId, scId, assetId, identityValuation, false, 0x01);
 
         hub.updateContract(
@@ -94,22 +98,23 @@ contract LocalhostDeployer is FullDeployer {
         hub.approveDeposits(poolId, scId, assetId, investAmount, valuation);
         hub.issueShares(poolId, scId, assetId, navPerShare);
 
-        hub.claimDeposit{value: 0.001 ether}(poolId, scId, assetId, bytes32(bytes20(msg.sender)));
+        hub.claimDeposit{value: defaultGas}(poolId, scId, assetId, bytes32(bytes20(msg.sender)));
 
         // Claim deposit request
         vault.mint(investAmount, msg.sender);
     }
 
-    function _deploySyncVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
+    function _deploySyncDepositVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
         PoolId poolId = hub.createPool(msg.sender, USD);
+        hub.allowPoolAdmin(poolId, vm.envAddress("ADMIN"), true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
         D18 navPerShare = d18(1, 1);
 
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, "RWA Portfolio", "RWA", bytes32(bytes("2")), bytes(""));
-        hub.notifyPool{value: 0.001 ether}(poolId, centrifugeId);
-        hub.notifyShareClass{value: 0.001 ether}(poolId, centrifugeId, scId, bytes32(bytes20(freelyTransferable)));
+        hub.notifyPool{value: defaultGas}(poolId, centrifugeId);
+        hub.notifyShareClass{value: defaultGas}(poolId, centrifugeId, scId, bytes32(bytes20(freelyTransferable)));
         hub.createHolding(poolId, scId, assetId, identityValuation, false, 0x01);
 
         hub.updateContract(
