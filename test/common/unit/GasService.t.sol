@@ -21,7 +21,7 @@ contract GasServiceTest is Test {
         assertEq(messageGasLimit, MESSAGE_GAS_LIMIT);
     }
 
-    function testMaxBatchSize(bytes calldata message) public view {
+    function testMaxBatchSize(bytes calldata) public view {
         uint256 messageGasLimit = service.maxBatchSize(CENTRIFUGE_ID);
         assertEq(messageGasLimit, MAX_BATCH_SIZE);
     }
