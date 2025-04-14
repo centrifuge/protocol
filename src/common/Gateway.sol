@@ -267,6 +267,8 @@ contract Gateway is Auth, IGateway, Recoverable {
             }
         } else {
             _send(centrifugeId, poolId, message);
+            
+            transactionPayer = address(0);
         }
     }
 
@@ -313,8 +315,6 @@ contract Gateway is Auth, IGateway, Recoverable {
                 emit SendProof(centrifugeId, batchId, proof, currentAdapter);
             }
         }
-
-        if (!isBatching) transactionPayer = address(0);
     }
 
     function subsidizePool(PoolId poolId) external payable {
