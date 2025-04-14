@@ -47,8 +47,8 @@ contract LocalhostDeployer is FullDeployer {
         token.file("name", "USD Coin");
         token.file("symbol", "USDC");
         token.mint(msg.sender, 10_000_000e6);
+        poolManager.registerAsset{value: defaultGas}(centrifugeId, address(token), 0);
 
-        vaultRouter.registerAsset{value: defaultGas}(centrifugeId, address(token), 0);
         AssetId assetId = newAssetId(centrifugeId, 1);
 
         _deployAsyncVault(centrifugeId, token, assetId);
