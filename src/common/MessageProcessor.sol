@@ -271,7 +271,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     }
 
     /// @inheritdoc IMessageProperties
-    function createMessageProof(bytes calldata message) external pure returns (bytes memory) {
-        return MessageLib.MessageProof({hash: keccak256(message)}).serialize();
+    function createMessageProof(bytes32 hash) external pure returns (bytes memory) {
+        return MessageLib.MessageProof({hash: hash}).serialize();
     }
 }
