@@ -71,7 +71,6 @@ contract GatewayTest is Test {
     uint256 constant SECOND_ADAPTER_ESTIMATE = 1 gwei;
     uint256 constant THIRD_ADAPTER_ESTIMATE = 0.5 gwei;
     uint256 constant BASE_MESSAGE_ESTIMATE = 0.75 gwei;
-    uint256 constant BASE_PROOF_ESTIMATE = 0.25 gwei;
 
     address self;
 
@@ -111,7 +110,6 @@ contract GatewayTest is Test {
         adapter3.setReturn("estimate", THIRD_ADAPTER_ESTIMATE);
 
         gasService.setReturn("message_estimate", BASE_MESSAGE_ESTIMATE);
-        gasService.setReturn("proof_estimate", BASE_PROOF_ESTIMATE);
 
         oneMockAdapter.push(adapter1);
 

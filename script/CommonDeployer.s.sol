@@ -17,7 +17,6 @@ import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
 import "forge-std/Script.sol";
 
 string constant MESSAGE_COST_ENV = "MESSAGE_COST";
-string constant PROOF_COST_ENV = "PROOF_COST";
 
 abstract contract CommonDeployer is Script, JsonRegistry {
     uint256 constant DELAY = 48 hours;
@@ -49,14 +48,13 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         }
 
         uint64 messageGasLimit = uint64(vm.envOr(MESSAGE_COST_ENV, FALLBACK_MSG_COST));
-        uint64 proofGasLimit = uint64(vm.envOr(PROOF_COST_ENV, FALLBACK_MSG_COST));
 
         root = new Root(DELAY, deployer);
         tokenRecoverer = new TokenRecoverer(root, deployer);
 
         messageProcessor = new MessageProcessor(root, tokenRecoverer, deployer);
 
-        gasService = new GasService(messageGasLimit, proofGasLimit);
+        gasService = new GasService(messageGasLimit);
         gateway = new Gateway(root, gasService);
 
         messageDispatcher = new MessageDispatcher(centrifugeId, root, gateway, tokenRecoverer, deployer);
