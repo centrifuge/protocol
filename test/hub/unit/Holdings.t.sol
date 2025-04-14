@@ -26,6 +26,14 @@ contract HubRegistryMock {
     function currency(PoolId) external pure returns (AssetId) {
         return POOL_CURRENCY;
     }
+
+    function decimals(PoolId) external pure returns (uint8) {
+        return 2;
+    }
+
+    function decimals(AssetId) external pure returns (uint8) {
+        return 6;
+    }
 }
 
 contract TestCommon is Test {
@@ -110,17 +118,16 @@ contract TestCreate is TestCommon {
 contract TestIncrease is TestCommon {
     function testSuccess() public {
         holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
-        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20);
+        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20_000_000);
 
         vm.expectEmit();
-        emit IHoldings.Increase(POOL_A, SC_1, ASSET_A, d18(50, 8), 8, 50);
-        uint128 value = holdings.increase(POOL_A, SC_1, ASSET_A, d18(50, 8), 8);
-
-        assertEq(value, 50);
+        emit IHoldings.Increase(POOL_A, SC_1, ASSET_A, d18(50, 8), 8_000_000, 50_00);
+        uint128 value = holdings.increase(POOL_A, SC_1, ASSET_A, d18(50, 8), 8_000_000);
+        assertEq(value, 50_00);
 
         (uint128 amount, uint128 amountValue, IERC7726 valuation,) = holdings.holding(POOL_A, SC_1, ASSET_A);
-        assertEq(amount, 28);
-        assertEq(amountValue, 250);
+        assertEq(amount, 28_000_000);
+        assertEq(amountValue, 250_00);
         assertEq(address(valuation), address(itemValuation)); // Does not change
     }
 
@@ -129,13 +136,6 @@ contract TestIncrease is TestCommon {
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        holdings.increase(POOL_A, SC_1, ASSET_A, d18(1, 1), 0);
-    }
-
-    function testErrWrongValuation() public {
-        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
-
-        vm.expectRevert(IHoldings.WrongValuation.selector);
         holdings.increase(POOL_A, SC_1, ASSET_A, d18(1, 1), 0);
     }
 
@@ -148,17 +148,17 @@ contract TestIncrease is TestCommon {
 contract TestDecrease is TestCommon {
     function testSuccess() public {
         holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
-        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20);
+        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20_000_000);
 
         vm.expectEmit();
-        emit IHoldings.Decrease(POOL_A, SC_1, ASSET_A, d18(50, 8), 8, 50);
-        uint128 value = holdings.decrease(POOL_A, SC_1, ASSET_A, d18(50, 8), 8);
+        emit IHoldings.Decrease(POOL_A, SC_1, ASSET_A, d18(50, 8), 8_000_000, 50_00);
+        uint128 value = holdings.decrease(POOL_A, SC_1, ASSET_A, d18(50, 8), 8_000_000);
 
-        assertEq(value, 50);
+        assertEq(value, 50_00);
 
         (uint128 amount, uint128 amountValue, IERC7726 valuation,) = holdings.holding(POOL_A, SC_1, ASSET_A);
-        assertEq(amount, 12);
-        assertEq(amountValue, 150);
+        assertEq(amount, 12_000_000);
+        assertEq(amountValue, 150_00);
         assertEq(address(valuation), address(itemValuation)); // Does not change
     }
 
@@ -167,13 +167,6 @@ contract TestDecrease is TestCommon {
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        holdings.decrease(POOL_A, SC_1, ASSET_A, d18(1, 1), 0);
-    }
-
-    function testErrWrongValuation() public {
-        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
-
-        vm.expectRevert(IHoldings.WrongValuation.selector);
         holdings.decrease(POOL_A, SC_1, ASSET_A, d18(1, 1), 0);
     }
 
@@ -186,47 +179,47 @@ contract TestDecrease is TestCommon {
 contract TestUpdate is TestCommon {
     function testUpdateMore() public {
         holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
-        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20);
+        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20_000_000);
 
         vm.expectEmit();
-        emit IHoldings.Update(POOL_A, SC_1, ASSET_A, 50);
-        mockGetQuote(itemValuation, 20, 250);
+        emit IHoldings.Update(POOL_A, SC_1, ASSET_A, 50_00);
+        mockGetQuote(itemValuation, 20_000_000, 250_00);
         int128 diff = holdings.update(POOL_A, SC_1, ASSET_A);
 
-        assertEq(diff, 50);
+        assertEq(diff, 50_00);
 
         (, uint128 amountValue,,) = holdings.holding(POOL_A, SC_1, ASSET_A);
-        assertEq(amountValue, 250);
+        assertEq(amountValue, 250_00);
     }
 
     function testUpdateLess() public {
         holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
-        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20);
+        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20_000_000);
 
         vm.expectEmit();
-        emit IHoldings.Update(POOL_A, SC_1, ASSET_A, -50);
-        mockGetQuote(itemValuation, 20, 150);
+        emit IHoldings.Update(POOL_A, SC_1, ASSET_A, -50_00);
+        mockGetQuote(itemValuation, 20_000_000, 150_00);
         int128 diff = holdings.update(POOL_A, SC_1, ASSET_A);
 
-        assertEq(diff, -50);
+        assertEq(diff, -50_00);
 
         (, uint128 amountValue,,) = holdings.holding(POOL_A, SC_1, ASSET_A);
-        assertEq(amountValue, 150);
+        assertEq(amountValue, 150_00);
     }
 
     function testUpdateEquals() public {
         holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
-        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20);
+        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20_000_000);
 
         vm.expectEmit();
         emit IHoldings.Update(POOL_A, SC_1, ASSET_A, 0);
-        mockGetQuote(itemValuation, 20, 200);
+        mockGetQuote(itemValuation, 20_000_000, 200_00);
         int128 diff = holdings.update(POOL_A, SC_1, ASSET_A);
 
         assertEq(diff, 0);
 
         (, uint128 amountValue,,) = holdings.holding(POOL_A, SC_1, ASSET_A);
-        assertEq(amountValue, 200);
+        assertEq(amountValue, 200_00);
     }
 
     function testErrNotAuthorized() public {
@@ -264,13 +257,6 @@ contract TestUpdateValuation is TestCommon {
         holdings.updateValuation(POOL_A, SC_1, ASSET_A, newValuation);
     }
 
-    function testErrWrongValuation() public {
-        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
-
-        vm.expectRevert(IHoldings.WrongValuation.selector);
-        holdings.updateValuation(POOL_A, SC_1, ASSET_A, IERC7726(address(0)));
-    }
-
     function testErrHoldingNotFound() public {
         vm.expectRevert(IHoldings.HoldingNotFound.selector);
         holdings.updateValuation(POOL_A, SC_1, ASSET_A, newValuation);
@@ -305,11 +291,11 @@ contract TestSetAccountId is TestCommon {
 contract TestValue is TestCommon {
     function testSuccess() public {
         holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
-        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20);
+        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20_000_000);
 
         uint128 value = holdings.value(POOL_A, SC_1, ASSET_A);
 
-        assertEq(value, 200);
+        assertEq(value, 200_00);
     }
 
     function testErrHoldingNotFound() public {
