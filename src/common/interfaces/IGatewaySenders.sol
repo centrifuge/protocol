@@ -114,6 +114,12 @@ interface IPoolMessageSender is ILocalCentrifugeId {
         bytes32 target,
         bytes calldata payload
     ) external;
+
+    /// @notice Creates and send the message
+    function sendApprovedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external;
+
+    /// @notice Creates and send the message
+    function sendRevokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external;
 }
 
 /// @notice Interface for dispatch-only gateway
@@ -146,12 +152,13 @@ interface IVaultMessageSender is ILocalCentrifugeId {
         AssetId assetId,
         address provider,
         uint128 amount,
-        D18 pricePerUnit,
+        D18 pricePoolPerAsset,
         bool isIncrease,
         Meta calldata meta
     ) external;
 
-    function sendUpdateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePerUnit) external;
+    function sendUpdateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset)
+        external;
 
     /// @notice Creates and send the message
     function sendUpdateShares(

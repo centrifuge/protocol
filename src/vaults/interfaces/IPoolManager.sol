@@ -128,7 +128,6 @@ interface IPoolManager {
     error UnknownAsset();
     error MalformedVaultUpdateMessage();
     error UnknownToken();
-    error UnknownUpdateContractType();
     error InvalidFactory();
     error InvalidPrice();
     error AssetMissingDecimals();

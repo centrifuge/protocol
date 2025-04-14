@@ -8,8 +8,9 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {D18} from "src/misc/types/D18.sol";
-
 import {Recoverable} from "src/misc/Recoverable.sol";
+
+import {newPoolId} from "src/common/types/PoolId.sol";
 
 import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
@@ -32,7 +33,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
     /// @inheritdoc IBaseInvestmentManager
     function file(bytes32 what, address data) external virtual auth {
         if (what == "poolManager") poolManager = IPoolManager(data);
-        else revert("BaseInvestmentManager/file-unrecognized-param");
+        else revert FileUnrecognizedParam();
         emit File(what, data);
     }
 
@@ -42,7 +43,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
         (D18 priceAssetPerShare,) =
-            poolManager.priceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, false);
+            poolManager.priceAssetPerShare(mapPoolId(vault_.poolId()), vault_.trancheId(), vaultDetails.assetId, false);
 
         return _convertToShares(vault_, vaultDetails, priceAssetPerShare, assets, MathLib.Rounding.Down);
     }
@@ -52,7 +53,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
         (D18 priceAssetPerShare,) =
-            poolManager.priceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, false);
+            poolManager.priceAssetPerShare(mapPoolId(vault_.poolId()), vault_.trancheId(), vaultDetails.assetId, false);
 
         return _convertToAssets(vault_, vaultDetails, priceAssetPerShare, shares, MathLib.Rounding.Down);
     }
@@ -63,7 +64,14 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
         (, lastUpdated) =
-            poolManager.priceAssetPerShare(vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, false);
+            poolManager.priceAssetPerShare(mapPoolId(vault_.poolId()), vault_.trancheId(), vaultDetails.assetId, false);
+    }
+
+    function mapPoolId(uint64 poolId) public pure returns (uint64 mappedPoolId) {
+        // TODO: update v2CentrifugeId and add all pools before deployment
+        uint16 v2CentrifugeId = 1;
+        if (poolId == 4139607887) return newPoolId(v2CentrifugeId, 1).raw();
+        return poolId;
     }
 
     function _convertToShares(

@@ -16,6 +16,7 @@ import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
 import "test/vaults/BaseTest.sol";
+import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 
 interface Authlike {
     function rely(address) external;
@@ -64,7 +65,7 @@ contract VaultRouterTest is BaseTest {
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
         uint256 gas = estimateGas();
 
-        vm.expectRevert("AsyncVault/invalid-owner");
+        vm.expectRevert(IAsyncVault.InvalidOwner.selector);
         vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
         vaultRouter.enable(vault_);
 
@@ -132,7 +133,7 @@ contract VaultRouterTest is BaseTest {
         uint256 fuel = estimateGas();
         vm.deal(address(this), 10 ether);
 
-        vm.expectRevert("AsyncRequests/no-pending-deposit-request");
+        vm.expectRevert(IAsyncRequests.NoPendingRequest.selector);
         vaultRouter.cancelDepositRequest{value: fuel}(vault_);
 
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
@@ -175,7 +176,7 @@ contract VaultRouterTest is BaseTest {
         vm.expectRevert(IVaultRouter.InvalidSender.selector);
         vaultRouter.claimCancelDepositRequest(vault_, nonMember, self);
 
-        vm.expectRevert("AsyncRequests/transfer-not-allowed");
+        vm.expectRevert(IAsyncRequests.TransferNotAllowed.selector);
         vaultRouter.claimCancelDepositRequest(vault_, nonMember, self);
 
         vaultRouter.claimCancelDepositRequest(vault_, self, self);
@@ -493,7 +494,7 @@ contract VaultRouterTest is BaseTest {
 
         uint256 gasLimit = vaultRouter.estimate(CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
 
-        vm.expectRevert(bytes("AsyncRequests/transfer-not-allowed"));
+        vm.expectRevert(IAsyncRequests.TransferNotAllowed.selector);
         vaultRouter.executeLockedDepositRequest{value: gasLimit}(vault_, self);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
 

@@ -5,6 +5,8 @@ interface IBaseInvestmentManager {
     // --- Events ---
     event File(bytes32 indexed what, address data);
 
+    error FileUnrecognizedParam();
+
     /// @notice Address of the escrow
     function escrow() external view returns (address);
 

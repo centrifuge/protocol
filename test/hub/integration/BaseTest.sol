@@ -62,7 +62,7 @@ contract BaseTest is HubDeployer, Test {
         vm.setEnv(PROOF_COST_ENV, vm.toString(GAS));
 
         // Deployment
-        deployHub(CHAIN_CP, ISafe(ADMIN), address(this));
+        deployHub(CHAIN_CP, ISafe(ADMIN), address(this), true);
         _mockStuff();
         removeHubDeployerAccess(address(this));
 

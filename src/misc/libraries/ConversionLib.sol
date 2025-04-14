@@ -8,7 +8,7 @@ library ConversionLib {
     using MathLib for uint256;
 
     function convertWithPrice(uint256 baseAmount, uint8 baseDecimals, uint8 quoteDecimals, D18 price)
-        external
+        internal
         pure
         returns (uint256 quoteAmount)
     {

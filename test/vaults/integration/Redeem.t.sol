@@ -5,6 +5,8 @@ import "test/vaults/BaseTest.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
+import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 
 contract RedeemTest is BaseTest {
     using MessageLib for *;
@@ -23,7 +25,7 @@ contract RedeemTest is BaseTest {
         );
 
         // will fail - zero deposit not allowed
-        vm.expectRevert(bytes("AsyncRequests/zero-amount-not-allowed"));
+        vm.expectRevert(IAsyncRequests.ZeroAmountNotAllowed.selector);
         vault.requestRedeem(0, self, self);
 
         // will fail - investment asset not allowed
@@ -35,7 +37,7 @@ contract RedeemTest is BaseTest {
         uint128 assets = uint128((amount * 10 ** 18) / defaultPrice);
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
-        vm.expectRevert(bytes("AsyncRequests/no-pending-redeem-request"));
+        vm.expectRevert(IAsyncRequests.NoPendingRequest.selector);
         asyncRequests.fulfillRedeemRequest(poolId, scId, self, assetId, assets, uint128(amount));
 
         // success
@@ -46,7 +48,7 @@ contract RedeemTest is BaseTest {
         assertEq(vault.claimableRedeemRequest(0, self), 0);
 
         // fail: no tokens left
-        vm.expectRevert(bytes("AsyncVault/insufficient-balance"));
+        vm.expectRevert(IBaseVault.InsufficientBalance.selector);
         vault.requestRedeem(amount, address(this), address(this));
 
         // trigger executed collectRedeem
@@ -79,9 +81,9 @@ contract RedeemTest is BaseTest {
         assertTrue(vault.maxRedeem(self) <= 1);
 
         // withdrawing or redeeming more should revert
-        vm.expectRevert(bytes("AsyncRequests/exceeds-redeem-limits"));
+        vm.expectRevert(IAsyncRequests.ExceedsRedeemLimits.selector);
         vault.withdraw(2, investor, self);
-        vm.expectRevert(bytes("AsyncRequests/exceeds-max-redeem"));
+        vm.expectRevert(IAsyncRequests.ExceedsMaxRedeem.selector);
         vault.redeem(2, investor, self);
     }
 
@@ -163,7 +165,7 @@ contract RedeemTest is BaseTest {
         IShareToken shareToken = IShareToken(address(vault.share()));
         deposit(vault_, self, amount * 2); // deposit funds first
 
-        vm.expectRevert(bytes("AsyncRequests/no-pending-redeem-request"));
+        vm.expectRevert(IAsyncRequests.NoPendingRequest.selector);
         vault.cancelRedeemRequest(0, self);
 
         vault.requestRedeem(amount, address(this), address(this));
@@ -171,7 +173,7 @@ contract RedeemTest is BaseTest {
         // will fail - user not member
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, uint64(block.timestamp));
         vm.warp(block.timestamp + 1);
-        vm.expectRevert(bytes("AsyncRequests/transfer-not-allowed"));
+        vm.expectRevert(IAsyncRequests.TransferNotAllowed.selector);
         vault.cancelRedeemRequest(0, self);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
 
@@ -190,10 +192,10 @@ contract RedeemTest is BaseTest {
         assertEq(vault.pendingCancelRedeemRequest(0, self), true);
 
         // Cannot cancel twice
-        vm.expectRevert(bytes("AsyncRequests/cancellation-is-pending"));
+        vm.expectRevert(IAsyncRequests.CancellationIsPending.selector);
         vault.cancelRedeemRequest(0, self);
 
-        vm.expectRevert(bytes("AsyncRequests/cancellation-is-pending"));
+        vm.expectRevert(IAsyncRequests.CancellationIsPending.selector);
         vault.requestRedeem(amount, address(this), address(this));
 
         centrifugeChain.isFulfilledCancelRedeemRequest(
@@ -232,7 +234,7 @@ contract RedeemTest is BaseTest {
         asyncRequests.triggerRedeemRequest(poolId, scId, investor, assetId, uint128(amount + 1));
 
         //Fail - Share token amount zero
-        vm.expectRevert(bytes("AsyncRequests/share-token-amount-is-zero"));
+        vm.expectRevert(IAsyncRequests.ShareTokenAmountIsZero.selector);
         asyncRequests.triggerRedeemRequest(poolId, scId, investor, assetId, 0);
 
         // should work even if investor is frozen
@@ -251,7 +253,7 @@ contract RedeemTest is BaseTest {
             vault.poolId(), vault.trancheId(), bytes32(bytes20(investor)), assetId, uint128(amount), uint128(amount)
         );
 
-        vm.expectRevert(bytes("AsyncRequests/exceeds-max-redeem"));
+        vm.expectRevert(IAsyncRequests.ExceedsMaxRedeem.selector);
         vm.prank(investor);
         vault.redeem(amount, investor, investor);
     }
@@ -330,7 +332,7 @@ contract RedeemTest is BaseTest {
             vault.poolId(), vault.trancheId(), bytes32(bytes20(investor)), assetId, uint128(amount), uint128(amount)
         );
 
-        vm.expectRevert(bytes("AsyncRequests/exceeds-max-redeem"));
+        vm.expectRevert(IAsyncRequests.ExceedsMaxRedeem.selector);
         vm.prank(investor);
         vault.redeem(amount, investor, investor);
     }

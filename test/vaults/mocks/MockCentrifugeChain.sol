@@ -11,6 +11,7 @@ import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/Mes
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 import {PoolManager} from "src/vaults/PoolManager.sol";
+import {SyncRequests} from "src/vaults/SyncRequests.sol";
 import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 
 interface AdapterLike {
@@ -23,12 +24,14 @@ contract MockCentrifugeChain is Test {
 
     IAdapter[] public adapters;
     PoolManager public poolManager;
+    SyncRequests public syncRequests;
 
-    constructor(IAdapter[] memory adapters_, PoolManager poolManager_) {
+    constructor(IAdapter[] memory adapters_, PoolManager poolManager_, SyncRequests syncRequests_) {
         for (uint256 i = 0; i < adapters_.length; i++) {
             adapters.push(adapters_[i]);
         }
         poolManager = poolManager_;
+        syncRequests = syncRequests_;
     }
 
     function addPool(uint64 poolId) public {
@@ -64,6 +67,22 @@ contract MockCentrifugeChain is Test {
                     vaultOrFactory: bytes32(bytes20(vault)),
                     assetId: vaultDetails.assetId,
                     kind: uint8(VaultUpdateKind.Link)
+                }).serialize()
+            }).serialize()
+        );
+    }
+
+    function updateMaxReserve(uint64 poolId, bytes16 scId, address vault, uint128 maxReserve) public {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+
+        execute(
+            MessageLib.UpdateContract({
+                poolId: poolId,
+                scId: scId,
+                target: bytes32(bytes20(address(syncRequests))),
+                payload: MessageLib.UpdateContractSyncDepositMaxReserve({
+                    assetId: vaultDetails.assetId,
+                    maxReserve: maxReserve
                 }).serialize()
             }).serialize()
         );
@@ -261,6 +280,7 @@ contract MockCentrifugeChain is Test {
         );
     }
 
+    /// @dev Simulates incoming FulfilledDepositRequest with prepended ApprovedDeposits message
     function isFulfilledDepositRequest(
         uint64 poolId,
         bytes16 scId,
@@ -269,6 +289,8 @@ contract MockCentrifugeChain is Test {
         uint128 assets,
         uint128 shares
     ) public {
+        isApprovedDeposits(poolId, scId, assetId, assets);
+
         execute(
             MessageLib.FulfilledDepositRequest({
                 poolId: poolId,
@@ -281,6 +303,7 @@ contract MockCentrifugeChain is Test {
         );
     }
 
+    /// @dev Simulates incoming FulfilledRedeemRequest with prepended RevokedShares message
     function isFulfilledRedeemRequest(
         uint64 poolId,
         bytes16 scId,
@@ -289,6 +312,7 @@ contract MockCentrifugeChain is Test {
         uint128 assets,
         uint128 shares
     ) public {
+        isRevokedShares(poolId, scId, assetId, assets);
         execute(
             MessageLib.FulfilledRedeemRequest({
                 poolId: poolId,
@@ -298,6 +322,20 @@ contract MockCentrifugeChain is Test {
                 assetAmount: assets,
                 shareAmount: shares
             }).serialize()
+        );
+    }
+
+    /// @dev Implicitly called by isFulfilledDepositRequest
+    function isApprovedDeposits(uint64 poolId, bytes16 scId, uint128 assetId, uint128 assets) public {
+        execute(
+            MessageLib.ApprovedDeposits({poolId: poolId, scId: scId, assetId: assetId, assetAmount: assets}).serialize()
+        );
+    }
+
+    /// @dev Implicitly called by isFulfilledRedeemRequest
+    function isRevokedShares(uint64 poolId, bytes16 scId, uint128 assetId, uint128 assets) public {
+        execute(
+            MessageLib.RevokedShares({poolId: poolId, scId: scId, assetId: assetId, assetAmount: assets}).serialize()
         );
     }
 
