@@ -472,7 +472,7 @@ contract VaultRouterTest is BaseTest {
     function testEstimate() public view {
         bytes memory message = MessageLib.NotifyPool(1).serialize();
         uint256 estimated = vaultRouter.estimate(CHAIN_ID, message);
-        (, uint256 gatewayEstimated) = gateway.estimate(CHAIN_ID, message);
+        uint256 gatewayEstimated = gateway.estimate(CHAIN_ID, message);
         assertEq(estimated, gatewayEstimated);
     }
 
@@ -506,7 +506,7 @@ contract VaultRouterTest is BaseTest {
         assertEq(erc20.balanceOf(address(escrow)), amount);
     }
 
-    function estimateGas() internal view returns (uint256 total) {
-        (, total) = gateway.estimate(CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
+    function estimateGas() internal view returns (uint256) {
+        return gateway.estimate(CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
     }
 }

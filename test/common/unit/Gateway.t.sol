@@ -421,7 +421,7 @@ contract GatewayTest is Test {
 
         uint256 balanceBeforeTx = address(gateway).balance;
 
-        (uint256[] memory tokens, uint256 total) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
+        uint256 total = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
         gateway.payTransaction{value: total}(address(this));
 
         gateway.send(REMOTE_CENTRIFUGE_ID, message);
@@ -430,7 +430,6 @@ contract GatewayTest is Test {
             MockAdapter currentAdapter = MockAdapter(address(threeMockAdapters[i]));
             uint256[] memory metadata = currentAdapter.callsWithValue("send");
             assertEq(metadata.length, 1);
-            assertEq(metadata[0], tokens[i]);
 
             assertEq(currentAdapter.sent(i == 0 ? message : proof), 1);
         }
@@ -448,7 +447,7 @@ contract GatewayTest is Test {
 
         uint256 balanceBeforeTx = address(gateway).balance;
 
-        (uint256[] memory tokens, uint256 total) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
+        uint256 total = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
         uint256 extra = 10 wei;
         uint256 topUpAmount = total + extra;
         gateway.payTransaction{value: topUpAmount}(address(this));
@@ -459,7 +458,6 @@ contract GatewayTest is Test {
             MockAdapter currentAdapter = MockAdapter(address(threeMockAdapters[i]));
             uint256[] memory metadata = currentAdapter.callsWithValue("send");
             assertEq(metadata.length, 1);
-            assertEq(metadata[0], tokens[i]);
 
             assertEq(currentAdapter.sent(i == 0 ? message : proof), 1);
         }
@@ -474,7 +472,7 @@ contract GatewayTest is Test {
         bytes memory message = MessageLib.NotifyPool(POOL_A.raw()).serialize();
         bytes memory proof = _formatMessageProof(message);
 
-        (uint256[] memory tokens, uint256 total) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
+        uint256 total = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
 
         assertEq(gateway.fuel(), 0);
 
@@ -485,7 +483,6 @@ contract GatewayTest is Test {
             MockAdapter currentAdapter = MockAdapter(address(threeMockAdapters[i]));
             uint256[] memory metadata = currentAdapter.callsWithValue("send");
             assertEq(metadata.length, 1);
-            assertEq(metadata[0], tokens[i]);
 
             assertEq(currentAdapter.sent(i == 0 ? message : proof), 1);
         }
@@ -499,9 +496,8 @@ contract GatewayTest is Test {
         bytes memory message = MessageLib.NotifyPool(POOL_A.raw()).serialize();
         bytes memory proof = _formatMessageProof(message);
 
-        (uint256[] memory tokens,) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
-
-        uint256 fundsToCoverTwoAdaptersOnly = tokens[0] + tokens[1];
+        uint256 fundsToCoverTwoAdaptersOnly =
+            (FIRST_ADAPTER_ESTIMATE + SECOND_ADAPTER_ESTIMATE) + BASE_MESSAGE_ESTIMATE * 2;
 
         assertEq(gateway.fuel(), 0);
 
@@ -510,12 +506,12 @@ contract GatewayTest is Test {
 
         uint256[] memory r1Metadata = adapter1.callsWithValue("send");
         assertEq(r1Metadata.length, 1);
-        assertEq(r1Metadata[0], tokens[0]);
+        assertEq(r1Metadata[0], FIRST_ADAPTER_ESTIMATE + BASE_MESSAGE_ESTIMATE);
         assertEq(adapter1.sent(message), 1);
 
         uint256[] memory r2Metadata = adapter2.callsWithValue("send");
         assertEq(r2Metadata.length, 1);
-        assertEq(r2Metadata[0], tokens[1]);
+        assertEq(r2Metadata[0], SECOND_ADAPTER_ESTIMATE + BASE_MESSAGE_ESTIMATE);
         assertEq(adapter2.sent(proof), 1);
 
         uint256[] memory r3Metadata = adapter3.callsWithValue("send");
@@ -780,12 +776,8 @@ contract GatewayTest is Test {
         uint256 thirdRouterEstimate = THIRD_ADAPTER_ESTIMATE + BASE_MESSAGE_ESTIMATE;
         uint256 totalEstimate = firstRouterEstimate + secondRouterEstimate + thirdRouterEstimate;
 
-        (uint256[] memory tokens, uint256 total) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
+        uint256 total = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
 
-        assertEq(tokens.length, 3);
-        assertEq(tokens[0], firstRouterEstimate);
-        assertEq(tokens[1], secondRouterEstimate);
-        assertEq(tokens[2], thirdRouterEstimate);
         assertEq(total, totalEstimate);
     }
 
@@ -794,17 +786,6 @@ contract GatewayTest is Test {
         assertEq(votes[0], r1);
         assertEq(votes[1], r2);
         assertEq(votes[2], r3);
-    }
-
-    /// @notice Returns the smallest of two numbers.
-    function _min(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a > b ? b : a;
-    }
-
-    function _countValues(uint16[8] memory arr) internal pure returns (uint256 count) {
-        for (uint256 i = 0; i < arr.length; ++i) {
-            count += arr[i];
-        }
     }
 
     function _formatMessageProof(bytes memory message) internal pure returns (bytes memory) {

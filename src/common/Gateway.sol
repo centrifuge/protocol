@@ -280,9 +280,7 @@ contract Gateway is Auth, IGateway, Recoverable {
 
         for (uint256 i; i < adapters_.length; i++) {
             bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
-            bytes memory payload = isPrimaryAdapter ? batch : proof;
-
-            uint256 consumed = adapters_[i].estimate(centrifugeId, payload, batchGasLimit_);
+            uint256 consumed = adapters_[i].estimate(centrifugeId, isPrimaryAdapter ? batch : proof, batchGasLimit_);
 
             if (transactionPayer != address(0)) {
                 require(consumed <= fuel, NotEnoughTransactionGas());
@@ -297,9 +295,9 @@ contract Gateway is Auth, IGateway, Recoverable {
 
             adapters_[i].send{value: consumed}(
                 centrifugeId,
-                payload,
+                isPrimaryAdapter ? batch : proof,
                 batchGasLimit_,
-                transactionPayer != address(0) ? transactionPayer : address(this)
+                transactionPayer != address(0) ? transactionPayer : subsidy[poolId].refund
             );
 
             if (isPrimaryAdapter) {
@@ -355,7 +353,7 @@ contract Gateway is Auth, IGateway, Recoverable {
     function estimate(uint16 centrifugeId, bytes calldata payload)
         external
         view
-        returns (uint256[] memory perAdapter, uint256 total)
+        returns (uint256 total)
     {
         bytes memory proof = processor.createMessageProof(payload);
 
@@ -366,14 +364,10 @@ contract Gateway is Auth, IGateway, Recoverable {
             pos += processor.messageLength(inner);
         }
 
-        perAdapter = new uint256[](adapters[centrifugeId].length);
-
         uint256 adaptersCount = adapters[centrifugeId].length;
         for (uint256 i; i < adaptersCount; i++) {
             bytes memory message = i == PRIMARY_ADAPTER_ID - 1 ? payload : proof;
-            uint256 estimated = IAdapter(adapters[centrifugeId][i]).estimate(centrifugeId, message, gasLimit);
-            perAdapter[i] = estimated;
-            total += estimated;
+            total += IAdapter(adapters[centrifugeId][i]).estimate(centrifugeId, message, gasLimit);
         }
     }
 

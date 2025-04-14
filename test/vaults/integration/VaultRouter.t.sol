@@ -680,7 +680,7 @@ contract VaultRouterTest is BaseTest {
         erc20.approve(vault_, amount);
         vaultRouter.enable(vault_);
 
-        (, uint256 gasLimit) =
+        uint256 gasLimit =
             gateway.estimate(OTHER_CHAIN_ID, bytes.concat(PAYLOAD_FOR_GAS_ESTIMATION, PAYLOAD_FOR_GAS_ESTIMATION));
 
         vm.expectRevert(IPoolManager.UnknownVault.selector);
@@ -772,7 +772,7 @@ contract VaultRouterTest is BaseTest {
         vm.stopPrank();
     }
 
-    function estimateGas() internal view returns (uint256 total) {
-        (, total) = gateway.estimate(OTHER_CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
+    function estimateGas() internal view returns (uint256) {
+        return gateway.estimate(OTHER_CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
     }
 }
