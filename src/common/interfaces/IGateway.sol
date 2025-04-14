@@ -42,9 +42,10 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     }
 
     struct Funds {
-        /// @notice funds associated to pay for sending messages
-        uint64 value;
-        /// @notice address where to refund the remaining gas
+        /// @notice Funds associated to pay for sending messages
+        /// @dev    Overflows with type(uint64).max / 10**18 = 7.923 × 10^10 ETH
+        uint96 value;
+        /// @notice Address where to refund the remaining gas
         address refund;
     }
 

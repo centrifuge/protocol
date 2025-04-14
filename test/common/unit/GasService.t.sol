@@ -10,18 +10,19 @@ import {GasService, IGasService} from "src/common/GasService.sol";
 contract GasServiceTest is Test {
     using MessageLib for *;
 
-    uint64 constant MESSAGE_GAS_LIMIT = 40000000000000000;
+    uint128 constant MESSAGE_GAS_LIMIT = 0.04 ether;
+    uint128 constant MAX_BATCH_SIZE = 10_000_000 ether;
     uint16 constant CENTRIFUGE_ID = 1;
 
-    GasService service = new GasService(MESSAGE_GAS_LIMIT);
-
-    function testDeployment() public {
-        service = new GasService(MESSAGE_GAS_LIMIT);
-        assertEq(service.messageGasLimit(), MESSAGE_GAS_LIMIT);
-    }
+    GasService service = new GasService(MAX_BATCH_SIZE, MESSAGE_GAS_LIMIT);
 
     function testGasLimit(bytes calldata message) public view {
         uint256 messageGasLimit = service.gasLimit(CENTRIFUGE_ID, message);
         assertEq(messageGasLimit, MESSAGE_GAS_LIMIT);
+    }
+
+    function testMaxBatchSize(bytes calldata message) public view {
+        uint256 messageGasLimit = service.maxBatchSize(CENTRIFUGE_ID);
+        assertEq(messageGasLimit, MAX_BATCH_SIZE);
     }
 }

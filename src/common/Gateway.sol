@@ -6,6 +6,7 @@ import {ArrayLib} from "src/misc/libraries/ArrayLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
@@ -42,7 +43,7 @@ contract Gateway is Auth, IGateway, Recoverable {
     bool public transient isBatching;
     BatchLocator[] public /*transient*/ batchLocators;
     mapping(uint16 centrifugeId => mapping(PoolId => bytes)) public /*transient*/ outboundBatch;
-    mapping(uint16 centrifugeId => mapping(PoolId => uint64)) public /*transient*/ batchGasLimit;
+    mapping(uint16 centrifugeId => mapping(PoolId => uint128)) public /*transient*/ batchGasLimit;
 
     // Payment
     uint256 public transient fuel;
@@ -271,8 +272,7 @@ contract Gateway is Auth, IGateway, Recoverable {
             }
         } else {
             _send(centrifugeId, poolId, message);
-
-            transactionPayer = address(0);
+            _closeTransaction();
         }
     }
 
@@ -282,7 +282,7 @@ contract Gateway is Auth, IGateway, Recoverable {
         IAdapter[] memory adapters_ = adapters[centrifugeId];
         require(adapters[centrifugeId].length != 0, EmptyAdapterSet());
 
-        uint64 batchGasLimit_ =
+        uint128 batchGasLimit_ =
             (isBatching) ? batchGasLimit[centrifugeId][poolId] : gasService.gasLimit(centrifugeId, batch);
 
         for (uint256 i; i < adapters_.length; i++) {
@@ -294,7 +294,7 @@ contract Gateway is Auth, IGateway, Recoverable {
                 fuel -= consumed;
             } else {
                 if (consumed <= subsidy[poolId].value) {
-                    subsidy[poolId].value -= uint64(consumed);
+                    subsidy[poolId].value -= uint96(consumed);
                 } else {
                     consumed = 0;
                 }
@@ -316,13 +316,21 @@ contract Gateway is Auth, IGateway, Recoverable {
         }
     }
 
+    function _closeTransaction() internal {
+        if (transactionPayer != address(0)) {
+            // if (fuel > 0) SafeTransferLib.safeTransferETH(transactionPayer, fuel);
+
+            transactionPayer = address(0);
+        }
+    }
+
     function setRefundAddress(PoolId poolId, address refund) public auth {
         subsidy[poolId].refund = refund;
         emit SetRefundAddress(poolId, refund);
     }
 
     function subsidizePool(PoolId poolId) public payable {
-        subsidy[poolId].value += uint64(msg.value);
+        subsidy[poolId].value += uint96(msg.value);
         emit SubsidizePool(poolId, msg.sender, msg.value);
     }
 
@@ -349,8 +357,9 @@ contract Gateway is Auth, IGateway, Recoverable {
         }
 
         delete batchLocators;
-        transactionPayer = address(0);
         isBatching = false;
+
+        _closeTransaction();
     }
 
     //----------------------------------------------------------------------------------------------

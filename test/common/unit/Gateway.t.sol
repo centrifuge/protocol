@@ -109,7 +109,7 @@ contract GatewayTest is Test {
         adapter2.setReturn("estimate", SECOND_ADAPTER_ESTIMATE);
         adapter3.setReturn("estimate", THIRD_ADAPTER_ESTIMATE);
 
-        gasService.setReturn("message_estimate", BASE_MESSAGE_ESTIMATE);
+        gasService.setReturn("gasLimit", BASE_MESSAGE_ESTIMATE);
 
         oneMockAdapter.push(adapter1);
 
