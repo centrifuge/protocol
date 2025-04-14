@@ -13,7 +13,6 @@ import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {newPoolId} from "src/common/types/PoolId.sol";
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
@@ -113,7 +112,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     function _processDepositRequest(address vaultAddr, uint128 assets, address controller) internal returns (bool) {
         IAsyncVault vault_ = IAsyncVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
-        uint64 poolId = _mapPoolId(vault_.poolId());
+        uint64 poolId = mapPoolId(vault_.poolId());
         bytes16 scId = vault_.trancheId();
 
         require(poolManager.isLinked(poolId, scId, vaultDetails.asset, vaultAddr), AssetNotAllowed());
@@ -144,7 +143,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
         // You cannot redeem using a disallowed asset, instead another vault will have to be used
         require(
-            poolManager.isLinked(_mapPoolId(vault_.poolId()), vault_.trancheId(), vault_.asset(), vaultAddr),
+            poolManager.isLinked(mapPoolId(vault_.poolId()), vault_.trancheId(), vault_.asset(), vaultAddr),
             AssetNotAllowed()
         );
 
@@ -170,7 +169,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
         sender.sendRedeemRequest(
-            _mapPoolId(vault_.poolId()), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId, shares
+            mapPoolId(vault_.poolId()), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId, shares
         );
 
         return true;
@@ -188,7 +187,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
         sender.sendCancelDepositRequest(
-            _mapPoolId(vault_.poolId()), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId
+            mapPoolId(vault_.poolId()), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId
         );
     }
 
@@ -206,7 +205,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
         sender.sendCancelRedeemRequest(
-            _mapPoolId(vault_.poolId()), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId
+            mapPoolId(vault_.poolId()), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId
         );
     }
 
@@ -454,7 +453,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
 
         IAsyncVault vault_ = IAsyncVault(vaultAddr);
-        uint64 poolId = _mapPoolId(vault_.poolId());
+        uint64 poolId = mapPoolId(vault_.poolId());
         bytes16 scId = vault_.trancheId();
         JournalEntry[] memory journalEntries = new JournalEntry[](0);
         Meta memory meta = Meta(journalEntries, journalEntries);
@@ -632,12 +631,5 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         address shareToken = IAsyncVault(vaultAddr).share();
 
         return VaultPricingLib.calculatePrice(shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, assets);
-    }
-
-    function _mapPoolId(uint64 poolId) internal pure returns (uint64 mappedPoolId) {
-        // TODO: update v2CentrifugeId and add all pools before deployment
-        uint16 v2CentrifugeId = 1;
-        if (poolId == 4139607887) return newPoolId(v2CentrifugeId, 1).raw();
-        return poolId;
     }
 }
