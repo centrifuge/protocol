@@ -22,7 +22,7 @@ contract GasServiceTest is Test {
     }
 
     function testMaxBatchSize(bytes calldata) public view {
-        uint256 messageGasLimit = service.maxBatchSize(CENTRIFUGE_ID);
-        assertEq(messageGasLimit, MAX_BATCH_SIZE);
+        uint256 maxBatchSize = service.maxBatchSize(CENTRIFUGE_ID);
+        assertEq(maxBatchSize, MAX_BATCH_SIZE);
     }
 }
