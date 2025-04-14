@@ -39,7 +39,9 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     IVaultMessageSender public sender;
     ISharePriceProvider public sharePriceProvider;
 
-    mapping(PoolId => mapping(ShareClassId => mapping(address => bool))) public permission;
+    mapping(PoolId poolId => mapping(ShareClassId scId => mapping(address who => bool))) public permission;
+    mapping(PoolId poolId => mapping(ShareClassId scId => int256 amount))) public queuedShares;
+    mapping(PoolId poolId => mapping(ShareClassId scId => mapping(address asset => (mapping uint256 tokenId => int256)))) public queuedAssets;
 
     constructor(address escrow_) Auth(msg.sender) {
         escrow = IPerPoolEscrow(escrow_);
