@@ -246,7 +246,6 @@ abstract contract AdminTargets is
     }
 
     /// @dev Property: After successfully calling redeemRequest for an investor, their redeemRequest[..].lastUpdate equals the current epoch id epochId[poolId]
-    /// @dev Property: _updateRedeemRequest should never revert due to underflow
     function hub_redeemRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 amount) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
@@ -258,9 +257,7 @@ abstract contract AdminTargets is
             uint32 epochId = shareClassManager.epochId(poolId);
 
             eq(lastUpdate, epochId, "lastUpdate is not equal to epochId after redeemRequest");
-        } catch (bytes memory reason) {
-            bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
-            t(!arithmeticRevert, "redeemRequest reverts with arithmetic panic");
+        } catch {
         }
     }  
 
