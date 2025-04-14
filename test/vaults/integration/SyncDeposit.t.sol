@@ -121,6 +121,16 @@ contract SyncDepositTest is SyncDepositTestHelper {
         centrifugeChain.updateMember(syncVault.poolId(), syncVault.trancheId(), self, type(uint64).max);
         assertEq(syncVault.isPermissioned(self), true);
 
+        // Will fail - above max reserve
+        centrifugeChain.updateMaxReserve(
+            syncVault.poolId(), syncVault.trancheId(), address(syncVault), uint128(amount / 2)
+        );
+
+        vm.expectRevert(ISyncRequests.ExceedsMaxReserve.selector);
+        syncVault.deposit(amount, self);
+
+        centrifugeChain.updateMaxReserve(syncVault.poolId(), syncVault.trancheId(), address(syncVault), uint128(amount));
+
         _assertDepositEvents(syncVault, shares.toUint128(), pricePoolPerShare, priceAssetPerShare);
         syncVault.deposit(amount, self);
         assertEq(erc20.balanceOf(self), 0, "Mismatch in sync deposited amount");

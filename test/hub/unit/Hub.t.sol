@@ -82,91 +82,15 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.stopPrank();
     }
-
-    function testErrPoolLocked() public {
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.notifyPool(0);
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.notifyShareClass(0, ShareClassId.wrap(0), bytes32(""));
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.notifySharePrice(0, ShareClassId.wrap(0));
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.notifyAssetPrice(ShareClassId.wrap(0), AssetId.wrap(0));
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.setPoolMetadata(bytes(""));
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.allowPoolAdmin(address(0), false);
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.addShareClass("", "", bytes32(0), bytes(""));
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.approveDeposits(ShareClassId.wrap(0), AssetId.wrap(0), 0);
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.approveRedeems(ShareClassId.wrap(0), AssetId.wrap(0), 0);
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.issueShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.revokeShares(ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.updateRestriction(0, ShareClassId.wrap(0), bytes(""));
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.updateContract(0, ShareClassId.wrap(0), bytes32(0), bytes(""));
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.updateVault(ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), bytes32(0), VaultUpdateKind(0));
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.updatePricePoolPerShare(ShareClassId.wrap(0), D18.wrap(0));
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.createHolding(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), false, 0);
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.updateHolding(ShareClassId.wrap(0), AssetId.wrap(0));
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.updateHoldingValuation(ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)));
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.setHoldingAccountId(ShareClassId.wrap(0), AssetId.wrap(0), AccountId.wrap(0));
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.createAccount(AccountId.wrap(0), false);
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.setAccountMetadata(AccountId.wrap(0), bytes(""));
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.addDebit(AccountId.wrap(0), 0);
-
-        vm.expectRevert(IHub.PoolLocked.selector);
-        hub.addCredit(AccountId.wrap(0), 0);
-
-        vm.stopPrank();
-    }
 }
 
 contract TestNotifyShareClass is TestCommon {
     function testErrShareClassNotFound() public {
         vm.mockCall(address(scm), abi.encodeWithSelector(scm.exists.selector, POOL_A, SC_A), abi.encode(false));
 
-        bytes[] memory cs = new bytes[](1);
-        cs[0] = abi.encodeWithSelector(hub.notifyShareClass.selector, 23, SC_A, bytes32(""));
-
         vm.prank(ADMIN);
         vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
-        hub.execute(POOL_A, cs);
+        hub.notifyShareClass(POOL_A, 23, SC_A, bytes32(""));
     }
 }
 
@@ -176,11 +100,8 @@ contract TestCreateHolding is TestCommon {
             address(hubRegistry), abi.encodeWithSelector(hubRegistry.isRegistered.selector, ASSET_A), abi.encode(false)
         );
 
-        bytes[] memory cs = new bytes[](1);
-        cs[0] = abi.encodeWithSelector(hub.createHolding.selector, SC_A, ASSET_A, IERC7726(address(1)), false, 0);
-
         vm.prank(ADMIN);
         vm.expectRevert(IHubRegistry.AssetNotFound.selector);
-        hub.execute(POOL_A, cs);
+        hub.createHolding(POOL_A, SC_A, ASSET_A, IERC7726(address(1)), false, 0);
     }
 }

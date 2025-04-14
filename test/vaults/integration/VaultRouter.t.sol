@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import "src/misc/interfaces/IERC20.sol";
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
@@ -17,9 +18,11 @@ import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
 import {MockReentrantERC20Wrapper1, MockReentrantERC20Wrapper2} from "test/vaults/mocks/MockReentrantERC20Wrapper.sol";
+import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 
 contract VaultRouterTest is BaseTest {
     using MessageLib for *;
+    using MathLib for uint256;
 
     uint256 constant GAS_BUFFER = 10 gwei;
     bytes PAYLOAD_FOR_GAS_ESTIMATION = MessageLib.NotifyPool(1).serialize();
@@ -45,11 +48,11 @@ contract VaultRouterTest is BaseTest {
 
         erc20.mint(self, amount);
 
-        vm.expectRevert(bytes("AsyncVault/invalid-owner"));
+        vm.expectRevert(IAsyncVault.InvalidOwner.selector);
         vaultRouter.requestDeposit{value: 1 wei}(vault_, amount, self, self);
 
         vaultRouter.enable(vault_);
-        vm.expectRevert(bytes("AsyncRequests/transfer-not-allowed"));
+        vm.expectRevert(IAsyncRequests.TransferNotAllowed.selector);
         vaultRouter.requestDeposit{value: 1 wei}(vault_, amount, self, self);
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
 
@@ -117,7 +120,7 @@ contract VaultRouterTest is BaseTest {
         vm.label(vault_, "vault");
 
         root.veto(address(vaultRouter));
-        vm.expectRevert(bytes("AsyncVault/not-endorsed"));
+        vm.expectRevert(IBaseVault.NotEndorsed.selector);
         vaultRouter.enable(vault_);
         assertEq(vault.isOperator(address(this), address(vaultRouter)), false);
         assertEq(vaultRouter.isEnabled(vault_, address(this)), false);
@@ -128,7 +131,7 @@ contract VaultRouterTest is BaseTest {
         assertEq(vaultRouter.isEnabled(vault_, address(this)), true);
 
         root.veto(address(vaultRouter));
-        vm.expectRevert(bytes("AsyncVault/not-endorsed"));
+        vm.expectRevert(IBaseVault.NotEndorsed.selector);
         vaultRouter.disable(vault_);
         assertEq(vault.isOperator(address(this), address(vaultRouter)), true);
         assertEq(vaultRouter.isEnabled(vault_, address(this)), true);
@@ -284,13 +287,14 @@ contract VaultRouterTest is BaseTest {
         amount2 = uint128(bound(amount2, 4, MAX_UINT128));
         vm.assume(amount2 % 2 == 0);
 
-        uint256 fuel = estimateGas();
+        // NOTE: Multiply by 2 due to coupling Fulfilled* with either ApprovedDeposit or RevokedShares which send a
+        //       message back to Hub
+        uint256 fuel = 2 * estimateGas();
         // deposit
         (ERC20 erc20X, ERC20 erc20Y, AsyncVault vault1, AsyncVault vault2) = setUpMultipleVaults(amount1, amount2);
 
         vaultRouter.enable(address(vault1));
         vaultRouter.enable(address(vault2));
-
         vaultRouter.requestDeposit{value: fuel}(address(vault1), amount1, self, self);
         vaultRouter.requestDeposit{value: fuel}(address(vault2), amount2, self, self);
 
@@ -316,6 +320,8 @@ contract VaultRouterTest is BaseTest {
         assertApproxEqAbs(erc20Y.balanceOf(address(escrow)), assetPayout2, 1);
         assertApproxEqAbs(erc20X.balanceOf(self), 0, 1);
         assertApproxEqAbs(erc20Y.balanceOf(self), 0, 1);
+
+        // claim redeem
         vaultRouter.claimRedeem(address(vault1), self, self);
         vaultRouter.claimRedeem(address(vault2), self, self);
         assertApproxEqAbs(erc20X.balanceOf(address(escrow)), 0, 1);
@@ -547,8 +553,11 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.enableLockDepositRequest(vault_, amount);
         vm.stopPrank();
 
+        // NOTE: Multiply by 2 due to coupling Fulfilled* with either ApprovedDeposit or RevokedShares which send a
+        //       message back to Hub
+        uint256 fuel = 2 * estimateGas();
+
         // Anyone else can execute the request and claim the deposit
-        uint256 fuel = estimateGas();
         centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
         vaultRouter.executeLockedDepositRequest{value: fuel}(vault_, investor);
         (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, investor);
@@ -556,7 +565,7 @@ contract VaultRouterTest is BaseTest {
         IShareToken shareToken = IShareToken(address(vault.share()));
         vaultRouter.claimDeposit(vault_, investor, investor);
 
-        // Investors submits redemption  request
+        // Investors submits redemption request
         vm.deal(investor, 10 ether);
         vm.startPrank(investor);
         shareToken.approve(address(vaultRouter), sharePayout);
@@ -696,6 +705,7 @@ contract VaultRouterTest is BaseTest {
         uint128 price = 2 * 10 ** 18;
         sharePayout = uint128(amount * 10 ** 18 / price);
         assertApproxEqAbs(sharePayout, amount / 2, 2);
+
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId(), vault.trancheId(), bytes32(bytes20(user)), assetId, uint128(amount), sharePayout
         );
@@ -708,6 +718,7 @@ contract VaultRouterTest is BaseTest {
         uint128 price = 2 * 10 ** 18;
         assetPayout = uint128(amount * price / 10 ** 18);
         assertApproxEqAbs(assetPayout, amount * 2, 2);
+
         centrifugeChain.isFulfilledRedeemRequest(
             vault.poolId(), vault.trancheId(), bytes32(bytes20(user)), assetId, assetPayout, uint128(amount)
         );

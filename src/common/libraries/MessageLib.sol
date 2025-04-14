@@ -43,6 +43,8 @@ enum MessageType {
     UpdateHoldingAmount,
     UpdateHoldingValue,
     UpdateShares,
+    ApprovedDeposits,
+    RevokedShares,
     UpdateJournal,
     TriggerUpdateHoldingAmount,
     TriggerUpdateShares
@@ -63,7 +65,8 @@ enum UpdateContractType {
     Permission,
     MaxAssetPriceAge,
     MaxSharePriceAge,
-    Valuation
+    Valuation,
+    SyncDepositMaxReserve
 }
 
 /// @dev Used internally in the VaultUpdateMessage (not represent a submessage)
@@ -114,12 +117,14 @@ library MessageLib {
         (114 << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (65  << uint8(MessageType.UpdateHoldingValue) * 8) +
         (98  << uint8(MessageType.UpdateShares) * 8) +
-        (9   << uint8(MessageType.UpdateJournal) * 8) +
-        (106 << uint8(MessageType.TriggerUpdateHoldingAmount) * 8) +
-        (90  << uint8(MessageType.TriggerUpdateShares) * 8);
+        (57  << uint8(MessageType.ApprovedDeposits) * 8) +
+        (57  << uint8(MessageType.RevokedShares) * 8) +
+        (9   << uint8(MessageType.UpdateJournal) * 8);
 
-    uint256 constant MESSAGE_LENGTHS_2 = 0;
-    // (100 << (31 - uint8(MessageLib.NewMessage)) * 8);
+    // forgefmt: disable-next-item
+    uint256 constant MESSAGE_LENGTHS_2 = 
+        (106 << (uint8(MessageType.TriggerUpdateHoldingAmount) - 32) * 8) +
+        (90  << (uint8(MessageType.TriggerUpdateShares) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -734,8 +739,6 @@ library MessageLib {
     //---------------------------------------
 
     struct UpdateContractValuation {
-        uint64 poolId;
-        bytes16 scId;
         uint128 assetId;
         bytes32 valuation;
     }
@@ -747,16 +750,34 @@ library MessageLib {
     {
         require(updateContractType(data) == UpdateContractType.Valuation, UnknownMessageType());
 
-        return UpdateContractValuation({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            assetId: data.toUint128(25),
-            valuation: data.toBytes32(41)
-        });
+        return UpdateContractValuation({assetId: data.toUint128(1), valuation: data.toBytes32(17)});
     }
 
     function serialize(UpdateContractValuation memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(UpdateContractType.Valuation, t.poolId, t.scId, t.assetId, t.valuation);
+        return abi.encodePacked(UpdateContractType.Valuation, t.assetId, t.valuation);
+    }
+
+    //---------------------------------------
+    //   UpdateContract.SyncDepositMaxReserve (submsg)
+    //---------------------------------------
+
+    struct UpdateContractSyncDepositMaxReserve {
+        uint128 assetId;
+        uint128 maxReserve;
+    }
+
+    function deserializeUpdateContractSyncDepositMaxReserve(bytes memory data)
+        internal
+        pure
+        returns (UpdateContractSyncDepositMaxReserve memory)
+    {
+        require(updateContractType(data) == UpdateContractType.SyncDepositMaxReserve, UnknownMessageType());
+
+        return UpdateContractSyncDepositMaxReserve({assetId: data.toUint128(1), maxReserve: data.toUint128(17)});
+    }
+
+    function serialize(UpdateContractSyncDepositMaxReserve memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(UpdateContractType.SyncDepositMaxReserve, t.assetId, t.maxReserve);
     }
 
     //---------------------------------------
@@ -1065,7 +1086,7 @@ library MessageLib {
         });
     }
 
-    function serialize(UpdateHoldingAmount memory t) public pure returns (bytes memory) {
+    function serialize(UpdateHoldingAmount memory t) internal pure returns (bytes memory) {
         bytes memory debits = t.debits.toBytes();
         bytes memory credits = t.credits.toBytes();
 
@@ -1146,6 +1167,58 @@ library MessageLib {
         return abi.encodePacked(
             MessageType.UpdateShares, t.poolId, t.scId, t.who, t.pricePerShare, t.shares, t.timestamp, t.isIssuance
         );
+    }
+
+    //---------------------------------------
+    //    ApprovedDeposits
+    //---------------------------------------
+
+    struct ApprovedDeposits {
+        uint64 poolId;
+        bytes16 scId;
+        uint128 assetId;
+        uint128 assetAmount;
+    }
+
+    function deserializeApprovedDeposits(bytes memory data) internal pure returns (ApprovedDeposits memory) {
+        require(messageType(data) == MessageType.ApprovedDeposits, UnknownMessageType());
+
+        return ApprovedDeposits({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            assetId: data.toUint128(25),
+            assetAmount: data.toUint128(41)
+        });
+    }
+
+    function serialize(ApprovedDeposits memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.ApprovedDeposits, t.poolId, t.scId, t.assetId, t.assetAmount);
+    }
+
+    //---------------------------------------
+    //    RevokedShares
+    //---------------------------------------
+
+    struct RevokedShares {
+        uint64 poolId;
+        bytes16 scId;
+        uint128 assetId;
+        uint128 assetAmount;
+    }
+
+    function deserializeRevokedShares(bytes memory data) internal pure returns (RevokedShares memory) {
+        require(messageType(data) == MessageType.RevokedShares, UnknownMessageType());
+
+        return RevokedShares({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            assetId: data.toUint128(25),
+            assetAmount: data.toUint128(41)
+        });
+    }
+
+    function serialize(RevokedShares memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.RevokedShares, t.poolId, t.scId, t.assetId, t.assetAmount);
     }
 
     //---------------------------------------
