@@ -601,19 +601,29 @@ contract ShareClassManager is Auth, IShareClassManager {
     }
 
     function _updateMetadata(ShareClassId scId_, string calldata name, string calldata symbol, bytes32 salt) private {
-        uint256 nLen = bytes(name).length;
-        require(nLen > 0 && nLen <= 128, InvalidMetadataName());
+        uint256 nameLen = bytes(name).length;
+        require(nameLen > 0 && nameLen <= 128, InvalidMetadataName());
 
-        uint256 sLen = bytes(symbol).length;
-        require(sLen > 0 && sLen <= 32, InvalidMetadataSymbol());
-        require(!salts[salt], AlreadyUsedSalt());
+        uint256 symbolLen = bytes(symbol).length;
+        require(symbolLen > 0 && symbolLen <= 32, InvalidMetadataSymbol());
 
         require(salt != bytes32(0), InvalidSalt());
-        // Either the salt was not initialized yet or it is the same as before - i.e. updating the salt is not possible
-        require(salt == metadata[scId_].salt || metadata[scId_].salt == bytes32(0));
-        salts[salt] = true;
 
-        metadata[scId_] = ShareClassMetadata(name, symbol, salt);
+        ShareClassMetadata storage meta = metadata[scId_];
+
+        // Ensure that the salt remains unchanged if it's already set,
+        // or that it is being set for the first time.
+        require(salt == meta.salt || meta.salt == bytes32(0), InvalidSalt());
+
+        // If this is the first time setting the metadata, ensure the salt wasn't already used.
+        if (meta.salt == bytes32(0)) {
+            require(!salts[salt], AlreadyUsedSalt());
+            salts[salt] = true;
+        }
+
+        meta.name = name;
+        meta.symbol = symbol;
+        meta.salt = salt;
     }
 
     function _postClaimUpdateQueued(

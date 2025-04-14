@@ -214,7 +214,6 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
         assertEq(shareClass.wards(nonWard), 0);
     }
 
-    /*
     function testFile() public {
         address hubRegistryNew = makeAddr("hubRegistryNew");
         vm.expectEmit(true, true, true, true);
@@ -252,14 +251,20 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
         vm.assume(salt != SC_SALT && salt != bytes32(0));
         vm.assume(salt != bytes32(0));
 
-        vm.expectEmit();
-        emit IShareClassManager.UpdateMetadata(poolId, scId, name, symbol, salt);
+
+        // New salt triggers revert
+        vm.expectRevert(IShareClassManager.InvalidSalt.selector);
         shareClass.updateMetadata(poolId, scId, name, symbol, salt, bytes(""));
 
+        vm.expectEmit();
+        emit IShareClassManager.UpdateMetadata(poolId, scId, name, symbol, SC_SALT);
+        shareClass.updateMetadata(poolId, scId, name, symbol, SC_SALT, bytes(""));
+
         (string memory name_, string memory symbol_, bytes32 salt_) = shareClass.metadata(scId);
+
         assertEq(name, name_, "Metadata name mismatch");
         assertEq(symbol, symbol_, "Metadata symbol mismatch");
-        assertEq(salt, salt_, "Salt mismatch");
+        assertEq(SC_SALT, salt_, "Salt mismatch");
     }
 
     function testPreviewNextShareClassId() public view notThisContract(hubRegistryAddress) {
@@ -293,8 +298,6 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
 
         assertEq(shareClass.shareClassCount(poolId), 2);
         assert(shareClass.shareClassIds(poolId, nextScId));
-        assertEq(shareClass.epochId(poolId), mockEpochId, "epochId must not be re-initialized");
-
         assert(ShareClassId.unwrap(shareClass.previewNextShareClassId(poolId)) != ShareClassId.unwrap(nextScId));
     }
 
@@ -302,12 +305,13 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
     assertEq(shareClass.previewShareClassId(poolId, index).raw(), bytes16((uint128(poolId.raw()) << 64) + index));
     }
 
-    function testUpdateShareClass() public {
+    function testUpdatePricePerShare() public {
         vm.expectEmit();
-        emit IShareClassManager.UpdateShareClass(poolId, scId, 0, d18(2, 1), 0, "SOME_TEST_BYTES");
-        shareClass.updateShareClass(poolId, scId, d18(2, 1), "SOME_TEST_BYTES");
+        emit IShareClassManager.UpdateShareClass(poolId, scId, 0, d18(2, 1), 0);
+        shareClass.updatePricePerShare(poolId, scId, d18(2, 1));
     }
 
+    /*
     function testIncreaseShareClassIssuance(uint128 navPerShare_, uint128 amount) public {
         vm.assume(navPerShare_ > 0);
         amount = uint128(bound(amount, 0, type(uint128).max / navPerShare_ - 1));
