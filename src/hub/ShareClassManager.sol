@@ -354,7 +354,8 @@ contract ShareClassManager is Auth, IShareClassManager {
 
         // If there is nothing to claim anymore we can short circuit the in between epochs
         if (userOrder.pending == 0) {
-            userOrder.lastUpdate = investEpochId[scId_][payoutAssetId];
+            // The current epoch is always one step ahead of the stored one
+            userOrder.lastUpdate = investEpochId[scId_][payoutAssetId] + 1;
             canClaimAgain = false;
         }
 
@@ -457,7 +458,8 @@ contract ShareClassManager is Auth, IShareClassManager {
 
         // If there is nothing to claim anymore we can short circuit the in between epochs
         if (userOrder.pending == 0) {
-            userOrder.lastUpdate = redeemEpochId[scId_][payoutAssetId];
+            // The current epoch is always one step ahead of the stored one
+            userOrder.lastUpdate = redeemEpochId[scId_][payoutAssetId] + 1;
             canClaimAgain = false;
         }
 
