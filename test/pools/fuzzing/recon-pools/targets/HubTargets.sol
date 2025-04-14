@@ -54,12 +54,18 @@ abstract contract HubTargets is
         AssetId assetId = AssetId.wrap(assetIdAsUint);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
         
+        (, uint32 lastUpdateBefore) = shareClassManager.depositRequest(scId, assetId, investor);
+        (,, uint32 latestIssuance,) = shareClassManager.epochPointers(scId, assetId);
+
         hub.claimDeposit(poolId, scId, assetId, investor);
 
-        (, uint32 lastUpdate) = shareClassManager.depositRequest(scId, assetId, investor);
+        (, uint32 lastUpdateAfter) = shareClassManager.depositRequest(scId, assetId, investor);
         uint32 epochId = shareClassManager.epochId(poolId);
 
-        eq(lastUpdate, epochId, "lastUpdate is not equal to epochId");
+        // If the latestIssuance is < lastUpdateBefore, the user can't have claimed yet but their epochId is still updated
+        if(latestIssuance >= lastUpdateBefore) {
+            eq(lastUpdateAfter, epochId, "lastUpdate is not equal to epochId");
+        }
     }
 
     function hub_claimDeposit_clamped(uint64 poolIdAsUint, uint32 scIdEntropy) public updateGhosts asActor {

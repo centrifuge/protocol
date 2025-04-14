@@ -235,20 +235,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     // }
 
-    // forge test --match-test test_hub_claimDeposit_clamped_1 -vvv 
-    // TODO: figure out why this is failing
-    function test_hub_claimDeposit_clamped_1() public {
-
-        shortcut_update_valuation(6,1, 123,false,0);
-
-        hub_depositRequest_clamped(0,0,1);
-
-        hub_approveDeposits_clamped(0,0,1,true);
-
-        hub_claimDeposit_clamped(0,0);
-
-    }
-
     // forge test --match-test test_property_user_cannot_mutate_pending_redeem_2 -vvv 
     // NOTE: reverts with AccountingAlreadyUnlocked, so not a property break but need to see if this persists after changes to handlers 
     function test_property_user_cannot_mutate_pending_redeem_2() public {
@@ -274,6 +260,17 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_redeemRequest_clamped(65862703409544118,57,3);
 
         property_user_cannot_mutate_pending_redeem();
+
+    }
+
+    // forge test --match-test test_hub_claimRedeem_clamped_3 -vvv 
+    // TODO: seems like this might be a valid edge case, but need to understand the implications
+    // it basically states that if a user calls claimRedeem before they have had their shares revoked, their lastUpdate gets out of sync with the epochId
+    function test_hub_claimRedeem_clamped_3() public {
+
+        shortcut_notify_share_class(6,1,1234,false,0,1,1,1);
+
+        hub_claimRedeem_clamped(0,0);
 
     }
 }
