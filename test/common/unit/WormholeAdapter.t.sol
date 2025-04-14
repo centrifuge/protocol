@@ -14,7 +14,7 @@ import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 contract MockWormholeDeliveryProvider {
-    uint16 constant chainId = 2;
+    uint16 public immutable chainId = 2;
 }
 
 contract MockWormholeRelayer is Mock {
