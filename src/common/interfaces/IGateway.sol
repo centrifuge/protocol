@@ -41,6 +41,13 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
         bytes pendingBatch;
     }
 
+    struct Funds {
+        /// @notice funds associated to pay for sending messages
+        uint64 value;
+        /// @notice address where to refund the remaining gas
+        address refund;
+    }
+
     // --- Events ---
     event ProcessBatch(uint16 centrifugeId, bytes batch, IAdapter adapter);
     event ProcessProof(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
@@ -59,6 +66,7 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     event File(bytes32 indexed what, uint16 centrifugeId, IAdapter[] adapters);
     event File(bytes32 indexed what, address addr);
 
+    event SetRefundAddress(PoolId poolId, address refund);
     event SubsidizePool(PoolId indexed poolId, address indexed sender, uint256 amount);
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
@@ -121,6 +129,12 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @param  data New address.
     function file(bytes32 what, address data) external;
 
+    /// @notice Set the refund address for message associated to a poolId
+    function setRefundAddress(PoolId poolId, address refund) external;
+
+    /// @notice Pay upfront to later be able to subsidize messages associated to a pool
+    function subsidizePool(PoolId poolId) external payable;
+
     /// @notice Prepays for the TX cost for sending the messages through the adapters
     ///         Currently being called from Vault Router only.
     ///         In order to prepay, the method MUST be called with `msg.value`.
@@ -147,8 +161,7 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     // --- Helpers ---
     /// @notice A view method of the current quorum.abi
     /// @dev    Quorum shows the amount of votes needed in order for a message to be dispatched further.
-    ///         The quorum is taken from the first adapter.
-    ///         Current quorum is the amount of all adapters.
+    ///         The quorum is taken from the first adapter which is always the length of active adapters.
     /// @param  centrifugeId Chain where the adapter is configured for
     /// return  Needed amount
     function quorum(uint16 centrifugeId) external view returns (uint8);
@@ -186,10 +199,6 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @notice Returns the address of the adapter at the given id.
     /// @param  centrifugeId Chain where the adapter is configured for
     function adapters(uint16 centrifugeId, uint256 id) external view returns (IAdapter);
-
-    /// @notice Returns the number of adapters.
-    /// @param  centrifugeId Chain where the adapter is configured for
-    function adapterCount(uint16 centrifugeId) external view returns (uint256);
 
     /// @notice Returns the timestamp when the given recovery can be executed.
     /// @param  centrifugeId Chain where the adapter is configured for

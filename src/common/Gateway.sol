@@ -45,7 +45,7 @@ contract Gateway is Auth, IGateway, Recoverable {
     // Payment
     address public transient transactionPayer;
     uint256 public transient fuel;
-    mapping(PoolId => uint256) public subsidy;
+    mapping(PoolId => Funds) public subsidy;
 
     // Adapters
     mapping(uint16 centrifugeId => IAdapter[]) public adapters;
@@ -112,6 +112,10 @@ contract Gateway is Auth, IGateway, Recoverable {
         else revert FileUnrecognizedParam();
 
         emit File(what, instance);
+    }
+
+    receive() external payable {
+        subsidizePool(PoolId.wrap(0));
     }
 
     //----------------------------------------------------------------------------------------------
@@ -273,45 +277,47 @@ contract Gateway is Auth, IGateway, Recoverable {
 
         uint64 batchGasLimit_ =
             (isBatching) ? batchGasLimit[centrifugeId][poolId] : gasService.gasLimit(centrifugeId, batch);
-        uint64 proofGasLimit = gasService.gasLimit(centrifugeId, proof);
 
         for (uint256 i; i < adapters_.length; i++) {
-            IAdapter currentAdapter = IAdapter(adapters_[i]);
             bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
             bytes memory payload = isPrimaryAdapter ? batch : proof;
-            uint64 gasLimit = isPrimaryAdapter ? batchGasLimit_ : proofGasLimit;
 
-            uint256 consumed = currentAdapter.estimate(centrifugeId, payload, gasLimit);
+            uint256 consumed = adapters_[i].estimate(centrifugeId, payload, batchGasLimit_);
 
             if (transactionPayer != address(0)) {
                 require(consumed <= fuel, NotEnoughTransactionGas());
                 fuel -= consumed;
             } else {
-                if (consumed <= subsidy[poolId]) {
-                    subsidy[poolId] -= consumed;
+                if (consumed <= subsidy[poolId].value) {
+                    subsidy[poolId].value -= uint64(consumed);
                 } else {
                     consumed = 0;
                 }
             }
 
-            currentAdapter.send{value: consumed}(
+            adapters_[i].send{value: consumed}(
                 centrifugeId,
                 payload,
-                gasLimit,
+                batchGasLimit_,
                 transactionPayer != address(0) ? transactionPayer : address(this)
             );
 
             if (isPrimaryAdapter) {
-                emit SendBatch(centrifugeId, batch, currentAdapter);
+                emit SendBatch(centrifugeId, batch, adapters_[i]);
             } else {
-                emit SendProof(centrifugeId, proof, currentAdapter);
+                emit SendProof(centrifugeId, proof, adapters_[i]);
             }
         }
 
     }
 
-    function subsidizePool(PoolId poolId) external payable {
-        subsidy[poolId] += msg.value;
+    function setRefundAddress(PoolId poolId, address refund) public auth {
+        subsidy[poolId].refund = refund;
+        emit SetRefundAddress(poolId, refund);
+    }
+
+    function subsidizePool(PoolId poolId) public payable {
+        subsidy[poolId].value += uint64(msg.value);
         emit SubsidizePool(poolId, msg.sender, msg.value);
     }
 
@@ -353,12 +359,10 @@ contract Gateway is Auth, IGateway, Recoverable {
     {
         bytes memory proof = processor.createMessageProof(payload);
 
-        uint256 proofGasLimit = gasService.gasLimit(centrifugeId, proof);
-
-        uint256 messageGasLimit = 0;
+        uint256 gasLimit = 0;
         for (uint256 pos; pos < payload.length;) {
             bytes calldata inner = payload[pos:payload.length];
-            messageGasLimit += gasService.gasLimit(centrifugeId, inner);
+            gasLimit += gasService.gasLimit(centrifugeId, inner);
             pos += processor.messageLength(inner);
         }
 
@@ -366,9 +370,8 @@ contract Gateway is Auth, IGateway, Recoverable {
 
         uint256 adaptersCount = adapters[centrifugeId].length;
         for (uint256 i; i < adaptersCount; i++) {
-            uint256 gasLimit_ = i == PRIMARY_ADAPTER_ID - 1 ? messageGasLimit : proofGasLimit;
             bytes memory message = i == PRIMARY_ADAPTER_ID - 1 ? payload : proof;
-            uint256 estimated = IAdapter(adapters[centrifugeId][i]).estimate(centrifugeId, message, gasLimit_);
+            uint256 estimated = IAdapter(adapters[centrifugeId][i]).estimate(centrifugeId, message, gasLimit);
             perAdapter[i] = estimated;
             total += estimated;
         }
@@ -389,10 +392,5 @@ contract Gateway is Auth, IGateway, Recoverable {
     /// @inheritdoc IGateway
     function votes(uint16 centrifugeId, bytes32 batchHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory) {
         return inboundBatch[centrifugeId][batchHash].votes;
-    }
-
-    /// @inheritdoc IGateway
-    function adapterCount(uint16 centrifugeId) external view returns (uint256) {
-        return adapters[centrifugeId].length;
     }
 }

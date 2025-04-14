@@ -778,8 +778,8 @@ contract GatewayTest is Test {
         bytes memory message = MessageLib.NotifyPool(POOL_A.raw()).serialize();
 
         uint256 firstRouterEstimate = FIRST_ADAPTER_ESTIMATE + BASE_MESSAGE_ESTIMATE;
-        uint256 secondRouterEstimate = SECOND_ADAPTER_ESTIMATE + BASE_PROOF_ESTIMATE;
-        uint256 thirdRouterEstimate = THIRD_ADAPTER_ESTIMATE + BASE_PROOF_ESTIMATE;
+        uint256 secondRouterEstimate = SECOND_ADAPTER_ESTIMATE + BASE_MESSAGE_ESTIMATE;
+        uint256 thirdRouterEstimate = THIRD_ADAPTER_ESTIMATE + BASE_MESSAGE_ESTIMATE;
         uint256 totalEstimate = firstRouterEstimate + secondRouterEstimate + thirdRouterEstimate;
 
         (uint256[] memory tokens, uint256 total) = gateway.estimate(REMOTE_CENTRIFUGE_ID, message);
