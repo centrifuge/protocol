@@ -29,7 +29,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     uint128 constant SHARE_AMOUNT = 10 * 1e18; // Share from USD
     uint128 constant APPROVED_INVESTOR_AMOUNT = INVESTOR_AMOUNT / 5;
     uint128 constant APPROVED_SHARE_AMOUNT = SHARE_AMOUNT / 5;
-    D18 NAV_PER_SHARE = d18(2, 1);
+    uint128 NAV_PER_SHARE = 2 * 1e18;
 
     PoolId poolId;
     ShareClassId scId;
@@ -85,7 +85,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         // executed via the PoolRouter
         assetId = newAssetId(123);
         hub_approveRedeems(poolId.raw(), scId.raw(), assetId.raw(), uint128(10000000));
-        hub_revokeShares(poolId.raw(), scId.raw(), assetId.raw(), d18(10000000), identityValuation);
+        hub_revokeShares(poolId.raw(), scId.raw(), assetId.raw(), 10000000, identityValuation);
 
         // claim redemption
         hub_claimRedeem(poolId.raw(), scId.raw(), 123);
@@ -148,20 +148,20 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     function test_shortcut_create_pool_and_update_holding_amount_increase() public {
-        shortcut_create_pool_and_update_holding_amount(18, 123, SC_SALT, false, 0x01, 10e18, d18(20e18), 10e18, 10e18);
+        shortcut_create_pool_and_update_holding_amount(18, 123, SC_SALT, false, 0x01, 10e18, 20e18, 10e18, 10e18);
     }
 
     function test_shortcut_create_pool_and_update_holding_amount_decrease() public {
         // create the pool and update the holding amount
-        shortcut_create_pool_and_update_holding_amount(18, 123, SC_SALT, false, 0x01, 10e18, d18(20e18), 10e18, 10e18);
+        shortcut_create_pool_and_update_holding_amount(18, 123, SC_SALT, false, 0x01, 10e18, 20e18, 10e18, 10e18);
         
         // decrease the holding amount
         toggle_IsIncrease();
-        hub_updateHoldingAmount_clamped(1,1,1,5e18,d18(20e18),false);
+        hub_updateHoldingAmount_clamped(1,1,1,5e18,20e18,false);
     }
 
     function test_shortcut_create_pool_and_update_holding_value() public {
-        shortcut_create_pool_and_update_holding_value(18, 123, SC_SALT, false, 0x01, d18(20e18));
+        shortcut_create_pool_and_update_holding_value(18, 123, SC_SALT, false, 0x01, 20e18);
     }
 
     function test_shortcut_create_pool_and_update_journal() public {
@@ -235,12 +235,45 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     // }
 
-    // forge test --match-test test_hub_depositRequest_clamped_0 -vvv 
-    function test_hub_depositRequest_clamped_0() public {
+    // forge test --match-test test_hub_claimDeposit_clamped_1 -vvv 
+    // TODO: figure out why this is failing
+    function test_hub_claimDeposit_clamped_1() public {
 
-        shortcut_deposit(6,1, 123,false,0,1,1,d18(1));
+        shortcut_update_valuation(6,1, 123,false,0);
 
-        hub_depositRequest_clamped(0,0,0);
+        hub_depositRequest_clamped(0,0,1);
+
+        hub_approveDeposits_clamped(0,0,1,true);
+
+        hub_claimDeposit_clamped(0,0);
+
+    }
+
+    // forge test --match-test test_property_user_cannot_mutate_pending_redeem_2 -vvv 
+    // NOTE: reverts with AccountingAlreadyUnlocked, so not a property break but need to see if this persists after changes to handlers 
+    function test_property_user_cannot_mutate_pending_redeem_2() public {
+
+        shortcut_create_pool_and_holding(6,83592,123,false,1);
+
+        shortcut_deposit_cancel_redemption(6,2473,1234,false,0,381167046633928023212924889711127,412242173503052278826150478292963,1,21750070695628971228823856154281983);
+
+        shortcut_notify_share_class(6,1,12345,false,0,10,61,1586790552879362925709209378689403);
+
+        shortcut_create_pool_and_update_holding(6,2741,123456,false,1727,21030100171944266448215486238085738);
+
+        shortcut_create_pool_and_update_holding(6,139,1234567,false,21,16864147748619575367075340292120);
+
+        shortcut_create_pool_and_update_holding_value(6,16771,123456789,false,17,5);
+
+        shortcut_create_pool_and_update_holding(7,245,1234567890,false,12,35687684058930795500819016577535);
+
+        hub_addShareClass(281474976710663,1234567890);
+
+        shortcut_create_pool_and_update_holding_value(6,40,12345678901,false,0,1);
+
+        hub_redeemRequest_clamped(65862703409544118,57,3);
+
+        property_user_cannot_mutate_pending_redeem();
 
     }
 }

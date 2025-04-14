@@ -117,18 +117,18 @@ abstract contract AdminTargets is
         hub_createHolding(poolId.raw(), scId.raw(), assetId.raw(), valuation, isLiability, prefix);
     }
 
-    function hub_issueShares(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, D18 navPerShare) public {
+    function hub_issueShares(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 navPerShare) public {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
-        hub.issueShares(poolId, scId, assetId, navPerShare);
+        hub.issueShares(poolId, scId, assetId, D18.wrap(navPerShare));
     }
 
-    function hub_issueShares_clamped(uint64 poolIdEntropy, uint32 scEntropy, D18 navPerShare) public {
+    function hub_issueShares_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 navPerShare) public {
         PoolId poolId = _getRandomPoolId(poolIdEntropy);
         ShareClassId scId = _getRandomShareClassIdForPool(poolId, scEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
-        hub.issueShares(poolId, scId, assetId, navPerShare);
+        hub.issueShares(poolId, scId, assetId, D18.wrap(navPerShare));
     }
 
     function hub_notifyPool(uint64 poolIdAsUint, uint16 centrifugeId) public {
@@ -142,19 +142,19 @@ abstract contract AdminTargets is
         hub.notifyShareClass(poolId, centrifugeId, scId, hook);
     }
 
-    function hub_revokeShares(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, D18 navPerShare, IERC7726 valuation) public {
+    function hub_revokeShares(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 navPerShare, IERC7726 valuation) public {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId payoutAssetId = AssetId.wrap(assetIdAsUint);
-        hub.revokeShares(poolId, scId, payoutAssetId, navPerShare, valuation);
+        hub.revokeShares(poolId, scId, payoutAssetId, D18.wrap(navPerShare), valuation);
     }
 
-    function hub_revokeShares_clamped(uint64 poolIdEntropy, uint32 scEntropy, D18 navPerShare, bool isIdentityValuation) public {
+    function hub_revokeShares_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 navPerShare, bool isIdentityValuation) public {
         PoolId poolId = _getRandomPoolId(poolIdEntropy);
         ShareClassId scId = _getRandomShareClassIdForPool(poolId, scEntropy);
         AssetId payoutAssetId = hubRegistry.currency(poolId);
         IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
-        hub.revokeShares(poolId, scId, payoutAssetId, navPerShare, valuation);
+        hub.revokeShares(poolId, scId, payoutAssetId, D18.wrap(navPerShare), valuation);
     }
 
     function hub_setAccountMetadata(uint64 poolIdAsUint, uint32 accountAsInt, bytes memory metadata) public {
@@ -341,14 +341,14 @@ abstract contract AdminTargets is
         }
     }
 
-    function hub_updateHoldingAmount(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 amount, D18 pricePerUnit, bool isIncrease, JournalEntry[] memory debits, JournalEntry[] memory credits) public updateGhosts {
+    function hub_updateHoldingAmount(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 amount, uint128 pricePerUnit, bool isIncrease, JournalEntry[] memory debits, JournalEntry[] memory credits) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
-        hub.updateHoldingAmount(poolId, scId, assetId, amount, pricePerUnit, isIncrease, debits, credits);
+        hub.updateHoldingAmount(poolId, scId, assetId, amount, D18.wrap(pricePerUnit), isIncrease, debits, credits);
     }
 
-    function hub_updateHoldingAmount_clamped(uint64 poolEntropy, uint32 scEntropy, uint8 accountEntropy, uint128 amount, D18 pricePerUnit, bool isIncrease) public updateGhosts {
+    function hub_updateHoldingAmount_clamped(uint64 poolEntropy, uint32 scEntropy, uint8 accountEntropy, uint128 amount, uint128 pricePerUnit, bool isIncrease) public updateGhosts {
         PoolId poolId = _getRandomPoolId(poolEntropy);
         ShareClassId scId = _getRandomShareClassIdForPool(poolId, scEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
@@ -367,14 +367,14 @@ abstract contract AdminTargets is
         hub_updateHoldingAmount(poolId.raw(), scId.raw(), assetId.raw(), amount, pricePerUnit, isIncrease, debits, credits);
     }
 
-    function hub_updateHoldingValue(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, D18 pricePerUnit) public updateGhosts {
+    function hub_updateHoldingValue(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 pricePerUnit) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
-        hub.updateHoldingValue(poolId, scId, assetId, pricePerUnit);
+        hub.updateHoldingValue(poolId, scId, assetId, D18.wrap(pricePerUnit));
     }
 
-    function hub_updateHoldingValue_clamped(uint64 poolEntropy, uint32 scEntropy, D18 pricePerUnit) public updateGhosts {
+    function hub_updateHoldingValue_clamped(uint64 poolEntropy, uint32 scEntropy, uint128 pricePerUnit) public updateGhosts {
         PoolId poolId = _getRandomPoolId(poolEntropy);
         ShareClassId scId = _getRandomShareClassIdForPool(poolId, scEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
@@ -386,28 +386,28 @@ abstract contract AdminTargets is
         hub.updateJournal(poolId, debits, credits);
     }
 
-    function hub_increaseShareIssuance(uint64 poolIdAsUint, bytes16 scIdAsBytes, D18 pricePerShare, uint128 amount) public updateGhosts {
+    function hub_increaseShareIssuance(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 pricePerShare, uint128 amount) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        hub.increaseShareIssuance(poolId, scId, pricePerShare, amount);
+        hub.increaseShareIssuance(poolId, scId, D18.wrap(pricePerShare), amount);
     }
 
-    function hub_increaseShareIssuance_clamped(uint64 poolEntropy, uint32 scEntropy, D18 pricePerShare, uint128 amount) public updateGhosts {
+    function hub_increaseShareIssuance_clamped(uint64 poolEntropy, uint32 scEntropy, uint128 pricePerShare, uint128 amount) public updateGhosts {
         PoolId poolId = _getRandomPoolId(poolEntropy);
         ShareClassId scId = _getRandomShareClassIdForPool(poolId, scEntropy);
-        hub.increaseShareIssuance(poolId, scId, pricePerShare, amount);
+        hub.increaseShareIssuance(poolId, scId, D18.wrap(pricePerShare), amount);
     }
 
-    function hub_decreaseShareIssuance(uint64 poolIdAsUint, bytes16 scIdAsBytes, D18 pricePerShare, uint128 amount) public updateGhosts {
+    function hub_decreaseShareIssuance(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 pricePerShare, uint128 amount) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        hub.decreaseShareIssuance(poolId, scId, pricePerShare, amount);
+        hub.decreaseShareIssuance(poolId, scId, D18.wrap(pricePerShare), amount);
     }
 
-    function hub_decreaseShareIssuance_clamped(uint64 poolEntropy, uint32 scEntropy, D18 pricePerShare, uint128 amount) public updateGhosts {
+    function hub_decreaseShareIssuance_clamped(uint64 poolEntropy, uint32 scEntropy, uint128 pricePerShare, uint128 amount) public updateGhosts {
         PoolId poolId = _getRandomPoolId(poolEntropy);
         ShareClassId scId = _getRandomShareClassIdForPool(poolId, scEntropy);
-        hub.decreaseShareIssuance(poolId, scId, pricePerShare, amount);
+        hub.decreaseShareIssuance(poolId, scId, D18.wrap(pricePerShare), amount);
     }
 
     // === ShareClassManager === //
@@ -428,11 +428,11 @@ abstract contract AdminTargets is
         shareClassManager.claimRedeemUntilEpoch(poolId, shareClassId_, investor, payoutAssetId, endEpochId);
     }
 
-    function shareClassManager_issueSharesUntilEpoch(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, D18 navPerShare, uint32 endEpochId) public updateGhosts asAdmin {
+    function shareClassManager_issueSharesUntilEpoch(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 navPerShare, uint32 endEpochId) public updateGhosts asAdmin {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId shareClassId_ = ShareClassId.wrap(scIdAsBytes);
         AssetId depositAssetId = AssetId.wrap(assetIdAsUint);
-        shareClassManager.issueSharesUntilEpoch(poolId, shareClassId_, depositAssetId, navPerShare, endEpochId);
+        shareClassManager.issueSharesUntilEpoch(poolId, shareClassId_, depositAssetId, D18.wrap(navPerShare), endEpochId);
     }
 
     function shareClassManager_revokeSharesUntilEpoch(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, D18 navPerShare, IERC7726 valuation, uint32 endEpochId) public updateGhosts asAdmin {

@@ -67,7 +67,7 @@ abstract contract TargetFunctions is
         uint24 prefix,
         uint128 amount,
         uint128 maxApproval,
-        D18 navPerShare
+        uint128 navPerShare
     ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
         decimals %= 24; // upper bound of decimals for most ERC20s is 24
         require(decimals >= 6, "decimals must be >= 6");
@@ -98,7 +98,7 @@ abstract contract TargetFunctions is
         uint24 prefix,
         uint128 amount,
         uint128 maxApproval,
-        D18 navPerShare
+        uint128 navPerShare
     ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
         decimals %= 24; // upper bound of decimals for most ERC20s is 24
         require(decimals >= 6, "decimals must be >= 6");
@@ -123,7 +123,7 @@ abstract contract TargetFunctions is
         uint24 prefix,
         uint128 amount,
         uint128 maxApproval,
-        D18 navPerShare
+        uint128 navPerShare
     ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
         decimals %= 24; // upper bound of decimals for most ERC20s is 24
         require(decimals >= 6, "decimals must be >= 6");
@@ -151,7 +151,7 @@ abstract contract TargetFunctions is
         uint24 prefix,
         uint128 amount,
         uint128 maxApproval,
-        D18 navPerShare
+        uint128 navPerShare
     ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
         decimals %= 24; // upper bound of decimals for most ERC20s is 24
         require(decimals >= 6, "decimals must be >= 6");
@@ -175,7 +175,7 @@ abstract contract TargetFunctions is
         uint24 prefix,
         uint128 amount,
         uint128 maxApproval,
-        D18 navPerShare
+        uint128 navPerShare
     ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
         decimals %= 24; // upper bound of decimals for most ERC20s is 24
         require(decimals >= 6, "decimals must be >= 6");
@@ -201,7 +201,7 @@ abstract contract TargetFunctions is
         uint128 shareAmount,
         uint32 isoCode,
         uint128 maxApproval,
-        D18 navPerShare,
+        uint128 navPerShare,
         bool isIdentityValuation
     ) public clearQueuedCalls {
         // request redemption
@@ -229,7 +229,7 @@ abstract contract TargetFunctions is
         uint128 shareAmount,
         uint32 isoCode,
         uint128 maxApproval,
-        D18 navPerShare,
+        uint128 navPerShare,
         bool isIdentityValuation
     ) public clearQueuedCalls {
         shortcut_redeem(poolId, scId, shareAmount, isoCode, maxApproval, navPerShare, isIdentityValuation);
@@ -250,7 +250,7 @@ abstract contract TargetFunctions is
         uint128 depositAmount,
         uint128 shareAmount,
         uint128 maxApproval,
-        D18 navPerShare
+        uint128 navPerShare
     ) public clearQueuedCalls {
         decimals %= 24; // upper bound of decimals for most ERC20s is 24
         require(decimals >= 6, "decimals must be >= 6");
@@ -285,7 +285,7 @@ abstract contract TargetFunctions is
         uint128 depositAmount,
         uint128 shareAmount,
         uint128 maxApproval,
-        D18 navPerShare
+        uint128 navPerShare
     ) public clearQueuedCalls  {
         decimals %= 24; // upper bound of decimals for most ERC20s is 24
         require(decimals >= 6, "decimals must be >= 6");
@@ -307,7 +307,7 @@ abstract contract TargetFunctions is
         uint256 salt, 
         bool isIdentityValuation,
         uint24 prefix,
-        D18 newPrice
+        uint128 newPrice
     ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
         decimals %= 24; // upper bound of decimals for most ERC20s is 24
         require(decimals >= 6, "decimals must be >= 6");
@@ -325,7 +325,7 @@ abstract contract TargetFunctions is
         bool isIdentityValuation,
         uint24 prefix,
         uint128 amount,
-        D18 pricePerUnit,
+        uint128 pricePerUnit,
         uint128 debitAmount,
         uint128 creditAmount
     ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
@@ -358,7 +358,7 @@ abstract contract TargetFunctions is
         uint256 salt, 
         bool isIdentityValuation,
         uint24 prefix,
-        D18 newPrice
+        uint128 newPrice
     ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
         decimals %= 24; // upper bound of decimals for most ERC20s is 24
         require(decimals >= 6, "decimals must be >= 6");
@@ -426,7 +426,7 @@ abstract contract TargetFunctions is
         uint24 prefix,
         uint128 depositAmount,
         uint128 shareAmount,
-        D18 navPerShare
+        uint128 navPerShare
     ) public clearQueuedCalls  {
         decimals %= 24; // upper bound of decimals for most ERC20s is 24
         require(decimals >= 6, "decimals must be >= 6");
@@ -463,7 +463,7 @@ abstract contract TargetFunctions is
         uint32 isoCode,
         uint128 maxApproval, 
         bool isIdentityValuation,
-        D18 navPerShare
+        uint128 navPerShare
     ) public  {
         AssetId assetId = newAssetId(isoCode);
 
@@ -483,7 +483,7 @@ abstract contract TargetFunctions is
         bytes16 scId,
         uint32 isoCode,
         uint128 maxApproval,
-        D18 navPerShare,
+        uint128 navPerShare,
         bool isIdentityValuation
     ) public  {        
         IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
@@ -513,15 +513,15 @@ abstract contract TargetFunctions is
     }
 
     /// === Transient Valuation === ///
-    function transientValuation_setPrice(address base, address quote, D18 price) public {
-        transientValuation.setPrice(base, quote, price);
+    function transientValuation_setPrice(address base, address quote, uint128 price) public {
+        transientValuation.setPrice(base, quote, D18.wrap(price));
     }
 
     // set the price of the asset in the transient valuation for a given pool
-    function transientValuation_setPrice_clamped(uint64 poolId, D18 price) public {
+    function transientValuation_setPrice_clamped(uint64 poolId, uint128 price) public {
         AssetId assetId = hubRegistry.currency(PoolId.wrap(poolId));
 
-        transientValuation.setPrice(address(assetId.addr()), address(assetId.addr()), price);
+        transientValuation.setPrice(address(assetId.addr()), address(assetId.addr()), D18.wrap(price));
     }
 
     /// === Gateway === ///
