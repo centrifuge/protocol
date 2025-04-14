@@ -94,7 +94,7 @@ contract GatewayTest is Test {
         root = new MockRoot();
         handler = new MockProcessor();
         gasService = new MockGasService();
-        gateway = new Gateway(IRoot(address(root)), IGasService(address(gasService)));
+        gateway = new Gateway(LOCAL_CENTRIFUGE_ID, IRoot(address(root)), IGasService(address(gasService)));
         gateway.file("processor", address(handler));
 
         adapter1 = new MockAdapter(REMOTE_CENTRIFUGE_ID, gateway);

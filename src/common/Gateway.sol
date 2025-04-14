@@ -31,6 +31,8 @@ contract Gateway is Auth, IGateway, Recoverable {
     uint8 public constant PRIMARY_ADAPTER_ID = 1;
     uint256 public constant RECOVERY_CHALLENGE_PERIOD = 7 days;
 
+    uint16 public immutable localCentrifugeId;
+
     // Dependencies
     IRoot public immutable root;
     IGasService public gasService;
@@ -43,8 +45,8 @@ contract Gateway is Auth, IGateway, Recoverable {
     mapping(uint16 centrifugeId => mapping(PoolId => uint64)) public /*transient*/ batchGasLimit;
 
     // Payment
-    address public transient transactionPayer;
     uint256 public transient fuel;
+    address public transient transactionPayer;
     mapping(PoolId => uint256) public subsidy;
 
     // Adapters
@@ -58,7 +60,8 @@ contract Gateway is Auth, IGateway, Recoverable {
         public recoveries;
 
 
-    constructor(IRoot root_, IGasService gasService_) Auth(msg.sender) {
+    constructor(uint16 localCentrifugeId_, IRoot root_, IGasService gasService_) Auth(msg.sender) {
+        localCentrifugeId = localCentrifugeId_;
         root = root_;
         gasService = gasService_;
     }
@@ -132,10 +135,12 @@ contract Gateway is Auth, IGateway, Recoverable {
             return processor.handle(centrifugeId, payload);
         }
 
+        bytes32 batchId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, payload));
         bytes32 messageProofHash = processor.messageProofHash(payload);
         bool isMessageProof = messageProofHash != bytes32(0);
         if (adapter.quorum == 1 && !isMessageProof) {
             // Special case for gas efficiency
+            emit ProcessBatch(centrifugeId, batchId, payload, adapter_);
             _handleBatch(centrifugeId, payload);
             return;
         }
@@ -145,11 +150,11 @@ contract Gateway is Auth, IGateway, Recoverable {
         if (isMessageProof) {
             require(adapter.id != PRIMARY_ADAPTER_ID, NonProofAdapter());
             batchHash = messageProofHash;
-            emit ProcessProof(centrifugeId, batchHash, adapter_);
+            emit ProcessProof(centrifugeId, batchId, batchHash, adapter_);
         } else {
             require(adapter.id == PRIMARY_ADAPTER_ID, NonMessageAdapter());
             batchHash = keccak256(payload);
-            emit ProcessBatch(centrifugeId, payload, adapter_);
+            emit ProcessBatch(centrifugeId, batchId, payload, adapter_);
         }
 
         InboundBatch storage state = inboundBatch[centrifugeId][batchHash];
@@ -201,7 +206,7 @@ contract Gateway is Auth, IGateway, Recoverable {
         }
     }
 
-    function retry(uint16 centrifugeId, bytes memory message) external {
+    function retry(uint16 centrifugeId, bytes memory message) external pauseable {
         bytes32 messageHash = keccak256(message);
         require(failedMessages[centrifugeId][messageHash] > 0, NotFailedMessage());
 
@@ -301,10 +306,11 @@ contract Gateway is Auth, IGateway, Recoverable {
                 transactionPayer != address(0) ? transactionPayer : address(this)
             );
 
+            bytes32 batchId = keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, batch));
             if (isPrimaryAdapter) {
-                emit SendBatch(centrifugeId, batch, currentAdapter);
+                emit SendBatch(centrifugeId, batchId, batch, currentAdapter);
             } else {
-                emit SendProof(centrifugeId, proof, currentAdapter);
+                emit SendProof(centrifugeId, batchId, proof, currentAdapter);
             }
         }
 
