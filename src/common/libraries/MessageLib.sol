@@ -59,7 +59,7 @@ enum UpdateContractType {
     /// @dev Placeholder for null update restriction type
     Invalid,
     VaultUpdate,
-    Permission,
+    UpdateManager,
     MaxAssetPriceAge,
     MaxSharePriceAge,
     Valuation,
@@ -649,26 +649,26 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //   UpdateContract.Permission (submsg)
+    //   UpdateContract.UpdateManager (submsg)
     //---------------------------------------
 
-    struct UpdateContractPermission {
+    struct UpdateContractUpdateManager {
         bytes32 who;
-        bool allowed;
+        bool canManage;
     }
 
-    function deserializeUpdateContractPermission(bytes memory data)
+    function deserializeUpdateContractUpdateManager(bytes memory data)
         internal
         pure
-        returns (UpdateContractPermission memory)
+        returns (UpdateContractUpdateManager memory)
     {
-        require(updateContractType(data) == UpdateContractType.Permission, UnknownMessageType());
+        require(updateContractType(data) == UpdateContractType.UpdateManager, UnknownMessageType());
 
-        return UpdateContractPermission({who: data.toBytes32(1), allowed: data.toBool(33)});
+        return UpdateContractUpdateManager({who: data.toBytes32(1), canManage: data.toBool(33)});
     }
 
-    function serialize(UpdateContractPermission memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(UpdateContractType.Permission, t.who, t.allowed);
+    function serialize(UpdateContractUpdateManager memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(UpdateContractType.UpdateManager, t.who, t.canManage);
     }
 
     //---------------------------------------

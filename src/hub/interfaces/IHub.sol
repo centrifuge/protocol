@@ -53,7 +53,7 @@ interface IHub {
     error PoolAlreadyUnlocked();
 
     /// @notice Dispatched when the pool can not be unlocked by the caller
-    error NotAuthorizedAdmin();
+    error NotManager();
 
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
@@ -96,8 +96,8 @@ interface IHub {
     /// @notice Attach custom data to a pool
     function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable;
 
-    /// @notice Allow/disallow an account to interact as pool admin
-    function allowPoolAdmin(PoolId poolId, address account, bool allow) external payable;
+    /// @notice Allow/disallow an account to interact as pool manager
+    function updateManager(PoolId poolId, address who, bool canManage) external payable;
 
     /// @notice Add a new share class to the pool
     function addShareClass(

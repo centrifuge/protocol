@@ -290,6 +290,17 @@ contract TestMessageLibIdentities is Test {
         // This message is a submessage and has not static message length defined
     }
 
+    function testUpdateContractUpdateManager(bytes32 who, bool canManage) public pure {
+        MessageLib.UpdateContractUpdateManager memory a =
+            MessageLib.UpdateContractUpdateManager({who: who, canManage: canManage});
+        MessageLib.UpdateContractUpdateManager memory b =
+            MessageLib.deserializeUpdateContractUpdateManager(a.serialize());
+
+        assertEq(a.who, b.who);
+        assertEq(a.canManage, b.canManage);
+        // This message is a submessage and has not static message length defined
+    }
+
     function testUpdateContractMaxAssetPriceAge(uint128 assetId, uint64 maxPriceAge) public pure {
         MessageLib.UpdateContractMaxAssetPriceAge memory a =
             MessageLib.UpdateContractMaxAssetPriceAge({assetId: assetId, maxPriceAge: maxPriceAge});

@@ -45,7 +45,7 @@ contract HubRegistryTest is Test {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         registry.registerPool(address(this), CENTRIFUGE_ID, USD);
 
-        vm.expectRevert(IHubRegistry.EmptyAdmin.selector);
+        vm.expectRevert(IHubRegistry.EmptyAccount.selector);
         registry.registerPool(address(0), CENTRIFUGE_ID, USD);
 
         vm.expectRevert(IHubRegistry.EmptyCurrency.selector);
@@ -59,11 +59,11 @@ contract HubRegistryTest is Test {
         assertEq(poolId.raw(), newPoolId(CENTRIFUGE_ID, 1).raw());
         assertEq(registry.latestId(), 1);
 
-        assertTrue(registry.isAdmin(poolId, fundAdmin));
-        assertFalse(registry.isAdmin(poolId, address(this)));
+        assertTrue(registry.manager(poolId, fundAdmin));
+        assertFalse(registry.manager(poolId, address(this)));
     }
 
-    function testUpdateAdmin(address fundAdmin, address additionalAdmin)
+    function testUpdateManager(address fundAdmin, address additionalAdmin)
         public
         nonZero(fundAdmin)
         nonZero(additionalAdmin)
@@ -73,30 +73,30 @@ contract HubRegistryTest is Test {
         vm.assume(fundAdmin != additionalAdmin);
         PoolId poolId = registry.registerPool(fundAdmin, CENTRIFUGE_ID, USD);
 
-        assertFalse(registry.isAdmin(poolId, additionalAdmin));
+        assertFalse(registry.manager(poolId, additionalAdmin));
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.updateAdmin(poolId, additionalAdmin, true);
+        registry.updateManager(poolId, additionalAdmin, true);
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);
         vm.expectRevert(abi.encodeWithSelector(IHubRegistry.NonExistingPool.selector, nonExistingPool));
-        registry.updateAdmin(nonExistingPool, additionalAdmin, true);
+        registry.updateManager(nonExistingPool, additionalAdmin, true);
 
-        vm.expectRevert(IHubRegistry.EmptyAdmin.selector);
-        registry.updateAdmin(poolId, address(0), true);
+        vm.expectRevert(IHubRegistry.EmptyAccount.selector);
+        registry.updateManager(poolId, address(0), true);
 
         // Approve a new admin
         vm.expectEmit();
-        emit IHubRegistry.UpdateAdmin(poolId, additionalAdmin, true);
-        registry.updateAdmin(poolId, additionalAdmin, true);
-        assertTrue(registry.isAdmin(poolId, additionalAdmin));
+        emit IHubRegistry.UpdateManager(poolId, additionalAdmin, true);
+        registry.updateManager(poolId, additionalAdmin, true);
+        assertTrue(registry.manager(poolId, additionalAdmin));
 
         // Remove an existing admin
         vm.expectEmit();
-        emit IHubRegistry.UpdateAdmin(poolId, additionalAdmin, false);
-        registry.updateAdmin(poolId, additionalAdmin, false);
-        assertFalse(registry.isAdmin(poolId, additionalAdmin));
+        emit IHubRegistry.UpdateManager(poolId, additionalAdmin, false);
+        registry.updateManager(poolId, additionalAdmin, false);
+        assertFalse(registry.manager(poolId, additionalAdmin));
     }
 
     function testSetMetadata(bytes calldata metadata) public {
