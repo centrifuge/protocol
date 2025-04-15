@@ -12,7 +12,7 @@ import {IPerPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 interface IBalanceSheet {
     // --- Events ---
     event File(bytes32 indexed what, address data);
-    event Permission(PoolId indexed poolId, ShareClassId indexed scId, address contractAddr, bool allowed);
+    event UpdateManager(PoolId indexed poolId, ShareClassId indexed scId, address who, bool canManage);
     event Withdraw(
         PoolId indexed poolId,
         ShareClassId indexed scId,
