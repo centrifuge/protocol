@@ -173,6 +173,11 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
         poolManager.unlinkVault(poolId, scId, assetId, vaults[0]);
     }
 
+    function removeVault_clamped() public asAdmin{
+        // use poolId, scId, assetId deployed in deployNewTokenPoolAndShare
+        removeVault(poolId, scId, assetId);
+    }
+
     /**
      * NOTE: All of these are implicitly clamped!
      */
