@@ -292,9 +292,13 @@ interface IShareClassManager {
     /// @param navPoolPerShare The nav per share value of the share class (in the pool currency denomination. Conversion
     /// to asset price is done onchain based on the valuation of the asset at approval)
     /// @return issuedShareAmount Amount of shares that have been issued
-    function issueShares(PoolId poolId, ShareClassId scId, AssetId depositAssetId, uint32 nowIssueEpochId, D18 navPoolPerShare)
-        external
-        returns (uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 depositPoolAmount);
+    function issueShares(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId depositAssetId,
+        uint32 nowIssueEpochId,
+        D18 navPoolPerShare
+    ) external returns (uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 depositPoolAmount);
 
     /// @notice Take back shares for the given identifier based on the provided NAV per share.
     /// @dev nowRevokeEpochId MUST be called sequentially.
@@ -308,9 +312,13 @@ interface IShareClassManager {
     /// @return revokedShareAmount Amount of shares that have been revoked
     /// @return payoutAssetAmount Converted amount of payout asset based on number of revoked shares
     /// @return payoutPoolAmount Converted amount of pool currency based on number of revoked shares
-    function revokeShares(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, uint32 nowRevokeEpochId, D18 navPoolPerShare)
-        external
-        returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount);
+    function revokeShares(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId payoutAssetId,
+        uint32 nowRevokeEpochId,
+        D18 navPoolPerShare
+    ) external returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount);
 
     /// @notice Collects shares for an investor after their deposit request was (partially) approved and new shares were
     /// issued.

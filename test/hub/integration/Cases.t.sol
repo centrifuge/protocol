@@ -74,8 +74,8 @@ contract TestCases is BaseTest {
         cv.requestDeposit(poolId, scId, USDC_C2, INVESTOR, INVESTOR_AMOUNT);
 
         vm.startPrank(FM);
-        hub.approveDeposits(poolId, scId, USDC_C2, APPROVED_INVESTOR_AMOUNT);
-        hub.issueShares(poolId, scId, USDC_C2, NAV_PER_SHARE);
+        hub.approveDeposits(poolId, scId, USDC_C2, shareClassManager.nowDepositEpoch(scId, USDC_C2), APPROVED_INVESTOR_AMOUNT);
+        hub.issueShares(poolId, scId, USDC_C2, shareClassManager.nowIssueEpoch(scId, USDC_C2), NAV_PER_SHARE);
         vm.stopPrank();
 
         vm.prank(ANY);
@@ -116,14 +116,13 @@ contract TestCases is BaseTest {
 
         cv.requestRedeem(poolId, scId, USDC_C2, INVESTOR, SHARE_AMOUNT);
 
-        IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
         uint128 revokedAssetAmount = ConversionLib.convertWithPrice(
             APPROVED_SHARE_AMOUNT, hubRegistry.decimals(poolId), hubRegistry.decimals(USDC_C2), NAV_PER_SHARE
         ).toUint128();
 
         vm.startPrank(FM);
-        hub.approveRedeems(poolId, scId, USDC_C2, APPROVED_SHARE_AMOUNT);
-        hub.revokeShares(poolId, scId, USDC_C2, NAV_PER_SHARE);
+        hub.approveRedeems(poolId, scId, USDC_C2, shareClassManager.nowRedeemEpoch(scId, USDC_C2), APPROVED_SHARE_AMOUNT);
+        hub.revokeShares(poolId, scId, USDC_C2, shareClassManager.nowRevokeEpoch(scId, USDC_C2), NAV_PER_SHARE);
         vm.stopPrank();
 
         vm.prank(ANY);

@@ -95,8 +95,8 @@ contract LocalhostDeployer is FullDeployer {
         vault.requestDeposit(investAmount, msg.sender, msg.sender);
 
         // Fulfill deposit request
-        hub.approveDeposits(poolId, scId, assetId, investAmount);
-        hub.issueShares(poolId, scId, assetId, navPerShare);
+        hub.approveDeposits(poolId, scId, assetId, shareClassManager.nowDepositEpoch(scId, assetId), investAmount);
+        hub.issueShares(poolId, scId, assetId, shareClassManager.nowIssueEpoch(scId, assetId), navPerShare);
 
         uint32 maxClaims = shareClassManager.maxDepositClaims(scId, msg.sender.toBytes32(), assetId);
         hub.claimDeposit{value: 0.001 ether}(poolId, scId, assetId, msg.sender.toBytes32(), maxClaims);

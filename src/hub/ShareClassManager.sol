@@ -147,7 +147,10 @@ contract ShareClassManager is Auth, IShareClassManager {
         D18 pricePoolPerAsset
     ) external auth returns (uint128 pendingAssetAmount, uint128 approvedPoolAmount) {
         require(exists(poolId, scId_), ShareClassNotFound());
-        require(nowDepositEpochId == nowDepositEpoch(scId_, depositAssetId), NonInsequenceEpoch(nowDepositEpochId, nowDepositEpoch(scId_, depositAssetId)));
+        require(
+            nowDepositEpochId == nowDepositEpoch(scId_, depositAssetId),
+            NonInsequenceEpoch(nowDepositEpochId, nowDepositEpoch(scId_, depositAssetId))
+        );
 
         // Limit in case approved > pending due to race condition of FM approval and async incoming requests
         pendingAssetAmount = pendingDeposit[scId_][depositAssetId];
@@ -168,7 +171,13 @@ contract ShareClassManager is Auth, IShareClassManager {
         pendingAssetAmount -= approvedAssetAmount;
         depositEpochId[scId_][depositAssetId] = nowDepositEpochId;
         emit ApproveDeposits(
-            poolId, scId_, depositAssetId, nowDepositEpochId, approvedPoolAmount, approvedAssetAmount, pendingAssetAmount
+            poolId,
+            scId_,
+            depositAssetId,
+            nowDepositEpochId,
+            approvedPoolAmount,
+            approvedAssetAmount,
+            pendingAssetAmount
         );
     }
 
@@ -182,7 +191,10 @@ contract ShareClassManager is Auth, IShareClassManager {
         D18 pricePoolPerAsset
     ) external auth returns (uint128 pendingShareAmount) {
         require(exists(poolId, scId_), ShareClassNotFound());
-        require(nowRedeemEpochId == nowRedeemEpoch(scId_, payoutAssetId), NonInsequenceEpoch(nowRedeemEpochId, nowRedeemEpoch(scId_, payoutAssetId)));
+        require(
+            nowRedeemEpochId == nowRedeemEpoch(scId_, payoutAssetId),
+            NonInsequenceEpoch(nowRedeemEpochId, nowRedeemEpoch(scId_, payoutAssetId))
+        );
 
         // Limit in case approved > pending due to race condition of FM approval and async incoming requests
         pendingShareAmount = pendingRedeem[scId_][payoutAssetId];
@@ -203,16 +215,21 @@ contract ShareClassManager is Auth, IShareClassManager {
     }
 
     /// @inheritdoc IShareClassManager
-    function issueShares(PoolId poolId, ShareClassId scId_, AssetId depositAssetId, uint32 nowIssueEpochId, D18 navPoolPerShare)
-        public
-        auth
-        returns (uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 depositPoolAmount)
-    {
+    function issueShares(
+        PoolId poolId,
+        ShareClassId scId_,
+        AssetId depositAssetId,
+        uint32 nowIssueEpochId,
+        D18 navPoolPerShare
+    ) public auth returns (uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 depositPoolAmount) {
         require(exists(poolId, scId_), ShareClassNotFound());
         require(nowIssueEpochId <= depositEpochId[scId_][depositAssetId], EpochNotFound());
-        require(nowIssueEpochId == nowIssueEpoch(scId_, depositAssetId), NonInsequenceEpoch(nowIssueEpochId, nowIssueEpoch(scId_, depositAssetId)));
+        require(
+            nowIssueEpochId == nowIssueEpoch(scId_, depositAssetId),
+            NonInsequenceEpoch(nowIssueEpochId, nowIssueEpoch(scId_, depositAssetId))
+        );
 
-    EpochInvestAmounts storage epochAmounts = epochInvestAmounts[scId_][depositAssetId][nowIssueEpochId];
+        EpochInvestAmounts storage epochAmounts = epochInvestAmounts[scId_][depositAssetId][nowIssueEpochId];
         epochAmounts.navPoolPerShare = navPoolPerShare;
 
         issuedShareAmount = ConversionLib.convertWithPrice(
@@ -230,19 +247,30 @@ contract ShareClassManager is Auth, IShareClassManager {
         depositPoolAmount = epochAmounts.approvedPoolAmount;
 
         emit IssueShares(
-            poolId, scId_, depositAssetId, nowIssueEpochId, navPoolPerShare, _navAssetPerShare(epochAmounts), issuedShareAmount
+            poolId,
+            scId_,
+            depositAssetId,
+            nowIssueEpochId,
+            navPoolPerShare,
+            _navAssetPerShare(epochAmounts),
+            issuedShareAmount
         );
     }
 
     /// @inheritdoc IShareClassManager
-    function revokeShares(PoolId poolId, ShareClassId scId_, AssetId payoutAssetId, uint32 nowRevokeEpochId, D18 navPoolPerShare)
-        public
-        auth
-        returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount)
-    {
+    function revokeShares(
+        PoolId poolId,
+        ShareClassId scId_,
+        AssetId payoutAssetId,
+        uint32 nowRevokeEpochId,
+        D18 navPoolPerShare
+    ) public auth returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount) {
         require(exists(poolId, scId_), ShareClassNotFound());
         require(nowRevokeEpochId <= redeemEpochId[scId_][payoutAssetId], EpochNotFound());
-        require(nowRevokeEpochId == nowRevokeEpoch(scId_, payoutAssetId), NonInsequenceEpoch(nowRevokeEpochId, nowRevokeEpoch(scId_, payoutAssetId)));
+        require(
+            nowRevokeEpochId == nowRevokeEpoch(scId_, payoutAssetId),
+            NonInsequenceEpoch(nowRevokeEpochId, nowRevokeEpoch(scId_, payoutAssetId))
+        );
 
         EpochRedeemAmounts storage epochAmounts = epochRedeemAmounts[scId_][payoutAssetId][nowRevokeEpochId];
         epochAmounts.navPoolPerShare = navPoolPerShare;

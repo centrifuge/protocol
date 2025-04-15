@@ -251,7 +251,6 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
         vm.assume(salt != SC_SALT && salt != bytes32(0));
         vm.assume(salt != bytes32(0));
 
-
         // New salt triggers revert
         vm.expectRevert(IShareClassManager.InvalidSalt.selector);
         shareClass.updateMetadata(poolId, scId, name, symbol, salt, bytes(""));
@@ -302,7 +301,7 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
     }
 
     function testPreviewShareClassId(uint32 index) public view {
-    assertEq(shareClass.previewShareClassId(poolId, index).raw(), bytes16((uint128(poolId.raw()) << 64) + index));
+        assertEq(shareClass.previewShareClassId(poolId, index).raw(), bytes16((uint128(poolId.raw()) << 64) + index));
     }
 
     function testUpdatePricePerShare() public {
