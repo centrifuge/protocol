@@ -332,7 +332,6 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
     }
 }
 
-/*
 ///@dev Contains all deposit related tests which are expected to succeed and don't make use of transient storage
 contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest {
     using MathLib for *;
@@ -344,8 +343,8 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
         _assertDepositRequestEq(scId, USDC, investor, UserOrder(0, 0));
 
         vm.expectEmit(true, true, true, true);
-        emit IShareClassManager.UpdateRequest(
-            poolId, scId, 1, RequestType.Deposit, investor, USDC, amount, amount, 0, false
+        emit IShareClassManager.UpdateDepositRequest(
+            poolId, scId, USDC, shareClass.nowDepositEpoch(scId, USDC), investor, amount, amount, 0, false
         );
         shareClass.requestDeposit(poolId, scId, amount, investor, USDC);
 
@@ -353,6 +352,7 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
         _assertDepositRequestEq(scId, USDC, investor, UserOrder(amount, 1));
     }
 
+/*
     function testCancelDepositRequest(uint128 amount) public notThisContract(hubRegistryAddress) {
         amount = uint128(bound(amount, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
         shareClass.requestDeposit(poolId, scId, amount, investor, USDC);
@@ -1090,8 +1090,9 @@ emit IShareClassManager.UpdateRequest(poolId, scId, epochId, RequestType.Redeem,
         _assertQueuedRedeemRequestEq(scId, USDC, investor, QueuedOrder(false, 0));
         _assertQueuedRedeemRequestEq(scId, USDC, investor, QueuedOrder(false, 0));
     }
+    */
 }
-
+/*
 ///@dev Contains all tests which require transient storage to reset between calls
 contract ShareClassManagerTransientTest is ShareClassManagerBaseTest {
     using MathLib for uint128;
