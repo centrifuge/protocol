@@ -20,7 +20,6 @@ import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IInvestmentManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
@@ -455,8 +454,6 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         IAsyncVault vault_ = IAsyncVault(vaultAddr);
         uint64 poolId = mapPoolId(vault_.poolId());
         bytes16 scId = vault_.trancheId();
-        JournalEntry[] memory journalEntries = new JournalEntry[](0);
-        Meta memory meta = Meta(journalEntries, journalEntries);
 
         Prices memory prices =
             sharePriceProvider.prices(poolId, scId, vaultDetails.assetId, vaultDetails.asset, vaultDetails.tokenId);
@@ -469,8 +466,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
             vaultDetails.tokenId,
             receiver,
             assets,
-            prices.poolPerAsset,
-            meta
+            prices.poolPerAsset
         );
     }
 

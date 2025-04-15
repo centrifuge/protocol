@@ -162,79 +162,27 @@ contract TestCases is BaseTest {
     }
 
     /// forge-config: default.isolate = true
-    function testCalUpdateJournal() public {
-        (PoolId poolId, ShareClassId scId) = testPoolCreation();
-
-        AccountId extraAccountId = AccountId.wrap(123);
-
-        vm.prank(FM);
-        hub.createAccount(poolId, extraAccountId, true);
-
-        (JournalEntry[] memory debits, uint256 i) = (new JournalEntry[](3), 0);
-        debits[i++] = JournalEntry(1000, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Asset)));
-        debits[i++] = JournalEntry(250, extraAccountId);
-        debits[i++] = JournalEntry(130, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Equity)));
-
-        (JournalEntry[] memory credits, uint256 j) = (new JournalEntry[](2), 0);
-        credits[j++] = JournalEntry(1250, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Equity)));
-        credits[j++] = JournalEntry(130, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Loss)));
-
-        cv.updateJournal(poolId, debits, credits);
-    }
-
-    /// forge-config: default.isolate = true
     function testCalUpdateHolding() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation();
         uint128 poolDecimals = (10 ** hubRegistry.decimals(USD.raw())).toUint128();
         uint128 assetDecimals = (10 ** hubRegistry.decimals(USDC_C2.raw())).toUint128();
 
-        JournalEntry[] memory debits = new JournalEntry[](0);
-        (JournalEntry[] memory credits, uint256 i) = (new JournalEntry[](1), 0);
-        credits[i++] =
-            JournalEntry(130 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Gain)));
+        AccountId equityAccount = holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Equity));
+        AccountId assetAccount = holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Asset));
 
-        cv.updateHoldingAmount(poolId, scId, USDC_C2, 1000 * assetDecimals, D18.wrap(1e18), true, debits, credits);
+        cv.updateHoldingAmount(poolId, scId, USDC_C2, 1000 * assetDecimals, D18.wrap(1e18), true);
 
         assertEq(holdings.amount(poolId, scId, USDC_C2), 1000 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 1000 * poolDecimals);
-        assertEq(
-            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Gain))),
-            int128(130 * poolDecimals)
-        );
-        assertEq(
-            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Equity))),
-            int128(870 * poolDecimals)
-        );
-        assertEq(
-            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Asset))),
-            int128(1000 * poolDecimals)
-        );
+        assertEq(accounting.accountValue(poolId, equityAccount), int128(1000 * poolDecimals));
+        assertEq(accounting.accountValue(poolId, assetAccount), int128(1000 * poolDecimals));
 
-        (debits, i) = (new JournalEntry[](1), 0);
-        debits[i++] =
-            JournalEntry(12 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Gain)));
-        (credits, i) = (new JournalEntry[](1), 0);
-        credits[i++] =
-            JournalEntry(12 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Loss)));
+        cv.updateHoldingAmount(poolId, scId, USDC_C2, 600 * assetDecimals, D18.wrap(1e18), false);
 
-        cv.updateHoldingAmount(poolId, scId, USDC_C2, 500 * assetDecimals, D18.wrap(1e18), false, debits, credits);
-
-        assertEq(holdings.amount(poolId, scId, USDC_C2), 500 * assetDecimals);
-        assertEq(holdings.value(poolId, scId, USDC_C2), 500 * poolDecimals);
-        assertEq(
-            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Asset))),
-            // 1000 - 500 + 12 = 512
-            int128(512 * poolDecimals)
-        );
-        assertEq(
-            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Loss))),
-            int128(12 * poolDecimals)
-        );
-        assertEq(
-            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Equity))),
-            // 1000 - 130 - (500-12) = 382
-            int128(382 * poolDecimals)
-        );
+        assertEq(holdings.amount(poolId, scId, USDC_C2), 400 * assetDecimals);
+        assertEq(holdings.value(poolId, scId, USDC_C2), 400 * poolDecimals);
+        assertEq(accounting.accountValue(poolId, assetAccount), int128(400 * poolDecimals));
+        assertEq(accounting.accountValue(poolId, equityAccount), int128(400 * poolDecimals));
     }
 
     /// forge-config: default.isolate = true

@@ -11,6 +11,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
+import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 
 /// @notice Account types used by Hub
 enum AccountType {
@@ -53,9 +54,6 @@ interface IHub {
 
     /// @notice Dispatched when the pool can not be unlocked by the caller
     error NotAuthorizedAdmin();
-
-    /// @notice Dispatched when the pool is not unlocked to interact with.
-    error PoolLocked();
 
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
@@ -214,7 +212,7 @@ interface IHub {
     ) external payable;
 
     /// @notice Updates the pool currency value of this holding based of the associated valuation.
-    function updateHolding(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
 
     /// @notice Updates the valuation used by a holding
     /// @param valuation Used to transform between the holding asset and pool currency
@@ -235,9 +233,6 @@ interface IHub {
     /// @notice Attach custom data to an account
     function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external payable;
 
-    /// @notice Add debit an account. Increase the value of debit-normal accounts, decrease for credit-normal ones.
-    function addDebit(PoolId poolId, AccountId account, uint128 amount) external payable;
-
-    /// @notice Add credit an account. Decrease the value of debit-normal accounts, increase for credit-normal ones.
-    function addCredit(PoolId poolId, AccountId account, uint128 amount) external payable;
+    /// @notice Perform an accounting entries update.
+    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external;
 }
