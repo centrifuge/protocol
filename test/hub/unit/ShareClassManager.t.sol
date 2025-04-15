@@ -310,44 +310,30 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
         shareClass.updatePricePerShare(poolId, scId, d18(2, 1));
     }
 
-    /*
-    function testIncreaseShareClassIssuance(uint128 navPerShare_, uint128 amount) public {
-        vm.assume(navPerShare_ > 0);
-        amount = uint128(bound(amount, 0, type(uint128).max / navPerShare_ - 1));
-        D18 navPerShare = d18(navPerShare_);
-        (uint128 totalIssuance,) = shareClass.metrics(scId);
-
+    function testIncreaseShareClassIssuance(uint128 amount) public {
         vm.expectEmit();
-        emit IShareClassManager.IssueShares(
-            poolId, scId, 1, navPerShare.mulUint128(amount), navPerShare, totalIssuance + amount, amount
+        emit IShareClassManager.RemoteIssueShares(
+            poolId, scId, amount
         );
-        shareClass.increaseShareClassIssuance(poolId, scId, navPerShare, amount);
+        shareClass.increaseShareClassIssuance(poolId, scId, amount);
 
         (uint128 totalIssuance_, D18 navPerShareMetric) = shareClass.metrics(scId);
         assertEq(totalIssuance_, amount);
         assertEq(navPerShareMetric.inner(), 0, "navPerShare metric should not be updated");
     }
 
-    function testDecreaseShareClassIssuance(uint128 navPerShare_, uint128 amount) public {
-        vm.assume(navPerShare_ > 0);
-        amount = uint128(bound(amount, 0, type(uint128).max / navPerShare_ - 1));
-        D18 navPerShare = d18(navPerShare_);
-
-        shareClass.increaseShareClassIssuance(poolId, scId, navPerShare, amount);
-        (uint128 totalIssuance,) = shareClass.shareClassPrice(poolId, scId);
-        uint128 newIssuance = totalIssuance - amount;
-
+    function testDecreaseShareClassIssuance(uint128 amount) public {
+        shareClass.increaseShareClassIssuance(poolId, scId, amount);
         vm.expectEmit();
-        emit IShareClassManager.RevokeShares(
-            poolId, scId, 1, navPerShare.mulUint128(newIssuance), navPerShare, newIssuance, amount, 0
+        emit IShareClassManager.RemoteRevokeShares(
+            poolId, scId, amount
         );
-        shareClass.decreaseShareClassIssuance(poolId, scId, navPerShare, amount);
+        shareClass.decreaseShareClassIssuance(poolId, scId, amount);
 
-        (uint128 totalIssuance_, D18 navPerShareMetric) = shareClass.shareClassPrice(poolId, scId);
+        (uint128 totalIssuance_, D18 navPerShareMetric) = shareClass.metrics(scId);
         assertEq(totalIssuance_, 0, "TotalIssuance should be reset");
         assertEq(navPerShareMetric.inner(), 0, "navPerShare metric should not be updated");
     }
-    */
 }
 
 /*

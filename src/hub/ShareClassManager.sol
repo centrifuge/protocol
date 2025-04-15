@@ -47,8 +47,9 @@ contract ShareClassManager is Auth, IShareClassManager {
         public epochRedeemAmounts;
 
     mapping(PoolId poolId => uint32) public shareClassCount;
-    // TODO: Make public in IShareClassManager interface?
+    /// @inheritdoc IShareClassManager
     mapping(ShareClassId scId => ShareClassMetrics) public metrics;
+    /// @inheritdoc IShareClassManager
     mapping(ShareClassId scId => ShareClassMetadata) public metadata;
     mapping(PoolId poolId => mapping(ShareClassId => bool)) public shareClassIds;
 

@@ -108,7 +108,7 @@ interface IShareClassManager {
         D18 navAssetPerShare,
         uint128 issuedShareAmount
     );
-    event RemoteIssueShares(PoolId indexed poolId, ShareClassId indexed scId, uint128 issedShareAmount);
+    event RemoteIssueShares(PoolId indexed poolId, ShareClassId indexed scId, uint128 issuedShareAmount);
     event RevokeShares(
         PoolId indexed poolId,
         ShareClassId indexed scId,
