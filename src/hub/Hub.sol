@@ -227,8 +227,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     ) external payable {
         _protected(poolId);
 
-        accounting.unlock(poolId);
-
         (uint128 approvedAssetAmount,) =
             shareClassManager.approveDeposits(poolId, scId, maxApproval, paymentAssetId, valuation);
 
@@ -258,8 +256,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         payable
     {
         _protected(poolId);
-
-        accounting.unlock(poolId);
 
         (uint128 payoutAssetAmount,) =
             shareClassManager.revokeShares(poolId, scId, payoutAssetId, navPerShare, valuation);
@@ -596,14 +592,20 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         } else if (diff < 0) {
             if (holdings.isLiability(poolId, scId, assetId)) {
                 accounting.addCredit(
-                    holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)), uint128(diff)
+                    holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)),
+                    uint128(uint256(-int256(diff)))
                 );
                 accounting.addDebit(
-                    holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), uint128(diff)
+                    holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)),
+                    uint128(uint256(-int256(diff)))
                 );
             } else {
-                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset)), uint128(diff));
-                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Loss)), uint128(diff));
+                accounting.addCredit(
+                    holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset)), uint128(uint256(-int256(diff)))
+                );
+                accounting.addDebit(
+                    holdings.accountId(poolId, scId, assetId, uint8(AccountType.Loss)), uint128(uint256(-int256(diff)))
+                );
             }
         }
     }

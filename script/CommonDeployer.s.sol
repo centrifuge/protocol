@@ -17,12 +17,13 @@ import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
 import "forge-std/Script.sol";
 
 string constant MESSAGE_COST_ENV = "MESSAGE_COST";
-string constant PROOF_COST_ENV = "PROOF_COST";
+string constant MAX_BATCH_SIZE_ENV = "MAX_BATCH_SIZE";
 
 abstract contract CommonDeployer is Script, JsonRegistry {
     uint256 constant DELAY = 48 hours;
     bytes32 immutable SALT;
-    uint64 constant FALLBACK_MSG_COST = 20000000000000000; // in Weight
+    uint128 constant FALLBACK_MSG_COST = uint128(0.02 ether); // in Weight
+    uint128 constant FALLBACK_MAX_BATCH_SIZE = uint128(10_000_000 ether); // 10M in Weight
 
     IAdapter[] adapters;
 
@@ -43,21 +44,23 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         );
     }
 
-    function deployCommon(uint16 centrifugeId, ISafe adminSafe_, address deployer) public {
+    function deployCommon(uint16 centrifugeId, ISafe adminSafe_, address deployer, bool isTests) public {
         if (address(root) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
 
-        uint64 messageGasLimit = uint64(vm.envOr(MESSAGE_COST_ENV, FALLBACK_MSG_COST));
-        uint64 proofGasLimit = uint64(vm.envOr(PROOF_COST_ENV, FALLBACK_MSG_COST));
+        startDeploymentOutput(isTests);
+
+        uint128 messageGasLimit = uint128(vm.envOr(MESSAGE_COST_ENV, FALLBACK_MSG_COST));
+        uint128 maxBatchSize = uint128(vm.envOr(MAX_BATCH_SIZE_ENV, FALLBACK_MAX_BATCH_SIZE));
 
         root = new Root(DELAY, deployer);
         tokenRecoverer = new TokenRecoverer(root, deployer);
 
         messageProcessor = new MessageProcessor(root, tokenRecoverer, deployer);
 
-        gasService = new GasService(messageGasLimit, proofGasLimit);
-        gateway = new Gateway(root, gasService);
+        gasService = new GasService(maxBatchSize, messageGasLimit);
+        gateway = new Gateway(centrifugeId, root, gasService);
 
         messageDispatcher = new MessageDispatcher(centrifugeId, root, gateway, tokenRecoverer, deployer);
 
@@ -72,8 +75,6 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     }
 
     function _commonRegister() private {
-        startDeploymentOutput();
-
         register("root", address(root));
         register("adminSafe", address(adminSafe));
         register("guardian", address(guardian));

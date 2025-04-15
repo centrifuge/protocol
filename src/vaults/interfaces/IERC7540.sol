@@ -284,6 +284,17 @@ interface IERC7714 {
 /// @notice Interface for the all vault contracts
 /// @dev Must be implemented by all vaults
 interface IBaseVault is IERC7540Operator, IERC7741, IERC7714, IERC7575, IRecoverable {
+    error FileUnrecognizedParam();
+    error NotEndorsed();
+    error CannotSetSelfAsOperator();
+    error ExpiredAuthorization();
+    error AlreadyUsedAuthorization();
+    error InvalidAuthorization();
+    error InvalidController();
+    error InsufficientBalance();
+    error RequestRedeemFailed();
+    error TransferFromFailed();
+
     /// @notice Identifier of the Centrifuge pool
     function poolId() external view returns (uint64);
 
@@ -326,6 +337,9 @@ interface IAsyncRedeemVault is IERC7540Redeem, IERC7540CancelRedeem, IBaseVault 
 interface IAsyncVault is IERC7540Deposit, IERC7540CancelDeposit, IAsyncRedeemVault {
     event DepositClaimable(address indexed controller, uint256 indexed requestId, uint256 assets, uint256 shares);
     event CancelDepositClaimable(address indexed controller, uint256 indexed requestId, uint256 assets);
+
+    error InvalidOwner();
+    error RequestDepositFailed();
 
     /// @notice Callback when a deposit Request becomes claimable
     function onDepositClaimable(address owner, uint256 assets, uint256 shares) external;

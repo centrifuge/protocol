@@ -13,7 +13,13 @@ import {IWormholeAdapter} from "src/common/interfaces/IWormholeAdapter.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
+contract MockWormholeDeliveryProvider {
+    uint16 public immutable chainId = 2;
+}
+
 contract MockWormholeRelayer is Mock {
+    address public getDefaultDeliveryProvider = address(new MockWormholeDeliveryProvider());
+
     function sendPayloadToEvm(
         uint16 targetChain,
         address targetAddress,
@@ -57,13 +63,13 @@ contract WormholeAdapterTest is Test {
 
     function setUp() public {
         relayer = new MockWormholeRelayer();
-        adapter = new WormholeAdapter(GATEWAY, address(relayer), WORMHOLE_CHAIN_ID, address(this));
+        adapter = new WormholeAdapter(GATEWAY, address(relayer), address(this));
     }
 
     function testDeploy() public view {
         assertEq(address(adapter.gateway()), address(GATEWAY));
         assertEq(address(adapter.relayer()), address(relayer));
-        assertEq(adapter.refundWormholeId(), 2);
+        assertEq(adapter.localWormholeId(), 2);
 
         assertEq(adapter.wards(address(this)), 1);
     }

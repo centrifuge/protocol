@@ -11,6 +11,7 @@ import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/Mes
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 import {PoolManager} from "src/vaults/PoolManager.sol";
+import {SyncRequests} from "src/vaults/SyncRequests.sol";
 import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 
 interface AdapterLike {
@@ -23,12 +24,14 @@ contract MockCentrifugeChain is Test {
 
     IAdapter[] public adapters;
     PoolManager public poolManager;
+    SyncRequests public syncRequests;
 
-    constructor(IAdapter[] memory adapters_, PoolManager poolManager_) {
+    constructor(IAdapter[] memory adapters_, PoolManager poolManager_, SyncRequests syncRequests_) {
         for (uint256 i = 0; i < adapters_.length; i++) {
             adapters.push(adapters_[i]);
         }
         poolManager = poolManager_;
+        syncRequests = syncRequests_;
     }
 
     function addPool(uint64 poolId) public {
@@ -64,6 +67,22 @@ contract MockCentrifugeChain is Test {
                     vaultOrFactory: bytes32(bytes20(vault)),
                     assetId: vaultDetails.assetId,
                     kind: uint8(VaultUpdateKind.Link)
+                }).serialize()
+            }).serialize()
+        );
+    }
+
+    function updateMaxReserve(uint64 poolId, bytes16 scId, address vault, uint128 maxReserve) public {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+
+        execute(
+            MessageLib.UpdateContract({
+                poolId: poolId,
+                scId: scId,
+                target: bytes32(bytes20(address(syncRequests))),
+                payload: MessageLib.UpdateContractSyncDepositMaxReserve({
+                    assetId: vaultDetails.assetId,
+                    maxReserve: maxReserve
                 }).serialize()
             }).serialize()
         );

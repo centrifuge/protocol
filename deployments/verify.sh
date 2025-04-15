@@ -41,16 +41,20 @@ scId=$(cast call $contract_address 'trancheId()(bytes16)' --rpc-url $RPC_URL | c
 asset=$(cast call $contract_address 'asset()(address)' --rpc-url $RPC_URL)
 share=$(cast call $contract_address 'share()(address)' --rpc-url $RPC_URL)
 root=$(cast call $contract_address 'root()(address)' --rpc-url $RPC_URL)
-investmentManager=$(cast call $contract_address 'manager()(address)' --rpc-url $RPC_URL)
-poolManager=$(cast call $investmentManager 'poolManager()(address)' --rpc-url $RPC_URL)
+asyncRedeemManager=$(cast call $contract_address 'asyncRedeemManager()(address)' --rpc-url $RPC_URL)
+syncDepositManager=$(cast call $contract_address 'syncDepositManager()(address)' --rpc-url $RPC_URL)
+poolManager=$(cast call $asyncRequests 'poolManager()(address)' --rpc-url $RPC_URL)
 decimals=$(cast call $share 'decimals()(uint8)' --rpc-url $RPC_URL)
 echo "poolId: $poolId"
 echo "shareClassId: $scId"
 echo "asset: $asset"
 echo "share: $share"
 echo "root: $root"
-echo "investmentManager: $investmentManager"
+echo "asyncRedeemManager: $asyncRedeemManager"
+echo "syncDepositManager: $syncDepositManager"
 echo "poolManager: $poolManager"
 echo "token decimals: $decimals"
 forge verify-contract --constructor-args $(cast abi-encode "constructor(uint8)" $decimals) --watch --etherscan-api-key $ETHERSCAN_KEY $share src/vaults/token/ShareToken.sol:CentrifugeToken --verifier-url $ETHERSCAN_URL --chain $CHAIN_ID
-forge verify-contract --constructor-args $(cast abi-encode "constructor(uint64,bytes16,address,uint256,address,address,address)" $poolId $scId $asset 0 $share $root $investmentManager) --watch --etherscan-api-key $ETHERSCAN_KEY $contract_address src/vaults/ERC7540Vault.sol:ERC7540Vault --verifier-url $ETHERSCAN_URL --chain $CHAIN_ID
+
+# forge verify-contract --constructor-args $(cast abi-encode "constructor(uint64,bytes16,address,uint256,address,address,address)" $poolId $scId $asset 0 $share $root $asyncRedeemManager) --watch --etherscan-api-key $ETHERSCAN_KEY $contract_address src/vaults/ERC7540Vault.sol:ERC7540Vault --verifier-url $ETHERSCAN_URL --chain $CHAIN_ID
+forge verify-contract --constructor-args $(cast abi-encode "constructor(uint64,bytes16,address,uint256,address,address,address,address)" $poolId $scId $asset 0 $share $root $syncDepositManager $asyncRedeemManager) --watch --etherscan-api-key $ETHERSCAN_KEY $contract_address src/vaults/SyncDepositVault.sol:SyncDepositVault --verifier-url $ETHERSCAN_URL --chain $CHAIN_ID

@@ -32,7 +32,8 @@ contract BalanceSheetTest is BaseTest {
         defaultPricePerShare = d18(1, 1);
         defaultTypedShareClassId = ShareClassId.wrap(defaultShareClassId);
 
-        assetId = AssetId.wrap(poolManager.registerAsset(OTHER_CHAIN_ID, address(erc20), erc20TokenId));
+        assetId =
+            AssetId.wrap(poolManager.registerAsset{value: 0.1 ether}(OTHER_CHAIN_ID, address(erc20), erc20TokenId));
         poolManager.addPool(POOL_A.raw());
         poolManager.addShareClass(
             POOL_A.raw(),
@@ -92,7 +93,7 @@ contract BalanceSheetTest is BaseTest {
     // --- Administration ---
     function testFile() public {
         // fail: unrecognized param
-        vm.expectRevert(bytes("BalanceSheet/file-unrecognized-param"));
+        vm.expectRevert(IBalanceSheet.FileUnrecognizedParam.selector);
         balanceSheet.file("random", self);
 
         assertEq(address(balanceSheet.gateway()), address(gateway));
