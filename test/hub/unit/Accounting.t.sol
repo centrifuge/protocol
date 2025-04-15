@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
 import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 import {Accounting} from "src/hub/Accounting.sol";
 
@@ -20,13 +20,13 @@ PoolId constant POOL_A = PoolId.wrap(33);
 PoolId constant POOL_B = PoolId.wrap(44);
 
 contract AccountingTest is Test {
-    AccountId immutable CASH_ACCOUNT = newAccountId(1, uint8(AccountType.Asset));
-    AccountId immutable BOND1_INVESTMENT_ACCOUNT = newAccountId(101, uint8(AccountType.Asset));
-    AccountId immutable FEES_EXPENSE_ACCOUNT = newAccountId(401, uint8(AccountType.Asset));
-    AccountId immutable FEES_PAYABLE_ACCOUNT = newAccountId(201, uint8(AccountType.Loss));
-    AccountId immutable EQUITY_ACCOUNT = newAccountId(301, uint8(AccountType.Equity));
-    AccountId immutable GAIN_ACCOUNT = newAccountId(302, uint8(AccountType.Gain));
-    AccountId immutable NON_INITIALIZED_ACCOUNT = newAccountId(999, uint8(AccountType.Asset));
+    AccountId immutable CASH_ACCOUNT = AccountId.wrap(1);
+    AccountId immutable BOND1_INVESTMENT_ACCOUNT = AccountId.wrap(101);
+    AccountId immutable FEES_EXPENSE_ACCOUNT = AccountId.wrap(401);
+    AccountId immutable FEES_PAYABLE_ACCOUNT = AccountId.wrap(201);
+    AccountId immutable EQUITY_ACCOUNT = AccountId.wrap(301);
+    AccountId immutable GAIN_ACCOUNT = AccountId.wrap(302);
+    AccountId immutable NON_INITIALIZED_ACCOUNT = AccountId.wrap(999);
 
     Accounting accounting = new Accounting(address(this));
 
