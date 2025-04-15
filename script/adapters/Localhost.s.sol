@@ -140,11 +140,11 @@ contract LocalhostDeployer is FullDeployer {
 
         // Fulfill redeem request
         hub.approveRedeems(
-            poolId, scId, assetId, shareClassManager.nowRedeemEpoch(scId, assetId), uint128(redeemAmount)
+            poolId, scId, assetId, shareClassManager.nowRedeemEpoch(scId, assetId), uint128(investAmount)
         );
-        hub.revokeShares(poolId, scId, assetId, shareClassManager.nowRedeemEpoch(scId, assetId), d18(11, 10));
+        hub.revokeShares(poolId, scId, assetId, shareClassManager.nowRevokeEpoch(scId, assetId), d18(11, 10));
 
-        hub.claimRedeem(poolId, scId, assetId, bytes32(bytes20(msg.sender)), 10);
+        hub.claimRedeem(poolId, scId, assetId, bytes32(bytes20(msg.sender)), 1);
 
         // Claim redeem request
         vault.withdraw(redeemAmount, msg.sender, msg.sender);
