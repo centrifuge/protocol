@@ -146,6 +146,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     function notifyPool(PoolId poolId, uint16 centrifugeId) external payable {
         _protectedAndPaid(poolId);
 
+        emit NotifyPool(centrifugeId, poolId);
         sender.sendNotifyPool(centrifugeId, poolId);
     }
 
@@ -158,6 +159,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         (string memory name, string memory symbol, bytes32 salt) = shareClassManager.metadata(scId);
         uint8 decimals = hubRegistry.decimals(poolId);
 
+        emit NotifyShareClass(centrifugeId, poolId, scId);
         sender.sendNotifyShareClass(centrifugeId, poolId, scId, name, symbol, decimals, salt, hook);
     }
 
@@ -167,6 +169,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
         (, D18 poolPerShare) = shareClassManager.shareClassPrice(poolId, scId);
 
+        emit NotifySharePrice(centrifugeId, poolId, scId, poolPerShare);
         sender.sendNotifyPricePoolPerShare(centrifugeId, poolId, scId, poolPerShare);
     }
 
@@ -186,6 +189,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
         // Retrieve price by normalizing by pool denomination
         D18 pricePoolPerAsset = d18(poolAmountPerAsset, poolUnitAmount);
+
+        emit NotifyAssetPrice(assetId.centrifugeId(), poolId, scId, assetId, pricePoolPerAsset);
         sender.sendNotifyPricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset);
     }
 
@@ -271,6 +276,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
+        emit UpdateRestriction(centrifugeId, poolId, scId, payload);
         sender.sendUpdateRestriction(centrifugeId, poolId, scId, payload);
     }
 
@@ -286,6 +292,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
+        emit UpdateContract(centrifugeId, poolId, scId, target, payload);
         sender.sendUpdateContract(centrifugeId, poolId, scId, target, payload);
     }
 

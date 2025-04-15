@@ -31,6 +31,17 @@ enum AccountType {
 
 /// @notice Interface with all methods available in the system used by actors
 interface IHub {
+    event NotifyPool(uint16 indexed centrifugeId, PoolId indexed poolId);
+    event NotifyShareClass(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId);
+    event NotifySharePrice(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, D18 poolPerShare);
+    event NotifyAssetPrice(
+        uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset
+    );
+    event UpdateRestriction(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes payload);
+    event UpdateContract(
+        uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 target, bytes payload
+    );
+
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 what, address addr);
 
