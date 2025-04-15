@@ -11,7 +11,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {IHoldings, Holding} from "src/hub/interfaces/IHoldings.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
-import {IHoldings, Holding, CreateHolding} from "src/hub/interfaces/IHoldings.sol";
+import {IHoldings, Holding, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
 
 contract Holdings is Auth, IHoldings {
     using MathLib for uint256; // toInt128()
@@ -40,7 +40,7 @@ contract Holdings is Auth, IHoldings {
         AssetId assetId,
         IERC7726 valuation_,
         bool isLiability_,
-        CreateHolding[] memory accounts
+        HoldingAccount[] memory accounts
     ) external auth {
         require(!scId.isNull(), WrongShareClassId());
         require(address(valuation_) != address(0), WrongValuation());

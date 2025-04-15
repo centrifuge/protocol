@@ -24,7 +24,7 @@ import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {IHoldings, Holding, CreateHolding} from "src/hub/interfaces/IHoldings.sol";
+import {IHoldings, Holding, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
 import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
 
 // @inheritdoc IHub
@@ -322,11 +322,11 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
             IAccounting.AccountDoesNotExist()
         );
 
-        CreateHolding[] memory accounts = new CreateHolding[](4);
-        accounts[0] = CreateHolding(assetAccount, uint8(AccountType.Asset));
-        accounts[1] = CreateHolding(equityAccount, uint8(AccountType.Equity));
-        accounts[2] = CreateHolding(lossAccount, uint8(AccountType.Loss));
-        accounts[3] = CreateHolding(gainAccount, uint8(AccountType.Gain));
+        HoldingAccount[] memory accounts = new HoldingAccount[](4);
+        accounts[0] = HoldingAccount(assetAccount, uint8(AccountType.Asset));
+        accounts[1] = HoldingAccount(equityAccount, uint8(AccountType.Equity));
+        accounts[2] = HoldingAccount(lossAccount, uint8(AccountType.Loss));
+        accounts[3] = HoldingAccount(gainAccount, uint8(AccountType.Gain));
 
         holdings.create(poolId, scId, assetId, valuation, false, accounts);
     }
@@ -345,9 +345,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
             IAccounting.AccountDoesNotExist()
         );
 
-        CreateHolding[] memory accounts = new CreateHolding[](2);
-        accounts[0] = CreateHolding(expenseAccount, uint8(AccountType.Expense));
-        accounts[1] = CreateHolding(liabilityAccount, uint8(AccountType.Liability));
+        HoldingAccount[] memory accounts = new HoldingAccount[](2);
+        accounts[0] = HoldingAccount(expenseAccount, uint8(AccountType.Expense));
+        accounts[1] = HoldingAccount(liabilityAccount, uint8(AccountType.Liability));
 
         holdings.create(poolId, scId, assetId, valuation, true, accounts);
     }

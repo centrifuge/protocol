@@ -15,7 +15,7 @@ struct Holding {
     bool isLiability;
 }
 
-struct CreateHolding {
+struct HoldingAccount {
     AccountId accountId;
     uint8 kind;
 }
@@ -31,7 +31,7 @@ interface IHoldings {
         AssetId indexed assetId,
         IERC7726 valuation,
         bool isLiability,
-        CreateHolding[] accounts
+        HoldingAccount[] accounts
     );
 
     /// @notice Emitted when a holding is increased
@@ -93,7 +93,7 @@ interface IHoldings {
         AssetId assetId,
         IERC7726 valuation,
         bool isLiability,
-        CreateHolding[] memory accounts
+        HoldingAccount[] memory accounts
     ) external;
 
     /// @notice Increments the amount of a holding and updates the value for that increment.
