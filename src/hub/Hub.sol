@@ -36,7 +36,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     IHubRegistry public hubRegistry;
     IPoolMessageSender public sender;
     IShareClassManager public shareClassManager;
-    // TODO: should be immutable
     ITransientValuation public transientValuation;
 
     constructor(
