@@ -12,13 +12,12 @@ contract WormholeDeployer is FullDeployer {
         uint16 localCentrifugeId = uint16(vm.envUint("CENTRIFUGE_ID"));
         uint16 remoteCentrifugeId = uint16(vm.envUint("REMOTE_CENTRIFUGE_ID"));
         address relayer = address(vm.envAddress("WORMHOLE_RELAYER"));
-        uint16 localWormholeId = uint16(vm.envUint("WORMHOLE_LOCAL_CHAIN_ID"));
 
         vm.startBroadcast();
 
         deployFull(localCentrifugeId, ISafe(vm.envAddress("ADMIN")), msg.sender, false);
 
-        WormholeAdapter adapter = new WormholeAdapter(gateway, relayer, localWormholeId, msg.sender);
+        WormholeAdapter adapter = new WormholeAdapter(gateway, relayer, msg.sender);
         wire(remoteCentrifugeId, adapter, msg.sender);
 
         removeFullDeployerAccess(msg.sender);

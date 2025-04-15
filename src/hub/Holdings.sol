@@ -13,6 +13,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {IHoldings, Holding} from "src/hub/interfaces/IHoldings.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
+import {IHoldings, Holding, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
 
 contract Holdings is Auth, IHoldings {
     using MathLib for uint256; // toInt128()
@@ -41,7 +42,7 @@ contract Holdings is Auth, IHoldings {
         AssetId assetId,
         IERC7726 valuation_,
         bool isLiability_,
-        AccountId[] memory accounts
+        HoldingAccount[] memory accounts
     ) external auth {
         require(!scId.isNull(), WrongShareClassId());
         require(address(valuation_) != address(0), WrongValuation());
@@ -49,11 +50,10 @@ contract Holdings is Auth, IHoldings {
         holding[poolId][scId][assetId] = Holding(0, 0, valuation_, isLiability_);
 
         for (uint256 i; i < accounts.length; i++) {
-            AccountId accountId_ = accounts[i];
-            accountId[poolId][scId][assetId][accountId_.kind()] = accountId_;
+            accountId[poolId][scId][assetId][accounts[i].kind] = accounts[i].accountId;
         }
 
-        emit Create(poolId, scId, assetId, valuation_, isLiability_);
+        emit Create(poolId, scId, assetId, valuation_, isLiability_, accounts);
     }
 
     /// @inheritdoc IHoldings
@@ -125,13 +125,16 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @inheritdoc IHoldings
-    function setAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, AccountId accountId_) external auth {
+    function setAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId_)
+        external
+        auth
+    {
         Holding storage holding_ = holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
-        accountId[poolId][scId][assetId][accountId_.kind()] = accountId_;
+        accountId[poolId][scId][assetId][kind] = accountId_;
 
-        emit SetAccountId(poolId, scId, assetId, accountId_);
+        emit SetAccountId(poolId, scId, assetId, kind, accountId_);
     }
 
     /// @inheritdoc IHoldings

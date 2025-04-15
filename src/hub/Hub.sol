@@ -17,14 +17,14 @@ import {IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
-import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
 import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {IHoldings, Holding} from "src/hub/interfaces/IHoldings.sol";
+import {IHoldings, Holding, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
 import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
 
 // @inheritdoc IHub
@@ -343,32 +343,59 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         ShareClassId scId,
         AssetId assetId,
         IERC7726 valuation,
-        bool isLiability,
-        uint24 prefix
+        AccountId assetAccount,
+        AccountId equityAccount,
+        AccountId lossAccount,
+        AccountId gainAccount
     ) external payable {
         _protected(poolId);
 
         require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
+        require(
+            accounting.exists(poolId, assetAccount) && accounting.exists(poolId, equityAccount)
+                && accounting.exists(poolId, lossAccount) && accounting.exists(poolId, gainAccount),
+            IAccounting.AccountDoesNotExist()
+        );
+
+        HoldingAccount[] memory accounts = new HoldingAccount[](4);
+        accounts[0] = HoldingAccount(assetAccount, uint8(AccountType.Asset));
+        accounts[1] = HoldingAccount(equityAccount, uint8(AccountType.Equity));
+        accounts[2] = HoldingAccount(lossAccount, uint8(AccountType.Loss));
+        accounts[3] = HoldingAccount(gainAccount, uint8(AccountType.Gain));
+
+        holdings.create(poolId, scId, assetId, valuation, false, accounts);
+    }
+
+    /// @inheritdoc IHub
+    function createLiability(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        IERC7726 valuation,
+        AccountId expenseAccount,
+        AccountId liabilityAccount
+    ) external payable {
+        _protected(poolId);
+
+        require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
+        require(
+            accounting.exists(poolId, expenseAccount) && accounting.exists(poolId, liabilityAccount),
+            IAccounting.AccountDoesNotExist()
+        );
+
+        HoldingAccount[] memory accounts = new HoldingAccount[](2);
+        accounts[0] = HoldingAccount(expenseAccount, uint8(AccountType.Expense));
+        accounts[1] = HoldingAccount(liabilityAccount, uint8(AccountType.Liability));
+
+        holdings.create(poolId, scId, assetId, valuation, true, accounts);
+    }
+
+    /// @inheritdoc IHub
+    function updateHolding(PoolId poolId, ShareClassId scId, AssetId assetId) public payable {
+        _protected(poolId);
 
         accounting.unlock(poolId);
-
-        AccountId[] memory accounts = new AccountId[](6);
-        accounts[0] = newAccountId(prefix, uint8(AccountType.Asset));
-        accounts[1] = newAccountId(prefix, uint8(AccountType.Equity));
-        accounts[2] = newAccountId(prefix, uint8(AccountType.Loss));
-        accounts[3] = newAccountId(prefix, uint8(AccountType.Gain));
-        accounts[4] = newAccountId(prefix, uint8(AccountType.Expense));
-        accounts[5] = newAccountId(prefix, uint8(AccountType.Liability));
-
-        accounting.createAccount(poolId, accounts[0], true);
-        accounting.createAccount(poolId, accounts[1], false);
-        accounting.createAccount(poolId, accounts[2], false);
-        accounting.createAccount(poolId, accounts[3], false);
-        accounting.createAccount(poolId, accounts[4], true);
-        accounting.createAccount(poolId, accounts[5], false);
-
-        holdings.create(poolId, scId, assetId, valuation, isLiability, accounts);
-
+        _updateHolding(poolId, scId, assetId);
         accounting.lock();
     }
 
@@ -383,13 +410,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function setHoldingAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, AccountId accountId)
+    function setHoldingAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId)
         external
         payable
     {
         _protected(poolId);
 
-        holdings.setAccountId(poolId, scId, assetId, accountId);
+        holdings.setAccountId(poolId, scId, assetId, kind, accountId);
     }
 
     /// @inheritdoc IHub

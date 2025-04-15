@@ -680,18 +680,18 @@ contract VaultRouterTest is BaseTest {
         erc20.approve(vault_, amount);
         vaultRouter.enable(vault_);
 
-        uint256 gasLimit = estimateGas();
-        uint256 lessGas = gasLimit - 1;
-
-        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
-        vaultRouter.requestDeposit{value: lessGas}(vault_, amount, self, self);
+        uint256 gasLimit =
+            gateway.estimate(OTHER_CHAIN_ID, bytes.concat(PAYLOAD_FOR_GAS_ESTIMATION, PAYLOAD_FOR_GAS_ESTIMATION));
 
         vm.expectRevert(IPoolManager.UnknownVault.selector);
-        vaultRouter.requestDeposit{value: lessGas}(makeAddr("maliciousVault"), amount, self, self);
+        vaultRouter.requestDeposit{value: gasLimit}(makeAddr("maliciousVault"), amount, self, self);
 
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeWithSelector(vaultRouter.requestDeposit.selector, vault_, amount / 2, self, self);
         calls[1] = abi.encodeWithSelector(vaultRouter.requestDeposit.selector, vault_, amount / 2, self, self);
+
+        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
+        vaultRouter.multicall{value: gasLimit - 1}(calls);
 
         assertEq(address(vaultRouter).balance, 0);
         vaultRouter.multicall{value: gasLimit}(calls);
@@ -772,7 +772,7 @@ contract VaultRouterTest is BaseTest {
         vm.stopPrank();
     }
 
-    function estimateGas() internal view returns (uint256 total) {
-        (, total) = gateway.estimate(OTHER_CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
+    function estimateGas() internal view returns (uint256) {
+        return gateway.estimate(OTHER_CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
     }
 }

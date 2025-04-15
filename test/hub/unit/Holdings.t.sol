@@ -13,7 +13,8 @@ import {AccountId} from "src/common/types/AccountId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {Holdings} from "src/hub/Holdings.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
-import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
+import {AccountType} from "src/hub/interfaces/IHub.sol";
+import {IHoldings, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
 
 PoolId constant POOL_A = PoolId.wrap(42);
 ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("1"));
@@ -78,12 +79,12 @@ contract TestFile is TestCommon {
 
 contract TestCreate is TestCommon {
     function testSuccess() public {
-        AccountId[] memory accounts = new AccountId[](2);
-        accounts[0] = AccountId.wrap(0xAA00 | 0x01);
-        accounts[1] = AccountId.wrap(0xBB00 | 0x02);
+        HoldingAccount[] memory accounts = new HoldingAccount[](2);
+        accounts[0] = HoldingAccount(AccountId.wrap(0xAA00), 1);
+        accounts[1] = HoldingAccount(AccountId.wrap(0xBB00), 2);
 
         vm.expectEmit();
-        emit IHoldings.Create(POOL_A, SC_1, ASSET_A, itemValuation, false);
+        emit IHoldings.Create(POOL_A, SC_1, ASSET_A, itemValuation, false, accounts);
         holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, accounts);
 
         (uint128 amount, uint128 amountValue, IERC7726 valuation, bool isLiability) =
@@ -94,30 +95,30 @@ contract TestCreate is TestCommon {
         assertEq(amountValue, 0);
         assertEq(isLiability, false);
 
-        assertEq(AccountId.unwrap(holdings.accountId(POOL_A, SC_1, ASSET_A, 0x01)), 0xAA00 | 0x01);
-        assertEq(AccountId.unwrap(holdings.accountId(POOL_A, SC_1, ASSET_A, 0x02)), 0xBB00 | 0x02);
+        assertEq(AccountId.unwrap(holdings.accountId(POOL_A, SC_1, ASSET_A, 1)), 0xAA00);
+        assertEq(AccountId.unwrap(holdings.accountId(POOL_A, SC_1, ASSET_A, 2)), 0xBB00);
     }
 
     function testErrNotAuthorized() public {
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
+        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
     }
 
     function testErrWrongValuation() public {
         vm.expectRevert(IHoldings.WrongValuation.selector);
-        holdings.create(POOL_A, SC_1, ASSET_A, IERC7726(address(0)), false, new AccountId[](0));
+        holdings.create(POOL_A, SC_1, ASSET_A, IERC7726(address(0)), false, new HoldingAccount[](0));
     }
 
     function testErrWrongShareClass() public {
         vm.expectRevert(IHoldings.WrongShareClassId.selector);
-        holdings.create(POOL_A, NON_SC, ASSET_A, itemValuation, false, new AccountId[](0));
+        holdings.create(POOL_A, NON_SC, ASSET_A, itemValuation, false, new HoldingAccount[](0));
     }
 }
 
 contract TestIncrease is TestCommon {
     function testSuccess() public {
-        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
+        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
         holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20_000_000);
 
         vm.expectEmit();
@@ -132,7 +133,7 @@ contract TestIncrease is TestCommon {
     }
 
     function testErrNotAuthorized() public {
-        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
+        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -147,7 +148,7 @@ contract TestIncrease is TestCommon {
 
 contract TestDecrease is TestCommon {
     function testSuccess() public {
-        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
+        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
         holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20_000_000);
 
         vm.expectEmit();
@@ -163,7 +164,7 @@ contract TestDecrease is TestCommon {
     }
 
     function testErrNotAuthorized() public {
-        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
+        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -178,7 +179,7 @@ contract TestDecrease is TestCommon {
 
 contract TestUpdate is TestCommon {
     function testUpdateMore() public {
-        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
+        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
         holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20_000_000);
 
         vm.expectEmit();
@@ -193,7 +194,7 @@ contract TestUpdate is TestCommon {
     }
 
     function testUpdateLess() public {
-        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
+        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
         holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20_000_000);
 
         vm.expectEmit();
@@ -208,7 +209,7 @@ contract TestUpdate is TestCommon {
     }
 
     function testUpdateEquals() public {
-        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
+        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
         holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20_000_000);
 
         vm.expectEmit();
@@ -223,7 +224,7 @@ contract TestUpdate is TestCommon {
     }
 
     function testErrNotAuthorized() public {
-        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
+        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -240,7 +241,7 @@ contract TestUpdateValuation is TestCommon {
     IERC7726 immutable newValuation = IERC7726(address(42));
 
     function testSuccess() public {
-        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
+        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
 
         vm.expectEmit();
         emit IHoldings.UpdateValuation(POOL_A, SC_1, ASSET_A, newValuation);
@@ -250,7 +251,7 @@ contract TestUpdateValuation is TestCommon {
     }
 
     function testErrNotAuthorized() public {
-        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
+        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -265,32 +266,32 @@ contract TestUpdateValuation is TestCommon {
 
 contract TestSetAccountId is TestCommon {
     function testSuccess() public {
-        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
+        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
 
         vm.expectEmit();
-        emit IHoldings.SetAccountId(POOL_A, SC_1, ASSET_A, AccountId.wrap(0xAA00 | 0x01));
-        holdings.setAccountId(POOL_A, SC_1, ASSET_A, AccountId.wrap(0xAA00 | 0x01));
+        emit IHoldings.SetAccountId(POOL_A, SC_1, ASSET_A, 1, AccountId.wrap(0xAA00));
+        holdings.setAccountId(POOL_A, SC_1, ASSET_A, 1, AccountId.wrap(0xAA00));
 
-        assertEq(AccountId.unwrap(holdings.accountId(POOL_A, SC_1, ASSET_A, 0x01)), 0xAA00 | 0x01);
+        assertEq(AccountId.unwrap(holdings.accountId(POOL_A, SC_1, ASSET_A, 1)), 0xAA00);
     }
 
     function testErrNotAuthorized() public {
-        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
+        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        holdings.setAccountId(POOL_A, SC_1, ASSET_A, AccountId.wrap(0xAA00 | 0x01));
+        holdings.setAccountId(POOL_A, SC_1, ASSET_A, 1, AccountId.wrap(0xAA00));
     }
 
     function testErrHoldingNotFound() public {
         vm.expectRevert(IHoldings.HoldingNotFound.selector);
-        holdings.setAccountId(POOL_A, SC_1, ASSET_A, AccountId.wrap(0xAA00 | 0x01));
+        holdings.setAccountId(POOL_A, SC_1, ASSET_A, 1, AccountId.wrap(0xAA00));
     }
 }
 
 contract TestValue is TestCommon {
     function testSuccess() public {
-        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
+        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
         holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20_000_000);
 
         uint128 value = holdings.value(POOL_A, SC_1, ASSET_A);
@@ -306,7 +307,7 @@ contract TestValue is TestCommon {
 
 contract TestAmount is TestCommon {
     function testSuccess() public {
-        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
+        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
         holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20);
 
         uint128 value = holdings.amount(POOL_A, SC_1, ASSET_A);
@@ -322,7 +323,7 @@ contract TestAmount is TestCommon {
 
 contract TestValuation is TestCommon {
     function testSuccess() public {
-        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
+        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
 
         IERC7726 valuation = holdings.valuation(POOL_A, SC_1, ASSET_A);
 
@@ -337,7 +338,7 @@ contract TestValuation is TestCommon {
 
 contract TestExists is TestCommon {
     function testSuccess() public {
-        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new AccountId[](0));
+        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
 
         assert(holdings.exists(POOL_A, SC_1, ASSET_A));
         assert(!holdings.exists(POOL_A, SC_1, POOL_CURRENCY));
@@ -346,7 +347,7 @@ contract TestExists is TestCommon {
 
 contract TestLiability is TestCommon {
     function testSuccess() public {
-        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, true, new AccountId[](0));
+        holdings.create(POOL_A, SC_1, ASSET_A, itemValuation, true, new HoldingAccount[](0));
 
         assert(holdings.isLiability(POOL_A, SC_1, ASSET_A));
     }

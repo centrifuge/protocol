@@ -25,8 +25,31 @@ contract TestCases is BaseTest {
         hub.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
         hub.notifyPool{value: GAS}(poolId, CHAIN_CV);
         hub.notifyShareClass{value: GAS}(poolId, CHAIN_CV, scId, SC_HOOK);
-        hub.createHolding(poolId, scId, USDC_C2, identityValuation, false, 0x01);
-        hub.createHolding(poolId, scId, EUR_STABLE_C2, transientValuation, false, 0x02);
+        hub.createAccount(poolId, AccountId.wrap(0x01), true);
+        hub.createAccount(poolId, AccountId.wrap(0x02), false);
+        hub.createAccount(poolId, AccountId.wrap(0x03), false);
+        hub.createAccount(poolId, AccountId.wrap(0x04), false);
+        hub.createAccount(poolId, AccountId.wrap(0x05), true);
+        hub.createHolding(
+            poolId,
+            scId,
+            USDC_C2,
+            identityValuation,
+            AccountId.wrap(0x01),
+            AccountId.wrap(0x02),
+            AccountId.wrap(0x03),
+            AccountId.wrap(0x04)
+        );
+        hub.createHolding(
+            poolId,
+            scId,
+            EUR_STABLE_C2,
+            transientValuation,
+            AccountId.wrap(0x05),
+            AccountId.wrap(0x02),
+            AccountId.wrap(0x03),
+            AccountId.wrap(0x04)
+        );
         hub.updateContract{value: GAS}(
             poolId,
             CHAIN_CV,
@@ -74,7 +97,9 @@ contract TestCases is BaseTest {
         cv.requestDeposit(poolId, scId, USDC_C2, INVESTOR, INVESTOR_AMOUNT);
 
         vm.startPrank(FM);
-        hub.approveDeposits(poolId, scId, USDC_C2, shareClassManager.nowDepositEpoch(scId, USDC_C2), APPROVED_INVESTOR_AMOUNT);
+        hub.approveDeposits(
+            poolId, scId, USDC_C2, shareClassManager.nowDepositEpoch(scId, USDC_C2), APPROVED_INVESTOR_AMOUNT
+        );
         hub.issueShares(poolId, scId, USDC_C2, shareClassManager.nowIssueEpoch(scId, USDC_C2), NAV_PER_SHARE);
         vm.stopPrank();
 
@@ -121,7 +146,9 @@ contract TestCases is BaseTest {
         ).toUint128();
 
         vm.startPrank(FM);
-        hub.approveRedeems(poolId, scId, USDC_C2, shareClassManager.nowRedeemEpoch(scId, USDC_C2), APPROVED_SHARE_AMOUNT);
+        hub.approveRedeems(
+            poolId, scId, USDC_C2, shareClassManager.nowRedeemEpoch(scId, USDC_C2), APPROVED_SHARE_AMOUNT
+        );
         hub.revokeShares(poolId, scId, USDC_C2, shareClassManager.nowRevokeEpoch(scId, USDC_C2), NAV_PER_SHARE);
         vm.stopPrank();
 
@@ -152,7 +179,7 @@ contract TestCases is BaseTest {
     function testCalUpdateJournal() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation();
 
-        AccountId extraAccountId = newAccountId(123, uint8(AccountType.Asset));
+        AccountId extraAccountId = AccountId.wrap(123);
 
         vm.prank(FM);
         hub.createAccount(poolId, extraAccountId, true);
@@ -192,10 +219,14 @@ contract TestCases is BaseTest {
             accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Equity))),
             int128(870 * poolDecimals)
         );
+        assertEq(
+            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Asset))),
+            int128(1000 * poolDecimals)
+        );
 
         (debits, i) = (new JournalEntry[](1), 0);
         debits[i++] =
-            JournalEntry(12 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Expense)));
+            JournalEntry(12 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Gain)));
         (credits, i) = (new JournalEntry[](1), 0);
         credits[i++] =
             JournalEntry(12 * poolDecimals, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Loss)));
@@ -205,11 +236,12 @@ contract TestCases is BaseTest {
         assertEq(holdings.amount(poolId, scId, USDC_C2), 500 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 500 * poolDecimals);
         assertEq(
-            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Loss))),
-            int128(12 * poolDecimals)
+            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Asset))),
+            // 1000 - 500 + 12 = 512
+            int128(512 * poolDecimals)
         );
         assertEq(
-            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Expense))),
+            accounting.accountValue(poolId, holdings.accountId(poolId, scId, USDC_C2, uint8(AccountType.Loss))),
             int128(12 * poolDecimals)
         );
         assertEq(
