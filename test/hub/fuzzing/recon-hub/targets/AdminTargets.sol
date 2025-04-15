@@ -238,8 +238,12 @@ abstract contract AdminTargets is
                 gte(totalPendingDeposit, totalPendingUserDeposit, "total pending deposit is less than sum of pending user deposit amounts"); 
             }
         } catch (bytes memory reason) {
-            bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
-            t(!arithmeticRevert, "depositRequest reverts with arithmetic panic");
+            // precondition: check that it wasn't an overflow because we only care about underflow
+            uint128 pendingDeposit = shareClassManager.pendingDeposit(scId, depositAssetId);
+            if(uint256(pendingDeposit) + uint256(amount) < uint256(type(uint128).max)) {
+                bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
+                t(!arithmeticRevert, "depositRequest reverts with arithmetic panic");
+            }
         }  
     }   
 
