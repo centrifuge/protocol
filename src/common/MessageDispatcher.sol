@@ -14,7 +14,6 @@ import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 import {
     IInvestmentManagerGatewayHandler,
     IPoolManagerGatewayHandler,
@@ -495,13 +494,10 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         address provider,
         uint128 amount,
         D18 pricePoolPerAsset,
-        bool isIncrease,
-        Meta calldata meta
+        bool isIncrease
     ) external auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.updateHoldingAmount(
-                poolId, scId, assetId, amount, pricePoolPerAsset, isIncrease, meta.debits, meta.credits
-            );
+            hub.updateHoldingAmount(poolId, scId, assetId, amount, pricePoolPerAsset, isIncrease);
         } else {
             gateway.send(
                 poolId.centrifugeId(),
@@ -513,30 +509,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     amount: amount,
                     pricePerUnit: pricePoolPerAsset.raw(),
                     timestamp: uint64(block.timestamp),
-                    isIncrease: isIncrease,
-                    debits: meta.debits,
-                    credits: meta.credits
-                }).serialize()
-            );
-        }
-    }
-
-    /// @inheritdoc IVaultMessageSender
-    function sendUpdateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset)
-        external
-        auth
-    {
-        if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.updateHoldingValue(poolId, scId, assetId, pricePoolPerAsset);
-        } else {
-            gateway.send(
-                poolId.centrifugeId(),
-                MessageLib.UpdateHoldingValue({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    assetId: assetId.raw(),
-                    pricePerUnit: pricePoolPerAsset.raw(),
-                    timestamp: uint64(block.timestamp)
+                    isIncrease: isIncrease
                 }).serialize()
             );
         }
@@ -569,21 +542,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     timestamp: uint64(block.timestamp),
                     isIssuance: isIssuance
                 }).serialize()
-            );
-        }
-    }
-
-    /// @inheritdoc IVaultMessageSender
-    function sendJournalEntry(PoolId poolId, JournalEntry[] calldata debits, JournalEntry[] calldata credits)
-        external
-        auth
-    {
-        if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.updateJournal(poolId, debits, credits);
-        } else {
-            gateway.send(
-                poolId.centrifugeId(),
-                MessageLib.UpdateJournal({poolId: poolId.raw(), debits: debits, credits: credits}).serialize()
             );
         }
     }

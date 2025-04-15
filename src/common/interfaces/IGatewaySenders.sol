@@ -6,7 +6,6 @@ import {D18} from "src/misc/types/D18.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 
 interface ILocalCentrifugeId {
     function localCentrifugeId() external view returns (uint16);
@@ -153,12 +152,8 @@ interface IVaultMessageSender is ILocalCentrifugeId {
         address provider,
         uint128 amount,
         D18 pricePoolPerAsset,
-        bool isIncrease,
-        Meta calldata meta
+        bool isIncrease
     ) external;
-
-    function sendUpdateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset)
-        external;
 
     /// @notice Creates and send the message
     function sendUpdateShares(
@@ -169,7 +164,4 @@ interface IVaultMessageSender is ILocalCentrifugeId {
         uint128 shares,
         bool isIssuance
     ) external;
-
-    function sendJournalEntry(PoolId poolId, JournalEntry[] calldata debits, JournalEntry[] calldata credits)
-        external;
 }
