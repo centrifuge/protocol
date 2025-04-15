@@ -35,14 +35,6 @@ interface IBalanceSheet {
     );
     event Issue(PoolId indexed poolId, ShareClassId indexed scId, address to, D18 pricePoolPerShare, uint128 shares);
     event Revoke(PoolId indexed poolId, ShareClassId indexed scId, address from, D18 pricePoolPerShare, uint128 shares);
-    event UpdateValue(
-        PoolId indexed poolId,
-        ShareClassId indexed scId,
-        address asset,
-        uint256 tokenId,
-        D18 pricePoolPerAsset,
-        uint64 timestamp
-    );
 
     // --- Errors ---
     error FileUnrecognizedParam();
@@ -67,9 +59,6 @@ interface IBalanceSheet {
         uint128 amount,
         D18 pricePoolPerAsset
     ) external;
-
-    function updateValue(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, D18 pricePoolPerAsset)
-        external;
 
     function issue(PoolId poolId, ShareClassId scId, address to, D18 pricePoolPerShare, uint128 shares) external;
 

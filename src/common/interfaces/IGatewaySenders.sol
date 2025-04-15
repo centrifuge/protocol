@@ -155,9 +155,6 @@ interface IVaultMessageSender is ILocalCentrifugeId {
         bool isIncrease
     ) external;
 
-    function sendUpdateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset)
-        external;
-
     /// @notice Creates and send the message
     function sendUpdateShares(
         PoolId poolId,

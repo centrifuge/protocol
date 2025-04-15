@@ -125,16 +125,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     /// @inheritdoc IBalanceSheet
-    function updateValue(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, D18 pricePoolPerAsset)
-        external
-        auth
-    {
-        uint128 assetId = poolManager.assetToId(asset, tokenId);
-        sender.sendUpdateHoldingValue(poolId, scId, AssetId.wrap(assetId), pricePoolPerAsset);
-        emit UpdateValue(poolId, scId, asset, tokenId, pricePoolPerAsset, uint64(block.timestamp));
-    }
-
-    /// @inheritdoc IBalanceSheet
     function revoke(PoolId poolId, ShareClassId scId, address from, D18 pricePoolPerShare, uint128 shares)
         external
         authOrPermission(poolId, scId)

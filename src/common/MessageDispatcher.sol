@@ -516,27 +516,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendUpdateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset)
-        external
-        auth
-    {
-        if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.updateHoldingValue(poolId, scId, assetId, pricePoolPerAsset);
-        } else {
-            gateway.send(
-                poolId.centrifugeId(),
-                MessageLib.UpdateHoldingValue({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    assetId: assetId.raw(),
-                    pricePerUnit: pricePoolPerAsset.raw(),
-                    timestamp: uint64(block.timestamp)
-                }).serialize()
-            );
-        }
-    }
-
-    /// @inheritdoc IVaultMessageSender
     function sendUpdateShares(
         PoolId poolId,
         ShareClassId scId,

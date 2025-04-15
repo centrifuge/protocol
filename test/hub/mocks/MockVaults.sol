@@ -106,19 +106,6 @@ contract MockVaults is Test, Auth, IAdapter {
         );
     }
 
-    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset) public {
-        handler.handle(
-            sourceChainId,
-            MessageLib.UpdateHoldingValue({
-                poolId: poolId.raw(),
-                scId: scId.raw(),
-                assetId: assetId.raw(),
-                pricePerUnit: pricePoolPerAsset.raw(),
-                timestamp: 0
-            }).serialize()
-        );
-    }
-
     function updateShares(PoolId poolId, ShareClassId scId, uint128 amount, bool isIssuance) public {
         handler.handle(
             sourceChainId,

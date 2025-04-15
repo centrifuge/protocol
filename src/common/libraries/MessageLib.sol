@@ -40,11 +40,9 @@ enum MessageType {
     TriggerRedeemRequest,
     // -- BalanceSheet messages
     UpdateHoldingAmount,
-    UpdateHoldingValue,
     UpdateShares,
     ApprovedDeposits,
     RevokedShares,
-    UpdateJournal,
     TriggerUpdateHoldingAmount,
     TriggerUpdateShares
 }
@@ -113,15 +111,11 @@ library MessageLib {
         (89  << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (89  << uint8(MessageType.TriggerRedeemRequest) * 8) +
         (114 << uint8(MessageType.UpdateHoldingAmount) * 8) +
-        (65  << uint8(MessageType.UpdateHoldingValue) * 8) +
         (98  << uint8(MessageType.UpdateShares) * 8) +
         (57  << uint8(MessageType.ApprovedDeposits) * 8) +
-        (57  << uint8(MessageType.RevokedShares) * 8);
-
-    // forgefmt: disable-next-item
-    uint256 constant MESSAGE_LENGTHS_2 =
-        (106 << (uint8(MessageType.TriggerUpdateHoldingAmount) - 32) * 8) +
-        (90  << (uint8(MessageType.TriggerUpdateShares) - 32) * 8);
+        (57  << uint8(MessageType.RevokedShares) * 8) +
+        (106 << uint8(MessageType.TriggerUpdateHoldingAmount) * 8) +
+        (90  << uint8(MessageType.TriggerUpdateShares) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -135,9 +129,7 @@ library MessageLib {
         uint8 kind = message.toUint8(0);
         require(kind <= uint8(type(MessageType).max), UnknownMessageType());
 
-        length = (kind <= 31)
-            ? uint16(uint8(bytes32(MESSAGE_LENGTHS_1)[31 - kind]))
-            : uint16(uint8(bytes32(MESSAGE_LENGTHS_2)[63 - kind]));
+        length = uint16(uint8(bytes32(MESSAGE_LENGTHS_1)[31 - kind]));
 
         // Spetial treatment for messages with dynamic size:
         if (kind == uint8(MessageType.UpdateRestriction)) {
@@ -1079,35 +1071,6 @@ library MessageLib {
             t.timestamp,
             t.isIncrease
         );
-    }
-
-    //---------------------------------------
-    //    UpdateHoldingValue
-    //---------------------------------------
-
-    struct UpdateHoldingValue {
-        uint64 poolId;
-        bytes16 scId;
-        uint128 assetId;
-        uint128 pricePerUnit;
-        uint64 timestamp;
-    }
-
-    function deserializeUpdateHoldingValue(bytes memory data) internal pure returns (UpdateHoldingValue memory h) {
-        require(messageType(data) == MessageType.UpdateHoldingValue, "UnknownMessageType");
-
-        return UpdateHoldingValue({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            assetId: data.toUint128(25),
-            pricePerUnit: data.toUint128(41),
-            timestamp: data.toUint64(57)
-        });
-    }
-
-    function serialize(UpdateHoldingValue memory t) internal pure returns (bytes memory) {
-        return
-            abi.encodePacked(MessageType.UpdateHoldingValue, t.poolId, t.scId, t.assetId, t.pricePerUnit, t.timestamp);
     }
 
     //---------------------------------------

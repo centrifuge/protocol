@@ -236,18 +236,4 @@ contract BalanceSheetTest is BaseTest {
 
         assertEq(token.balanceOf(address(this)), 0);
     }
-
-    function testUpdateValue() public {
-        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId.raw());
-
-        vm.prank(randomUser);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.updateValue(POOL_A, defaultTypedShareClassId, asset, tokenId, d18(1, 3));
-
-        vm.expectEmit();
-        emit IBalanceSheet.UpdateValue(
-            POOL_A, defaultTypedShareClassId, asset, tokenId, d18(1, 3), uint64(block.timestamp)
-        );
-        balanceSheet.updateValue(POOL_A, defaultTypedShareClassId, asset, tokenId, d18(1, 3));
-    }
 }

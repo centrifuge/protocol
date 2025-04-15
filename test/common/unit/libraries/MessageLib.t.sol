@@ -572,32 +572,6 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
-    function testUpdateHoldingValue(
-        uint64 poolId,
-        bytes16 scId,
-        uint128 assetId,
-        uint128 pricePerUnit,
-        uint64 timestamp
-    ) public pure {
-        MessageLib.UpdateHoldingValue memory a = MessageLib.UpdateHoldingValue({
-            poolId: poolId,
-            scId: scId,
-            assetId: assetId,
-            pricePerUnit: pricePerUnit,
-            timestamp: timestamp
-        });
-        MessageLib.UpdateHoldingValue memory b = MessageLib.deserializeUpdateHoldingValue(a.serialize());
-
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.assetId, b.assetId);
-        assertEq(a.pricePerUnit, b.pricePerUnit);
-        assertEq(a.timestamp, b.timestamp);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-    }
-
     function testUpdateShares(
         uint64 poolId,
         bytes16 scId,

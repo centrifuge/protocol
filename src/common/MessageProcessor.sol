@@ -207,11 +207,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 D18.wrap(m.pricePerUnit),
                 m.isIncrease
             );
-        } else if (kind == MessageType.UpdateHoldingValue) {
-            MessageLib.UpdateHoldingValue memory m = message.deserializeUpdateHoldingValue();
-            hub.updateHoldingValue(
-                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), D18.wrap(m.pricePerUnit)
-            );
         } else if (kind == MessageType.UpdateShares) {
             MessageLib.UpdateShares memory m = message.deserializeUpdateShares();
             if (m.isIssuance) {
