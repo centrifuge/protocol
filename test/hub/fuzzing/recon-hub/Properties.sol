@@ -18,7 +18,7 @@ import {D18, d18} from "src/misc/types/D18.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 
 // Utils
-import {Helpers} from "test/pools/fuzzing/recon-pools/utils/Helpers.sol";
+import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
 import {BeforeAfter, OpType} from "./BeforeAfter.sol";
 
 abstract contract Properties is BeforeAfter, Asserts {

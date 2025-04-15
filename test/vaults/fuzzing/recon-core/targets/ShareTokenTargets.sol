@@ -13,6 +13,7 @@ import {Properties} from "../properties/Properties.sol";
 
 // Only for Share
 abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
+    
     function token_transfer(address to, uint256 value) public {
         require(_canDonate(to), "never donate to escrow");
 

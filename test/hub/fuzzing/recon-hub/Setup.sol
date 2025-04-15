@@ -45,10 +45,10 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
 // Test Utils
-import {MockGateway} from "test/pools/fuzzing/recon-pools/mocks/MockGateway.sol";
-import {ShareClassManagerWrapper} from "test/pools/fuzzing/recon-pools/utils/ShareClassManagerWrapper.sol";
+import {MockGateway} from "test/hub/fuzzing/recon-hub/mocks/MockGateway.sol";
+import {ShareClassManagerWrapper} from "test/hub/fuzzing/recon-hub/utils/ShareClassManagerWrapper.sol";
 import {MockMessageDispatcher} from "test/vaults/fuzzing/recon-core/mocks/MockMessageDispatcher.sol";
-import {MockAccountValue} from "test/pools/fuzzing/recon-pools/mocks/MockAccountValue.sol";
+import {MockAccountValue} from "test/hub/fuzzing/recon-hub/mocks/MockAccountValue.sol";
 
 abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     enum Op {

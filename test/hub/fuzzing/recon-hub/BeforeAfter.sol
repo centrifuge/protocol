@@ -12,7 +12,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 // Recon Utils
-import {Helpers} from "test/pools/fuzzing/recon-pools/utils/Helpers.sol";
+import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
 import {Setup} from "./Setup.sol";
 
 enum OpType {

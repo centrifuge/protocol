@@ -154,12 +154,12 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
     }
 
     // Step 5
-    function poolManager_deployVault(uint64 poolId, bytes16 scId, uint128 assetId) public returns (address) {
+    function poolManager_deployVault(uint64 poolId, bytes16 scId, uint128 assetId) public asAdmin returns (address) {
         return poolManager.deployVault(poolId, scId, assetId, address(vaultFactory));
     }
 
     // Step 6 deploy the pool
-    function deployVault(uint64 poolId, bytes16 scId, uint128 assetId) public notGovFuzzing returns (address) {
+    function deployVault(uint64 poolId, bytes16 scId, uint128 assetId) public notGovFuzzing asAdmin returns (address) {
         address newVault = poolManager.deployVault(poolId, scId, assetId, address(vaultFactory));
         poolManager.linkVault(poolId, scId, assetId, newVault);
 
@@ -169,44 +169,44 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
     }
 
     // Extra 7 - Remove liquidity Pool
-    function removeVault(uint64 poolId, bytes16 scId, uint128 assetId) public {
+    function removeVault(uint64 poolId, bytes16 scId, uint128 assetId) public asAdmin{
         poolManager.unlinkVault(poolId, scId, assetId, vaults[0]);
     }
 
     /**
      * NOTE: All of these are implicitly clamped!
      */
-    function poolManager_updateMember(uint64 validUntil) public {
+    function poolManager_updateMember(uint64 validUntil) public asAdmin {
         poolManager.updateRestriction(
             poolId, scId, MessageLib.UpdateRestrictionMember(_getActor().toBytes32(), validUntil).serialize()
         );
     }
 
     // TODO: Price is capped at u64 to test overflows
-    function poolManager_updatePricePoolPerShare(uint64 price, uint64 computedAt) public {
+    function poolManager_updatePricePoolPerShare(uint64 price, uint64 computedAt) public asAdmin {
         poolManager.updatePricePoolPerShare(poolId, scId, price, computedAt);
         poolManager.updatePricePoolPerAsset(poolId, scId, assetId, price, computedAt);
     }
 
-    function poolManager_updateShareMetadata(string memory tokenName, string memory tokenSymbol) public {
+    function poolManager_updateShareMetadata(string memory tokenName, string memory tokenSymbol) public asAdmin {
         poolManager.updateShareMetadata(poolId, scId, tokenName, tokenSymbol);
     }
 
-    function poolManager_freeze() public {
+    function poolManager_freeze() public asAdmin {
         poolManager.updateRestriction(poolId, scId, MessageLib.UpdateRestrictionFreeze(_getActor().toBytes32()).serialize());
     }
 
-    function poolManager_unfreeze() public {
+    function poolManager_unfreeze() public asAdmin {
         poolManager.updateRestriction(poolId, scId, MessageLib.UpdateRestrictionUnfreeze(_getActor().toBytes32()).serialize());
     }
 
     // TODO: Rely / Permissions
     // Only after all system is setup
-    function root_scheduleRely(address target) public {
+    function root_scheduleRely(address target) public asAdmin {
         root.scheduleRely(target);
     }
 
-    function root_cancelRely(address target) public {
+    function root_cancelRely(address target) public asAdmin {
         root.cancelRely(target);
     }
 }

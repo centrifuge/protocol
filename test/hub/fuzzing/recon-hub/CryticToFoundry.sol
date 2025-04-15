@@ -14,9 +14,9 @@ import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 
 import {TargetFunctions} from "./TargetFunctions.sol";
-import {Helpers} from "test/pools/fuzzing/recon-pools/utils/Helpers.sol";
+import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
 
-// forge test --match-contract CryticToFoundry --match-path test/pools/fuzzing/recon-pools/CryticToFoundry.sol -vv
+// forge test --match-contract CryticToFoundry --match-path test/hub/fuzzing/recon-hub/CryticToFoundry.sol -vv
 contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     bytes32 INVESTOR = bytes32("Investor");
     string SC_NAME = "ExampleName";
