@@ -353,7 +353,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function updateHolding(PoolId poolId, ShareClassId scId, AssetId assetId) public payable {
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) public payable {
         _protected(poolId);
 
         accounting.unlock(poolId);

@@ -151,6 +151,9 @@ contract TestMainMethodsChecks is TestCommon {
         );
 
         vm.expectRevert(IHub.NotAuthorizedAdmin.selector);
+        hub.updateHoldingValue(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0));
+
+        vm.expectRevert(IHub.NotAuthorizedAdmin.selector);
         hub.updateHoldingValuation(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)));
 
         vm.expectRevert(IHub.NotAuthorizedAdmin.selector);

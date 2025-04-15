@@ -201,7 +201,7 @@ interface IHub {
     ) external payable;
 
     /// @notice Updates the pool currency value of this holding based of the associated valuation.
-    function updateHolding(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
 
     /// @notice Updates the valuation used by a holding
     /// @param valuation Used to transform between the holding asset and pool currency
