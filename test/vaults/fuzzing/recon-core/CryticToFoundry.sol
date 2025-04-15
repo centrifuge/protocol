@@ -22,4 +22,13 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         vault_requestDeposit(1e18, 0);
     }
+
+    function test_deployNewTokenPoolAndShare_change_price() public {
+        deployNewTokenPoolAndShare(18, 1_000_000e18);
+
+        poolManager_updatePricePoolPerShare(1e18, type(uint64).max);
+        poolManager_updateMember(type(uint64).max);
+
+        poolManager_updatePricePoolPerShare(2e18, type(uint64).max);
+    }
 }

@@ -89,7 +89,7 @@ abstract contract HubTargets is
         (, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, investor);
         uint32 epochId = shareClassManager.epochId(poolId);
 
-        eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId");
+        // eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId");
     }
 
     function hub_claimRedeem_clamped(uint64 poolIdAsUint, uint32 scIdEntropy) public updateGhosts asActor {

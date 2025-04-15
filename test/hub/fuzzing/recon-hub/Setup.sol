@@ -91,6 +91,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     bool internal IS_LIABILITY = true; 
     /// @dev see toggle_IsIncrease
     bool internal IS_INCREASE = true;
+    bool internal IS_DEBIT_NORMAL = true;
     /// @dev see toggle_AccountToUpdate
     AccountId internal ACCOUNT_TO_UPDATE = AccountId.wrap(0);
     uint32 internal ASSET_ACCOUNT = 1;

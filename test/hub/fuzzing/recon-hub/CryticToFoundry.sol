@@ -62,7 +62,11 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         // necessary setup via the PoolRouter
         hub_addShareClass(poolId.raw(), SC_SALT);
-        hub_createHolding(poolId.raw(), scId.raw(), identityValuation, 1, 2, 3, 4);
+        hub_createAccount(poolId.raw(), ASSET_ACCOUNT, IS_DEBIT_NORMAL);
+        hub_createAccount(poolId.raw(), EQUITY_ACCOUNT, IS_DEBIT_NORMAL);
+        hub_createAccount(poolId.raw(), LOSS_ACCOUNT, IS_DEBIT_NORMAL);
+        hub_createAccount(poolId.raw(), GAIN_ACCOUNT, IS_DEBIT_NORMAL);
+        hub_createHolding(poolId.raw(), scId.raw(), identityValuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT);
         
         // request deposit
         hub_depositRequest(poolId.raw(), scId.raw(), INVESTOR_AMOUNT);
@@ -243,6 +247,69 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         shortcut_notify_share_class(6,1,1234,false,0,1,1);
 
         hub_claimRedeem_clamped(0,0);
+
+    }
+
+    // forge test --match-test test_hub_claimRedeem_clamped_0 -vvv 
+    // TODO: come back to this to see if it actually messes up claiming flow if lastUpdate gets updated in middle of approve/revoke cycle
+    function test_hub_claimRedeem_clamped_0() public {
+
+        hub_createPool(0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496,1);
+
+        hub_addShareClass_clamped(0,1);
+
+        hub_redeemRequest_clamped(0,0,1);
+
+        hub_approveRedeems_clamped(0,0,1);
+
+        hub_claimRedeem_clamped(0,0);
+
+    }
+
+    // test claiming in the middle of the approve/revoke cycle
+    function test_hub_claimRedeem_in_middle_of_cycle() public {
+        (poolId, scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+
+        // make a redeem request
+        hub_redeemRequest_clamped(0,0,1);
+
+        hub_approveRedeems_clamped(0,0,1);
+
+        hub_claimRedeem_clamped(0,0);
+
+        hub_revokeShares_clamped(0,0,1, false);
+
+        hub_claimRedeem_clamped(0,0);
+
+    }
+
+    // forge test --match-test test_hub_redeemRequest_clamped_2 -vvv 
+    function test_hub_redeemRequest_clamped_2() public {
+
+        hub_createPool(0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496,1);
+
+        hub_addShareClass_clamped(0,1);
+
+        hub_redeemRequest_clamped(0,0,1);
+
+        hub_approveRedeems_clamped(0,0,1);
+
+        hub_redeemRequest_clamped(0,0,0);
+
+    }
+
+    // forge test --match-test test_hub_claimDeposit_clamped_3 -vvv 
+    function test_hub_claimDeposit_clamped_3() public {
+
+        hub_createPool(0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496,1);
+
+        hub_addShareClass_clamped(0,1);
+
+        hub_redeemRequest_clamped(0,0,1);
+
+        hub_approveRedeems_clamped(0,0,1);
+
+        hub_claimDeposit_clamped(0,0);
 
     }
 }

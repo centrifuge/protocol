@@ -43,4 +43,8 @@ abstract contract ToggleTargets is
     function toggle_GainAccount(uint32 gainAccountAsUint) public {
         GAIN_ACCOUNT = gainAccountAsUint;
     }
+
+    function toggle_IsDebitNormal() public {
+        IS_DEBIT_NORMAL = !IS_DEBIT_NORMAL;
+    }
 }

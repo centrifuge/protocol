@@ -352,7 +352,6 @@ abstract contract TargetFunctions is
         AssetId assetId = newAssetId(isoCode);
 
         hub_updateHoldingValue(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw());
-        // hub_execute_clamped(poolId);
     }
 
     function shortcut_create_pool_and_update_journal(
@@ -433,6 +432,11 @@ abstract contract TargetFunctions is
         IERC7726 valuation = isIdentityValuation ? 
             IERC7726(address(identityValuation)) : 
             IERC7726(address(transientValuation));
+
+        hub_createAccount(poolId, ASSET_ACCOUNT, IS_DEBIT_NORMAL);
+        hub_createAccount(poolId, EQUITY_ACCOUNT, IS_DEBIT_NORMAL);
+        hub_createAccount(poolId, LOSS_ACCOUNT, IS_DEBIT_NORMAL);
+        hub_createAccount(poolId, GAIN_ACCOUNT, IS_DEBIT_NORMAL);
 
         hub_createHolding(poolId, scId, valuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT);
     }

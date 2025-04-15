@@ -213,4 +213,7 @@ contract MockMessageDispatcher {
 
     function sendRegisterAsset( uint16 centrifugeId, uint128 assetId, uint8 decimals) external  {
     }
+
+    function sendRevokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external  {
+    }
 }
