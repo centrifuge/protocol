@@ -119,6 +119,9 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @notice Dispatched when a message is added to a batch that causes it to exceed the max batch size.
     error ExceedsMaxBatchSize();
 
+    /// @notice Dispatched when a refund address is not set.
+    error RefundAddressNotSet();
+
     // --- Administration ---
     /// @notice Used to update an array of addresses ( state variable ) on very rare occasions.
     /// @dev    Currently it is used to update the supported adapters.

@@ -476,6 +476,7 @@ contract GatewayTest is Test {
 
         assertEq(gateway.fuel(), 0);
 
+        gateway.setRefundAddress(POOL_A, address(gateway));
         gateway.subsidizePool{value: total}(POOL_A);
         gateway.send(REMOTE_CENTRIFUGE_ID, message);
 
@@ -501,6 +502,7 @@ contract GatewayTest is Test {
 
         assertEq(gateway.fuel(), 0);
 
+        gateway.setRefundAddress(POOL_A, address(gateway));
         gateway.subsidizePool{value: fundsToCoverTwoAdaptersOnly}(POOL_A);
         gateway.send(REMOTE_CENTRIFUGE_ID, message);
 

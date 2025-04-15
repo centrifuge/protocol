@@ -343,6 +343,7 @@ contract Gateway is Auth, IGateway, Recoverable {
     }
 
     function subsidizePool(PoolId poolId) public payable {
+        require(subsidy[poolId].refund != address(0), RefundAddressNotSet());
         subsidy[poolId].value += uint96(msg.value);
         emit SubsidizePool(poolId, msg.sender, msg.value);
     }
