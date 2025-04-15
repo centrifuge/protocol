@@ -750,7 +750,8 @@ contract ShareClassManager is Auth, IShareClassManager {
         }
 
         cancelledAmount = isIncrement ? 0 : amount;
-        userOrder.pending = isIncrement ? userOrder.pending + amount : 0;
+        // NOTE: If we decrease the pending, we decrease usually by the full amount
+        userOrder.pending = isIncrement ? userOrder.pending + amount : userOrder.pending - amount;
 
         userOrder.lastUpdate =
             requestType == RequestType.Deposit ? nowDepositEpoch(scId_, assetId) : nowRedeemEpoch(scId_, assetId);
@@ -796,7 +797,7 @@ contract ShareClassManager is Auth, IShareClassManager {
 
         // Block increasing queued amount if cancelling is already queued
         // NOTE: Can only happen due to race condition as CV blocks requests if cancellation is in progress
-        require(!(queued.isCancelling == true && amount > 0), CancellationQueued());
+        require(!(queued.isCancelling && amount > 0), CancellationQueued());
 
         if (!isIncrement) {
             queued.isCancelling = true;
@@ -847,8 +848,8 @@ contract ShareClassManager is Auth, IShareClassManager {
         QueuedOrder memory queued
     ) private {
         uint128 pendingTotal = pendingDeposit[scId_][assetId];
-        pendingDeposit[scId_][assetId] = isIncrement ? pendingTotal + amount : pendingTotal - amount;
-        pendingTotal = pendingDeposit[scId_][assetId];
+        pendingTotal = isIncrement ? pendingTotal + amount : pendingTotal - amount;
+        pendingDeposit[scId_][assetId] = pendingTotal;
 
         emit UpdateDepositRequest(
             poolId,
@@ -874,8 +875,8 @@ contract ShareClassManager is Auth, IShareClassManager {
         QueuedOrder memory queued
     ) private {
         uint128 pendingTotal = pendingRedeem[scId_][assetId];
-        pendingRedeem[scId_][assetId] = isIncrement ? pendingTotal + amount : pendingTotal - amount;
-        pendingTotal = pendingRedeem[scId_][assetId];
+        pendingTotal = isIncrement ? pendingTotal + amount : pendingTotal - amount;
+        pendingRedeem[scId_][assetId] = pendingTotal;
 
         emit UpdateRedeemRequest(
             poolId,
