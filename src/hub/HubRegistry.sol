@@ -88,6 +88,12 @@ contract HubRegistry is Auth, IHubRegistry {
     }
 
     /// @inheritdoc IHubRegistry
+    function decimals(AssetId assetId) public view returns (uint8 decimals_) {
+        decimals_ = _decimals[assetId];
+        require(decimals_ > 0, AssetNotFound());
+    }
+
+    /// @inheritdoc IHubRegistry
     function decimals(PoolId poolId) public view returns (uint8 decimals_) {
         decimals_ = _decimals[currency[poolId]];
         require(decimals_ > 0, AssetNotFound());

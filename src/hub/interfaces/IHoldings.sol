@@ -2,6 +2,7 @@
 pragma solidity >=0.5.0;
 
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
+import {D18} from "src/misc/types/D18.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -39,7 +40,7 @@ interface IHoldings {
         PoolId indexed,
         ShareClassId indexed scId,
         AssetId indexed assetId,
-        IERC7726 valuation,
+        D18 pricePoolPerAsset,
         uint128 amount,
         uint128 increasedValue
     );
@@ -49,7 +50,7 @@ interface IHoldings {
         PoolId indexed,
         ShareClassId indexed scId,
         AssetId indexed assetId,
-        IERC7726 valuation,
+        D18 pricePoolPerAsset,
         uint128 amount,
         uint128 decreasedValue
     );
@@ -98,13 +99,13 @@ interface IHoldings {
 
     /// @notice Increments the amount of a holding and updates the value for that increment.
     /// @return value The value the holding has increment.
-    function increase(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount)
+    function increase(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset, uint128 amount)
         external
         returns (uint128 value);
 
     /// @notice Decrements the amount of a holding and updates the value for that decrement.
     /// @return value The value the holding has decrement.
-    function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount)
+    function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset, uint128 amount)
         external
         returns (uint128 value);
 

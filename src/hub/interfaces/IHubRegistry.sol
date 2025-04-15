@@ -54,6 +54,9 @@ interface IHubRegistry is IERC6909Decimals {
     /// @notice returns the existence of an admin
     function isAdmin(PoolId poolId, address admin) external view returns (bool);
 
+    /// @notice returns the decimals for an asset
+    function decimals(AssetId assetId) external view returns (uint8);
+
     /// @notice returns the decimals for a pool
     function decimals(PoolId poolId) external view returns (uint8);
 

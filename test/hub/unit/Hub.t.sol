@@ -113,16 +113,16 @@ contract TestMainMethodsChecks is TestCommon {
         hub.addShareClass(POOL_A, "", "", bytes32(0), bytes(""));
 
         vm.expectRevert(IHub.NotAuthorizedAdmin.selector);
-        hub.approveDeposits(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, IERC7726(address(0)));
+        hub.approveDeposits(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, 0);
 
         vm.expectRevert(IHub.NotAuthorizedAdmin.selector);
-        hub.approveRedeems(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0);
+        hub.approveRedeems(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, 0);
 
         vm.expectRevert(IHub.NotAuthorizedAdmin.selector);
-        hub.issueShares(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
+        hub.issueShares(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(0));
 
         vm.expectRevert(IHub.NotAuthorizedAdmin.selector);
-        hub.revokeShares(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
+        hub.revokeShares(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(0));
 
         vm.expectRevert(IHub.NotAuthorizedAdmin.selector);
         hub.updateRestriction(POOL_A, 0, ShareClassId.wrap(0), bytes(""));
@@ -131,7 +131,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateContract(POOL_A, 0, ShareClassId.wrap(0), bytes32(0), bytes(""));
 
         vm.expectRevert(IHub.NotAuthorizedAdmin.selector);
-        hub.updatePricePoolPerShare(POOL_A, ShareClassId.wrap(0), D18.wrap(0), bytes(""));
+        hub.updatePricePerShare(POOL_A, ShareClassId.wrap(0), D18.wrap(0));
 
         vm.expectRevert(IHub.NotAuthorizedAdmin.selector);
         hub.createHolding(
