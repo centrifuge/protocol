@@ -58,8 +58,6 @@ contract LocalhostDeployer is FullDeployer {
         hub.allowPoolAdmin(poolId, vm.envAddress("ADMIN"), true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
-        D18 navPerShare = d18(1, 1);
-
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, "Tokenized MMF", "MMF", bytes32(bytes("1")), bytes(""));
         hub.notifyPool(poolId, centrifugeId);
@@ -92,6 +90,7 @@ contract LocalhostDeployer is FullDeployer {
             }).serialize()
         );
 
+        D18 navPerShare = d18(1, 1);
         hub.updatePricePoolPerShare(poolId, scId, navPerShare, "");
         hub.notifySharePrice(poolId, centrifugeId, scId);
         hub.notifyAssetPrice(poolId, scId, assetId);
@@ -114,6 +113,40 @@ contract LocalhostDeployer is FullDeployer {
 
         // Claim deposit request
         vault.mint(investAmount, msg.sender);
+
+        // Withdraw principal
+        balanceSheet.withdraw(poolId, scId, address(token), 0, msg.sender, investAmount, navPerShare);
+
+        // Update price, deposit principal + yield
+        navPerShare = d18(11, 10);
+        hub.updatePricePoolPerShare(poolId, scId, navPerShare, "");
+        hub.notifySharePrice(poolId, centrifugeId, scId);
+        hub.notifyAssetPrice(poolId, scId, assetId);
+
+        uint256 redeemAmount = investAmount + 100_000e6;
+        token.approve(address(balanceSheet), redeemAmount);
+        balanceSheet.deposit(poolId, scId, address(token), 0, msg.sender, uint128(redeemAmount), navPerShare);
+
+        // Make sender a member to submit redeem request
+        hub.updateRestriction(
+            poolId,
+            centrifugeId,
+            scId,
+            MessageLib.UpdateRestrictionMember({user: bytes32(bytes20(msg.sender)), validUntil: type(uint64).max})
+                .serialize()
+        );
+
+        // Submit redeem request
+        vault.requestRedeem(investAmount, msg.sender, msg.sender);
+
+        // Fulfill redeem request
+        hub.approveRedeems(poolId, scId, assetId, uint128(redeemAmount));
+        hub.revokeShares(poolId, scId, assetId, navPerShare, valuation);
+
+        hub.claimRedeem(poolId, scId, assetId, bytes32(bytes20(msg.sender)));
+
+        // Claim redeem request
+        vault.withdraw(redeemAmount, msg.sender, msg.sender);
     }
 
     function _deploySyncDepositVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
