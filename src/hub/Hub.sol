@@ -232,49 +232,53 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function approveDeposits(PoolId poolId, ShareClassId scId, AssetId depositAssetId, uint128 approvedAssetAmount)
+    function approveDeposits(PoolId poolId, ShareClassId scId, AssetId depositAssetId, uint32 nowDepositEpochId, uint128 approvedAssetAmount)
         external
         payable
+    returns  (uint128 pendingAssetAmount, uint128 approvedPoolAmount)
     {
         _protected(poolId);
 
-        shareClassManager.approveDeposits(
-            poolId, scId, approvedAssetAmount, depositAssetId, _pricePoolPerAsset(poolId, scId, depositAssetId)
+        (pendingAssetAmount, approvedPoolAmount) = shareClassManager.approveDeposits(
+            poolId, scId, depositAssetId,nowDepositEpochId, approvedAssetAmount, _pricePoolPerAsset(poolId, scId, depositAssetId)
         );
 
         sender.sendApprovedDeposits(poolId, scId, depositAssetId, approvedAssetAmount);
     }
 
     /// @inheritdoc IHub
-    function approveRedeems(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, uint128 approvedShareAmount)
+    function approveRedeems(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, uint32 nowRedeemEpochId, uint128 approvedShareAmount)
         external
         payable
+    returns (uint128 pendingShareAmount)
     {
         _protected(poolId);
 
-        shareClassManager.approveRedeems(
-            poolId, scId, approvedShareAmount, payoutAssetId, _pricePoolPerAsset(poolId, scId, payoutAssetId)
+        (pendingShareAmount) = shareClassManager.approveRedeems(
+            poolId, scId, payoutAssetId,nowRedeemEpochId, approvedShareAmount, _pricePoolPerAsset(poolId, scId, payoutAssetId)
         );
     }
 
     /// @inheritdoc IHub
-    function issueShares(PoolId poolId, ShareClassId scId, AssetId depositAssetId, D18 navPoolPerShare)
+    function issueShares(PoolId poolId, ShareClassId scId, AssetId depositAssetId, uint32 nowIssueEpochId, D18 navPoolPerShare)
         external
         payable
+    returns (uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 depositPoolAmount)
     {
         _protected(poolId);
 
-        shareClassManager.issueShares(poolId, scId, depositAssetId, navPoolPerShare);
+        (issuedShareAmount, depositAssetAmount, depositPoolAmount) = shareClassManager.issueShares(poolId, scId, depositAssetId, nowIssueEpochId, navPoolPerShare);
     }
 
     /// @inheritdoc IHub
-    function revokeShares(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, D18 navPoolPerShare)
+    function revokeShares(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, uint32 nowRevokeEpochId, D18 navPoolPerShare)
         external
         payable
+    returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount)
     {
         _protected(poolId);
 
-        (, uint128 payoutAssetAmount,) = shareClassManager.revokeShares(poolId, scId, payoutAssetId, navPoolPerShare);
+        (revokedShareAmount, payoutAssetAmount, payoutPoolAmount) = shareClassManager.revokeShares(poolId, scId, payoutAssetId, nowRevokeEpochId, navPoolPerShare);
 
         sender.sendRevokedShares(poolId, scId, payoutAssetId, payoutAssetAmount);
     }

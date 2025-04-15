@@ -107,19 +107,22 @@ interface IHub {
     /// deposit asset id.
     /// @param scId Identifier of the share class
     /// @param depositAssetId Identifier of the asset locked for the deposit request
+    /// @param nowDepositEpochId The epoch for which deposits will be approved.
     /// @param approvedAssetAmount Ampunt of assets that will be approved
-    function approveDeposits(PoolId poolId, ShareClassId scId, AssetId depositAssetId, uint128 approvedAssetAmount)
+    function approveDeposits(PoolId poolId, ShareClassId scId, AssetId depositAssetId, uint32 nowDepositEpochId, uint128 approvedAssetAmount)
         external
-        payable;
+        payable
+returns (uint128 pendingAssetAmount, uint128 approvedPoolAmount);
 
     /// @notice Approves a percentage of all redemption requests for the given triplet of pool id, share class id and
     /// deposit asset id.
     /// @param scId Identifier of the share class
+    /// @param nowRedeemEpochId The epoch for which redemptions will be approved.
     /// @param payoutAssetId Identifier of the asset for which all requests want to exchange their share class tokens
     /// @param approvedShareAmount Amount of shares that will be approved
-    function approveRedeems(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, uint128 approvedShareAmount)
+    function approveRedeems(PoolId poolId, ShareClassId scId, AssetId payoutAssetId,uint32 nowRedeemEpochId, uint128 approvedShareAmount)
         external
-        payable;
+        payable  returns (uint128 pendingShareAmount);
 
     /// @notice Emits new shares for the given identifier based on the provided NAV per share.
     /// @param depositAssetId Identifier of the deposit asset for which shares should be issued

@@ -118,7 +118,7 @@ interface IShareClassManager {
         D18 navAssetPerShare,
         uint128 revokedShareAmount,
         uint128 depositAssetAmount,
-        uint128 paymentPoolAmount
+        uint128 depositPoolAmount
     );
     event RemoteRevokeShares(PoolId indexed poolId, ShareClassId indexed scId, uint128 revokedAssetAmount);
     event ClaimDeposit(
@@ -171,6 +171,7 @@ interface IShareClassManager {
     );
 
     /// Errors
+    error NonInsequenceEpoch(uint32 providedEpoch, uint32 nowEpoch);
     error NoOrderFound();
     error NotEnoughPending();
     error ApprovalRequired();
@@ -241,63 +242,73 @@ interface IShareClassManager {
 
     /// @notice Approves an asset amount of all deposit requests for the given triplet of pool id, share class id and
     /// deposit asset id.
+    /// @dev nowDepositEpochId MUST be called sequentially.
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
-    /// @param approvedAssetAmount Amount of assets that will be approved for deposit
     /// @param depositAssetId Identifier of the asset locked for the deposit request
+    /// @param nowDepositEpochId The epoch for which shares will be approved.
+    /// @param approvedAssetAmount Amount of assets that will be approved for deposit
     /// @param pricePoolPerAsset Amount of pool unit one gets for a unit of asset
     /// @return pendingAssetAmount Amount of assets still pending for deposit
     /// @return approvedPoolAmount  Amount of pool units approved for deposit
     function approveDeposits(
         PoolId poolId,
         ShareClassId scId,
-        uint128 approvedAssetAmount,
         AssetId depositAssetId,
+        uint32 nowDepositEpochId,
+        uint128 approvedAssetAmount,
         D18 pricePoolPerAsset
     ) external returns (uint128 pendingAssetAmount, uint128 approvedPoolAmount);
 
     /// @notice Approves a share class token amount of all redeem requests for the given triplet of pool id, share class
     /// id and payout asset id.
+    /// @dev nowRedeemEpochId MUST be called sequentially.
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
-    /// @param approvedShareAmount Amount of shares that will be approved for redemption
     /// @param payoutAssetId Identifier of the asset for which all requests want to exchange their share class tokens
     /// for
+    /// @param nowRedeemEpochId The epoch for which shares will be approved.
+    /// @param approvedShareAmount Amount of shares that will be approved for redemption
     /// @param pricePoolPerAsset Amount of pool unit one gets for a unit of asset
     /// @return pendingShareAmount Sum of redemption request amounts in share class token amount which was not approved
     function approveRedeems(
         PoolId poolId,
         ShareClassId scId,
-        uint128 approvedShareAmount,
         AssetId payoutAssetId,
+        uint32 nowRedeemEpochId,
+        uint128 approvedShareAmount,
         D18 pricePoolPerAsset
     ) external returns (uint128 pendingShareAmount);
 
     /// @notice Emits new shares for the given identifier based on the provided NAV per share.
+    /// @dev nowIssueEpochId MUST be called sequentially.
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     /// @param depositAssetId Identifier of the deposit asset for which shares should be issued
+    /// @param nowIssueEpochId The epoch for which shares will be issued.
     /// @param navPoolPerShare The nav per share value of the share class (in the pool currency denomination. Conversion
     /// to asset price is done onchain based on the valuation of the asset at approval)
     /// @return issuedShareAmount Amount of shares that have been issued
-    function issueShares(PoolId poolId, ShareClassId scId, AssetId depositAssetId, D18 navPoolPerShare)
+    function issueShares(PoolId poolId, ShareClassId scId, AssetId depositAssetId, uint32 nowIssueEpochId, D18 navPoolPerShare)
         external
-        returns (uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 paymentPoolAmount);
+        returns (uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 depositPoolAmount);
 
     /// @notice Take back shares for the given identifier based on the provided NAV per share.
+    /// @dev nowRevokeEpochId MUST be called sequentially.
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     /// @param payoutAssetId Identifier of the payout asset
+    /// @param nowRevokeEpochId The epoch for which shares will be revoked.
     /// @param navPoolPerShare The nav per share value of the share class (in the pool currency denomination. Conversion
     /// to asset price is done onchain based on the valuation of the asset at approval)
     /// @return revokedShareAmount Amount of shares that have been revoked
     /// @return payoutAssetAmount Converted amount of payout asset based on number of revoked shares
     /// @return payoutPoolAmount Converted amount of pool currency based on number of revoked shares
-    function revokeShares(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, D18 navPoolPerShare)
+    function revokeShares(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, uint32 nowRevokeEpochId, D18 navPoolPerShare)
         external
         returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount);
 
@@ -414,11 +425,23 @@ interface IShareClassManager {
     /// @param depositAssetId AssetId of the payment asset
     function nowDepositEpoch(ShareClassId scId, AssetId depositAssetId) external view returns (uint32);
 
+    /// @notice Returns the epoch for which will be issued next
+    ///
+    /// @param scId Identifier of the share class
+    /// @param depositAssetId AssetId of the payment asset
+    function nowIssueEpoch(ShareClassId scId, AssetId depositAssetId) external view returns (uint32);
+
     /// @notice Returns the current ongoing epoch id for deposits
     ///
     /// @param scId Identifier of the share class
     /// @param payoutAssetId AssetId of the payment asset
     function nowRedeemEpoch(ShareClassId scId, AssetId payoutAssetId) external view returns (uint32);
+
+    /// @notice Returns the epoch for which will be revoked next
+    ///
+    /// @param scId Identifier of the share class
+    /// @param depositAssetId AssetId of the payment asset
+    function nowRevokeEpoch(ShareClassId scId, AssetId depositAssetId) external view returns (uint32);
 
     /// @notice Returns an upper bound for possible calls to `function claimDeposit(..)`
     ///
