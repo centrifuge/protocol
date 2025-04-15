@@ -516,18 +516,17 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
         address poolCurrency = hubRegistry.currency(poolId).addr();
         transientValuation.setPrice(assetId.addr(), poolCurrency, pricePoolPerAsset);
-        uint128 value = transientValuation.getQuote(amount, assetId.addr(), poolCurrency).toUint128();
 
         bool isLiability = holdings.isLiability(poolId, scId, assetId);
         AccountType debitAccountType = isLiability ? AccountType.Expense : AccountType.Asset;
         AccountType creditAccountType = isLiability ? AccountType.Liability : AccountType.Equity;
 
         if (isIncrease) {
-            holdings.increase(poolId, scId, assetId, transientValuation, amount);
+            uint128 value = holdings.increase(poolId, scId, assetId, transientValuation, amount);
             accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), value);
             accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), value);
         } else {
-            holdings.decrease(poolId, scId, assetId, transientValuation, amount);
+            uint128 value = holdings.decrease(poolId, scId, assetId, transientValuation, amount);
             accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), value);
             accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), value);
         }
