@@ -5,9 +5,13 @@ import {BaseSetup} from "@chimera/BaseSetup.sol";
 import {Asserts} from "@chimera/Asserts.sol";
 import { vm } from "@chimera/Hevm.sol";
 
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {IRoot} from "src/common/interfaces/IRoot.sol";
+import {IGasService} from "src/common/interfaces/IGasService.sol";
+
 import {Gateway} from "src/common/Gateway.sol";
 import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+
 
 // What happens if we add more adapters later?
 

@@ -8,7 +8,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {D18} from "src/misc/types/D18.sol";
-import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
+import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
 contract MockMessageDispatcher {
@@ -187,8 +187,7 @@ contract MockMessageDispatcher {
         address provider,
         uint128 amount,
         D18 pricePerUnit,
-        bool isIncrease,
-        Meta calldata meta
+        bool isIncrease
     ) external  {
     }
 

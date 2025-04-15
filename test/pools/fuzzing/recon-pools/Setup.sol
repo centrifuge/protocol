@@ -78,7 +78,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
 
     bytes[] internal queuedCalls; // used for storing calls to PoolRouter to be executed in a single transaction
     PoolId[] internal createdPools;
-    // QueuedOp[] internal queuedOps;
+    AccountId[] internal createdAccountIds;
 
     // Canaries
     bool poolCreated;
@@ -92,7 +92,11 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     /// @dev see toggle_IsIncrease
     bool internal IS_INCREASE = true;
     /// @dev see toggle_AccountToUpdate
-    uint8 internal ACCOUNT_TO_UPDATE = 0;
+    AccountId internal ACCOUNT_TO_UPDATE = AccountId.wrap(0);
+    uint32 internal ASSET_ACCOUNT = 1;
+    uint32 internal EQUITY_ACCOUNT = 2;
+    uint32 internal LOSS_ACCOUNT = 3;
+    uint32 internal GAIN_ACCOUNT = 4;
 
     event LogString(string);
 

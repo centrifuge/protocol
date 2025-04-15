@@ -10,7 +10,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
+import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 
 import {TargetFunctions} from "./TargetFunctions.sol";
@@ -62,7 +62,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         // necessary setup via the PoolRouter
         hub_addShareClass(poolId.raw(), SC_SALT);
-        hub_createHolding(poolId.raw(), scId.raw(), assetId.raw(), identityValuation, IS_LIABILITY, 0x01);
+        hub_createHolding(poolId.raw(), scId.raw(), identityValuation, 1, 2, 3, 4);
         
         // request deposit
         hub_depositRequest(poolId.raw(), scId.raw(), INVESTOR_AMOUNT);
@@ -94,39 +94,39 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     function test_shortcut_deposit_and_claim() public {
-        shortcut_deposit_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+        shortcut_deposit_and_claim(18, 123, SC_SALT, true, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
     }
 
     function test_shortcut_redeem_and_claim() public {
-        (poolId, scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
+        (poolId, scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
         
         shortcut_redeem_and_claim(poolId.raw(), scId.raw(), SHARE_AMOUNT, 123, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE, true);
     }
 
     function test_notify_share_class() public {
-        (poolId, scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
+        (poolId, scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
 
         hub_notifyShareClass(poolId.raw(), CENTIFUGE_CHAIN_ID, scId.raw(), SC_HOOK);
     }
 
     function test_shortcut_deposit_claim_and_cancel() public {
-        shortcut_deposit_claim_and_cancel(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+        shortcut_deposit_claim_and_cancel(18, 123, SC_SALT, true, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
     }
 
     function test_deposit_and_cancel() public {
-        shortcut_deposit_and_cancel(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+        shortcut_deposit_and_cancel(18, 123, SC_SALT, true, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
     }
 
     function test_shortcut_deposit_redeem_and_claim() public {
-        shortcut_deposit_redeem_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+        shortcut_deposit_redeem_and_claim(18, 123, SC_SALT, true, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
     }
 
     function test_shortcut_deposit_cancel_redemption() public {
-        shortcut_deposit_cancel_redemption(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+        shortcut_deposit_cancel_redemption(18, 123, SC_SALT, true, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
     }
 
     function test_cancel_redeem_request() public {
-        (poolId, scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
+        (poolId, scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
 
         hub_redeemRequest(poolId.raw(), scId.raw(), 123, SHARE_AMOUNT);
 
@@ -134,26 +134,26 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     function test_shortcut_notify_share_class() public {
-        shortcut_notify_share_class(18, 123, SC_SALT, false, 0x01, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
+        shortcut_notify_share_class(18, 123, SC_SALT, false, INVESTOR_AMOUNT, SHARE_AMOUNT, NAV_PER_SHARE);
     }
 
     function test_shortcut_request_deposit_and_cancel() public {
-        shortcut_request_deposit_and_cancel(18, 123, SC_SALT, false, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+        shortcut_request_deposit_and_cancel(18, 123, SC_SALT, false, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
     }
 
     function test_calling_claimDeposit_directly() public {
-        (poolId, scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, 0x01, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+        (poolId, scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
 
         shareClassManager.claimDeposit(poolId, scId, Helpers.addressToBytes32(address(this)), assetId);
     }
 
     function test_shortcut_create_pool_and_update_holding_amount_increase() public {
-        shortcut_create_pool_and_update_holding_amount(18, 123, SC_SALT, false, 0x01, 10e18, 20e18, 10e18, 10e18);
+        shortcut_create_pool_and_update_holding_amount(18, 123, SC_SALT, false, 10e18, 20e18, 10e18, 10e18);
     }
 
     function test_shortcut_create_pool_and_update_holding_amount_decrease() public {
         // create the pool and update the holding amount
-        shortcut_create_pool_and_update_holding_amount(18, 123, SC_SALT, false, 0x01, 10e18, 20e18, 10e18, 10e18);
+        shortcut_create_pool_and_update_holding_amount(18, 123, SC_SALT, false, 10e18, 20e18, 10e18, 10e18);
         
         // decrease the holding amount
         toggle_IsIncrease();
@@ -161,11 +161,11 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     function test_shortcut_create_pool_and_update_holding_value() public {
-        shortcut_create_pool_and_update_holding_value(18, 123, SC_SALT, false, 0x01, 20e18);
+        shortcut_create_pool_and_update_holding_value(18, 123, SC_SALT, false);
     }
 
     function test_shortcut_create_pool_and_update_journal() public {
-        shortcut_create_pool_and_update_journal(18, 123, SC_SALT, true, 0x01, 3, 10e18, 10e18);
+        shortcut_create_pool_and_update_journal(18, 123, SC_SALT, true, 3, 10e18, 10e18);
     }
 
     function test_hub_increaseShareIssuance() public {
@@ -235,40 +235,12 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     // }
 
-    // forge test --match-test test_property_user_cannot_mutate_pending_redeem_2 -vvv 
-    // NOTE: reverts with AccountingAlreadyUnlocked, so not a property break but need to see if this persists after changes to handlers 
-    function test_property_user_cannot_mutate_pending_redeem_2() public {
-
-        shortcut_create_pool_and_holding(6,83592,123,false,1);
-
-        shortcut_deposit_cancel_redemption(6,2473,1234,false,0,381167046633928023212924889711127,412242173503052278826150478292963,1,21750070695628971228823856154281983);
-
-        shortcut_notify_share_class(6,1,12345,false,0,10,61,1586790552879362925709209378689403);
-
-        shortcut_create_pool_and_update_holding(6,2741,123456,false,1727,21030100171944266448215486238085738);
-
-        shortcut_create_pool_and_update_holding(6,139,1234567,false,21,16864147748619575367075340292120);
-
-        shortcut_create_pool_and_update_holding_value(6,16771,123456789,false,17,5);
-
-        shortcut_create_pool_and_update_holding(7,245,1234567890,false,12,35687684058930795500819016577535);
-
-        hub_addShareClass(281474976710663,1234567890);
-
-        shortcut_create_pool_and_update_holding_value(6,40,12345678901,false,0,1);
-
-        hub_redeemRequest_clamped(65862703409544118,57,3);
-
-        property_user_cannot_mutate_pending_redeem();
-
-    }
-
     // forge test --match-test test_hub_claimRedeem_clamped_3 -vvv 
     // TODO: seems like this might be a valid edge case, but need to understand the implications
     // it basically states that if a user calls claimRedeem before they have had their shares revoked, their lastUpdate gets out of sync with the epochId
     function test_hub_claimRedeem_clamped_3() public {
 
-        shortcut_notify_share_class(6,1,1234,false,0,1,1,1);
+        shortcut_notify_share_class(6,1,1234,false,0,1,1);
 
         hub_claimRedeem_clamped(0,0);
 

@@ -10,7 +10,7 @@ import {MockERC20} from "@recon/MockERC20.sol";
 
 // Dependencies
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
-import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
+import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 
 // Interfaces
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
@@ -36,18 +36,6 @@ abstract contract AdminTargets is
     /// @dev these all add to the queuedCalls array, which is then executed in the execute_clamped function allowing the fuzzer to execute multiple calls in a single transaction
     /// @dev These explicitly clamp the investor to always be one of the actors
     /// @dev Queuing calls is done by the admin even though there is no asAdmin modifier applied because there are no external calls so using asAdmin creates errors  
-
-    function hub_addCredit(uint64 poolIdAsUint, uint32 accountAsInt, uint128 amount) public {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        AccountId account = AccountId.wrap(accountAsInt);
-        hub.addCredit(poolId, account, amount);
-    }
-
-    function hub_addDebit(uint64 poolIdAsUint, uint32 accountAsInt, uint128 amount) public {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        AccountId account = AccountId.wrap(accountAsInt);
-        hub.addDebit(poolId, account, amount);
-    }
 
     function hub_addShareClass(uint64 poolIdAsUint, uint256 salt) public {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
@@ -102,19 +90,35 @@ abstract contract AdminTargets is
         hub.createAccount(poolId, account, isDebitNormal);
     }
 
-    function hub_createHolding(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, IERC7726 valuation, bool isLiability, uint24 prefix) public {
+    function hub_createHolding(uint64 poolIdAsUint, bytes16 scIdAsBytes, IERC7726 valuation, uint32 assetAccountAsUint, uint32 equityAccountAsUint, uint32 lossAccountAsUint, uint32 gainAccountAsUint) public {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        AssetId assetId = AssetId.wrap(assetIdAsUint);
-        hub.createHolding(poolId, scId, assetId, valuation, isLiability, prefix);
+        AssetId assetId = hubRegistry.currency(poolId);
+
+        hub.createHolding(
+            poolId, 
+            scId, 
+            assetId, 
+            valuation, 
+            AccountId.wrap(assetAccountAsUint), 
+            AccountId.wrap(equityAccountAsUint), 
+            AccountId.wrap(lossAccountAsUint), 
+            AccountId.wrap(gainAccountAsUint)
+        );
+
+        // store the created accountIds for clamping 
+        createdAccountIds.push(AccountId.wrap(assetAccountAsUint));
+        createdAccountIds.push(AccountId.wrap(equityAccountAsUint));
+        createdAccountIds.push(AccountId.wrap(lossAccountAsUint));
+        createdAccountIds.push(AccountId.wrap(gainAccountAsUint));    
     }
 
-    function hub_createHolding_clamped(uint64 poolIdEntropy, uint32 scEntropy, bool isIdentityValuation, bool isLiability, uint24 prefix) public {
+    function hub_createHolding_clamped(uint64 poolIdEntropy, uint32 scEntropy, bool isIdentityValuation, uint32 assetAccountAsUint, uint32 equityAccountAsUint, uint32 lossAccountAsUint, uint32 gainAccountAsUint) public {
         PoolId poolId = _getRandomPoolId(poolIdEntropy);
         ShareClassId scId = _getRandomShareClassIdForPool(poolId, scEntropy);
-        AssetId assetId = hubRegistry.currency(poolId);
         IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
-        hub_createHolding(poolId.raw(), scId.raw(), assetId.raw(), valuation, isLiability, prefix);
+
+        hub_createHolding(poolId.raw(), scId.raw(), valuation, assetAccountAsUint, equityAccountAsUint, lossAccountAsUint, gainAccountAsUint);
     }
 
     function hub_issueShares(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 navPerShare) public {
@@ -163,12 +167,12 @@ abstract contract AdminTargets is
         hub.setAccountMetadata(poolId, account, metadata);
     }
 
-    function hub_setHoldingAccountId(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint32 accountIdAsInt) public {
+    function hub_setHoldingAccountId(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint8 kind, uint32 accountIdAsInt) public {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
-        AccountId accountId = AccountId.wrap(accountIdAsInt);
-        hub.setHoldingAccountId(poolId, scId, assetId, accountId);
+        AccountId accountId = AccountId.wrap(accountIdAsInt);   
+        hub.setHoldingAccountId(poolId, scId, assetId, kind, accountId);
     }
 
     function hub_setPoolMetadata(uint64 poolIdAsUint, bytes memory metadata) public {
@@ -338,11 +342,11 @@ abstract contract AdminTargets is
         }
     }
 
-    function hub_updateHoldingAmount(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 amount, uint128 pricePerUnit, bool isIncrease, JournalEntry[] memory debits, JournalEntry[] memory credits) public updateGhosts {
+    function hub_updateHoldingAmount(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 amount, uint128 pricePerUnit, bool isIncrease) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
-        hub.updateHoldingAmount(poolId, scId, assetId, amount, D18.wrap(pricePerUnit), isIncrease, debits, credits);
+        hub.updateHoldingAmount(poolId, scId, assetId, amount, D18.wrap(pricePerUnit), isIncrease);
     }
 
     function hub_updateHoldingAmount_clamped(uint64 poolEntropy, uint32 scEntropy, uint8 accountEntropy, uint128 amount, uint128 pricePerUnit, bool isIncrease) public updateGhosts {
@@ -361,21 +365,21 @@ abstract contract AdminTargets is
             amount: amount
         });
 
-        hub_updateHoldingAmount(poolId.raw(), scId.raw(), assetId.raw(), amount, pricePerUnit, isIncrease, debits, credits);
+        hub_updateHoldingAmount(poolId.raw(), scId.raw(), assetId.raw(), amount, pricePerUnit, isIncrease);
     }
 
-    function hub_updateHoldingValue(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 pricePerUnit) public updateGhosts {
+    function hub_updateHoldingValue(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
-        hub.updateHoldingValue(poolId, scId, assetId, D18.wrap(pricePerUnit));
+        hub.updateHoldingValue(poolId, scId, assetId);
     }
 
-    function hub_updateHoldingValue_clamped(uint64 poolEntropy, uint32 scEntropy, uint128 pricePerUnit) public updateGhosts {
+    function hub_updateHoldingValue_clamped(uint64 poolEntropy, uint32 scEntropy) public updateGhosts {
         PoolId poolId = _getRandomPoolId(poolEntropy);
         ShareClassId scId = _getRandomShareClassIdForPool(poolId, scEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
-        hub_updateHoldingValue(poolId.raw(), scId.raw(), assetId.raw(), pricePerUnit);
+        hub_updateHoldingValue(poolId.raw(), scId.raw(), assetId.raw());
     }
 
     function hub_updateJournal(uint64 poolIdAsUint, JournalEntry[] memory debits, JournalEntry[] memory credits) public updateGhosts {
