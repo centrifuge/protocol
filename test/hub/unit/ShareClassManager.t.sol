@@ -312,9 +312,7 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
 
     function testIncreaseShareClassIssuance(uint128 amount) public {
         vm.expectEmit();
-        emit IShareClassManager.RemoteIssueShares(
-            poolId, scId, amount
-        );
+        emit IShareClassManager.RemoteIssueShares(poolId, scId, amount);
         shareClass.increaseShareClassIssuance(poolId, scId, amount);
 
         (uint128 totalIssuance_, D18 navPerShareMetric) = shareClass.metrics(scId);
@@ -325,9 +323,7 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
     function testDecreaseShareClassIssuance(uint128 amount) public {
         shareClass.increaseShareClassIssuance(poolId, scId, amount);
         vm.expectEmit();
-        emit IShareClassManager.RemoteRevokeShares(
-            poolId, scId, amount
-        );
+        emit IShareClassManager.RemoteRevokeShares(poolId, scId, amount);
         shareClass.decreaseShareClassIssuance(poolId, scId, amount);
 
         (uint128 totalIssuance_, D18 navPerShareMetric) = shareClass.metrics(scId);

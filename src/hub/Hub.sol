@@ -576,14 +576,14 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function increaseShareIssuance(PoolId poolId, ShareClassId scId, D18 /*pricePerShare*/, uint128 amount) external {
+    function increaseShareIssuance(PoolId poolId, ShareClassId scId, D18, /*pricePerShare*/ uint128 amount) external {
         _auth();
 
         shareClassManager.increaseShareClassIssuance(poolId, scId, amount);
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, D18 /*pricePerShare*/, uint128 amount) external {
+    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, D18, /*pricePerShare*/ uint128 amount) external {
         _auth();
 
         shareClassManager.decreaseShareClassIssuance(poolId, scId, amount);
