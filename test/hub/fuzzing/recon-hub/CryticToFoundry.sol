@@ -266,23 +266,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     }
 
-    // test claiming in the middle of the approve/revoke cycle
-    function test_hub_claimRedeem_in_middle_of_cycle() public {
-        (poolId, scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
-
-        // make a redeem request
-        hub_redeemRequest_clamped(0,0,1);
-
-        hub_approveRedeems_clamped(0,0,1);
-
-        hub_claimRedeem_clamped(0,0);
-
-        hub_revokeShares_clamped(0,0,1, false);
-
-        hub_claimRedeem_clamped(0,0);
-
-    }
-
     // forge test --match-test test_hub_redeemRequest_clamped_2 -vvv 
     function test_hub_redeemRequest_clamped_2() public {
 
@@ -310,6 +293,23 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_approveRedeems_clamped(0,0,1);
 
         hub_claimDeposit_clamped(0,0);
+
+    }
+
+    // test claiming in the middle of the approve/revoke cycle
+    function test_hub_claimRedeem_in_middle_of_cycle() public {
+        (poolId, scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
+
+        // make a redeem request
+        hub_redeemRequest_clamped(0,0,1);
+
+        hub_approveRedeems_clamped(0,0,1);
+
+        hub_claimRedeem_clamped(0,0);
+
+        hub_revokeShares_clamped(0,0,1, false);
+
+        hub_claimRedeem_clamped(0,0);
 
     }
 }
