@@ -29,6 +29,7 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {SharedStorage} from "./helpers/SharedStorage.sol";
 import {MockMessageProcessor} from "./mocks/MockMessageProcessor.sol";
 import {MockMessageDispatcher} from "./mocks/MockMessageDispatcher.sol";
+import {MockGateway} from "./mocks/MockGateway.sol";
 
 abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager {
     // Dependencies
@@ -39,6 +40,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
     AsyncRequests asyncRequests;
     PoolManager poolManager;
     MockMessageDispatcher messageDispatcher;
+    MockGateway gateway;
 
     AsyncVault vault;
     ERC20 assetErc20;
@@ -55,7 +57,6 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
     uint256 totalSupplyAtFork;
     uint256 tokenBalanceOfEscrowAtFork;
     uint256 trancheTokenBalanceOfEscrowAtFork;
-    address gateway;
     bool forked;
     // MOCKS
     address centrifugeChain;
@@ -148,11 +149,13 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         address[] memory vaultFactories = new address[](1);
         vaultFactories[0] = address(vaultFactory);
         poolManager = new PoolManager(address(escrow), address(tokenFactory), vaultFactories);
-        messageDispatcher = new MockMessageDispatcher(poolManager, asyncRequests, root, CENTIFUGE_CHAIN_ID);  
+        messageDispatcher = new MockMessageDispatcher(poolManager, asyncRequests, root, CENTIFUGE_CHAIN_ID); 
+        gateway = new MockGateway();
 
         asyncRequests.file("poolManager", address(poolManager));
         asyncRequests.file("sender", address(messageDispatcher));
         poolManager.file("sender", address(messageDispatcher));
+        poolManager.file("gateway", address(gateway));
         asyncRequests.rely(address(poolManager));
         asyncRequests.rely(address(vaultFactory));
         asyncRequests.rely(address(messageDispatcher));

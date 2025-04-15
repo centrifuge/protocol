@@ -13,6 +13,8 @@ deployments/latest
 /medusa
 /crytic-export
 /echidna
+recon.json
+
 
 ## Recon Separate Configs
 /medusa-core

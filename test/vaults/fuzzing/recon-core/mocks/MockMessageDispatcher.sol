@@ -211,12 +211,6 @@ contract MockMessageDispatcher {
     {
     }
 
-    function sendRegisterAsset(
-        uint16 chainId,
-        uint128 assetId,
-        string memory name,
-        string memory symbol,
-        uint8 decimals
-    ) external  {
+    function sendRegisterAsset( uint16 centrifugeId, uint128 assetId, uint8 decimals) external  {
     }
 }

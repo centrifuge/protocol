@@ -12,7 +12,6 @@ import {IGasService} from "src/common/interfaces/IGasService.sol";
 import {Gateway} from "src/common/Gateway.sol";
 import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
 
-
 // What happens if we add more adapters later?
 
 // Quorum = Every active router
