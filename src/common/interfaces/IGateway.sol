@@ -41,6 +41,14 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
         bytes pendingBatch;
     }
 
+    struct Funds {
+        /// @notice Funds associated to pay for sending messages
+        /// @dev    Overflows with type(uint64).max / 10**18 = 7.923 × 10^10 ETH
+        uint96 value;
+        /// @notice Address where to refund the remaining gas
+        address refund;
+    }
+
     // --- Events ---
     event PrepareMessage(uint16 centrifugeId, PoolId poolId, bytes message);
     event SendBatch(uint16 centrifugeId, bytes32 batchId, bytes batch, IAdapter adapter);
@@ -59,6 +67,7 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     event File(bytes32 indexed what, uint16 centrifugeId, IAdapter[] adapters);
     event File(bytes32 indexed what, address addr);
 
+    event SetRefundAddress(PoolId poolId, address refund);
     event SubsidizePool(PoolId indexed poolId, address indexed sender, uint256 amount);
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
@@ -107,6 +116,9 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @notice Dispatched when a message that has not failed is retried.
     error NotFailedMessage();
 
+    /// @notice Dispatched when a message is added to a batch that causes it to exceed the max batch size.
+    error ExceedsMaxBatchSize();
+
     // --- Administration ---
     /// @notice Used to update an array of addresses ( state variable ) on very rare occasions.
     /// @dev    Currently it is used to update the supported adapters.
@@ -120,6 +132,12 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @param  what The name of the variable to be updated.
     /// @param  data New address.
     function file(bytes32 what, address data) external;
+
+    /// @notice Set the refund address for message associated to a poolId
+    function setRefundAddress(PoolId poolId, address refund) external;
+
+    /// @notice Pay upfront to later be able to subsidize messages associated to a pool
+    function subsidizePool(PoolId poolId) external payable;
 
     /// @notice Prepays for the TX cost for sending the messages through the adapters
     ///         Currently being called from Vault Router only.
@@ -147,8 +165,7 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     // --- Helpers ---
     /// @notice A view method of the current quorum.abi
     /// @dev    Quorum shows the amount of votes needed in order for a message to be dispatched further.
-    ///         The quorum is taken from the first adapter.
-    ///         Current quorum is the amount of all adapters.
+    ///         The quorum is taken from the first adapter which is always the length of active adapters.
     /// @param  centrifugeId Chain where the adapter is configured for
     /// return  Needed amount
     function quorum(uint16 centrifugeId) external view returns (uint8);
@@ -175,21 +192,12 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     ///         and settling on the destination chain.
     /// @param  payload Used in gas cost calculations.
     /// @dev    Currenly the payload is not taken into consideration.
-    /// @return perAdapter An array of cost values per adapter. Each value is how much it's going to cost
-    ///         for a message / proof to be passed through one router and executed on the recipient chain
     /// @return total Total cost for sending one message and corresponding proofs on through all adapters
-    function estimate(uint16 centrifugeId, bytes calldata payload)
-        external
-        view
-        returns (uint256[] memory perAdapter, uint256 total);
+    function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 total);
 
     /// @notice Returns the address of the adapter at the given id.
     /// @param  centrifugeId Chain where the adapter is configured for
     function adapters(uint16 centrifugeId, uint256 id) external view returns (IAdapter);
-
-    /// @notice Returns the number of adapters.
-    /// @param  centrifugeId Chain where the adapter is configured for
-    function adapterCount(uint16 centrifugeId) external view returns (uint256);
 
     /// @notice Returns the timestamp when the given recovery can be executed.
     /// @param  centrifugeId Chain where the adapter is configured for

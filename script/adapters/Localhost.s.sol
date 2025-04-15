@@ -21,8 +21,6 @@ import {FullDeployer, HubDeployer, VaultsDeployer} from "script/FullDeployer.s.s
 contract LocalhostDeployer is FullDeployer {
     using MessageLib for *;
 
-    uint256 defaultGas;
-
     function run() public {
         uint16 centrifugeId = uint16(vm.envUint("CENTRIFUGE_ID"));
 
@@ -35,7 +33,6 @@ contract LocalhostDeployer is FullDeployer {
 
         saveDeploymentOutput();
 
-        (, defaultGas) = gateway.estimate(centrifugeId, MessageLib.NotifyPool(1).serialize());
         _configureTestData(centrifugeId);
 
         vm.stopBroadcast();
@@ -47,7 +44,7 @@ contract LocalhostDeployer is FullDeployer {
         token.file("name", "USD Coin");
         token.file("symbol", "USDC");
         token.mint(msg.sender, 10_000_000e6);
-        poolManager.registerAsset{value: defaultGas}(centrifugeId, address(token), 0);
+        poolManager.registerAsset(centrifugeId, address(token), 0);
 
         AssetId assetId = newAssetId(centrifugeId, 1);
 
@@ -64,8 +61,8 @@ contract LocalhostDeployer is FullDeployer {
 
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, "Tokenized MMF", "MMF", bytes32(bytes("1")), bytes(""));
-        hub.notifyPool{value: defaultGas}(poolId, centrifugeId);
-        hub.notifyShareClass{value: defaultGas}(poolId, centrifugeId, scId, bytes32(bytes20(freelyTransferable)));
+        hub.notifyPool(poolId, centrifugeId);
+        hub.notifyShareClass(poolId, centrifugeId, scId, bytes32(bytes20(freelyTransferable)));
         hub.createHolding(poolId, scId, assetId, identityValuation, false, 0x01);
 
         hub.updateContract(
@@ -98,7 +95,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.approveDeposits(poolId, scId, assetId, investAmount, valuation);
         hub.issueShares(poolId, scId, assetId, navPerShare);
 
-        hub.claimDeposit{value: defaultGas}(poolId, scId, assetId, bytes32(bytes20(msg.sender)));
+        hub.claimDeposit(poolId, scId, assetId, bytes32(bytes20(msg.sender)));
 
         // Claim deposit request
         vault.mint(investAmount, msg.sender);
@@ -113,8 +110,8 @@ contract LocalhostDeployer is FullDeployer {
 
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, "RWA Portfolio", "RWA", bytes32(bytes("2")), bytes(""));
-        hub.notifyPool{value: defaultGas}(poolId, centrifugeId);
-        hub.notifyShareClass{value: defaultGas}(poolId, centrifugeId, scId, bytes32(bytes20(freelyTransferable)));
+        hub.notifyPool(poolId, centrifugeId);
+        hub.notifyShareClass(poolId, centrifugeId, scId, bytes32(bytes20(freelyTransferable)));
         hub.createHolding(poolId, scId, assetId, identityValuation, false, 0x01);
 
         hub.updateContract(

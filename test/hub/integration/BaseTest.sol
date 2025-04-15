@@ -18,7 +18,7 @@ import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
 
 import {HubDeployer, ISafe} from "script/HubDeployer.s.sol";
-import {MESSAGE_COST_ENV, PROOF_COST_ENV} from "script/CommonDeployer.s.sol";
+import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
 import {AccountType} from "src/hub/interfaces/IHub.sol";
 import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
@@ -59,7 +59,6 @@ contract BaseTest is HubDeployer, Test {
     function setUp() public {
         // Pre deployment
         vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS));
-        vm.setEnv(PROOF_COST_ENV, vm.toString(GAS));
 
         // Deployment
         deployHub(CHAIN_CP, ISafe(ADMIN), address(this), true);
