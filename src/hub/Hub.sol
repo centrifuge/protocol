@@ -305,16 +305,18 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        IERC7726 valuation,AccountId assetAccount, AccountId equityAccount, AccountId lossAccount, AccountId gainAccount
+        IERC7726 valuation,
+        AccountId assetAccount,
+        AccountId equityAccount,
+        AccountId lossAccount,
+        AccountId gainAccount
     ) external payable {
         _protected(poolId);
 
         require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
         require(
-            accounting.exists(poolId, assetAccount) &&
-            accounting.exists(poolId, equityAccount) &&
-            accounting.exists(poolId, lossAccount) &&
-            accounting.exists(poolId, gainAccount),
+            accounting.exists(poolId, assetAccount) && accounting.exists(poolId, equityAccount)
+                && accounting.exists(poolId, lossAccount) && accounting.exists(poolId, gainAccount),
             IAccounting.AccountDoesNotExist()
         );
 
@@ -328,16 +330,19 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function createLiability(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation, AccountId expenseAccount, AccountId liabilityAccount)
-        external
-        payable
-    {
+    function createLiability(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        IERC7726 valuation,
+        AccountId expenseAccount,
+        AccountId liabilityAccount
+    ) external payable {
         _protected(poolId);
 
         require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
         require(
-            accounting.exists(poolId, expenseAccount) &&
-            accounting.exists(poolId, liabilityAccount),
+            accounting.exists(poolId, expenseAccount) && accounting.exists(poolId, liabilityAccount),
             IAccounting.AccountDoesNotExist()
         );
 
@@ -368,7 +373,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function setHoldingAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId) external payable {
+    function setHoldingAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId)
+        external
+        payable
+    {
         _protected(poolId);
 
         holdings.setAccountId(poolId, scId, assetId, kind, accountId);

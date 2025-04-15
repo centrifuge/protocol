@@ -64,7 +64,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.addShareClass(poolId, "Tokenized MMF", "MMF", bytes32(bytes("1")), bytes(""));
         hub.notifyPool(poolId, centrifugeId);
         hub.notifyShareClass(poolId, centrifugeId, scId, bytes32(bytes20(freelyTransferable)));
-        
+
         hub.createAccount(poolId, AccountId.wrap(0x01), true);
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
         hub.createAccount(poolId, AccountId.wrap(0x03), false);
@@ -127,7 +127,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.addShareClass(poolId, "RWA Portfolio", "RWA", bytes32(bytes("2")), bytes(""));
         hub.notifyPool(poolId, centrifugeId);
         hub.notifyShareClass(poolId, centrifugeId, scId, bytes32(bytes20(freelyTransferable)));
-        
+
         hub.createAccount(poolId, AccountId.wrap(0x01), true);
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
         hub.createAccount(poolId, AccountId.wrap(0x03), false);
