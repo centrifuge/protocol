@@ -233,16 +233,16 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         address token = poolManager.shareToken(poolId.raw(), scId.raw());
         IShareToken(token).mint(address(to), shares);
 
-        sender.sendUpdateShares(poolId, scId, to, pricePoolPerShare, shares, true);
         emit Issue(poolId, scId, to, pricePoolPerShare, shares);
+        sender.sendUpdateShares(poolId, scId, to, pricePoolPerShare, shares, true);
     }
 
     function _revoke(PoolId poolId, ShareClassId scId, address from, D18 pricePoolPerShare, uint128 shares) internal {
         address token = poolManager.shareToken(poolId.raw(), scId.raw());
         IShareToken(token).burn(address(from), shares);
 
-        sender.sendUpdateShares(poolId, scId, from, pricePoolPerShare, shares, false);
         emit Revoke(poolId, scId, from, pricePoolPerShare, shares);
+        sender.sendUpdateShares(poolId, scId, from, pricePoolPerShare, shares, false);
     }
 
     function _withdraw(
@@ -265,8 +265,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             IERC6909(asset).transferFrom(address(escrow), receiver, tokenId, amount);
         }
 
-        sender.sendUpdateHoldingAmount(poolId, scId, assetId, receiver, amount, pricePoolPerAsset, false, m);
-
         emit Withdraw(
             poolId,
             scId,
@@ -279,6 +277,8 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             m.debits,
             m.credits
         );
+
+        sender.sendUpdateHoldingAmount(poolId, scId, assetId, receiver, amount, pricePoolPerAsset, false, m);
     }
 
     function _deposit(
@@ -302,7 +302,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         }
 
         escrow.deposit(asset, tokenId, poolId.raw(), scId.raw(), amount);
-        sender.sendUpdateHoldingAmount(poolId, scId, assetId, provider, amount, pricePoolPerAsset, true, m);
 
         emit Deposit(
             poolId,
@@ -316,6 +315,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             m.debits,
             m.credits
         );
+        sender.sendUpdateHoldingAmount(poolId, scId, assetId, provider, amount, pricePoolPerAsset, true, m);
     }
 
     function _ensureBalancedEntries(uint128 amount, Meta calldata m) internal pure {
