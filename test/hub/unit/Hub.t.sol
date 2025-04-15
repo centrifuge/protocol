@@ -143,13 +143,27 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updatePricePoolPerShare(POOL_A, ShareClassId.wrap(0), D18.wrap(0), bytes(""));
 
         vm.expectRevert(IHub.NotAuthorizedAdmin.selector);
-        hub.createHolding(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), false, 0);
+        hub.createHolding(
+            POOL_A,
+            ShareClassId.wrap(0),
+            AssetId.wrap(0),
+            IERC7726(address(0)),
+            AccountId.wrap(0),
+            AccountId.wrap(0),
+            AccountId.wrap(0),
+            AccountId.wrap(0)
+        );
+
+        vm.expectRevert(IHub.NotAuthorizedAdmin.selector);
+        hub.createLiability(
+            POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), AccountId.wrap(0), AccountId.wrap(0)
+        );
 
         vm.expectRevert(IHub.NotAuthorizedAdmin.selector);
         hub.updateHoldingValuation(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)));
 
         vm.expectRevert(IHub.NotAuthorizedAdmin.selector);
-        hub.setHoldingAccountId(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), AccountId.wrap(0));
+        hub.setHoldingAccountId(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, AccountId.wrap(0));
 
         vm.expectRevert(IHub.NotAuthorizedAdmin.selector);
         hub.createAccount(POOL_A, AccountId.wrap(0), false);
@@ -182,6 +196,32 @@ contract TestCreateHolding is TestCommon {
 
         vm.prank(ADMIN);
         vm.expectRevert(IHubRegistry.AssetNotFound.selector);
-        hub.createHolding(POOL_A, SC_A, ASSET_A, IERC7726(address(1)), false, 0);
+        hub.createHolding(
+            POOL_A,
+            SC_A,
+            ASSET_A,
+            IERC7726(address(1)),
+            AccountId.wrap(1),
+            AccountId.wrap(1),
+            AccountId.wrap(1),
+            AccountId.wrap(1)
+        );
+    }
+}
+
+contract TestCreateLiability is TestCommon {
+    function testErrAssetNotFound() public {
+        vm.mockCall(
+            address(hubRegistry), abi.encodeWithSelector(hubRegistry.isRegistered.selector, ASSET_A), abi.encode(false)
+        );
+
+        bytes[] memory cs = new bytes[](1);
+        cs[0] = abi.encodeWithSelector(
+            hub.createLiability.selector, SC_A, ASSET_A, IERC7726(address(1)), AccountId.wrap(1), AccountId.wrap(1)
+        );
+
+        vm.prank(ADMIN);
+        vm.expectRevert(IHubRegistry.AssetNotFound.selector);
+        hub.createLiability(POOL_A, SC_A, ASSET_A, IERC7726(address(1)), AccountId.wrap(1), AccountId.wrap(1));
     }
 }

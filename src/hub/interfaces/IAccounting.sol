@@ -77,4 +77,10 @@ interface IAccounting {
     /// @param account The account to get the value of
     /// @return The value of the account. Will be a negative value for positive balances of credit-normal accounts
     function accountValue(PoolId poolId, AccountId account) external returns (int128);
+
+    /// @notice Returns whether an account exists
+    /// @param poolId The pool the account belongs to
+    /// @param account The account to check
+    /// @return True if the account exists, false otherwise
+    function exists(PoolId poolId, AccountId account) external view returns (bool);
 }

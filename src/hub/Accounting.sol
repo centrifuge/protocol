@@ -106,6 +106,11 @@ contract Accounting is Auth, IAccounting {
         }
     }
 
+    /// @inheritdoc IAccounting
+    function exists(PoolId poolId, AccountId account) public view returns (bool) {
+        return accounts[poolId][account].lastUpdated != 0;
+    }
+
     function _generateJournalId(PoolId poolId) internal returns (uint256) {
         return uint256((uint128(poolId.raw()) << 64) | ++_poolJournalIdCounter[poolId]);
     }

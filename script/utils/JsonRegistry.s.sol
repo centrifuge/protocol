@@ -12,8 +12,8 @@ contract JsonRegistry is Script {
 
     function register(string memory name, address target) public {
         deploymentOutput = (registeredContracts == 0)
-            ? string(abi.encodePacked(deploymentOutput, '    "', name, '": "0x', vm.toString(target), '"'))
-            : string(abi.encodePacked(deploymentOutput, ',\n    "', name, '": "0x', vm.toString(target), '"'));
+            ? string(abi.encodePacked(deploymentOutput, '    "', name, '": "', vm.toString(target), '"'))
+            : string(abi.encodePacked(deploymentOutput, ',\n    "', name, '": "', vm.toString(target), '"'));
 
         registeredContracts += 1;
     }

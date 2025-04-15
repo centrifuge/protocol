@@ -16,7 +16,6 @@ import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {IGasService} from "src/common/interfaces/IGasService.sol";
 import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 import {
     IGatewayHandler,
@@ -272,7 +271,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     }
 
     /// @inheritdoc IMessageProperties
-    function createMessageProof(bytes calldata message) external pure returns (bytes memory) {
-        return MessageLib.MessageProof({hash: keccak256(message)}).serialize();
+    function createMessageProof(bytes32 hash) external pure returns (bytes memory) {
+        return MessageLib.MessageProof({hash: hash}).serialize();
     }
 }

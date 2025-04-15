@@ -14,7 +14,6 @@ import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {IGasService} from "src/common/interfaces/IGasService.sol";
 import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 import {
     IInvestmentManagerGatewayHandler,
@@ -40,12 +39,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     IGateway public immutable gateway;
     ITokenRecoverer public immutable tokenRecoverer;
 
+    uint16 public immutable localCentrifugeId;
+
     IHubGatewayHandler public hub;
     IPoolManagerGatewayHandler public poolManager;
     IInvestmentManagerGatewayHandler public investmentManager;
     IBalanceSheetGatewayHandler public balanceSheet;
-
-    uint16 public localCentrifugeId;
 
     constructor(
         uint16 localCentrifugeId_,
@@ -74,7 +73,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     /// @inheritdoc IMessageDispatcher
     function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 amount) {
         if (centrifugeId == localCentrifugeId) return 0;
-        (, amount) = IGateway(gateway).estimate(centrifugeId, payload);
+        return gateway.estimate(centrifugeId, payload);
     }
 
     /// @inheritdoc IPoolMessageSender
