@@ -16,12 +16,11 @@ import {AccountId} from "src/common/types/AccountId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
-import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
+import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IHub} from "src/hub/interfaces/IHub.sol";
 import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 import {Hub} from "src/hub/Hub.sol";
-import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
 contract TestCommon is Test {
     uint16 constant CHAIN_A = 23;
@@ -76,12 +75,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateHoldingValue(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.updateHoldingAmount(
-            PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(1), false, EMPTY, EMPTY
-        );
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.updateJournalEntries(PoolId.wrap(0), EMPTY, EMPTY);
+        hub.updateHoldingAmount(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(1), false);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         hub.increaseShareIssuance(PoolId.wrap(0), ShareClassId.wrap(0), D18.wrap(0), 0);

@@ -5,7 +5,6 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
-import {JournalEntry, JournalEntryLib} from "src/common/libraries/JournalEntryLib.sol";
 
 enum MessageType {
     /// @dev Placeholder for null message type
@@ -79,7 +78,6 @@ enum VaultUpdateKind {
 library MessageLib {
     using MessageLib for bytes;
     using BytesLib for bytes;
-    using JournalEntryLib for *;
     using CastLib for *;
 
     error UnknownMessageType();
@@ -118,11 +116,10 @@ library MessageLib {
         (65  << uint8(MessageType.UpdateHoldingValue) * 8) +
         (98  << uint8(MessageType.UpdateShares) * 8) +
         (57  << uint8(MessageType.ApprovedDeposits) * 8) +
-        (57  << uint8(MessageType.RevokedShares) * 8) +
-        (9   << uint8(MessageType.UpdateJournal) * 8);
+        (57  << uint8(MessageType.RevokedShares) * 8);
 
     // forgefmt: disable-next-item
-    uint256 constant MESSAGE_LENGTHS_2 = 
+    uint256 constant MESSAGE_LENGTHS_2 =
         (106 << (uint8(MessageType.TriggerUpdateHoldingAmount) - 32) * 8) +
         (90  << (uint8(MessageType.TriggerUpdateShares) - 32) * 8);
 
@@ -147,13 +144,6 @@ library MessageLib {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.UpdateContract)) {
             length += 2 + message.toUint16(length); //payloadLength
-        } else if (
-            kind == uint8(MessageType.UpdateHoldingAmount) || kind == uint8(MessageType.TriggerUpdateHoldingAmount)
-                || kind == uint8(MessageType.UpdateJournal)
-        ) {
-            uint16 debitsBytelen = message.toUint16(length); // debitsBytelen
-            uint16 creditsByteLen = message.toUint16(length + 2 + debitsBytelen); //creditsByteLen
-            length += 2 + debitsBytelen + 2 + creditsByteLen;
         }
     }
 
@@ -1060,15 +1050,10 @@ library MessageLib {
         uint128 pricePerUnit;
         uint64 timestamp;
         bool isIncrease; // Signals whether this is an increase or a decrease
-        JournalEntry[] debits; // As sequence of bytes
-        JournalEntry[] credits; // As sequence of bytes
     }
 
     function deserializeUpdateHoldingAmount(bytes memory data) internal pure returns (UpdateHoldingAmount memory h) {
         require(messageType(data) == MessageType.UpdateHoldingAmount, "UnknownMessageType");
-
-        uint16 debitsByteLen = data.toUint16(114);
-        uint16 creditsByteLen = data.toUint16(116 + debitsByteLen);
 
         return UpdateHoldingAmount({
             poolId: data.toUint64(1),
@@ -1078,19 +1063,12 @@ library MessageLib {
             amount: data.toUint128(73),
             pricePerUnit: data.toUint128(89),
             timestamp: data.toUint64(105),
-            isIncrease: data.toBool(113),
-            // Skip 2 bytes for sequence length at 114
-            debits: data.toJournalEntries(116, debitsByteLen),
-            // Skip 2 bytes for sequence length at 116 + debitsByteLen
-            credits: data.toJournalEntries(118 + debitsByteLen, creditsByteLen)
+            isIncrease: data.toBool(113)
         });
     }
 
     function serialize(UpdateHoldingAmount memory t) internal pure returns (bytes memory) {
-        bytes memory debits = t.debits.toBytes();
-        bytes memory credits = t.credits.toBytes();
-
-        bytes memory partial1 = abi.encodePacked(
+        return abi.encodePacked(
             MessageType.UpdateHoldingAmount,
             t.poolId,
             t.scId,
@@ -1101,9 +1079,6 @@ library MessageLib {
             t.timestamp,
             t.isIncrease
         );
-
-        // partial1 extracted to avoid stack too deep issue
-        return abi.encodePacked(partial1, uint16(debits.length), debits, uint16(credits.length), credits);
     }
 
     //---------------------------------------
@@ -1222,40 +1197,6 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //    UpdateJournal
-    //---------------------------------------
-
-    struct UpdateJournal {
-        uint64 poolId;
-        JournalEntry[] debits; // As sequence of bytes
-        JournalEntry[] credits; // As sequence of bytes
-    }
-
-    function deserializeUpdateJournal(bytes memory data) internal pure returns (UpdateJournal memory) {
-        require(messageType(data) == MessageType.UpdateJournal, UnknownMessageType());
-
-        uint16 debitsByteLen = data.toUint16(9);
-        uint16 creditsByteLen = data.toUint16(11 + debitsByteLen);
-
-        return UpdateJournal({
-            poolId: data.toUint64(1),
-            // Skip 2 bytes for sequence length at 9
-            debits: data.toJournalEntries(11, debitsByteLen),
-            // Skip 2 bytes for sequence length at 11 + debitsByteLen
-            credits: data.toJournalEntries(13 + debitsByteLen, creditsByteLen)
-        });
-    }
-
-    function serialize(UpdateJournal memory t) internal pure returns (bytes memory) {
-        bytes memory debits = t.debits.toBytes();
-        bytes memory credits = t.credits.toBytes();
-
-        return abi.encodePacked(
-            MessageType.UpdateJournal, t.poolId, uint16(debits.length), debits, uint16(credits.length), credits
-        );
-    }
-
-    //---------------------------------------
     //    TriggerUpdateHoldingAmount
     //---------------------------------------
 
@@ -1267,8 +1208,6 @@ library MessageLib {
         uint128 amount;
         uint128 pricePerUnit;
         bool isIncrease; // Signals whether this is an increase or a decrease
-        JournalEntry[] debits; // As sequence of bytes
-        JournalEntry[] credits; // As sequence of bytes
     }
 
     function deserializeTriggerUpdateHoldingAmount(bytes memory data)
@@ -1278,9 +1217,6 @@ library MessageLib {
     {
         require(messageType(data) == MessageType.TriggerUpdateHoldingAmount, "UnknownMessageType");
 
-        uint16 debitsByteLen = data.toUint16(106);
-        uint16 creditsByteLen = data.toUint16(108 + debitsByteLen);
-
         return TriggerUpdateHoldingAmount({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
@@ -1288,19 +1224,12 @@ library MessageLib {
             who: data.toBytes32(41),
             amount: data.toUint128(73),
             pricePerUnit: data.toUint128(89),
-            isIncrease: data.toBool(105),
-            // Skip 2 bytes for sequence length at 106
-            debits: data.toJournalEntries(108, debitsByteLen),
-            // Skip 2 bytes for sequence length at 107 + debitsByteLen
-            credits: data.toJournalEntries(110 + debitsByteLen, creditsByteLen)
+            isIncrease: data.toBool(105)
         });
     }
 
     function serialize(TriggerUpdateHoldingAmount memory t) internal pure returns (bytes memory) {
-        bytes memory debits = t.debits.toBytes();
-        bytes memory credits = t.credits.toBytes();
-
-        bytes memory partial1 = abi.encodePacked(
+        return abi.encodePacked(
             MessageType.TriggerUpdateHoldingAmount,
             t.poolId,
             t.scId,
@@ -1310,9 +1239,6 @@ library MessageLib {
             t.pricePerUnit,
             t.isIncrease
         );
-
-        // partial1 extracted to avoid stack too deep issue
-        return abi.encodePacked(partial1, uint16(debits.length), debits, uint16(credits.length), credits);
     }
 
     //---------------------------------------

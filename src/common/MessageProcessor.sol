@@ -16,7 +16,6 @@ import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 import {
     IGatewayHandler,
     IPoolManagerGatewayHandler,
@@ -160,7 +159,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.TriggerUpdateHoldingAmount) {
             MessageLib.TriggerUpdateHoldingAmount memory m = message.deserializeTriggerUpdateHoldingAmount();
 
-            Meta memory meta = Meta({debits: m.debits, credits: m.credits});
             if (m.isIncrease) {
                 balanceSheet.triggerDeposit(
                     PoolId.wrap(m.poolId),
@@ -168,8 +166,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
                     AssetId.wrap(m.assetId),
                     m.who.toAddress(),
                     m.amount,
-                    D18.wrap(m.pricePerUnit),
-                    meta
+                    D18.wrap(m.pricePerUnit)
                 );
             } else {
                 balanceSheet.triggerWithdraw(
@@ -178,8 +175,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
                     AssetId.wrap(m.assetId),
                     m.who.toAddress(),
                     m.amount,
-                    D18.wrap(m.pricePerUnit),
-                    meta
+                    D18.wrap(m.pricePerUnit)
                 );
             }
         } else if (kind == MessageType.TriggerUpdateShares) {
@@ -209,18 +205,13 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 AssetId.wrap(m.assetId),
                 m.amount,
                 D18.wrap(m.pricePerUnit),
-                m.isIncrease,
-                m.debits,
-                m.credits
+                m.isIncrease
             );
         } else if (kind == MessageType.UpdateHoldingValue) {
             MessageLib.UpdateHoldingValue memory m = message.deserializeUpdateHoldingValue();
             hub.updateHoldingValue(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), D18.wrap(m.pricePerUnit)
             );
-        } else if (kind == MessageType.UpdateJournal) {
-            MessageLib.UpdateJournal memory m = message.deserializeUpdateJournal();
-            hub.updateJournalEntries(PoolId.wrap(m.poolId), m.debits, m.credits);
         } else if (kind == MessageType.UpdateShares) {
             MessageLib.UpdateShares memory m = message.deserializeUpdateShares();
             if (m.isIssuance) {

@@ -7,7 +7,6 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 
 /// -----------------------------------------------------
 ///  Common Handlers
@@ -61,14 +60,8 @@ interface IHubGatewayHandler {
         AssetId assetId,
         uint128 amount,
         D18 pricePoolPerAsset,
-        bool isIncrease,
-        JournalEntry[] memory debits,
-        JournalEntry[] memory credits
+        bool isIncrease
     ) external;
-
-    /// @notice Perform accounting entries by request from CAL.
-    function updateJournalEntries(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits)
-        external;
 
     /// @notice Increases the total issuance of shares by request from CAL.
     function increaseShareIssuance(PoolId poolId, ShareClassId scId, D18 pricePerShare, uint128 amount) external;
@@ -274,8 +267,7 @@ interface IBalanceSheetGatewayHandler {
         AssetId assetId,
         address provider,
         uint128 amount,
-        D18 priceAssetPerShare,
-        Meta calldata meta
+        D18 priceAssetPerShare
     ) external;
 
     function triggerWithdraw(
@@ -284,8 +276,7 @@ interface IBalanceSheetGatewayHandler {
         AssetId assetId,
         address receiver,
         uint128 amount,
-        D18 priceAssetPerShare,
-        Meta calldata m
+        D18 priceAssetPerShare
     ) external;
 
     function triggerIssueShares(PoolId poolId, ShareClassId scId, address to, D18 pricePoolPerShare, uint128 shares)

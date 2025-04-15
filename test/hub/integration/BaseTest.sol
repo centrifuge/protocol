@@ -20,7 +20,7 @@ import {IGasService} from "src/common/interfaces/IGasService.sol";
 import {HubDeployer, ISafe} from "script/HubDeployer.s.sol";
 import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
 import {AccountType} from "src/hub/interfaces/IHub.sol";
-import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
+import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 
 import {MockVaults} from "test/hub/mocks/MockVaults.sol";
 

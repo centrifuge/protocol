@@ -11,7 +11,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
+import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 
 /// @notice Account types used by Hub
 enum AccountType {

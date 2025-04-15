@@ -19,9 +19,8 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
-import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
+import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IHoldings, Holding, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
@@ -402,7 +401,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
         accounting.unlock(poolId);
 
-        _updateJournal(debits, credits);
+        for (uint256 i; i < debits.length; i++) {
+            accounting.addDebit(debits[i].accountId, debits[i].amount);
+        }
+
+        for (uint256 i; i < credits.length; i++) {
+            accounting.addCredit(credits[i].accountId, credits[i].amount);
+        }
 
         accounting.lock();
     }
@@ -469,9 +474,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         AssetId assetId,
         uint128 amount,
         D18 pricePoolPerAsset,
-        bool isIncrease,
-        JournalEntry[] memory debits,
-        JournalEntry[] memory credits
+        bool isIncrease
     ) external {
         _auth();
 
@@ -479,15 +482,21 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
         address poolCurrency = hubRegistry.currency(poolId).addr();
         transientValuation.setPrice(assetId.addr(), poolCurrency, pricePoolPerAsset);
-        uint128 valueChange = transientValuation.getQuote(amount, assetId.addr(), poolCurrency).toUint128();
+        uint128 value = transientValuation.getQuote(amount, assetId.addr(), poolCurrency).toUint128();
 
-        (uint128 debited, uint128 credited) = _updateJournal(debits, credits);
-        uint128 debitValueLeft = valueChange - debited;
-        uint128 creditValueLeft = valueChange - credited;
+        bool isLiability = holdings.isLiability(poolId, scId, assetId);
+        AccountType debitAccountType = isLiability ? AccountType.Expense : AccountType.Asset;
+        AccountType creditAccountType = isLiability ? AccountType.Liability : AccountType.Equity;
 
-        _updateHoldingWithPartialDebitsAndCredits(
-            poolId, scId, assetId, amount, isIncrease, debitValueLeft, creditValueLeft
-        );
+        if (isIncrease) {
+            holdings.increase(poolId, scId, assetId, transientValuation, amount);
+            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), value);
+            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), value);
+        } else {
+            holdings.decrease(poolId, scId, assetId, transientValuation, amount);
+            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), value);
+            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), value);
+        }
 
         accounting.lock();
     }
@@ -504,17 +513,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
         _updateHolding(poolId, scId, assetId);
         holdings.updateValuation(poolId, scId, assetId, _valuation);
-
-        accounting.lock();
-    }
-
-    /// @inheritdoc IHubGatewayHandler
-    function updateJournalEntries(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external {
-        _auth();
-
-        accounting.unlock(poolId);
-
-        _updateJournal(debits, credits);
 
         accounting.lock();
     }
@@ -558,22 +556,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         }
     }
 
-    /// @notice Update the journal with the given debits and credits. Can be unequal.
-    function _updateJournal(JournalEntry[] memory debits, JournalEntry[] memory credits)
-        internal
-        returns (uint128 debited, uint128 credited)
-    {
-        for (uint256 i; i < debits.length; i++) {
-            accounting.addDebit(debits[i].accountId, debits[i].amount);
-            debited += debits[i].amount;
-        }
-
-        for (uint256 i; i < credits.length; i++) {
-            accounting.addCredit(credits[i].accountId, credits[i].amount);
-            credited += credits[i].amount;
-        }
-    }
-
     /// @dev Assumes accounting is already unlocked
     function _updateHolding(PoolId poolId, ShareClassId scId, AssetId assetId) internal {
         int128 diff = holdings.update(poolId, scId, assetId);
@@ -608,31 +590,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
                     holdings.accountId(poolId, scId, assetId, uint8(AccountType.Loss)), uint128(uint256(-int256(diff)))
                 );
             }
-        }
-    }
-
-    /// @notice Update a holding while debiting and/or crediting only a portion of the value change.
-    function _updateHoldingWithPartialDebitsAndCredits(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        uint128 amount,
-        bool isIncrease,
-        uint128 debitValue,
-        uint128 creditValue
-    ) internal {
-        bool isLiability = holdings.isLiability(poolId, scId, assetId);
-        AccountType debitAccountType = isLiability ? AccountType.Expense : AccountType.Asset;
-        AccountType creditAccountType = isLiability ? AccountType.Liability : AccountType.Equity;
-
-        if (isIncrease) {
-            holdings.increase(poolId, scId, assetId, transientValuation, amount);
-            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), debitValue);
-            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), creditValue);
-        } else {
-            holdings.decrease(poolId, scId, assetId, transientValuation, amount);
-            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), debitValue);
-            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), creditValue);
         }
     }
 }

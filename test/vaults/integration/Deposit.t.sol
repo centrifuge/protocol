@@ -5,7 +5,6 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {d18} from "src/misc/types/D18.sol";
 
-import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 
@@ -765,8 +764,6 @@ contract DepositTest is BaseTest {
 
     function _topUpEscrow(uint64 poolId, bytes16 scId, ERC20 asset, uint256 assetAmount) internal {
         asset.mint(address(balanceSheet.escrow()), assetAmount);
-        JournalEntry[] memory journalEntries = new JournalEntry[](0);
-        Meta memory meta = Meta(journalEntries, journalEntries);
 
         balanceSheet.deposit(
             PoolId.wrap(poolId),
@@ -775,8 +772,7 @@ contract DepositTest is BaseTest {
             0,
             address(balanceSheet.escrow()),
             assetAmount.toUint128(),
-            d18(0), // NOTE: Price irrelevant here
-            meta
+            d18(0) // NOTE: Price irrelevant here
         );
     }
 }

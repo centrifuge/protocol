@@ -4,6 +4,11 @@ pragma solidity >=0.5.0;
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 
+struct JournalEntry {
+    uint128 amount;
+    AccountId accountId;
+}
+
 interface IAccounting {
     /// @notice Emitted when a an entry is done
     event Credit(PoolId indexed poolId, AccountId indexed account, uint128 value);

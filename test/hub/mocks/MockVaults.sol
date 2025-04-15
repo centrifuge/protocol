@@ -12,7 +12,6 @@ import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
@@ -90,9 +89,7 @@ contract MockVaults is Test, Auth, IAdapter {
         AssetId assetId,
         uint128 amount,
         D18 pricePoolPerAsset,
-        bool isIncrease,
-        JournalEntry[] memory debits,
-        JournalEntry[] memory credits
+        bool isIncrease
     ) public {
         handler.handle(
             sourceChainId,
@@ -104,9 +101,7 @@ contract MockVaults is Test, Auth, IAdapter {
                 amount: amount,
                 pricePerUnit: pricePoolPerAsset.raw(),
                 timestamp: 0,
-                isIncrease: isIncrease,
-                debits: debits,
-                credits: credits
+                isIncrease: isIncrease
             }).serialize()
         );
     }
@@ -121,13 +116,6 @@ contract MockVaults is Test, Auth, IAdapter {
                 pricePerUnit: pricePoolPerAsset.raw(),
                 timestamp: 0
             }).serialize()
-        );
-    }
-
-    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) public {
-        handler.handle(
-            sourceChainId,
-            MessageLib.UpdateJournal({poolId: poolId.raw(), debits: debits, credits: credits}).serialize()
         );
     }
 
