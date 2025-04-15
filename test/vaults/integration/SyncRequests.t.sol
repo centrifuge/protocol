@@ -13,6 +13,7 @@ import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol
 import {SyncRequests} from "src/vaults/SyncRequests.sol";
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
+import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 
 import "test/vaults/BaseTest.sol";
 
@@ -74,7 +75,7 @@ contract SyncRequestsTest is SyncRequestsBaseTest {
     // --- Administration ---
     function testFile() public {
         // fail: unrecognized param
-        vm.expectRevert(bytes("SyncRequests/file-unrecognized-param"));
+        vm.expectRevert(IBaseInvestmentManager.FileUnrecognizedParam.selector);
         syncRequests.file("random", self);
 
         assertEq(address(syncRequests.poolManager()), address(poolManager));

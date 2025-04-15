@@ -14,13 +14,13 @@ import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
 
 import {HubDeployer, ISafe} from "script/HubDeployer.s.sol";
-import {MESSAGE_COST_ENV, PROOF_COST_ENV} from "script/CommonDeployer.s.sol";
+import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
 import {AccountType} from "src/hub/interfaces/IHub.sol";
-import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
+import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 
 import {MockVaults} from "test/hub/mocks/MockVaults.sol";
 
@@ -59,10 +59,9 @@ contract BaseTest is HubDeployer, Test {
     function setUp() public {
         // Pre deployment
         vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS));
-        vm.setEnv(PROOF_COST_ENV, vm.toString(GAS));
 
         // Deployment
-        deployHub(CHAIN_CP, ISafe(ADMIN), address(this));
+        deployHub(CHAIN_CP, ISafe(ADMIN), address(this), true);
         _mockStuff();
         removeHubDeployerAccess(address(this));
 

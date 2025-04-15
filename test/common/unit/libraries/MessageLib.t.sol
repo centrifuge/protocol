@@ -2,7 +2,6 @@
 pragma solidity 0.8.28;
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
-import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 
 import "forge-std/Test.sol";
@@ -312,15 +311,24 @@ contract TestMessageLibIdentities is Test {
         // This message is a submessage and has not static message length defined
     }
 
-    function testUpdateContractValuation(uint64 poolId, bytes16 scId, uint128 assetId, bytes32 valuation) public pure {
+    function testUpdateContractValuation(uint128 assetId, bytes32 valuation) public pure {
         MessageLib.UpdateContractValuation memory a =
-            MessageLib.UpdateContractValuation({poolId: poolId, scId: scId, assetId: assetId, valuation: valuation});
+            MessageLib.UpdateContractValuation({assetId: assetId, valuation: valuation});
         MessageLib.UpdateContractValuation memory b = MessageLib.deserializeUpdateContractValuation(a.serialize());
 
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
         assertEq(a.assetId, b.assetId);
         assertEq(a.valuation, b.valuation);
+        // This message is a submessage and has not static message length defined
+    }
+
+    function testUpdateContractSyncDepositMaxReserve(uint128 assetId, uint128 maxReserve) public pure {
+        MessageLib.UpdateContractSyncDepositMaxReserve memory a =
+            MessageLib.UpdateContractSyncDepositMaxReserve({assetId: assetId, maxReserve: maxReserve});
+        MessageLib.UpdateContractSyncDepositMaxReserve memory b =
+            MessageLib.deserializeUpdateContractSyncDepositMaxReserve(a.serialize());
+
+        assertEq(a.assetId, b.assetId);
+        assertEq(a.maxReserve, b.maxReserve);
         // This message is a submessage and has not static message length defined
     }
 
@@ -536,9 +544,7 @@ contract TestMessageLibIdentities is Test {
         uint128 amount,
         uint128 pricePerUnit,
         uint64 timestamp,
-        bool isIncrease,
-        JournalEntry[] memory debits,
-        JournalEntry[] memory credits
+        bool isIncrease
     ) public pure {
         MessageLib.UpdateHoldingAmount memory a = MessageLib.UpdateHoldingAmount({
             poolId: poolId,
@@ -548,9 +554,7 @@ contract TestMessageLibIdentities is Test {
             amount: amount,
             pricePerUnit: pricePerUnit,
             timestamp: timestamp,
-            isIncrease: isIncrease,
-            debits: debits,
-            credits: credits
+            isIncrease: isIncrease
         });
 
         MessageLib.UpdateHoldingAmount memory b = MessageLib.deserializeUpdateHoldingAmount(a.serialize());
@@ -563,34 +567,6 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.pricePerUnit, b.pricePerUnit);
         assertEq(a.timestamp, b.timestamp);
         assertEq(a.isIncrease, b.isIncrease);
-        _checkEntries(a.debits, b.debits);
-        _checkEntries(a.credits, b.credits);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-    }
-
-    function testUpdateHoldingValue(
-        uint64 poolId,
-        bytes16 scId,
-        uint128 assetId,
-        uint128 pricePerUnit,
-        uint64 timestamp
-    ) public pure {
-        MessageLib.UpdateHoldingValue memory a = MessageLib.UpdateHoldingValue({
-            poolId: poolId,
-            scId: scId,
-            assetId: assetId,
-            pricePerUnit: pricePerUnit,
-            timestamp: timestamp
-        });
-        MessageLib.UpdateHoldingValue memory b = MessageLib.deserializeUpdateHoldingValue(a.serialize());
-
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.assetId, b.assetId);
-        assertEq(a.pricePerUnit, b.pricePerUnit);
-        assertEq(a.timestamp, b.timestamp);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
@@ -659,21 +635,6 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
-    function testUpdateJournal(uint64 poolId, JournalEntry[] memory debits, JournalEntry[] memory credits)
-        public
-        pure
-    {
-        MessageLib.UpdateJournal memory a = MessageLib.UpdateJournal({poolId: poolId, debits: debits, credits: credits});
-        MessageLib.UpdateJournal memory b = MessageLib.deserializeUpdateJournal(a.serialize());
-
-        assertEq(a.poolId, b.poolId);
-        _checkEntries(a.debits, b.debits);
-        _checkEntries(a.credits, b.credits);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-    }
-
     function testTriggerUpdateHoldingAmount(
         uint64 poolId,
         bytes16 scId,
@@ -681,9 +642,7 @@ contract TestMessageLibIdentities is Test {
         bytes32 who,
         uint128 amount,
         uint128 pricePerUnit,
-        bool isIncrease,
-        JournalEntry[] memory debits,
-        JournalEntry[] memory credits
+        bool isIncrease
     ) public pure {
         MessageLib.TriggerUpdateHoldingAmount memory a = MessageLib.TriggerUpdateHoldingAmount({
             poolId: poolId,
@@ -692,9 +651,7 @@ contract TestMessageLibIdentities is Test {
             who: who,
             amount: amount,
             pricePerUnit: pricePerUnit,
-            isIncrease: isIncrease,
-            debits: debits,
-            credits: credits
+            isIncrease: isIncrease
         });
 
         MessageLib.TriggerUpdateHoldingAmount memory b = MessageLib.deserializeTriggerUpdateHoldingAmount(a.serialize());
@@ -706,8 +663,6 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.amount, b.amount);
         assertEq(a.pricePerUnit, b.pricePerUnit);
         assertEq(a.isIncrease, b.isIncrease);
-        _checkEntries(a.debits, b.debits);
-        _checkEntries(a.credits, b.credits);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
@@ -741,14 +696,5 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-    }
-
-    function _checkEntries(JournalEntry[] memory a, JournalEntry[] memory b) private pure {
-        for (uint256 i = 0; i < a.length; i++) {
-            assertEq(a[i].accountId.raw(), b[i].accountId.raw());
-            assertEq(a[i].amount, b[i].amount);
-        }
-
-        assertEq(a.length, b.length);
     }
 }

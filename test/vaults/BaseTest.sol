@@ -64,6 +64,7 @@ contract BaseTest is VaultsDeployer, Test {
     uint16 public constant THIS_CHAIN_ID = OTHER_CHAIN_ID + 100;
     uint32 public constant BLOCK_CHAIN_ID = 23;
     PoolId public immutable POOL_A = newPoolId(OTHER_CHAIN_ID, 1);
+    uint256 public defaultGas;
     uint256 public erc20TokenId = 0;
     uint256 public defaultErc6909TokenId = 16;
     uint128 public defaultAssetId = newAssetId(THIS_CHAIN_ID, 1).raw();
@@ -81,7 +82,7 @@ contract BaseTest is VaultsDeployer, Test {
         ISafe adminSafe = new MockSafe(pausers, 1);
 
         // deploy core contracts
-        deployVaults(THIS_CHAIN_ID, adminSafe, address(this));
+        deployVaults(THIS_CHAIN_ID, adminSafe, address(this), true);
         guardian.file("safe", address(adminSafe));
 
         // deploy mock adapters
@@ -102,7 +103,7 @@ contract BaseTest is VaultsDeployer, Test {
         // remove deployer access
         // removeVaultsDeployerAccess(address(adapter)); // need auth permissions in tests
 
-        centrifugeChain = new MockCentrifugeChain(testAdapters, poolManager);
+        centrifugeChain = new MockCentrifugeChain(testAdapters, poolManager, syncRequests);
         mockedGasService = new MockGasService();
         erc20 = _newErc20("X's Dollar", "USDX", 6);
         erc6909 = new MockERC6909();
@@ -112,10 +113,12 @@ contract BaseTest is VaultsDeployer, Test {
 
         mockedGasService.setReturn("estimate", uint256(0.5 gwei));
 
+        defaultGas = gateway.estimate(OTHER_CHAIN_ID, MessageLib.NotifyPool(1).serialize());
+
         // Label contracts
         vm.label(address(root), "Root");
         vm.label(address(asyncRequests), "AsyncRequests");
-        vm.label(address(asyncRequests), "SyncRequests");
+        vm.label(address(syncRequests), "SyncRequests");
         vm.label(address(poolManager), "PoolManager");
         vm.label(address(balanceSheet), "BalanceSheet");
         vm.label(address(gateway), "Gateway");
@@ -181,7 +184,7 @@ contract BaseTest is VaultsDeployer, Test {
         try poolManager.assetToId(asset, assetTokenId) {
             assetId = poolManager.assetToId(asset, assetTokenId);
         } catch {
-            assetId = poolManager.registerAsset(OTHER_CHAIN_ID, asset, assetTokenId);
+            assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, asset, assetTokenId);
             centrifugeChain.updatePricePoolPerAsset(
                 POOL_A.raw(), scId, assetId, uint128(10 ** 18), uint64(block.timestamp)
             );

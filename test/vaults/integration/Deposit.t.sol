@@ -5,7 +5,6 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {d18} from "src/misc/types/D18.sol";
 
-import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 
@@ -13,6 +12,8 @@ import "test/vaults/BaseTest.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
+import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
+import {IBaseVault, IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
 
 contract DepositTest is BaseTest {
     using MessageLib for *;
@@ -44,7 +45,7 @@ contract DepositTest is BaseTest {
         erc20.mint(self, amount);
 
         // will fail - user not member: can not send funds
-        vm.expectRevert(bytes("AsyncRequests/transfer-not-allowed"));
+        vm.expectRevert(IAsyncRequests.TransferNotAllowed.selector);
         vault.requestDeposit(amount, self, self);
 
         assertEq(vault.isPermissioned(self), false);
@@ -52,7 +53,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.isPermissioned(self), true);
 
         // will fail - user not member: can not receive share class
-        vm.expectRevert(bytes("AsyncRequests/transfer-not-allowed"));
+        vm.expectRevert(IAsyncRequests.TransferNotAllowed.selector);
         vault.requestDeposit(amount, nonMember, self);
 
         // will fail - user did not give asset allowance to vault
@@ -60,18 +61,18 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(amount, self, self);
 
         // will fail - zero deposit not allowed
-        vm.expectRevert(bytes("AsyncRequests/zero-amount-not-allowed"));
+        vm.expectRevert(IAsyncRequests.ZeroAmountNotAllowed.selector);
         vault.requestDeposit(0, self, self);
 
         // will fail - owner != msg.sender not allowed
-        vm.expectRevert(bytes("AsyncVault/invalid-owner"));
+        vm.expectRevert(IAsyncVault.InvalidOwner.selector);
         vault.requestDeposit(amount, self, nonMember);
 
         // will fail - cannot fulfill if there is no pending request
         uint128 shares = uint128((amount * 10 ** 18) / price); // sharePrice = 2$
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
-        vm.expectRevert(bytes("AsyncRequests/no-pending-deposit-request"));
+        vm.expectRevert(IAsyncRequests.NoPendingRequest.selector);
         asyncRequests.fulfillDepositRequest(poolId, scId, self, assetId, uint128(amount), shares);
 
         // success
@@ -85,7 +86,7 @@ contract DepositTest is BaseTest {
         }
 
         // fail: no asset left
-        vm.expectRevert(bytes("AsyncVault/insufficient-balance"));
+        vm.expectRevert(IBaseVault.InsufficientBalance.selector);
         vault.requestDeposit(amount, self, self);
 
         // ensure funds are locked in escrow
@@ -124,7 +125,7 @@ contract DepositTest is BaseTest {
         vm.assume(randomUser != self);
         // deposit 50% of the amount
         vm.startPrank(randomUser); // try to claim deposit on behalf of user and set the wrong user as receiver
-        vm.expectRevert(bytes("AsyncVault/invalid-controller"));
+        vm.expectRevert(IBaseVault.InvalidController.selector);
         vault.deposit(amount / 2, randomUser, self);
         vm.stopPrank();
 
@@ -142,9 +143,9 @@ contract DepositTest is BaseTest {
         assertTrue(vault.maxMint(self) <= 1);
 
         // minting or depositing more should revert
-        vm.expectRevert(bytes("AsyncRequests/exceeds-deposit-limits"));
+        vm.expectRevert(IAsyncRequests.ExceedsDepositLimits.selector);
         vault.mint(1, self);
-        vm.expectRevert(bytes("AsyncRequests/exceeds-max-deposit"));
+        vm.expectRevert(IAsyncRequests.ExceedsMaxDeposit.selector);
         vault.deposit(2, self, self);
 
         // remainder is rounding difference
@@ -156,15 +157,18 @@ contract DepositTest is BaseTest {
         vm.assume(amount % 2 == 0);
         vm.deal(address(this), 1 ether);
 
-        (, uint256 gasPerMessage) = gateway.estimate(OTHER_CHAIN_ID, MessageLib.NotifyPool(1).serialize());
+        uint256 gasPerMessage = gateway.estimate(OTHER_CHAIN_ID, MessageLib.NotifyPool(1).serialize());
+        gateway.setRefundAddress(POOL_A, address(gateway));
         gateway.subsidizePool{value: gasPerMessage}(POOL_A);
 
-        assertEq(gateway.subsidy(POOL_A), gasPerMessage);
+        (uint256 value,) = gateway.subsidy(POOL_A);
+        assertEq(value, gasPerMessage);
 
         // One outgoing requestDeposit message
         _testDepositMint(amount, false);
 
-        assertEq(gateway.subsidy(POOL_A), 0);
+        (value,) = gateway.subsidy(POOL_A);
+        assertEq(value, 0);
     }
 
     function testPartialDepositExecutions() public {
@@ -403,7 +407,7 @@ contract DepositTest is BaseTest {
         address router = makeAddr("router");
 
         vm.startPrank(router);
-        vm.expectRevert(bytes("AsyncVault/invalid-controller")); // fail without endorsement
+        vm.expectRevert(IBaseVault.InvalidController.selector); // fail without endorsement
         vault.deposit(amount, receiver, address(this));
         vm.stopPrank();
 
@@ -411,7 +415,7 @@ contract DepositTest is BaseTest {
         root.endorse(router);
 
         vm.startPrank(router);
-        vm.expectRevert(bytes("AsyncVault/cannot-set-self-as-operator"));
+        vm.expectRevert(IBaseVault.CannotSetSelfAsOperator.selector);
         vault.setEndorsedOperator(address(router), true);
 
         vault.setEndorsedOperator(address(this), true);
@@ -652,7 +656,7 @@ contract DepositTest is BaseTest {
         assertEq(erc20.balanceOf(address(escrow)), amount);
         assertEq(erc20.balanceOf(address(self)), 0);
 
-        vm.expectRevert(bytes("AsyncRequests/no-pending-cancel-deposit-request"));
+        vm.expectRevert(IAsyncRequests.NoPendingRequest.selector);
         asyncRequests.fulfillCancelDepositRequest(poolId, scId, self, assetId, uint128(amount), uint128(amount));
 
         // check message was send out to centchain
@@ -667,12 +671,12 @@ contract DepositTest is BaseTest {
         assertEq(vault.pendingCancelDepositRequest(0, self), true);
 
         // Cannot cancel twice
-        vm.expectRevert(bytes("AsyncRequests/cancellation-is-pending"));
+        vm.expectRevert(IAsyncRequests.CancellationIsPending.selector);
         vault.cancelDepositRequest(0, self);
 
         erc20.mint(self, amount);
         erc20.approve(vault_, amount);
-        vm.expectRevert(bytes("AsyncRequests/cancellation-is-pending"));
+        vm.expectRevert(IAsyncRequests.CancellationIsPending.selector);
         vault.requestDeposit(amount, self, self);
         erc20.burn(self, amount);
 
@@ -749,7 +753,7 @@ contract DepositTest is BaseTest {
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId(), vault.trancheId(), investor.toBytes32(), assetId, uint128(amount), uint128(amount)
         );
-        vm.expectRevert(bytes("AsyncRequests/exceeds-max-deposit"));
+        vm.expectRevert(IAsyncRequests.ExceedsMaxDeposit.selector);
         vault.deposit(amount, investor);
 
         vm.prank(investor);
@@ -761,8 +765,6 @@ contract DepositTest is BaseTest {
 
     function _topUpEscrow(uint64 poolId, bytes16 scId, ERC20 asset, uint256 assetAmount) internal {
         asset.mint(address(balanceSheet.escrow()), assetAmount);
-        JournalEntry[] memory journalEntries = new JournalEntry[](0);
-        Meta memory meta = Meta(journalEntries, journalEntries);
 
         balanceSheet.deposit(
             PoolId.wrap(poolId),
@@ -771,8 +773,7 @@ contract DepositTest is BaseTest {
             0,
             address(balanceSheet.escrow()),
             assetAmount.toUint128(),
-            d18(0), // NOTE: Price irrelevant here
-            meta
+            d18(0) // NOTE: Price irrelevant here
         );
     }
 }

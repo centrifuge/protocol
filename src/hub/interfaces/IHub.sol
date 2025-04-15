@@ -11,6 +11,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
+import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 
 /// @notice Account types used by Hub
 enum AccountType {
@@ -30,6 +31,17 @@ enum AccountType {
 
 /// @notice Interface with all methods available in the system used by actors
 interface IHub {
+    event NotifyPool(uint16 indexed centrifugeId, PoolId indexed poolId);
+    event NotifyShareClass(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId);
+    event NotifySharePrice(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, D18 poolPerShare);
+    event NotifyAssetPrice(
+        uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset
+    );
+    event UpdateRestriction(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes payload);
+    event UpdateContract(
+        uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 target, bytes payload
+    );
+
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 what, address addr);
 
@@ -42,9 +54,6 @@ interface IHub {
 
     /// @notice Dispatched when the pool can not be unlocked by the caller
     error NotAuthorizedAdmin();
-
-    /// @notice Dispatched when the pool is not unlocked to interact with.
-    error PoolLocked();
 
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
@@ -165,27 +174,54 @@ interface IHub {
         payable;
 
     /// @notice Create a new holding associated to the asset in a share class.
-    /// It will generate and register the different accounts used for holdings.
+    /// It will register the different accounts used for holdings.
+    /// The accounts have to be created beforehand.
+    /// The same account can be used for different kinds.
+    /// e.g.: The equity, loss, and gain account can be the same account.
+    /// They can also be shared across assets.
+    /// e.g.: All assets can use the same equity account.
     /// @param valuation Used to transform between payment assets and pool currency
-    /// @param isLiability Determines if the holding is a liability or not
-    /// @param prefix Account prefix used for generating the account ids
+    /// @param assetAccount Used to track the asset value
+    /// @param equityAccount Used to track the equity value
+    /// @param lossAccount Used to track the loss value
+    /// @param gainAccount Used to track the gain value
     function createHolding(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
         IERC7726 valuation,
-        bool isLiability,
-        uint24 prefix
+        AccountId assetAccount,
+        AccountId equityAccount,
+        AccountId lossAccount,
+        AccountId gainAccount
     ) external payable;
 
+    /// @notice Create a new liablity associated to the asset in a share class.
+    /// It will register the different accounts used for holdings.
+    /// The accounts have to be created beforehand.
+    /// @param valuation Used to transform between the holding asset and pool currency
+    /// @param expenseAccount Used to track the expense value
+    /// @param liabilityAccount Used to track the liability value
+    function createLiability(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        IERC7726 valuation,
+        AccountId expenseAccount,
+        AccountId liabilityAccount
+    ) external payable;
+
+    /// @notice Updates the pool currency value of this holding based of the associated valuation.
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
+
     /// @notice Updates the valuation used by a holding
-    /// @param valuation Used to transform between payment assets and pool currency
+    /// @param valuation Used to transform between the holding asset and pool currency
     function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation)
         external
         payable;
 
     /// @notice Set an account of a holding
-    function setHoldingAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, AccountId accountId)
+    function setHoldingAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId)
         external
         payable;
 
@@ -197,9 +233,6 @@ interface IHub {
     /// @notice Attach custom data to an account
     function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external payable;
 
-    /// @notice Add debit an account. Increase the value of debit-normal accounts, decrease for credit-normal ones.
-    function addDebit(PoolId poolId, AccountId account, uint128 amount) external payable;
-
-    /// @notice Add credit an account. Decrease the value of debit-normal accounts, increase for credit-normal ones.
-    function addCredit(PoolId poolId, AccountId account, uint128 amount) external payable;
+    /// @notice Perform an accounting entries update.
+    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external;
 }

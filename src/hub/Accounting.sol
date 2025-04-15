@@ -63,7 +63,7 @@ contract Accounting is Auth, IAccounting {
         debited = 0;
         credited = 0;
         _currentPoolId = poolId;
-        
+
         if (TransientJournal.journalId(poolId) == 0) {
             TransientJournal.setJournalId(poolId, _generateJournalId(poolId));
         }
@@ -104,6 +104,11 @@ contract Accounting is Auth, IAccounting {
             // For credit-normal accounts: Value = Total Credit - Total Debit
             return int128(acc.totalCredit) - int128(acc.totalDebit);
         }
+    }
+
+    /// @inheritdoc IAccounting
+    function exists(PoolId poolId, AccountId account) public view returns (bool) {
+        return accounts[poolId][account].lastUpdated != 0;
     }
 
     function _generateJournalId(PoolId poolId) internal returns (uint256) {

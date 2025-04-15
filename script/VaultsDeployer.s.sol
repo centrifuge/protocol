@@ -38,8 +38,8 @@ contract VaultsDeployer is CommonDeployer {
     address public restrictedTransfers;
     address public freelyTransferable;
 
-    function deployVaults(uint16 centrifugeId, ISafe adminSafe_, address deployer) public {
-        deployCommon(centrifugeId, adminSafe_, deployer);
+    function deployVaults(uint16 centrifugeId, ISafe adminSafe_, address deployer, bool isTests) public {
+        deployCommon(centrifugeId, adminSafe_, deployer, isTests);
 
         escrow = new Escrow{salt: SALT}(deployer);
         routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow2"))}(deployer);
@@ -97,6 +97,7 @@ contract VaultsDeployer is CommonDeployer {
         IAuth(restrictedTransfers).rely(address(poolManager));
         IAuth(freelyTransferable).rely(address(poolManager));
         messageDispatcher.rely(address(poolManager));
+        gateway.rely(address(poolManager));
 
         // Rely async investment manager
         balanceSheet.rely(address(asyncRequests));
@@ -157,6 +158,7 @@ contract VaultsDeployer is CommonDeployer {
         messageProcessor.file("investmentManager", address(asyncRequests));
         messageProcessor.file("balanceSheet", address(balanceSheet));
 
+        poolManager.file("gateway", address(gateway));
         poolManager.file("balanceSheet", address(balanceSheet));
         poolManager.file("sender", address(messageDispatcher));
 
