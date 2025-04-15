@@ -283,6 +283,8 @@ contract Gateway is Auth, IGateway, Recoverable {
 
     function _send(uint16 centrifugeId, PoolId poolId, bytes memory batch) private {
         bytes32 batchHash = keccak256(batch);
+        bytes memory proof = processor.createMessageProof(batchHash);
+
         IAdapter[] memory adapters_ = adapters[centrifugeId];
         require(adapters[centrifugeId].length != 0, EmptyAdapterSet());
 
@@ -290,8 +292,7 @@ contract Gateway is Auth, IGateway, Recoverable {
             (isBatching) ? batchGasLimit[centrifugeId][poolId] : gasService.gasLimit(centrifugeId, batch);
 
         for (uint256 i; i < adapters_.length; i++) {
-            bool isPrimaryAdapter = i == PRIMARY_ADAPTER_ID - 1;
-            uint256 consumed = adapters_[i].estimate(centrifugeId, isPrimaryAdapter ? batch : processor.createMessageProof(batchHash), batchGasLimit_);
+            uint256 consumed = adapters_[i].estimate(centrifugeId, i == PRIMARY_ADAPTER_ID - 1 ? batch : proof, batchGasLimit_);
 
             if (transactionPayer != address(0)) {
                 require(consumed <= fuel, NotEnoughTransactionGas());
@@ -306,16 +307,15 @@ contract Gateway is Auth, IGateway, Recoverable {
 
             adapters_[i].send{value: consumed}(
                 centrifugeId,
-                isPrimaryAdapter ? batch : processor.createMessageProof(batchHash),
+                i == PRIMARY_ADAPTER_ID - 1 ? batch : proof,
                 batchGasLimit_,
                 transactionPayer != address(0) ? transactionPayer : subsidy[poolId].refund
             );
 
-            bytes32 batchId = ;
-            if (isPrimaryAdapter) {
-                emit SendBatch(centrifugeId, batchId, batch, adapters_[i]);
+            if (i == PRIMARY_ADAPTER_ID - 1) {
+                emit SendBatch(centrifugeId, keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, batch)), batch, adapters_[i]);
             } else {
-                emit SendProof(centrifugeId, batchId, batchHash, adapters_[i]);
+                emit SendProof(centrifugeId, keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, batch)), batchHash, adapters_[i]);
             }
         }
     }
