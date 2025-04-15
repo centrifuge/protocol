@@ -8,8 +8,6 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
-import {IPerPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
-
 interface IBalanceSheet {
     // --- Events ---
     event File(bytes32 indexed what, address data);
@@ -85,6 +83,4 @@ interface IBalanceSheet {
     function revoke(PoolId poolId, ShareClassId scId, address from, D18 pricePoolPerShare, uint128 shares) external;
 
     function journalEntry(PoolId poolId, ShareClassId scId, Meta calldata m) external;
-
-    function escrow() external view returns (IPerPoolEscrow);
 }

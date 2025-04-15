@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
+
 interface IBaseInvestmentManager {
     // --- Events ---
     event File(bytes32 indexed what, address data);
 
     error FileUnrecognizedParam();
-
-    /// @notice Address of the escrow
-    function escrow() external view returns (address);
 
     /// @notice Updates contract parameters of type address.
     /// @param what The bytes32 representation of 'gateway' or 'poolManager'.
@@ -23,4 +22,7 @@ interface IBaseInvestmentManager {
 
     /// @notice Returns the timestamp of the last share price update for a vaultAddr.
     function priceLastUpdated(address vaultAddr) external view returns (uint64 lastUpdated);
+
+    /// @notice Returns the PoolManager contract address.
+    function poolManager() external view returns (IPoolManager poolManager);
 }

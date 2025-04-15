@@ -15,23 +15,24 @@ import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
+import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 
 abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentManager {
     using MathLib for uint256;
 
     address public immutable root;
-    address public immutable escrow;
 
     IPoolManager public poolManager;
+    IPoolEscrowProvider public poolEscrowProvider;
 
-    constructor(address root_, address escrow_) Auth(msg.sender) {
+    constructor(address root_) Auth(msg.sender) {
         root = root_;
-        escrow = escrow_;
     }
 
     /// @inheritdoc IBaseInvestmentManager
     function file(bytes32 what, address data) external virtual auth {
         if (what == "poolManager") poolManager = IPoolManager(data);
+        else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }

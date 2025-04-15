@@ -73,7 +73,7 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: gas - 1}(vault_, amount, self, self);
 
         vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
-        assertEq(erc20.balanceOf(address(escrow)), amount);
+        assertEq(erc20.balanceOf(poolEscrowFactory.escrow(vault.poolId())), amount);
     }
 
     function testLockDepositRequests() public {
@@ -161,11 +161,11 @@ contract VaultRouterTest is BaseTest {
         uint256 gas = estimateGas() + GAS_BUFFER;
         vaultRouter.enable(vault_);
         vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
-        assertEq(erc20.balanceOf(address(escrow)), amount);
+        assertEq(erc20.balanceOf(poolEscrowFactory.escrow(vault.poolId())), amount);
 
         vaultRouter.cancelDepositRequest{value: gas}(vault_);
         assertEq(vault.pendingCancelDepositRequest(0, self), true);
-        assertEq(erc20.balanceOf(address(escrow)), amount);
+        assertEq(erc20.balanceOf(poolEscrowFactory.escrow(vault.poolId())), amount);
         centrifugeChain.isFulfilledCancelDepositRequest(
             vault.poolId(), vault.trancheId(), self.toBytes32(), assetId, uint128(amount)
         );
@@ -180,7 +180,7 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.claimCancelDepositRequest(vault_, nonMember, self);
 
         vaultRouter.claimCancelDepositRequest(vault_, self, self);
-        assertEq(erc20.balanceOf(address(escrow)), 0);
+        assertEq(erc20.balanceOf(poolEscrowFactory.escrow(vault.poolId())), 0);
         assertEq(erc20.balanceOf(self), amount);
     }
 
@@ -503,7 +503,7 @@ contract VaultRouterTest is BaseTest {
 
         vaultRouter.executeLockedDepositRequest{value: gasLimit}(vault_, self);
         assertEq(erc20.balanceOf(address(routerEscrow)), 0);
-        assertEq(erc20.balanceOf(address(escrow)), amount);
+        assertEq(erc20.balanceOf(poolEscrowFactory.escrow(vault.poolId())), amount);
     }
 
     function estimateGas() internal view returns (uint256 total) {

@@ -3,6 +3,8 @@ pragma solidity >=0.5.0;
 
 import {D18, d18} from "src/misc/types/D18.sol";
 
+import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
+
 /// @dev Centrifuge pools
 struct Pool {
     uint256 createdAt;

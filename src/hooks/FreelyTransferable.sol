@@ -32,13 +32,14 @@ contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
 
     /// @dev Least significant bit
     uint8 public constant FREEZE_BIT = 0;
+    /// @dev Magic address denoting a transfer to the escrow
+    /// @dev Solely used for gas saving since escrow is per pool
+    address public constant ESCROW_IDENTIFIER = address(uint160(uint8(0xce)));
 
     IRoot public immutable root;
-    address public immutable escrow;
 
-    constructor(address root_, address escrow_, address deployer) Auth(deployer) {
+    constructor(address root_, address deployer) Auth(deployer) {
         root = IRoot(root_);
-        escrow = escrow_;
     }
 
     // --- Callback from share token ---
@@ -82,12 +83,12 @@ contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
             return false;
         }
 
-        if (from == address(0) && to == escrow) {
+        if (from == address(0) && to == ESCROW_IDENTIFIER) {
             // Deposit request fulfillment
             return true;
         }
 
-        if (to == escrow && fromHookData >> 64 < block.timestamp) {
+        if (to == ESCROW_IDENTIFIER && fromHookData >> 64 < block.timestamp) {
             // Destination is escrow, so it's a redemption request, and the user is not a member
             return false;
         }

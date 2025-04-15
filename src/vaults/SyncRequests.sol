@@ -35,7 +35,8 @@ import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDeposi
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
-import {IPerPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
+import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
+import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 
 /// @title  Sync Investment Manager
 /// @notice This is the main contract vaults interact with for
@@ -54,13 +55,14 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     mapping(uint64 poolId => mapping(bytes16 scId => mapping(address asset => mapping(uint256 tokenId => IERC7726))))
         public valuation;
 
-    constructor(address root_, address escrow_) BaseInvestmentManager(root_, escrow_) {}
+    constructor(address root_) BaseInvestmentManager(root_) {}
 
     // --- Administration ---
     /// @inheritdoc IBaseInvestmentManager
     function file(bytes32 what, address data) external override(IBaseInvestmentManager, BaseInvestmentManager) auth {
         if (what == "poolManager") poolManager = IPoolManager(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
+        else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -325,7 +327,8 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         uint256 tokenId,
         uint128 depositAssetAmount
     ) internal view {
-        uint256 availableBalance = IPerPoolEscrow(escrow).availableBalanceOf(asset, tokenId, poolId.raw(), scId.raw());
+        uint256 availableBalance =
+            IPoolEscrow(poolEscrowProvider.escrow(poolId.raw())).availableBalanceOf(scId.raw(), asset, tokenId);
         require(
             availableBalance + depositAssetAmount <= maxReserve[poolId.raw()][scId.raw()][asset][tokenId],
             ExceedsMaxReserve()
@@ -344,6 +347,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         // NOTE: We want CP to use the default accounting accounts
         JournalEntry[] memory journalEntries = new JournalEntry[](0);
         Meta memory depositMeta = Meta(journalEntries, journalEntries);
+        address provider = poolEscrowProvider.escrow(poolId.raw());
 
         // Notify CP about updated holdings
         balanceSheet.deposit(
@@ -351,7 +355,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
             scId,
             vaultDetails.asset,
             vaultDetails.tokenId,
-            escrow,
+            provider,
             depositAssetAmount,
             pricePoolPerAsset,
             depositMeta

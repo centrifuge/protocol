@@ -40,6 +40,7 @@ contract AsyncVaultTest is BaseTest {
 
         root.relyContract(vault_, self);
         vault.file("manager", self);
+        vault.file("poolEscrowProvider", self);
 
         vm.expectRevert(IBaseVault.FileUnrecognizedParam.selector);
         vault.file("random", self);

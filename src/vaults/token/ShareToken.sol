@@ -95,6 +95,7 @@ contract CentrifugeToken is ERC20, IShareToken {
     function mint(address to, uint256 value) public override(ERC20, IShareToken) {
         super.mint(to, value);
         require(totalSupply <= type(uint128).max, ExceedsMaxSupply());
+        // FIXME(wischli): Checks transfer to pool Escrow which won't succeed
         _onTransfer(address(0), to, value);
     }
 

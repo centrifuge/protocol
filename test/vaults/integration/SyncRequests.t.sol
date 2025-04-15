@@ -57,12 +57,12 @@ contract SyncRequestsTest is SyncRequestsBaseTest {
         _assumeUnauthorizedCaller(nonWard);
 
         // redeploying within test to increase coverage
-        new SyncRequests(address(root), address(escrow));
+        new SyncRequests(address(root));
 
         // values set correctly
-        assertEq(address(syncRequests.escrow()), address(escrow));
         assertEq(address(syncRequests.poolManager()), address(poolManager));
         assertEq(address(syncRequests.balanceSheet()), address(balanceSheet));
+        assertEq(address(syncRequests.poolEscrowProvider()), address(poolEscrowFactory));
 
         // permissions set correctly
         assertEq(syncRequests.wards(address(root)), 1);
@@ -85,6 +85,8 @@ contract SyncRequestsTest is SyncRequestsBaseTest {
         syncRequests.file("poolManager", randomUser);
         assertEq(address(syncRequests.poolManager()), randomUser);
         syncRequests.file("balanceSheet", randomUser);
+        assertEq(address(syncRequests.balanceSheet()), randomUser);
+        syncRequests.file("poolEscrowProvider", randomUser);
         assertEq(address(syncRequests.balanceSheet()), randomUser);
 
         // remove self from wards

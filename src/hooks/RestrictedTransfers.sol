@@ -31,6 +31,9 @@ contract RestrictedTransfers is Auth, IRestrictedTransfers, IHook {
 
     /// @dev Least significant bit
     uint8 public constant FREEZE_BIT = 0;
+    /// @dev Magic address denoting a transfer to the escrow
+    /// @dev Solely used for gas saving since escrow is per pool
+    address public constant ESCROW_IDENTIFIER = address(uint160(uint8(0xce)));
 
     IRoot public immutable root;
 
@@ -67,13 +70,13 @@ contract RestrictedTransfers is Auth, IRestrictedTransfers, IHook {
         view
         returns (bool)
     {
-        if (uint128(hookData.from).getBit(FREEZE_BIT) == true && !root.endorsed(from)) {
+        if (uint128(hookData.from).getBit(FREEZE_BIT) == true && !root.endorsed(from) && from != ESCROW_IDENTIFIER) {
             // Source is frozen and not endorsed
             return false;
         }
 
-        if (root.endorsed(to) || to == address(0)) {
-            // Destination is endorsed and source was already checked, so the transfer is allowed
+        if (root.endorsed(to) || to == address(0) || to == ESCROW_IDENTIFIER) {
+            // Destination is endorsed or escrow and source was already checked, so the transfer is allowed
             return true;
         }
 

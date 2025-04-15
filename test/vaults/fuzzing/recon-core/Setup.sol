@@ -14,6 +14,7 @@ import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 
 import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
 import {ERC20} from "src/misc/ERC20.sol";
+import {PoolEscrowFactory} from "src/vaults/factories/PoolEscrowFactory.sol";
 
 // Mocks
 import {IRoot} from "src/common/interfaces/IRoot.sol";
@@ -27,9 +28,11 @@ abstract contract Setup is BaseSetup, SharedStorage {
     TokenFactory tokenFactory;
 
     // Handled //
+    // TODO(wischli): Remove
     Escrow public escrow; // NOTE: Restriction Manager will query it
     AsyncRequests asyncRequests;
     PoolManager poolManager;
+    PoolEscrowFactory poolEscrowFactory;
 
     // TODO: CYCLE / Make it work for variable values
     AsyncVault vault;
@@ -65,18 +68,18 @@ abstract contract Setup is BaseSetup, SharedStorage {
         escrow = new Escrow(address(address(this)));
         root = new Root(48 hours, address(this));
         restrictedTransfers = new RestrictedTransfers(address(root), address(this));
+        poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
 
-        root.endorse(address(escrow));
-
-        asyncRequests = new AsyncRequests(address(root), address(escrow));
-        vaultFactory = new AsyncVaultFactory(address(this), address(asyncRequests));
+        asyncRequests = new AsyncRequests(address(root));
+        vaultFactory = new AsyncVaultFactory(address(this), address(asyncRequests), poolEscrowFactory);
 
         address[] memory vaultFactories = new address[](1);
         vaultFactories[0] = address(vaultFactory);
 
-        poolManager = new PoolManager(address(escrow), address(tokenFactory), vaultFactories);
+        poolManager = new PoolManager(address(tokenFactory), vaultFactories);
 
         asyncRequests.file("poolManager", address(poolManager));
+        asyncRequests.file("poolEscrowProvider", address(poolEscrowFactory));
         asyncRequests.rely(address(poolManager));
         asyncRequests.rely(address(vaultFactory));
 
@@ -89,6 +92,10 @@ abstract contract Setup is BaseSetup, SharedStorage {
         // Permissions on factories
         vaultFactory.rely(address(poolManager));
         tokenFactory.rely(address(poolManager));
+        poolEscrowFactory.rely(address(poolManager));
+
+        poolEscrowFactory.file("poolManager", address(poolManager));
+        poolEscrowFactory.file("asyncRequests", address(asyncRequests));
 
         // TODO: Cycling of:
         // Actors and ERC7540 Vaults
