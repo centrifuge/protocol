@@ -134,16 +134,16 @@ contract LocalhostDeployer is FullDeployer {
         );
 
         // Submit redeem request
-        vault.requestRedeem(investAmount, msg.sender, msg.sender);
+        vault.requestRedeem(1_000_000e18, msg.sender, msg.sender);
 
         // Fulfill redeem request
-        hub.approveRedeems(poolId, scId, assetId, shareClassManager.nowRedeemEpoch(scId, assetId), 1_000_00e18);
+        hub.approveRedeems(poolId, scId, assetId, shareClassManager.nowRedeemEpoch(scId, assetId), 1_000_000e18);
         hub.revokeShares(poolId, scId, assetId, shareClassManager.nowRevokeEpoch(scId, assetId), d18(11, 10));
 
         hub.claimRedeem(poolId, scId, assetId, bytes32(bytes20(msg.sender)), 1);
 
         // Claim redeem request
-        vault.withdraw(1_100_000e18, msg.sender, msg.sender);
+        vault.withdraw(1_100_000e6, msg.sender, msg.sender);
     }
 
     function _deploySyncDepositVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
