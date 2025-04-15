@@ -102,6 +102,32 @@ contract TestCreateHolding is TestCommon {
 
         vm.prank(ADMIN);
         vm.expectRevert(IHubRegistry.AssetNotFound.selector);
-        hub.createHolding(POOL_A, SC_A, ASSET_A, IERC7726(address(1)), false, 0);
+        hub.createHolding(
+            POOL_A,
+            SC_A,
+            ASSET_A,
+            IERC7726(address(1)),
+            AccountId.wrap(1),
+            AccountId.wrap(1),
+            AccountId.wrap(1),
+            AccountId.wrap(1)
+        );
+    }
+}
+
+contract TestCreateLiability is TestCommon {
+    function testErrAssetNotFound() public {
+        vm.mockCall(
+            address(hubRegistry), abi.encodeWithSelector(hubRegistry.isRegistered.selector, ASSET_A), abi.encode(false)
+        );
+
+        bytes[] memory cs = new bytes[](1);
+        cs[0] = abi.encodeWithSelector(
+            hub.createLiability.selector, SC_A, ASSET_A, IERC7726(address(1)), AccountId.wrap(1), AccountId.wrap(1)
+        );
+
+        vm.prank(ADMIN);
+        vm.expectRevert(IHubRegistry.AssetNotFound.selector);
+        hub.createLiability(POOL_A, SC_A, ASSET_A, IERC7726(address(1)), AccountId.wrap(1), AccountId.wrap(1));
     }
 }
