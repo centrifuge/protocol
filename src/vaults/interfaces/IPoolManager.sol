@@ -132,6 +132,9 @@ interface IPoolManager {
     error InvalidPrice();
     error AssetMissingDecimals();
     error ShareTokenDoesNotExist();
+    error CrossChainTransferNotAllowed();
+    error ShareTokenTransferFailed();
+    error TransferFromFailed();
 
     /// @notice Returns the asset address and tokenId associated with a given asset id.
     /// @dev Reverts if asset id does not exist
@@ -166,7 +169,8 @@ interface IPoolManager {
     /// @param  receiver A bytes32 representation of the receiver address
     /// @param  amount The amount of tokens to transfer
     function transferShares(uint16 centrifugeId, uint64 poolId, bytes16 scId, bytes32 receiver, uint128 amount)
-        external;
+        external
+        payable;
 
     /// @notice Registers an ERC-20 or ERC-6909 asset in another chain.
     /// @dev `decimals()` MUST return a `uint8` value between 2 and 18.
@@ -176,7 +180,10 @@ interface IPoolManager {
     /// @param asset The address of the asset to be registered
     /// @param tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
     /// @return assetId The underlying internal uint128 assetId.
-    function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId) external returns (uint128 assetId);
+    function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId)
+        external
+        payable
+        returns (uint128 assetId);
 
     /// @notice Deploys a new vault
     ///

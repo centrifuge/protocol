@@ -5,7 +5,7 @@ import {Auth} from "src/misc/Auth.sol";
 
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
+import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {TransientStorage} from "src/misc/libraries/TransientStorage.sol";
 
 /// @notice In a transaction there can be multiple journal entries for different pools,
@@ -58,12 +58,23 @@ contract Accounting is Auth, IAccounting {
     }
 
     /// @inheritdoc IAccounting
+    function addJournal(JournalEntry[] memory debits, JournalEntry[] memory credits) external {
+        for (uint256 i; i < debits.length; i++) {
+            addDebit(debits[i].accountId, debits[i].value);
+        }
+
+        for (uint256 i; i < credits.length; i++) {
+            addCredit(credits[i].accountId, credits[i].value);
+        }
+    }
+
+    /// @inheritdoc IAccounting
     function unlock(PoolId poolId) external auth {
         require(PoolId.unwrap(_currentPoolId) == 0, AccountingAlreadyUnlocked());
         debited = 0;
         credited = 0;
         _currentPoolId = poolId;
-        
+
         if (TransientJournal.journalId(poolId) == 0) {
             TransientJournal.setJournalId(poolId, _generateJournalId(poolId));
         }
@@ -104,6 +115,11 @@ contract Accounting is Auth, IAccounting {
             // For credit-normal accounts: Value = Total Credit - Total Debit
             return int128(acc.totalCredit) - int128(acc.totalDebit);
         }
+    }
+
+    /// @inheritdoc IAccounting
+    function exists(PoolId poolId, AccountId account) public view returns (bool) {
+        return accounts[poolId][account].lastUpdated != 0;
     }
 
     function _generateJournalId(PoolId poolId) internal returns (uint256) {

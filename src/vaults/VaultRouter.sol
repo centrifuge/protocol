@@ -236,37 +236,6 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         IAsyncVault(vault).claimCancelRedeemRequest(REQUEST_ID, receiver, controller);
     }
 
-    // --- Transfer ---
-    /// @inheritdoc IVaultRouter
-    function transferShares(uint16 centrifugeId, address vault, bytes32 receiver, uint128 amount)
-        public
-        payable
-        protected
-    {
-        SafeTransferLib.safeTransferFrom(IAsyncVault(vault).share(), msg.sender, address(this), amount);
-        _approveMax(IAsyncVault(vault).share(), 0, address(poolManager));
-        _pay();
-        IPoolManager(poolManager).transferShares(
-            centrifugeId, IAsyncVault(vault).poolId(), IAsyncVault(vault).trancheId(), receiver, amount
-        );
-    }
-
-    /// @inheritdoc IVaultRouter
-    function transferShares(uint16 centrifugeId, address vault, address receiver, uint128 amount)
-        external
-        payable
-        protected
-    {
-        transferShares(centrifugeId, vault, receiver.toBytes32(), amount);
-    }
-
-    // --- Register Asset ---
-    /// @inheritdoc IVaultRouter
-    function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId) public payable {
-        _pay();
-        IPoolManager(poolManager).registerAsset(centrifugeId, asset, tokenId);
-    }
-
     // --- ERC20 permits ---
     /// @inheritdoc IVaultRouter
     function permit(address asset, address spender, uint256 assets, uint256 deadline, uint8 v, bytes32 r, bytes32 s)

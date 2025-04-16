@@ -316,93 +316,6 @@ contract VaultRouterTest is BaseTest {
         assertEq(erc20.nonces(owner), 1);
     }
 
-    /// forge-config: default.isolate = true
-    function testTransferSharesToAddressDestination() public {
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
-        vm.label(vault_, "vault");
-        AsyncVault vault = AsyncVault(vault_);
-        ERC20 share = ERC20(IAsyncVault(vault_).share());
-
-        uint256 amount = 100 * 10 ** 18;
-        address destinationAddress = makeAddr("destinationAddress");
-
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), address(this), type(uint64).max);
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), destinationAddress, type(uint64).max);
-
-        vm.prank(address(root));
-        share.mint(self, 100 * 10 ** 18);
-
-        share.approve(address(vaultRouter), amount);
-        uint256 fuel = estimateGas();
-
-        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
-        vaultRouter.transferShares{value: fuel - 1}(OTHER_CHAIN_ID, vault_, destinationAddress, uint128(amount));
-
-        vm.startSnapshotGas("VaultRouter", "transferShares");
-        vaultRouter.transferShares{value: fuel}(OTHER_CHAIN_ID, vault_, destinationAddress, uint128(amount));
-        vm.stopSnapshotGas();
-        assertEq(share.balanceOf(address(vaultRouter)), 0);
-        assertEq(share.balanceOf(address(this)), 0);
-    }
-
-    function testTransferSharesToBytes32Destination() public {
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
-        vm.label(vault_, "vault");
-        AsyncVault vault = AsyncVault(vault_);
-        ERC20 share = ERC20(IAsyncVault(vault_).share());
-
-        uint256 amount = 100 * 10 ** 18;
-        address destinationAddress = makeAddr("destinationAddress");
-        bytes32 destinationAddressAsBytes32 = destinationAddress.toBytes32();
-
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), address(this), type(uint64).max);
-        // centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), address(vaultRouter), type(uint64).max);
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), destinationAddress, type(uint64).max);
-
-        vm.prank(address(root));
-        share.mint(self, 100 * 10 ** 18);
-
-        share.approve(address(vaultRouter), amount);
-        uint256 fuel = estimateGas();
-
-        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
-        vaultRouter.transferShares{value: fuel - 1}(
-            OTHER_CHAIN_ID, vault_, destinationAddressAsBytes32, uint128(amount)
-        );
-
-        vaultRouter.transferShares{value: fuel}(OTHER_CHAIN_ID, vault_, destinationAddressAsBytes32, uint128(amount));
-        assertEq(share.balanceOf(address(vaultRouter)), 0);
-        assertEq(share.balanceOf(address(this)), 0);
-    }
-
-    function testRegisterAssetERC20() public {
-        address asset = address(erc20);
-        uint256 fuel = estimateGas();
-
-        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
-        vaultRouter.registerAsset{value: fuel - 1}(OTHER_CHAIN_ID, asset, 0);
-
-        vm.expectEmit();
-        emit IPoolManager.RegisterAsset(defaultAssetId, asset, 0, erc20.name(), erc20.symbol(), erc20.decimals());
-        vaultRouter.registerAsset{value: fuel}(OTHER_CHAIN_ID, asset, 0);
-    }
-
-    function testRegisterAssetERC6909() public {
-        MockERC6909 erc6909 = new MockERC6909();
-        address asset = address(erc6909);
-        uint256 tokenId = 18;
-        uint256 fuel = estimateGas();
-
-        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
-        vaultRouter.registerAsset{value: fuel - 1}(OTHER_CHAIN_ID, asset, tokenId);
-
-        vm.expectEmit();
-        emit IPoolManager.RegisterAsset(
-            defaultAssetId, asset, tokenId, erc6909.name(tokenId), erc6909.symbol(tokenId), erc6909.decimals(tokenId)
-        );
-        vaultRouter.registerAsset{value: fuel}(OTHER_CHAIN_ID, asset, tokenId);
-    }
-
     function testEnableAndDisable() public {
         (, address vault_,) = deploySimpleVault(VaultKind.Async);
         vm.label(vault_, "vault");
@@ -472,7 +385,7 @@ contract VaultRouterTest is BaseTest {
     function testEstimate() public view {
         bytes memory message = MessageLib.NotifyPool(1).serialize();
         uint256 estimated = vaultRouter.estimate(CHAIN_ID, message);
-        (, uint256 gatewayEstimated) = gateway.estimate(CHAIN_ID, message);
+        uint256 gatewayEstimated = gateway.estimate(CHAIN_ID, message);
         assertEq(estimated, gatewayEstimated);
     }
 
@@ -506,7 +419,7 @@ contract VaultRouterTest is BaseTest {
         assertEq(erc20.balanceOf(address(escrow)), amount);
     }
 
-    function estimateGas() internal view returns (uint256 total) {
-        (, total) = gateway.estimate(CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
+    function estimateGas() internal view returns (uint256) {
+        return gateway.estimate(CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
     }
 }
