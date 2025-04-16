@@ -14,7 +14,7 @@ import {PoolManager} from "src/vaults/PoolManager.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {Root} from "src/common/Root.sol";
 import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
-
+import {BalanceSheet} from "src/vaults/BalanceSheet.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 
@@ -39,29 +39,30 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
     Escrow public escrow; // NOTE: Restriction Manager will query it
     AsyncRequests asyncRequests;
     PoolManager poolManager;
-    MockMessageDispatcher messageDispatcher;
-    MockGateway gateway;
-
     AsyncVault vault;
     ERC20 assetErc20;
     CentrifugeToken token;
     RestrictedTransfers restrictedTransfers;
     IRoot root;
+    BalanceSheet balanceSheet;
 
+    MockMessageDispatcher messageDispatcher;
+    MockGateway gateway;
 
     bytes16 scId;
     uint64 poolId;
     uint128 assetId;
-
     uint128 currencyId;
+
+    // Fork testing
     uint256 totalSupplyAtFork;
     uint256 tokenBalanceOfEscrowAtFork;
     uint256 trancheTokenBalanceOfEscrowAtFork;
     bool forked;
+
     // MOCKS
     address centrifugeChain;
     uint16 CENTIFUGE_CHAIN_ID = 1;
-
 
     // LP request ID is always 0
     uint256 REQUEST_ID = 0;
@@ -134,12 +135,12 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         // Put self so we can perform settings
         centrifugeChain = address(this);
 
-
         // Dependencies
         tokenFactory = new TokenFactory(address(this), address(this));
-        escrow = new Escrow(address(address(this)));
+        escrow = new Escrow(address(this));
         root = new Root(48 hours, address(this));
         restrictedTransfers = new RestrictedTransfers(address(root), address(this));
+        balanceSheet = new BalanceSheet(address(escrow));
 
         root.endorse(address(escrow));
 
@@ -152,10 +153,14 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         messageDispatcher = new MockMessageDispatcher(poolManager, asyncRequests, root, CENTIFUGE_CHAIN_ID); 
         gateway = new MockGateway();
 
+        // set dependencies
         asyncRequests.file("poolManager", address(poolManager));
         asyncRequests.file("sender", address(messageDispatcher));
         poolManager.file("sender", address(messageDispatcher));
         poolManager.file("gateway", address(gateway));
+        asyncRequests.file("balanceSheet", address(balanceSheet));    
+        
+        // authorize contracts
         asyncRequests.rely(address(poolManager));
         asyncRequests.rely(address(vaultFactory));
         asyncRequests.rely(address(messageDispatcher));
