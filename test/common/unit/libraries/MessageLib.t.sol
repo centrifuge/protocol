@@ -12,15 +12,6 @@ import "forge-std/Test.sol";
 contract TestMessageLibIdentities is Test {
     using MessageLib for *;
 
-    function testMessageProof(bytes32 hash_) public pure {
-        MessageLib.MessageProof memory a = MessageLib.MessageProof({hash: hash_});
-        MessageLib.MessageProof memory b = MessageLib.deserializeMessageProof(a.serialize());
-
-        assertEq(a.hash, b.hash);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-    }
-
     function testInitiateMessageRecovery(bytes32 hash_, bytes32 adapter, uint16 centrifugeId) public pure {
         MessageLib.InitiateMessageRecovery memory a =
             MessageLib.InitiateMessageRecovery({hash: hash_, adapter: adapter, centrifugeId: centrifugeId});

@@ -9,7 +9,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 enum MessageType {
     /// @dev Placeholder for null message type
     Invalid,
-    /// @dev Placeholder for proofs handled by the gateway
+    /// @dev Placeholder for proof message type
     MessageProof,
     // -- Gateway messages
     InitiateMessageRecovery,
@@ -86,7 +86,6 @@ library MessageLib {
     /// If the message has some dynamic part, will be added later in `messageLength()`.
     // forgefmt: disable-next-item
     uint256 constant MESSAGE_LENGTHS_1 =
-        (33  << uint8(MessageType.MessageProof) * 8) +
         (67  << uint8(MessageType.InitiateMessageRecovery) * 8) +
         (67  << uint8(MessageType.DisputeMessageRecovery) * 8) +
         (33  << uint8(MessageType.ScheduleUpgrade) * 8) +
@@ -157,23 +156,6 @@ library MessageLib {
 
     function updateContractType(bytes memory message) internal pure returns (UpdateContractType) {
         return UpdateContractType(message.toUint8(0));
-    }
-
-    //---------------------------------------
-    //    MessageProof
-    //---------------------------------------
-
-    struct MessageProof {
-        bytes32 hash;
-    }
-
-    function deserializeMessageProof(bytes memory data) internal pure returns (MessageProof memory) {
-        require(messageType(data) == MessageType.MessageProof, UnknownMessageType());
-        return MessageProof({hash: data.toBytes32(1)});
-    }
-
-    function serialize(MessageProof memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.MessageProof, t.hash);
     }
 
     //---------------------------------------

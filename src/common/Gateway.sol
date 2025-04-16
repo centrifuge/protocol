@@ -16,6 +16,24 @@ import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {IGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
+import {MessageLib, MessageType} from "src/common/libraries/MessageLib.sol";
+
+library MessageProofLib {
+    using BytesLib for *;
+
+    uint8 constant MESSAGE_PROOF_ID = 1;
+
+    error UnknownMessageProofType();
+
+    function deserializeMessageProof(bytes memory data) internal pure returns (bytes32) {
+        require(data.toUint8(0) == MESSAGE_PROOF_ID, UnknownMessageProofType());
+        return data.toBytes32(1);
+    }
+
+    function serializeMessageProof(bytes32 hash) internal pure returns (bytes memory) {
+        return abi.encodePacked(MESSAGE_PROOF_ID, hash);
+    }
+}
 
 /// @title  Gateway
 /// @notice Routing contract that forwards outgoing messages to multiple adapters (1 full message, n-1 proofs)
@@ -27,6 +45,7 @@ contract Gateway is Auth, IGateway, Recoverable {
     using ArrayLib for uint16[8];
     using BytesLib for bytes;
     using MathLib for uint256;
+    using MessageProofLib for *;
 
     uint8 public constant MAX_ADAPTER_COUNT = 8;
     uint8 public constant PRIMARY_ADAPTER_ID = 1;
@@ -143,8 +162,8 @@ contract Gateway is Auth, IGateway, Recoverable {
         }
 
         bytes32 batchId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, payload));
-        bytes32 messageProofHash = processor_.messageProofHash(payload);
-        bool isMessageProof = messageProofHash != bytes32(0);
+
+        bool isMessageProof = payload.toUint8(0) == uint8(MessageType.MessageProof);
         if (adapter.quorum == 1 && !isMessageProof) {
             // Special case for gas efficiency
             emit ProcessBatch(centrifugeId, batchId, payload, adapter_);
@@ -156,7 +175,7 @@ contract Gateway is Auth, IGateway, Recoverable {
         bytes32 batchHash;
         if (isMessageProof) {
             require(adapter.id != PRIMARY_ADAPTER_ID, NonProofAdapter());
-            batchHash = messageProofHash;
+            batchHash = payload.deserializeMessageProof();
             emit ProcessProof(centrifugeId, batchId, batchHash, adapter_);
         } else {
             require(adapter.id == PRIMARY_ADAPTER_ID, NonBatchAdapter());
@@ -280,7 +299,7 @@ contract Gateway is Auth, IGateway, Recoverable {
 
     function _send(uint16 centrifugeId, PoolId poolId, bytes memory batch) private {
         bytes32 batchHash = keccak256(batch);
-        bytes memory proof = processor.createMessageProof(batchHash);
+        bytes memory proof = MessageProofLib.serializeMessageProof(batchHash);
 
         IAdapter[] memory adapters_ = adapters[centrifugeId];
         require(adapters[centrifugeId].length != 0, EmptyAdapterSet());
@@ -391,7 +410,7 @@ contract Gateway is Auth, IGateway, Recoverable {
 
     /// @inheritdoc IGateway
     function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 total) {
-        bytes memory proof = processor.createMessageProof(keccak256(payload));
+        bytes memory proof = MessageProofLib.serializeMessageProof(keccak256(payload));
 
         uint256 gasLimit = 0;
         for (uint256 pos; pos < payload.length;) {

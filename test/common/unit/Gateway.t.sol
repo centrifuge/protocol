@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {Gateway, IRoot, IGasService, IGateway} from "src/common/Gateway.sol";
+import {Gateway, IRoot, IGasService, IGateway, MessageProofLib} from "src/common/Gateway.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 
@@ -23,8 +23,6 @@ PoolId constant POOL_A = PoolId.wrap(23);
 PoolId constant POOL_0 = PoolId.wrap(0);
 
 enum MessageKind {
-    None,
-    Proof,
     Recovery,
     WithPool0,
     WithPoolA10,
@@ -34,20 +32,13 @@ enum MessageKind {
 function length(MessageKind kind) pure returns (uint16) {
     if (kind == MessageKind.WithPoolA10) return 11;
     if (kind == MessageKind.WithPoolA100) return 101;
-    if (kind == MessageKind.Proof) return 33;
     return 1;
 }
 
 function asBytes(MessageKind kind) pure returns (bytes memory) {
-    require(kind != MessageKind.Proof);
-
     bytes memory encoded = new bytes(length(kind));
-    encoded[0] = bytes1(uint8(kind));
+    encoded[0] = bytes1(uint8(kind) + 2); // Start as index 2
     return encoded;
-}
-
-function proof(bytes32 hash) pure returns (bytes memory) {
-    return abi.encodePacked(MessageKind.Proof, hash);
 }
 
 using {asBytes, length} for MessageKind;
@@ -71,14 +62,6 @@ contract MockProcessor is IMessageProperties, IMessageHandler {
         if (message.toUint8(0) == uint8(MessageKind.WithPoolA100)) return POOL_A;
         if (message.toUint8(0) == uint8(MessageKind.WithPoolA100)) return POOL_A;
         revert("Unreachable: message never asked for pool");
-    }
-
-    function messageProofHash(bytes calldata message) external pure returns (bytes32) {
-        return message.toUint8(0) == uint8(MessageKind.Proof) ? message.toBytes32(1) : bytes32(0);
-    }
-
-    function createMessageProof(bytes32 hash) external pure returns (bytes memory) {
-        return proof(hash);
     }
 }
 
@@ -149,6 +132,10 @@ contract GatewayTest is Test {
         assertEq(refund, address(gateway));
 
         assertEq(gateway.wards(address(this)), 1);
+    }
+
+    function testMessageProofLib(bytes32 hash_) public pure {
+        assertEq(hash_, MessageProofLib.deserializeMessageProof(MessageProofLib.serializeMessageProof(hash_)));
     }
 }
 
@@ -266,7 +253,7 @@ contract GatewayHandleTest is GatewayTest {
     function testErrNonProofAdapter() public {
         vm.prank(address(batchAdapter));
         vm.expectRevert(IGateway.NonProofAdapter.selector);
-        gateway.handle(REMOTE_CENTRIFUGE_ID, proof(bytes32("1")));
+        gateway.handle(REMOTE_CENTRIFUGE_ID, MessageProofLib.serializeMessageProof(bytes32("1")));
     }
 
     function testErrNonBatchAdapter() public {
