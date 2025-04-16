@@ -65,8 +65,9 @@ contract BalanceSheetTest is BaseTest {
     // Deployment
     function testDeployment(address nonWard) public {
         vm.assume(
-            nonWard != address(root) && nonWard != address(syncRequests) && nonWard != address(gateway)
-                && nonWard != address(messageProcessor) && nonWard != address(messageDispatcher) && nonWard != address(this)
+            nonWard != address(root) && nonWard != address(asyncRequests) && nonWard != address(syncRequests)
+                && nonWard != address(gateway) && nonWard != address(messageProcessor)
+                && nonWard != address(messageDispatcher) && nonWard != address(this)
         );
 
         // redeploying within test to increase coverage
@@ -81,7 +82,10 @@ contract BalanceSheetTest is BaseTest {
 
         // permissions set correctly
         assertEq(balanceSheet.wards(address(root)), 1);
+        assertEq(balanceSheet.wards(address(asyncRequests)), 1);
+        assertEq(balanceSheet.wards(address(syncRequests)), 1);
         assertEq(balanceSheet.wards(address(messageProcessor)), 1);
+        assertEq(balanceSheet.wards(address(messageDispatcher)), 1);
         assertEq(balanceSheet.wards(nonWard), 0);
     }
 
