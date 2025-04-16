@@ -60,6 +60,8 @@ interface IBalanceSheet {
         D18 pricePoolPerAsset
     ) external;
 
+    function transferSharesFrom(PoolId poolId, ShareClassId scId, address from, address to, uint256 amount) external;
+
     function issue(PoolId poolId, ShareClassId scId, address to, D18 pricePoolPerShare, uint128 shares) external;
 
     function revoke(PoolId poolId, ShareClassId scId, address from, D18 pricePoolPerShare, uint128 shares) external;

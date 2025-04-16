@@ -194,6 +194,20 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
+    function sendQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) public payable {
+        _protectedAndPaid(poolId);
+
+        sender.sendSendQueuedShares(centrifugeId, poolId, scId);
+    }
+
+    /// @inheritdoc IHub
+    function sendQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) public payable {
+        _protectedAndPaid(poolId);
+
+        sender.sendSendQueuedAssets(poolId, scId, assetId);
+    }
+
+    /// @inheritdoc IHub
     function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable {
         _protected(poolId);
 

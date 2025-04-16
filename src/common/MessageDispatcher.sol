@@ -331,6 +331,30 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
+    /// @inheritdoc IPoolMessageSender
+    function sendSendQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external auth {
+        if (centrifugeId == localCentrifugeId) {
+            balanceSheet.sendQueuedShares(poolId, scId);
+        } else {
+            gateway.send(
+                centrifugeId, MessageLib.SendQueuedShares({poolId: poolId.raw(), scId: scId.raw()}).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendSendQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external auth {
+        if (assetId.centrifugeId() == localCentrifugeId) {
+            balanceSheet.sendQueuedAssets(poolId, scId, assetId);
+        } else {
+            gateway.send(
+                assetId.centrifugeId(),
+                MessageLib.SendQueuedAssets({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw()}).serialize(
+                )
+            );
+        }
+    }
+
     /// @inheritdoc IRootMessageSender
     function sendScheduleUpgrade(uint16 centrifugeId, bytes32 target) external auth {
         if (centrifugeId == localCentrifugeId) {
@@ -516,14 +540,10 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendUpdateShares(
-        PoolId poolId,
-        ShareClassId scId,
-        address receiver,
-        D18 pricePoolPerShare,
-        uint128 shares,
-        bool isIssuance
-    ) external auth {
+    function sendUpdateShares(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare, uint128 shares, bool isIssuance)
+        external
+        auth
+    {
         if (poolId.centrifugeId() == localCentrifugeId) {
             if (isIssuance) {
                 hub.increaseShareIssuance(poolId, scId, pricePoolPerShare, shares);
@@ -536,7 +556,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 MessageLib.UpdateShares({
                     poolId: poolId.raw(),
                     scId: scId.raw(),
-                    who: receiver.toBytes32(),
                     pricePerShare: pricePoolPerShare.raw(),
                     shares: shares,
                     timestamp: uint64(block.timestamp),

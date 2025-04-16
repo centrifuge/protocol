@@ -43,6 +43,12 @@ contract BalanceSheetTest is BaseTest {
             bytes32(""),
             restrictedTransfers
         );
+        poolManager.updatePricePoolPerShare(
+            POOL_A.raw(), defaultShareClassId, defaultPricePerShare.raw(), uint64(block.timestamp)
+        );
+        poolManager.updatePricePoolPerAsset(
+            POOL_A.raw(), defaultShareClassId, assetId.raw(), defaultPricePerShare.raw(), uint64(block.timestamp)
+        );
         poolManager.updateRestriction(
             POOL_A.raw(),
             defaultShareClassId,
@@ -171,6 +177,8 @@ contract BalanceSheetTest is BaseTest {
         );
 
         assertEq(erc20.balanceOf(address(this)), 0);
+        assertEq(balanceSheet.queuedAssets(POOL_A, defaultTypedShareClassId, assetId), int128(defaultAmount));
+        assertEq(erc20.balanceOf(address(balanceSheet.escrow())), defaultAmount);
     }
 
     function testWithdraw() public {
@@ -200,6 +208,8 @@ contract BalanceSheetTest is BaseTest {
         );
 
         assertEq(erc20.balanceOf(address(this)), defaultAmount);
+        assertEq(balanceSheet.queuedAssets(POOL_A, defaultTypedShareClassId, assetId), int128(0));
+        assertEq(erc20.balanceOf(address(balanceSheet.escrow())), 0);
     }
 
     function testIssue() public {
@@ -215,12 +225,19 @@ contract BalanceSheetTest is BaseTest {
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount);
 
         assertEq(token.balanceOf(address(this)), defaultAmount);
+        assertEq(balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId), int128(defaultAmount));
+
+        balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount * 2);
+
+        assertEq(token.balanceOf(address(this)), defaultAmount * 3);
+        assertEq(balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId), int128(defaultAmount * 3));
     }
 
     function testRevoke() public {
         testIssue();
+
         IERC20 token = IERC20(poolManager.shareToken(POOL_A.raw(), defaultShareClassId));
-        assertEq(token.balanceOf(address(this)), defaultAmount);
+        assertEq(token.balanceOf(address(this)), defaultAmount * 3);
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -229,11 +246,62 @@ contract BalanceSheetTest is BaseTest {
         vm.expectRevert(IERC20.InsufficientAllowance.selector);
         balanceSheet.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount);
 
-        token.approve(address(balanceSheet), defaultAmount);
+        token.approve(address(balanceSheet), defaultAmount * 3);
         vm.expectEmit();
         emit IBalanceSheet.Revoke(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount);
         balanceSheet.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount);
 
+        assertEq(token.balanceOf(address(this)), defaultAmount * 2);
+        assertEq(balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId), int128(defaultAmount * 2));
+
+        balanceSheet.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount * 2);
+
         assertEq(token.balanceOf(address(this)), 0);
+        assertEq(balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId), 0);
+    }
+
+    function testQueuedShares() public {
+        testIssue();
+
+        assertEq(balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId), int128(defaultAmount * 3));
+
+        vm.prank(randomUser);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        balanceSheet.sendQueuedShares(POOL_A, defaultTypedShareClassId);
+
+        balanceSheet.sendQueuedShares(POOL_A, defaultTypedShareClassId);
+
+        assertEq(balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId), int128(0));
+    }
+
+    function testQueuedAssets() public {
+        testDeposit();
+
+        assertEq(balanceSheet.queuedAssets(POOL_A, defaultTypedShareClassId, assetId), int128(defaultAmount));
+
+        vm.prank(randomUser);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        balanceSheet.sendQueuedAssets(POOL_A, defaultTypedShareClassId, assetId);
+
+        balanceSheet.sendQueuedAssets(POOL_A, defaultTypedShareClassId, assetId);
+
+        assertEq(balanceSheet.queuedAssets(POOL_A, defaultTypedShareClassId, assetId), int128(0));
+    }
+
+    function testTransferSharesFrom() public {
+        testIssue();
+
+        IERC20 token = IERC20(poolManager.shareToken(POOL_A.raw(), defaultShareClassId));
+
+        assertEq(token.balanceOf(address(this)), defaultAmount * 3);
+
+        vm.prank(randomUser);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        balanceSheet.transferSharesFrom(POOL_A, defaultTypedShareClassId, address(this), address(1), defaultAmount);
+
+        balanceSheet.transferSharesFrom(POOL_A, defaultTypedShareClassId, address(this), address(1), defaultAmount);
+
+        assertEq(token.balanceOf(address(this)), defaultAmount * 2);
+        assertEq(token.balanceOf(address(1)), defaultAmount);
     }
 }

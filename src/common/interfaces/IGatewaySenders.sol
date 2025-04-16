@@ -119,6 +119,12 @@ interface IPoolMessageSender is ILocalCentrifugeId {
 
     /// @notice Creates and send the message
     function sendRevokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external;
+
+    /// @notice Creates and send the message
+    function sendSendQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external;
+
+    /// @notice Creates and send the message
+    function sendSendQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external;
 }
 
 /// @notice Interface for dispatch-only gateway
@@ -156,12 +162,6 @@ interface IVaultMessageSender is ILocalCentrifugeId {
     ) external;
 
     /// @notice Creates and send the message
-    function sendUpdateShares(
-        PoolId poolId,
-        ShareClassId scId,
-        address receiver,
-        D18 pricePoolPerShare,
-        uint128 shares,
-        bool isIssuance
-    ) external;
+    function sendUpdateShares(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare, uint128 shares, bool isIssuance)
+        external;
 }

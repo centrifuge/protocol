@@ -44,7 +44,9 @@ enum MessageType {
     ApprovedDeposits,
     RevokedShares,
     TriggerUpdateHoldingAmount,
-    TriggerUpdateShares
+    TriggerUpdateShares,
+    SendQueuedShares,
+    SendQueuedAssets
 }
 
 enum UpdateRestrictionType {
@@ -111,11 +113,16 @@ library MessageLib {
         (89  << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (89  << uint8(MessageType.TriggerRedeemRequest) * 8) +
         (114 << uint8(MessageType.UpdateHoldingAmount) * 8) +
-        (98  << uint8(MessageType.UpdateShares) * 8) +
+        (66  << uint8(MessageType.UpdateShares) * 8) +
         (57  << uint8(MessageType.ApprovedDeposits) * 8) +
         (57  << uint8(MessageType.RevokedShares) * 8) +
         (106 << uint8(MessageType.TriggerUpdateHoldingAmount) * 8) +
         (90  << uint8(MessageType.TriggerUpdateShares) * 8);
+
+    // forgefmt: disable-next-item
+    uint256 constant MESSAGE_LENGTHS_2 = 
+        (25 << (uint8(MessageType.SendQueuedShares) - 32) * 8) + 
+        (41 << (uint8(MessageType.SendQueuedAssets) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -129,7 +136,9 @@ library MessageLib {
         uint8 kind = message.toUint8(0);
         require(kind <= uint8(type(MessageType).max), UnknownMessageType());
 
-        length = uint16(uint8(bytes32(MESSAGE_LENGTHS_1)[31 - kind]));
+        length = (kind <= 31)
+            ? uint16(uint8(bytes32(MESSAGE_LENGTHS_1)[31 - kind]))
+            : uint16(uint8(bytes32(MESSAGE_LENGTHS_2)[63 - kind]));
 
         // Spetial treatment for messages with dynamic size:
         if (kind == uint8(MessageType.UpdateRestriction)) {
@@ -142,8 +151,8 @@ library MessageLib {
     function messagePoolId(bytes memory message) internal pure returns (PoolId poolId) {
         uint8 kind = message.toUint8(0);
 
-        // All messages from NotifyPool to TriggetUpdateShares contains a PoolId in position 1.
-        if (kind >= uint8(MessageType.NotifyPool) && kind <= uint8(MessageType.TriggerUpdateShares)) {
+        // All messages from NotifyPool to SendQueuedAssets contains a PoolId in position 1.
+        if (kind >= uint8(MessageType.NotifyPool) && kind <= uint8(MessageType.SendQueuedAssets)) {
             return PoolId.wrap(message.toUint64(1));
         } else {
             return PoolId.wrap(0);
@@ -1080,7 +1089,6 @@ library MessageLib {
     struct UpdateShares {
         uint64 poolId;
         bytes16 scId;
-        bytes32 who;
         uint128 pricePerShare;
         uint128 shares;
         uint64 timestamp;
@@ -1093,17 +1101,16 @@ library MessageLib {
         return UpdateShares({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
-            who: data.toBytes32(25),
-            pricePerShare: data.toUint128(57),
-            shares: data.toUint128(73),
-            timestamp: data.toUint64(89),
-            isIssuance: data.toBool(97)
+            pricePerShare: data.toUint128(25),
+            shares: data.toUint128(41),
+            timestamp: data.toUint64(57),
+            isIssuance: data.toBool(65)
         });
     }
 
     function serialize(UpdateShares memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.UpdateShares, t.poolId, t.scId, t.who, t.pricePerShare, t.shares, t.timestamp, t.isIssuance
+            MessageType.UpdateShares, t.poolId, t.scId, t.pricePerShare, t.shares, t.timestamp, t.isIssuance
         );
     }
 
@@ -1234,5 +1241,42 @@ library MessageLib {
         return abi.encodePacked(
             MessageType.TriggerUpdateShares, t.poolId, t.scId, t.who, t.pricePerShare, t.shares, t.isIssuance
         );
+    }
+
+    //---------------------------------------
+    //    SendQueuedShares
+    //---------------------------------------
+
+    struct SendQueuedShares {
+        uint64 poolId;
+        bytes16 scId;
+    }
+
+    function deserializeSendQueuedShares(bytes memory data) internal pure returns (SendQueuedShares memory) {
+        require(messageType(data) == MessageType.SendQueuedShares, UnknownMessageType());
+        return SendQueuedShares({poolId: data.toUint64(1), scId: data.toBytes16(9)});
+    }
+
+    function serialize(SendQueuedShares memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.SendQueuedShares, t.poolId, t.scId);
+    }
+
+    //---------------------------------------
+    //    SendQueuedAssets
+    //---------------------------------------
+
+    struct SendQueuedAssets {
+        uint64 poolId;
+        bytes16 scId;
+        uint128 assetId;
+    }
+
+    function deserializeSendQueuedAssets(bytes memory data) internal pure returns (SendQueuedAssets memory) {
+        require(messageType(data) == MessageType.SendQueuedAssets, UnknownMessageType());
+        return SendQueuedAssets({poolId: data.toUint64(1), scId: data.toBytes16(9), assetId: data.toUint128(25)});
+    }
+
+    function serialize(SendQueuedAssets memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.SendQueuedAssets, t.poolId, t.scId, t.assetId);
     }
 }
