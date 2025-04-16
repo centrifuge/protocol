@@ -64,7 +64,6 @@ contract PoolEscrow is Escrow, IPoolEscrow {
     mapping(bytes16 scId => mapping(address asset => mapping(uint256 tokenId => uint256))) internal pendingDeposit;
     mapping(bytes16 scId => mapping(address asset => mapping(uint256 tokenId => uint256))) internal holding;
 
-    // TODO: Endorse root and rely on it for auth?
     constructor(uint64 poolId_, address deployer) Escrow(deployer) {
         poolId = poolId_;
     }
