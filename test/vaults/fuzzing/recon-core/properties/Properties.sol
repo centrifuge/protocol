@@ -329,6 +329,17 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // }
     }
 
+
+    /// @dev Property: difference between totalAssets and actualAssets only increases
+    function property_totalAssets_insolvency_only_increases() public {
+        uint256 differenceBefore = _before.totalAssets - _before.actualAssets;
+        uint256 differenceAfter = _after.totalAssets - _after.actualAssets;
+
+        gte(differenceAfter, differenceBefore, "insolvency decreased");
+    }
+
+    // === OPTIMIZATION TESTS === // 
+
     /// @dev Optimzation test to check if the difference between totalAssets and actualAssets is greater than 1 share
     function optimize_totalAssets_solvency() public returns (int256) {
         uint256 totalAssets = vault.totalAssets();

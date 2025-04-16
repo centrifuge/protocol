@@ -13,6 +13,8 @@ abstract contract BeforeAfter is Ghosts {
         mapping(address investor => AsyncInvestmentState) investments;
         uint256 escrowTokenBalance;
         uint256 escrowTrancheTokenBalance;
+        uint256 totalAssets;
+        uint256 actualAssets;
     }
 
     BeforeAfterVars internal _before;
@@ -54,6 +56,8 @@ abstract contract BeforeAfter is Ghosts {
         }
         _before.escrowTokenBalance = MockERC20(_getAsset()).balanceOf(address(escrow));
         _before.escrowTrancheTokenBalance = token.balanceOf(address(escrow));
+        _before.totalAssets = vault.totalAssets();
+        _before.actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
     }
 
     function __after() internal {
@@ -86,5 +90,7 @@ abstract contract BeforeAfter is Ghosts {
         }
         _after.escrowTokenBalance = MockERC20(_getAsset()).balanceOf(address(escrow));
         _after.escrowTrancheTokenBalance = token.balanceOf(address(escrow));
+        _after.totalAssets = vault.totalAssets();
+        _after.actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
     }
 }
