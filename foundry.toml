@@ -102,12 +102,14 @@ max_test_rejects = 65_536 # default value
 
 # Endpoints
 [rpc_endpoints]
-ethereum-mainnet = "https://mainnet.infura.io/v3/${INFURA_API_KEY}"
-polygon-mainnet = "https://polygon-mainnet.infura.io/v3/${INFURA_API_KEY}"
+ethereum-mainnet = "https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
+ethereum-sepolia = "https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
+base-mainnet = "https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
 base-sepolia = "https://base-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
 
 [etherscan]
 base-sepolia = { key = "${BASESCAN_API_KEY}", url = "https://api-sepolia.basescan.org/api" }
+ethereum-sepolia = { key = "${ETHERSCAN_API_KEY}, url = "https://sepolia.etherscan.io/" }
 
 # Chain-specific configurations
 [chains.84532]  # Base Sepolia chain ID
