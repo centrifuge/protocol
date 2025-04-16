@@ -1252,7 +1252,11 @@ library MessageLib {
         bytes16 scId;
     }
 
-    function deserializeTriggerSubmitQueuedShares(bytes memory data) internal pure returns (TriggerSubmitQueuedShares memory) {
+    function deserializeTriggerSubmitQueuedShares(bytes memory data)
+        internal
+        pure
+        returns (TriggerSubmitQueuedShares memory)
+    {
         require(messageType(data) == MessageType.TriggerSubmitQueuedShares, UnknownMessageType());
         return TriggerSubmitQueuedShares({poolId: data.toUint64(1), scId: data.toBytes16(9)});
     }
@@ -1271,9 +1275,14 @@ library MessageLib {
         uint128 assetId;
     }
 
-    function deserializeTriggerSubmitQueuedAssets(bytes memory data) internal pure returns (TriggerSubmitQueuedAssets memory) {
+    function deserializeTriggerSubmitQueuedAssets(bytes memory data)
+        internal
+        pure
+        returns (TriggerSubmitQueuedAssets memory)
+    {
         require(messageType(data) == MessageType.TriggerSubmitQueuedAssets, UnknownMessageType());
-        return TriggerSubmitQueuedAssets({poolId: data.toUint64(1), scId: data.toBytes16(9), assetId: data.toUint128(25)});
+        return
+            TriggerSubmitQueuedAssets({poolId: data.toUint64(1), scId: data.toBytes16(9), assetId: data.toUint128(25)});
     }
 
     function serialize(TriggerSubmitQueuedAssets memory t) internal pure returns (bytes memory) {

@@ -707,7 +707,8 @@ contract TestMessageLibIdentities is Test {
     }
 
     function testTriggerSubmitQueuedShares(uint64 poolId, bytes16 scId) public pure {
-        MessageLib.TriggerSubmitQueuedShares memory a = MessageLib.TriggerSubmitQueuedShares({poolId: poolId, scId: scId});
+        MessageLib.TriggerSubmitQueuedShares memory a =
+            MessageLib.TriggerSubmitQueuedShares({poolId: poolId, scId: scId});
         MessageLib.TriggerSubmitQueuedShares memory b = MessageLib.deserializeTriggerSubmitQueuedShares(a.serialize());
 
         assertEq(a.poolId, b.poolId);

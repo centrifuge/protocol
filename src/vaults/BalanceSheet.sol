@@ -137,7 +137,10 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     /// --- IBalanceSheetHandler ---
     /// @inheritdoc IBalanceSheetGatewayHandler
-    function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external authOrManager(poolId, scId) {
+    function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId)
+        external
+        authOrManager(poolId, scId)
+    {
         _submitQueuedAssets(poolId, scId, assetId);
     }
 

@@ -349,8 +349,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         } else {
             gateway.send(
                 assetId.centrifugeId(),
-                MessageLib.TriggerSubmitQueuedAssets({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw()}).serialize(
-                )
+                MessageLib.TriggerSubmitQueuedAssets({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw()})
+                    .serialize()
             );
         }
     }
