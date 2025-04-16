@@ -73,8 +73,6 @@ contract PoolEscrow is Escrow, IPoolEscrow {
     constructor(uint64 poolId_, ISharedDependency sharedGateway_, address deployer) Escrow(deployer) {
         poolId = poolId_;
         sharedGateway = sharedGateway_;
-
-        IGateway(sharedGateway.dependency()).setRefundAddress(PoolId.wrap(poolId), address(this));
     }
 
     receive() external payable {

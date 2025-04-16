@@ -1,7 +1,15 @@
 {
+<<<<<<< HEAD
   "claimDeposit": "1179360",
   "enable": "60953",
   "lockDepositRequest": "92339",
   "requestDeposit": "601150",
   "requestRedeem": "2129533"
+=======
+  "claimDeposit": "1181309",
+  "enable": "60953",
+  "lockDepositRequest": "92336",
+  "requestDeposit": "602312",
+  "requestRedeem": "2132678"
+>>>>>>> 1a0caa57 (fix permission issue)
 }
