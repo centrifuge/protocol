@@ -100,6 +100,7 @@ contract VaultsDeployer is CommonDeployer {
         IAuth(freelyTransferable).rely(address(poolManager));
         messageDispatcher.rely(address(poolManager));
         poolEscrowFactory.rely(address(poolManager));
+        gateway.rely(address(poolManager));
 
         // Rely async investment manager
         balanceSheet.rely(address(asyncRequests));
@@ -158,6 +159,7 @@ contract VaultsDeployer is CommonDeployer {
         messageProcessor.file("investmentManager", address(asyncRequests));
         messageProcessor.file("balanceSheet", address(balanceSheet));
 
+        poolManager.file("gateway", address(gateway));
         poolManager.file("balanceSheet", address(balanceSheet));
         poolManager.file("sender", address(messageDispatcher));
         poolManager.file("poolEscrowFactory", address(poolEscrowFactory));

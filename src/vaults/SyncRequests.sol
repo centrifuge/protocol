@@ -18,7 +18,6 @@ import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.so
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 
 import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
@@ -317,7 +316,15 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         // Mint shares for receiver & notify CP about issued shares
         balanceSheet.issue(poolId, scId, receiver, priceData.poolPerShare, shares);
 
-        _updateHoldings(poolId, scId, vaultDetails, depositAssetAmount, priceData.poolPerAsset);
+        balanceSheet.deposit(
+            poolId,
+            scId,
+            vaultDetails.asset,
+            vaultDetails.tokenId,
+            poolEscrowProvider.escrow(poolId.raw()),
+            depositAssetAmount,
+            priceData.poolPerAsset
+        );
     }
 
     function _checkMaxReserve(
@@ -332,33 +339,6 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         require(
             availableBalance + depositAssetAmount <= maxReserve[poolId.raw()][scId.raw()][asset][tokenId],
             ExceedsMaxReserve()
-        );
-    }
-
-    /// @dev Instructs the balance sheet manager to update holdings and the corresponding value.
-    ///      NOTE: Only exists as separate function due to stack-too-deep
-    function _updateHoldings(
-        PoolId poolId,
-        ShareClassId scId,
-        VaultDetails memory vaultDetails,
-        uint128 depositAssetAmount,
-        D18 pricePoolPerAsset
-    ) internal {
-        // NOTE: We want CP to use the default accounting accounts
-        JournalEntry[] memory journalEntries = new JournalEntry[](0);
-        Meta memory depositMeta = Meta(journalEntries, journalEntries);
-        address provider = poolEscrowProvider.escrow(poolId.raw());
-
-        // Notify CP about updated holdings
-        balanceSheet.deposit(
-            poolId,
-            scId,
-            vaultDetails.asset,
-            vaultDetails.tokenId,
-            provider,
-            depositAssetAmount,
-            pricePoolPerAsset,
-            depositMeta
         );
     }
 

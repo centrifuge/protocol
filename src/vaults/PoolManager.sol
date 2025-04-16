@@ -52,6 +52,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     uint8 internal constant MIN_DECIMALS = 2;
     uint8 internal constant MAX_DECIMALS = 18;
 
+    IGateway public gateway;
     address public balanceSheet;
     ITokenFactory public tokenFactory;
     IVaultMessageSender public sender;
@@ -80,6 +81,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     function file(bytes32 what, address data) external auth {
         if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "tokenFactory") tokenFactory = ITokenFactory(data);
+        else if (what == "gateway") gateway = IGateway(data);
         else if (what == "balanceSheet") balanceSheet = data;
         else if (what == "poolEscrowFactory") poolEscrowFactory = IPoolEscrowFactory(data);
         else revert FileUnrecognizedParam();
@@ -99,20 +101,33 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     /// @inheritdoc IPoolManager
     function transferShares(uint16 centrifugeId, uint64 poolId, bytes16 scId, bytes32 receiver, uint128 amount)
         external
-        auth
+        payable
     {
-        IShareToken shareToken_ = IShareToken(shareToken(poolId, scId));
-        shareToken_.burn(msg.sender, amount);
+        IShareToken share = IShareToken(shareToken(poolId, scId));
+        require(
+            share.checkTransferRestriction(msg.sender, address(uint160(centrifugeId)), amount),
+            CrossChainTransferNotAllowed()
+        );
 
-        sender.sendTransferShares(centrifugeId, poolId, scId, receiver, amount);
+        gateway.payTransaction{value: msg.value}(msg.sender);
+
+        try share.authTransferFrom(msg.sender, msg.sender, address(this), amount) returns (bool) {}
+        catch {
+            // Support share class tokens that block authTransferFrom. In this case ERC20 approval needs to be set
+            require(share.transferFrom(msg.sender, address(this), amount), TransferFromFailed());
+        }
+
+        share.burn(address(this), amount);
 
         emit TransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
+
+        sender.sendTransferShares(centrifugeId, poolId, scId, receiver, amount);
     }
 
     // @inheritdoc IPoolManagerGatewayHandler
     function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId)
         external
-        auth
+        payable
         returns (uint128 assetId)
     {
         string memory name;
@@ -122,6 +137,8 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         decimals = _safeGetAssetDecimals(asset, tokenId);
         require(decimals >= MIN_DECIMALS, TooFewDecimals());
         require(decimals <= MAX_DECIMALS, TooManyDecimals());
+
+        gateway.payTransaction{value: msg.value}(msg.sender);
 
         if (tokenId == 0) {
             IERC20Metadata meta = IERC20Metadata(asset);
@@ -435,7 +452,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         assetId = _assetToId[asset][tokenId];
         require(assetId != 0, UnknownAsset());
     }
-    
+
     /// @inheritdoc IPoolManager
     function priceAssetPerShare(uint64 poolId, bytes16 scId, uint128 assetId, bool checkValidity)
         public

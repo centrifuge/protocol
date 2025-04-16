@@ -102,8 +102,7 @@ contract AsyncVault is AsyncRedeemVault, IAsyncVault {
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) public pure override(AsyncRedeemVault, IERC165) returns (bool) {
         return interfaceId == type(IERC7540Deposit).interfaceId
-            || interfaceId == type(IERC7540CancelDeposit).interfaceId || interfaceId == type(IAsyncRedeemVault).interfaceId
-            || super.supportsInterface(interfaceId);
+            || interfaceId == type(IERC7540CancelDeposit).interfaceId || super.supportsInterface(interfaceId);
     }
 
     // --- ERC-4626 methods ---

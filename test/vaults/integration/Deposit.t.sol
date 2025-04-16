@@ -5,7 +5,6 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {d18} from "src/misc/types/D18.sol";
 
-import {JournalEntry, Meta} from "src/common/libraries/JournalEntryLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 
@@ -158,15 +157,18 @@ contract DepositTest is BaseTest {
         vm.assume(amount % 2 == 0);
         vm.deal(address(this), 1 ether);
 
-        (, uint256 gasPerMessage) = gateway.estimate(OTHER_CHAIN_ID, MessageLib.NotifyPool(1).serialize());
+        uint256 gasPerMessage = gateway.estimate(OTHER_CHAIN_ID, MessageLib.NotifyPool(1).serialize());
+        gateway.setRefundAddress(POOL_A, address(gateway));
         gateway.subsidizePool{value: gasPerMessage}(POOL_A);
 
-        assertEq(gateway.subsidy(POOL_A), gasPerMessage);
+        (uint256 value,) = gateway.subsidy(POOL_A);
+        assertEq(value, gasPerMessage);
 
         // One outgoing requestDeposit message
         _testDepositMint(amount, false);
 
-        assertEq(gateway.subsidy(POOL_A), 0);
+        (value,) = gateway.subsidy(POOL_A);
+        assertEq(value, 0);
     }
 
     function testPartialDepositExecutions() public {
@@ -765,8 +767,6 @@ contract DepositTest is BaseTest {
 
     function _topUpEscrow(uint64 poolId, bytes16 scId, ERC20 asset, uint256 assetAmount) internal {
         asset.mint(poolEscrowFactory.escrow(poolId), assetAmount);
-        JournalEntry[] memory journalEntries = new JournalEntry[](0);
-        Meta memory meta = Meta(journalEntries, journalEntries);
 
         balanceSheet.deposit(
             PoolId.wrap(poolId),
@@ -775,8 +775,7 @@ contract DepositTest is BaseTest {
             0,
             poolEscrowFactory.escrow(poolId),
             assetAmount.toUint128(),
-            d18(0), // NOTE: Price irrelevant here
-            meta
+            d18(0) // NOTE: Price irrelevant here
         );
     }
 }

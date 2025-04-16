@@ -64,6 +64,7 @@ contract BaseTest is VaultsDeployer, Test {
     uint16 public constant THIS_CHAIN_ID = OTHER_CHAIN_ID + 100;
     uint32 public constant BLOCK_CHAIN_ID = 23;
     PoolId public immutable POOL_A = newPoolId(OTHER_CHAIN_ID, 1);
+    uint256 public defaultGas;
     uint256 public erc20TokenId = 0;
     uint256 public defaultErc6909TokenId = 16;
     uint128 public defaultAssetId = newAssetId(THIS_CHAIN_ID, 1).raw();
@@ -111,6 +112,8 @@ contract BaseTest is VaultsDeployer, Test {
         gateway.file("gasService", address(mockedGasService));
 
         mockedGasService.setReturn("estimate", uint256(0.5 gwei));
+
+        defaultGas = gateway.estimate(OTHER_CHAIN_ID, MessageLib.NotifyPool(1).serialize());
 
         // Label contracts
         vm.label(address(root), "Root");
@@ -181,7 +184,7 @@ contract BaseTest is VaultsDeployer, Test {
         try poolManager.assetToId(asset, assetTokenId) {
             assetId = poolManager.assetToId(asset, assetTokenId);
         } catch {
-            assetId = poolManager.registerAsset(OTHER_CHAIN_ID, asset, assetTokenId);
+            assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, asset, assetTokenId);
             centrifugeChain.updatePricePoolPerAsset(
                 POOL_A.raw(), scId, assetId, uint128(10 ** 18), uint64(block.timestamp)
             );

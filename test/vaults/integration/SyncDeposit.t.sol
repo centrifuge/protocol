@@ -14,7 +14,6 @@ import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
-import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
@@ -51,7 +50,6 @@ contract SyncDepositTestHelper is BaseTest {
         uint64 timestamp = uint64(block.timestamp);
         uint128 depositAssetAmount = vault.previewMint(shares).toUint128();
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault));
-        JournalEntry[] memory journalEntries = new JournalEntry[](0);
 
         vm.expectEmit();
         emit IBalanceSheet.Issue(poolId, scId, self, pricePoolPerShare, shares);
@@ -65,9 +63,7 @@ contract SyncDepositTestHelper is BaseTest {
             poolEscrowFactory.escrow(poolId.raw()),
             depositAssetAmount,
             priceAssetPerShare,
-            timestamp,
-            journalEntries,
-            journalEntries
+            timestamp
         );
     }
 }

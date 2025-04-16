@@ -61,6 +61,18 @@ interface IWormholeRelayer {
         external
         view
         returns (uint256 nativePriceQuote, uint256 targetChainRefundPerGasUnused);
+
+    /**
+     * @notice Returns the address of the current default delivery provider
+     * @return deliveryProvider The address of (the default delivery provider)'s contract on this source
+     *   chain. This must be a contract that implements IDeliveryProvider.
+     */
+    function getDefaultDeliveryProvider() external view returns (address deliveryProvider);
+}
+
+interface IWormholeDeliveryProvider {
+    /// @notice Returns the chain ID.
+    function chainId() external view returns (uint16);
 }
 
 // From
