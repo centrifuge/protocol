@@ -338,6 +338,13 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         gte(differenceAfter, differenceBefore, "insolvency decreased");
     }
 
+    /// @dev Property: pricePerShare never changes after a user operation
+    function property_pricePerShare_never_changes_after_user_operation() public {
+        if(currentOperation != OpType.ADMIN) {
+            eq(_before.pricePerShare, _after.pricePerShare, "pricePerShare changed after user operation");
+        }
+    }
+
     // === OPTIMIZATION TESTS === // 
 
     /// @dev Optimzation test to check if the difference between totalAssets and actualAssets is greater than 1 share

@@ -17,7 +17,6 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
     // With our current storage value
 
     // TODO: Clamp / Target specifics
-    // TODO: Actors / Randomness
     // TODO: Overflow stuff
     function poolManager_handleTransferShares(uint128 amount, uint256 investorEntropy) public updateGhosts asActor {
         address investor = _getRandomActor(investorEntropy);

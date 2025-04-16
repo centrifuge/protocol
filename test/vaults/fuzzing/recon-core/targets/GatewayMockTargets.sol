@@ -15,7 +15,7 @@ import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 import {Properties} from "../properties/Properties.sol";
-
+import {OpType} from "../BeforeAfter.sol";
 // @dev A way to separately code and maintain a mocked implementation of `Gateway`
 // Based on
 // `Gateway.handle(bytes calldata message)`
@@ -31,10 +31,6 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
     // Add Asset to Pool -> Also deploy Share Class
 
     bool hasDoneADeploy;
-
-    // Pool ID = Pool ID
-    // Asset ID
-    // Share ID
 
     // Basically the real complete setup
     function deployNewTokenPoolAndShare(uint8 decimals, uint256 initialMintPerUsers)
@@ -188,7 +184,7 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
     }
 
     // TODO: Price is capped at u64 to test overflows
-    function poolManager_updatePricePoolPerShare(uint64 price, uint64 computedAt) public asAdmin {
+    function poolManager_updatePricePoolPerShare(uint64 price, uint64 computedAt) public updateGhostsWithType(OpType.ADMIN) asAdmin {
         poolManager.updatePricePoolPerShare(poolId, scId, price, computedAt);
         poolManager.updatePricePoolPerAsset(poolId, scId, assetId, price, computedAt);
     }

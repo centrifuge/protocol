@@ -15,6 +15,7 @@ import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
 
 import {Properties} from "../properties/Properties.sol";
+import {OpType} from "../BeforeAfter.sol";
 
 /// @dev Separate the 5 Callbacks that go from Gateway to AsyncRequests
 /**
@@ -26,7 +27,7 @@ abstract contract VaultCallbackTargets is BaseTargetFunctions, Properties {
         uint128 tokenPayout,
         uint128 /*decreaseByAmount*/,
         uint256 investorEntropy
-    ) public notGovFuzzing updateGhosts {
+    ) public notGovFuzzing updateGhostsWithType(OpType.ADMIN) {
         address investor = _getRandomActor(investorEntropy);
 
         /// === CLAMP `currencyPayout` === ///
@@ -78,7 +79,7 @@ abstract contract VaultCallbackTargets is BaseTargetFunctions, Properties {
     }
 
     /// @dev Callback to requestRedeem
-    function asyncRequests_fulfillRedeemRequest(uint128 currencyPayout, uint128 tokenPayout, uint256 investorEntropy) public notGovFuzzing updateGhosts {
+    function asyncRequests_fulfillRedeemRequest(uint128 currencyPayout, uint128 tokenPayout, uint256 investorEntropy) public notGovFuzzing updateGhostsWithType(OpType.ADMIN) {
         address investor = _getRandomActor(investorEntropy);
 
         /// === CLAMP `tokenPayout` === ///
@@ -143,7 +144,7 @@ abstract contract VaultCallbackTargets is BaseTargetFunctions, Properties {
 
     /// @dev Callback to `cancelDepositRequest`
     /// @dev NOTE: Share -> decreaseByAmount is linear!
-    function asyncRequests_fulfillCancelDepositRequest(uint128 currencyPayout, uint256 investorEntropy) public notGovFuzzing updateGhosts {
+    function asyncRequests_fulfillCancelDepositRequest(uint128 currencyPayout, uint256 investorEntropy) public notGovFuzzing updateGhostsWithType(OpType.ADMIN) {
         /// === CLAMP `currencyPayout` === ///
         address investor = _getRandomActor(investorEntropy);
 
@@ -198,7 +199,7 @@ abstract contract VaultCallbackTargets is BaseTargetFunctions, Properties {
 
     /// @dev Callback to `cancelRedeemRequest`
     /// @dev NOTE: Share -> decreaseByAmount is linear!
-    function asyncRequests_fulfillCancelRedeemRequest(uint128 tokenPayout, uint256 investorEntropy) public notGovFuzzing updateGhosts {
+    function asyncRequests_fulfillCancelRedeemRequest(uint128 tokenPayout, uint256 investorEntropy) public notGovFuzzing updateGhostsWithType(OpType.ADMIN) {
         // Require that the actor has done the request
 
         /// === CLAMP `tokenPayout` === ///

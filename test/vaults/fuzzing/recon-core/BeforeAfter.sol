@@ -7,6 +7,11 @@ import {Setup} from "./Setup.sol";
 import {AsyncInvestmentState} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {Ghosts} from "./helpers/Ghosts.sol";
 
+enum OpType {
+    GENERIC, // generic operations can be performed by both users and admins
+    ADMIN // admin operations can only be performed by admins
+}
+
 abstract contract BeforeAfter is Ghosts {
 
     struct BeforeAfterVars {
@@ -15,12 +20,22 @@ abstract contract BeforeAfter is Ghosts {
         uint256 escrowTrancheTokenBalance;
         uint256 totalAssets;
         uint256 actualAssets;
+        uint256 pricePerShare;
     }
 
     BeforeAfterVars internal _before;
     BeforeAfterVars internal _after;
+    OpType internal currentOperation;
 
     modifier updateGhosts() {
+        currentOperation = OpType.GENERIC;
+        __before();
+        _;
+        __after();
+    }
+
+    modifier updateGhostsWithType(OpType op) {
+        currentOperation = op;
         __before();
         _;
         __after();
@@ -58,6 +73,7 @@ abstract contract BeforeAfter is Ghosts {
         _before.escrowTrancheTokenBalance = token.balanceOf(address(escrow));
         _before.totalAssets = vault.totalAssets();
         _before.actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
+        _before.pricePerShare = vault.pricePerShare();
     }
 
     function __after() internal {
@@ -92,5 +108,6 @@ abstract contract BeforeAfter is Ghosts {
         _after.escrowTrancheTokenBalance = token.balanceOf(address(escrow));
         _after.totalAssets = vault.totalAssets();
         _after.actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
+        _after.pricePerShare = vault.pricePerShare();
     }
 }
