@@ -10,13 +10,14 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {D18} from "src/misc/types/D18.sol";
-import {Recoverable} from "src/misc/Recoverable.sol";
+import {Recoverable, IRecoverable} from "src/misc/Recoverable.sol";
 
 import {VaultUpdateKind, MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IPoolManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {newAssetId} from "src/common/types/AssetId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 import {IBaseVault, IAsyncRedeemVault} from "src/vaults/interfaces/IERC7540.sol";
@@ -207,7 +208,8 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
         // Deploy new escrow only on first added share class for pool
         if (poolEscrowFactory.deployedEscrow(poolId) == address(0)) {
-            poolEscrowFactory.newEscrow(poolId);
+            address escrow = poolEscrowFactory.newEscrow(poolId);
+            gateway.setRefundAddress(PoolId.wrap(poolId), IRecoverable(escrow));
         }
 
         emit AddShareClass(poolId, scId, shareToken_);

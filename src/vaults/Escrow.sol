@@ -5,6 +5,10 @@ import {Auth} from "src/misc/Auth.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {Recoverable} from "src/misc/Recoverable.sol";
+
+import {PoolId} from "src/common/types/PoolId.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
 
 import {IPoolEscrow, IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 
@@ -56,7 +60,7 @@ contract Escrow is Auth, IEscrow {
 /// @title  Escrow
 /// @notice Escrow contract that holds assets for a specific pool separated by share classes.
 ///         Only wards can approve funds to be taken out.
-contract PoolEscrow is Escrow, IPoolEscrow {
+contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
     /// @dev The underlying pool id
     uint64 immutable poolId;
 
@@ -67,6 +71,8 @@ contract PoolEscrow is Escrow, IPoolEscrow {
     constructor(uint64 poolId_, address deployer) Escrow(deployer) {
         poolId = poolId_;
     }
+
+    receive() external payable {}
 
     /// @inheritdoc IPoolEscrow
     function pendingDepositIncrease(bytes16 scId, address asset, uint256 tokenId, uint256 value)
