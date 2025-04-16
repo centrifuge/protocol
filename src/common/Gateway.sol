@@ -159,7 +159,7 @@ contract Gateway is Auth, IGateway, Recoverable {
             batchHash = messageProofHash;
             emit ProcessProof(centrifugeId, batchId, batchHash, adapter_);
         } else {
-            require(adapter.id == PRIMARY_ADAPTER_ID, NonMessageAdapter());
+            require(adapter.id == PRIMARY_ADAPTER_ID, NonBatchAdapter());
             batchHash = keccak256(payload);
             emit ProcessBatch(centrifugeId, batchId, payload, adapter_);
         }

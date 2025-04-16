@@ -97,8 +97,8 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @notice Dispatched when the gateway tries to handle a proof from a non proof adapter.
     error NonProofAdapter();
 
-    /// @notice Dispatched when the gateway tries to handle a message from a non message adapter.
-    error NonMessageAdapter();
+    /// @notice Dispatched when the gateway tries to handle a batch from a non message adapter.
+    error NonBatchAdapter();
 
     /// @notice Dispatched when a recovery message is executed without being initiated.
     error MessageRecoveryNotInitiated();
