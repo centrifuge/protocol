@@ -28,7 +28,9 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
 
     IRoot public immutable root;
     IBaseInvestmentManager public manager;
-    IPoolEscrowProvider public poolEscrowProvider;
+    /// @dev NOTE: MUST NOT BE USED EXTERNALLY IN PRODUCTION. Not backwards compatible with legacy vaults. Instead,
+    /// refer to vault.escrow()
+    IPoolEscrowProvider internal _poolEscrowProvider;
 
     /// @inheritdoc IBaseVault
     uint64 public immutable poolId;
@@ -37,8 +39,8 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
 
     /// @inheritdoc IERC7575
     address public immutable asset;
-    /// @dev NOTE: Should never be used in production in any external contract as there will be old vaults without this
-    /// storage. Instead, refer to poolManager.vaultDetails(vault).
+    /// @dev NOTE: MUST NOT BE USED EXTERNALLY IN PRODUCTION. Not backwards compatible with legacy vaults. Instead,
+    /// refer to poolManager.vaultDetails(vault).
     uint256 internal immutable tokenId;
 
     /// @inheritdoc IERC7575
@@ -81,7 +83,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         root = IRoot(root_);
         // TODO: Redundant due to filing?
         manager = IBaseInvestmentManager(manager_);
-        poolEscrowProvider = poolEscrowProvider_;
+        _poolEscrowProvider = poolEscrowProvider_;
 
         nameHash = keccak256(bytes("Centrifuge"));
         versionHash = keccak256(bytes("1"));
@@ -93,7 +95,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     function file(bytes32 what, address data) external auth {
         if (what == "manager") manager = IBaseInvestmentManager(data);
         /// @dev NOT supported in legacy vaults
-        else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
+        else if (what == "poolEscrowProvider") _poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -185,6 +187,12 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         assets = manager.convertToAssets(address(this), shares);
     }
 
+    // --- Legacy views ---
+    /// @inheritdoc IBaseVault
+    function escrow() public view returns (address) {
+        return _poolEscrowProvider.escrow(poolId);
+    }
+
     // --- Helpers ---
     /// @notice Price of 1 unit of share, quoted in the decimals of the asset.
     function pricePerShare() external view returns (uint256) {
@@ -228,7 +236,7 @@ abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
         );
 
         // TODO: Check if viable with legacy vaults
-        address escrow = poolEscrowProvider.escrow(poolId);
+        address escrow = escrow();
         try IShareToken(share).authTransferFrom(sender, owner, escrow, shares) returns (bool) {}
         catch {
             // Support share class tokens that block authTransferFrom. In this case ERC20 approval needs to be set
@@ -357,7 +365,7 @@ abstract contract BaseSyncDepositVault is BaseVault {
 
     /// @inheritdoc IERC7575
     function deposit(uint256 assets, address receiver) external returns (uint256 shares) {
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, poolEscrowProvider.escrow(poolId), assets);
+        SafeTransferLib.safeTransferFrom(asset, msg.sender, escrow(), assets);
         shares = syncDepositManager.deposit(address(this), assets, receiver, msg.sender);
         emit Deposit(receiver, msg.sender, assets, shares);
     }
@@ -375,7 +383,7 @@ abstract contract BaseSyncDepositVault is BaseVault {
     /// @inheritdoc IERC7575
     function mint(uint256 shares, address receiver) public returns (uint256 assets) {
         assets = syncDepositManager.mint(address(this), shares, receiver, msg.sender);
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, poolEscrowProvider.escrow(poolId), assets);
+        SafeTransferLib.safeTransferFrom(asset, msg.sender, escrow(), assets);
         emit Deposit(receiver, msg.sender, assets, shares);
     }
 

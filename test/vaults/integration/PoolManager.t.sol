@@ -964,7 +964,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         assert(assetIdA != assetIdB);
     }
 
-    function XtestRegisterSingleAssetERC20_emptyNameSymbol() public {
+    function testRegisterSingleAssetERC20_emptyNameSymbol() public {
         ERC20 asset = _newErc20("", "", 10);
         poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, address(asset), 0);
         _assertAssetRegistered(address(asset), defaultAssetId, 0, 1);

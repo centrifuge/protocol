@@ -86,7 +86,6 @@ contract VaultsDeployer is CommonDeployer {
 
     function _vaultsEndorse() private {
         root.endorse(address(vaultRouter));
-        // TODO(wischli): Does root need to endorse escrow when created?
     }
 
     function _vaultsRely() private {
