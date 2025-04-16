@@ -7,8 +7,14 @@ pragma solidity 0.8.28;
 import {vm} from "@chimera/Hevm.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
+import {console2} from "forge-std/console2.sol";
 
-// Src Deps | For cycling of values
+// Types
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+
+// Src Deps 
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
@@ -65,10 +71,14 @@ abstract contract VaultCallbackTargets is BaseTargetFunctions, Properties {
                 // TODO(@hieronx): revisit clamps here
                 currencyPayout %= pendingDepositRequest; // Needs to be capped at this value
             }
+            console2.log("pendingDepositRequest in fulfillDepositRequest", pendingDepositRequest);
+
         }
 
+        console2.log("currencyPayout in fulfillDepositRequest", currencyPayout);
         asyncRequests.fulfillDepositRequest(poolId, scId, investor, assetId, currencyPayout, tokenPayout);
 
+        balanceSheet.approvedDeposits(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), currencyPayout);
         // E-2 | Global-1
         sumOfFullfilledDeposits[address(token)] += tokenPayout;
 
@@ -129,6 +139,8 @@ abstract contract VaultCallbackTargets is BaseTargetFunctions, Properties {
         // // END TODO test_invariant_asyncVault_10_w_recon
 
         asyncRequests.fulfillRedeemRequest(poolId, scId, investor, assetId, currencyPayout, tokenPayout);
+
+        balanceSheet.revokedShares(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), currencyPayout);
 
         sumOfClaimedRequests[address(token)] += tokenPayout;
 

@@ -40,9 +40,15 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         
         vault_requestDeposit(1e18, 0);
 
-        asyncRequests_fulfillDepositRequest(1e18, 1e18, 0, 0);
+        asyncRequests_fulfillDepositRequest(1e18 - 1, 1e18, 0, 0);
 
-        console2.log("actor", _getActor());
-        vault_deposit(1e18);
+        vault_deposit(1e18 - 1);
+
+        vault_requestRedeem(1e18 - 1, 0);
+
+        asyncRequests_fulfillRedeemRequest(1e18, 1e18, 0);
+
+        // can only redeem the 1e18 assets
+        vault_withdraw(1e18, 0);
     }
 }

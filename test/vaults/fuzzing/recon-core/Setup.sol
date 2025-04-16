@@ -17,6 +17,7 @@ import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 import {BalanceSheet} from "src/vaults/BalanceSheet.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
+import {SyncRequests} from "src/vaults/SyncRequests.sol";
 
 import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
 import {ERC20} from "src/misc/ERC20.sol";
@@ -38,6 +39,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
 
     Escrow public escrow; // NOTE: Restriction Manager will query it
     AsyncRequests asyncRequests;
+    SyncRequests syncRequests;
     PoolManager poolManager;
     AsyncVault vault;
     ERC20 assetErc20;
@@ -136,16 +138,18 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         centrifugeChain = address(this);
 
         // Dependencies
-        tokenFactory = new TokenFactory(address(this), address(this));
         escrow = new Escrow(address(this));
+        console2.log("escrow in setup", address(escrow));
         root = new Root(48 hours, address(this));
         restrictedTransfers = new RestrictedTransfers(address(root), address(this));
-        balanceSheet = new BalanceSheet(address(escrow));
 
         root.endorse(address(escrow));
 
+        balanceSheet = new BalanceSheet(address(escrow));
         asyncRequests = new AsyncRequests(address(root), address(escrow));
+        syncRequests = new SyncRequests(address(root), address(escrow));
         vaultFactory = new AsyncVaultFactory(address(this), address(asyncRequests));
+        tokenFactory = new TokenFactory(address(this), address(this));
 
         address[] memory vaultFactories = new address[](1);
         vaultFactories[0] = address(vaultFactory);
@@ -154,12 +158,20 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         gateway = new MockGateway();
 
         // set dependencies
-        asyncRequests.file("poolManager", address(poolManager));
         asyncRequests.file("sender", address(messageDispatcher));
-        poolManager.file("sender", address(messageDispatcher));
-        poolManager.file("gateway", address(gateway));
+        asyncRequests.file("poolManager", address(poolManager));
         asyncRequests.file("balanceSheet", address(balanceSheet));    
-        
+        asyncRequests.file("sharePriceProvider", address(syncRequests));
+        syncRequests.file("poolManager", address(poolManager));
+        syncRequests.file("balanceSheet", address(balanceSheet));
+        poolManager.file("sender", address(messageDispatcher));
+        poolManager.file("tokenFactory", address(tokenFactory));
+        poolManager.file("gateway", address(gateway));
+        poolManager.file("balanceSheet", address(balanceSheet));
+        balanceSheet.file("gateway", address(gateway));
+        balanceSheet.file("poolManager", address(poolManager));
+        balanceSheet.file("sender", address(messageDispatcher));
+        balanceSheet.file("sharePriceProvider", address(syncRequests));
         // authorize contracts
         asyncRequests.rely(address(poolManager));
         asyncRequests.rely(address(vaultFactory));
@@ -171,14 +183,14 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         // Setup Escrow Permissions
         escrow.rely(address(asyncRequests));
         escrow.rely(address(poolManager));
-
+        escrow.rely(address(balanceSheet));
 
         // Permissions on factories
         vaultFactory.rely(address(poolManager));
         tokenFactory.rely(address(poolManager));
 
-        // TODO: Cycling of:
-        // Actors and ERC7540 Vaults
+        balanceSheet.rely(address(asyncRequests));
+        balanceSheet.rely(address(syncRequests));
     }
 
     // NOTE: this overrides contracts deployed in setup() above with forked contracts
