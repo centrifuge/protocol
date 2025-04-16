@@ -90,16 +90,8 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         uint128 amount,
         D18 pricePoolPerAsset
     ) external authOrManager(poolId, scId) {
-        _deposit(
-            poolId,
-            scId,
-            AssetId.wrap(poolManager.assetToId(asset, tokenId)),
-            asset,
-            tokenId,
-            provider,
-            amount,
-            pricePoolPerAsset
-        );
+        AssetId assetId = AssetId.wrap(poolManager.assetToId(asset, tokenId));
+        _deposit(poolId, scId, assetId, asset, tokenId, provider, amount, pricePoolPerAsset);
     }
 
     /// @inheritdoc IBalanceSheet
@@ -112,16 +104,8 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         uint128 amount,
         D18 pricePoolPerAsset
     ) external authOrManager(poolId, scId) {
-        _withdraw(
-            poolId,
-            scId,
-            AssetId.wrap(poolManager.assetToId(asset, tokenId)),
-            asset,
-            tokenId,
-            receiver,
-            amount,
-            pricePoolPerAsset
-        );
+        AssetId assetId = AssetId.wrap(poolManager.assetToId(asset, tokenId));
+        _withdraw(poolId, scId, assetId, asset, tokenId, receiver, amount, pricePoolPerAsset);
     }
 
     /// @inheritdoc IBalanceSheet

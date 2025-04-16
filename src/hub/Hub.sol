@@ -36,7 +36,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     IHubRegistry public hubRegistry;
     IPoolMessageSender public sender;
     IShareClassManager public shareClassManager;
-    // TODO: should be immutable
     ITransientValuation public transientValuation;
 
     constructor(
@@ -442,13 +441,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
         accounting.unlock(poolId);
 
-        for (uint256 i; i < debits.length; i++) {
-            accounting.addDebit(debits[i].accountId, debits[i].amount);
-        }
-
-        for (uint256 i; i < credits.length; i++) {
-            accounting.addCredit(credits[i].accountId, credits[i].amount);
-        }
+        accounting.addJournal(debits, credits);
 
         accounting.lock();
     }
