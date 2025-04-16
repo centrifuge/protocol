@@ -27,16 +27,33 @@ contract PoolEscrowFactoryTest is Test {
     }
 
     function testEscrows(uint64 poolId) public {
-        assertEq(factory.escrows(poolId), address(0), "Escrow should not exist yet");
+        assertEq(factory.deployedPoolEscrow(poolId), address(0), "Escrow should not exist yet");
         address escrow = factory.newEscrow(poolId);
-        assertEq(factory.escrows(poolId), escrow, "Escrow address mismatch");
+        assertEq(factory.deployedPoolEscrow(poolId), escrow, "Escrow address mismatch");
     }
 
-    function testDeploysEscrowAtDeterministicAddress(uint64 poolId) public {
-        address expected = factory.escrow(poolId);
+    function testDeployEscrowAtDeterministicAddress(uint64 poolId) public {
+        vm.assume(poolId != factory.V2_POOL_ID());
+
+        address expectedEscrow = factory.escrow(poolId);
+        address expectedPoolEscrow = address(factory.poolEscrow(poolId));
         address actual = factory.newEscrow(poolId);
 
-        assertEq(expected, actual, "Escrow address mismatch");
+        assertEq(expectedEscrow, actual, "Escrow address mismatch");
+        assertEq(expectedPoolEscrow, actual, "PoolEscrow address mismatch");
+    }
+
+    function testLegacyEscrow() public {
+        uint64 poolId = factory.V2_POOL_ID();
+
+        address escrow = factory.escrow(poolId);
+        address poolEscrow = address(factory.poolEscrow(poolId));
+        address newEscrow = factory.newEscrow(poolId);
+        address deployedPoolEscrow = factory.deployedPoolEscrow(poolId);
+
+        assertEq(poolEscrow, newEscrow, "PoolEscrow address mismatch");
+        assertEq(poolEscrow, deployedPoolEscrow, "PoolEscrow address mismatch");
+        assertNotEq(escrow, poolEscrow, "Legacy non-pool escrow should not be the same as new pool escrow");
     }
 
     function testDeployEscrowTwiceReverts(uint64 poolId) public {

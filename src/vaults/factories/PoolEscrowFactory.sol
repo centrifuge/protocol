@@ -12,8 +12,8 @@ import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {PoolEscrow} from "src/vaults/Escrow.sol";
 
 contract PoolEscrowFactory is IPoolEscrowFactory, Auth {
-    uint64 constant V2_POOL_ID = 4139607887;
-    address constant V2_GLOBAL_ESCROW = address(0x0000000005F458Fd6ba9EEb5f365D83b7dA913dD);
+    uint64 public constant V2_POOL_ID = 4139607887;
+    address public constant V2_GLOBAL_ESCROW = address(0x0000000005F458Fd6ba9EEb5f365D83b7dA913dD);
 
     address public immutable root;
     address public poolManager;
