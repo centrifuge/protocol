@@ -1,7 +1,8 @@
+*.pem
 cache/
 out/
 broadcast/
-.env
+*.env
 .idea/
 .DS_Store
 .env.*
