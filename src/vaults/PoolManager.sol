@@ -67,7 +67,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     mapping(uint128 assetId => AssetIdKey) internal _idToAsset;
     mapping(address asset => mapping(uint256 tokenId => uint128 assetId)) internal _assetToId;
 
-    constructor(address tokenFactory_, address[] memory vaultFactories) Auth(msg.sender) {
+    constructor(address tokenFactory_, address[] memory vaultFactories, address deployer) Auth(deployer) {
         tokenFactory = ITokenFactory(tokenFactory_);
 
         for (uint256 i = 0; i < vaultFactories.length; i++) {

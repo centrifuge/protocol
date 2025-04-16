@@ -60,7 +60,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         messageProcessor = new MessageProcessor(root, tokenRecoverer, deployer);
 
         gasService = new GasService(maxBatchSize, messageGasLimit);
-        gateway = new Gateway(centrifugeId, root, gasService);
+        gateway = new Gateway(centrifugeId, root, gasService, deployer);
 
         messageDispatcher = new MessageDispatcher(centrifugeId, root, gateway, tokenRecoverer, deployer);
 
@@ -120,6 +120,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
 
         root.deny(deployer);
         gateway.deny(deployer);
+        tokenRecoverer.deny(deployer);
         messageProcessor.deny(deployer);
         messageDispatcher.deny(deployer);
     }

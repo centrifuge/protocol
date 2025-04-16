@@ -40,7 +40,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     mapping(PoolId => mapping(ShareClassId => mapping(address => bool))) public manager;
 
-    constructor() Auth(msg.sender) {}
+    constructor(address deployer) Auth(deployer) {}
 
     /// @dev Check if the msg.sender has managers
     modifier authOrManager(PoolId poolId, ShareClassId scId) {

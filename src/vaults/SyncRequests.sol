@@ -54,7 +54,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     mapping(uint64 poolId => mapping(bytes16 scId => mapping(address asset => mapping(uint256 tokenId => IERC7726))))
         public valuation;
 
-    constructor(address root_) BaseInvestmentManager(root_) {}
+    constructor(address root_, address deployer) BaseInvestmentManager(root_, deployer) {}
 
     // --- Administration ---
     /// @inheritdoc IBaseInvestmentManager

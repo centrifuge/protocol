@@ -46,19 +46,23 @@ contract VaultsDeployer is CommonDeployer {
         routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow2"))}(deployer);
         tokenFactory = address(new TokenFactory{salt: SALT}(address(root), deployer));
 
-        asyncRequests = new AsyncRequests(address(root));
-        syncRequests = new SyncRequests(address(root));
-        asyncVaultFactory = address(new AsyncVaultFactory(address(root), address(asyncRequests), poolEscrowFactory));
+        asyncRequests = new AsyncRequests(address(root), deployer);
+        syncRequests = new SyncRequests(address(root), deployer);
+        asyncVaultFactory =
+            address(new AsyncVaultFactory(address(root), address(asyncRequests), poolEscrowFactory, deployer));
         syncDepositVaultFactory = address(
-            new SyncDepositVaultFactory(address(root), address(syncRequests), address(asyncRequests), poolEscrowFactory)
+            new SyncDepositVaultFactory(
+                address(root), address(syncRequests), address(asyncRequests), poolEscrowFactory, deployer
+            )
         );
         address[] memory vaultFactories = new address[](2);
         vaultFactories[0] = asyncVaultFactory;
         vaultFactories[1] = syncDepositVaultFactory;
 
-        poolManager = new PoolManager(tokenFactory, vaultFactories);
-        balanceSheet = new BalanceSheet();
-        vaultRouter = new VaultRouter(address(routerEscrow), address(gateway), address(poolManager), messageDispatcher);
+        poolManager = new PoolManager(tokenFactory, vaultFactories, deployer);
+        balanceSheet = new BalanceSheet(deployer);
+        vaultRouter =
+            new VaultRouter(address(routerEscrow), address(gateway), address(poolManager), messageDispatcher, deployer);
 
         // Hooks
         restrictedTransfers = address(new RestrictedTransfers{salt: SALT}(address(root), deployer));

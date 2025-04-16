@@ -14,7 +14,9 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
     address public immutable investmentManager;
     IEscrowProvider public immutable escrowProvider;
 
-    constructor(address root_, address investmentManager_, IEscrowProvider escrowProvider_) Auth(msg.sender) {
+    constructor(address root_, address investmentManager_, IEscrowProvider escrowProvider_, address deployer)
+        Auth(deployer)
+    {
         root = root_;
         investmentManager = investmentManager_;
         escrowProvider = escrowProvider_;

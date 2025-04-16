@@ -15,9 +15,13 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
     address public immutable asyncRequests;
     IEscrowProvider public immutable escrowProvider;
 
-    constructor(address root_, address syncRequests_, address asyncRequests_, IEscrowProvider escrowProvider_)
-        Auth(msg.sender)
-    {
+    constructor(
+        address root_,
+        address syncRequests_,
+        address asyncRequests_,
+        IEscrowProvider escrowProvider_,
+        address deployer
+    ) Auth(deployer) {
         root = root_;
         syncRequests = syncRequests_;
         asyncRequests = asyncRequests_;
