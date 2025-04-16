@@ -88,7 +88,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         vaultFactories[0] = address(asyncVaultFactory);
 
         // redeploying within test to increase coverage
-        new PoolManager(address(escrow), tokenFactory, vaultFactories);
+        new PoolManager(address(escrow), tokenFactory, vaultFactories, address(this));
 
         // values set correctly
         assertEq(address(poolManager.escrow()), address(escrow));
@@ -569,7 +569,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         bytes16 scId = oldVault.trancheId();
         address asset = address(oldVault.asset());
 
-        AsyncVaultFactory newVaultFactory = new AsyncVaultFactory(address(root), address(asyncRequests));
+        AsyncVaultFactory newVaultFactory = new AsyncVaultFactory(address(root), address(asyncRequests), address(this));
 
         // rewire factory contracts
         newVaultFactory.rely(address(poolManager));

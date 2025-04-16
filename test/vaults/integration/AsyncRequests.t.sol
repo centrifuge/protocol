@@ -17,7 +17,7 @@ interface VaultLike {
 }
 
 contract AsyncRequestsHarness is AsyncRequests {
-    constructor(address root, address escrow) AsyncRequests(root, escrow) {}
+    constructor(address root, address escrow, address deployer) AsyncRequests(root, escrow, deployer) {}
 
     function calculatePrice(address vault, uint128 assets, uint128 shares) external view returns (uint256 price) {
         if (vault == address(0)) {
@@ -40,7 +40,7 @@ contract AsyncRequestsTest is BaseTest {
         );
 
         // redeploying within test to increase coverage
-        new AsyncRequests(address(root), address(escrow));
+        new AsyncRequests(address(root), address(escrow), address(this));
 
         // values set correctly
         assertEq(address(asyncRequests.escrow()), address(escrow));
@@ -82,7 +82,7 @@ contract AsyncRequestsTest is BaseTest {
 
     // --- Price calculations ---
     function testPrice() public {
-        AsyncRequestsHarness harness = new AsyncRequestsHarness(address(root), address(escrow));
+        AsyncRequestsHarness harness = new AsyncRequestsHarness(address(root), address(escrow), address(this));
         assertEq(harness.calculatePrice(address(0), 1, 0), 0);
         assertEq(harness.calculatePrice(address(0), 0, 1), 0);
     }

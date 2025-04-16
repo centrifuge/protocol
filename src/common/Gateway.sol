@@ -60,7 +60,8 @@ contract Gateway is Auth, IGateway, Recoverable {
     mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 batchHash => uint256 timestamp))) public
         recoveries;
 
-    constructor(uint16 localCentrifugeId_, IRoot root_, IGasService gasService_) Auth(msg.sender) {
+    constructor(uint16 localCentrifugeId_, IRoot root_, IGasService gasService_, address deployer)
+        Auth(deployer) {
         localCentrifugeId = localCentrifugeId_;
         root = root_;
         gasService = gasService_;

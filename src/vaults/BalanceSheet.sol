@@ -40,7 +40,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     mapping(PoolId => mapping(ShareClassId => mapping(address => bool))) public manager;
 
-    constructor(address escrow_) Auth(msg.sender) {
+    constructor(address escrow_, address deployer) Auth(deployer) {
         escrow = IPerPoolEscrow(escrow_);
     }
 
