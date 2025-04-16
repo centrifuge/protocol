@@ -338,17 +338,10 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         gte(differenceAfter, differenceBefore, "insolvency decreased");
     }
 
-    /// @dev Property: pricePerShare never changes after a user operation
-    function property_pricePerShare_never_changes_after_user_operation() public {
-        if(currentOperation != OpType.ADMIN) {
-            eq(_before.pricePerShare, _after.pricePerShare, "pricePerShare changed after user operation");
-        }
-    }
-
     // === OPTIMIZATION TESTS === // 
 
     /// @dev Optimzation test to check if the difference between totalAssets and actualAssets is greater than 1 share
-    function optimize_totalAssets_solvency() public returns (int256) {
+    function optimize_totalAssets_solvency() public view returns (int256) {
         uint256 totalAssets = vault.totalAssets();
         uint256 actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
         uint256 difference = totalAssets - actualAssets;

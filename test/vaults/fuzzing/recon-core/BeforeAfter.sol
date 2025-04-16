@@ -21,6 +21,7 @@ abstract contract BeforeAfter is Ghosts {
         uint256 totalAssets;
         uint256 actualAssets;
         uint256 pricePerShare;
+        uint256 totalShareSupply;
     }
 
     BeforeAfterVars internal _before;
@@ -74,6 +75,7 @@ abstract contract BeforeAfter is Ghosts {
         _before.totalAssets = vault.totalAssets();
         _before.actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
         _before.pricePerShare = vault.pricePerShare();
+        _before.totalShareSupply = token.totalSupply();
     }
 
     function __after() internal {
@@ -109,5 +111,6 @@ abstract contract BeforeAfter is Ghosts {
         _after.totalAssets = vault.totalAssets();
         _after.actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
         _after.pricePerShare = vault.pricePerShare();
+        _after.totalShareSupply = token.totalSupply();
     }
 }

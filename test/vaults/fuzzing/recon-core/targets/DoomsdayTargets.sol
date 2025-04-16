@@ -11,10 +11,11 @@ import {console2} from "forge-std/console2.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 
 import {Properties} from "../properties/Properties.sol";
+import {OpType} from "../BeforeAfter.sol";
 
 abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     
-    /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
+    /// @dev DoomsdayProperty: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
     function doomsday_deposit_ppfs(uint256 assets) public updateGhosts {
         uint256 ppfsBefore = vault.pricePerShare();
 
@@ -26,7 +27,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         eq(sharesReceived, (assets * ppfsBefore) - (10 ** token.decimals()), "sharesReceived != pricePerShare - precision");
     }
 
-     /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
+    /// @dev Doomsday Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
     function doomsday_mint_ppfs(uint256 shares) public updateGhosts {
         uint256 ppfsBefore = vault.pricePerShare();
 
@@ -38,7 +39,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         eq(assetsAsShares, (shares * ppfsBefore) - (10 ** token.decimals()), "assetsAsShares != pricePerShare - precision");
     }
 
-    /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
+    /// @dev Doomsday Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
     function doomsday_redeem_ppfs(uint256 shares) public updateGhosts {
         uint256 ppfsBefore = vault.pricePerShare();
 
@@ -50,7 +51,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         eq(assetsAsShares, (shares * ppfsBefore) - (10 ** token.decimals()), "assetsAsShares != pricePerShare - precision");
     }
 
-    /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
+    /// @dev Doomsday Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
     function doomsday_withdraw_ppfs(uint256 assets) public updateGhosts {
         uint256 ppfsBefore = vault.pricePerShare();
 
@@ -61,4 +62,21 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         eq(sharesAsAssets, (assets / ppfsBefore) + (10 ** token.decimals()), "sharesAsAssets != pricePerShare + precision");
         eq(sharesReceived, (assets * ppfsBefore) - (10 ** token.decimals()), "sharesReceived != pricePerShare - precision");
     }
+
+    /// @dev Doomsday Property: pricePerShare never changes after a user operation
+    function doomsday_pricePerShare_never_changes_after_user_operation() public {
+        if(currentOperation != OpType.ADMIN) {
+            eq(_before.pricePerShare, _after.pricePerShare, "pricePerShare changed after user operation");
+        }
+    }
+
+    /// @dev Doomsday Property: implied pricePerShare (totalAssets / totalSupply) never changes after a user operation
+    function doomsday_impliedPricePerShare_never_changes_after_user_operation() public {
+        if(currentOperation != OpType.ADMIN) {
+            uint256 impliedPricePerShareBefore = _before.totalAssets / _before.totalShareSupply;
+            uint256 impliedPricePerShareAfter = _after.totalAssets / _after.totalShareSupply;
+            eq(impliedPricePerShareBefore, impliedPricePerShareAfter, "impliedPricePerShare changed after user operation");
+        }
+    }
+
 }
