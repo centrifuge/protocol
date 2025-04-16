@@ -19,7 +19,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev This Property demonstrates that the current actor can reach a non-zero balance
     // This helps get coverage in other areas
-    function invariant_sentinel_token_balance() public {
+    function property_sentinel_token_balance() public {
         if (!RECON_USE_SENTINEL_TESTS) {
             return; // Skip if setting is off
         }
@@ -36,17 +36,17 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     // == GLOBAL == //
 
     /// @dev Property: Sum of share class tokens received on `deposit` and `mint` <= sum of fulfilledDepositRequest.shares
-    function invariant_global_1() public tokenIsSet {
+    function property_global_1() public tokenIsSet {
         // Mint and Deposit
         lte(sumOfClaimedDeposits[address(token)], sumOfFullfilledDeposits[address(token)], "sumOfClaimedDeposits[address(token)] > sumOfFullfilledDeposits[address(token)]");
     }
 
-    function invariant_global_2() public assetIsSet {
+    function property_global_2() public assetIsSet {
         // Redeem and Withdraw
         lte(sumOfClaimedRedemptions[address(assetErc20)], mintedByCurrencyPayout[address(assetErc20)], "sumOfClaimedRedemptions[address(assetErc20)] > mintedByCurrencyPayout[address(assetErc20)]");
     }
 
-    function invariant_global_2_inductive() public tokenIsSet {
+    function property_global_2_inductive() public tokenIsSet {
         // we only care about the case where the pendingRedeemRequest is decreasing because it indicates that a redeem was fulfilled
         // we also need to ensure that the claimableCancelRedeemRequest is the same because if it's not, the redeem request was cancelled
         if(
@@ -62,7 +62,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     }
 
     // The sum of tranche tokens minted/transferred is equal to the total supply of tranche tokens
-    function invariant_global_3() public tokenIsSet{
+    function property_global_3() public tokenIsSet{
         // NOTE: By removing checked the math can overflow, then underflow back, resulting in correct calculations
         // NOTE: Overflow should always result back to a rational value as token cannot overflow due to other
         // functions permanently reverting
@@ -77,7 +77,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         eq(totalSupply, ghostTotalSupply, "totalSupply != ghostTotalSupply");
     }
 
-    function invariant_global_4() public assetIsSet {
+    function property_global_4() public assetIsSet {
 
         address[] memory systemAddresses = _getSystemAddresses();
         uint256 SYSTEM_ADDRESSES_LENGTH = systemAddresses.length;
@@ -92,14 +92,14 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     }
 
     // Sum of assets received on `claimCancelDepositRequest`<= sum of fulfillCancelDepositRequest.assets
-    function invariant_global_5() public assetIsSet {
+    function property_global_5() public assetIsSet {
         // claimCancelDepositRequest
         // investmentManager_fulfillCancelDepositRequest
         lte(sumOfClaimedDepositCancelations[address(vault.asset())], cancelDepositCurrencyPayout[address(vault.asset())], "sumOfClaimedDepositCancelations !<= cancelDepositCurrencyPayout");
     }
 
-    // Inductive implementation of invariant_global_5
-    function invariant_global_5_inductive() tokenIsSet public {
+    // Inductive implementation of property_global_5
+    function property_global_5_inductive() tokenIsSet public {
         // we only care about the case where the claimableCancelDepositRequest is decreasing because it indicates that a cancel deposit request was fulfilled
         if(
             _before.investments[_getActor()].claimableCancelDepositRequest > _after.investments[_getActor()].claimableCancelDepositRequest
@@ -113,13 +113,13 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     // Sum of share class tokens received on `claimCancelRedeemRequest`<= sum of
     // fulfillCancelRedeemRequest.shares
-    function invariant_global_6() public tokenIsSet {
+    function property_global_6() public tokenIsSet {
         // claimCancelRedeemRequest
         lte(sumOfClaimedRedeemCancelations[address(token)], cancelRedeemShareTokenPayout[address(token)], "sumOfClaimedRedeemCancelations !<= cancelRedeemTrancheTokenPayout");
     }
 
-    // Inductive implementation of invariant_global_6
-    function invariant_global_6_inductive() public tokenIsSet {
+    // Inductive implementation of property_global_6
+    function property_global_6_inductive() public tokenIsSet {
         // we only care about the case where the claimableCancelRedeemRequest is decreasing because it indicates that a cancel redeem request was fulfilled
         if(
             _before.investments[_getActor()].claimableCancelRedeemRequest > _after.investments[_getActor()].claimableCancelRedeemRequest
@@ -136,7 +136,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     // On the function handler, both transfer, transferFrom, perhaps even mint
 
     /// @notice Sum of balances equals total supply
-    function invariant_tt_2() public tokenIsSet {
+    function property_tt_2() public tokenIsSet {
         address[] memory actors = _getActors();
 
         uint256 acc;
@@ -151,7 +151,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         lte(acc, token.totalSupply(), "sum of user balances > token.totalSupply()");
     }
 
-    function invariant_IM_1() public {
+    function property_IM_1() public {
         if (address(asyncRequests) == address(0)) {
             return;
         }
@@ -174,7 +174,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
     }
 
-    function invariant_IM_2() public {
+    function property_IM_2() public {
         if (address(asyncRequests) == address(0)) {
             return;
         }
@@ -205,7 +205,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
      *
      *     NOTE: Ignores donations
      */
-    function invariant_E_1() public tokenIsSet {
+    function property_E_1() public tokenIsSet {
         if (address(escrow) == address(0)) {
             return;
         }
@@ -244,7 +244,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
      *
      *     NOTE: Ignores donations
      */
-    function invariant_E_2() public tokenIsSet {
+    function property_E_2() public tokenIsSet {
         // NOTE: By removing checked the math can overflow, then underflow back, resulting in correct calculations
         // NOTE: Overflow should always result back to a rational value as token cannot overflow due to other
         // functions permanently reverting
@@ -262,7 +262,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     // TODO: Multi Assets -> Iterate over all existing combinations
 
-    function invariant_E_3() public {
+    function property_E_3() public {
         if (address(vault) == address(0)) {
             return;
         }
@@ -287,7 +287,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         lte(acc, balOfEscrow, "sum of account balances > balOfEscrow");
     }
 
-    function invariant_E_4() public {
+    function property_E_4() public {
         if (address(vault) == address(0)) {
             return;
         }
@@ -314,6 +314,36 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         emit DebugWithString("acc - balOfEscrow", balOfEscrow < acc ? acc - balOfEscrow : 0);
         lte(acc, balOfEscrow, "account balance > balOfEscrow");
     }
+
+    /// @dev Property: the totalAssets of a vault is always <= actual assets in the vault
+    function property_totalAssets_solvency() public {
+        uint256 totalAssets = vault.totalAssets();
+        uint256 actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
+        
+        uint256 difference = totalAssets - actualAssets;
+        uint256 differenceInShares = vault.convertToShares(difference);
+
+        // if (differenceInShares > 1e18 - 1) {
+        // note: may need to check account for minimal allowable difference in shares
+        lte(totalAssets, actualAssets, "totalAssets > actualAssets");
+        // }
+    }
+
+    /// @dev Optimzation test to check if the difference between totalAssets and actualAssets is greater than 1 share
+    function optimize_totalAssets_solvency() public returns (int256) {
+        uint256 totalAssets = vault.totalAssets();
+        uint256 actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
+        uint256 difference = totalAssets - actualAssets;
+
+        uint256 differenceInShares = vault.convertToShares(difference);
+
+        if (differenceInShares > 1e18 - 1) {
+            return int256(difference);
+        }
+
+        return 0;
+    }
+    
 
     // == UTILITY == //
 
