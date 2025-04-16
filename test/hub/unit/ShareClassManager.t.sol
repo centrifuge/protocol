@@ -201,8 +201,12 @@ abstract contract ShareClassManagerBaseTest is Test {
         EpochRedeemAmounts memory expected
     ) internal view {}
 
-    function totalIssuance(ShareClassId scId_) internal view returns (uint128 totalIssuance_) {
+    function _totalIssuance(ShareClassId scId_) internal view returns (uint128 totalIssuance_) {
         (totalIssuance_,) = shareClass.metrics(scId_);
+    }
+
+    function _nowEpoch(AssetId assetId) internal view returns (uint32) {
+        return shareClass.nowDepositEpoch(scId, assetId);
     }
 }
 
@@ -376,11 +380,11 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
     function testApproveDepositsSingleAssetManyInvestors(
         uint8 numInvestors,
         uint128 depositAmount,
-        uint128 approvedUSDC
+        uint128 approvedUsdc
     ) public {
         numInvestors = uint8(bound(numInvestors, 1, 100));
         depositAmount = uint128(bound(depositAmount, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
-        approvedUSDC = uint128(bound(approvedUSDC, 1, numInvestors * depositAmount));
+        approvedUsdc = uint128(bound(approvedUsdc, 1, numInvestors * depositAmount));
 
         uint128 deposits = 0;
         for (uint16 i = 0; i < numInvestors; i++) {
@@ -392,49 +396,49 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
             assertEq(shareClass.pendingDeposit(scId, USDC), deposits);
         }
 
-        assertEq(shareClass.nowDepositEpoch(scId, USDC), 1);
-        assert(deposits >= approvedUSDC);
-        approvedUSDC = deposits;
+        assertEq(_nowEpoch(USDC), 1);
 
         vm.expectEmit();
         emit IShareClassManager.ApproveDeposits(
             poolId,
             scId,
             USDC,
-            shareClass.nowDepositEpoch(scId, USDC),
-            _intoPoolAmount(USDC, approvedUSDC),
-            approvedUSDC,
-            deposits - approvedUSDC
+            _nowEpoch(USDC),
+            _intoPoolAmount(USDC, approvedUsdc),
+            approvedUsdc,
+            deposits - approvedUsdc
         );
         shareClass.approveDeposits(
-            poolId, scId, USDC, shareClass.nowDepositEpoch(scId, USDC), approvedUSDC, _priceAssetPerPool(USDC)
+            poolId, scId, USDC, _nowEpoch(USDC), approvedUsdc, _priceAssetPerPool(USDC)
         );
 
-        assertEq(shareClass.pendingDeposit(scId, USDC), deposits - approvedUSDC);
+        assertEq(shareClass.pendingDeposit(scId, USDC), deposits - approvedUsdc);
 
         // Only one epoch should have passed
-        assertEq(shareClass.nowDepositEpoch(scId, USDC), 2);
+        assertEq(_nowEpoch(USDC), 2);
 
         _assertEpochInvestAmountsEq(
             scId,
             USDC,
             1,
             EpochInvestAmounts(
-                deposits, approvedUSDC, _intoPoolAmount(USDC, approvedUSDC), _priceAssetPerPool(USDC), d18(0), 0 /* Not yet issued */
+                deposits,
+                approvedUsdc,
+                _intoPoolAmount(USDC, approvedUsdc),
+                _priceAssetPerPool(USDC),
+                d18(0),
+                0 /* Not yet issued */
             )
         );
     }
 
-    /*
-    function testApproveDepositsTwoAssetsSameEpoch(uint128 depositAmount, uint128 approvedUSDC)
-        public
-
-    {
+    function testApproveDepositsTwoAssetsSameEpoch(uint128 depositAmount, uint128 approvedUSDC) public {
         uint128 depositAmountUsdc = uint128(bound(depositAmount, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
         uint128 depositAmountOther =
             uint128(bound(depositAmount, MIN_REQUEST_AMOUNT_USDC / 100, MAX_REQUEST_AMOUNT_USDC / 100));
-        uint128 approvedAssetUsdc = uint128(bound(approvedUSDC, MIN_REQUEST_AMOUNT_USDC - 1, depositAmountUsdc));
-    uint128 approvedAssetOther = uint128(bound(approvedUSDC, MIN_REQUEST_AMOUNT_USDC / 100 - 1, depositAmountOther));
+        uint128 approvedUsdc = uint128(bound(approvedUSDC, MIN_REQUEST_AMOUNT_USDC - 1, depositAmountUsdc));
+        uint128 approvedOtherStable =
+            uint128(bound(approvedUSDC, MIN_REQUEST_AMOUNT_USDC / 100 - 1, depositAmountOther));
 
         bytes32 investorUsdc = bytes32("investorUsdc");
         bytes32 investorOther = bytes32("investorOther");
@@ -442,22 +446,44 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
         shareClass.requestDeposit(poolId, scId, depositAmountUsdc, investorUsdc, USDC);
         shareClass.requestDeposit(poolId, scId, depositAmountOther, investorOther, OTHER_STABLE);
 
-        shareClass.approveDeposits(poolId, scId, approvedAssetUsdc, USDC, oracleMock);
-        shareClass.approveDeposits(poolId, scId, approvedAssetOther, OTHER_STABLE, oracleMock);
+        assertEq(_nowEpoch(USDC), 1);
+        assertEq(_nowEpoch(OTHER_STABLE), 1);
 
-        assertEq(shareClass.epochId(poolId), 2);
+        shareClass.approveDeposits(poolId, scId, USDC, _nowEpoch(USDC), approvedUsdc, _priceAssetPerPool(USDC));
+        shareClass.approveDeposits(poolId, scId, OTHER_STABLE, _nowEpoch(OTHER_STABLE), approvedOtherStable, _priceAssetPerPool(OTHER_STABLE));
 
-        _assertEpochAmountsEq(
-    scId, USDC, 1, EpochAmounts(depositAmountUsdc, approvedAssetUsdc, usdcToPool(approvedAssetUsdc), 0, 0, 0, 0)
+        assertEq(_nowEpoch(USDC), 2);
+        assertEq(_nowEpoch(OTHER_STABLE), 2);
+
+        _assertEpochInvestAmountsEq(
+            scId,
+            USDC,
+            1,
+            EpochInvestAmounts(
+                depositAmountUsdc,
+                approvedUsdc,
+                _intoPoolAmount(USDC, approvedUsdc),
+                _priceAssetPerPool(USDC),
+                d18(0),
+                0 /* Not yet issued */
+            )
         );
-        _assertEpochAmountsEq(
+        _assertEpochInvestAmountsEq(
             scId,
             OTHER_STABLE,
             1,
-            EpochAmounts(depositAmountOther, approvedAssetOther, approvedAssetOther * 1e6, 0, 0, 0, 0)
+            EpochInvestAmounts(
+                depositAmountOther,
+                approvedOtherStable,
+                _intoPoolAmount(OTHER_STABLE, approvedOtherStable),
+                _priceAssetPerPool(OTHER_STABLE),
+                d18(0),
+                0 /* Not yet issued */
+            )
         );
     }
 
+    /*
     function testIssueSharesSingleEpoch(uint128 shareToPoolQuote_, uint128 depositAmount, uint128 approvedUSDC)
         public
 
