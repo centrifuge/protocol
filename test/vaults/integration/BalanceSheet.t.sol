@@ -65,7 +65,7 @@ contract BalanceSheetTest is BaseTest {
         );
 
         // redeploying within test to increase coverage
-        new BalanceSheet(address(escrow));
+        new BalanceSheet(address(escrow), address(this));
 
         // values set correctly
         assertEq(address(balanceSheet.escrow()), address(escrow));

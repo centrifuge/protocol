@@ -12,7 +12,7 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
     address public immutable root;
     address public immutable investmentManager;
 
-    constructor(address root_, address investmentManager_) Auth(msg.sender) {
+    constructor(address root_, address investmentManager_, address deployer) Auth(deployer) {
         root = root_;
         investmentManager = investmentManager_;
     }

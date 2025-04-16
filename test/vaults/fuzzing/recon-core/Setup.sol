@@ -68,13 +68,13 @@ abstract contract Setup is BaseSetup, SharedStorage {
 
         root.endorse(address(escrow));
 
-        asyncRequests = new AsyncRequests(address(root), address(escrow));
-        vaultFactory = new AsyncVaultFactory(address(this), address(asyncRequests));
+        asyncRequests = new AsyncRequests(address(root), address(escrow), address(this));
+        vaultFactory = new AsyncVaultFactory(address(this), address(asyncRequests), address(this));
 
         address[] memory vaultFactories = new address[](1);
         vaultFactories[0] = address(vaultFactory);
 
-        poolManager = new PoolManager(address(escrow), address(tokenFactory), vaultFactories);
+        poolManager = new PoolManager(address(escrow), address(tokenFactory), vaultFactories, address(this));
 
         asyncRequests.file("poolManager", address(poolManager));
         asyncRequests.rely(address(poolManager));

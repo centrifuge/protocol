@@ -61,7 +61,8 @@ contract Gateway is Auth, IGateway, Recoverable {
         public recoveries;
 
 
-    constructor(uint16 localCentrifugeId_, IRoot root_, IGasService gasService_) Auth(msg.sender) {
+    constructor(uint16 localCentrifugeId_, IRoot root_, IGasService gasService_, address deployer)
+        Auth(deployer) {
         localCentrifugeId = localCentrifugeId_;
         root = root_;
         gasService = gasService_;
@@ -331,7 +332,7 @@ contract Gateway is Auth, IGateway, Recoverable {
                 subsidy[PoolId.wrap(0)].value += uint96(fuel);
                 emit SubsidizePool(PoolId.wrap(0), address(this), fuel);
             }
-                
+
             fuel = 0;
         }
 

@@ -25,7 +25,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
 
     IPoolManager public poolManager;
 
-    constructor(address root_, address escrow_) Auth(msg.sender) {
+    constructor(address root_, address escrow_, address deployer) Auth(deployer) {
         root = root_;
         escrow = escrow_;
     }

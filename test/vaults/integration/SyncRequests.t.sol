@@ -57,7 +57,7 @@ contract SyncRequestsTest is SyncRequestsBaseTest {
         _assumeUnauthorizedCaller(nonWard);
 
         // redeploying within test to increase coverage
-        new SyncRequests(address(root), address(escrow));
+        new SyncRequests(address(root), address(escrow), address(this));
 
         // values set correctly
         assertEq(address(syncRequests.escrow()), address(escrow));
