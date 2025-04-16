@@ -158,18 +158,21 @@ contract ShareClassManager is Auth, IShareClassManager {
         require(approvedAssetAmount <= pendingAssetAmount, NotEnoughPending());
         require(approvedAssetAmount > 0, ZeroApprovalAmount());
 
+        approvedPoolAmount = ConversionLib.convertWithPrice(
+            approvedAssetAmount, hubRegistry.decimals(depositAssetId), hubRegistry.decimals(poolId), pricePoolPerAsset
+        ).toUint128();
+
         // Update epoch data
         EpochInvestAmounts storage epochAmounts = epochInvestAmounts[scId_][depositAssetId][nowDepositEpochId];
         epochAmounts.approvedAssetAmount = approvedAssetAmount;
-        epochAmounts.approvedPoolAmount = ConversionLib.convertWithPrice(
-            approvedAssetAmount, hubRegistry.decimals(depositAssetId), hubRegistry.decimals(poolId), pricePoolPerAsset
-        ).toUint128();
+        epochAmounts.approvedPoolAmount = approvedPoolAmount;
         epochAmounts.pendingAssetAmount = pendingAssetAmount;
         epochAmounts.pricePoolPerAsset = pricePoolPerAsset;
 
         // Reduce pending
         pendingDeposit[scId_][depositAssetId] -= approvedAssetAmount;
         pendingAssetAmount -= approvedAssetAmount;
+
         depositEpochId[scId_][depositAssetId] = nowDepositEpochId;
         emit ApproveDeposits(
             poolId,
