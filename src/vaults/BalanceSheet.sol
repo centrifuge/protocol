@@ -172,7 +172,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         (address asset, uint256 tokenId) = poolManager.idToAsset(assetId.raw());
         Prices memory prices = sharePriceProvider.prices(poolId.raw(), scId.raw(), assetId.raw(), asset, tokenId);
 
-        IPoolEscrow escrow = IPoolEscrow(poolEscrowProvider.escrow(poolId.raw()));
+        IPoolEscrow escrow = poolEscrowProvider.poolEscrow(poolId.raw());
         escrow.deposit(scId.raw(), asset, tokenId, assetAmount);
         sender.sendUpdateHoldingAmount(poolId, scId, assetId, address(escrow), assetAmount, prices.poolPerAsset, true);
     }
@@ -180,7 +180,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     /// @inheritdoc IBalanceSheetGatewayHandler
     function revokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external auth {
         (address asset, uint256 tokenId) = poolManager.idToAsset(assetId.raw());
-        IPoolEscrow(poolEscrowProvider.escrow(poolId.raw())).reserveIncrease(scId.raw(), asset, tokenId, assetAmount);
+        poolEscrowProvider.poolEscrow(poolId.raw()).reserveIncrease(scId.raw(), asset, tokenId, assetAmount);
     }
 
     // --- Internal ---
@@ -210,7 +210,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         uint128 amount,
         D18 pricePoolPerAsset
     ) internal {
-        IPoolEscrow escrow = IPoolEscrow(poolEscrowProvider.escrow(poolId.raw()));
+        IPoolEscrow escrow = poolEscrowProvider.poolEscrow(poolId.raw());
         escrow.withdraw(scId.raw(), asset, tokenId, amount);
 
         if (tokenId == 0) {
@@ -234,7 +234,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         uint128 amount,
         D18 pricePoolPerAsset
     ) internal {
-        IPoolEscrow escrow = IPoolEscrow(poolEscrowProvider.escrow(poolId.raw()));
+        IPoolEscrow escrow = poolEscrowProvider.poolEscrow(poolId.raw());
         escrow.pendingDepositIncrease(scId.raw(), asset, tokenId, amount);
 
         if (tokenId == 0) {

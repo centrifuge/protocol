@@ -321,7 +321,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
             scId,
             vaultDetails.asset,
             vaultDetails.tokenId,
-            poolEscrowProvider.escrow(poolId.raw()),
+            address(poolEscrowProvider.poolEscrow(poolId.raw())),
             depositAssetAmount,
             priceData.poolPerAsset
         );
@@ -335,7 +335,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         uint128 depositAssetAmount
     ) internal view {
         uint256 availableBalance =
-            IPoolEscrow(poolEscrowProvider.escrow(poolId.raw())).availableBalanceOf(scId.raw(), asset, tokenId);
+            poolEscrowProvider.poolEscrow(poolId.raw()).availableBalanceOf(scId.raw(), asset, tokenId);
         require(
             availableBalance + depositAssetAmount <= maxReserve[poolId.raw()][scId.raw()][asset][tokenId],
             ExceedsMaxReserve()

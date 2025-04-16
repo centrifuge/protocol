@@ -5,19 +5,19 @@ import {Auth} from "src/misc/Auth.sol";
 
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
-import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
+import {IEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 
 /// @title  ERC7540 Vault Factory
 /// @dev    Utility for deploying new vault contracts
 contract AsyncVaultFactory is Auth, IVaultFactory {
     address public immutable root;
     address public immutable investmentManager;
-    IPoolEscrowProvider public immutable poolEscrowProvider;
+    IEscrowProvider public immutable escrowProvider;
 
-    constructor(address root_, address investmentManager_, IPoolEscrowProvider poolEscrowProvider_) Auth(msg.sender) {
+    constructor(address root_, address investmentManager_, IEscrowProvider escrowProvider_) Auth(msg.sender) {
         root = root_;
         investmentManager = investmentManager_;
-        poolEscrowProvider = poolEscrowProvider_;
+        escrowProvider = escrowProvider_;
     }
 
     /// @inheritdoc IVaultFactory
@@ -30,8 +30,7 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
         address, /* escrow */
         address[] calldata wards_
     ) public auth returns (address) {
-        AsyncVault vault =
-            new AsyncVault(poolId, scId, asset, tokenId, token, root, investmentManager, poolEscrowProvider);
+        AsyncVault vault = new AsyncVault(poolId, scId, asset, tokenId, token, root, investmentManager, escrowProvider);
 
         vault.rely(root);
         vault.rely(investmentManager);

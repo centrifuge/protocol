@@ -18,7 +18,7 @@ import {IAsyncRedeemVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
-import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
+import {IEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 
@@ -28,9 +28,10 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
 
     IRoot public immutable root;
     IBaseInvestmentManager public manager;
-    /// @dev NOTE: MUST NOT BE USED EXTERNALLY IN PRODUCTION. Not backwards compatible with legacy vaults. Instead,
-    /// refer to vault.escrow()
-    IPoolEscrowProvider internal _poolEscrowProvider;
+    /// @dev NOTE: MUST NOT BE USED EXTERNALLY IN PRODUCTION.
+    /// @dev Not backwards compatible with legacy v2 vaults which rely on a global asyncRequests.escrow().
+    /// @dev We assume, that this provider handles rerouting for legacy v2 vaults.
+    IEscrowProvider internal _escrowProvider;
 
     /// @inheritdoc IBaseVault
     uint64 public immutable poolId;
@@ -39,8 +40,8 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
 
     /// @inheritdoc IERC7575
     address public immutable asset;
-    /// @dev NOTE: MUST NOT BE USED EXTERNALLY IN PRODUCTION. Not backwards compatible with legacy vaults. Instead,
-    /// refer to poolManager.vaultDetails(vault).
+    /// @dev NOTE: MUST NOT BE USED EXTERNALLY IN PRODUCTION.
+    /// @dev Not backwards compatible with legacy v2 vaults. Instead, refer to poolManager.vaultDetails(vault).
     uint256 internal immutable tokenId;
 
     /// @inheritdoc IERC7575
@@ -72,7 +73,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         address token_,
         address root_,
         address manager_,
-        IPoolEscrowProvider poolEscrowProvider_
+        IEscrowProvider escrowProvider_
     ) Auth(msg.sender) {
         poolId = poolId_;
         trancheId = scId_;
@@ -83,7 +84,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         root = IRoot(root_);
         // TODO: Redundant due to filing?
         manager = IBaseInvestmentManager(manager_);
-        _poolEscrowProvider = poolEscrowProvider_;
+        _escrowProvider = escrowProvider_;
 
         nameHash = keccak256(bytes("Centrifuge"));
         versionHash = keccak256(bytes("1"));
@@ -95,7 +96,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     function file(bytes32 what, address data) external auth {
         if (what == "manager") manager = IBaseInvestmentManager(data);
         /// @dev NOT supported in legacy vaults
-        else if (what == "poolEscrowProvider") _poolEscrowProvider = IPoolEscrowProvider(data);
+        else if (what == "escrowProvider") _escrowProvider = IEscrowProvider(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -190,7 +191,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     // --- Legacy views ---
     /// @inheritdoc IBaseVault
     function escrow() public view returns (address) {
-        return _poolEscrowProvider.escrow(poolId);
+        return _escrowProvider.escrow(poolId);
     }
 
     // --- Helpers ---

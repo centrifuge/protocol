@@ -131,7 +131,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         require(state.pendingCancelDepositRequest != true, CancellationIsPending());
 
         state.pendingDepositRequest += assets;
-        IPoolEscrow(poolEscrowProvider.escrow(poolId)).pendingDepositIncrease(
+        poolEscrowProvider.poolEscrow(poolId).pendingDepositIncrease(
             scId, vaultDetails.asset, vaultDetails.tokenId, assets
         );
         sender.sendDepositRequest(poolId, scId, controller.toBytes32(), vaultDetails.assetId, assets);
@@ -468,9 +468,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
         Prices memory prices =
             sharePriceProvider.prices(poolId, scId, vaultDetails.assetId, vaultDetails.asset, vaultDetails.tokenId);
-        IPoolEscrow(poolEscrowProvider.escrow(poolId)).reserveDecrease(
-            scId, vaultDetails.asset, vaultDetails.tokenId, assets
-        );
+        poolEscrowProvider.poolEscrow(poolId).reserveDecrease(scId, vaultDetails.asset, vaultDetails.tokenId, assets);
 
         balanceSheet.withdraw(
             PoolId.wrap(poolId),

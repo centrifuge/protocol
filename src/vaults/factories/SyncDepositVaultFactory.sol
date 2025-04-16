@@ -5,7 +5,7 @@ import {Auth} from "src/misc/Auth.sol";
 
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
-import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
+import {IEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 
 /// @title  Sync Vault Factory
 /// @dev    Utility for deploying new vault contracts
@@ -13,15 +13,15 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
     address public immutable root;
     address public immutable syncRequests;
     address public immutable asyncRequests;
-    IPoolEscrowProvider public immutable poolEscrowProvider;
+    IEscrowProvider public immutable escrowProvider;
 
-    constructor(address root_, address syncRequests_, address asyncRequests_, IPoolEscrowProvider poolEscrowProvider_)
+    constructor(address root_, address syncRequests_, address asyncRequests_, IEscrowProvider escrowProvider_)
         Auth(msg.sender)
     {
         root = root_;
         syncRequests = syncRequests_;
         asyncRequests = asyncRequests_;
-        poolEscrowProvider = poolEscrowProvider_;
+        escrowProvider = escrowProvider_;
     }
 
     /// @inheritdoc IVaultFactory
@@ -34,9 +34,8 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
         address, /* escrow */
         address[] calldata wards_
     ) public auth returns (address) {
-        SyncDepositVault vault = new SyncDepositVault(
-            poolId, scId, asset, tokenId, token, root, syncRequests, asyncRequests, poolEscrowProvider
-        );
+        SyncDepositVault vault =
+            new SyncDepositVault(poolId, scId, asset, tokenId, token, root, syncRequests, asyncRequests, escrowProvider);
 
         vault.rely(root);
         vault.rely(syncRequests);
