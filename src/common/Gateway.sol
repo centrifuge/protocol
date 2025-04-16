@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import "forge-std/Test.sol";
+
 import {Auth} from "src/misc/Auth.sol";
 import {ArrayLib} from "src/misc/libraries/ArrayLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
@@ -214,12 +216,14 @@ contract Gateway is Auth, IGateway, Recoverable {
     }
 
     function _handleBatch(uint16 centrifugeId, bytes memory batch_) internal {
-        bytes memory message = batch_;
         IMessageProcessor processor_ = processor;
-        for (uint256 start; start < batch_.length;) {
-            uint256 length = processor_.messageLength(message);
-            message = batch_.slice(start, length);
-            start += length;
+        bytes memory remaining = batch_;
+        uint256 length;
+
+        while (length < remaining.length) {
+            length = processor_.messageLength(remaining);
+            bytes memory message = remaining.slice(0, length);
+            remaining = remaining.slice(length, remaining.length - length);
 
             try processor_.handle(centrifugeId, message) {
                 emit ExecuteMessage(centrifugeId, message);
