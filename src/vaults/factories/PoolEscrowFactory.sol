@@ -11,6 +11,7 @@ contract PoolEscrowFactory is IPoolEscrowFactory, Auth {
     address public immutable root;
 
     address public poolManager;
+    address public gateway;
     address public balanceSheet;
     address public asyncRequests;
 
@@ -23,6 +24,7 @@ contract PoolEscrowFactory is IPoolEscrowFactory, Auth {
     /// @inheritdoc IPoolEscrowFactory
     function file(bytes32 what, address data) external auth {
         if (what == "poolManager") poolManager = data;
+        else if (what == "gateway") gateway = data;
         else if (what == "balanceSheet") balanceSheet = data;
         else if (what == "asyncRequests") asyncRequests = data;
         else revert FileUnrecognizedParam();
@@ -35,6 +37,7 @@ contract PoolEscrowFactory is IPoolEscrowFactory, Auth {
         PoolEscrow escrow_ = new PoolEscrow{salt: bytes32(uint256(poolId))}(poolId, address(this));
 
         escrow_.rely(root);
+        escrow_.rely(gateway);
         escrow_.rely(poolManager);
         escrow_.rely(balanceSheet);
         escrow_.rely(asyncRequests);

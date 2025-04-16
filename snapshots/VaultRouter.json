@@ -1,6 +1,7 @@
 {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   "claimDeposit": "1179360",
   "enable": "60953",
   "lockDepositRequest": "92339",
@@ -20,4 +21,11 @@
   "requestDeposit": "602929",
   "requestRedeem": "2011019"
 >>>>>>> 23b42764 (implement new solution)
+=======
+  "claimDeposit": "1197213",
+  "enable": "60953",
+  "lockDepositRequest": "92339",
+  "requestDeposit": "602973",
+  "requestRedeem": "2149243"
+>>>>>>> b0f2d503 (fixes)
 }

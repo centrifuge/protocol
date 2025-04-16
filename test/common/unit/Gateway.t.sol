@@ -7,8 +7,10 @@ import "test/common/mocks/Mock.sol";
 import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 
 import {ERC20} from "src/misc/ERC20.sol";
+import {Auth} from "src/misc/Auth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {Recoverable} from "src/misc/Recoverable.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {Gateway, IRoot, IGasService, IGateway} from "src/common/Gateway.sol";
@@ -21,6 +23,11 @@ import {MockGasService} from "test/common/mocks/MockGasService.sol";
 
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
+
+contract MockRefundAddress is Recoverable {
+    constructor(address authorized) Auth(authorized) {}
+    receive() external payable {}
+}
 
 contract MockProcessor is Mock, IMessageHandler, IMessageProperties {
     using MessageLib for *;
@@ -87,6 +94,7 @@ contract GatewayTest is Test {
     IAdapter[] fourMockAdapters;
     IAdapter[] nineMockAdapters;
     Gateway gateway;
+    MockRefundAddress refundAddress;
 
     function setUp() public {
         self = address(this);
@@ -96,6 +104,8 @@ contract GatewayTest is Test {
         gateway =
             new Gateway(LOCAL_CENTRIFUGE_ID, IRoot(address(root)), IGasService(address(gasService)), address(this));
         gateway.file("processor", address(handler));
+
+        refundAddress = new MockRefundAddress(address(gateway));
 
         adapter1 = new MockAdapter(REMOTE_CENTRIFUGE_ID, gateway);
         vm.label(address(adapter1), "MockAdapter1");
@@ -477,7 +487,7 @@ contract GatewayTest is Test {
 
         assertEq(gateway.fuel(), 0);
 
-        gateway.setRefundAddress(POOL_A, gateway);
+        gateway.setRefundAddress(POOL_A, refundAddress);
         gateway.subsidizePool{value: total}(POOL_A);
         gateway.send(REMOTE_CENTRIFUGE_ID, message);
 
@@ -503,7 +513,7 @@ contract GatewayTest is Test {
 
         assertEq(gateway.fuel(), 0);
 
-        gateway.setRefundAddress(POOL_A, gateway);
+        gateway.setRefundAddress(POOL_A, refundAddress);
         gateway.subsidizePool{value: fundsToCoverTwoAdaptersOnly}(POOL_A);
         gateway.send(REMOTE_CENTRIFUGE_ID, message);
 

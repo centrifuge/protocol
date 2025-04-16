@@ -1,6 +1,7 @@
 {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   "fulfillDepositRequest": "931334",
   "requestDeposit": "479877"
 =======
@@ -11,4 +12,8 @@
   "fulfillDepositRequest": "933634",
   "requestDeposit": "481761"
 >>>>>>> 23b42764 (implement new solution)
+=======
+  "fulfillDepositRequest": "948328",
+  "requestDeposit": "500101"
+>>>>>>> b0f2d503 (fixes)
 }

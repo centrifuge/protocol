@@ -48,6 +48,7 @@ contract Gateway is Auth, IGateway, Recoverable {
     // Payment
     uint256 public transient fuel;
     address public transient transactionPayer;
+    PoolId internal transient _receivePoolTarget;
     mapping(PoolId => Funds) public subsidy;
 
     // Adapters
@@ -121,7 +122,7 @@ contract Gateway is Auth, IGateway, Recoverable {
     }
 
     receive() external payable {
-        subsidizePool(PoolId.wrap(0));
+        subsidizePool(_receivePoolTarget);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -297,11 +298,7 @@ contract Gateway is Auth, IGateway, Recoverable {
                 require(consumed <= fuel, NotEnoughTransactionGas());
                 fuel -= consumed;
             } else {
-                if (!poolId.isNull()) {
-                    IRecoverable refund = subsidy[poolId].refund;
-                    refund.recoverTokens(ETH_ADDRESS, address(this), address(refund).balance);
-                }
-
+                _requestPoolFunding(poolId);
                 if (consumed <= subsidy[poolId].value) {
                     subsidy[poolId].value -= uint96(consumed);
                 } else {
@@ -350,6 +347,15 @@ contract Gateway is Auth, IGateway, Recoverable {
         }
 
         transactionPayer = address(0);
+    }
+
+    function _requestPoolFunding(PoolId poolId) internal {
+        IRecoverable refund = subsidy[poolId].refund;
+        if (!poolId.isNull() && address(refund) != address(0)) {
+            _receivePoolTarget = poolId;
+            refund.recoverTokens(ETH_ADDRESS, address(this), address(refund).balance);
+            _receivePoolTarget = PoolId.wrap(0);
+        }
     }
 
     function setRefundAddress(PoolId poolId, IRecoverable refund) public auth {
