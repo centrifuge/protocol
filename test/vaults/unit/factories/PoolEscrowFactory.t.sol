@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import "forge-std/Test.sol";
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {ISharedDependency} from "src/misc/interfaces/ISharedDependency.sol";
 
 import {IPoolEscrowProvider, IPoolEscrowFactory} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {PoolEscrow} from "src/vaults/Escrow.sol";
@@ -11,6 +12,7 @@ import {PoolEscrowFactory} from "src/vaults/factories/PoolEscrowFactory.sol";
 
 contract PoolEscrowFactoryTest is Test {
     PoolEscrowFactory factory;
+    ISharedDependency sharedGateway = ISharedDependency(makeAddr("ISharedGateway"));
 
     address deployer = address(this);
     address root = makeAddr("root");
@@ -20,7 +22,7 @@ contract PoolEscrowFactoryTest is Test {
     address randomUser = makeAddr("randomUser");
 
     function setUp() public {
-        factory = new PoolEscrowFactory(root, deployer);
+        factory = new PoolEscrowFactory(root, sharedGateway, deployer);
         factory.file("poolManager", poolManager);
         factory.file("balanceSheet", balanceSheet);
         factory.file("asyncRequests", asyncRequests);
@@ -49,7 +51,7 @@ contract PoolEscrowFactoryTest is Test {
         vm.assume(nonWard != root && nonWard != poolManager && nonWard != balanceSheet && nonWard != asyncRequests);
         address escrowAddr = factory.newEscrow(poolId);
 
-        PoolEscrow escrow = PoolEscrow(escrowAddr);
+        PoolEscrow escrow = PoolEscrow(payable(escrowAddr));
 
         assertEq(escrow.wards(root), 1, "root not authorized");
         assertEq(escrow.wards(poolManager), 1, "poolManager not authorized");

@@ -6,17 +6,21 @@ import {Auth} from "src/misc/Auth.sol";
 import {IPoolEscrowProvider, IPoolEscrowFactory} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {PoolEscrow} from "src/vaults/Escrow.sol";
+import {ISharedDependency} from "src/misc/interfaces/ISharedDependency.sol";
 
 contract PoolEscrowFactory is IPoolEscrowFactory, Auth {
     address public immutable root;
+    ISharedDependency immutable sharedGateway;
+
     address public poolManager;
     address public balanceSheet;
     address public asyncRequests;
 
     mapping(uint64 poolId => address) public escrows;
 
-    constructor(address root_, address deployer) Auth(deployer) {
+    constructor(address root_, ISharedDependency sharedGateway_, address deployer) Auth(deployer) {
         root = root_;
+        sharedGateway = sharedGateway_;
     }
 
     /// @inheritdoc IPoolEscrowFactory
@@ -31,7 +35,7 @@ contract PoolEscrowFactory is IPoolEscrowFactory, Auth {
     /// @inheritdoc IPoolEscrowFactory
     function newEscrow(uint64 poolId) public auth returns (address) {
         require(escrows[poolId] == address(0), EscrowAlreadyDeployed());
-        PoolEscrow escrow_ = new PoolEscrow{salt: bytes32(uint256(poolId))}(poolId, address(this));
+        PoolEscrow escrow_ = new PoolEscrow{salt: bytes32(uint256(poolId))}(poolId, sharedGateway, address(this));
 
         escrow_.rely(root);
         escrow_.rely(poolManager);
@@ -50,7 +54,8 @@ contract PoolEscrowFactory is IPoolEscrowFactory, Auth {
     /// @inheritdoc IPoolEscrowProvider
     function escrow(uint64 poolId) external view returns (address) {
         bytes32 salt = bytes32(uint256(poolId));
-        bytes memory bytecode = abi.encodePacked(type(PoolEscrow).creationCode, abi.encode(poolId, address(this)));
+        bytes memory bytecode =
+            abi.encodePacked(type(PoolEscrow).creationCode, abi.encode(poolId, sharedGateway, address(this)));
 
         bytes32 hash = keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, keccak256(bytecode)));
 

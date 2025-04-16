@@ -5,6 +5,10 @@ import {Auth} from "src/misc/Auth.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {ISharedDependency} from "src/misc/interfaces/ISharedDependency.sol";
+
+import {PoolId} from "src/common/types/PoolId.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
 
 import {IPoolEscrow, IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 
@@ -60,12 +64,21 @@ contract PoolEscrow is Escrow, IPoolEscrow {
     /// @dev The underlying pool id
     uint64 immutable poolId;
 
+    ISharedDependency immutable sharedGateway;
+
     mapping(bytes16 scId => mapping(address asset => mapping(uint256 tokenId => uint256))) internal reservedAmount;
     mapping(bytes16 scId => mapping(address asset => mapping(uint256 tokenId => uint256))) internal pendingDeposit;
     mapping(bytes16 scId => mapping(address asset => mapping(uint256 tokenId => uint256))) internal holding;
 
-    constructor(uint64 poolId_, address deployer) Escrow(deployer) {
+    constructor(uint64 poolId_, ISharedDependency sharedGateway_, address deployer) Escrow(deployer) {
         poolId = poolId_;
+        sharedGateway = sharedGateway_;
+
+        IGateway(sharedGateway.dependency()).setRefundAddress(PoolId.wrap(poolId), address(this));
+    }
+
+    receive() external payable {
+        IGateway(sharedGateway.dependency()).subsidizePool{value: msg.value}(PoolId.wrap(poolId));
     }
 
     /// @inheritdoc IPoolEscrow
