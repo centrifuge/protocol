@@ -40,14 +40,14 @@ contract Gateway is Auth, IGateway, Recoverable {
     IMessageProcessor public processor;
 
     // Batching
-    bool public /*transient*/ isBatching;
+    bool public transient isBatching;
     BatchLocator[] public /*transient*/ batchLocators;
     mapping(uint16 centrifugeId => mapping(PoolId => bytes)) public /*transient*/ outboundBatch;
     mapping(uint16 centrifugeId => mapping(PoolId => uint128)) public /*transient*/ batchGasLimit;
 
     // Payment
-    uint256 public /*transient*/ fuel;
-    address public /*transient*/ transactionPayer;
+    uint256 public transient fuel;
+    address public transient transactionPayer;
     mapping(PoolId => Funds) public subsidy;
 
     // Adapters

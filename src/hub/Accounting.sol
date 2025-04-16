@@ -5,7 +5,7 @@ import {Auth} from "src/misc/Auth.sol";
 
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
+import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {TransientStorage} from "src/misc/libraries/TransientStorage.sol";
 
 /// @notice In a transaction there can be multiple journal entries for different pools,
@@ -55,6 +55,17 @@ contract Accounting is Auth, IAccounting {
         credited += value;
         acc.lastUpdated = uint64(block.timestamp);
         emit Credit(_currentPoolId, account, value);
+    }
+
+    /// @inheritdoc IAccounting
+    function addJournal(JournalEntry[] memory debits, JournalEntry[] memory credits) external {
+        for (uint256 i; i < debits.length; i++) {
+            addDebit(debits[i].accountId, debits[i].value);
+        }
+
+        for (uint256 i; i < credits.length; i++) {
+            addCredit(credits[i].accountId, credits[i].value);
+        }
     }
 
     /// @inheritdoc IAccounting
