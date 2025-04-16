@@ -2,7 +2,6 @@
 pragma solidity 0.8.28;
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {SharedDependency} from "src/misc/SharedDependency.sol";
 
 import {ISafe} from "src/common/Guardian.sol";
 import {Gateway} from "src/common/Gateway.sol";
@@ -30,7 +29,6 @@ contract VaultsDeployer is CommonDeployer {
     SyncRequests public syncRequests;
     PoolManager public poolManager;
     PoolEscrowFactory public poolEscrowFactory;
-    SharedDependency public sharedGateway;
     Escrow public routerEscrow;
     VaultRouter public vaultRouter;
     address public asyncVaultFactory;
@@ -44,8 +42,7 @@ contract VaultsDeployer is CommonDeployer {
     function deployVaults(uint16 centrifugeId, ISafe adminSafe_, address deployer, bool isTests) public {
         deployCommon(centrifugeId, adminSafe_, deployer, isTests);
 
-        sharedGateway = new SharedDependency(address(gateway), deployer);
-        poolEscrowFactory = new PoolEscrowFactory{salt: SALT}(address(root), sharedGateway, deployer);
+        poolEscrowFactory = new PoolEscrowFactory{salt: SALT}(address(root), deployer);
         routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow2"))}(deployer);
         tokenFactory = address(new TokenFactory{salt: SALT}(address(root), deployer));
 
@@ -127,7 +124,6 @@ contract VaultsDeployer is CommonDeployer {
         balanceSheet.rely(address(root));
         poolEscrowFactory.rely(address(root));
         routerEscrow.rely(address(root));
-        sharedGateway.rely(address(root));
         IAuth(asyncVaultFactory).rely(address(root));
         IAuth(syncDepositVaultFactory).rely(address(root));
         IAuth(tokenFactory).rely(address(root));
@@ -207,6 +203,5 @@ contract VaultsDeployer is CommonDeployer {
         poolEscrowFactory.deny(deployer);
         routerEscrow.deny(deployer);
         vaultRouter.deny(deployer);
-        sharedGateway.deny(deployer);
     }
 }

@@ -158,7 +158,7 @@ contract DepositTest is BaseTest {
         vm.deal(address(this), 1 ether);
 
         uint256 gasPerMessage = gateway.estimate(OTHER_CHAIN_ID, MessageLib.NotifyPool(1).serialize());
-        gateway.setRefundAddress(POOL_A, address(gateway));
+        gateway.setRefundAddress(POOL_A, gateway);
         gateway.subsidizePool{value: gasPerMessage}(POOL_A);
 
         (uint256 value,) = gateway.subsidy(POOL_A);

@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import "forge-std/Test.sol";
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {ISharedDependency} from "src/misc/interfaces/ISharedDependency.sol";
 
 import {IPoolEscrowProvider, IPoolEscrowFactory} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {PoolEscrow} from "src/vaults/Escrow.sol";
@@ -12,7 +11,6 @@ import {PoolEscrowFactory} from "src/vaults/factories/PoolEscrowFactory.sol";
 
 contract PoolEscrowFactoryTest is Test {
     PoolEscrowFactory factory;
-    ISharedDependency sharedGateway = ISharedDependency(makeAddr("SharedGateway"));
 
     address deployer = address(this);
     address root = makeAddr("root");
@@ -22,7 +20,7 @@ contract PoolEscrowFactoryTest is Test {
     address randomUser = makeAddr("randomUser");
 
     function setUp() public {
-        factory = new PoolEscrowFactory(root, sharedGateway, deployer);
+        factory = new PoolEscrowFactory(root, deployer);
         factory.file("poolManager", poolManager);
         factory.file("balanceSheet", balanceSheet);
         factory.file("asyncRequests", asyncRequests);

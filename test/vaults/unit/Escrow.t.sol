@@ -6,7 +6,6 @@ import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 
 import {ERC20} from "src/misc/ERC20.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {ISharedDependency} from "src/misc/interfaces/ISharedDependency.sol";
 
 import {Escrow, PoolEscrow} from "src/vaults/Escrow.sol";
 import {IEscrow, IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
@@ -17,7 +16,6 @@ contract EscrowTestBase is Test {
     Escrow escrow = new Escrow(address(this));
     ERC20 erc20 = new ERC20(6);
     MockERC6909 erc6909 = new MockERC6909();
-    ISharedDependency sharedGateway = ISharedDependency(makeAddr("SharedGateway"));
 
     function _mint(address escrow_, uint256 tokenId, uint256 amount) internal {
         if (tokenId == 0) {
@@ -97,7 +95,7 @@ contract EscrowTestERC6909 is EscrowTestBase {
 contract PoolEscrowTestBase is EscrowTestBase {
     function _testPendingDepositIncrease(uint64 poolId, bytes16 scId, uint256 tokenId) internal {
         address asset = _asset(tokenId);
-        PoolEscrow escrow = new PoolEscrow(poolId, sharedGateway, address(this));
+        PoolEscrow escrow = new PoolEscrow(poolId, address(this));
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -110,7 +108,7 @@ contract PoolEscrowTestBase is EscrowTestBase {
 
     function _testPendingDepositDecrease(uint64 poolId, bytes16 scId, uint256 tokenId) internal {
         address asset = _asset(tokenId);
-        PoolEscrow escrow = new PoolEscrow(poolId, sharedGateway, address(this));
+        PoolEscrow escrow = new PoolEscrow(poolId, address(this));
 
         escrow.pendingDepositIncrease(scId, asset, tokenId, 200);
 
@@ -128,7 +126,7 @@ contract PoolEscrowTestBase is EscrowTestBase {
 
     function _testDeposit(uint64 poolId, bytes16 scId, uint256 tokenId) internal {
         address asset = _asset(tokenId);
-        PoolEscrow escrow = new PoolEscrow(poolId, sharedGateway, address(this));
+        PoolEscrow escrow = new PoolEscrow(poolId, address(this));
         escrow.pendingDepositIncrease(scId, asset, tokenId, 500);
 
         _mint(address(escrow), tokenId, 300);
@@ -164,7 +162,7 @@ contract PoolEscrowTestBase is EscrowTestBase {
 
     function _testReserveIncrease(uint64 poolId, bytes16 scId, uint256 tokenId) internal {
         address asset = _asset(tokenId);
-        PoolEscrow escrow = new PoolEscrow(poolId, sharedGateway, address(this));
+        PoolEscrow escrow = new PoolEscrow(poolId, address(this));
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -188,7 +186,7 @@ contract PoolEscrowTestBase is EscrowTestBase {
 
     function _testReserveDecrease(uint64 poolId, bytes16 scId, uint256 tokenId) internal {
         address asset = _asset(tokenId);
-        PoolEscrow escrow = new PoolEscrow(poolId, sharedGateway, address(this));
+        PoolEscrow escrow = new PoolEscrow(poolId, address(this));
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -218,7 +216,7 @@ contract PoolEscrowTestBase is EscrowTestBase {
 
     function _testWithdraw(uint64 poolId, bytes16 scId, uint256 tokenId) internal {
         address asset = _asset(tokenId);
-        PoolEscrow escrow = new PoolEscrow(poolId, sharedGateway, address(this));
+        PoolEscrow escrow = new PoolEscrow(poolId, address(this));
 
         _mint(address(escrow), tokenId, 1000);
         escrow.pendingDepositIncrease(scId, asset, tokenId, 1000);
@@ -239,7 +237,7 @@ contract PoolEscrowTestBase is EscrowTestBase {
 
     function _testAvailableBalanceOf(uint64 poolId, bytes16 scId, uint256 tokenId) internal {
         address asset = _asset(tokenId);
-        PoolEscrow escrow = new PoolEscrow(poolId, sharedGateway, address(this));
+        PoolEscrow escrow = new PoolEscrow(poolId, address(this));
 
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 0, "Default available balance should be zero");
 

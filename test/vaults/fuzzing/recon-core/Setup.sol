@@ -15,7 +15,6 @@ import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 import {PoolEscrowFactory} from "src/vaults/factories/PoolEscrowFactory.sol";
-import {ISharedDependency} from "src/misc/interfaces/ISharedDependency.sol";
 
 // Mocks
 import {IRoot} from "src/common/interfaces/IRoot.sol";
@@ -66,7 +65,7 @@ abstract contract Setup is BaseSetup, SharedStorage {
         tokenFactory = new TokenFactory(address(this), address(this));
         root = new Root(48 hours, address(this));
         restrictedTransfers = new RestrictedTransfers(address(root), address(this));
-        poolEscrowFactory = new PoolEscrowFactory(address(root), ISharedDependency(address(0)), address(this));
+        poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
 
         asyncRequests = new AsyncRequests(address(root), address(this));
         vaultFactory = new AsyncVaultFactory(address(this), address(asyncRequests), poolEscrowFactory, address(this));

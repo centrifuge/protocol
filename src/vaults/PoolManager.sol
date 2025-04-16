@@ -10,7 +10,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {D18} from "src/misc/types/D18.sol";
-import {Recoverable} from "src/misc/Recoverable.sol";
+import {Recoverable, IRecoverable} from "src/misc/Recoverable.sol";
 
 import {VaultUpdateKind, MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
@@ -209,7 +209,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         // Deploy new escrow only on first added share class for pool
         if (poolEscrowFactory.deployedEscrow(poolId) == address(0)) {
             address escrow = poolEscrowFactory.newEscrow(poolId);
-            gateway.setRefundAddress(PoolId.wrap(poolId), escrow);
+            gateway.setRefundAddress(PoolId.wrap(poolId), IRecoverable(escrow));
         }
 
         emit AddShareClass(poolId, scId, shareToken_);

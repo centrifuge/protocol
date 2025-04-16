@@ -5,7 +5,7 @@ import {Auth} from "src/misc/Auth.sol";
 import {ArrayLib} from "src/misc/libraries/ArrayLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {Recoverable} from "src/misc/Recoverable.sol";
+import {Recoverable, IRecoverable, ETH_ADDRESS} from "src/misc/Recoverable.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
@@ -66,7 +66,7 @@ contract Gateway is Auth, IGateway, Recoverable {
         root = root_;
         gasService = gasService_;
 
-        setRefundAddress(PoolId.wrap(0), address(this));
+        setRefundAddress(PoolId.wrap(0), IRecoverable(address(this)));
     }
 
     modifier pauseable() {
@@ -297,6 +297,11 @@ contract Gateway is Auth, IGateway, Recoverable {
                 require(consumed <= fuel, NotEnoughTransactionGas());
                 fuel -= consumed;
             } else {
+                if (!poolId.isNull()) {
+                    IRecoverable refund = subsidy[poolId].refund;
+                    refund.recoverTokens(ETH_ADDRESS, address(this), address(refund).balance);
+                }
+
                 if (consumed <= subsidy[poolId].value) {
                     subsidy[poolId].value -= uint96(consumed);
                 } else {
@@ -308,7 +313,7 @@ contract Gateway is Auth, IGateway, Recoverable {
                 centrifugeId,
                 i == PRIMARY_ADAPTER_ID - 1 ? batch : proof,
                 batchGasLimit_,
-                transactionPayer != address(0) ? transactionPayer : subsidy[poolId].refund
+                transactionPayer != address(0) ? transactionPayer : address(subsidy[poolId].refund)
             );
 
             if (i == PRIMARY_ADAPTER_ID - 1) {
@@ -347,13 +352,13 @@ contract Gateway is Auth, IGateway, Recoverable {
         transactionPayer = address(0);
     }
 
-    function setRefundAddress(PoolId poolId, address refund) public auth {
+    function setRefundAddress(PoolId poolId, IRecoverable refund) public auth {
         subsidy[poolId].refund = refund;
         emit SetRefundAddress(poolId, refund);
     }
 
     function subsidizePool(PoolId poolId) public payable {
-        require(subsidy[poolId].refund != address(0), RefundAddressNotSet());
+        require(address(subsidy[poolId].refund) != address(0), RefundAddressNotSet());
         subsidy[poolId].value += uint96(msg.value);
         emit SubsidizePool(poolId, msg.sender, msg.value);
     }

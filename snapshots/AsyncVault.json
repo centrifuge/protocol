@@ -1,9 +1,14 @@
 {
 <<<<<<< HEAD
+<<<<<<< HEAD
   "fulfillDepositRequest": "931334",
   "requestDeposit": "479877"
 =======
   "fulfillDepositRequest": "932736",
   "requestDeposit": "481039"
 >>>>>>> 1a0caa57 (fix permission issue)
+=======
+  "fulfillDepositRequest": "933634",
+  "requestDeposit": "481761"
+>>>>>>> 23b42764 (implement new solution)
 }
