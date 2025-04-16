@@ -286,7 +286,7 @@ interface IBalanceSheetGatewayHandler {
 
     function revokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external;
 
-    function sendQueuedShares(PoolId poolId, ShareClassId scId) external;
+    function submitQueuedShares(PoolId poolId, ShareClassId scId) external;
 
-    function sendQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external;
+    function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external;
 }

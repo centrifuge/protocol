@@ -228,12 +228,12 @@ contract MessageProcessor is Auth, IMessageProcessor {
             balanceSheet.revokedShares(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.assetAmount
             );
-        } else if (kind == MessageType.SendQueuedShares) {
-            MessageLib.SendQueuedShares memory m = message.deserializeSendQueuedShares();
-            balanceSheet.sendQueuedShares(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId));
-        } else if (kind == MessageType.SendQueuedAssets) {
-            MessageLib.SendQueuedAssets memory m = message.deserializeSendQueuedAssets();
-            balanceSheet.sendQueuedAssets(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId));
+        } else if (kind == MessageType.TriggerSubmitQueuedShares) {
+            MessageLib.TriggerSubmitQueuedShares memory m = message.deserializeTriggerSubmitQueuedShares();
+            balanceSheet.submitQueuedShares(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId));
+        } else if (kind == MessageType.TriggerSubmitQueuedAssets) {
+            MessageLib.TriggerSubmitQueuedAssets memory m = message.deserializeTriggerSubmitQueuedAssets();
+            balanceSheet.submitQueuedAssets(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId));
         } else {
             revert InvalidMessage(uint8(kind));
         }

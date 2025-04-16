@@ -121,10 +121,10 @@ interface IPoolMessageSender is ILocalCentrifugeId {
     function sendRevokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external;
 
     /// @notice Creates and send the message
-    function sendSendQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external;
+    function sendTriggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external;
 
     /// @notice Creates and send the message
-    function sendSendQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external;
+    function sendTriggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external;
 }
 
 /// @notice Interface for dispatch-only gateway

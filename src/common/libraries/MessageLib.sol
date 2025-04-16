@@ -45,8 +45,8 @@ enum MessageType {
     RevokedShares,
     TriggerUpdateHoldingAmount,
     TriggerUpdateShares,
-    SendQueuedShares,
-    SendQueuedAssets
+    TriggerSubmitQueuedShares,
+    TriggerSubmitQueuedAssets
 }
 
 enum UpdateRestrictionType {
@@ -121,8 +121,8 @@ library MessageLib {
 
     // forgefmt: disable-next-item
     uint256 constant MESSAGE_LENGTHS_2 = 
-        (25 << (uint8(MessageType.SendQueuedShares) - 32) * 8) + 
-        (41 << (uint8(MessageType.SendQueuedAssets) - 32) * 8);
+        (25 << (uint8(MessageType.TriggerSubmitQueuedShares) - 32) * 8) + 
+        (41 << (uint8(MessageType.TriggerSubmitQueuedAssets) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -151,8 +151,8 @@ library MessageLib {
     function messagePoolId(bytes memory message) internal pure returns (PoolId poolId) {
         uint8 kind = message.toUint8(0);
 
-        // All messages from NotifyPool to SendQueuedAssets contains a PoolId in position 1.
-        if (kind >= uint8(MessageType.NotifyPool) && kind <= uint8(MessageType.SendQueuedAssets)) {
+        // All messages from NotifyPool to TriggerSubmitQueuedAssets contains a PoolId in position 1.
+        if (kind >= uint8(MessageType.NotifyPool) && kind <= uint8(MessageType.TriggerSubmitQueuedAssets)) {
             return PoolId.wrap(message.toUint64(1));
         } else {
             return PoolId.wrap(0);
@@ -1244,39 +1244,39 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //    SendQueuedShares
+    //    TriggerSubmitQueuedShares
     //---------------------------------------
 
-    struct SendQueuedShares {
+    struct TriggerSubmitQueuedShares {
         uint64 poolId;
         bytes16 scId;
     }
 
-    function deserializeSendQueuedShares(bytes memory data) internal pure returns (SendQueuedShares memory) {
-        require(messageType(data) == MessageType.SendQueuedShares, UnknownMessageType());
-        return SendQueuedShares({poolId: data.toUint64(1), scId: data.toBytes16(9)});
+    function deserializeTriggerSubmitQueuedShares(bytes memory data) internal pure returns (TriggerSubmitQueuedShares memory) {
+        require(messageType(data) == MessageType.TriggerSubmitQueuedShares, UnknownMessageType());
+        return TriggerSubmitQueuedShares({poolId: data.toUint64(1), scId: data.toBytes16(9)});
     }
 
-    function serialize(SendQueuedShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.SendQueuedShares, t.poolId, t.scId);
+    function serialize(TriggerSubmitQueuedShares memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.TriggerSubmitQueuedShares, t.poolId, t.scId);
     }
 
     //---------------------------------------
-    //    SendQueuedAssets
+    //    TriggerSubmitQueuedAssets
     //---------------------------------------
 
-    struct SendQueuedAssets {
+    struct TriggerSubmitQueuedAssets {
         uint64 poolId;
         bytes16 scId;
         uint128 assetId;
     }
 
-    function deserializeSendQueuedAssets(bytes memory data) internal pure returns (SendQueuedAssets memory) {
-        require(messageType(data) == MessageType.SendQueuedAssets, UnknownMessageType());
-        return SendQueuedAssets({poolId: data.toUint64(1), scId: data.toBytes16(9), assetId: data.toUint128(25)});
+    function deserializeTriggerSubmitQueuedAssets(bytes memory data) internal pure returns (TriggerSubmitQueuedAssets memory) {
+        require(messageType(data) == MessageType.TriggerSubmitQueuedAssets, UnknownMessageType());
+        return TriggerSubmitQueuedAssets({poolId: data.toUint64(1), scId: data.toBytes16(9), assetId: data.toUint128(25)});
     }
 
-    function serialize(SendQueuedAssets memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.SendQueuedAssets, t.poolId, t.scId, t.assetId);
+    function serialize(TriggerSubmitQueuedAssets memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.TriggerSubmitQueuedAssets, t.poolId, t.scId, t.assetId);
     }
 }

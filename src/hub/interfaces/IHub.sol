@@ -146,11 +146,11 @@ interface IHub {
         payable;
 
     /// @notice Tell the BalanceSheet to send a message back with the queued issued/revoked shares.
-    function sendQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external payable;
+    function sendTriggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external payable;
 
     /// @notice  Tell the BalanceSheet to send a message back with the queued deposits/withdrawals.
     /// @param assetId Identifier of the asset which has queued deposits/withdrawals
-    function sendQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
+    function sendTriggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
 
     /// @notice Update remotely a restriction.
     /// @param centrifugeId Chain where CV instance lives.

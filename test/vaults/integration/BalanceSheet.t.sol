@@ -267,9 +267,9 @@ contract BalanceSheetTest is BaseTest {
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.sendQueuedShares(POOL_A, defaultTypedShareClassId);
+        balanceSheet.submitQueuedShares(POOL_A, defaultTypedShareClassId);
 
-        balanceSheet.sendQueuedShares(POOL_A, defaultTypedShareClassId);
+        balanceSheet.submitQueuedShares(POOL_A, defaultTypedShareClassId);
 
         assertEq(balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId), int128(0));
     }
@@ -281,9 +281,9 @@ contract BalanceSheetTest is BaseTest {
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.sendQueuedAssets(POOL_A, defaultTypedShareClassId, assetId);
+        balanceSheet.submitQueuedAssets(POOL_A, defaultTypedShareClassId, assetId);
 
-        balanceSheet.sendQueuedAssets(POOL_A, defaultTypedShareClassId, assetId);
+        balanceSheet.submitQueuedAssets(POOL_A, defaultTypedShareClassId, assetId);
 
         assertEq(balanceSheet.queuedAssets(POOL_A, defaultTypedShareClassId, assetId), int128(0));
     }
