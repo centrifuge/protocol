@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import {MockERC20} from "@recon/MockERC20.sol";
 
+import {D18} from "src/misc/types/D18.sol";
+
 import {Setup} from "./Setup.sol";
 import {AsyncInvestmentState} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {Ghosts} from "./helpers/Ghosts.sol";
@@ -72,10 +74,21 @@ abstract contract BeforeAfter is Ghosts {
         }
         _before.escrowTokenBalance = MockERC20(_getAsset()).balanceOf(address(escrow));
         _before.escrowTrancheTokenBalance = token.balanceOf(address(escrow));
-        _before.totalAssets = vault.totalAssets();
         _before.actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
-        _before.pricePerShare = vault.pricePerShare();
         _before.totalShareSupply = token.totalSupply();
+
+        // if price is zero these both revert so they just get set to 0
+        if (_priceAssetNonZero()) {
+            _before.totalAssets = vault.totalAssets();
+        } else {
+            _before.totalAssets = 0;
+        }
+
+        if (_priceShareNonZero()) {
+            _before.pricePerShare = vault.pricePerShare();
+        } else {
+            _before.pricePerShare = 0;
+        }
     }
 
     function __after() internal {
@@ -108,9 +121,32 @@ abstract contract BeforeAfter is Ghosts {
         }
         _after.escrowTokenBalance = MockERC20(_getAsset()).balanceOf(address(escrow));
         _after.escrowTrancheTokenBalance = token.balanceOf(address(escrow));
-        _after.totalAssets = vault.totalAssets();
+        // _after.totalAssets = vault.totalAssets();
         _after.actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
         _after.pricePerShare = vault.pricePerShare();
         _after.totalShareSupply = token.totalSupply();
+
+        // if price is zero these both revert so they just get set to 0
+        if (_priceAssetNonZero()) {
+            _before.totalAssets = vault.totalAssets();
+        } else {
+            _before.totalAssets = 0;
+        }
+
+        if (_priceShareNonZero()) {
+            _before.pricePerShare = vault.pricePerShare();
+        } else {
+            _before.pricePerShare = 0;
+        }
+    }
+
+    function _priceAssetNonZero() internal view returns (bool) {
+        (D18 priceAsset, ) = poolManager.pricePoolPerAsset(poolId, scId, assetId, false);
+        return priceAsset.raw() != 0;
+    }
+
+    function _priceShareNonZero() internal view returns (bool) {
+        (D18 priceShare, ) = poolManager.pricePoolPerShare(poolId, scId, false);
+        return priceShare.raw() != 0;
     }
 }
