@@ -12,7 +12,7 @@ import {PoolEscrowFactory} from "src/vaults/factories/PoolEscrowFactory.sol";
 
 contract PoolEscrowFactoryTest is Test {
     PoolEscrowFactory factory;
-    ISharedDependency sharedGateway = ISharedDependency(makeAddr("ISharedGateway"));
+    ISharedDependency sharedGateway = ISharedDependency(makeAddr("SharedGateway"));
 
     address deployer = address(this);
     address root = makeAddr("root");

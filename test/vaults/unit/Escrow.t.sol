@@ -17,7 +17,7 @@ contract EscrowTestBase is Test {
     Escrow escrow = new Escrow(address(this));
     ERC20 erc20 = new ERC20(6);
     MockERC6909 erc6909 = new MockERC6909();
-    ISharedDependency sharedGateway = ISharedDependency(makeAddr("ISharedGateway"));
+    ISharedDependency sharedGateway = ISharedDependency(makeAddr("SharedGateway"));
 
     function _mint(address escrow_, uint256 tokenId, uint256 amount) internal {
         if (tokenId == 0) {
