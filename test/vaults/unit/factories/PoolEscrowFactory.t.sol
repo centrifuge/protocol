@@ -48,7 +48,10 @@ contract PoolEscrowFactoryTest is Test {
     }
 
     function testEscrowHasCorrectPermissions(uint64 poolId, address nonWard) public {
-        vm.assume(nonWard != root && nonWard != poolManager && nonWard != balanceSheet && nonWard != asyncRequests);
+        vm.assume(
+            nonWard != root && nonWard != gateway && nonWard != poolManager && nonWard != balanceSheet
+                && nonWard != asyncRequests
+        );
         address escrowAddr = factory.newEscrow(poolId);
 
         PoolEscrow escrow = PoolEscrow(payable(escrowAddr));
