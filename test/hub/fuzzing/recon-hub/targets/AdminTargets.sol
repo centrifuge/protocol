@@ -25,6 +25,7 @@ import {D18} from "src/misc/types/D18.sol";
 import {BeforeAfter, OpType} from "../BeforeAfter.sol";
 import {Properties} from "../Properties.sol";
 import {Helpers} from "../utils/Helpers.sol";
+import {console2} from "forge-std/console2.sol";
 
 abstract contract AdminTargets is
     BaseTargetFunctions,
@@ -67,7 +68,7 @@ abstract contract AdminTargets is
         ShareClassId scId = _getRandomShareClassIdForPool(poolId, scEntropy);
         AssetId paymentAssetId = hubRegistry.currency(poolId);
         IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
-        hub.approveDeposits(poolId, scId, paymentAssetId, maxApproval, valuation);
+        hub_approveDeposits(poolId.raw(), scId.raw(), paymentAssetId.raw(), maxApproval, valuation);
     }
 
     function hub_approveRedeems(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 maxApproval) public {
@@ -81,7 +82,7 @@ abstract contract AdminTargets is
         PoolId poolId = _getRandomPoolId(poolIdEntropy);
         ShareClassId scId = _getRandomShareClassIdForPool(poolId, scEntropy);
         AssetId payoutAssetId = hubRegistry.currency(poolId);
-        hub.approveRedeems(poolId, scId, payoutAssetId, maxApproval);
+        hub_approveRedeems(poolId.raw(), scId.raw(), payoutAssetId.raw(), maxApproval);
     }
 
     function hub_createAccount(uint64 poolIdAsUint, uint32 accountAsInt, bool isDebitNormal) public {
@@ -132,7 +133,7 @@ abstract contract AdminTargets is
         PoolId poolId = _getRandomPoolId(poolIdEntropy);
         ShareClassId scId = _getRandomShareClassIdForPool(poolId, scEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
-        hub.issueShares(poolId, scId, assetId, D18.wrap(navPerShare));
+        hub_issueShares(poolId.raw(), scId.raw(), assetId.raw(), navPerShare);
     }
 
     function hub_notifyPool(uint64 poolIdAsUint, uint16 centrifugeId) public {
@@ -149,7 +150,7 @@ abstract contract AdminTargets is
     function hub_revokeShares(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 navPerShare, IERC7726 valuation) public {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        AssetId payoutAssetId = AssetId.wrap(assetIdAsUint);
+        AssetId payoutAssetId = hubRegistry.currency(poolId);
         hub.revokeShares(poolId, scId, payoutAssetId, D18.wrap(navPerShare), valuation);
     }
 
@@ -158,7 +159,7 @@ abstract contract AdminTargets is
         ShareClassId scId = _getRandomShareClassIdForPool(poolId, scEntropy);
         AssetId payoutAssetId = hubRegistry.currency(poolId);
         IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
-        hub.revokeShares(poolId, scId, payoutAssetId, D18.wrap(navPerShare), valuation);
+        hub_revokeShares(poolId.raw(), scId.raw(), payoutAssetId.raw(), navPerShare, valuation);
     }
 
     function hub_setAccountMetadata(uint64 poolIdAsUint, uint32 accountAsInt, bytes memory metadata) public {
