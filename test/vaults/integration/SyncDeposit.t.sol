@@ -52,7 +52,7 @@ contract SyncDepositTestHelper is BaseTest {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault));
 
         vm.expectEmit();
-        emit IBalanceSheet.Issue(poolId, scId, self, pricePoolPerShare, shares);
+        emit IBalanceSheet.Issue(poolId, scId, self, shares);
 
         vm.expectEmit();
         emit IBalanceSheet.Deposit(

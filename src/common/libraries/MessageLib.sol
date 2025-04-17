@@ -113,11 +113,11 @@ library MessageLib {
         (89  << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (89  << uint8(MessageType.TriggerRedeemRequest) * 8) +
         (114 << uint8(MessageType.UpdateHoldingAmount) * 8) +
-        (66  << uint8(MessageType.UpdateShares) * 8) +
+        (50  << uint8(MessageType.UpdateShares) * 8) +
         (57  << uint8(MessageType.ApprovedDeposits) * 8) +
         (57  << uint8(MessageType.RevokedShares) * 8) +
         (106 << uint8(MessageType.TriggerUpdateHoldingAmount) * 8) +
-        (90  << uint8(MessageType.TriggerUpdateShares) * 8);
+        (74  << uint8(MessageType.TriggerUpdateShares) * 8);
 
     // forgefmt: disable-next-item
     uint256 constant MESSAGE_LENGTHS_2 = 
@@ -1089,7 +1089,6 @@ library MessageLib {
     struct UpdateShares {
         uint64 poolId;
         bytes16 scId;
-        uint128 pricePerShare;
         uint128 shares;
         uint64 timestamp;
         bool isIssuance;
@@ -1101,17 +1100,14 @@ library MessageLib {
         return UpdateShares({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
-            pricePerShare: data.toUint128(25),
-            shares: data.toUint128(41),
-            timestamp: data.toUint64(57),
-            isIssuance: data.toBool(65)
+            shares: data.toUint128(25),
+            timestamp: data.toUint64(41),
+            isIssuance: data.toBool(49)
         });
     }
 
     function serialize(UpdateShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(
-            MessageType.UpdateShares, t.poolId, t.scId, t.pricePerShare, t.shares, t.timestamp, t.isIssuance
-        );
+        return abi.encodePacked(MessageType.UpdateShares, t.poolId, t.scId, t.shares, t.timestamp, t.isIssuance);
     }
 
     //---------------------------------------
@@ -1219,7 +1215,6 @@ library MessageLib {
         uint64 poolId;
         bytes16 scId;
         bytes32 who;
-        uint128 pricePerShare;
         uint128 shares;
         bool isIssuance;
     }
@@ -1231,16 +1226,13 @@ library MessageLib {
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             who: data.toBytes32(25),
-            pricePerShare: data.toUint128(57),
-            shares: data.toUint128(73),
-            isIssuance: data.toBool(89)
+            shares: data.toUint128(57),
+            isIssuance: data.toBool(73)
         });
     }
 
     function serialize(TriggerUpdateShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(
-            MessageType.TriggerUpdateShares, t.poolId, t.scId, t.who, t.pricePerShare, t.shares, t.isIssuance
-        );
+        return abi.encodePacked(MessageType.TriggerUpdateShares, t.poolId, t.scId, t.who, t.shares, t.isIssuance);
     }
 
     //---------------------------------------

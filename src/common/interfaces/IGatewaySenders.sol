@@ -162,6 +162,5 @@ interface IVaultMessageSender is ILocalCentrifugeId {
     ) external;
 
     /// @notice Creates and send the message
-    function sendUpdateShares(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare, uint128 shares, bool isIssuance)
-        external;
+    function sendUpdateShares(PoolId poolId, ShareClassId scId, uint128 shares, bool isIssuance) external;
 }
