@@ -15,12 +15,22 @@ import {OpType} from "../BeforeAfter.sol";
 
 abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     
-    /// @dev DoomsdayProperty: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
-    function doomsday_deposit_ppfs(uint256 assets) public updateGhosts {
+    /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
+    /// @dev Property: user should always be able to deposit less than maxMint
+    function doomsday_deposit(uint256 assets) public updateGhosts {
         uint256 ppfsBefore = vault.pricePerShare();
+        (uint128 maxMint,,,,,,,,,) = asyncRequests.investments(address(vault), _getActor());
+        uint256 maxMintAsAssets = vault.convertToAssets(maxMint);
 
+        uint256 sharesReceived;
         vm.prank(_getActor());
-        uint256 sharesReceived = vault.deposit(assets, _getActor());
+        try vault.deposit(assets, _getActor()) returns (uint256 shares) {
+            sharesReceived = shares;
+        } catch {
+            if(assets < maxMintAsAssets) {
+                t(false, "cant deposit less than maxMint");
+            }
+        }
         uint256 sharesAsAssets = vault.convertToAssets(sharesReceived);
 
         uint256 expectedAssetsSpent = (sharesReceived * ppfsBefore) + (10 ** assetErc20.decimals());
@@ -31,12 +41,21 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         lte(sharesReceived, expectedSharesReceived, "sharesReceived > expectedSharesReceived");
     }
 
-    /// @dev Doomsday Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
-    function doomsday_mint_ppfs(uint256 shares) public updateGhosts {
+    /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
+    /// @dev Property: user should always be able to mint less than maxMint
+    function doomsday_mint(uint256 shares) public updateGhosts {
         uint256 ppfsBefore = vault.pricePerShare();
+        (uint128 maxMint,,,,,,,,,) = asyncRequests.investments(address(vault), _getActor());
 
         vm.prank(_getActor());
-        uint256 assetsSpent = vault.mint(shares, _getActor());
+        uint256 assetsSpent;
+        try vault.mint(shares, _getActor()) returns (uint256 assets) {
+            assetsSpent = assets;
+        } catch {
+            if(shares < maxMint) {
+                t(false, "cant mint less than maxMint");
+            }
+        }
         uint256 assetsAsShares = vault.convertToShares(assetsSpent);
 
         uint256 expectedAssetsSpent = (assetsAsShares * ppfsBefore) + (10 ** assetErc20.decimals());
@@ -46,12 +65,22 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         lte(assetsAsShares, expectedSharesReceived, "assetsAsShares > expectedSharesReceived");
     }
 
-    /// @dev Doomsday Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
-    function doomsday_redeem_ppfs(uint256 shares) public updateGhosts {
+    /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
+    /// @dev Property: user should always be able to redeem less than maxWithdraw
+    function doomsday_redeem(uint256 shares) public updateGhosts {
         uint256 ppfsBefore = vault.pricePerShare();
+        (, uint128 maxWithdraw,,,,,,,,) = asyncRequests.investments(address(vault), _getActor());
+        uint256 maxWithdrawAsShares = vault.convertToShares(maxWithdraw);
 
         vm.prank(_getActor());
-        uint256 assetsReceived = vault.redeem(shares, _getActor(), _getActor());
+        uint256 assetsReceived;
+        try vault.redeem(shares, _getActor(), _getActor()) returns (uint256 assets) {
+            assetsReceived = assets;
+        } catch {
+            if(shares < maxWithdrawAsShares) {
+                t(false, "cant redeem less than maxWithdraw");
+            }
+        }
         uint256 assetsAsShares = vault.convertToShares(assetsReceived);
 
         uint256 expectedAssets = (shares * ppfsBefore) + (10 ** token.decimals());
@@ -61,13 +90,22 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         gte(assetsAsShares, expectedAssetsAsShares, "assetsAsShares < expectedAssetsAsShares");
     }
 
-    /// @dev Doomsday Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
-    function doomsday_withdraw_ppfs(uint256 assets) public updateGhosts {
+    /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
+    /// @dev Property: user should always be able to withdraw less than maxWithdraw
+    function doomsday_withdraw(uint256 assets) public updateGhosts {
         uint256 ppfsBefore = vault.pricePerShare();
         uint256 assetsAsSharesBefore = vault.convertToShares(assets);
+        (, uint128 maxWithdraw,,,,,,,,) = asyncRequests.investments(address(vault), _getActor());
 
         vm.prank(_getActor());
-        uint256 sharesReceived = vault.withdraw(assets, _getActor(), _getActor());
+        uint256 sharesReceived;
+        try vault.withdraw(assets, _getActor(), _getActor()) returns (uint256 shares) {
+            sharesReceived = shares;
+        } catch {
+            if(assets < maxWithdraw) {
+                t(false, "cant withdraw less than maxWithdraw");
+            }
+        }
         uint256 sharesAsAssets = vault.convertToAssets(sharesReceived);
 
         uint256 expectedAssets = (assetsAsSharesBefore * ppfsBefore) + (10 ** token.decimals());
@@ -77,14 +115,14 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         lte(sharesReceived, expectedAssetsAsShares, "sharesReceived > expectedAssetsAsShares");
     }
 
-    /// @dev Doomsday Property: pricePerShare never changes after a user operation
+    /// @dev Property: pricePerShare never changes after a user operation
     function doomsday_pricePerShare_never_changes_after_user_operation() public {
         if(currentOperation != OpType.ADMIN) {
             eq(_before.pricePerShare, _after.pricePerShare, "pricePerShare changed after user operation");
         }
     }
 
-    /// @dev Doomsday Property: implied pricePerShare (totalAssets / totalSupply) never changes after a user operation
+    /// @dev Property: implied pricePerShare (totalAssets / totalSupply) never changes after a user operation
     function doomsday_impliedPricePerShare_never_changes_after_user_operation() public {
         if(currentOperation != OpType.ADMIN) {
             uint256 impliedPricePerShareBefore = _before.totalAssets / _before.totalShareSupply;
