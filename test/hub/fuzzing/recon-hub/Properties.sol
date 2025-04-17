@@ -403,9 +403,15 @@ abstract contract Properties is BeforeAfter, Asserts {
                 ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
                 AssetId assetId = hubRegistry.currency(poolId);
 
-                // check the previous epochId since the current epoch is still ongoing
-                uint32 epochId = shareClassManager.epochId(poolId) - 1;
-                (,, uint128 depositPoolApproved, uint128 depositSharesIssued,,,) = shareClassManager.epochAmounts(scId, assetId, epochId);
+                (,,uint32 latestIssuanceEpochId,) = shareClassManager.epochPointers(scId, assetId);
+                // sum up to the latest issuance epoch where users can claim deposits for 
+                uint128 sumDepositApprovedShares;
+                uint128 sumDepositAssets;
+                for (uint32 epochId; epochId <= latestIssuanceEpochId; epochId++) {
+                    (,, uint128 depositPoolApproved, uint128 depositSharesIssued,,,) = shareClassManager.epochAmounts(scId, assetId, epochId);
+                    sumDepositApprovedShares += depositPoolApproved;
+                    sumDepositAssets += depositSharesIssued;
+                }
 
                 // loop over all actors
                 for (uint256 k = 0; k < _actors.length; k++) {
@@ -418,16 +424,16 @@ abstract contract Properties is BeforeAfter, Asserts {
                 }
 
                 // check that the totalPayoutShareAmount is less than or equal to the depositSharesIssued
-                lte(totalPayoutShareAmount, depositSharesIssued, "totalPayoutShareAmount is greater than issued shares");
+                lte(totalPayoutShareAmount, sumDepositAssets, "totalPayoutShareAmount is greater than sumDepositAssets");
                 // check that the totalPayoutAssetAmount is less than or equal to the depositPoolApproved
-                lte(totalPayoutAssetAmount, depositPoolApproved, "totalPayoutAssetAmount is greater than depositPoolApproved");
+                lte(totalPayoutAssetAmount, sumDepositApprovedShares, "totalPayoutAssetAmount is greater than sumDepositApprovedShares");
 
-                uint128 differenceShares = depositSharesIssued - totalPayoutShareAmount;
-                uint128 differenceAsset = depositPoolApproved - totalPayoutAssetAmount;
+                uint128 differenceShares = sumDepositAssets - totalPayoutShareAmount;
+                uint128 differenceAsset = sumDepositApprovedShares - totalPayoutAssetAmount;
                 // check that the totalPayoutShareAmount is no more than 1 wei less than the depositSharesIssued
-                lte(differenceShares, 1, "depositSharesIssued - totalPayoutShareAmount difference is greater than 1");
+                lte(differenceShares, 1, "sumDepositAssets - totalPayoutShareAmount difference is greater than 1");
                 // check that the totalPayoutAssetAmount is no more than 1 wei less than the depositAssetAmount
-                lte(differenceAsset, 1, "depositAssetAmount - totalPayoutAssetAmount difference is greater than 1");
+                lte(differenceAsset, 1, "sumDepositApprovedShares - totalPayoutAssetAmount difference is greater than 1");
             }
         }
             
@@ -449,8 +455,15 @@ abstract contract Properties is BeforeAfter, Asserts {
                 ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
                 AssetId assetId = hubRegistry.currency(poolId);
 
-                uint32 epochId = shareClassManager.epochId(poolId);
-                (,,,,, uint128 redeemApprovedShares, uint128 redeemAssets) = shareClassManager.epochAmounts(scId, assetId, epochId);
+                (,,, uint32 latestRevocationEpochId) = shareClassManager.epochPointers(scId, assetId);
+                // sum up to the latest revocation epoch where users can claim redemptions for 
+                uint128 sumRedeemApprovedShares;
+                uint128 sumRedeemAssets;
+                for (uint32 epochId; epochId <= latestRevocationEpochId; epochId++) {
+                    (,,,,, uint128 redeemApprovedShares, uint128 redeemAssets) = shareClassManager.epochAmounts(scId, assetId, epochId);
+                    sumRedeemApprovedShares += redeemApprovedShares;
+                    sumRedeemAssets += redeemAssets;
+                }
 
                 // sum eligible user claim payoutAssetAmount for the epoch
                 uint128 totalPayoutAssetAmount = 0;
@@ -463,17 +476,17 @@ abstract contract Properties is BeforeAfter, Asserts {
                     totalPaymentShareAmount += paymentShareAmount;
                 }
 
-                // check that the totalPayoutAssetAmount is less than or equal to the redeemApproved
-                lte(totalPayoutAssetAmount, redeemAssets, "total payout asset amount is > redeem assets");
-                // check that the totalPaymentShareAmount is less than or equal to the redeemApproved
-                lte(totalPaymentShareAmount, redeemApprovedShares, "total payment share amount is > redeem shares revoked");
+                // check that the totalPayoutAssetAmount is less than or equal to the sum of redeemAssets
+                lte(totalPayoutAssetAmount, sumRedeemAssets, "total payout asset amount is > redeem assets");
+                // check that the totalPaymentShareAmount is less than or equal to the sum of redeemApprovedShares
+                lte(totalPaymentShareAmount, sumRedeemApprovedShares, "total payment share amount is > redeem shares revoked");
 
-                uint128 differenceAsset = redeemAssets - totalPayoutAssetAmount;
-                uint128 differenceShare = redeemApprovedShares - totalPaymentShareAmount;
-                // check that the totalPayoutAssetAmount is no more than 1 wei less than the redeemAssets
-                lte(differenceAsset, 1, "redeemAssets - totalPayoutAssetAmount difference is greater than 1");
-                // check that the totalPaymentShareAmount is no more than 1 wei less than the redeemApproved
-                lte(differenceShare, 1, "redeemApprovedShares - totalPaymentShareAmount difference is greater than 1");
+                uint128 differenceAsset = sumRedeemAssets - totalPayoutAssetAmount;
+                uint128 differenceShare = sumRedeemApprovedShares - totalPaymentShareAmount;
+                // check that the totalPayoutAssetAmount is no more than 1 wei less than the sum of redeemAssets
+                lte(differenceAsset, 1, "sumRedeemAssets - totalPayoutAssetAmount difference is greater than 1");
+                // check that the totalPaymentShareAmount is no more than 1 wei less than the sum of redeemApproved
+                lte(differenceShare, 1, "sumRedeemApprovedShares - totalPaymentShareAmount difference is greater than 1");
             }
         }
     }
