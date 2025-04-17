@@ -36,7 +36,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
 
         // B4 Balances
         uint256 balanceB4 = assetErc20.balanceOf(actor);
-        uint256 balanceOfEscrowB4 = assetErc20.balanceOf(address(escrow));
+        uint256 balanceOfEscrowB4 = assetErc20.balanceOf(poolEscrowFactory.escrow(poolId));
 
         bool hasReverted;
         try vault.requestDeposit(assets, to, actor) {
@@ -63,7 +63,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
 
         // After Balances and Checks
         uint256 balanceAfter = assetErc20.balanceOf(actor);
-        uint256 balanceOfEscrowAfter = assetErc20.balanceOf(address(escrow));
+        uint256 balanceOfEscrowAfter = assetErc20.balanceOf(poolEscrowFactory.escrow(poolId));
 
         // NOTE: We only enforce the check if the tx didn't revert
         if (!hasReverted) {
@@ -85,7 +85,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
 
         // B4 Balances
         uint256 balanceB4 = token.balanceOf(actor);
-        uint256 balanceOfEscrowB4 = token.balanceOf(address(escrow));
+        uint256 balanceOfEscrowB4 = token.balanceOf(poolEscrowFactory.escrow(poolId));
 
         token.approve(address(vault), shares);
 
@@ -106,7 +106,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
 
         // After Balances and Checks
         uint256 balanceAfter = token.balanceOf(actor);
-        uint256 balanceOfEscrowAfter = token.balanceOf(address(escrow));
+        uint256 balanceOfEscrowAfter = token.balanceOf(poolEscrowFactory.escrow(poolId));
 
         // NOTE: We only enforce the check if the tx didn't revert
         if (!hasReverted) {
@@ -154,7 +154,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
     function vault_deposit(uint256 assets) public {
         // Bal b4
         uint256 shareUserB4 = token.balanceOf(actor);
-        uint256 shareEscrowB4 = token.balanceOf(address(escrow));
+        uint256 shareEscrowB4 = token.balanceOf(poolEscrowFactory.escrow(poolId));
 
         uint256 shares = vault.deposit(assets, address(this));
 
@@ -163,7 +163,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
 
         // Bal after
         uint256 shareUserAfter = token.balanceOf(actor);
-        uint256 shareEscrowAfter = token.balanceOf(address(escrow));
+        uint256 shareEscrowAfter = token.balanceOf(poolEscrowFactory.escrow(poolId));
 
         // Extra check | // TODO: This math will prob overflow
         // NOTE: Unchecked so we get broken property and debug faster
@@ -195,7 +195,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
 
         // Bal b4
         uint256 shareUserB4 = token.balanceOf(actor);
-        uint256 shareEscrowB4 = token.balanceOf(address(escrow));
+        uint256 shareEscrowB4 = token.balanceOf(poolEscrowFactory.escrow(poolId));
 
         vault.mint(shares, to);
 
@@ -204,7 +204,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
 
         // Bal after
         uint256 shareUserAfter = token.balanceOf(actor);
-        uint256 shareEscrowAfter = token.balanceOf(address(escrow));
+        uint256 shareEscrowAfter = token.balanceOf(poolEscrowFactory.escrow(poolId));
 
         // Extra check | // TODO: This math will prob overflow
         // NOTE: Unchecked so we get broken property and debug faster
@@ -229,7 +229,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
 
         // Bal b4
         uint256 tokenUserB4 = assetErc20.balanceOf(actor);
-        uint256 tokenEscrowB4 = assetErc20.balanceOf(address(escrow));
+        uint256 tokenEscrowB4 = assetErc20.balanceOf(poolEscrowFactory.escrow(poolId));
 
         uint256 assets = vault.redeem(shares, actor, to);
 
@@ -238,7 +238,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
 
         // Bal after
         uint256 tokenUserAfter = assetErc20.balanceOf(actor);
-        uint256 tokenEscrowAfter = assetErc20.balanceOf(address(escrow));
+        uint256 tokenEscrowAfter = assetErc20.balanceOf(poolEscrowFactory.escrow(poolId));
 
         // Extra check | // TODO: This math will prob overflow
         // NOTE: Unchecked so we get broken property and debug faster
@@ -267,7 +267,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
 
         // Bal b4
         uint256 tokenUserB4 = assetErc20.balanceOf(actor);
-        uint256 tokenEscrowB4 = assetErc20.balanceOf(address(escrow));
+        uint256 tokenEscrowB4 = assetErc20.balanceOf(poolEscrowFactory.escrow(poolId));
 
         vault.withdraw(assets, actor, to);
 
@@ -276,7 +276,7 @@ abstract contract VaultFunctions is BaseTargetFunctions, Properties {
 
         // Bal after
         uint256 tokenUserAfter = assetErc20.balanceOf(actor);
-        uint256 tokenEscrowAfter = assetErc20.balanceOf(address(escrow));
+        uint256 tokenEscrowAfter = assetErc20.balanceOf(poolEscrowFactory.escrow(poolId));
 
         // Extra check | // TODO: This math will prob overflow
         // NOTE: Unchecked so we get broken property and debug faster

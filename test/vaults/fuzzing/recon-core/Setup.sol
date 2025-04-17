@@ -27,9 +27,7 @@ abstract contract Setup is BaseSetup, SharedStorage {
     AsyncVaultFactory vaultFactory;
     TokenFactory tokenFactory;
 
-    // Handled //
-    // TODO(wischli): Remove
-    Escrow public escrow; // NOTE: Restriction Manager will query it
+    // Handled
     AsyncRequests asyncRequests;
     PoolManager poolManager;
     PoolEscrowFactory poolEscrowFactory;
@@ -65,7 +63,6 @@ abstract contract Setup is BaseSetup, SharedStorage {
 
         // Dependencies
         tokenFactory = new TokenFactory(address(this), address(this));
-        escrow = new Escrow(address(address(this)));
         root = new Root(48 hours, address(this));
         restrictedTransfers = new RestrictedTransfers(address(root), address(this));
         poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
@@ -84,10 +81,6 @@ abstract contract Setup is BaseSetup, SharedStorage {
         asyncRequests.rely(address(vaultFactory));
 
         restrictedTransfers.rely(address(poolManager));
-
-        // Setup Escrow Permissions
-        escrow.rely(address(asyncRequests));
-        escrow.rely(address(poolManager));
 
         // Permissions on factories
         vaultFactory.rely(address(poolManager));
