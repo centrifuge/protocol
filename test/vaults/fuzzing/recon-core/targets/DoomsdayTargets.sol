@@ -23,8 +23,12 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         uint256 sharesReceived = vault.deposit(assets, _getActor());
         uint256 sharesAsAssets = vault.convertToAssets(sharesReceived);
 
-        eq(sharesAsAssets, (assets / ppfsBefore) + (10 ** token.decimals()), "sharesAsAssets != assets");
-        eq(sharesReceived, (assets * ppfsBefore) - (10 ** token.decimals()), "sharesReceived != pricePerShare - precision");
+        uint256 expectedAssetsSpent = (sharesReceived * ppfsBefore) + (10 ** assetErc20.decimals());
+        uint256 expectedSharesReceived = (assets / ppfsBefore) - (10 ** token.decimals());
+
+        // should always round in protocol's favor, requiring more assets to be spent than shares received
+        gte(sharesAsAssets, expectedAssetsSpent, "sharesAsAssets < expectedAssetsSpent");
+        lte(sharesReceived, expectedSharesReceived, "sharesReceived > expectedSharesReceived");
     }
 
     /// @dev Doomsday Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
@@ -35,8 +39,11 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         uint256 assetsSpent = vault.mint(shares, _getActor());
         uint256 assetsAsShares = vault.convertToShares(assetsSpent);
 
-        eq(assetsSpent, (shares / ppfsBefore) + (10 ** token.decimals()), "assetsSpent != pricePerShare + precision");
-        eq(assetsAsShares, (shares * ppfsBefore) - (10 ** token.decimals()), "assetsAsShares != pricePerShare - precision");
+        uint256 expectedAssetsSpent = (assetsAsShares * ppfsBefore) + (10 ** assetErc20.decimals());
+        uint256 expectedSharesReceived = (assetsSpent / ppfsBefore) - (10 ** token.decimals());
+
+        gte(assetsSpent, expectedAssetsSpent, "assetsSpent < expectedAssetsSpent");
+        lte(assetsAsShares, expectedSharesReceived, "assetsAsShares > expectedSharesReceived");
     }
 
     /// @dev Doomsday Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
@@ -45,22 +52,29 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
 
         vm.prank(_getActor());
         uint256 assetsReceived = vault.redeem(shares, _getActor(), _getActor());
-        uint256 assetsAsShares = vault.convertToAssets(shares);
+        uint256 assetsAsShares = vault.convertToShares(assetsReceived);
 
-        eq(assetsReceived, (shares / ppfsBefore) + (10 ** token.decimals()), "assetsReceived != pricePerShare + precision");
-        eq(assetsAsShares, (shares * ppfsBefore) - (10 ** token.decimals()), "assetsAsShares != pricePerShare - precision");
+        uint256 expectedAssets = (shares * ppfsBefore) + (10 ** token.decimals());
+        uint256 expectedAssetsAsShares = (vault.convertToAssets(shares) / ppfsBefore) - (10 ** token.decimals());
+
+        lte(assetsReceived, expectedAssets, "assetsReceived > expectedAssets");
+        gte(assetsAsShares, expectedAssetsAsShares, "assetsAsShares < expectedAssetsAsShares");
     }
 
     /// @dev Doomsday Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
     function doomsday_withdraw_ppfs(uint256 assets) public updateGhosts {
         uint256 ppfsBefore = vault.pricePerShare();
+        uint256 assetsAsSharesBefore = vault.convertToShares(assets);
 
         vm.prank(_getActor());
         uint256 sharesReceived = vault.withdraw(assets, _getActor(), _getActor());
-        uint256 sharesAsAssets = vault.convertToShares(sharesReceived);
+        uint256 sharesAsAssets = vault.convertToAssets(sharesReceived);
 
-        eq(sharesAsAssets, (assets / ppfsBefore) + (10 ** token.decimals()), "sharesAsAssets != pricePerShare + precision");
-        eq(sharesReceived, (assets * ppfsBefore) - (10 ** token.decimals()), "sharesReceived != pricePerShare - precision");
+        uint256 expectedAssets = (assetsAsSharesBefore * ppfsBefore) + (10 ** token.decimals());
+        uint256 expectedAssetsAsShares = (assets / ppfsBefore) - (10 ** token.decimals());
+
+        gte(sharesAsAssets, expectedAssets, "sharesAsAssets < expectedAssets");
+        lte(sharesReceived, expectedAssetsAsShares, "sharesReceived > expectedAssetsAsShares");
     }
 
     /// @dev Doomsday Property: pricePerShare never changes after a user operation
