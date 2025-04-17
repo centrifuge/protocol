@@ -320,13 +320,13 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint256 totalAssets = vault.totalAssets();
         uint256 actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
         
-        uint256 difference = totalAssets - actualAssets;
-        uint256 differenceInShares = vault.convertToShares(difference);
+        uint256 differenceInAssets = totalAssets - actualAssets;
+        uint256 differenceInShares = vault.convertToShares(differenceInAssets);
 
-        // if (differenceInShares > 1e18 - 1) {
-        // note: may need to check account for minimal allowable difference in shares
-        lte(totalAssets, actualAssets, "totalAssets > actualAssets");
-        // }
+        // precondition: check if the difference is greater than one share
+        if (differenceInShares > (10 ** token.decimals() - 1)) {
+            lte(totalAssets, actualAssets, "totalAssets > actualAssets");
+        }
     }
 
 
