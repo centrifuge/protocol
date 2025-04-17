@@ -3,18 +3,11 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 
-import {
-    IPoolEscrowProvider,
-    IEscrowProvider,
-    IPoolEscrowFactory
-} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
+import {IPoolEscrowProvider, IPoolEscrowFactory} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {PoolEscrow} from "src/vaults/Escrow.sol";
 
 contract PoolEscrowFactory is IPoolEscrowFactory, Auth {
-    uint64 public constant V2_POOL_ID = 4139607887;
-    address public constant V2_GLOBAL_ESCROW = address(0x0000000005F458Fd6ba9EEb5f365D83b7dA913dD);
-
     address public immutable root;
     address public poolManager;
     address public balanceSheet;
@@ -54,32 +47,18 @@ contract PoolEscrowFactory is IPoolEscrowFactory, Auth {
     }
 
     // --- View methods ---
-    /// @inheritdoc IEscrowProvider
+    /// @inheritdoc IPoolEscrowProvider
     function escrow(uint64 poolId) external view returns (address) {
-        if (poolId == V2_POOL_ID) {
-            return V2_GLOBAL_ESCROW;
-        } else {
-            return _deterministicAddress(poolId);
-        }
-    }
-
-    /// @inheritdoc IPoolEscrowProvider
-    function poolEscrow(uint64 poolId) external view returns (IPoolEscrow) {
-        return IPoolEscrow(_deterministicAddress(poolId));
-    }
-
-    /// @inheritdoc IPoolEscrowProvider
-    function deployedPoolEscrow(uint64 poolId) external view returns (address) {
-        return escrows[poolId];
-    }
-
-    // --- Internal methods ---
-    function _deterministicAddress(uint64 poolId) internal view returns (address) {
         bytes32 salt = bytes32(uint256(poolId));
         bytes memory bytecode = abi.encodePacked(type(PoolEscrow).creationCode, abi.encode(poolId, address(this)));
 
         bytes32 hash = keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, keccak256(bytecode)));
 
         return address(uint160(uint256(hash)));
+    }
+
+    /// @inheritdoc IPoolEscrowProvider
+    function deployedEscrow(uint64 poolId) external view returns (address) {
+        return escrows[poolId];
     }
 }

@@ -310,11 +310,6 @@ interface IBaseVault is IERC7540Operator, IERC7741, IERC7714, IERC7575, IRecover
     /// @dev This naming MUST NOT change due to requirements of legacy vaults (v2)
     /// @return IBaseInvestmentManager The address of the manager contract that is between vault and gateway
     function manager() external view returns (IBaseInvestmentManager);
-
-    /// @notice Returns the escrow contract address for this vault.
-    /// @dev This naming MUST NOT change due to requirements of legacy vaults (v2)
-    /// @return escrow The address of the escrow contract for this vault
-    function escrow() external view returns (address escrow);
 }
 
 /**

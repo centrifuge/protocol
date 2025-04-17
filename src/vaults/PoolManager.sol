@@ -205,7 +205,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
         pool.shareClasses[scId].shareToken = shareToken_;
 
-        address escrow = poolEscrowFactory.deployedPoolEscrow(poolId);
+        address escrow = poolEscrowFactory.deployedEscrow(poolId);
         // Deploy new escrow only on first added share class for pool
         if (escrow == address(0)) {
             escrow = poolEscrowFactory.newEscrow(poolId);

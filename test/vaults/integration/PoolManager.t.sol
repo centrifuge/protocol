@@ -55,7 +55,6 @@ contract PoolManagerTestHelper is BaseTest {
         decimals_ = uint8(bound(decimals_, 2, 18));
         vm.assume(bytes(tokenName_).length <= 128);
         vm.assume(bytes(tokenSymbol_).length <= 32);
-        vm.assume(poolId != 4139607887); // Exclude legacy pool
 
         poolId = poolId_;
         decimals = decimals_;

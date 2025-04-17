@@ -7,7 +7,7 @@ import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
 import {BaseVault, AsyncRedeemVault} from "src/vaults/BaseVaults.sol";
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
-import {IEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
+import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 
@@ -30,9 +30,9 @@ contract AsyncVault is AsyncRedeemVault, IAsyncVault {
         address token_,
         address root_,
         address manager_,
-        IEscrowProvider escrowProvider_
+        IPoolEscrowProvider poolEscrowProvider
     )
-        BaseVault(poolId_, scId_, asset_, tokenId_, token_, root_, manager_, escrowProvider_)
+        BaseVault(poolId_, scId_, asset_, tokenId_, token_, root_, manager_, poolEscrowProvider)
         AsyncRedeemVault(manager_)
     {}
 
@@ -51,9 +51,9 @@ contract AsyncVault is AsyncRedeemVault, IAsyncVault {
         );
 
         if (tokenId == 0) {
-            SafeTransferLib.safeTransferFrom(asset, owner, escrow(), assets);
+            SafeTransferLib.safeTransferFrom(asset, owner, _poolEscrowProvider.escrow(poolId), assets);
         } else {
-            IERC6909(asset).transferFrom(owner, escrow(), tokenId, assets);
+            IERC6909(asset).transferFrom(owner, _poolEscrowProvider.escrow(poolId), tokenId, assets);
         }
 
         emit DepositRequest(controller, owner, REQUEST_ID, msg.sender, assets);

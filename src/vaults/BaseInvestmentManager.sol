@@ -68,6 +68,17 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
             poolManager.priceAssetPerShare(mapPoolId(vault_.poolId()), vault_.trancheId(), vaultDetails.assetId, false);
     }
 
+    /// @inheritdoc IBaseInvestmentManager
+    function escrow() public view returns (address) {
+        (bool success, bytes memory result) = msg.sender.staticcall(abi.encodeWithSelector(IBaseVault.poolId.selector));
+
+        require(success && result.length == 32, SenderNotVault());
+
+        uint64 poolId = abi.decode(result, (uint64));
+        return poolEscrowProvider.escrow(poolId);
+    }
+
+    /// @inheritdoc IBaseInvestmentManager
     function mapPoolId(uint64 poolId) public pure returns (uint64 mappedPoolId) {
         // TODO: update v2CentrifugeId and add all pools before deployment
         uint16 v2CentrifugeId = 1;
