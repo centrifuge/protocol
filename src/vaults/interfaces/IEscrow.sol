@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.5.0;
 
+import {IRecoverable} from "src/misc/Recoverable.sol";
+
 /// @title  Escrow for holding assets
 interface IEscrow {
     // --- Events ---
@@ -32,7 +34,7 @@ interface IEscrow {
 }
 
 /// @title PerPoolEscrow separating funds by pool and share class
-interface IPoolEscrow is IEscrow {
+interface IPoolEscrow is IEscrow, IRecoverable {
     // --- Events ---
     /// @notice Emitted when a deposit will be made in the future
     /// @param asset The address of the to be deposited asset
