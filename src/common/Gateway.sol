@@ -163,12 +163,12 @@ contract Gateway is Auth, IGateway, Recoverable {
             return processor_.handle(centrifugeId, payload);
         }
 
-        bytes32 batchId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, payload));
+        bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, payload));
 
         bool isMessageProof = payload.toUint8(0) == uint8(MessageType.MessageProof);
         if (adapter.quorum == 1 && !isMessageProof) {
             // Special case for gas efficiency
-            emit ProcessBatch(centrifugeId, batchId, payload, adapter_);
+            emit ProcessBatch(centrifugeId, payloadId, payload, adapter_);
             _handleBatch(centrifugeId, payload);
             return;
         }
@@ -178,11 +178,11 @@ contract Gateway is Auth, IGateway, Recoverable {
         if (isMessageProof) {
             require(adapter.id != PRIMARY_ADAPTER_ID, NonProofAdapter());
             batchHash = payload.deserializeMessageProof();
-            emit ProcessProof(centrifugeId, batchId, batchHash, adapter_);
+            emit ProcessProof(centrifugeId, payloadId, batchHash, adapter_);
         } else {
             require(adapter.id == PRIMARY_ADAPTER_ID, NonBatchAdapter());
             batchHash = keccak256(payload);
-            emit ProcessBatch(centrifugeId, batchId, payload, adapter_);
+            emit ProcessBatch(centrifugeId, payloadId, payload, adapter_);
         }
 
         InboundBatch storage state = inboundBatch[centrifugeId][batchHash];
@@ -218,10 +218,9 @@ contract Gateway is Auth, IGateway, Recoverable {
     function _handleBatch(uint16 centrifugeId, bytes memory batch_) internal {
         IMessageProcessor processor_ = processor;
         bytes memory remaining = batch_;
-        uint256 length;
 
-        while (length < remaining.length) {
-            length = processor_.messageLength(remaining);
+        while (remaining.length > 0) {
+            uint256 length = processor_.messageLength(remaining);
             bytes memory message = remaining.slice(0, length);
             remaining = remaining.slice(length, remaining.length - length);
 
