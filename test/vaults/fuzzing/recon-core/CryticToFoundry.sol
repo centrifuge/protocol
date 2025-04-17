@@ -13,7 +13,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         setup();
     }
 
-    // sanity check for system deployment and deposit
+    /// === SANITY CHECKS === ///
     function test_deployNewTokenPoolAndShare_deposit() public {
         deployNewTokenPoolAndShare(18, 1_000_000e18);
 
@@ -46,9 +46,15 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         vault_requestRedeem(1e18 - 1, 0);
 
-        asyncRequests_fulfillRedeemRequest(1e18, 1e18, 0);
+        asyncRequests_fulfillRedeemRequest(1e18, 1e18 - 1, 0);
 
         // can only redeem the 1e18 assets
         vault_withdraw(1e18, 0);
     }
+
+    /// === REPRODUCERS === ///
+
+   
+
+
 }

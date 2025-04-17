@@ -16,40 +16,40 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
     // TODO: Live comparison of TotalSupply of share class token
     // With our current storage value
 
-    // TODO: Clamp / Target specifics
+    // NOTE: These introduce many false positives because they're used for cross-chain transfers but we our test environment only allows tracking state on one chain so they were removed
     // TODO: Overflow stuff
-    function poolManager_handleTransferShares(uint128 amount, uint256 investorEntropy) public updateGhosts asActor {
-        address investor = _getRandomActor(investorEntropy);
-        poolManager.handleTransferShares(poolId, scId, investor, amount);
+    // function poolManager_handleTransferShares(uint128 amount, uint256 investorEntropy) public updateGhosts asActor {
+    //     address investor = _getRandomActor(investorEntropy);
+    //     poolManager.handleTransferShares(poolId, scId, investor, amount);
 
-        // TF-12 mint share class tokens from user, not tracked in escrow
+    //     // TF-12 mint share class tokens to user, not tracked in escrow
 
-        // Track minting for Global-3
-        incomingTransfers[address(token)] += amount;
-    }
+    //     // Track minting for Global-3
+    //     incomingTransfers[address(token)] += amount;
+    // }
 
-    function poolManager_transferSharesToEVM(uint16 destinationChainId, bytes32 destinationAddress, uint128 amount)
-        public
-    updateGhosts asActor {
-        uint256 balB4 = token.balanceOf(_getActor());
+    // function poolManager_transferSharesToEVM(uint16 destinationChainId, bytes32 destinationAddress, uint128 amount)
+    //     public
+    // updateGhosts asActor {
+    //     uint256 balB4 = token.balanceOf(_getActor());
 
-        // Clamp
-        if (amount > balB4) {
-            amount %= uint128(balB4);
-        }
+    //     // Clamp
+    //     if (amount > balB4) {
+    //         amount %= uint128(balB4);
+    //     }
 
-        // Exact approval
-        token.approve(address(poolManager), amount);
+    //     // Exact approval
+    //     token.approve(address(poolManager), amount);
 
-        poolManager.transferShares(destinationChainId, poolId, scId, destinationAddress, amount);
-        // TF-11 burns share class tokens from user, not tracked in escrow
+    //     poolManager.transferShares(destinationChainId, poolId, scId, destinationAddress, amount);
+    //     // TF-11 burns share class tokens from user, not tracked in escrow
 
-        // Track minting for Global-3
-        outGoingTransfers[address(token)] += amount;
+    //     // Track minting for Global-3
+    //     outGoingTransfers[address(token)] += amount;
 
-        uint256 balAfterActor = token.balanceOf(_getActor());
+    //     uint256 balAfterActor = token.balanceOf(_getActor());
 
-        t(balAfterActor <= balB4, "PM-3-A");
-        t(balB4 - balAfterActor == amount, "PM-3-A");
-    }
+    //     t(balAfterActor <= balB4, "PM-3-A");
+    //     t(balB4 - balAfterActor == amount, "PM-3-A");
+    // }
 }

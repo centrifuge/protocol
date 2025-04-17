@@ -4,6 +4,12 @@
 
 This suite is seperated into two parts to test necessary functionality in the core contracts as well as the Aggregator.
 
+## Setup
+
+The vault side of the system is deployed in a configuration to only allow interactions on one chain. The `PoolManager`'s `handleTransferShares` and `transferSharesToEVM` are excluded because they would break assumptions about the system behavior which are being tested by the implemented properties. 
+
+Proper testing of these properties in a cross-chain environment requires a full governance fuzzing suite which detects transfer events on one chain and executes calls to `handleTransferShares` and `transferSharesToEVM` with the transferred value.
+
 ## Running the tests
 
 This suite is setup for local and forked environment testing. 
