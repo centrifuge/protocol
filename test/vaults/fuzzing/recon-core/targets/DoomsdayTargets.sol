@@ -28,7 +28,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
             sharesReceived = shares;
         } catch {
             bool isFrozen = restrictedTransfers.isFrozen(address(vault), _getActor());
-            bool isMember = restrictedTransfers.isMember(address(token), _getActor());
+            (bool isMember, ) = restrictedTransfers.isMember(address(token), _getActor());
             if(assets < maxMintAsAssets && !isFrozen && isMember) {
                 t(false, "cant deposit less than maxMint");
             }
@@ -55,7 +55,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
             assetsSpent = assets;
         } catch {
             bool isFrozen = restrictedTransfers.isFrozen(address(vault), _getActor());
-            bool isMember = restrictedTransfers.isMember(address(token), _getActor());
+            (bool isMember, ) = restrictedTransfers.isMember(address(token), _getActor());
             if(shares < maxMint && !isFrozen && isMember) {
                 t(false, "cant mint less than maxMint");
             }
@@ -82,7 +82,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
             assetsReceived = assets;
         } catch {
             bool isFrozen = restrictedTransfers.isFrozen(address(vault), _getActor());
-            bool isMember = restrictedTransfers.isMember(address(token), _getActor());
+            (bool isMember, ) = restrictedTransfers.isMember(address(token), _getActor());
             if(shares < maxWithdrawAsShares && !isFrozen && isMember) {
                 t(false, "cant redeem less than maxWithdraw");
             }
@@ -109,7 +109,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
             sharesReceived = shares;
         } catch {
             bool isFrozen = restrictedTransfers.isFrozen(address(vault), _getActor());
-            bool isMember = restrictedTransfers.isMember(address(token), _getActor());
+            (bool isMember, ) = restrictedTransfers.isMember(address(token), _getActor());
             if(assets < maxWithdraw && !isFrozen && isMember) {
                 t(false, "cant withdraw less than maxWithdraw");
             }
