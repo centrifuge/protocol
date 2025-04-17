@@ -43,7 +43,6 @@ contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
     /// @inheritdoc IHook
     function onERC20Transfer(address from, address to, uint256 value, HookData calldata hookData)
         external
-        view
         virtual
         returns (bytes4)
     {
