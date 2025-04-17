@@ -200,24 +200,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_decreaseShareIssuance_clamped(poolId.raw(), 2, NAV_PER_SHARE, SHARE_AMOUNT);
     }
     
-    // forge test --match-test test_hub_depositRequest_0 -vvv 
-    // function test_hub_depositRequest_0() public {
-
-    //     (PoolId poolId, ShareClassId scId) = shortcut_create_pool_and_update_holding(6,1,hex"4e554c",hex"4e554c",hex"4e554c",hex"",false,0,d18(1));
-
-    //     // downcasting to uint32 
-    //     uint32 unsafePoolId;
-    //     assembly {
-    //         unsafePoolId := 4294967297
-    //     }
-        
-    //     hub_depositRequest(newPoolId(CENTIFUGE_CHAIN_ID, unsafePoolId), scId, 0,0);
-
-    //     // looks like this reverts because 4294967297 overflows the uint32 type 
-    //     // shouldn't this make the handler revert though, this wouldn't even be callable with an overflowing input
-    //     // hub_depositRequest(4294967297,hex"4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c4e554c",0,0);
-    //     // hub.depositRequest(newPoolId(4294967297), scId, Helpers.addressToBytes32(_getActor()), newAssetId(123), 0);
-    // }
+    /// === REPRODUCERS === ///
 
     // forge test --match-test test_property_debited_transient_reset_6 -vvv 
     // NOTE: see this issue: https://github.com/Recon-Fuzz/centrifuge-review/issues/13#issuecomment-2752022094
@@ -312,4 +295,100 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_claimRedeem_clamped(0,0);
 
     }
+
+    // forge test --match-test test_property_accounting_and_holdings_soundness_0 -vvv 
+    // NOTE: updateHoldingAmount causes an unsafe overflow in the accounting.sol contract
+    function test_property_accounting_and_holdings_soundness_0() public {
+        
+        toggle_IsDebitNormal();
+
+        shortcut_deposit_and_cancel(6,1,2,false,1,1,1);
+
+        hub_updateHoldingAmount_clamped(0,0,0,1000019115540989997,1,true);
+
+        hub_addShareClass_clamped(0,1);
+
+        property_accounting_and_holdings_soundness();
+        console2.log("uint128 max value", type(uint128).max);
+    }
+
+    // forge test --match-test test_property_user_cannot_mutate_pending_redeem_2 -vvv 
+    // TODO: come back to this
+    function test_property_user_cannot_mutate_pending_redeem_2() public {
+
+        shortcut_deposit_and_claim(6,1,1,false,1,1,1);
+
+        hub_addShareClass_clamped(0,2);
+
+        hub_redeemRequest_clamped(0,0,1);
+
+        property_user_cannot_mutate_pending_redeem();
+
+    }
+
+    // forge test --match-test test_property_total_pending_redeem_geq_sum_pending_user_redeem_3 -vvv 
+    // TODO: come back to this
+    function test_property_total_pending_redeem_geq_sum_pending_user_redeem_3() public {
+
+        shortcut_deposit_and_claim(6,1,2,false,1,1,1);
+
+        hub_redeemRequest_clamped(0,0,1);
+
+        hub_approveRedeems_clamped(0,0,1);
+
+        hub_addShareClass_clamped(0,1);
+
+        hub_revokeShares_clamped(0,0,1000162686692190665,true);
+
+        property_total_pending_redeem_geq_sum_pending_user_redeem();
+
+    }
+
+    // forge test --match-test test_hub_depositRequest_clamped_4 -vvv 
+    function test_hub_depositRequest_clamped_4() public {
+
+        shortcut_deposit_claim_and_cancel(6,1,1,false,1,1,1001192756088957775);
+
+        console2.log("before depositRequest_clamped");
+        hub_depositRequest_clamped(0,0,0);
+    }
+
+    // forge test --match-test test_hub_redeemRequest_clamped_5 -vvv 
+    // NOTE: similar issue with partial approve/revoke cycle, if the redeemRequest is made in-between the call to approve and revoke it doesn't increase the lastUpdate because _updateQueued returns early
+    function test_hub_redeemRequest_clamped_5() public {
+
+        (poolId, scId) = shortcut_deposit_redeem_and_claim(6,1,1,false,1,513091547574673,1949);
+
+        console2.log("epochId before approveRedeems_clamped", shareClassManager.epochId(poolId));
+        hub_approveRedeems_clamped(0,0,1);
+
+        console2.log("epochId before redeemRequest_clamped", shareClassManager.epochId(poolId));
+        hub_redeemRequest_clamped(0,0,0);
+
+        console2.log("epochId after redeemRequest_clamped", shareClassManager.epochId(poolId));
+    }
+
+    // forge test --match-test test_hub_claimDeposit_clamped_6 -vvv 
+    // NOTE: when a deposit is approved but no shares are issued for it, the lastUpdate is not updated correctly
+    function test_hub_claimDeposit_clamped_6() public {
+
+        shortcut_deposit(6,1,1,false,2,1,1);
+
+        hub_approveDeposits_clamped(0,0,1,true);
+
+        hub_claimDeposit_clamped(0,0);
+
+    }
+
+    // forge test --match-test test_property_total_yield_7 -vvv 
+    function test_property_total_yield_7() public {
+
+        shortcut_create_pool_and_update_holding_amount(6,1,2,false,1,1000246008662738933,0,0);
+
+        hub_addShareClass_clamped(0,1);
+
+        property_total_yield();
+
+    }
+ 
 }

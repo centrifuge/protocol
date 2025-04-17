@@ -234,6 +234,10 @@ abstract contract Properties is BeforeAfter, Asserts {
                 if(assets > equity) {
                     // Yield
                     int128 yield = accounting.accountValue(poolId, gainAccountId);
+                    console2.log("yield", yield);
+                    console2.log("assets", assets);
+                    console2.log("equity", equity);
+                    console2.log("loss", accounting.accountValue(poolId, lossAccountId));
                     t(yield == assets - equity, "property_total_yield gain");
                 } else if (assets < equity) {
                     // Loss
@@ -351,6 +355,33 @@ abstract contract Properties is BeforeAfter, Asserts {
             }
         }
     } 
+
+    /// @dev Property: A user cannot mutate their pending redeem amount pendingRedeem[...] if the pendingRedeem[..].lastUpdate is <= the latest redeem approval pointer epochPointers[..].latestRedeemApproval
+    function property_user_cannot_mutate_pending_redeem() public {
+        address[] memory _actors = _getActors();
+
+        for (uint256 i = 0; i < createdPools.length; i++) {
+            PoolId poolId = createdPools[i];
+            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
+            // skip the first share class because it's never assigned
+            for (uint32 j = 1; j < shareClassCount; j++) {
+                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+                AssetId assetId = hubRegistry.currency(poolId);
+
+                // loop over all actors
+                for (uint256 k = 0; k < _actors.length; k++) {
+                    bytes32 actor = Helpers.addressToBytes32(_actors[k]);
+                    // precondition: pending has changed 
+                    if (_before.ghostRedeemRequest[scId][assetId][actor].pending != _after.ghostRedeemRequest[scId][assetId][actor].pending) {
+                        console2.log("pending before", _before.ghostRedeemRequest[scId][assetId][actor].pending);
+                        console2.log("pending after", _after.ghostRedeemRequest[scId][assetId][actor].pending);
+                        // check that the lastUpdate was >= the latest redeem approval pointer
+                        gt(_before.ghostRedeemRequest[scId][assetId][actor].lastUpdate, _before.ghostLatestRedeemApproval, "lastUpdate is > latest redeem approval");
+                    }
+                }
+            }
+        }
+    }
 
     /// @dev Property: After FM performs approveDeposits and revokeShares with non-zero navPerShare, the total issuance totalIssuance[..] is increased
     /// @dev WIP, this may not be possible to prove because these calls are made via execute which makes determining the before and after state difficult
@@ -487,33 +518,6 @@ abstract contract Properties is BeforeAfter, Asserts {
                 lte(differenceAsset, 1, "sumRedeemAssets - totalPayoutAssetAmount difference is greater than 1");
                 // check that the totalPaymentShareAmount is no more than 1 wei less than the sum of redeemApproved
                 lte(differenceShare, 1, "sumRedeemApprovedShares - totalPaymentShareAmount difference is greater than 1");
-            }
-        }
-    }
-
-    /// @dev Property: A user cannot mutate their pending redeem amount pendingRedeem[...] if the pendingRedeem[..].lastUpdate is <= the latest redeem approval pointer epochPointers[..].latestRedeemApproval
-    function property_user_cannot_mutate_pending_redeem() public stateless {
-        address[] memory _actors = _getActors();
-
-        for (uint256 i = 0; i < createdPools.length; i++) {
-            PoolId poolId = createdPools[i];
-            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
-            // skip the first share class because it's never assigned
-            for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-                AssetId assetId = hubRegistry.currency(poolId);
-
-                // loop over all actors
-                for (uint256 k = 0; k < _actors.length; k++) {
-                    bytes32 actor = Helpers.addressToBytes32(_actors[k]);
-                    // precondition: pending has changed 
-                    if (_before.ghostRedeemRequest[scId][assetId][actor].pending == _after.ghostRedeemRequest[scId][assetId][actor].pending) {
-                        continue;
-                    }
-
-                    // check that the lastUpdate was > the latest redeem approval pointer
-                    gt(_before.ghostRedeemRequest[scId][assetId][actor].lastUpdate, _before.ghostLatestRedeemApproval, "lastUpdate is > latest redeem approval");
-                }
             }
         }
     }

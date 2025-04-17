@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 // Chimera deps
 import {vm} from "@chimera/Hevm.sol";
-import {console2} from "forge-std/console2.sol";
 
 // Helpers
 import {Panic} from "@recon/Panic.sol";
@@ -129,7 +128,7 @@ abstract contract TargetFunctions is
         );
 
         // claim deposit as actor
-        AssetId assetId = newAssetId(isoCode);
+        AssetId assetId = hubRegistry.currency(poolId);
         hub_claimDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw());
 
         // cancel deposit
@@ -242,11 +241,11 @@ abstract contract TargetFunctions is
         uint128 depositAmount,
         uint128 shareAmount,
         uint128 navPerShare
-    ) public clearQueuedCalls {
+    ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
         decimals %= 24; // upper bound of decimals for most ERC20s is 24
         require(decimals >= 6, "decimals must be >= 6");
 
-        (PoolId poolId, ShareClassId scId) = shortcut_deposit_and_claim(
+        (poolId, scId) = shortcut_deposit_and_claim(
             decimals, isoCode, salt, isIdentityValuation, depositAmount, shareAmount, navPerShare
         );
 
@@ -259,10 +258,11 @@ abstract contract TargetFunctions is
             PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode, _getMultiShareClassMetrics(scId), navPerShare, isIdentityValuation
         );
         
-
         // claim redemption as actor
         AssetId assetId = newAssetId(isoCode);
         hub_claimRedeem(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw());
+
+        return (poolId, scId);
     }
 
     // deposit and cancel redemption in one call
