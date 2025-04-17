@@ -258,23 +258,11 @@ interface IInvestmentManagerGatewayHandler {
 
 /// @notice Interface for CV methods related to epoch called by messages
 interface IBalanceSheetGatewayHandler {
-    function triggerDeposit(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        address provider,
-        uint128 amount,
-        D18 priceAssetPerShare
-    ) external;
+    function triggerDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, address provider, uint128 amount)
+        external;
 
-    function triggerWithdraw(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        address receiver,
-        uint128 amount,
-        D18 priceAssetPerShare
-    ) external;
+    function triggerWithdraw(PoolId poolId, ShareClassId scId, AssetId assetId, address receiver, uint128 amount)
+        external;
 
     function triggerIssueShares(PoolId poolId, ShareClassId scId, address to, uint128 shares) external;
 

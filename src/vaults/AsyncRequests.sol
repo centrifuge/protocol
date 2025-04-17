@@ -455,18 +455,10 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         uint64 poolId = mapPoolId(vault_.poolId());
         bytes16 scId = vault_.trancheId();
 
-        Prices memory prices =
-            sharePriceProvider.prices(poolId, scId, vaultDetails.assetId, vaultDetails.asset, vaultDetails.tokenId);
         balanceSheet.escrow().reserveDecrease(vaultDetails.asset, vaultDetails.tokenId, poolId, scId, assets);
 
         balanceSheet.withdraw(
-            PoolId.wrap(poolId),
-            ShareClassId.wrap(scId),
-            vaultDetails.asset,
-            vaultDetails.tokenId,
-            receiver,
-            assets,
-            prices.poolPerAsset
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), vaultDetails.asset, vaultDetails.tokenId, receiver, assets
         );
     }
 

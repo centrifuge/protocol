@@ -114,7 +114,7 @@ contract BalanceSheetTest is BaseTest {
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheet.deposit(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
         );
 
         vm.expectEmit();
@@ -127,7 +127,7 @@ contract BalanceSheetTest is BaseTest {
         );
 
         balanceSheet.deposit(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
         );
 
         vm.expectEmit();
@@ -142,7 +142,7 @@ contract BalanceSheetTest is BaseTest {
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheet.deposit(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
         );
     }
 
@@ -151,16 +151,17 @@ contract BalanceSheetTest is BaseTest {
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheet.deposit(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
         );
 
         vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
         balanceSheet.deposit(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
         );
 
         erc20.mint(address(this), defaultAmount);
         erc20.approve(address(balanceSheet), defaultAmount);
+
         vm.expectEmit();
         emit IBalanceSheet.Deposit(
             POOL_A,
@@ -169,11 +170,11 @@ contract BalanceSheetTest is BaseTest {
             erc20TokenId,
             address(this),
             defaultAmount,
-            d18(100, 5),
+            defaultPricePerShare,
             uint64(block.timestamp)
         );
         balanceSheet.deposit(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
         );
 
         assertEq(erc20.balanceOf(address(this)), 0);
@@ -187,7 +188,7 @@ contract BalanceSheetTest is BaseTest {
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheet.withdraw(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
         );
 
         assertEq(erc20.balanceOf(address(this)), 0);
@@ -200,11 +201,11 @@ contract BalanceSheetTest is BaseTest {
             erc20TokenId,
             address(this),
             defaultAmount,
-            d18(100, 5),
+            defaultPricePerShare,
             uint64(block.timestamp)
         );
         balanceSheet.withdraw(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
         );
 
         assertEq(erc20.balanceOf(address(this)), defaultAmount);

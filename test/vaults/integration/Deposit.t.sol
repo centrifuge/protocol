@@ -772,8 +772,7 @@ contract DepositTest is BaseTest {
             address(asset),
             0,
             address(balanceSheet.escrow()),
-            assetAmount.toUint128(),
-            d18(0) // NOTE: Price irrelevant here
+            assetAmount.toUint128()
         );
     }
 }

@@ -165,8 +165,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
                     ShareClassId.wrap(m.scId),
                     AssetId.wrap(m.assetId),
                     m.who.toAddress(),
-                    m.amount,
-                    D18.wrap(m.pricePerUnit)
+                    m.amount
                 );
             } else {
                 balanceSheet.triggerWithdraw(
@@ -174,8 +173,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
                     ShareClassId.wrap(m.scId),
                     AssetId.wrap(m.assetId),
                     m.who.toAddress(),
-                    m.amount,
-                    D18.wrap(m.pricePerUnit)
+                    m.amount
                 );
             }
         } else if (kind == MessageType.TriggerUpdateShares) {
