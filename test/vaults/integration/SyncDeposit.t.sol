@@ -42,9 +42,7 @@ contract SyncDepositTestHelper is BaseTest {
         );
     }
 
-    function _assertDepositEvents(SyncDepositVault vault, uint128 shares, D18 pricePoolPerShare, D18 priceAssetPerShare)
-        internal
-    {
+    function _assertDepositEvents(SyncDepositVault vault, uint128 shares, D18 priceAssetPerShare) internal {
         PoolId poolId = PoolId.wrap(vault.poolId());
         ShareClassId scId = ShareClassId.wrap(vault.trancheId());
         uint64 timestamp = uint64(block.timestamp);
@@ -127,7 +125,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
 
         centrifugeChain.updateMaxReserve(syncVault.poolId(), syncVault.trancheId(), address(syncVault), uint128(amount));
 
-        _assertDepositEvents(syncVault, shares.toUint128(), pricePoolPerShare, priceAssetPerShare);
+        _assertDepositEvents(syncVault, shares.toUint128(), priceAssetPerShare);
         syncVault.deposit(amount, self);
         assertEq(erc20.balanceOf(self), 0, "Mismatch in sync deposited amount");
         assertEq(shareToken.balanceOf(self), shares, "Mismatch in amount of sync received shares");
