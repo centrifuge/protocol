@@ -10,7 +10,7 @@ import {UpdateRestrictionType, MessageLib} from "src/common/libraries/MessageLib
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IHook, HookData} from "src/vaults/interfaces/token/IHook.sol";
+import {IHook, HookData, ESCROW_HOOK_ID} from "src/vaults/interfaces/token/IHook.sol";
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 
 import {IRestrictedTransfers} from "src/hooks/interfaces/IRestrictedTransfers.sol";
@@ -31,9 +31,6 @@ contract RestrictedTransfers is Auth, IRestrictedTransfers, IHook {
 
     /// @dev Least significant bit
     uint8 public constant FREEZE_BIT = 0;
-    /// @dev Magic address denoting a transfer to the escrow
-    /// @dev Solely used for gas saving since escrow is per pool
-    address public constant ESCROW_IDENTIFIER = address(uint160(uint8(0xce)));
 
     IRoot public immutable root;
 
@@ -70,12 +67,12 @@ contract RestrictedTransfers is Auth, IRestrictedTransfers, IHook {
         view
         returns (bool)
     {
-        if (uint128(hookData.from).getBit(FREEZE_BIT) == true && !root.endorsed(from) && from != ESCROW_IDENTIFIER) {
+        if (uint128(hookData.from).getBit(FREEZE_BIT) == true && !root.endorsed(from) && from != ESCROW_HOOK_ID) {
             // Source is frozen and not endorsed
             return false;
         }
 
-        if (root.endorsed(to) || to == address(0) || to == ESCROW_IDENTIFIER) {
+        if (root.endorsed(to) || to == address(0) || to == ESCROW_HOOK_ID) {
             // Destination is endorsed or escrow and source was already checked, so the transfer is allowed
             return true;
         }

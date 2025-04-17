@@ -10,7 +10,7 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {UpdateRestrictionType, MessageLib} from "src/common/libraries/MessageLib.sol";
 
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
-import {IHook, HookData} from "src/vaults/interfaces/token/IHook.sol";
+import {IHook, HookData, ESCROW_HOOK_ID} from "src/vaults/interfaces/token/IHook.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 import {IRestrictedTransfers} from "src/hooks/interfaces/IRestrictedTransfers.sol";
@@ -32,9 +32,6 @@ contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
 
     /// @dev Least significant bit
     uint8 public constant FREEZE_BIT = 0;
-    /// @dev Magic address denoting a transfer to the escrow
-    /// @dev Solely used for gas saving since escrow is per pool
-    address public constant ESCROW_IDENTIFIER = address(uint160(uint8(0xce)));
 
     IRoot public immutable root;
 
@@ -84,12 +81,12 @@ contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
             return false;
         }
 
-        if (from == address(0) && to == ESCROW_IDENTIFIER) {
+        if (from == address(0) && to == ESCROW_HOOK_ID) {
             // Deposit request fulfillment
             return true;
         }
 
-        if (to == ESCROW_IDENTIFIER && fromHookData >> 64 < block.timestamp) {
+        if (to == ESCROW_HOOK_ID && fromHookData >> 64 < block.timestamp) {
             // Destination is escrow, so it's a redemption request, and the user is not a member
             return false;
         }

@@ -37,6 +37,7 @@ import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
+import {ESCROW_HOOK_ID} from "src/vaults/interfaces/token/IHook.sol";
 
 /// @title  Investment Manager
 /// @notice This is the main contract vaults interact with for
@@ -46,10 +47,6 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     using MessageLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;
-
-    /// @dev Magic address denoting a transfer to the escrow
-    /// @dev Solely used for gas saving since escrow is per pool
-    address public constant ESCROW_IDENTIFIER = address(uint160(uint8(0xce)));
 
     IVaultMessageSender public sender;
     IBalanceSheet public balanceSheet;
@@ -156,8 +153,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         );
 
         require(
-            _canTransfer(vaultAddr, owner, ESCROW_IDENTIFIER, shares)
-                && _canTransfer(vaultAddr, controller, ESCROW_IDENTIFIER, shares),
+            _canTransfer(vaultAddr, owner, ESCROW_HOOK_ID, shares)
+                && _canTransfer(vaultAddr, controller, ESCROW_HOOK_ID, shares),
             TransferNotAllowed()
         );
 
@@ -533,7 +530,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     // --- View functions ---
     /// @inheritdoc IDepositManager
     function maxDeposit(address vaultAddr, address user) public view returns (uint256 assets) {
-        if (!_canTransfer(vaultAddr, ESCROW_IDENTIFIER, user, 0)) {
+        if (!_canTransfer(vaultAddr, ESCROW_HOOK_ID, user, 0)) {
             return 0;
         }
         assets = uint256(_maxDeposit(vaultAddr, user));
@@ -547,7 +544,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
     /// @inheritdoc IDepositManager
     function maxMint(address vaultAddr, address user) public view returns (uint256 shares) {
-        if (!_canTransfer(vaultAddr, ESCROW_IDENTIFIER, user, 0)) {
+        if (!_canTransfer(vaultAddr, ESCROW_HOOK_ID, user, 0)) {
             return 0;
         }
         shares = uint256(investments[vaultAddr][user].maxMint);
