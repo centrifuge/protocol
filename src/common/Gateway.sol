@@ -78,7 +78,7 @@ contract Gateway is Auth, IGateway, Recoverable {
     // Messages
     mapping(uint16 centrifugeId => mapping(bytes32 messageHash => uint256)) public failedMessages;
     mapping(uint16 centrifugeId => mapping(bytes32 batchHash => InboundBatch)) public inboundBatch;
-    mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 batchHash => uint256 timestamp))) public
+    mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 payloadHash => uint256 timestamp))) public
         recoveries;
 
     constructor(uint16 localCentrifugeId_, IRoot root_, IGasService gasService_) Auth(msg.sender) {
@@ -245,29 +245,29 @@ contract Gateway is Auth, IGateway, Recoverable {
     }
 
     /// @inheritdoc IGatewayHandler
-    function initiateMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 batchHash) external auth {
+    function initiateMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external auth {
         require(_activeAdapters[centrifugeId][adapter].id != 0, InvalidAdapter());
-        recoveries[centrifugeId][adapter][batchHash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
-        emit InitiateMessageRecovery(centrifugeId, batchHash, adapter);
+        recoveries[centrifugeId][adapter][payloadHash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
+        emit InitiateMessageRecovery(centrifugeId, payloadHash, adapter);
     }
 
     /// @inheritdoc IGatewayHandler
-    function disputeMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 batchHash) external auth {
-        delete recoveries[centrifugeId][adapter][batchHash];
-        emit DisputeMessageRecovery(centrifugeId, batchHash, adapter);
+    function disputeMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external auth {
+        delete recoveries[centrifugeId][adapter][payloadHash];
+        emit DisputeMessageRecovery(centrifugeId, payloadHash, adapter);
     }
 
     /// @inheritdoc IGateway
-    function executeMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes calldata message) external {
-        bytes32 batchHash = keccak256(message);
-        uint256 recovery = recoveries[centrifugeId][adapter][batchHash];
+    function executeMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes calldata payload) external {
+        bytes32 payloadHash = keccak256(payload);
+        uint256 recovery = recoveries[centrifugeId][adapter][payloadHash];
 
         require(recovery != 0, MessageRecoveryNotInitiated());
         require(recovery <= block.timestamp, MessageRecoveryChallengePeriodNotEnded());
 
-        delete recoveries[centrifugeId][adapter][batchHash];
-        _handle(centrifugeId, message, adapter, true);
-        emit ExecuteMessageRecovery(centrifugeId, message, adapter);
+        delete recoveries[centrifugeId][adapter][payloadHash];
+        _handle(centrifugeId, payload, adapter, true);
+        emit ExecuteMessageRecovery(centrifugeId, payload, adapter);
     }
 
     //----------------------------------------------------------------------------------------------

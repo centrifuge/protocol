@@ -627,3 +627,103 @@ contract GatewayRetryTest is GatewayTest {
         assertEq(gateway.failedMessages(REMOTE_CENTRIFUGE_ID, keccak256(batch)), 0);
     }
 }
+
+contract GatewayInitiateRecoveryTest is GatewayTest {
+    bytes32 constant BATCH_HASH = bytes32("1");
+
+    function testErrInvalidAdapter() public {
+        vm.expectRevert(IGateway.InvalidAdapter.selector);
+        gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, BATCH_HASH);
+    }
+
+    function testErrNotAuthorized() public {
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, BATCH_HASH);
+    }
+
+    function testSuccessInitiateRecovery() public {
+        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
+
+        vm.expectEmit();
+        emit IGateway.InitiateMessageRecovery(REMOTE_CENTRIFUGE_ID, BATCH_HASH, batchAdapter);
+        gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, BATCH_HASH);
+
+        assertEq(
+            gateway.recoveries(REMOTE_CENTRIFUGE_ID, batchAdapter, BATCH_HASH),
+            block.timestamp + gateway.RECOVERY_CHALLENGE_PERIOD()
+        );
+    }
+}
+
+contract GatewayDisputeRecoveryTest is GatewayTest {
+    bytes32 constant BATCH_HASH = bytes32("1");
+
+    function testErrNotAuthorized() public {
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, BATCH_HASH);
+    }
+
+    function testSuccessDisputeRecovery() public {
+        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
+
+        vm.expectEmit();
+        emit IGateway.DisputeMessageRecovery(REMOTE_CENTRIFUGE_ID, BATCH_HASH, batchAdapter);
+        gateway.disputeMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, BATCH_HASH);
+
+        assertEq(gateway.recoveries(REMOTE_CENTRIFUGE_ID, batchAdapter, BATCH_HASH), 0);
+    }
+}
+
+contract GatewayExecuteRecoveryTest is GatewayTest {
+    function testErrMessageRecoveryNotInitiated() public {
+        vm.expectRevert(IGateway.MessageRecoveryNotInitiated.selector);
+        gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, bytes(""));
+    }
+
+    function testErrMessageRecoveryChallengePeriodNotEnded() public {
+        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
+
+        bytes memory batch = MessageKind.WithPoolA10.asBytes();
+        bytes32 batchHash = keccak256(batch);
+
+        gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, batchHash);
+
+        vm.prank(ANY);
+        vm.expectRevert(IGateway.MessageRecoveryChallengePeriodNotEnded.selector);
+        gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, batch);
+    }
+
+    function testErrRecoveryMessageRecovered() public {
+        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
+
+        bytes memory batch = MessageKind.Recovery.asBytes();
+        bytes32 batchHash = keccak256(batch);
+
+        gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, batchHash);
+
+        vm.warp(gateway.RECOVERY_CHALLENGE_PERIOD() + 1);
+
+        vm.prank(ANY);
+        vm.expectRevert(IGateway.RecoveryMessageRecovered.selector);
+        gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, batch);
+    }
+
+    function testExecuteRecoverySuccess() public {
+        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
+
+        bytes memory batch = MessageKind.WithPoolA10.asBytes();
+        bytes32 batchHash = keccak256(batch);
+
+        gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, batchHash);
+
+        vm.warp(gateway.RECOVERY_CHALLENGE_PERIOD() + 1);
+
+        vm.prank(ANY);
+        emit IGateway.ExecuteMessageRecovery(REMOTE_CENTRIFUGE_ID, batch, batchAdapter);
+        gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, batch);
+
+        assertEq(processor.processed(REMOTE_CENTRIFUGE_ID, 0), batch);
+    }
+}
