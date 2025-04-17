@@ -352,6 +352,7 @@ contract GatewayHandleTest is GatewayTest {
         bytes memory batch = MessageKind.WithPool0.asBytes();
         bytes memory proof = MessageProofLib.serializeMessageProof(keccak256(batch));
         bytes32 batchId = keccak256(abi.encodePacked(REMOTE_CENTRIFUGE_ID, LOCAL_CENTRIFUGE_ID, batch));
+        bytes32 proofId = keccak256(abi.encodePacked(REMOTE_CENTRIFUGE_ID, LOCAL_CENTRIFUGE_ID, proof));
 
         vm.prank(address(batchAdapter));
         vm.expectEmit();
@@ -362,16 +363,14 @@ contract GatewayHandleTest is GatewayTest {
 
         vm.prank(address(proofAdapter1));
         vm.expectEmit();
-        //FIX: This fails because batchId is using the payload from the proof
-        emit IGateway.ProcessProof(REMOTE_CENTRIFUGE_ID, batchId, keccak256(batch), proofAdapter1);
+        emit IGateway.ProcessProof(REMOTE_CENTRIFUGE_ID, proofId, keccak256(batch), proofAdapter1);
         gateway.handle(REMOTE_CENTRIFUGE_ID, proof);
         assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 0);
         assertVotes(batch, 1, 1, 0);
 
         vm.prank(address(proofAdapter2));
         vm.expectEmit();
-        //FIX: This fails because batchId is using the payload from the proof
-        emit IGateway.ProcessProof(REMOTE_CENTRIFUGE_ID, batchId, keccak256(batch), proofAdapter2);
+        emit IGateway.ProcessProof(REMOTE_CENTRIFUGE_ID, proofId, keccak256(batch), proofAdapter2);
         gateway.handle(REMOTE_CENTRIFUGE_ID, proof);
         assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 1);
         assertEq(processor.processed(REMOTE_CENTRIFUGE_ID, 0), batch);

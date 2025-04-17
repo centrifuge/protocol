@@ -342,7 +342,7 @@ contract Gateway is Auth, IGateway, Recoverable {
             } else {
                 emit SendProof(
                     centrifugeId,
-                    keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, batch)),
+                    keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, proof)),
                     batchHash,
                     adapters_[i]
                 );
