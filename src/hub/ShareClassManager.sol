@@ -331,10 +331,9 @@ contract ShareClassManager is Auth, IShareClassManager {
 
         EpochInvestAmounts storage epochAmounts = epochInvestAmounts[scId_][depositAssetId][userOrder.lastUpdate];
 
-        depositAssetAmount =
-            epochAmounts.approvedAssetAmount == 0 ? 0 : _fulfillRatio(epochAmounts).mulUint128(userOrder.pending);
-        // better: userOrder.pending.mulDiv(epochAmounts.approvedAssetAmount,
-        // epochAmounts.pendingAssetAmount).toUint128();
+        depositAssetAmount = epochAmounts.approvedAssetAmount == 0
+            ? 0
+            : userOrder.pending.mulDiv(epochAmounts.approvedAssetAmount, epochAmounts.pendingAssetAmount).toUint128();
 
         // Short circuit if user cannot claim anything
         if (depositAssetAmount != 0) {
