@@ -316,7 +316,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         // Mint shares for receiver & notify CP about issued shares
         balanceSheet.issue(poolId, scId, receiver, priceData.poolPerShare, shares);
 
-        address escrow = poolEscrowProvider.escrow(poolId.raw());
+        address escrow = address(poolEscrowProvider.escrow(poolId.raw()));
         balanceSheet.deposit(
             poolId, scId, vaultDetails.asset, vaultDetails.tokenId, escrow, depositAssetAmount, priceData.poolPerAsset
         );
@@ -330,7 +330,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         uint128 depositAssetAmount
     ) internal view {
         uint256 availableBalance =
-            IPoolEscrow(poolEscrowProvider.escrow(poolId.raw())).availableBalanceOf(scId.raw(), asset, tokenId);
+            poolEscrowProvider.escrow(poolId.raw()).availableBalanceOf(scId.raw(), asset, tokenId);
         require(
             availableBalance + depositAssetAmount <= maxReserve[poolId.raw()][scId.raw()][asset][tokenId],
             ExceedsMaxReserve()

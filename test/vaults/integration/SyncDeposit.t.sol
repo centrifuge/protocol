@@ -60,7 +60,7 @@ contract SyncDepositTestHelper is BaseTest {
             scId,
             vault.asset(),
             vaultDetails.tokenId,
-            poolEscrowFactory.escrow(poolId.raw()),
+            address(poolEscrowFactory.escrow(poolId.raw())),
             depositAssetAmount,
             priceAssetPerShare,
             timestamp

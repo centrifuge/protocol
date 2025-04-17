@@ -27,14 +27,14 @@ contract PoolEscrowFactoryTest is Test {
     }
 
     function testEscrows(uint64 poolId) public {
-        assertEq(factory.deployedEscrow(poolId), address(0), "Escrow should not exist yet");
-        address escrow = factory.newEscrow(poolId);
-        assertEq(factory.deployedEscrow(poolId), escrow, "Escrow address mismatch");
+        assertEq(address(factory.deployedEscrow(poolId)), address(0), "Escrow should not exist yet");
+        address escrow = address(factory.newEscrow(poolId));
+        assertEq(address(factory.deployedEscrow(poolId)), escrow, "Escrow address mismatch");
     }
 
     function testDeployEscrowAtDeterministicAddress(uint64 poolId) public {
-        address expectedEscrow = factory.escrow(poolId);
-        address actual = factory.newEscrow(poolId);
+        address expectedEscrow = address(factory.escrow(poolId));
+        address actual = address(factory.newEscrow(poolId));
 
         assertEq(expectedEscrow, actual, "Escrow address mismatch");
     }
@@ -47,7 +47,7 @@ contract PoolEscrowFactoryTest is Test {
 
     function testEscrowHasCorrectPermissions(uint64 poolId, address nonWard) public {
         vm.assume(nonWard != root && nonWard != poolManager && nonWard != balanceSheet && nonWard != asyncRequests);
-        address escrowAddr = factory.newEscrow(poolId);
+        address escrowAddr = address(factory.newEscrow(poolId));
 
         PoolEscrow escrow = PoolEscrow(escrowAddr);
 

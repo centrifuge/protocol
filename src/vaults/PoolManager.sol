@@ -359,7 +359,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
         // Deploy vault
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
-        address escrow = poolEscrowFactory.escrow(poolId);
+        address escrow = address(poolEscrowFactory.escrow(poolId));
         address vault = IVaultFactory(factory).newVault(
             poolId, scId, assetIdKey.asset, assetIdKey.tokenId, shareClass.shareToken, escrow, vaultWards
         );
@@ -512,7 +512,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     /// @dev Sets up approval permissions for pool, i.e. the pool escrow, the base vault manager and potentially a
     /// secondary manager (in case of partially sync vault)
     function _approvePool(address vault, uint64 poolId, address shareToken_, address asset, uint256 tokenId) internal {
-        IPoolEscrow escrow = IPoolEscrow(poolEscrowFactory.escrow(poolId));
+        IPoolEscrow escrow = IPoolEscrow(address(poolEscrowFactory.escrow(poolId)));
 
         // Give pool manager infinite approval for asset
         // in the escrow to transfer to the user on transfer

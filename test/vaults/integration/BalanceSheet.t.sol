@@ -57,7 +57,7 @@ contract BalanceSheetTest is BaseTest {
                 .serialize()
         );
         // Manually set necessary escrow allowance which are naturally part of poolManager.addVault
-        IPoolEscrow escrow = IPoolEscrow(poolEscrowFactory.escrow(POOL_A.raw()));
+        IPoolEscrow escrow = poolEscrowFactory.escrow(POOL_A.raw());
         vm.prank(address(poolManager));
         escrow.approveMax(address(erc20), erc20TokenId, address(balanceSheet));
     }

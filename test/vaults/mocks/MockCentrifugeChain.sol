@@ -117,7 +117,7 @@ contract MockCentrifugeChain is Test {
     ///
     /// @dev Implicitly called by addShareClass
     function updateMemberPoolEscrow(uint64 poolId, bytes16 scId) public {
-        address escrow = poolManager.poolEscrowFactory().escrow(poolId);
+        address escrow = address(poolManager.poolEscrowFactory().escrow(poolId));
         updateMember(poolId, scId, escrow, type(uint64).max);
     }
 

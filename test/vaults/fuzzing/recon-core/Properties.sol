@@ -93,7 +93,7 @@ abstract contract Properties is Setup, Asserts, AsyncVaultCentrifugeProperties {
     /// @dev Can we donate to this address?
     /// We explicitly preventing donations since we check for exact balances
     function _canDonate(address to) internal view returns (bool) {
-        if (to == poolEscrowFactory.escrow(poolId)) {
+        if (to == address(poolEscrowFactory.escrow(poolId))) {
             return false;
         }
 
@@ -255,7 +255,7 @@ abstract contract Properties is Setup, Asserts, AsyncVaultCentrifugeProperties {
      *     NOTE: Ignores donations
      */
     function invariant_E_1() public view returns (bool) {
-        if (poolEscrowFactory.escrow(poolId) == address(0)) {
+        if (address(poolEscrowFactory.escrow(poolId)) == address(0)) {
             return true;
         }
         if (address(assetErc20) == address(0)) {
@@ -267,7 +267,7 @@ abstract contract Properties is Setup, Asserts, AsyncVaultCentrifugeProperties {
         // functions permanently reverting
         unchecked {
             // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
-            return assetErc20.balanceOf(poolEscrowFactory.escrow(poolId))
+            return assetErc20.balanceOf(address(poolEscrowFactory.escrow(poolId)))
             // Deposit Requests + Transfers In
             /// @audit Minted by Asset Payouts by Investors
             == (
@@ -299,7 +299,7 @@ abstract contract Properties is Setup, Asserts, AsyncVaultCentrifugeProperties {
         // NOTE: Overflow should always result back to a rational value as token cannot overflow due to other
         // functions permanently reverting
         unchecked {
-            return token.balanceOf(poolEscrowFactory.escrow(poolId))
+            return token.balanceOf(address(poolEscrowFactory.escrow(poolId)))
                 == (
                     sumOfFullfilledDeposits[address(token)] + sumOfRedeemRequests[address(token)]
                         - sumOfClaimedDeposits[address(token)] - sumOfClaimedRedeemCancelations[address(token)]
@@ -333,7 +333,7 @@ abstract contract Properties is Setup, Asserts, AsyncVaultCentrifugeProperties {
             return true; // Canary for actor swaps
         }
 
-        uint256 balOfEscrow = assetErc20.balanceOf(poolEscrowFactory.escrow(poolId));
+        uint256 balOfEscrow = assetErc20.balanceOf(address(poolEscrowFactory.escrow(poolId)));
 
         // Use acc to get maxWithdraw for each actor
         uint256 ACTORS_LENGTH = 1;
@@ -362,7 +362,7 @@ abstract contract Properties is Setup, Asserts, AsyncVaultCentrifugeProperties {
             return true; // Canary for actor swaps
         }
 
-        uint256 balOfEscrow = token.balanceOf(poolEscrowFactory.escrow(poolId));
+        uint256 balOfEscrow = token.balanceOf(address(poolEscrowFactory.escrow(poolId)));
         emit DebugWithString("balOfEscrow", balOfEscrow);
 
         // Use acc to get maxMint for each actor

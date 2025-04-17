@@ -230,7 +230,7 @@ abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
             asyncRedeemManager.requestRedeem(address(this), shares, controller, owner, sender), RequestRedeemFailed()
         );
 
-        address escrow = _poolEscrowProvider.escrow(poolId);
+        address escrow = address(_poolEscrowProvider.escrow(poolId));
         try IShareToken(share).authTransferFrom(sender, owner, escrow, shares) returns (bool) {}
         catch {
             // Support share class tokens that block authTransferFrom. In this case ERC20 approval needs to be set
@@ -359,7 +359,7 @@ abstract contract BaseSyncDepositVault is BaseVault {
 
     /// @inheritdoc IERC7575
     function deposit(uint256 assets, address receiver) external returns (uint256 shares) {
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, _poolEscrowProvider.escrow(poolId), assets);
+        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(_poolEscrowProvider.escrow(poolId)), assets);
         shares = syncDepositManager.deposit(address(this), assets, receiver, msg.sender);
         emit Deposit(receiver, msg.sender, assets, shares);
     }
@@ -377,7 +377,7 @@ abstract contract BaseSyncDepositVault is BaseVault {
     /// @inheritdoc IERC7575
     function mint(uint256 shares, address receiver) public returns (uint256 assets) {
         assets = syncDepositManager.mint(address(this), shares, receiver, msg.sender);
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, _poolEscrowProvider.escrow(poolId), assets);
+        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(_poolEscrowProvider.escrow(poolId)), assets);
         emit Deposit(receiver, msg.sender, assets, shares);
     }
 

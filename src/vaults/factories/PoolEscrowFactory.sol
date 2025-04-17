@@ -29,7 +29,7 @@ contract PoolEscrowFactory is IPoolEscrowFactory, Auth {
     }
 
     /// @inheritdoc IPoolEscrowFactory
-    function newEscrow(uint64 poolId) public auth returns (address) {
+    function newEscrow(uint64 poolId) public auth returns (IPoolEscrow) {
         require(escrows[poolId] == address(0), EscrowAlreadyDeployed());
         PoolEscrow escrow_ = new PoolEscrow{salt: bytes32(uint256(poolId))}(poolId, address(this));
 
@@ -43,18 +43,18 @@ contract PoolEscrowFactory is IPoolEscrowFactory, Auth {
         escrows[poolId] = address(escrow_);
 
         emit DeployPoolEscrow(poolId, address(escrow_));
-        return address(escrow_);
+        return IPoolEscrow(escrow_);
     }
 
     // --- View methods ---
     /// @inheritdoc IPoolEscrowProvider
-    function escrow(uint64 poolId) external view returns (address) {
+    function escrow(uint64 poolId) external view returns (IPoolEscrow) {
         bytes32 salt = bytes32(uint256(poolId));
         bytes memory bytecode = abi.encodePacked(type(PoolEscrow).creationCode, abi.encode(poolId, address(this)));
 
         bytes32 hash = keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, keccak256(bytecode)));
 
-        return address(uint160(uint256(hash)));
+        return IPoolEscrow(address(uint160(uint256(hash))));
     }
 
     /// @inheritdoc IPoolEscrowProvider
