@@ -33,8 +33,8 @@ interface IBalanceSheet {
         D18 pricePoolPerAsset,
         uint64 timestamp
     );
-    event Issue(PoolId indexed poolId, ShareClassId indexed scId, address to, uint128 shares);
-    event Revoke(PoolId indexed poolId, ShareClassId indexed scId, address from, uint128 shares);
+    event Issue(PoolId indexed poolId, ShareClassId indexed scId, address to, D18 pricePoolPerShare, uint128 shares);
+    event Revoke(PoolId indexed poolId, ShareClassId indexed scId, address from, D18 pricePoolPerShare, uint128 shares);
 
     // --- Errors ---
     error FileUnrecognizedParam();

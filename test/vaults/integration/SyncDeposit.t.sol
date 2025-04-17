@@ -48,9 +48,10 @@ contract SyncDepositTestHelper is BaseTest {
         uint64 timestamp = uint64(block.timestamp);
         uint128 depositAssetAmount = vault.previewMint(shares).toUint128();
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault));
+        (D18 price,) = poolManager.pricePoolPerShare(poolId.raw(), scId.raw(), false);
 
         vm.expectEmit();
-        emit IBalanceSheet.Issue(poolId, scId, self, shares);
+        emit IBalanceSheet.Issue(poolId, scId, self, price, shares);
 
         vm.expectEmit();
         emit IBalanceSheet.Deposit(

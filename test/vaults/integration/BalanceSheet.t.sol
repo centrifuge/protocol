@@ -222,7 +222,7 @@ contract BalanceSheetTest is BaseTest {
         assertEq(token.balanceOf(address(this)), 0);
 
         vm.expectEmit();
-        emit IBalanceSheet.Issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
+        emit IBalanceSheet.Issue(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount);
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
         assertEq(token.balanceOf(address(this)), defaultAmount);
@@ -249,7 +249,7 @@ contract BalanceSheetTest is BaseTest {
 
         token.approve(address(balanceSheet), defaultAmount * 3);
         vm.expectEmit();
-        emit IBalanceSheet.Revoke(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
+        emit IBalanceSheet.Revoke(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount);
         balanceSheet.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
         assertEq(token.balanceOf(address(this)), defaultAmount * 2);

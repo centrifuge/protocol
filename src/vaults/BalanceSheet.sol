@@ -196,7 +196,9 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         IShareToken(token).mint(address(to), shares);
 
         queuedShareIssuances[poolId][scId] += shares;
-        emit Issue(poolId, scId, to, shares);
+
+        (D18 price,) = poolManager.pricePoolPerShare(poolId.raw(), scId.raw(), false);
+        emit Issue(poolId, scId, to, price, shares);
     }
 
     function _revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) internal {
@@ -204,7 +206,9 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         IShareToken(token).burn(address(from), shares);
 
         queuedShareRevocations[poolId][scId] += shares;
-        emit Revoke(poolId, scId, from, shares);
+
+        (D18 price,) = poolManager.pricePoolPerShare(poolId.raw(), scId.raw(), false);
+        emit Revoke(poolId, scId, from, price, shares);
     }
 
     function _withdraw(
