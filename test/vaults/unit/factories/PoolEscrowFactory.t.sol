@@ -15,6 +15,7 @@ contract PoolEscrowFactoryTest is Test {
     address deployer = address(this);
     address root = makeAddr("root");
     address poolManager = makeAddr("poolManager");
+    address gateway = makeAddr("gateway");
     address balanceSheet = makeAddr("balanceSheet");
     address asyncRequests = makeAddr("asyncRequests");
     address randomUser = makeAddr("randomUser");
@@ -22,6 +23,7 @@ contract PoolEscrowFactoryTest is Test {
     function setUp() public {
         factory = new PoolEscrowFactory(root, deployer);
         factory.file("poolManager", poolManager);
+        factory.file("gateway", gateway);
         factory.file("balanceSheet", balanceSheet);
         factory.file("asyncRequests", asyncRequests);
     }
@@ -52,6 +54,7 @@ contract PoolEscrowFactoryTest is Test {
         PoolEscrow escrow = PoolEscrow(payable(escrowAddr));
 
         assertEq(escrow.wards(root), 1, "root not authorized");
+        assertEq(escrow.wards(gateway), 1, "gateway not authorized");
         assertEq(escrow.wards(poolManager), 1, "poolManager not authorized");
         assertEq(escrow.wards(balanceSheet), 1, "balanceSheet not authorized");
         assertEq(escrow.wards(asyncRequests), 1, "asyncRequests not authorized");
