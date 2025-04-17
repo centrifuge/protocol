@@ -88,6 +88,7 @@ contract MockCentrifugeChain is Test {
         );
     }
 
+    /// @dev Simulates incoming NotifyShareClass message with prepended UpdateRestrictionMember message for pool escrow
     function addShareClass(
         uint64 poolId,
         bytes16 scId,
@@ -108,8 +109,19 @@ contract MockCentrifugeChain is Test {
                 hook: bytes32(bytes20(hook))
             }).serialize()
         );
+
+        updateMemberPoolEscrow(poolId, scId);
     }
 
+    /// @dev Updates escrow as member to enable minting, burning and transfers on deposit and redeem
+    ///
+    /// @dev Implicitly called by addShareClass
+    function updateMemberPoolEscrow(uint64 poolId, bytes16 scId) public {
+        address escrow = poolManager.poolEscrowFactory().escrow(poolId);
+        updateMember(poolId, scId, escrow, type(uint64).max);
+    }
+
+    /// @dev Simulates incoming NotifyShareClass message with prepended UpdateRestrictionMember message for pool escrow
     function addShareClass(
         uint64 poolId,
         bytes16 scId,
@@ -129,6 +141,8 @@ contract MockCentrifugeChain is Test {
                 hook: bytes32(bytes20(hook))
             }).serialize()
         );
+
+        updateMemberPoolEscrow(poolId, scId);
     }
 
     function updateMember(uint64 poolId, bytes16 scId, address user, uint64 validUntil) public {

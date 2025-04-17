@@ -205,16 +205,10 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
         pool.shareClasses[scId].shareToken = shareToken_;
 
-        address escrow = poolEscrowFactory.deployedEscrow(poolId);
         // Deploy new escrow only on first added share class for pool
-        if (escrow == address(0)) {
-            escrow = poolEscrowFactory.newEscrow(poolId);
+        if (poolEscrowFactory.deployedEscrow(poolId) == address(0)) {
+            poolEscrowFactory.newEscrow(poolId);
         }
-
-        // Update escrow as member to enable minting, burning and transfers on deposit and redeem
-        bytes memory updateMember =
-            MessageLib.UpdateRestrictionMember({user: escrow.toBytes32(), validUntil: type(uint64).max}).serialize();
-        IHook(hook).updateRestriction(shareToken_, updateMember);
 
         emit AddShareClass(poolId, scId, shareToken_);
 
