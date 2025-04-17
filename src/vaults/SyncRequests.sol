@@ -155,7 +155,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     {
         assets = previewMint(vaultAddr, owner, shares);
 
-        _issueShares(vaultAddr, shares.toUint128(), receiver, 0);
+        _issueShares(vaultAddr, shares.toUint128(), receiver, owner, assets.toUint128());
     }
 
     /// @inheritdoc IDepositManager
@@ -167,7 +167,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         require(maxDeposit(vaultAddr, owner) >= assets, ExceedsMaxDeposit());
         shares = previewDeposit(vaultAddr, owner, assets);
 
-        _issueShares(vaultAddr, shares.toUint128(), receiver, assets.toUint128());
+        _issueShares(vaultAddr, shares.toUint128(), receiver, owner, assets.toUint128());
     }
 
     /// @inheritdoc ISyncRequests
@@ -300,25 +300,29 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     /// --- Internal methods ---
     /// @dev Issues shares to the receiver and instruct the Balance Sheet Manager to react on the issuance and the
     /// updated holding
-    function _issueShares(address vaultAddr, uint128 shares, address receiver, uint128 depositAssetAmount) internal {
+    function _issueShares(
+        address vaultAddr,
+        uint128 shares,
+        address receiver,
+        address owner,
+        uint128 depositAssetAmount
+    ) internal {
         SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
-        uint64 poolId_ = vault_.poolId();
-        bytes16 scId_ = vault_.trancheId();
+        PoolId poolId = PoolId.wrap(vault_.poolId());
+        ShareClassId scId = ShareClassId.wrap(vault_.trancheId());
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
-
-        PoolId poolId = PoolId.wrap(poolId_);
-        ShareClassId scId = ShareClassId.wrap(scId_);
 
         _checkMaxReserve(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, depositAssetAmount);
 
-        Prices memory priceData = prices(poolId_, scId_, vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId);
+        Prices memory priceData =
+            prices(poolId.raw(), scId.raw(), vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId);
 
         // Mint shares for receiver & notify CP about issued shares
         balanceSheet.issue(poolId, scId, receiver, priceData.poolPerShare, shares);
 
-        address escrow = address(poolEscrowProvider.escrow(poolId.raw()));
+        // Deposit shares from owner into escrow & notify CP about holding update
         balanceSheet.deposit(
-            poolId, scId, vaultDetails.asset, vaultDetails.tokenId, escrow, depositAssetAmount, priceData.poolPerAsset
+            poolId, scId, vaultDetails.asset, vaultDetails.tokenId, owner, depositAssetAmount, priceData.poolPerAsset
         );
     }
 
