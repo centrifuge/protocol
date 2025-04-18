@@ -52,7 +52,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     mapping(address vault => mapping(address investor => AsyncInvestmentState)) public investments;
     mapping(uint64 poolId => mapping(bytes16 scId => mapping(uint128 assetId => address vault))) public vault;
 
-    constructor(address root_, address escrow_) BaseInvestmentManager(root_, escrow_) {}
+    constructor(address root_, address escrow_, address deployer) BaseInvestmentManager(root_, escrow_, deployer) {}
 
     /// @inheritdoc IBaseInvestmentManager
     function file(bytes32 what, address data) external override(IBaseInvestmentManager, BaseInvestmentManager) auth {

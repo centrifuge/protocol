@@ -38,15 +38,15 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     IVaultMessageSender public sender;
     ISharePriceProvider public sharePriceProvider;
 
-    mapping(PoolId => mapping(ShareClassId => mapping(address => bool))) public permission;
+    mapping(PoolId => mapping(ShareClassId => mapping(address => bool))) public manager;
 
-    constructor(address escrow_) Auth(msg.sender) {
+    constructor(address escrow_, address deployer) Auth(deployer) {
         escrow = IPerPoolEscrow(escrow_);
     }
 
-    /// @dev Check if the msg.sender has permissions
-    modifier authOrPermission(PoolId poolId, ShareClassId scId) {
-        require(wards[msg.sender] == 1 || permission[poolId][scId][msg.sender], IAuth.NotAuthorized());
+    /// @dev Check if the msg.sender has managers
+    modifier authOrManager(PoolId poolId, ShareClassId scId) {
+        require(wards[msg.sender] == 1 || manager[poolId][scId][msg.sender], IAuth.NotAuthorized());
         _;
     }
 
@@ -64,16 +64,16 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     function update(uint64 poolId_, bytes16 scId_, bytes calldata payload) external auth {
         uint8 kind = uint8(MessageLib.updateContractType(payload));
 
-        if (kind == uint8(UpdateContractType.Permission)) {
-            MessageLib.UpdateContractPermission memory m = MessageLib.deserializeUpdateContractPermission(payload);
+        if (kind == uint8(UpdateContractType.UpdateManager)) {
+            MessageLib.UpdateContractUpdateManager memory m = MessageLib.deserializeUpdateContractUpdateManager(payload);
 
             PoolId poolId = PoolId.wrap(poolId_);
             ShareClassId scId = ShareClassId.wrap(scId_);
             address who = m.who.toAddress();
 
-            permission[poolId][scId][who] = m.allowed;
+            manager[poolId][scId][who] = m.canManage;
 
-            emit Permission(poolId, scId, who, m.allowed);
+            emit UpdateManager(poolId, scId, who, m.canManage);
         } else {
             revert UnknownUpdateContractType();
         }
@@ -89,17 +89,9 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         address provider,
         uint128 amount,
         D18 pricePoolPerAsset
-    ) external authOrPermission(poolId, scId) {
-        _deposit(
-            poolId,
-            scId,
-            AssetId.wrap(poolManager.assetToId(asset, tokenId)),
-            asset,
-            tokenId,
-            provider,
-            amount,
-            pricePoolPerAsset
-        );
+    ) external authOrManager(poolId, scId) {
+        AssetId assetId = AssetId.wrap(poolManager.assetToId(asset, tokenId));
+        _deposit(poolId, scId, assetId, asset, tokenId, provider, amount, pricePoolPerAsset);
     }
 
     /// @inheritdoc IBalanceSheet
@@ -111,23 +103,15 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         address receiver,
         uint128 amount,
         D18 pricePoolPerAsset
-    ) external authOrPermission(poolId, scId) {
-        _withdraw(
-            poolId,
-            scId,
-            AssetId.wrap(poolManager.assetToId(asset, tokenId)),
-            asset,
-            tokenId,
-            receiver,
-            amount,
-            pricePoolPerAsset
-        );
+    ) external authOrManager(poolId, scId) {
+        AssetId assetId = AssetId.wrap(poolManager.assetToId(asset, tokenId));
+        _withdraw(poolId, scId, assetId, asset, tokenId, receiver, amount, pricePoolPerAsset);
     }
 
     /// @inheritdoc IBalanceSheet
     function revoke(PoolId poolId, ShareClassId scId, address from, D18 pricePoolPerShare, uint128 shares)
         external
-        authOrPermission(poolId, scId)
+        authOrManager(poolId, scId)
     {
         _revoke(poolId, scId, from, pricePoolPerShare, shares);
     }
@@ -135,7 +119,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     /// @inheritdoc IBalanceSheet
     function issue(PoolId poolId, ShareClassId scId, address to, D18 pricePoolPerShare, uint128 shares)
         external
-        authOrPermission(poolId, scId)
+        authOrManager(poolId, scId)
     {
         _issue(poolId, scId, to, pricePoolPerShare, shares);
     }

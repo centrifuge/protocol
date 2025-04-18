@@ -36,7 +36,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     IHubRegistry public hubRegistry;
     IPoolMessageSender public sender;
     IShareClassManager public shareClassManager;
-    // TODO: should be immutable
     ITransientValuation public transientValuation;
 
     constructor(
@@ -202,10 +201,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function allowPoolAdmin(PoolId poolId, address account, bool allow) external payable {
+    function updateManager(PoolId poolId, address who, bool canManage) external payable {
         _protected(poolId);
 
-        hubRegistry.updateAdmin(poolId, account, allow);
+        hubRegistry.updateManager(poolId, who, canManage);
     }
 
     /// @inheritdoc IHub
@@ -442,13 +441,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
         accounting.unlock(poolId);
 
-        for (uint256 i; i < debits.length; i++) {
-            accounting.addDebit(debits[i].accountId, debits[i].amount);
-        }
-
-        for (uint256 i; i < credits.length; i++) {
-            accounting.addCredit(credits[i].accountId, credits[i].amount);
-        }
+        accounting.addJournal(debits, credits);
 
         accounting.lock();
     }
@@ -564,7 +557,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
     /// @dev Ensure the method can be used without reentrancy issues, and the sender is a pool admin
     function _protected(PoolId poolId) internal protected {
-        require(hubRegistry.isAdmin(poolId, msg.sender), IHub.NotAuthorizedAdmin());
+        require(hubRegistry.manager(poolId, msg.sender), IHub.NotManager());
     }
 
     /// @dev Ensure the sender is authorized

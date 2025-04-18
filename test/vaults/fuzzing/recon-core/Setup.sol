@@ -144,14 +144,14 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         root.endorse(address(escrow));
 
         balanceSheet = new BalanceSheet(address(escrow));
-        asyncRequests = new AsyncRequests(address(root), address(escrow));
+        asyncRequests = new AsyncRequests(address(root), address(escrow), address(this));
         syncRequests = new SyncRequests(address(root), address(escrow));
-        vaultFactory = new AsyncVaultFactory(address(this), address(asyncRequests));
+        vaultFactory = new AsyncVaultFactory(address(this), address(asyncRequests), address(this));
         tokenFactory = new TokenFactory(address(this), address(this));
 
         address[] memory vaultFactories = new address[](1);
         vaultFactories[0] = address(vaultFactory);
-        poolManager = new PoolManager(address(escrow), address(tokenFactory), vaultFactories);
+        poolManager = new PoolManager(address(escrow), address(tokenFactory), vaultFactories, address(this));
         messageDispatcher = new MockMessageDispatcher(poolManager, asyncRequests, root, CENTIFUGE_CHAIN_ID); 
         gateway = new MockGateway();
 

@@ -5,7 +5,7 @@ import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 
 struct JournalEntry {
-    uint128 amount;
+    uint128 value;
     AccountId accountId;
 }
 
@@ -57,6 +57,9 @@ interface IAccounting {
     /// @param account The account to credit
     /// @param value Amount being credited
     function addCredit(AccountId account, uint128 value) external;
+
+    /// @notice Apply addDebit and addCredit to each journal entry
+    function addJournal(JournalEntry[] memory debits, JournalEntry[] memory credits) external;
 
     /// @notice Unlocks a pool for journal entries
     /// @param poolId The pool to unlock

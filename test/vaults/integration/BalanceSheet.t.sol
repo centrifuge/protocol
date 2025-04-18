@@ -48,7 +48,7 @@ contract BalanceSheetTest is BaseTest {
             defaultShareClassId,
             MessageLib.UpdateRestrictionMember({user: address(this).toBytes32(), validUntil: MAX_UINT64}).serialize()
         );
-        // In order for allowances to work during issuance, the balanceSheet must be allowed to transfer
+        // In order for allowances to work during issuance, the balanceSheet must be canManage to transfer
         poolManager.updateRestriction(
             POOL_A.raw(),
             defaultShareClassId,
@@ -65,7 +65,7 @@ contract BalanceSheetTest is BaseTest {
         );
 
         // redeploying within test to increase coverage
-        new BalanceSheet(address(escrow));
+        new BalanceSheet(address(escrow), address(this));
 
         // values set correctly
         assertEq(address(balanceSheet.escrow()), address(escrow));
@@ -112,12 +112,12 @@ contract BalanceSheetTest is BaseTest {
         );
 
         vm.expectEmit();
-        emit IBalanceSheet.Permission(POOL_A, defaultTypedShareClassId, randomUser, true);
+        emit IBalanceSheet.UpdateManager(POOL_A, defaultTypedShareClassId, randomUser, true);
 
         balanceSheet.update(
             POOL_A.raw(),
             defaultShareClassId,
-            MessageLib.UpdateContractPermission({who: bytes20(randomUser), allowed: true}).serialize()
+            MessageLib.UpdateContractUpdateManager({who: bytes20(randomUser), canManage: true}).serialize()
         );
 
         balanceSheet.deposit(
@@ -125,12 +125,12 @@ contract BalanceSheetTest is BaseTest {
         );
 
         vm.expectEmit();
-        emit IBalanceSheet.Permission(POOL_A, defaultTypedShareClassId, randomUser, false);
+        emit IBalanceSheet.UpdateManager(POOL_A, defaultTypedShareClassId, randomUser, false);
 
         balanceSheet.update(
             POOL_A.raw(),
             defaultShareClassId,
-            MessageLib.UpdateContractPermission({who: bytes20(randomUser), allowed: false}).serialize()
+            MessageLib.UpdateContractUpdateManager({who: bytes20(randomUser), canManage: false}).serialize()
         );
 
         vm.prank(randomUser);
