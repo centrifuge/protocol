@@ -163,26 +163,28 @@ contract Gateway is Auth, IGateway, Recoverable {
             return processor_.handle(centrifugeId, payload);
         }
 
-        bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, payload));
-
         bool isMessageProof = payload.toUint8(0) == uint8(MessageType.MessageProof);
-        if (adapter.quorum == 1 && !isMessageProof) {
-            // Special case for gas efficiency
-            emit ProcessBatch(centrifugeId, payloadId, payload, adapter_);
-            _handleBatch(centrifugeId, payload);
-            return;
-        }
 
         // Verify adapter and parse message hash
         bytes32 batchHash;
         if (isMessageProof) {
             require(adapter.id != PRIMARY_ADAPTER_ID, NonProofAdapter());
+
             batchHash = payload.deserializeMessageProof();
+            bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, batchHash));
             emit ProcessProof(centrifugeId, payloadId, batchHash, adapter_);
         } else {
             require(adapter.id == PRIMARY_ADAPTER_ID, NonBatchAdapter());
+
             batchHash = keccak256(payload);
+            bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, batchHash));
             emit ProcessBatch(centrifugeId, payloadId, payload, adapter_);
+        }
+
+        // Special case for gas efficiency
+        if (adapter.quorum == 1 && !isMessageProof) {
+            _handleBatch(centrifugeId, payload);
+            return;
         }
 
         InboundBatch storage state = inboundBatch[centrifugeId][batchHash];
@@ -335,14 +337,14 @@ contract Gateway is Auth, IGateway, Recoverable {
             if (i == PRIMARY_ADAPTER_ID - 1) {
                 emit SendBatch(
                     centrifugeId,
-                    keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, batch)),
+                    keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, batchHash)),
                     batch,
                     adapters_[i]
                 );
             } else {
                 emit SendProof(
                     centrifugeId,
-                    keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, proof)),
+                    keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, batchHash)),
                     batchHash,
                     adapters_[i]
                 );
