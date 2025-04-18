@@ -42,7 +42,6 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
     SyncRequests syncRequests;
     PoolManager poolManager;
     AsyncVault vault;
-    ERC20 assetErc20;
     CentrifugeToken token;
     RestrictedTransfers restrictedTransfers;
     IRoot root;
@@ -94,7 +93,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
     }
 
     modifier assetIsSet() {
-        require(address(assetErc20) != address(0));
+        require(_getAsset() != address(0));
         _;
     }
 
@@ -139,7 +138,6 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
 
         // Dependencies
         escrow = new Escrow(address(this));
-        console2.log("escrow in setup", address(escrow));
         root = new Root(48 hours, address(this));
         restrictedTransfers = new RestrictedTransfers(address(root), address(this));
 

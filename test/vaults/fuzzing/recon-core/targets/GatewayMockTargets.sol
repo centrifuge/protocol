@@ -103,7 +103,6 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
         _finalizeAssetDeployment(_getActors(), approvals, initialMintPerUsers);
 
         vault = AsyncVault(newVault);
-        assetErc20 = ERC20(newToken);
         token = CentrifugeToken(newShareToken);
         restrictedTransfers = RestrictedTransfers(address(token.hook()));
 

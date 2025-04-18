@@ -109,7 +109,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         if (address(restrictedTransfers) == address(0)) {
             return false;
         }
-        if (address(assetErc20) == address(0)) {
+        if (_getAsset() == address(0)) {
             return false;
         }
 

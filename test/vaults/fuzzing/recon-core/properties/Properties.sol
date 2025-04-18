@@ -43,7 +43,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     function property_global_2() public assetIsSet {
         // Redeem and Withdraw
-        lte(sumOfClaimedRedemptions[address(assetErc20)], mintedByCurrencyPayout[address(assetErc20)], "sumOfClaimedRedemptions[address(assetErc20)] > mintedByCurrencyPayout[address(assetErc20)]");
+        lte(sumOfClaimedRedemptions[address(_getAsset())], mintedByCurrencyPayout[address(_getAsset())], "sumOfClaimedRedemptions[address(_getAsset())] > mintedByCurrencyPayout[address(_getAsset())]");
     }
 
     function property_global_2_inductive() public tokenIsSet {
@@ -84,7 +84,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
         // NOTE: Skipping root and gateway since we mocked them
         for (uint256 i; i < SYSTEM_ADDRESSES_LENGTH; i++) {
-            if (assetErc20.balanceOf(systemAddresses[i]) > 0) {
+            if (MockERC20(_getAsset()).balanceOf(systemAddresses[i]) > 0) {
                 emit DebugNumber(i); // Number to index
                 eq(token.balanceOf(systemAddresses[i]), 0, "token.balanceOf(systemAddresses[i]) != 0");
             }
@@ -209,7 +209,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         if (address(escrow) == address(0)) {
             return;
         }
-        if (address(assetErc20) == address(0)) {
+        if (_getAsset() == address(0)) {
             return;
         }
 
@@ -224,11 +224,11 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             // Deposit Requests + Transfers In
             /// @audit Minted by Asset Payouts by Investors
             ghostBalOfEscrow = (
-                mintedByCurrencyPayout[address(assetErc20)] + sumOfDepositRequests[address(assetErc20)]
-                    + sumOfTransfersIn[address(assetErc20)]
+                mintedByCurrencyPayout[_getAsset()] + sumOfDepositRequests[_getAsset()]
+                    + sumOfTransfersIn[_getAsset()]
                 // Minus Claimed Redemptions and TransfersOut
-                - sumOfClaimedRedemptions[address(assetErc20)] - sumOfClaimedDepositCancelations[address(assetErc20)]
-                    - sumOfTransfersOut[address(assetErc20)]
+                - sumOfClaimedRedemptions[_getAsset()] - sumOfClaimedDepositCancelations[_getAsset()]
+                    - sumOfTransfersOut[_getAsset()]
             );
         }
         eq(balOfEscrow, ghostBalOfEscrow, "balOfEscrow != ghostBalOfEscrow");
@@ -271,7 +271,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         //     return; // Canary for actor swaps
         // }
 
-        uint256 balOfEscrow = assetErc20.balanceOf(address(escrow));
+        uint256 balOfEscrow = MockERC20(_getAsset()).balanceOf(address(escrow));
 
         // Use acc to track max amount withdrawn for each actor
         address[] memory actors = _getActors();
@@ -407,13 +407,13 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     }
 
     /// NOTE: Example of checked overflow, unused as we have changed tracking of Tranche tokens to be based on Global_3
-    function _decreaseTotalShareSent(address assetErc20, uint256 amt) internal {
-        uint256 cachedTotal = totalShareSent[assetErc20];
+    function _decreaseTotalShareSent(address asset, uint256 amt) internal {
+        uint256 cachedTotal = totalShareSent[asset];
         unchecked {
-            totalShareSent[assetErc20] -= amt;
+            totalShareSent[asset] -= amt;
         }
 
         // Check for overflow here
-        gte(cachedTotal, totalShareSent[assetErc20], " _decreaseTotalShareSent Overflow");
+        gte(cachedTotal, totalShareSent[asset], " _decreaseTotalShareSent Overflow");
     }
 }

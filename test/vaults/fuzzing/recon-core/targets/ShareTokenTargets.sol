@@ -81,26 +81,27 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
         }
     }
 
-    function token_mint(address to, uint256 value) public notGovFuzzing {
-        require(_canDonate(to), "never donate to escrow");
+    // NOTE: Removed because breaks solvency properties by allowing unrealistic minting
+    // function token_mint(address to, uint256 value) public notGovFuzzing {
+    //     require(_canDonate(to), "never donate to escrow");
 
-        bool hasReverted;
+    //     bool hasReverted;
 
-        vm.prank(_getActor());
-        try token.mint(to, value) {
-            shareMints[address(token)] += value;
-        } catch {
-            hasReverted = true;
-        }
+    //     vm.prank(_getActor());
+    //     try token.mint(to, value) {
+    //         shareMints[address(token)] += value;
+    //     } catch {
+    //         hasReverted = true;
+    //     }
 
-        if (restrictedTransfers.isFrozen(address(token), to) == true) {
-            t(hasReverted, "TT-1 Must Revert");
-        }
+    //     if (restrictedTransfers.isFrozen(address(token), to) == true) {
+    //         t(hasReverted, "TT-1 Must Revert");
+    //     }
 
-        // Not a member
-        (bool isMember,) = restrictedTransfers.isMember(address(token), to);
-        if (!isMember) {
-            t(hasReverted, "TT-3 Must Revert");
-        }
-    }
+    //     // Not a member
+    //     (bool isMember,) = restrictedTransfers.isMember(address(token), to);
+    //     if (!isMember) {
+    //         t(hasReverted, "TT-3 Must Revert");
+    //     }
+    // }
 }

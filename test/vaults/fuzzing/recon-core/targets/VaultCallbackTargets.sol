@@ -133,8 +133,8 @@ abstract contract VaultCallbackTargets is BaseTargetFunctions, Properties {
 
         // TODO: Re check
         // // TODO: test_invariant_asyncVault_10_w_recon
-        assetErc20.mint(address(escrow), currencyPayout);
-        mintedByCurrencyPayout[address(assetErc20)] += currencyPayout;
+        MockERC20(_getAsset()).mint(address(escrow), currencyPayout);
+        mintedByCurrencyPayout[_getAsset()] += currencyPayout;
         // /// @audit We mint payout here which has to be paid by the borrowers
         // // END TODO test_invariant_asyncVault_10_w_recon
 
@@ -204,7 +204,7 @@ abstract contract VaultCallbackTargets is BaseTargetFunctions, Properties {
         asyncRequests.fulfillCancelDepositRequest(poolId, scId, investor, assetId, currencyPayout, currencyPayout);
         /// @audit Reduced by: currencyPayout
 
-        cancelDepositCurrencyPayout[address(assetErc20)] += currencyPayout;
+        cancelDepositCurrencyPayout[_getAsset()] += currencyPayout;
 
         __globals();
     }

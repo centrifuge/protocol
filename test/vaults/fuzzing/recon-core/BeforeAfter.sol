@@ -72,7 +72,7 @@ abstract contract BeforeAfter is Ghosts {
                 pendingCancelRedeemRequest
             );
         }
-        _before.escrowTokenBalance = MockERC20(_getAsset()).balanceOf(address(escrow));
+        _before.escrowTokenBalance = MockERC20(vault.asset()).balanceOf(address(escrow));
         _before.escrowTrancheTokenBalance = token.balanceOf(address(escrow));
         _before.actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
         _before.totalShareSupply = token.totalSupply();
@@ -119,7 +119,7 @@ abstract contract BeforeAfter is Ghosts {
                 pendingCancelRedeemRequest
             );
         }
-        _after.escrowTokenBalance = MockERC20(_getAsset()).balanceOf(address(escrow));
+        _after.escrowTokenBalance = MockERC20(vault.asset()).balanceOf(address(escrow));
         _after.escrowTrancheTokenBalance = token.balanceOf(address(escrow));
         // _after.totalAssets = vault.totalAssets();
         _after.actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
@@ -128,15 +128,15 @@ abstract contract BeforeAfter is Ghosts {
 
         // if price is zero these both revert so they just get set to 0
         if (_priceAssetNonZero()) {
-            _before.totalAssets = vault.totalAssets();
+            _after.totalAssets = vault.totalAssets();
         } else {
-            _before.totalAssets = 0;
+            _after.totalAssets = 0;
         }
 
         if (_priceShareNonZero()) {
-            _before.pricePerShare = vault.pricePerShare();
+            _after.pricePerShare = vault.pricePerShare();
         } else {
-            _before.pricePerShare = 0;
+            _after.pricePerShare = 0;
         }
     }
 

@@ -35,7 +35,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         }
         uint256 sharesAsAssets = vault.convertToAssets(sharesReceived);
 
-        uint256 expectedAssetsSpent = (sharesReceived * ppfsBefore) + (10 ** assetErc20.decimals());
+        uint256 expectedAssetsSpent = (sharesReceived * ppfsBefore) + (10 ** MockERC20(_getAsset()).decimals());
         uint256 expectedSharesReceived = (assets / ppfsBefore) - (10 ** token.decimals());
 
         // should always round in protocol's favor, requiring more assets to be spent than shares received
@@ -62,7 +62,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         }
         uint256 assetsAsShares = vault.convertToShares(assetsSpent);
 
-        uint256 expectedAssetsSpent = (assetsAsShares * ppfsBefore) + (10 ** assetErc20.decimals());
+        uint256 expectedAssetsSpent = (assetsAsShares * ppfsBefore) + (10 ** MockERC20(_getAsset()).decimals());
         uint256 expectedSharesReceived = (assetsSpent / ppfsBefore) - (10 ** token.decimals());
 
         gte(assetsSpent, expectedAssetsSpent, "assetsSpent < expectedAssetsSpent");

@@ -390,5 +390,32 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         property_total_yield();
 
     }
+
+    // forge test --match-test test_property_decrease_valuation_no_increase_in_accountValue_8 -vvv 
+    // TODO: investigate further, seems like a real breakage but not sure if it's a bug or not
+    function test_property_decrease_valuation_no_increase_in_accountValue_8() public {
+        shortcut_update_valuation(6,1,2,true);
+
+        hub_addShareClass_clamped(0,1);
+
+        hub_updateHoldingAmount_clamped(0,0,0,1,2000612857814007812,true);
+
+        hub_updateHoldingValue_clamped(0,0);
+
+        property_decrease_valuation_no_increase_in_accountValue();
+    }
  
+    // forge test --match-test test_property_loss_soundness_10 -vvv 
+    // TODO: come back to this, need to confirm that the accounts created and checked are the same
+    function test_property_loss_soundness_10() public {
+
+        shortcut_create_pool_and_holding(6,1,2,false);
+
+        hub_updateHoldingAmount_clamped(0,0,0,1000041545513794237,1,true);
+
+        hub_addShareClass_clamped(0,1);
+
+        property_loss_soundness();
+
+    }
 }

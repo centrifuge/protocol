@@ -29,7 +29,6 @@ abstract contract SharedStorage {
     bool RECON_USE_SINGLE_DEPLOY = true; // NOTE: Actor Properties break if you use multi cause they are
         // mono-dimensional
 
-    // Should we also enforce the exact balance check on assetErc20 / shares?
     // TODO: This is broken rn
     // Liquidity Pool functions
     bool RECON_EXACT_BAL_CHECK = false;

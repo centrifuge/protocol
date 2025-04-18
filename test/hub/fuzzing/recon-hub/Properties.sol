@@ -351,6 +351,9 @@ abstract contract Properties is BeforeAfter, Asserts {
                 int128 loss = accounting.accountValue(poolId, lossAccountId);   
                 
                 int128 totalYield = assets - equity; // Can be positive or negative
+                console2.log("totalYield", totalYield);
+                console2.log("gain", gain); 
+                console2.log("loss", loss);
                 t(loss == totalYield - gain, "property_loss_soundness");    
             }
         }

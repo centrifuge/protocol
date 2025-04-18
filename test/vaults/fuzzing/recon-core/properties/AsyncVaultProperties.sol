@@ -17,7 +17,7 @@ import "forge-std/console2.sol";
 /// These are the re-usable ones, which do alter the state
 /// And we will not call
 abstract contract AsyncVaultProperties is Setup, Asserts {
-    // TODO: change to 10 ** max(assetErc20.decimals(), token.decimals())
+    // TODO: change to 10 ** max(MockERC20(_getAsset()).decimals(), token.decimals())
     uint256 MAX_ROUNDING_ERROR = 10 ** 18;
 
     /// @dev 7540-3	convertToAssets(totalSupply) == totalAssets unless price is 0.0
@@ -267,7 +267,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
         try IAsyncVault(asyncVaultTarget).withdraw(maxWithdraw, _getActor(), _getActor()) {
             // Success here
             // E-1
-            sumOfClaimedRedemptions[address(assetErc20)] += maxWithdraw;
+            sumOfClaimedRedemptions[_getAsset()] += maxWithdraw;
         } catch {
             t(false, "Property: 7540-9 max withdraw reverts");
         }
@@ -283,7 +283,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
 
         try IAsyncVault(asyncVaultTarget).redeem(maxRedeem, _getActor(), _getActor()) returns (uint256 assets) {
             // E-1
-            sumOfClaimedRedemptions[address(assetErc20)] += assets;
+            sumOfClaimedRedemptions[_getAsset()] += assets;
         } catch {
             t(false, "Property: 7540-9 max redeem reverts");
         }
