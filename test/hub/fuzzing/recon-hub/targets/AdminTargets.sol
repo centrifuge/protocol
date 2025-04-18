@@ -51,11 +51,6 @@ abstract contract AdminTargets is
         hub_addShareClass(poolId.raw(), salt);
     }
 
-    function hub_allowPoolAdmin(uint64 poolIdAsUint, address account, bool allow) public {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        hub.allowPoolAdmin(poolId, account, allow);
-    }
-
     function hub_approveDeposits(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 paymentAssetIdAsUint, uint128 maxApproval, IERC7726 valuation) public {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
@@ -361,13 +356,13 @@ abstract contract AdminTargets is
 
         JournalEntry[] memory debits = new JournalEntry[](1);
         debits[0] = JournalEntry({
-            accountId: _getRandomAccountId(poolId, scId, assetId, accountEntropy),
-            amount: amount
+            value: amount,
+            accountId: _getRandomAccountId(poolId, scId, assetId, accountEntropy)
         });
         JournalEntry[] memory credits = new JournalEntry[](1);
         credits[0] = JournalEntry({
-            accountId: _getRandomAccountId(poolId, scId, assetId, accountEntropy),
-            amount: amount
+            value: amount,
+            accountId: _getRandomAccountId(poolId, scId, assetId, accountEntropy)
         });
 
         hub_updateHoldingAmount(poolId.raw(), scId.raw(), assetId.raw(), amount, pricePerUnit, isIncrease);

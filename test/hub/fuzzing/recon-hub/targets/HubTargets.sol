@@ -28,7 +28,6 @@ abstract contract HubTargets is
     BaseTargetFunctions,
     Properties
 {
-
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
 
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///

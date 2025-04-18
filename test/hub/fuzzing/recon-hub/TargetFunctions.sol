@@ -326,13 +326,13 @@ abstract contract TargetFunctions is
 
             JournalEntry[] memory debits = new JournalEntry[](1);
             debits[0] = JournalEntry({
-                accountId: ACCOUNT_TO_UPDATE,
-                amount: debitAmount
+                value: debitAmount,
+                accountId: ACCOUNT_TO_UPDATE
             });
             JournalEntry[] memory credits = new JournalEntry[](1);
             credits[0] = JournalEntry({
-                accountId: ACCOUNT_TO_UPDATE,
-                amount: creditAmount
+                value: creditAmount,
+                accountId: ACCOUNT_TO_UPDATE
             });
 
             hub_updateHoldingAmount(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw(), amount, pricePerUnit, IS_INCREASE);
@@ -372,13 +372,13 @@ abstract contract TargetFunctions is
             AccountId accountId = createdAccountIds[accountToUpdate % createdAccountIds.length];
             JournalEntry[] memory debits = new JournalEntry[](1);
             debits[0] = JournalEntry({
-                accountId: accountId,
-                amount: debitAmount
+                value: debitAmount,
+                accountId: accountId
             });
             JournalEntry[] memory credits = new JournalEntry[](1);
             credits[0] = JournalEntry({
-                accountId: accountId,
-                amount: creditAmount
+                value: creditAmount,
+                accountId: accountId
             });
 
             hub_updateJournal(PoolId.unwrap(poolId), debits, credits);

@@ -143,9 +143,9 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
 
         root.endorse(address(escrow));
 
-        balanceSheet = new BalanceSheet(address(escrow));
+        balanceSheet = new BalanceSheet(address(escrow), address(this));
         asyncRequests = new AsyncRequests(address(root), address(escrow), address(this));
-        syncRequests = new SyncRequests(address(root), address(escrow));
+        syncRequests = new SyncRequests(address(root), address(escrow), address(this));
         vaultFactory = new AsyncVaultFactory(address(this), address(asyncRequests), address(this));
         tokenFactory = new TokenFactory(address(this), address(this));
 
