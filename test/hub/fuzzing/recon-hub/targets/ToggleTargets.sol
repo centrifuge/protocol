@@ -4,10 +4,10 @@ pragma solidity ^0.8.0;
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 
 import {Properties} from "../Properties.sol";
-
+import {BeforeAfter} from "../BeforeAfter.sol";
 abstract contract ToggleTargets is
     BaseTargetFunctions,
-    Properties
+    BeforeAfter
 {
     /// === Helpers === ///
     /// @dev helper to toggle the isLiability boolean for testing

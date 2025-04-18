@@ -22,14 +22,15 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {D18} from "src/misc/types/D18.sol";
 
 // Test Utils
-import {BeforeAfter, OpType} from "../BeforeAfter.sol";
+import {BeforeAfter} from "../BeforeAfter.sol";
+import {OpType} from "../BaseBeforeAfter.sol";
 import {Properties} from "../Properties.sol";
 import {Helpers} from "../utils/Helpers.sol";
 import {console2} from "forge-std/console2.sol";
 
 abstract contract AdminTargets is
     BaseTargetFunctions,
-    Properties
+    BeforeAfter
 {
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
 
