@@ -27,16 +27,16 @@ enum MessageKind {
     _MessageProof,
     Recovery,
     WithPool0,
-    WithPoolA10,
-    WithPoolA10Fail,
-    WithPoolA15
+    WithPoolA1,
+    WithPoolA2Fail,
+    WithPoolA3
 }
 
 function length(MessageKind kind) pure returns (uint16) {
     if (kind == MessageKind.WithPool0) return 5;
-    if (kind == MessageKind.WithPoolA10) return 10;
-    if (kind == MessageKind.WithPoolA10Fail) return 10;
-    if (kind == MessageKind.WithPoolA15) return 15;
+    if (kind == MessageKind.WithPoolA1) return 10;
+    if (kind == MessageKind.WithPoolA2Fail) return 10;
+    if (kind == MessageKind.WithPoolA3) return 15;
     return 2;
 }
 
@@ -62,7 +62,7 @@ contract MockProcessor is IMessageProperties {
     }
 
     function handle(uint16 centrifugeId, bytes memory payload) external {
-        if (payload.toUint8(0) == uint8(MessageKind.WithPoolA10Fail) && !shouldNotFail) {
+        if (payload.toUint8(0) == uint8(MessageKind.WithPoolA2Fail) && !shouldNotFail) {
             revert HandleError();
         }
         processed[centrifugeId].push(payload);
@@ -82,8 +82,8 @@ contract MockProcessor is IMessageProperties {
 
     function messagePoolId(bytes calldata message) external pure returns (PoolId) {
         if (message.toUint8(0) == uint8(MessageKind.WithPool0)) return POOL_0;
-        if (message.toUint8(0) == uint8(MessageKind.WithPoolA10)) return POOL_A;
-        if (message.toUint8(0) == uint8(MessageKind.WithPoolA15)) return POOL_A;
+        if (message.toUint8(0) == uint8(MessageKind.WithPoolA1)) return POOL_A;
+        if (message.toUint8(0) == uint8(MessageKind.WithPoolA3)) return POOL_A;
         revert("Unreachable: message never asked for pool");
     }
 }
@@ -101,7 +101,7 @@ contract GatewayExt is Gateway {
         return _activeAdapters[centrifugeId][adapter];
     }
 
-    function batchLocatorsLength() public returns (uint256) {
+    function batchLocatorsLength() public view returns (uint256) {
         return batchLocators.length;
     }
 }
@@ -340,7 +340,7 @@ contract GatewayTestHandle is GatewayTest {
     function testMessageFailed() public {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
 
-        bytes memory batch = MessageKind.WithPoolA10Fail.asBytes();
+        bytes memory batch = MessageKind.WithPoolA2Fail.asBytes();
 
         vm.prank(address(batchAdapter));
         vm.expectEmit();
@@ -426,7 +426,7 @@ contract GatewayTestHandle is GatewayTest {
         vm.prank(address(proofAdapter2));
         gateway.handle(REMOTE_CENTRIFUGE_ID, proof);
 
-        bytes memory batch2 = MessageKind.WithPoolA10.asBytes();
+        bytes memory batch2 = MessageKind.WithPoolA1.asBytes();
         bytes memory proof2 = MessageProofLib.serializeMessageProof(keccak256(batch2));
 
         vm.prank(address(batchAdapter));
@@ -524,8 +524,8 @@ contract GatewayTestHandle is GatewayTest {
     function testBatchProcessing() public {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
 
-        bytes memory message1 = MessageKind.WithPoolA10.asBytes();
-        bytes memory message2 = MessageKind.WithPoolA15.asBytes();
+        bytes memory message1 = MessageKind.WithPoolA1.asBytes();
+        bytes memory message2 = MessageKind.WithPoolA3.asBytes();
         bytes memory batch = abi.encodePacked(message1, message2);
 
         vm.prank(address(batchAdapter));
@@ -539,9 +539,9 @@ contract GatewayTestHandle is GatewayTest {
     function testBatchWithFailingMessages() public {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
 
-        bytes memory message1 = MessageKind.WithPoolA10.asBytes();
-        bytes memory message2 = MessageKind.WithPoolA10Fail.asBytes();
-        bytes memory message3 = MessageKind.WithPoolA15.asBytes();
+        bytes memory message1 = MessageKind.WithPoolA1.asBytes();
+        bytes memory message2 = MessageKind.WithPoolA2Fail.asBytes();
+        bytes memory message3 = MessageKind.WithPoolA3.asBytes();
         bytes memory batch = abi.encodePacked(message1, message2, message3);
 
         vm.prank(address(batchAdapter));
@@ -557,7 +557,7 @@ contract GatewayTestHandle is GatewayTest {
     function testMultipleSameFailingMessages() public {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
 
-        bytes memory batch = MessageKind.WithPoolA10Fail.asBytes();
+        bytes memory batch = MessageKind.WithPoolA2Fail.asBytes();
 
         vm.prank(address(batchAdapter));
         gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
@@ -570,7 +570,7 @@ contract GatewayTestHandle is GatewayTest {
     function testBatchWithMultipleSameFailingMessages() public {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
 
-        bytes memory message = MessageKind.WithPoolA10Fail.asBytes();
+        bytes memory message = MessageKind.WithPoolA2Fail.asBytes();
         bytes memory batch = abi.encodePacked(message, message);
 
         vm.prank(address(batchAdapter));
@@ -595,7 +595,7 @@ contract GatewayTestRetry is GatewayTest {
     function testRecoverFailingMessage() public {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
 
-        bytes memory batch = MessageKind.WithPoolA10Fail.asBytes();
+        bytes memory batch = MessageKind.WithPoolA2Fail.asBytes();
 
         vm.prank(address(batchAdapter));
         gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
@@ -613,7 +613,7 @@ contract GatewayTestRetry is GatewayTest {
     function testRecoverMultipleFailingMessage() public {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
 
-        bytes memory batch = MessageKind.WithPoolA10Fail.asBytes();
+        bytes memory batch = MessageKind.WithPoolA2Fail.asBytes();
 
         vm.prank(address(batchAdapter));
         gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
@@ -691,7 +691,7 @@ contract GatewayTestExecuteRecovery is GatewayTest {
     function testErrMessageRecoveryChallengePeriodNotEnded() public {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
 
-        bytes memory batch = MessageKind.WithPoolA10.asBytes();
+        bytes memory batch = MessageKind.WithPoolA1.asBytes();
         bytes32 batchHash = keccak256(batch);
 
         gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, batchHash);
@@ -719,7 +719,7 @@ contract GatewayTestExecuteRecovery is GatewayTest {
     function testExecuteRecovery() public {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
 
-        bytes memory batch = MessageKind.WithPoolA10.asBytes();
+        bytes memory batch = MessageKind.WithPoolA1.asBytes();
         bytes32 batchHash = keccak256(batch);
 
         gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, batchHash);
@@ -835,15 +835,15 @@ contract GatewayTestSend is GatewayTest {
         uint256 maxMessages = MAX_BATCH_SIZE / MESSAGE_GAS_LIMIT;
 
         for (uint256 i; i < maxMessages; i++) {
-            gateway.send(REMOTE_CENTRIFUGE_ID, MessageKind.WithPoolA10.asBytes());
+            gateway.send(REMOTE_CENTRIFUGE_ID, MessageKind.WithPoolA1.asBytes());
         }
 
         vm.expectRevert(IGateway.ExceedsMaxBatchSize.selector);
-        gateway.send(REMOTE_CENTRIFUGE_ID, MessageKind.WithPoolA10.asBytes());
+        gateway.send(REMOTE_CENTRIFUGE_ID, MessageKind.WithPoolA1.asBytes());
     }
 
     function testMessageWasBatched() public {
-        bytes memory message = MessageKind.WithPoolA10.asBytes();
+        bytes memory message = MessageKind.WithPoolA1.asBytes();
 
         gateway.startBatching();
         gateway.send(REMOTE_CENTRIFUGE_ID, message);
@@ -858,8 +858,8 @@ contract GatewayTestSend is GatewayTest {
     }
 
     function testSecondMessageWasBatchedSamePoolSameChain() public {
-        bytes memory message1 = MessageKind.WithPoolA10.asBytes();
-        bytes memory message2 = MessageKind.WithPoolA15.asBytes();
+        bytes memory message1 = MessageKind.WithPoolA1.asBytes();
+        bytes memory message2 = MessageKind.WithPoolA3.asBytes();
 
         gateway.startBatching();
         gateway.send(REMOTE_CENTRIFUGE_ID, message1);
@@ -870,24 +870,9 @@ contract GatewayTestSend is GatewayTest {
         assertEq(gateway.batchLocatorsLength(), 1);
     }
 
-    function testSecondMessageWasBatchedDifferentPoolSameChain() public {
-        bytes memory message1 = MessageKind.WithPool0.asBytes();
-        bytes memory message2 = MessageKind.WithPoolA15.asBytes();
-
-        gateway.startBatching();
-        gateway.send(REMOTE_CENTRIFUGE_ID, message1);
-        gateway.send(REMOTE_CENTRIFUGE_ID, message2);
-
-        assertEq(gateway.batchGasLimit(REMOTE_CENTRIFUGE_ID, POOL_0), MESSAGE_GAS_LIMIT);
-        assertEq(gateway.batchGasLimit(REMOTE_CENTRIFUGE_ID, POOL_A), MESSAGE_GAS_LIMIT);
-        assertEq(gateway.outboundBatch(REMOTE_CENTRIFUGE_ID, POOL_0), message1);
-        assertEq(gateway.outboundBatch(REMOTE_CENTRIFUGE_ID, POOL_A), message2);
-        assertEq(gateway.batchLocatorsLength(), 2);
-    }
-
     function testSecondMessageWasBatchedSamePoolDifferentChain() public {
-        bytes memory message1 = MessageKind.WithPoolA10.asBytes();
-        bytes memory message2 = MessageKind.WithPoolA15.asBytes();
+        bytes memory message1 = MessageKind.WithPoolA1.asBytes();
+        bytes memory message2 = MessageKind.WithPoolA3.asBytes();
 
         gateway.startBatching();
         gateway.send(REMOTE_CENTRIFUGE_ID, message1);
@@ -897,6 +882,21 @@ contract GatewayTestSend is GatewayTest {
         assertEq(gateway.batchGasLimit(REMOTE_CENTRIFUGE_ID + 1, POOL_A), MESSAGE_GAS_LIMIT);
         assertEq(gateway.outboundBatch(REMOTE_CENTRIFUGE_ID, POOL_A), message1);
         assertEq(gateway.outboundBatch(REMOTE_CENTRIFUGE_ID + 1, POOL_A), message2);
+        assertEq(gateway.batchLocatorsLength(), 2);
+    }
+
+    function testSecondMessageWasBatchedDifferentPoolSameChain() public {
+        bytes memory message1 = MessageKind.WithPoolA1.asBytes();
+        bytes memory message2 = MessageKind.WithPool0.asBytes();
+
+        gateway.startBatching();
+        gateway.send(REMOTE_CENTRIFUGE_ID, message1);
+        gateway.send(REMOTE_CENTRIFUGE_ID, message2);
+
+        assertEq(gateway.batchGasLimit(REMOTE_CENTRIFUGE_ID, POOL_A), MESSAGE_GAS_LIMIT);
+        assertEq(gateway.batchGasLimit(REMOTE_CENTRIFUGE_ID, POOL_0), MESSAGE_GAS_LIMIT);
+        assertEq(gateway.outboundBatch(REMOTE_CENTRIFUGE_ID, POOL_A), message1);
+        assertEq(gateway.outboundBatch(REMOTE_CENTRIFUGE_ID, POOL_0), message2);
         assertEq(gateway.batchLocatorsLength(), 2);
     }
 }
