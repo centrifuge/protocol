@@ -125,6 +125,7 @@ contract GatewayTest is Test {
     IAdapter[] threeAdapters;
 
     address immutable ANY = makeAddr("ANY");
+    address immutable PAYER = makeAddr("PAYER");
 
     MockProcessor processor = new MockProcessor();
     GatewayExt gateway = new GatewayExt(LOCAL_CENTRIFUGE_ID, IRoot(address(root)), IGasService(address(gasService)));
@@ -176,9 +177,9 @@ contract GatewayTest is Test {
     }
 }
 
-contract GatewayFileTest is GatewayTest {
+contract GatewayTestFile is GatewayTest {
     function testErrNotAuthorized() public {
-        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         gateway.file("unknown", address(1));
     }
@@ -199,9 +200,9 @@ contract GatewayFileTest is GatewayTest {
     }
 }
 
-contract GatewayFileAdaptersTest is GatewayTest {
+contract GatewayTestFileAdapters is GatewayTest {
     function testErrNotAuthorized() public {
-        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         gateway.file("unknown", REMOTE_CENTRIFUGE_ID, new IAdapter[](0));
     }
@@ -262,7 +263,7 @@ contract GatewayFileAdaptersTest is GatewayTest {
     }
 }
 
-contract GatewayReceiveTest is GatewayTest {
+contract GatewayTestReceive is GatewayTest {
     function testGatewayReceiveSuccess() public {
         (bool success,) = address(gateway).call{value: 100}(new bytes(0));
 
@@ -275,7 +276,7 @@ contract GatewayReceiveTest is GatewayTest {
     }
 }
 
-contract GatewayHandleTest is GatewayTest {
+contract GatewayTestHandle is GatewayTest {
     function testErrPaused() public {
         _mockPause(true);
         vm.expectRevert(IGateway.Paused.selector);
@@ -575,7 +576,7 @@ contract GatewayHandleTest is GatewayTest {
     }
 }
 
-contract GatewayRetryTest is GatewayTest {
+contract GatewayTestRetry is GatewayTest {
     function testErrPaused() public {
         _mockPause(true);
         vm.expectRevert(IGateway.Paused.selector);
@@ -629,7 +630,7 @@ contract GatewayRetryTest is GatewayTest {
     }
 }
 
-contract GatewayInitiateRecoveryTest is GatewayTest {
+contract GatewayTestInitiateRecovery is GatewayTest {
     bytes32 constant BATCH_HASH = bytes32("1");
 
     function testErrInvalidAdapter() public {
@@ -638,7 +639,7 @@ contract GatewayInitiateRecoveryTest is GatewayTest {
     }
 
     function testErrNotAuthorized() public {
-        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, BATCH_HASH);
     }
@@ -657,11 +658,11 @@ contract GatewayInitiateRecoveryTest is GatewayTest {
     }
 }
 
-contract GatewayDisputeRecoveryTest is GatewayTest {
+contract GatewayTestDisputeRecovery is GatewayTest {
     bytes32 constant BATCH_HASH = bytes32("1");
 
     function testErrNotAuthorized() public {
-        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, BATCH_HASH);
     }
@@ -677,7 +678,7 @@ contract GatewayDisputeRecoveryTest is GatewayTest {
     }
 }
 
-contract GatewayExecuteRecoveryTest is GatewayTest {
+contract GatewayTestExecuteRecovery is GatewayTest {
     function testErrMessageRecoveryNotInitiated() public {
         vm.expectRevert(IGateway.MessageRecoveryNotInitiated.selector);
         gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, bytes(""));
@@ -726,5 +727,68 @@ contract GatewayExecuteRecoveryTest is GatewayTest {
         gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, batch);
 
         assertEq(processor.processed(REMOTE_CENTRIFUGE_ID, 0), batch);
+    }
+}
+
+contract GatewayTestSetRefundAddress is GatewayTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        gateway.setRefundAddress(POOL_A, address(1));
+    }
+
+    function testSetRefundAddressSuccess() public {
+        vm.expectEmit();
+        emit IGateway.SetRefundAddress(POOL_A, address(1));
+        gateway.setRefundAddress(POOL_A, address(1));
+
+        (, address refund) = gateway.subsidy(POOL_A);
+        assertEq(refund, address(1));
+    }
+}
+
+contract GatewayTestSetSubsidizePool is GatewayTest {
+    function testErrRefundAddressNotSet() public {
+        vm.deal(ANY, 100);
+        vm.prank(ANY);
+        vm.expectRevert(IGateway.RefundAddressNotSet.selector);
+        gateway.subsidizePool{value: 100}(POOL_A);
+    }
+
+    function testSetSubsidizePoolSuccess() public {
+        gateway.setRefundAddress(POOL_A, address(1));
+
+        vm.deal(ANY, 100);
+        vm.prank(ANY);
+        vm.expectEmit();
+        emit IGateway.SubsidizePool(POOL_A, ANY, 100);
+        gateway.subsidizePool{value: 100}(POOL_A);
+
+        (uint96 value,) = gateway.subsidy(POOL_A);
+        assertEq(value, 100);
+    }
+}
+
+contract GatewayTestPayTransaction is GatewayTest {
+    function testErrNotAuthorized() public {
+        vm.deal(ANY, 100);
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        gateway.payTransaction{value: 100}(PAYER);
+    }
+
+    function testPayTransactionSuccess() public {
+        gateway.payTransaction{value: 100}(PAYER);
+
+        assertEq(gateway.transactionPayer(), PAYER);
+        assertEq(gateway.fuel(), 100);
+    }
+
+    /// forge-config: default.isolate = true
+    function testPayTransactionIsTransactional() public {
+        gateway.payTransaction{value: 100}(PAYER);
+
+        assertEq(gateway.transactionPayer(), address(0));
+        assertEq(gateway.fuel(), 0);
     }
 }

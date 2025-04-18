@@ -60,7 +60,7 @@ contract Gateway is Auth, IGateway, Recoverable {
     IGasService public gasService;
     IMessageProcessor public processor;
 
-    // Batching
+    // Outbound processing (batching)
     bool public transient isBatching;
     BatchLocator[] public /*transient*/ batchLocators;
     mapping(uint16 centrifugeId => mapping(PoolId => bytes)) public /*transient*/ outboundBatch;
@@ -75,7 +75,7 @@ contract Gateway is Auth, IGateway, Recoverable {
     mapping(uint16 centrifugeId => IAdapter[]) public adapters;
     mapping(uint16 centrifugeId => mapping(IAdapter adapter => Adapter)) internal _activeAdapters;
 
-    // Messages
+    // Imbound processing
     mapping(uint16 centrifugeId => mapping(bytes32 messageHash => uint256)) public failedMessages;
     mapping(uint16 centrifugeId => mapping(bytes32 batchHash => InboundBatch)) public inboundBatch;
     mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 payloadHash => uint256 timestamp))) public
