@@ -16,7 +16,7 @@ library TransientArrayLib {
         slot.tstore(value);
     }
 
-    function getBytes32(bytes32 key) internal returns (bytes32[] memory) {
+    function getBytes32(bytes32 key) internal view returns (bytes32[] memory) {
         uint256 length_ = length(key);
 
         bytes32[] memory data = new bytes32[](length_);

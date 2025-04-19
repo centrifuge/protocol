@@ -248,16 +248,4 @@ contract MessageProcessor is Auth, IMessageProcessor {
     function messagePoolId(bytes calldata message) external pure returns (PoolId) {
         return message.messagePoolId();
     }
-
-    /// @inheritdoc IMessageProperties
-    function messageProofHash(bytes calldata message) external pure returns (bytes32) {
-        return (message.messageCode() == uint8(MessageType.MessageProof))
-            ? message.deserializeMessageProof().hash
-            : bytes32(0);
-    }
-
-    /// @inheritdoc IMessageProperties
-    function createMessageProof(bytes32 hash) external pure returns (bytes memory) {
-        return MessageLib.MessageProof({hash: hash}).serialize();
-    }
 }
