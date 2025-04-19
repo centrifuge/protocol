@@ -31,7 +31,7 @@ import {MessageLib, MessageType} from "src/common/libraries/MessageLib.sol";
 ///
 ///         Supports processing multiple duplicate messages in parallel by storing counts of messages
 ///         and proofs that have been received. Also implements a retry method for failed messages.
-contract Gateway is Auth, IGateway, Recoverable {
+contract Gateway is Auth, Recoverable, IGateway {
     using ArrayLib for uint16[8];
     using BytesLib for bytes;
     using MathLib for uint256;
@@ -146,6 +146,7 @@ contract Gateway is Auth, IGateway, Recoverable {
         IMessageProcessor processor_ = processor;
         if (processor_.isMessageRecovery(payload)) {
             require(!isRecovery, RecoveryMessageRecovered());
+            // why?
             return processor_.handle(centrifugeId, payload);
         }
 

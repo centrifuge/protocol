@@ -11,15 +11,6 @@ uint8 constant MAX_ADAPTER_COUNT = 8;
 
 /// @notice Interface for dispatch-only gateway
 interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
-    /// @notice Identifies a Batch
-    struct BatchLocator {
-        /// @notice chain associated to the batch
-        uint16 centrifugeId;
-        /// @notice pools associated to the batch.
-        /// NOTE: poolId == 0 represent a batch of messages pool-unrelated
-        PoolId poolId;
-    }
-
     /// @dev Each adapter struct is packed with the quorum to reduce SLOADs on handle
     struct Adapter {
         /// @notice Starts at 1 and maps to id - 1 as the index on the adapters array
