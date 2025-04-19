@@ -7,6 +7,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {TransientArrayLib} from "src/misc/libraries/TransientArrayLib.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
@@ -31,6 +32,7 @@ contract Gateway is Auth, IGateway, Recoverable {
     uint8 public constant MAX_ADAPTER_COUNT = 8;
     uint8 public constant PRIMARY_ADAPTER_ID = 1;
     uint256 public constant RECOVERY_CHALLENGE_PERIOD = 7 days;
+    bytes32 public constant BATCH_LOCATORS_SLOT = bytes32(uint256(keccak256("Centrifuge/batch-locators")) - 1);
 
     uint16 public immutable localCentrifugeId;
 
@@ -41,7 +43,6 @@ contract Gateway is Auth, IGateway, Recoverable {
 
     // Batching
     bool public transient isBatching;
-    BatchLocator[] public /*transient*/ batchLocators;
     mapping(uint16 centrifugeId => mapping(PoolId => bytes)) public /*transient*/ outboundBatch;
     mapping(uint16 centrifugeId => mapping(PoolId => uint128)) public /*transient*/ batchGasLimit;
 
@@ -268,7 +269,7 @@ contract Gateway is Auth, IGateway, Recoverable {
             require(batchGasLimit[centrifugeId][poolId] <= gasService.maxBatchSize(centrifugeId), ExceedsMaxBatchSize());
 
             if (previousMessage.length == 0) {
-                batchLocators.push(BatchLocator(centrifugeId, poolId));
+                TransientArrayLib.push(BATCH_LOCATORS_SLOT, bytes32(bytes.concat(bytes2(centrifugeId), bytes8(poolId.raw()))));
                 outboundBatch[centrifugeId][poolId] = message;
             } else {
                 outboundBatch[centrifugeId][poolId] = bytes.concat(previousMessage, message);
@@ -373,14 +374,17 @@ contract Gateway is Auth, IGateway, Recoverable {
     function endBatching() external auth {
         require(isBatching, NoBatched());
 
-        for (uint256 i; i < batchLocators.length; i++) {
-            BatchLocator memory locator = batchLocators[i];
-            _send(locator.centrifugeId, locator.poolId, outboundBatch[locator.centrifugeId][locator.poolId]);
-            delete outboundBatch[locator.centrifugeId][locator.poolId];
-            delete batchGasLimit[locator.centrifugeId][locator.poolId];
+        bytes32[] memory locators = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT);
+        for (uint256 i; i < locators.length; i++) {
+            uint16 centrifugeId = uint16(bytes2(locators[i]));
+            PoolId poolId = PoolId.wrap(uint64(bytes8(locators[i] << 2)));
+            
+            _send(centrifugeId, poolId, outboundBatch[centrifugeId][poolId]);
+            delete outboundBatch[centrifugeId][poolId];
+            delete batchGasLimit[centrifugeId][poolId];
         }
 
-        delete batchLocators;
+        TransientArrayLib.clear(BATCH_LOCATORS_SLOT);
         isBatching = false;
 
         _closeTransaction();

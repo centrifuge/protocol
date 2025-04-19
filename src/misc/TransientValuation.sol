@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {D18, d18} from "src/misc/types/D18.sol";
 
 import {ConversionLib} from "src/misc/libraries/ConversionLib.sol";
-import {TransientStorage} from "src/misc/libraries/TransientStorage.sol";
+import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
 import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
@@ -13,7 +13,7 @@ import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
 import {BaseValuation} from "src/misc/BaseValuation.sol";
 
 contract TransientValuation is BaseValuation, ReentrancyProtection, ITransientValuation {
-    using TransientStorage for bytes32;
+    using TransientStorageLib for bytes32;
 
     constructor(IERC6909Decimals erc6909, address deployer) BaseValuation(erc6909, deployer) {}
 
