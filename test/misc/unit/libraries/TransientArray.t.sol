@@ -5,8 +5,10 @@ import "forge-std/Test.sol";
 import {TransientArrayLib} from "src/misc/libraries/TransientArrayLib.sol";
 
 contract TransientArrayLibTest is Test {
-    function testTransientArray() public {
+    function testTransientArray(bytes32 invalidKey) public {
         bytes32 key = keccak256(abi.encode("key"));
+        vm.assume(key != invalidKey);
+
         assertEq(TransientArrayLib.length(key), 0);
 
         // Push 2 items
@@ -38,5 +40,7 @@ contract TransientArrayLibTest is Test {
 
         stored = TransientArrayLib.getBytes32(key);
         assertEq(stored.length, 0);
+
+        assertEq(TransientArrayLib.length(invalidKey), 0);
     }
 }
