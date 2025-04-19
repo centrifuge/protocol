@@ -67,7 +67,6 @@ contract Gateway is Auth, IGateway, Recoverable {
     // Outbound processing (batching)
     bool public transient isBatching;
     mapping(uint16 centrifugeId => mapping(PoolId => bytes)) public /*transient*/ outboundBatch;
-    mapping(uint16 centrifugeId => mapping(PoolId => uint128)) public /*transient*/ batchGasLimit;
 
     // Payment
     uint256 public transient fuel;
@@ -316,7 +315,7 @@ contract Gateway is Auth, IGateway, Recoverable {
         require(adapters[centrifugeId].length != 0, EmptyAdapterSet());
 
         uint128 batchGasLimit_ =
-            (isBatching) ? batchGasLimit[centrifugeId][poolId] : gasService.gasLimit(centrifugeId, batch);
+            (isBatching) ? keccak256(abi.encode(centrifugeId, poolId)).tloadUint128() : gasService.gasLimit(centrifugeId, batch);
 
         for (uint256 i; i < adapters_.length; i++) {
             uint256 consumed =
@@ -409,7 +408,9 @@ contract Gateway is Auth, IGateway, Recoverable {
             
             _send(centrifugeId, poolId, outboundBatch[centrifugeId][poolId]);
             delete outboundBatch[centrifugeId][poolId];
-            delete batchGasLimit[centrifugeId][poolId];
+
+            bytes32 slot = keccak256(abi.encode(centrifugeId, poolId));
+            slot.tstore(uint256(0));
         }
 
         TransientArrayLib.clear(BATCH_LOCATORS_SLOT);
