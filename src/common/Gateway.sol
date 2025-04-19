@@ -10,6 +10,7 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {TransientArrayLib} from "src/misc/libraries/TransientArrayLib.sol";
+import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
@@ -49,6 +50,7 @@ contract Gateway is Auth, IGateway, Recoverable {
     using BytesLib for bytes;
     using MathLib for uint256;
     using MessageProofLib for *;
+    using TransientStorageLib for bytes32;
 
     uint8 public constant MAX_ADAPTER_COUNT = 8;
     uint8 public constant PRIMARY_ADAPTER_ID = 1;
@@ -289,8 +291,10 @@ contract Gateway is Auth, IGateway, Recoverable {
         if (isBatching) {
             bytes storage previousMessage = outboundBatch[centrifugeId][poolId];
 
-            batchGasLimit[centrifugeId][poolId] += gasService.gasLimit(centrifugeId, message);
-            require(batchGasLimit[centrifugeId][poolId] <= gasService.maxBatchSize(centrifugeId), ExceedsMaxBatchSize());
+            bytes32 slot = keccak256(abi.encode(centrifugeId, poolId));
+            uint128 newGasLimit = slot.tloadUint128() + gasService.gasLimit(centrifugeId, message);
+            require(newGasLimit <= gasService.maxBatchSize(centrifugeId), ExceedsMaxBatchSize());
+            slot.tstore(uint256(newGasLimit));
 
             if (previousMessage.length == 0) {
                 TransientArrayLib.push(BATCH_LOCATORS_SLOT, bytes32(bytes.concat(bytes2(centrifugeId), bytes8(poolId.raw()))));
