@@ -23,29 +23,14 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {IGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {MessageLib, MessageType} from "src/common/libraries/MessageLib.sol";
 
-library MessageProofLib {
-    using BytesLib for *;
-
-    uint8 constant MESSAGE_PROOF_ID = 1;
-
-    error UnknownMessageProofType();
-
-    function deserializeMessageProof(bytes memory data) internal pure returns (bytes32) {
-        require(data.toUint8(0) == MESSAGE_PROOF_ID, UnknownMessageProofType());
-        return data.toBytes32(1);
-    }
-
-    function serializeMessageProof(bytes32 hash) internal pure returns (bytes memory) {
-        return abi.encodePacked(MESSAGE_PROOF_ID, hash);
-    }
-}
-
 /// @title  Gateway
 /// @notice Routing contract that forwards outgoing messages to multiple adapters (1 full message, n-1 proofs)
 ///         and validates that multiple adapters have confirmed a message.
-///         Handling incoming messages from the Centrifuge Chain through multiple adapters.
-///         Supports processing multiple duplicate messages in parallel by
-///         storing counts of messages and proofs that have been received.
+///
+///         Supports batching multiple messages, as well as paying for methods manually or through pool-level subsidies.
+///
+///         Supports processing multiple duplicate messages in parallel by storing counts of messages
+///         and proofs that have been received. Also implements a retry method for failed messages.
 contract Gateway is Auth, IGateway, Recoverable {
     using ArrayLib for uint16[8];
     using BytesLib for bytes;
@@ -457,5 +442,22 @@ contract Gateway is Auth, IGateway, Recoverable {
     /// @inheritdoc IGateway
     function votes(uint16 centrifugeId, bytes32 batchHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory) {
         return inboundBatch[centrifugeId][batchHash].votes;
+    }
+}
+
+library MessageProofLib {
+    using BytesLib for *;
+
+    uint8 constant MESSAGE_PROOF_ID = 1;
+
+    error UnknownMessageProofType();
+
+    function deserializeMessageProof(bytes memory data) internal pure returns (bytes32) {
+        require(data.toUint8(0) == MESSAGE_PROOF_ID, UnknownMessageProofType());
+        return data.toBytes32(1);
+    }
+
+    function serializeMessageProof(bytes32 hash) internal pure returns (bytes memory) {
+        return abi.encodePacked(MESSAGE_PROOF_ID, hash);
     }
 }
