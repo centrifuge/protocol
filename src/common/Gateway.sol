@@ -296,7 +296,7 @@ contract Gateway is Auth, IGateway, Recoverable {
             slot.tstore(uint256(newGasLimit));
 
             if (previousMessage.length == 0) {
-                TransientArrayLib.push(BATCH_LOCATORS_SLOT, bytes32(bytes.concat(bytes2(centrifugeId), bytes8(poolId.raw()))));
+                TransientArrayLib.push(BATCH_LOCATORS_SLOT, bytes32(abi.encodePacked(bytes2(centrifugeId), bytes8(poolId.raw()))));
                 outboundBatch[centrifugeId][poolId] = message;
             } else {
                 outboundBatch[centrifugeId][poolId] = bytes.concat(previousMessage, message);
@@ -404,7 +404,7 @@ contract Gateway is Auth, IGateway, Recoverable {
         bytes32[] memory locators = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT);
         for (uint256 i; i < locators.length; i++) {
             uint16 centrifugeId = uint16(bytes2(locators[i]));
-            PoolId poolId = PoolId.wrap(uint64(bytes8(locators[i] >> 2)));
+            PoolId poolId = PoolId.wrap(uint64(bytes8(locators[i] << 16)));
             
             _send(centrifugeId, poolId, outboundBatch[centrifugeId][poolId]);
             delete outboundBatch[centrifugeId][poolId];

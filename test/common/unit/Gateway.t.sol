@@ -111,6 +111,12 @@ contract GatewayExt is Gateway {
         bytes32 slot = keccak256(abi.encode(centrifugeId, poolId));
         return TransientStorageLib.tloadUint128(slot);
     }
+
+    function batchLocators(uint256 index) public view returns (uint16 centrifugeId, PoolId poolId) {
+        bytes32 locator = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT)[index];
+        centrifugeId = uint16(bytes2(locator));
+        poolId = PoolId.wrap(uint64(bytes8(locator << 16)));
+    }
 }
 
 // -----------------------------------------
@@ -859,9 +865,9 @@ contract GatewayTestSend is GatewayTest {
         assertEq(gateway.outboundBatch(REMOTE_CENTRIFUGE_ID, POOL_A), message);
         assertEq(gateway.batchLocatorsLength(), 1);
 
-        // (uint16 centrifugeId, PoolId poolId) = gateway.batchLocators(0);
-        // assertEq(centrifugeId, REMOTE_CENTRIFUGE_ID);
-        // assertEq(poolId.raw(), POOL_A.raw());
+        (uint16 centrifugeId, PoolId poolId) = gateway.batchLocators(0);
+        assertEq(centrifugeId, REMOTE_CENTRIFUGE_ID);
+        assertEq(poolId.raw(), POOL_A.raw());
     }
 
     function testSecondMessageWasBatchedSamePoolSameChain() public {
