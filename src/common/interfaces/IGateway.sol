@@ -51,10 +51,10 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
 
     // --- Events ---
     event PrepareMessage(uint16 indexed centrifugeId, PoolId poolId, bytes message);
-    event SendBatch(uint16 indexed centrifugeId, bytes32 batchId, bytes batch, IAdapter adapter);
-    event SendProof(uint16 indexed centrifugeId, bytes32 proofId, bytes32 batchHash, IAdapter adapter);
-    event ProcessBatch(uint16 indexed centrifugeId, bytes32 batchId, bytes batch, IAdapter adapter);
-    event ProcessProof(uint16 indexed centrifugeId, bytes32 proofId, bytes32 batchHash, IAdapter adapter);
+    event SendBatch(uint16 indexed centrifugeId, bytes32 payloadId, bytes batch, IAdapter adapter);
+    event SendProof(uint16 indexed centrifugeId, bytes32 payloadId, bytes32 batchHash, IAdapter adapter);
+    event ProcessBatch(uint16 indexed centrifugeId, bytes32 payloadId, bytes batch, IAdapter adapter);
+    event ProcessProof(uint16 indexed centrifugeId, bytes32 payloadId, bytes32 batchHash, IAdapter adapter);
     event ExecuteMessage(uint16 indexed centrifugeId, bytes message);
     event FailMessage(uint16 indexed centrifugeId, bytes message, bytes error);
 
