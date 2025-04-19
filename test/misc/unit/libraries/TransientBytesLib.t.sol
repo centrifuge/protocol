@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import {TransientBytesLib} from "src/misc/libraries/TransientBytesLib.sol";
 
 contract TransientBytesLibTest is Test {
-    function testTransientArray(bytes calldata data) public {
+    function testTransientBytes(bytes calldata data) public {
         bytes32 key = keccak256(abi.encode("key"));
         TransientBytesLib.set(key, data);
 
