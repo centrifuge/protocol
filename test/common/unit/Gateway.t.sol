@@ -93,8 +93,8 @@ contract MockProcessor is IMessageProperties {
 // -----------------------------------------
 
 contract GatewayExt is Gateway {
-    constructor(uint16 localCentrifugeId_, IRoot root_, IGasService gasService_)
-        Gateway(localCentrifugeId_, root_, gasService_)
+    constructor(uint16 localCentrifugeId_, IRoot root_, IGasService gasService_, address deployer)
+        Gateway(localCentrifugeId_, root_, gasService_, deployer)
     {}
 
     function activeAdapters(uint16 centrifugeId, IAdapter adapter) public view returns (IGateway.Adapter memory) {
@@ -132,7 +132,8 @@ contract GatewayTest is Test {
     address immutable PAYER = makeAddr("PAYER");
 
     MockProcessor processor = new MockProcessor();
-    GatewayExt gateway = new GatewayExt(LOCAL_CENTRIFUGE_ID, IRoot(address(root)), IGasService(address(gasService)));
+    GatewayExt gateway =
+        new GatewayExt(LOCAL_CENTRIFUGE_ID, IRoot(address(root)), IGasService(address(gasService)), address(this));
 
     function _mockGasService() internal {
         vm.mockCall(
