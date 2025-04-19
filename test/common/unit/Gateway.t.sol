@@ -106,6 +106,11 @@ contract GatewayExt is Gateway {
     function batchLocatorsLength() public view returns (uint256) {
         return TransientArrayLib.length(BATCH_LOCATORS_SLOT);
     }
+
+    function batchGasLimit(uint16 centrifugeId, PoolId poolId) public view returns (uint128) {
+        bytes32 slot = keccak256(abi.encode(centrifugeId, poolId));
+        return TransientStorageLib.tloadUint128(slot);
+    }
 }
 
 // -----------------------------------------
@@ -850,9 +855,7 @@ contract GatewayTestSend is GatewayTest {
         gateway.startBatching();
         gateway.send(REMOTE_CENTRIFUGE_ID, message);
 
-        bytes32 slot = keccak256(abi.encode(REMOTE_CENTRIFUGE_ID, POOL_A));
-        assertEq(TransientStorageLib.tloadUint128(slot), MESSAGE_GAS_LIMIT);
-
+        assertEq(gateway.batchGasLimit(REMOTE_CENTRIFUGE_ID, POOL_A), MESSAGE_GAS_LIMIT);
         assertEq(gateway.outboundBatch(REMOTE_CENTRIFUGE_ID, POOL_A), message);
         assertEq(gateway.batchLocatorsLength(), 1);
 
@@ -869,9 +872,7 @@ contract GatewayTestSend is GatewayTest {
         gateway.send(REMOTE_CENTRIFUGE_ID, message1);
         gateway.send(REMOTE_CENTRIFUGE_ID, message2);
 
-        bytes32 slot = keccak256(abi.encode(REMOTE_CENTRIFUGE_ID, POOL_A));
-        assertEq(TransientStorageLib.tloadUint128(slot), MESSAGE_GAS_LIMIT * 2);
-
+        assertEq(gateway.batchGasLimit(REMOTE_CENTRIFUGE_ID, POOL_A), MESSAGE_GAS_LIMIT * 2);
         assertEq(gateway.outboundBatch(REMOTE_CENTRIFUGE_ID, POOL_A), abi.encodePacked(message1, message2));
         assertEq(gateway.batchLocatorsLength(), 1);
     }
@@ -884,12 +885,8 @@ contract GatewayTestSend is GatewayTest {
         gateway.send(REMOTE_CENTRIFUGE_ID, message1);
         gateway.send(REMOTE_CENTRIFUGE_ID + 1, message2);
 
-        bytes32 slot = keccak256(abi.encode(REMOTE_CENTRIFUGE_ID, POOL_A));
-        assertEq(TransientStorageLib.tloadUint128(slot), MESSAGE_GAS_LIMIT * 2);
-
-        slot = keccak256(abi.encode(REMOTE_CENTRIFUGE_ID + 1, POOL_A));
-        assertEq(TransientStorageLib.tloadUint128(slot), MESSAGE_GAS_LIMIT * 2);
-
+        assertEq(gateway.batchGasLimit(REMOTE_CENTRIFUGE_ID, POOL_A), MESSAGE_GAS_LIMIT);
+        assertEq(gateway.batchGasLimit(REMOTE_CENTRIFUGE_ID + 1, POOL_A), MESSAGE_GAS_LIMIT);
         assertEq(gateway.outboundBatch(REMOTE_CENTRIFUGE_ID, POOL_A), message1);
         assertEq(gateway.outboundBatch(REMOTE_CENTRIFUGE_ID + 1, POOL_A), message2);
         assertEq(gateway.batchLocatorsLength(), 2);
@@ -903,12 +900,8 @@ contract GatewayTestSend is GatewayTest {
         gateway.send(REMOTE_CENTRIFUGE_ID, message1);
         gateway.send(REMOTE_CENTRIFUGE_ID, message2);
 
-        bytes32 slot = keccak256(abi.encode(REMOTE_CENTRIFUGE_ID, POOL_A));
-        assertEq(TransientStorageLib.tloadUint128(slot), MESSAGE_GAS_LIMIT);
-
-        slot = keccak256(abi.encode(REMOTE_CENTRIFUGE_ID, POOL_0));
-        assertEq(TransientStorageLib.tloadUint128(slot), MESSAGE_GAS_LIMIT);
-
+        assertEq(gateway.batchGasLimit(REMOTE_CENTRIFUGE_ID, POOL_A), MESSAGE_GAS_LIMIT);
+        assertEq(gateway.batchGasLimit(REMOTE_CENTRIFUGE_ID, POOL_0), MESSAGE_GAS_LIMIT);
         assertEq(gateway.outboundBatch(REMOTE_CENTRIFUGE_ID, POOL_A), message1);
         assertEq(gateway.outboundBatch(REMOTE_CENTRIFUGE_ID, POOL_0), message2);
         assertEq(gateway.batchLocatorsLength(), 2);
