@@ -316,7 +316,7 @@ contract Gateway is Auth, IGateway, Recoverable {
         require(adapters[centrifugeId].length != 0, EmptyAdapterSet());
 
         uint128 batchGasLimit_ =
-            (isBatching) ? keccak256(abi.encode(centrifugeId, poolId)).tloadUint128() : gasService.gasLimit(centrifugeId, batch);
+            (isBatching) ? keccak256(abi.encode("batchGasLimit", centrifugeId, poolId)).tloadUint128() : gasService.gasLimit(centrifugeId, batch);
 
         for (uint256 i; i < adapters_.length; i++) {
             uint256 consumed =
@@ -407,12 +407,13 @@ contract Gateway is Auth, IGateway, Recoverable {
             uint16 centrifugeId = uint16(bytes2(locators[i]));
             PoolId poolId = PoolId.wrap(uint64(bytes8(locators[i] << 16)));
             
-            bytes32 batchSlot = keccak256(abi.encode("outboundBatch", centrifugeId, poolId));
-            _send(centrifugeId, poolId, TransientBytesLib.get(batchSlot));
-            TransientBytesLib.clear(batchSlot);
+            bytes32 gasLimitSlot = keccak256(abi.encode("batchGasLimit", centrifugeId, poolId));
+            bytes32 outboundBatchSlot = keccak256(abi.encode("outboundBatch", centrifugeId, poolId));
+            
+            _send(centrifugeId, poolId, TransientBytesLib.get(outboundBatchSlot));
 
-            bytes32 slot = keccak256(abi.encode("batchGasLimit", centrifugeId, poolId));
-            slot.tstore(uint256(0));
+            gasLimitSlot.tstore(uint256(0));
+            TransientBytesLib.clear(outboundBatchSlot);
         }
 
         TransientArrayLib.clear(BATCH_LOCATORS_SLOT);
