@@ -6,8 +6,10 @@ import {TransientArrayLib} from "src/misc/libraries/TransientArrayLib.sol";
 
 contract TransientArrayLibTest is Test {
     function testTransientArray() public {
-        // Push 2 items
         bytes32 key = keccak256(abi.encode("key"));
+        assertEq(TransientArrayLib.length(key), 0);
+
+        // Push 2 items
         TransientArrayLib.push(key, bytes32("1"));
         TransientArrayLib.push(key, bytes32("2"));
 

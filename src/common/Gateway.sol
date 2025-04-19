@@ -10,6 +10,7 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {TransientArrayLib} from "src/misc/libraries/TransientArrayLib.sol";
+import {TransientBytesLib} from "src/misc/libraries/TransientBytesLib.sol";
 import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
@@ -66,7 +67,6 @@ contract Gateway is Auth, IGateway, Recoverable {
 
     // Outbound processing (batching)
     bool public transient isBatching;
-    mapping(uint16 centrifugeId => mapping(PoolId => bytes)) public /*transient*/ outboundBatch;
 
     // Payment
     uint256 public transient fuel;
@@ -288,18 +288,19 @@ contract Gateway is Auth, IGateway, Recoverable {
         emit PrepareMessage(centrifugeId, poolId, message);
 
         if (isBatching) {
-            bytes storage previousMessage = outboundBatch[centrifugeId][poolId];
+            bytes32 batchSlot = keccak256(abi.encode("outboundBatch", centrifugeId, poolId));
+            bytes memory previousMessage = TransientBytesLib.get(batchSlot);
 
-            bytes32 slot = keccak256(abi.encode(centrifugeId, poolId));
-            uint128 newGasLimit = slot.tloadUint128() + gasService.gasLimit(centrifugeId, message);
+            bytes32 gasLimitSlot = keccak256(abi.encode("batchGasLimit", centrifugeId, poolId));
+            uint128 newGasLimit = gasLimitSlot.tloadUint128() + gasService.gasLimit(centrifugeId, message);
             require(newGasLimit <= gasService.maxBatchSize(centrifugeId), ExceedsMaxBatchSize());
-            slot.tstore(uint256(newGasLimit));
+            gasLimitSlot.tstore(uint256(newGasLimit));
 
             if (previousMessage.length == 0) {
                 TransientArrayLib.push(BATCH_LOCATORS_SLOT, bytes32(abi.encodePacked(bytes2(centrifugeId), bytes8(poolId.raw()))));
-                outboundBatch[centrifugeId][poolId] = message;
+                TransientBytesLib.set(batchSlot, message);
             } else {
-                outboundBatch[centrifugeId][poolId] = bytes.concat(previousMessage, message);
+                TransientBytesLib.set(batchSlot, bytes.concat(previousMessage, message));
             }
         } else {
             _send(centrifugeId, poolId, message);
@@ -406,10 +407,11 @@ contract Gateway is Auth, IGateway, Recoverable {
             uint16 centrifugeId = uint16(bytes2(locators[i]));
             PoolId poolId = PoolId.wrap(uint64(bytes8(locators[i] << 16)));
             
-            _send(centrifugeId, poolId, outboundBatch[centrifugeId][poolId]);
-            delete outboundBatch[centrifugeId][poolId];
+            bytes32 batchSlot = keccak256(abi.encode("outboundBatch", centrifugeId, poolId));
+            _send(centrifugeId, poolId, TransientBytesLib.get(batchSlot));
+            TransientBytesLib.clear(batchSlot);
 
-            bytes32 slot = keccak256(abi.encode(centrifugeId, poolId));
+            bytes32 slot = keccak256(abi.encode("batchGasLimit", centrifugeId, poolId));
             slot.tstore(uint256(0));
         }
 
