@@ -24,7 +24,11 @@ contract MockAdapter is Auth, Mock, IAdapter {
         gateway.handle(centrifugeId, _message);
     }
 
-    function send(uint16, bytes calldata message, uint256, address) public payable returns (bytes32 adapterData) {
+    function send(uint16, bytes calldata message, uint256, address)
+        public
+        payable
+        returns (bytes32 /* adapterData */ )
+    {
         callWithValue("send", msg.value);
         values_bytes["send"] = message;
         sent[message]++;

@@ -73,7 +73,7 @@ contract MockVaults is Test, Auth, IAdapter {
     function send(uint16 centrifugeId, bytes memory data, uint256, address)
         external
         payable
-        returns (bytes32 adapterData)
+        returns (bytes32 /* adapterData */ )
     {
         lastChainDestinations.push(centrifugeId);
 
