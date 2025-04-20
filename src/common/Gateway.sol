@@ -146,7 +146,6 @@ contract Gateway is Auth, Recoverable, IGateway {
         IMessageProcessor processor_ = processor;
         if (processor_.isMessageRecovery(payload)) {
             require(!isRecovery, RecoveryMessageRecovered());
-            // why?
             return processor_.handle(centrifugeId, payload);
         }
 
