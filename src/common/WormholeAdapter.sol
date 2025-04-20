@@ -61,14 +61,20 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
 
     // --- Outgoing ---
     /// @inheritdoc IAdapter
-    function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, address refund) external payable {
+    function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, address refund)
+        external
+        payable
+        returns (bytes32 adapterData)
+    {
         require(msg.sender == address(gateway), NotGateway());
         WormholeDestination memory destination = destinations[centrifugeId];
         require(destination.wormholeId != 0, UnknownChainId());
 
-        relayer.sendPayloadToEvm{value: msg.value}(
+        uint64 sequence = relayer.sendPayloadToEvm{value: msg.value}(
             destination.wormholeId, destination.addr, payload, 0, gasLimit, localWormholeId, refund
         );
+
+        adapterData = bytes32(bytes8(sequence));
     }
 
     /// @inheritdoc IAdapter

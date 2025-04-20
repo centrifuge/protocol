@@ -32,7 +32,11 @@ contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
     }
 
     /// @inheritdoc IAdapter
-    function send(uint16 remoteCentrifugeId, bytes calldata payload, uint256, address) external payable {
+    function send(uint16 remoteCentrifugeId, bytes calldata payload, uint256, address)
+        external
+        payable
+        returns (bytes32 adapterData)
+    {
         // Local messages must be bypassed
         assertNotEq(remoteCentrifugeId, localCentrifugeId, "Local messages must be bypassed");
 
