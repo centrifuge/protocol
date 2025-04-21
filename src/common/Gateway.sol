@@ -36,6 +36,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     using TransientStorageLib for bytes32;
     using MessageProofLib for *;
 
+    PoolId public constant GLOBAL_POT = PoolId.wrap(0);
     uint8 public constant MAX_ADAPTER_COUNT = 8;
     uint8 public constant PRIMARY_ADAPTER_ID = 1;
     uint256 public constant RECOVERY_CHALLENGE_PERIOD = 7 days;
@@ -52,7 +53,6 @@ contract Gateway is Auth, Recoverable, IGateway {
     bool public transient isBatching;
     uint256 public transient fuel;
     address public transient transactionRefund;
-    PoolId internal transient _receivePoolTarget;
     mapping(PoolId => Funds) public subsidy;
 
     // Adapters
@@ -70,7 +70,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         root = root_;
         gasService = gasService_;
 
-        setRefundAddress(PoolId.wrap(0), IRecoverable(address(this)));
+        setRefundAddress(GLOBAL_POT, IRecoverable(address(this)));
     }
 
     modifier pauseable() {
@@ -125,7 +125,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     receive() external payable {
-        subsidizePool(_receivePoolTarget);
+        _subsidizePool(GLOBAL_POT, msg.sender, msg.value);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -308,7 +308,9 @@ contract Gateway is Auth, Recoverable, IGateway {
                 require(consumed <= fuel, NotEnoughTransactionGas());
                 fuel -= consumed;
             } else {
-                _requestPoolFunding(poolId);
+                if (consumed > subsidy[poolId].value) {
+                    _requestPoolFunding(poolId);
+                }
                 if (consumed <= subsidy[poolId].value) {
                     subsidy[poolId].value -= uint96(consumed);
                 } else {
@@ -354,8 +356,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             if (!success) {
                 // If refund fails, move remaining fuel to global pot
-                subsidy[PoolId.wrap(0)].value += uint96(fuel);
-                emit SubsidizePool(PoolId.wrap(0), address(this), fuel);
+                _subsidizePool(GLOBAL_POT, transactionRefund, fuel);
             }
 
             fuel = 0;
@@ -367,9 +368,14 @@ contract Gateway is Auth, Recoverable, IGateway {
     function _requestPoolFunding(PoolId poolId) internal {
         IRecoverable refund = subsidy[poolId].refund;
         if (!poolId.isNull() && address(refund) != address(0)) {
-            _receivePoolTarget = poolId;
-            refund.recoverTokens(ETH_ADDRESS, address(this), address(refund).balance);
-            _receivePoolTarget = PoolId.wrap(0);
+            uint256 refundBalance = address(refund).balance;
+
+            // Send to the gateway GLOBAL_POT
+            refund.recoverTokens(ETH_ADDRESS, address(this), refundBalance);
+
+            // Extract from the GLOBAL_POT
+            subsidy[GLOBAL_POT].value -= uint96(refundBalance);
+            _subsidizePool(poolId, address(refund), refundBalance);
         }
     }
 
@@ -380,8 +386,12 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     function subsidizePool(PoolId poolId) public payable {
         require(address(subsidy[poolId].refund) != address(0), RefundAddressNotSet());
-        subsidy[poolId].value += uint96(msg.value);
-        emit SubsidizePool(poolId, msg.sender, msg.value);
+        _subsidizePool(poolId, msg.sender, msg.value);
+    }
+
+    function _subsidizePool(PoolId poolId, address who, uint256 value) internal {
+        subsidy[poolId].value += uint96(value);
+        emit SubsidizePool(poolId, who, value);
     }
 
     /// @inheritdoc IGateway

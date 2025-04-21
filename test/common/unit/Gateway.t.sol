@@ -1061,6 +1061,27 @@ contract GatewayTestSend is GatewayTest {
         assertEq(value, MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE_3 - 1);
     }
 
+    function testSendMessageUsingSubsidizedPoolPaymentAndPoolRefunding() public {
+        gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
+
+        bytes memory message = MessageKind.WithPoolA1.asBytes();
+
+        /// Not enough payment, the payment of the third message will be refunded
+        uint256 payment = MESSAGE_GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3 - 1;
+        gateway.setRefundAddress(POOL_A, POOL_REFUND);
+        gateway.subsidizePool{value: payment}(POOL_A);
+
+        // The refund system will take this amount to pay the last message
+        vm.deal(address(POOL_REFUND), 1);
+
+        _mockAdapters(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT, address(POOL_REFUND), ADAPTER_PAID);
+
+        gateway.send(REMOTE_CENT_ID, message);
+
+        (uint256 value,) = gateway.subsidy(POOL_A);
+        assertEq(value, 0);
+    }
+
     function testSendMessageUsingTransactionPayment() public {
         gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
 
