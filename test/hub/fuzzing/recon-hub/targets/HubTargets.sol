@@ -21,13 +21,12 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 // Test Utils
 import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
-import {BeforeAfter} from "../BeforeAfter.sol";
-import {OpType} from "../BaseBeforeAfter.sol";
+import {BeforeAfter, OpType} from "../BeforeAfter.sol";
 import {Properties} from "../Properties.sol";
 
 abstract contract HubTargets is
     BaseTargetFunctions,
-    BeforeAfter
+    Properties
 {
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
 

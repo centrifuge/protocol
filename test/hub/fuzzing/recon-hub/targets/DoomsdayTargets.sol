@@ -14,7 +14,7 @@ import {Properties} from "../Properties.sol";
 
 abstract contract DoomsdayTargets is
     BaseTargetFunctions,
-    BeforeAfter
+    Properties
 {
 
     /// @dev Property: accounting.accountValue should never revert

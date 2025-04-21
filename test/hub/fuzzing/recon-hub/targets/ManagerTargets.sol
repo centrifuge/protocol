@@ -17,7 +17,7 @@ import {Properties} from "../Properties.sol";
 // Keeping them out makes your project more custom
 abstract contract ManagerTargets is
     BaseTargetFunctions,
-    BeforeAfter
+    Properties
 {
     // == ACTOR HANDLERS == //
     
