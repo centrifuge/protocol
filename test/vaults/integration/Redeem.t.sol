@@ -5,6 +5,11 @@ import "test/vaults/BaseTest.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 
@@ -38,7 +43,9 @@ contract RedeemTest is BaseTest {
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
         vm.expectRevert(IAsyncRequests.NoPendingRequest.selector);
-        asyncRequests.fulfillRedeemRequest(poolId, scId, self, assetId, assets, uint128(amount));
+        asyncRequests.fulfillRedeemRequest(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), self, AssetId.wrap(assetId), assets, uint128(amount)
+        );
 
         // success
         centrifugeChain.linkVault(vault.poolId(), vault.trancheId(), vault_);
@@ -231,11 +238,15 @@ contract RedeemTest is BaseTest {
 
         // Fail - Redeem amount too big
         vm.expectRevert(IERC20.InsufficientBalance.selector);
-        asyncRequests.triggerRedeemRequest(poolId, scId, investor, assetId, uint128(amount + 1));
+        asyncRequests.triggerRedeemRequest(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, AssetId.wrap(assetId), uint128(amount + 1)
+        );
 
         //Fail - Share token amount zero
         vm.expectRevert(IAsyncRequests.ShareTokenAmountIsZero.selector);
-        asyncRequests.triggerRedeemRequest(poolId, scId, investor, assetId, 0);
+        asyncRequests.triggerRedeemRequest(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, AssetId.wrap(assetId), 0
+        );
 
         // should work even if investor is frozen
         centrifugeChain.freeze(poolId, scId, investor); // freeze investor
@@ -311,7 +322,9 @@ contract RedeemTest is BaseTest {
 
         // Fail - Redeem amount too big
         vm.expectRevert(IERC20.InsufficientBalance.selector);
-        asyncRequests.triggerRedeemRequest(poolId, scId, investor, assetId, uint128(amount + 1));
+        asyncRequests.triggerRedeemRequest(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, AssetId.wrap(assetId), uint128(amount + 1)
+        );
 
         // should work even if investor is frozen
         centrifugeChain.freeze(poolId, scId, investor); // freeze investor

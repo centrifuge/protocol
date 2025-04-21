@@ -8,6 +8,10 @@ import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {Properties} from "../Properties.sol";
 import {vm} from "@chimera/Hevm.sol";
 
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+
 // Src Deps | For cycling of values
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {ERC20} from "src/misc/ERC20.sol";
@@ -61,7 +65,9 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
             }
         }
 
-        asyncRequests.fulfillDepositRequest(poolId, scId, actor, assetId, currencyPayout, tokenPayout);
+        asyncRequests.fulfillDepositRequest(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), actor, AssetId.wrap(assetId), currencyPayout, tokenPayout
+        );
 
         // E-2 | Global-1
         sumOfFullfilledDeposits[address(token)] += tokenPayout;
@@ -120,7 +126,9 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
         // /// @audit We mint payout here which has to be paid by the borrowers
         // // END TODO test_invariant_asyncVault_10_w_recon
 
-        asyncRequests.fulfillRedeemRequest(poolId, scId, actor, assetId, currencyPayout, tokenPayout);
+        asyncRequests.fulfillRedeemRequest(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), actor, AssetId.wrap(assetId), currencyPayout, tokenPayout
+        );
 
         sumOfClaimedRequests[address(token)] += tokenPayout;
 
@@ -179,7 +187,9 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
         // Need to cap remainingInvestOrder by the shares?
 
         // TODO: Would they set the order to a higher value?
-        asyncRequests.fulfillCancelDepositRequest(poolId, scId, actor, assetId, currencyPayout, currencyPayout);
+        asyncRequests.fulfillCancelDepositRequest(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), actor, AssetId.wrap(assetId), currencyPayout, currencyPayout
+        );
         /// @audit Reduced by: currencyPayout
 
         cancelDepositCurrencyPayout[address(assetErc20)] += currencyPayout;
@@ -230,7 +240,9 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
             }
         }
 
-        asyncRequests.fulfillCancelRedeemRequest(poolId, scId, actor, assetId, tokenPayout);
+        asyncRequests.fulfillCancelRedeemRequest(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), actor, AssetId.wrap(assetId), tokenPayout
+        );
         /// @audit tokenPayout
 
         cancelRedeemShareTokenPayout[address(token)] += tokenPayout;

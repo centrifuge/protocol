@@ -14,6 +14,9 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {D18} from "src/misc/types/D18.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
@@ -62,8 +65,16 @@ contract PoolManagerTestHelper is BaseTest {
         tokenSymbol = tokenSymbol_;
         scId = scId_;
 
-        poolManager.addPool(poolId);
-        poolManager.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, bytes32(0), address(new MockHook()));
+        poolManager.addPool(PoolId.wrap(poolId));
+        poolManager.addShareClass(
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            tokenName,
+            tokenSymbol,
+            decimals,
+            bytes32(0),
+            address(new MockHook())
+        );
     }
 
     function registerAssetErc20() public {
@@ -161,14 +172,14 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
     }
 
     function testAddPool(uint64 poolId) public {
-        poolManager.addPool(poolId);
+        poolManager.addPool(PoolId.wrap(poolId));
 
         vm.expectRevert(IPoolManager.PoolAlreadyAdded.selector);
-        poolManager.addPool(poolId);
+        poolManager.addPool(PoolId.wrap(poolId));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
-        poolManager.addPool(poolId);
+        poolManager.addPool(PoolId.wrap(poolId));
     }
 
     function testAddShareClass(
@@ -186,23 +197,35 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         address hook = address(new MockHook());
 
         vm.expectRevert(IPoolManager.InvalidPool.selector);
-        poolManager.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, salt, hook);
-        poolManager.addPool(poolId);
+        poolManager.addShareClass(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), tokenName, tokenSymbol, decimals, salt, hook
+        );
+        poolManager.addPool(PoolId.wrap(poolId));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
-        poolManager.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, salt, hook);
+        poolManager.addShareClass(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), tokenName, tokenSymbol, decimals, salt, hook
+        );
 
         vm.expectRevert(IPoolManager.TooFewDecimals.selector);
-        poolManager.addShareClass(poolId, scId, tokenName, tokenSymbol, 0, bytes32(0), hook);
+        poolManager.addShareClass(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), tokenName, tokenSymbol, 0, bytes32(0), hook
+        );
 
         vm.expectRevert(IPoolManager.TooManyDecimals.selector);
-        poolManager.addShareClass(poolId, scId, tokenName, tokenSymbol, 19, bytes32(0), hook);
+        poolManager.addShareClass(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), tokenName, tokenSymbol, 19, bytes32(0), hook
+        );
 
         vm.expectRevert(IPoolManager.InvalidHook.selector);
-        poolManager.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, salt, address(1));
+        poolManager.addShareClass(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), tokenName, tokenSymbol, decimals, salt, address(1)
+        );
 
-        poolManager.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, salt, hook);
+        poolManager.addShareClass(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), tokenName, tokenSymbol, decimals, salt, hook
+        );
         CentrifugeToken shareToken = CentrifugeToken(poolManager.shareToken(poolId, scId));
         assertEq(tokenName, shareToken.name());
         assertEq(tokenSymbol, shareToken.symbol());
@@ -210,7 +233,9 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assertEq(hook, shareToken.hook());
 
         vm.expectRevert(IPoolManager.ShareClassAlreadyRegistered.selector);
-        poolManager.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, salt, hook);
+        poolManager.addShareClass(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), tokenName, tokenSymbol, decimals, salt, hook
+        );
     }
 
     function testAddMultipleSharesWorks(
@@ -225,12 +250,14 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         vm.assume(bytes(tokenName).length <= 128);
         vm.assume(bytes(tokenSymbol).length <= 32);
 
-        poolManager.addPool(poolId);
+        poolManager.addPool(PoolId.wrap(poolId));
 
         address hook = address(new MockHook());
 
         for (uint256 i = 0; i < scIds.length; i++) {
-            poolManager.addShareClass(poolId, scIds[i], tokenName, tokenSymbol, decimals, bytes32(i), hook);
+            poolManager.addShareClass(
+                PoolId.wrap(poolId), ShareClassId.wrap(scIds[i]), tokenName, tokenSymbol, decimals, bytes32(i), hook
+            );
             CentrifugeToken shareToken = CentrifugeToken(poolManager.shareToken(poolId, scIds[i]));
             assertEq(tokenName, shareToken.name());
             assertEq(tokenSymbol, shareToken.symbol());
@@ -248,17 +275,19 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         // fund this account with amount
         poolManager.updateRestriction(
-            vault.poolId(),
-            vault.trancheId(),
+            PoolId.wrap(vault.poolId()),
+            ShareClassId.wrap(vault.trancheId()),
             MessageLib.UpdateRestrictionMember(address(this).toBytes32(), validUntil).serialize()
         );
 
-        poolManager.handleTransferShares(vault.poolId(), vault.trancheId(), address(this), amount);
+        poolManager.handleTransferShares(
+            PoolId.wrap(vault.poolId()), ShareClassId.wrap(vault.trancheId()), address(this), amount
+        );
         assertEq(shareToken.balanceOf(address(this)), amount); // Verify the address(this) has the expected amount
 
         poolManager.updateRestriction(
-            vault.poolId(),
-            vault.trancheId(),
+            PoolId.wrap(vault.poolId()),
+            ShareClassId.wrap(vault.trancheId()),
             MessageLib.UpdateRestrictionMember(address(uint160(OTHER_CHAIN_ID)).toBytes32(), type(uint64).max).serialize(
             )
         );
@@ -290,16 +319,18 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         IShareToken shareToken = IShareToken(address(vault.share()));
 
         vm.expectRevert(IHook.TransferBlocked.selector);
-        poolManager.handleTransferShares(poolId, scId, destinationAddress, amount);
+        poolManager.handleTransferShares(PoolId.wrap(poolId), ShareClassId.wrap(scId), destinationAddress, amount);
         poolManager.updateRestriction(
-            poolId, scId, MessageLib.UpdateRestrictionMember(destinationAddress.toBytes32(), validUntil).serialize()
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            MessageLib.UpdateRestrictionMember(destinationAddress.toBytes32(), validUntil).serialize()
         );
 
         vm.expectRevert(IPoolManager.UnknownToken.selector);
-        poolManager.handleTransferShares(poolId + 1, scId, destinationAddress, amount);
+        poolManager.handleTransferShares(PoolId.wrap(poolId + 1), ShareClassId.wrap(scId), destinationAddress, amount);
 
         assertTrue(shareToken.checkTransferRestriction(address(0), destinationAddress, 0));
-        poolManager.handleTransferShares(poolId, scId, destinationAddress, amount);
+        poolManager.handleTransferShares(PoolId.wrap(poolId), ShareClassId.wrap(scId), destinationAddress, amount);
         assertEq(shareToken.balanceOf(destinationAddress), amount);
     }
 
@@ -313,25 +344,27 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
 
         poolManager.updateRestriction(
-            vault.poolId(),
-            vault.trancheId(),
+            PoolId.wrap(vault.poolId()),
+            ShareClassId.wrap(vault.trancheId()),
             MessageLib.UpdateRestrictionMember(destinationAddress.toBytes32(), validUntil).serialize()
         );
         poolManager.updateRestriction(
-            vault.poolId(),
-            vault.trancheId(),
+            PoolId.wrap(vault.poolId()),
+            ShareClassId.wrap(vault.trancheId()),
             MessageLib.UpdateRestrictionMember(address(this).toBytes32(), validUntil).serialize()
         );
         assertTrue(shareToken.checkTransferRestriction(address(0), address(this), 0));
         assertTrue(shareToken.checkTransferRestriction(address(0), destinationAddress, 0));
 
         // Fund this address with samount
-        poolManager.handleTransferShares(vault.poolId(), vault.trancheId(), address(this), amount);
+        poolManager.handleTransferShares(
+            PoolId.wrap(vault.poolId()), ShareClassId.wrap(vault.trancheId()), address(this), amount
+        );
         assertEq(shareToken.balanceOf(address(this)), amount);
 
         poolManager.updateRestriction(
-            vault.poolId(),
-            vault.trancheId(),
+            PoolId.wrap(vault.poolId()),
+            ShareClassId.wrap(vault.trancheId()),
             MessageLib.UpdateRestrictionMember(address(uint160(OTHER_CHAIN_ID)).toBytes32(), type(uint64).max).serialize(
             )
         );
@@ -366,13 +399,15 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         vm.expectRevert(IPoolManager.UnknownToken.selector);
         poolManager.updateRestriction(
-            100,
-            bytes16(bytes("100")),
+            PoolId.wrap(100),
+            ShareClassId.wrap(bytes16(bytes("100"))),
             MessageLib.UpdateRestrictionMember(randomUser.toBytes32(), validUntil).serialize()
         ); // use random poolId & shareId
 
         poolManager.updateRestriction(
-            poolId, scId, MessageLib.UpdateRestrictionMember(randomUser.toBytes32(), validUntil).serialize()
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            MessageLib.UpdateRestrictionMember(randomUser.toBytes32(), validUntil).serialize()
         );
         assertTrue(shareToken.checkTransferRestriction(address(0), randomUser, 0));
     }
@@ -388,39 +423,55 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         vm.expectRevert(IPoolManager.UnknownToken.selector);
         poolManager.updateRestriction(
-            poolId + 1, scId, MessageLib.UpdateRestrictionFreeze(randomUser.toBytes32()).serialize()
+            PoolId.wrap(poolId + 1),
+            ShareClassId.wrap(scId),
+            MessageLib.UpdateRestrictionFreeze(randomUser.toBytes32()).serialize()
         );
 
         vm.expectRevert(IPoolManager.UnknownToken.selector);
         poolManager.updateRestriction(
-            poolId + 1, scId, MessageLib.UpdateRestrictionUnfreeze(randomUser.toBytes32()).serialize()
+            PoolId.wrap(poolId + 1),
+            ShareClassId.wrap(scId),
+            MessageLib.UpdateRestrictionUnfreeze(randomUser.toBytes32()).serialize()
         );
 
         poolManager.updateRestriction(
-            poolId, scId, MessageLib.UpdateRestrictionMember(randomUser.toBytes32(), validUntil).serialize()
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            MessageLib.UpdateRestrictionMember(randomUser.toBytes32(), validUntil).serialize()
         );
         poolManager.updateRestriction(
-            poolId, scId, MessageLib.UpdateRestrictionMember(secondUser.toBytes32(), validUntil).serialize()
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            MessageLib.UpdateRestrictionMember(secondUser.toBytes32(), validUntil).serialize()
         );
         assertTrue(shareToken.checkTransferRestriction(randomUser, secondUser, 0));
 
         poolManager.updateRestriction(
-            poolId, scId, MessageLib.UpdateRestrictionFreeze(randomUser.toBytes32()).serialize()
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            MessageLib.UpdateRestrictionFreeze(randomUser.toBytes32()).serialize()
         );
         assertFalse(shareToken.checkTransferRestriction(randomUser, secondUser, 0));
 
         poolManager.updateRestriction(
-            poolId, scId, MessageLib.UpdateRestrictionUnfreeze(randomUser.toBytes32()).serialize()
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            MessageLib.UpdateRestrictionUnfreeze(randomUser.toBytes32()).serialize()
         );
         assertTrue(shareToken.checkTransferRestriction(randomUser, secondUser, 0));
 
         poolManager.updateRestriction(
-            poolId, scId, MessageLib.UpdateRestrictionFreeze(secondUser.toBytes32()).serialize()
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            MessageLib.UpdateRestrictionFreeze(secondUser.toBytes32()).serialize()
         );
         assertFalse(shareToken.checkTransferRestriction(randomUser, secondUser, 0));
 
         poolManager.updateRestriction(
-            poolId, scId, MessageLib.UpdateRestrictionUnfreeze(secondUser.toBytes32()).serialize()
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            MessageLib.UpdateRestrictionUnfreeze(secondUser.toBytes32()).serialize()
         );
         assertTrue(shareToken.checkTransferRestriction(randomUser, secondUser, 0));
     }
@@ -436,21 +487,29 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         string memory updatedTokenSymbol = "newSymbol";
 
         vm.expectRevert(IPoolManager.UnknownToken.selector);
-        poolManager.updateShareMetadata(100, bytes16(bytes("100")), updatedTokenName, updatedTokenSymbol);
+        poolManager.updateShareMetadata(
+            PoolId.wrap(100), ShareClassId.wrap(bytes16(bytes("100"))), updatedTokenName, updatedTokenSymbol
+        );
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
-        poolManager.updateShareMetadata(poolId, scId, updatedTokenName, updatedTokenSymbol);
+        poolManager.updateShareMetadata(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), updatedTokenName, updatedTokenSymbol
+        );
 
         assertEq(shareToken.name(), "name");
         assertEq(shareToken.symbol(), "symbol");
 
-        poolManager.updateShareMetadata(poolId, scId, updatedTokenName, updatedTokenSymbol);
+        poolManager.updateShareMetadata(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), updatedTokenName, updatedTokenSymbol
+        );
         assertEq(shareToken.name(), updatedTokenName);
         assertEq(shareToken.symbol(), updatedTokenSymbol);
 
         vm.expectRevert(IPoolManager.OldMetadata.selector);
-        poolManager.updateShareMetadata(poolId, scId, updatedTokenName, updatedTokenSymbol);
+        poolManager.updateShareMetadata(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), updatedTokenName, updatedTokenSymbol
+        );
     }
 
     function testUpdateShareHook() public {
@@ -463,19 +522,19 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         address newHook = makeAddr("NewHook");
 
         vm.expectRevert(IPoolManager.UnknownToken.selector);
-        poolManager.updateShareHook(100, bytes16(bytes("100")), newHook);
+        poolManager.updateShareHook(PoolId.wrap(100), ShareClassId.wrap(bytes16(bytes("100"))), newHook);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
-        poolManager.updateShareHook(poolId, scId, newHook);
+        poolManager.updateShareHook(PoolId.wrap(poolId), ShareClassId.wrap(scId), newHook);
 
         assertEq(shareToken.hook(), restrictedTransfers);
 
-        poolManager.updateShareHook(poolId, scId, newHook);
+        poolManager.updateShareHook(PoolId.wrap(poolId), ShareClassId.wrap(scId), newHook);
         assertEq(shareToken.hook(), newHook);
 
         vm.expectRevert(IPoolManager.OldHook.selector);
-        poolManager.updateShareHook(poolId, scId, newHook);
+        poolManager.updateShareHook(PoolId.wrap(poolId), ShareClassId.wrap(scId), newHook);
     }
 
     function testUpdateRestriction() public {
@@ -488,21 +547,21 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         bytes memory update = MessageLib.UpdateRestrictionFreeze(makeAddr("User").toBytes32()).serialize();
 
         vm.expectRevert(IPoolManager.UnknownToken.selector);
-        poolManager.updateRestriction(100, bytes16(bytes("100")), update);
+        poolManager.updateRestriction(PoolId.wrap(100), ShareClassId.wrap(bytes16(bytes("100"))), update);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
-        poolManager.updateRestriction(poolId, scId, update);
+        poolManager.updateRestriction(PoolId.wrap(poolId), ShareClassId.wrap(scId), update);
 
         address hook = shareToken.hook();
-        poolManager.updateShareHook(poolId, scId, address(0));
+        poolManager.updateShareHook(PoolId.wrap(poolId), ShareClassId.wrap(scId), address(0));
 
         vm.expectRevert(IPoolManager.InvalidHook.selector);
-        poolManager.updateRestriction(poolId, scId, update);
+        poolManager.updateRestriction(PoolId.wrap(poolId), ShareClassId.wrap(scId), update);
 
-        poolManager.updateShareHook(poolId, scId, hook);
+        poolManager.updateShareHook(PoolId.wrap(poolId), ShareClassId.wrap(scId), hook);
 
-        poolManager.updateRestriction(poolId, scId, update);
+        poolManager.updateRestriction(PoolId.wrap(poolId), ShareClassId.wrap(scId), update);
     }
 
     function testUpdatePricePoolPerShareWorks(
@@ -517,17 +576,23 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         decimals = uint8(bound(decimals, 2, 18));
         vm.assume(poolId > 0);
         vm.assume(scId > 0);
-        poolManager.addPool(poolId);
+        poolManager.addPool(PoolId.wrap(poolId));
         uint128 assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, address(erc20), 0);
 
         address hook = address(new MockHook());
 
         vm.expectRevert(IPoolManager.ShareTokenDoesNotExist.selector);
-        poolManager.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp));
+        poolManager.updatePricePoolPerShare(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), price, uint64(block.timestamp)
+        );
 
-        poolManager.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, salt, hook);
+        poolManager.addShareClass(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), tokenName, tokenSymbol, decimals, salt, hook
+        );
 
-        poolManager.updatePricePoolPerAsset(poolId, scId, assetId, 1e18, uint64(block.timestamp));
+        poolManager.updatePricePoolPerAsset(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), 1e18, uint64(block.timestamp)
+        );
 
         vm.expectRevert(IPoolManager.InvalidPrice.selector);
         poolManager.priceAssetPerShare(poolId, scId, assetId, true);
@@ -537,18 +602,26 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
-        poolManager.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp));
+        poolManager.updatePricePoolPerShare(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), price, uint64(block.timestamp)
+        );
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
-        poolManager.updatePricePoolPerAsset(poolId, scId, assetId, price, uint64(block.timestamp));
+        poolManager.updatePricePoolPerAsset(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), price, uint64(block.timestamp)
+        );
 
-        poolManager.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp));
+        poolManager.updatePricePoolPerShare(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), price, uint64(block.timestamp)
+        );
         (D18 latestPrice, uint64 lastUpdated) = poolManager.priceAssetPerShare(poolId, scId, assetId, false);
         assertEq(latestPrice.raw(), price);
         assertEq(lastUpdated, block.timestamp);
 
         vm.expectRevert(IPoolManager.CannotSetOlderPrice.selector);
-        poolManager.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp - 1));
+        poolManager.updatePricePoolPerShare(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), price, uint64(block.timestamp - 1)
+        );
 
         // NOTE: We have no maxAge set, so price is invalid after timestamp of block increases
         vm.warp(block.timestamp + 1);
@@ -598,13 +671,13 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         shareToken.approve(address(poolManager), amount);
 
         poolManager.updateRestriction(
-            vault.poolId(),
-            vault.trancheId(),
+            PoolId.wrap(vault.poolId()),
+            ShareClassId.wrap(vault.trancheId()),
             MessageLib.UpdateRestrictionMember(destinationAddress.toBytes32(), validUntil).serialize()
         );
         poolManager.updateRestriction(
-            vault.poolId(),
-            vault.trancheId(),
+            PoolId.wrap(vault.poolId()),
+            ShareClassId.wrap(vault.trancheId()),
             MessageLib.UpdateRestrictionMember(address(this).toBytes32(), validUntil).serialize()
         );
 
@@ -612,7 +685,9 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assertTrue(shareToken.checkTransferRestriction(address(0), destinationAddress, 0));
 
         // Fund this address with amount
-        poolManager.handleTransferShares(vault.poolId(), vault.trancheId(), address(this), amount);
+        poolManager.handleTransferShares(
+            PoolId.wrap(vault.poolId()), ShareClassId.wrap(vault.trancheId()), address(this), amount
+        );
         assertEq(shareToken.balanceOf(address(this)), amount);
 
         // fails for invalid share class token
@@ -620,7 +695,9 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         bytes16 scId = vault.trancheId();
 
         poolManager.updateRestriction(
-            poolId, scId, MessageLib.UpdateRestrictionFreeze(address(this).toBytes32()).serialize()
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            MessageLib.UpdateRestrictionFreeze(address(this).toBytes32()).serialize()
         );
         assertFalse(shareToken.checkTransferRestriction(address(this), destinationAddress, 0));
 
@@ -630,8 +707,8 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         );
 
         poolManager.updateRestriction(
-            vault.poolId(),
-            vault.trancheId(),
+            PoolId.wrap(vault.poolId()),
+            ShareClassId.wrap(vault.trancheId()),
             MessageLib.UpdateRestrictionMember(address(uint160(OTHER_CHAIN_ID)).toBytes32(), type(uint64).max).serialize(
             )
         );
@@ -643,7 +720,9 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assertEq(shareToken.balanceOf(address(this)), amount);
 
         poolManager.updateRestriction(
-            poolId, scId, MessageLib.UpdateRestrictionUnfreeze(address(this).toBytes32()).serialize()
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            MessageLib.UpdateRestrictionUnfreeze(address(this).toBytes32()).serialize()
         );
         poolManager.transferShares{value: defaultGas}(
             OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount
@@ -1083,7 +1162,7 @@ contract PoolManagerUpdateContract is BaseTest, PoolManagerTestHelper {
 
         vm.expectEmit();
         emit IPoolManager.UpdateContract(poolId, scId, address(poolManager), vaultUpdate);
-        poolManager.updateContract(poolId, scId, address(poolManager), vaultUpdate);
+        poolManager.updateContract(PoolId.wrap(poolId), ShareClassId.wrap(scId), address(poolManager), vaultUpdate);
     }
 
     function testUpdateContractTargetUpdateContractMock(
@@ -1101,7 +1180,7 @@ contract PoolManagerUpdateContract is BaseTest, PoolManagerTestHelper {
 
         vm.expectEmit();
         emit IPoolManager.UpdateContract(poolId, scId, address(mock), vaultUpdate);
-        poolManager.updateContract(poolId, scId, address(mock), vaultUpdate);
+        poolManager.updateContract(PoolId.wrap(poolId), ShareClassId.wrap(scId), address(mock), vaultUpdate);
     }
 
     function testUpdateContractInvalidVaultFactory(
@@ -1116,7 +1195,7 @@ contract PoolManagerUpdateContract is BaseTest, PoolManagerTestHelper {
         bytes memory vaultUpdate = _serializedUpdateContractNewVault(address(1));
 
         vm.expectRevert(IPoolManager.InvalidFactory.selector);
-        poolManager.updateContract(poolId, scId, address(poolManager), vaultUpdate);
+        poolManager.updateContract(PoolId.wrap(poolId), ShareClassId.wrap(scId), address(poolManager), vaultUpdate);
     }
 
     function testUpdateContractUnknownVault(
@@ -1135,21 +1214,21 @@ contract PoolManagerUpdateContract is BaseTest, PoolManagerTestHelper {
         }).serialize();
 
         vm.expectRevert(IPoolManager.UnknownVault.selector);
-        poolManager.updateContract(poolId, scId, address(poolManager), vaultUpdate);
+        poolManager.updateContract(PoolId.wrap(poolId), ShareClassId.wrap(scId), address(poolManager), vaultUpdate);
     }
 
     function testUpdateContractInvalidShare(uint64 poolId) public {
-        poolManager.addPool(poolId);
+        poolManager.addPool(PoolId.wrap(poolId));
         bytes memory vaultUpdate = _serializedUpdateContractNewVault(asyncVaultFactory);
 
         vm.expectRevert(IPoolManager.ShareTokenDoesNotExist.selector);
-        poolManager.updateContract(poolId, scId, address(poolManager), vaultUpdate);
+        poolManager.updateContract(PoolId.wrap(poolId), ShareClassId.wrap(scId), address(poolManager), vaultUpdate);
     }
 
     function testUpdateContractUnauthorized() public {
         vm.prank(makeAddr("unauthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolManager.updateContract(0, bytes16(0), address(0), bytes(""));
+        poolManager.updateContract(PoolId.wrap(0), ShareClassId.wrap(bytes16(0)), address(0), bytes(""));
     }
 
     function testUpdateUnauthorized() public {

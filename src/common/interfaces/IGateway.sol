@@ -11,15 +11,6 @@ uint8 constant MAX_ADAPTER_COUNT = 8;
 
 /// @notice Interface for dispatch-only gateway
 interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
-    /// @notice Identifies a Batch
-    struct BatchLocator {
-        /// @notice chain associated to the batch
-        uint16 centrifugeId;
-        /// @notice pools associated to the batch.
-        /// NOTE: poolId == 0 represent a batch of messages pool-unrelated
-        PoolId poolId;
-    }
-
     /// @dev Each adapter struct is packed with the quorum to reduce SLOADs on handle
     struct Adapter {
         /// @notice Starts at 1 and maps to id - 1 as the index on the adapters array
@@ -50,13 +41,28 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     }
 
     // --- Events ---
-    event PrepareMessage(uint16 centrifugeId, PoolId poolId, bytes message);
-    event SendBatch(uint16 centrifugeId, bytes32 batchId, bytes batch, IAdapter adapter);
-    event SendProof(uint16 centrifugeId, bytes32 batchId, bytes32 batchHash, IAdapter adapter);
-    event ProcessBatch(uint16 centrifugeId, bytes32 batchId, bytes batch, IAdapter adapter);
-    event ProcessProof(uint16 centrifugeId, bytes32 batchId, bytes32 batchHash, IAdapter adapter);
-    event ExecuteMessage(uint16 centrifugeId, bytes message);
-    event FailMessage(uint16 centrifugeId, bytes message, bytes error);
+    event PrepareMessage(uint16 indexed centrifugeId, PoolId poolId, bytes message);
+    event SendBatch(
+        uint16 indexed centrifugeId,
+        bytes32 payloadId,
+        bytes batch,
+        IAdapter adapter,
+        bytes32 adapterData,
+        address refund,
+        bool underpaid
+    );
+    event SendProof(
+        uint16 indexed centrifugeId,
+        bytes32 payloadId,
+        bytes32 batchHash,
+        IAdapter adapter,
+        bytes32 adapterData,
+        bool underpaid
+    );
+    event ProcessBatch(uint16 indexed centrifugeId, bytes32 payloadId, bytes batch, IAdapter adapter);
+    event ProcessProof(uint16 indexed centrifugeId, bytes32 payloadId, bytes32 batchHash, IAdapter adapter);
+    event ExecuteMessage(uint16 indexed centrifugeId, bytes message);
+    event FailMessage(uint16 indexed centrifugeId, bytes message, bytes error);
 
     event RecoverMessage(IAdapter adapter, bytes message);
     event RecoverProof(IAdapter adapter, bytes32 batchHash);
@@ -97,8 +103,8 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @notice Dispatched when the gateway tries to handle a proof from a non proof adapter.
     error NonProofAdapter();
 
-    /// @notice Dispatched when the gateway tries to handle a message from a non message adapter.
-    error NonMessageAdapter();
+    /// @notice Dispatched when the gateway tries to handle a batch from a non message adapter.
+    error NonBatchAdapter();
 
     /// @notice Dispatched when a recovery message is executed without being initiated.
     error MessageRecoveryNotInitiated();

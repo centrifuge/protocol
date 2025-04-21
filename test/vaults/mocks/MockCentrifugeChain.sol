@@ -9,6 +9,7 @@ import {d18} from "src/misc/types/D18.sol";
 
 import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {SyncRequests} from "src/vaults/SyncRequests.sol";
@@ -354,7 +355,7 @@ contract MockCentrifugeChain is Test {
     }
 
     function execute(bytes memory message) public {
-        bytes memory proof = MessageLib.MessageProof({hash: keccak256(message)}).serialize();
+        bytes memory proof = MessageProofLib.serializeMessageProof(keccak256(message));
         for (uint256 i = 0; i < adapters.length; i++) {
             AdapterLike(address(adapters[i])).execute(i == 0 ? message : proof);
         }

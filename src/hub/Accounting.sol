@@ -6,18 +6,18 @@ import {Auth} from "src/misc/Auth.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
-import {TransientStorage} from "src/misc/libraries/TransientStorage.sol";
+import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
 
 /// @notice In a transaction there can be multiple journal entries for different pools,
 /// which can be interleaved. We want entries for the same pool to share the same journal ID.
 /// So we're keeping a journal ID per pool in transient storage.
 library TransientJournal {
     function journalId(PoolId poolId) internal view returns (uint256) {
-        return TransientStorage.tloadUint256(keccak256(abi.encode("journalId", poolId)));
+        return TransientStorageLib.tloadUint256(keccak256(abi.encode("journalId", poolId)));
     }
 
     function setJournalId(PoolId poolId, uint256 value) internal {
-        TransientStorage.tstore(keccak256(abi.encode("journalId", poolId)), value);
+        TransientStorageLib.tstore(keccak256(abi.encode("journalId", poolId)), value);
     }
 }
 
