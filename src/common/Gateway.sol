@@ -390,8 +390,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
         bytes32[] memory locators = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT);
         for (uint256 i; i < locators.length; i++) {
-            uint16 centrifugeId = uint16(bytes2(locators[i]));
-            PoolId poolId = PoolId.wrap(uint64(bytes8(locators[i] << 16)));
+            (uint16 centrifugeId, PoolId poolId) = _parseLocator(locators[i]);
             
             bytes32 gasLimitSlot = keccak256(abi.encode("batchGasLimit", centrifugeId, poolId));
             bytes32 outboundBatchSlot = keccak256(abi.encode("outboundBatch", centrifugeId, poolId));
@@ -406,6 +405,11 @@ contract Gateway is Auth, Recoverable, IGateway {
         isBatching = false;
 
         _closeTransaction();
+    }
+
+    function _parseLocator(bytes32 locator) internal pure returns (uint16 centrifugeId, PoolId poolId) {
+        centrifugeId = uint16(bytes2(locator));
+        poolId = PoolId.wrap(uint64(bytes8(locator << 16)));
     }
 
     //----------------------------------------------------------------------------------------------

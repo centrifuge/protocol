@@ -115,8 +115,7 @@ contract GatewayExt is Gateway {
 
     function batchLocators(uint256 index) public view returns (uint16 centrifugeId, PoolId poolId) {
         bytes32 locator = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT)[index];
-        centrifugeId = uint16(bytes2(locator));
-        poolId = PoolId.wrap(uint64(bytes8(locator << 16)));
+        (centrifugeId, poolId) = _parseLocator(locator);
     }
 
     function outboundBatch(uint16 centrifugeId, PoolId poolId) public view returns (bytes memory) {
