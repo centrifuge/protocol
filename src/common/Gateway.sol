@@ -23,6 +23,16 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {IGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {MessageLib, MessageType} from "src/common/libraries/MessageLib.sol";
 
+uint8 constant MESSAGE_PROOF_ID = 1;
+
+function deserializeMessageProof(bytes memory data) pure returns (bytes32) {
+    return BytesLib.toBytes32(data, 1);
+}
+
+function serializeMessageProof(bytes32 hash) pure returns (bytes memory) {
+    return abi.encodePacked(MESSAGE_PROOF_ID, hash);
+}
+
 /// @title  Gateway
 /// @notice Routing contract that forwards outgoing messages to multiple adapters (1 full message, n-1 proofs)
 ///         and validates that multiple adapters have confirmed a message.
@@ -35,7 +45,6 @@ contract Gateway is Auth, Recoverable, IGateway {
     using ArrayLib for uint16[8];
     using BytesLib for bytes;
     using MathLib for uint256;
-    using MessageProofLib for *;
     using TransientStorageLib for bytes32;
 
     uint8 public constant MAX_ADAPTER_COUNT = 8;
@@ -63,11 +72,10 @@ contract Gateway is Auth, Recoverable, IGateway {
     // Imbound & recoveries
     mapping(uint16 centrifugeId => mapping(bytes32 messageHash => uint256)) public failedMessages;
     mapping(uint16 centrifugeId => mapping(bytes32 batchHash => InboundBatch)) public inboundBatch;
-    mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 payloadHash => uint256 timestamp))) public
-        recoveries;
+    mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 payloadHash => uint256 timestamp)))
+        public recoveries;
 
-    constructor(uint16 localCentrifugeId_, IRoot root_, IGasService gasService_, address deployer)
-        Auth(deployer) {
+    constructor(uint16 localCentrifugeId_, IRoot root_, IGasService gasService_, address deployer) Auth(deployer) {
         localCentrifugeId = localCentrifugeId_;
         root = root_;
         gasService = gasService_;
@@ -156,7 +164,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         if (isMessageProof) {
             require(adapter.id != PRIMARY_ADAPTER_ID, NonProofAdapter());
 
-            batchHash = payload.deserializeMessageProof();
+            batchHash = deserializeMessageProof(payload);
             bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, batchHash));
             emit ProcessProof(centrifugeId, payloadId, batchHash, adapter_);
         } else {
@@ -271,16 +279,16 @@ contract Gateway is Auth, Recoverable, IGateway {
         emit PrepareMessage(centrifugeId, poolId, message);
 
         if (isBatching) {
-            bytes32 batchSlot = keccak256(abi.encode("outboundBatch", centrifugeId, poolId));
+            bytes32 batchSlot = _outboundBatchSlot(centrifugeId, poolId);
             bytes memory previousMessage = TransientBytesLib.get(batchSlot);
 
-            bytes32 gasLimitSlot = keccak256(abi.encode("batchGasLimit", centrifugeId, poolId));
+            bytes32 gasLimitSlot = _gasLimitSlot(centrifugeId, poolId);
             uint128 newGasLimit = gasLimitSlot.tloadUint128() + gasService.gasLimit(centrifugeId, message);
             require(newGasLimit <= gasService.maxBatchSize(centrifugeId), ExceedsMaxBatchSize());
             gasLimitSlot.tstore(uint256(newGasLimit));
 
             if (previousMessage.length == 0) {
-                TransientArrayLib.push(BATCH_LOCATORS_SLOT, bytes32(abi.encodePacked(bytes2(centrifugeId), bytes8(poolId.raw()))));
+                TransientArrayLib.push(BATCH_LOCATORS_SLOT, _encodeLocator(centrifugeId, poolId));
                 TransientBytesLib.set(batchSlot, message);
             } else {
                 TransientBytesLib.set(batchSlot, bytes.concat(previousMessage, message));
@@ -297,11 +305,14 @@ contract Gateway is Auth, Recoverable, IGateway {
         require(adapters[centrifugeId].length != 0, EmptyAdapterSet());
 
         uint128 batchGasLimit_ =
-            (isBatching) ? keccak256(abi.encode("batchGasLimit", centrifugeId, poolId)).tloadUint128() : gasService.gasLimit(centrifugeId, batch);
+            (isBatching) ? _gasLimitSlot(centrifugeId, poolId).tloadUint128() : gasService.gasLimit(centrifugeId, batch);
 
         for (uint256 i; i < adapters_.length; i++) {
-            uint256 consumed =
-                adapters_[i].estimate(centrifugeId, i == PRIMARY_ADAPTER_ID - 1 ? batch : MessageProofLib.serializeMessageProof(batchHash), batchGasLimit_);
+            uint256 consumed = adapters_[i].estimate(
+                centrifugeId,
+                i == PRIMARY_ADAPTER_ID - 1 ? batch : serializeMessageProof(batchHash),
+                batchGasLimit_
+            );
 
             if (transactionPayer != address(0)) {
                 require(consumed <= fuel, NotEnoughTransactionGas());
@@ -316,7 +327,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             bytes32 adapterData = adapters_[i].send{value: consumed}(
                 centrifugeId,
-                i == PRIMARY_ADAPTER_ID - 1 ? batch : MessageProofLib.serializeMessageProof(batchHash),
+                i == PRIMARY_ADAPTER_ID - 1 ? batch : serializeMessageProof(batchHash),
                 batchGasLimit_,
                 transactionPayer != address(0) ? transactionPayer : subsidy[poolId].refund
             );
@@ -391,14 +402,12 @@ contract Gateway is Auth, Recoverable, IGateway {
         bytes32[] memory locators = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT);
         for (uint256 i; i < locators.length; i++) {
             (uint16 centrifugeId, PoolId poolId) = _parseLocator(locators[i]);
-            
-            bytes32 gasLimitSlot = keccak256(abi.encode("batchGasLimit", centrifugeId, poolId));
-            bytes32 outboundBatchSlot = keccak256(abi.encode("outboundBatch", centrifugeId, poolId));
-            
+            bytes32 outboundBatchSlot = _outboundBatchSlot(centrifugeId, poolId);
+
             _send(centrifugeId, poolId, TransientBytesLib.get(outboundBatchSlot));
 
-            gasLimitSlot.tstore(uint256(0));
             TransientBytesLib.clear(outboundBatchSlot);
+            _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));
         }
 
         TransientArrayLib.clear(BATCH_LOCATORS_SLOT);
@@ -407,9 +416,21 @@ contract Gateway is Auth, Recoverable, IGateway {
         _closeTransaction();
     }
 
+    function _encodeLocator(uint16 centrifugeId, PoolId poolId) internal pure returns (bytes32) {
+        return bytes32(abi.encodePacked(bytes2(centrifugeId), bytes8(poolId.raw())));
+    }
+
     function _parseLocator(bytes32 locator) internal pure returns (uint16 centrifugeId, PoolId poolId) {
         centrifugeId = uint16(bytes2(locator));
         poolId = PoolId.wrap(uint64(bytes8(locator << 16)));
+    }
+
+    function _gasLimitSlot(uint16 centrifugeId, PoolId poolId) internal pure returns (bytes32) {
+        return keccak256(abi.encode("batchGasLimit", centrifugeId, poolId));
+    }
+
+    function _outboundBatchSlot(uint16 centrifugeId, PoolId poolId) internal pure returns (bytes32) {
+        return keccak256(abi.encode("outboundBatch", centrifugeId, poolId));
     }
 
     //----------------------------------------------------------------------------------------------
@@ -418,7 +439,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     /// @inheritdoc IGateway
     function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 total) {
-        bytes memory proof = MessageProofLib.serializeMessageProof(keccak256(payload));
+        bytes memory proof = serializeMessageProof(keccak256(payload));
 
         uint256 gasLimit = 0;
         for (uint256 pos; pos < payload.length;) {
@@ -452,19 +473,3 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 }
 
-library MessageProofLib {
-    using BytesLib for *;
-
-    uint8 constant MESSAGE_PROOF_ID = 1;
-
-    error UnknownMessageProofType();
-
-    function deserializeMessageProof(bytes memory data) internal pure returns (bytes32) {
-        require(data.toUint8(0) == MESSAGE_PROOF_ID, UnknownMessageProofType());
-        return data.toBytes32(1);
-    }
-
-    function serializeMessageProof(bytes32 hash) internal pure returns (bytes memory) {
-        return abi.encodePacked(MESSAGE_PROOF_ID, hash);
-    }
-}

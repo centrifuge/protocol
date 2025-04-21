@@ -5,7 +5,14 @@ import "forge-std/Test.sol";
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {Gateway, IRoot, IGasService, IGateway, MessageProofLib} from "src/common/Gateway.sol";
+import {
+    Gateway,
+    IRoot,
+    IGasService,
+    IGateway,
+    serializeMessageProof,
+    deserializeMessageProof
+} from "src/common/Gateway.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {TransientArrayLib} from "src/misc/libraries/TransientArrayLib.sol";
@@ -109,18 +116,15 @@ contract GatewayExt is Gateway {
     }
 
     function batchGasLimit(uint16 centrifugeId, PoolId poolId) public view returns (uint128) {
-        bytes32 slot = keccak256(abi.encode("batchGasLimit", centrifugeId, poolId));
-        return TransientStorageLib.tloadUint128(slot);
+        return TransientStorageLib.tloadUint128(_gasLimitSlot(centrifugeId, poolId));
     }
 
     function batchLocators(uint256 index) public view returns (uint16 centrifugeId, PoolId poolId) {
-        bytes32 locator = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT)[index];
-        (centrifugeId, poolId) = _parseLocator(locator);
+        return _parseLocator(TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT)[index]);
     }
 
     function outboundBatch(uint16 centrifugeId, PoolId poolId) public view returns (bytes memory) {
-        bytes32 batchSlot = keccak256(abi.encode("outboundBatch", centrifugeId, poolId));
-        return TransientBytesLib.get(batchSlot);
+        return TransientBytesLib.get(_outboundBatchSlot(centrifugeId, poolId));
     }
 }
 
@@ -195,8 +199,8 @@ contract GatewayTest is Test {
         assertEq(gateway.wards(address(this)), 1);
     }
 
-    function testMessageProofLib(bytes32 hash_) public pure {
-        assertEq(hash_, MessageProofLib.deserializeMessageProof(MessageProofLib.serializeMessageProof(hash_)));
+    function testMessageProof(bytes32 hash_) public pure {
+        assertEq(hash_, deserializeMessageProof(serializeMessageProof(hash_)));
     }
 }
 
@@ -316,7 +320,7 @@ contract GatewayTestHandle is GatewayTest {
 
         vm.prank(address(batchAdapter));
         vm.expectRevert(IGateway.NonProofAdapter.selector);
-        gateway.handle(REMOTE_CENTRIFUGE_ID, MessageProofLib.serializeMessageProof(bytes32("1")));
+        gateway.handle(REMOTE_CENTRIFUGE_ID, serializeMessageProof(bytes32("1")));
     }
 
     function testErrNonProofAdapterWithOneAdapter() public {
@@ -324,7 +328,7 @@ contract GatewayTestHandle is GatewayTest {
 
         vm.prank(address(batchAdapter));
         vm.expectRevert(IGateway.NonProofAdapter.selector);
-        gateway.handle(REMOTE_CENTRIFUGE_ID, MessageProofLib.serializeMessageProof(bytes32("1")));
+        gateway.handle(REMOTE_CENTRIFUGE_ID, serializeMessageProof(bytes32("1")));
     }
 
     function testErrNonBatchAdapter() public {
@@ -375,7 +379,7 @@ contract GatewayTestHandle is GatewayTest {
 
         bytes memory batch = MessageKind.WithPool0.asBytes();
         bytes32 batchHash = keccak256(batch);
-        bytes memory proof = MessageProofLib.serializeMessageProof(batchHash);
+        bytes memory proof = serializeMessageProof(batchHash);
         bytes32 batchId = keccak256(abi.encodePacked(REMOTE_CENTRIFUGE_ID, LOCAL_CENTRIFUGE_ID, batchHash));
         bytes32 proofId = keccak256(abi.encodePacked(REMOTE_CENTRIFUGE_ID, LOCAL_CENTRIFUGE_ID, batchHash));
 
@@ -406,7 +410,7 @@ contract GatewayTestHandle is GatewayTest {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeAdapters);
 
         bytes memory batch = MessageKind.WithPool0.asBytes();
-        bytes memory proof = MessageProofLib.serializeMessageProof(keccak256(batch));
+        bytes memory proof = serializeMessageProof(keccak256(batch));
 
         vm.prank(address(batchAdapter));
         gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
@@ -436,7 +440,7 @@ contract GatewayTestHandle is GatewayTest {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeAdapters);
 
         bytes memory batch = MessageKind.WithPool0.asBytes();
-        bytes memory proof = MessageProofLib.serializeMessageProof(keccak256(batch));
+        bytes memory proof = serializeMessageProof(keccak256(batch));
 
         vm.prank(address(batchAdapter));
         gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
@@ -446,7 +450,7 @@ contract GatewayTestHandle is GatewayTest {
         gateway.handle(REMOTE_CENTRIFUGE_ID, proof);
 
         bytes memory batch2 = MessageKind.WithPoolA1.asBytes();
-        bytes memory proof2 = MessageProofLib.serializeMessageProof(keccak256(batch2));
+        bytes memory proof2 = serializeMessageProof(keccak256(batch2));
 
         vm.prank(address(batchAdapter));
         gateway.handle(REMOTE_CENTRIFUGE_ID, batch2);
@@ -469,7 +473,7 @@ contract GatewayTestHandle is GatewayTest {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeAdapters);
 
         bytes memory batch = MessageKind.WithPool0.asBytes();
-        bytes memory proof = MessageProofLib.serializeMessageProof(keccak256(batch));
+        bytes memory proof = serializeMessageProof(keccak256(batch));
 
         vm.prank(address(proofAdapter1));
         gateway.handle(REMOTE_CENTRIFUGE_ID, proof);
@@ -491,7 +495,7 @@ contract GatewayTestHandle is GatewayTest {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeAdapters);
 
         bytes memory batch = MessageKind.WithPool0.asBytes();
-        bytes memory proof = MessageProofLib.serializeMessageProof(keccak256(batch));
+        bytes memory proof = serializeMessageProof(keccak256(batch));
 
         vm.prank(address(batchAdapter));
         gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
@@ -525,7 +529,7 @@ contract GatewayTestHandle is GatewayTest {
         gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeAdapters);
 
         bytes memory batch = MessageKind.WithPool0.asBytes();
-        bytes memory proof = MessageProofLib.serializeMessageProof(keccak256(batch));
+        bytes memory proof = serializeMessageProof(keccak256(batch));
 
         vm.prank(address(batchAdapter));
         gateway.handle(REMOTE_CENTRIFUGE_ID, batch);

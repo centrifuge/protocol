@@ -7,7 +7,7 @@ import {vm} from "@chimera/Hevm.sol";
 import {MockAdapter, IAdapter} from "test/common/mocks/MockAdapter.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
-import {MessageProofLib} from "src/common/Gateway.sol";
+import {serializeMessageProof} from "src/common/Gateway.sol";
 
 abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
     using MessageLib for *;
@@ -45,7 +45,7 @@ abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
     }
 
     function _formatMessageProof(bytes memory message) internal pure returns (bytes memory) {
-        return MessageProofLib.serializeMessageProof(keccak256(message));
+        return serializeMessageProof(keccak256(message));
     }
 
     // TODO: Initiate Message Recover
