@@ -66,37 +66,8 @@ abstract contract BeforeAfter is Ghosts {
 
     function __before() internal {
         // Vault
-        address[] memory actors = _getActors();
-        for (uint256 i = 0; i < actors.length; i++) {
-            (
-                uint128 maxMint,
-                uint128 maxWithdraw,
-                uint256 depositPrice,
-                uint256 redeemPrice,
-                uint128 pendingDepositRequest,
-                uint128 pendingRedeemRequest,
-                uint128 claimableCancelDepositRequest,
-                uint128 claimableCancelRedeemRequest,
-                bool pendingCancelDepositRequest,
-                bool pendingCancelRedeemRequest
-            ) = asyncRequests.investments(address(vault), actors[i]);
-            _before.investments[actors[i]] = AsyncInvestmentState(
-                maxMint,
-                maxWithdraw,
-                depositPrice,
-                redeemPrice,
-                pendingDepositRequest,
-                pendingRedeemRequest,
-                claimableCancelDepositRequest,
-                claimableCancelRedeemRequest,
-                pendingCancelDepositRequest,
-                pendingCancelRedeemRequest
-            );
-        }
-        _before.escrowTokenBalance = MockERC20(vault.asset()).balanceOf(address(escrow));
-        _before.escrowTrancheTokenBalance = token.balanceOf(address(escrow));
-        _before.actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
-        _before.totalShareSupply = token.totalSupply();
+        _updateInvestmentForAllActors(true);
+        _updateValuesIfNonZero(true);
 
         // if price is zero these both revert so they just get set to 0
         _priceAssetNonZero(true);
@@ -138,39 +109,8 @@ abstract contract BeforeAfter is Ghosts {
 
     function __after() internal {
         // Vault
-        address[] memory actors = _getActors();
-        for (uint256 i = 0; i < actors.length; i++) {
-            (
-                uint128 maxMint,
-                uint128 maxWithdraw,
-                uint256 depositPrice,
-                uint256 redeemPrice,
-                uint128 pendingDepositRequest,
-                uint128 pendingRedeemRequest,
-                uint128 claimableCancelDepositRequest,
-                uint128 claimableCancelRedeemRequest,
-                bool pendingCancelDepositRequest,
-                bool pendingCancelRedeemRequest
-            ) = asyncRequests.investments(address(vault), actors[i]);
-            _after.investments[actors[i]] = AsyncInvestmentState(
-                maxMint,
-                maxWithdraw,
-                depositPrice,
-                redeemPrice,
-                pendingDepositRequest,
-                pendingRedeemRequest,
-                claimableCancelDepositRequest,
-                claimableCancelRedeemRequest,
-                pendingCancelDepositRequest,
-                pendingCancelRedeemRequest
-            );
-        }
-        _after.escrowTokenBalance = MockERC20(vault.asset()).balanceOf(address(escrow));
-        _after.escrowTrancheTokenBalance = token.balanceOf(address(escrow));
-        // _after.totalAssets = vault.totalAssets();
-        _after.actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
-        _after.pricePerShare = vault.pricePerShare();
-        _after.totalShareSupply = token.totalSupply();
+        _updateInvestmentForAllActors(false);
+        _updateValuesIfNonZero(false);
 
         // if price is zero these both revert so they just get set to 0
         _priceAssetNonZero(false);
@@ -210,10 +150,67 @@ abstract contract BeforeAfter is Ghosts {
         }
     }
 
-    function _priceAssetNonZero(bool before) internal {
-        (D18 priceAsset, ) = poolManager.pricePoolPerAsset(poolId, scId, assetId, false);
-        
+    function _updateInvestmentForAllActors(bool before) internal {
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
+
+        address[] memory actors = _getActors();
+        for (uint256 i = 0; i < actors.length; i++) {
+            (
+                uint128 maxMint,
+                uint128 maxWithdraw,
+                uint256 depositPrice,
+                uint256 redeemPrice,
+                uint128 pendingDepositRequest,
+                uint128 pendingRedeemRequest,
+                uint128 claimableCancelDepositRequest,
+                uint128 claimableCancelRedeemRequest,
+                bool pendingCancelDepositRequest,
+                bool pendingCancelRedeemRequest
+            ) = asyncRequests.investments(address(vault), actors[i]);
+            
+            _structToUpdate.investments[actors[i]] = AsyncInvestmentState(
+                maxMint,
+                maxWithdraw,
+                depositPrice,
+                redeemPrice,
+                pendingDepositRequest,
+                pendingRedeemRequest,
+                claimableCancelDepositRequest,
+                claimableCancelRedeemRequest,
+                pendingCancelDepositRequest,
+                pendingCancelRedeemRequest
+            );
+        }
+    }
+
+    function _updateValuesIfNonZero(bool before) internal {
+        BeforeAfterVars storage _structToUpdate = before ? _before : _after;
+
+        if(address(token) != address(0)) {
+            _structToUpdate.escrowTrancheTokenBalance = token.balanceOf(address(escrow));
+            _structToUpdate.totalShareSupply = token.totalSupply();
+        }
+
+        if (address(vault) != address(0)) {
+            _structToUpdate.escrowTokenBalance = MockERC20(vault.asset()).balanceOf(address(escrow));
+            _structToUpdate.actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
+        }
+    }
+
+    function _priceAssetNonZero(bool before) internal {
+        BeforeAfterVars storage _structToUpdate = before ? _before : _after;
+
+        D18 priceAsset;
+        try poolManager.pricePoolPerAsset(poolId, scId, assetId, false) returns (D18 _priceAsset, uint64) {
+            priceAsset = _priceAsset;
+        } catch (bytes memory reason) {
+            bool expected = checkError(reason, "ShareTokenDoesNotExist()");
+            if(expected) {
+                _structToUpdate.totalAssets = 0;
+                return;
+            }
+        }
+        
         if (priceAsset.raw() != 0) {
             _structToUpdate.totalAssets = vault.totalAssets();
         } else {
@@ -222,9 +219,19 @@ abstract contract BeforeAfter is Ghosts {
     }
 
     function _priceShareNonZero(bool before) internal {
-        (D18 priceShare, ) = poolManager.pricePoolPerShare(poolId, scId, false);
-        
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
+
+        D18 priceShare;
+        try poolManager.pricePoolPerShare(poolId, scId, false) returns (D18 _priceShare, uint64) {
+            priceShare = _priceShare;
+        } catch (bytes memory reason) {
+            bool expected = checkError(reason, "ShareTokenDoesNotExist()");
+            if(expected) {
+                _structToUpdate.pricePerShare = 0;
+                return;
+            }
+        }
+        
         if (priceShare.raw() != 0) {
             _structToUpdate.pricePerShare = vault.pricePerShare();
         } else {

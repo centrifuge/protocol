@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 // Chimera deps
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
+import {console2} from "forge-std/console2.sol";
 
 // Helpers
 import {Panic} from "@recon/Panic.sol";
@@ -150,7 +151,6 @@ abstract contract AdminTargets is
     function hub_revokeShares_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 navPerShare, bool isIdentityValuation) public {
         PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
-        AssetId payoutAssetId = hubRegistry.currency(poolId);
         IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
         hub_revokeShares(poolId.raw(), scId.raw(), navPerShare, valuation);
     }
@@ -195,10 +195,14 @@ abstract contract AdminTargets is
     /// @notice admin is the tester contract (address(this)) so we leave out an explicit prank directly before the call to the target function
     
     function hub_registerAsset(uint128 assetIdAsUint) public updateGhosts {
+        console2.log("inside hub_registerAsset");
         AssetId assetId_ = AssetId.wrap(assetIdAsUint); 
+        console2.log("here 0");
         uint8 decimals = MockERC20(_getAsset()).decimals();
 
+        console2.log("here 1");
         hub.registerAsset(assetId_, decimals);
+        console2.log("here 2");
     }  
 
     /// @dev Property: after successfully calling requestDeposit for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]

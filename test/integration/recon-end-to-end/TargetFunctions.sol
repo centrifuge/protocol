@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 // Recon Deps
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {vm} from "@chimera/Hevm.sol";
+import {console2} from "forge-std/console2.sol";
 
 // Dependencies
 import {ERC20} from "src/misc/ERC20.sol";
@@ -96,6 +97,7 @@ abstract contract TargetFunctions is
         {
             _assetId = poolManager_registerAsset(address(_token), 0);
 
+            console2.log("poolManager_registerAsset completes");
             hub_registerAsset(_assetId);
         }
 

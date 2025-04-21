@@ -53,6 +53,10 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         vault_withdraw(1e18, 0);
     }
 
+    function test_shortcut_deployNewTokenPoolAndShare_only() public {
+        shortcut_deployNewTokenPoolAndShare(18, 12);
+    }
+
     /// === REPRODUCERS === ///
     // forge test --match-test test_property_totalAssets_solvency_2 -vvv 
     // NOTE: Seems like a real issue, when a request is fulfilled, the totalAssets are calculated using the shares that were minted, 
