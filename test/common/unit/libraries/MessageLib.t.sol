@@ -3,23 +3,21 @@ pragma solidity 0.8.28;
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
+import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 
 import "forge-std/Test.sol";
+
+contract TestMessageProofCompatibility is Test {
+    function testMessageProofCompatibility() public pure {
+        assertEq(uint8(MessageType._MessageProof), MessageProofLib.MESSAGE_PROOF_ID);
+    }
+}
 
 // The following tests check that the function composition of deserializing and serializing equals to the identity:
 //       I = deserialize º serialize
 // NOTE. To fully ensure a good testing, use different values for each field.
 contract TestMessageLibIdentities is Test {
     using MessageLib for *;
-
-    function testMessageProof(bytes32 hash_) public pure {
-        MessageLib.MessageProof memory a = MessageLib.MessageProof({hash: hash_});
-        MessageLib.MessageProof memory b = MessageLib.deserializeMessageProof(a.serialize());
-
-        assertEq(a.hash, b.hash);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-    }
 
     function testInitiateMessageRecovery(bytes32 hash_, bytes32 adapter, uint16 centrifugeId) public pure {
         MessageLib.InitiateMessageRecovery memory a =

@@ -34,30 +34,24 @@ contract BalanceSheetTest is BaseTest {
 
         assetId =
             AssetId.wrap(poolManager.registerAsset{value: 0.1 ether}(OTHER_CHAIN_ID, address(erc20), erc20TokenId));
-        poolManager.addPool(POOL_A.raw());
+        poolManager.addPool(POOL_A);
         poolManager.addShareClass(
-            POOL_A.raw(),
-            defaultShareClassId,
-            "testShareClass",
-            "tsc",
-            defaultDecimals,
-            bytes32(""),
-            restrictedTransfers
+            POOL_A, defaultTypedShareClassId, "testShareClass", "tsc", defaultDecimals, bytes32(""), restrictedTransfers
         );
         poolManager.updateRestriction(
-            POOL_A.raw(),
-            defaultShareClassId,
+            POOL_A,
+            defaultTypedShareClassId,
             MessageLib.UpdateRestrictionMember({user: address(this).toBytes32(), validUntil: MAX_UINT64}).serialize()
         );
         // In order for allowances to work during issuance, the balanceSheet must be canManage to transfer
         poolManager.updateRestriction(
-            POOL_A.raw(),
-            defaultShareClassId,
+            POOL_A,
+            defaultTypedShareClassId,
             MessageLib.UpdateRestrictionMember({user: address(balanceSheet).toBytes32(), validUntil: MAX_UINT64})
                 .serialize()
         );
         // Manually set necessary escrow allowance which are naturally part of poolManager.addVault
-        IPoolEscrow escrow = IPoolEscrow(poolEscrowFactory.escrow(POOL_A.raw()));
+        IPoolEscrow escrow = poolEscrowFactory.escrow(POOL_A.raw());
         vm.prank(address(poolManager));
         escrow.approveMax(address(erc20), erc20TokenId, address(balanceSheet));
     }

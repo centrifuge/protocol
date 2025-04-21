@@ -7,6 +7,9 @@ import {Properties} from "../Properties.sol";
 import {vm} from "@chimera/Hevm.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 
 // Src Deps | For cycling of values
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
@@ -122,7 +125,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
 
     // Step 3
     function poolManager_addPool(uint64 poolId) public {
-        poolManager.addPool(poolId);
+        poolManager.addPool(PoolId.wrap(poolId));
     }
 
     // Step 4
@@ -135,7 +138,13 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         address hook
     ) public returns (address) {
         address newToken = poolManager.addShareClass(
-            poolId, scId, tokenName, tokenSymbol, decimals, keccak256(abi.encodePacked(poolId, scId)), hook
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            tokenName,
+            tokenSymbol,
+            decimals,
+            keccak256(abi.encodePacked(poolId, scId)),
+            hook
         );
 
         shareClassTokens.push(newToken);
@@ -153,26 +162,38 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
      */
     function poolManager_updateMember(uint64 validUntil) public {
         poolManager.updateRestriction(
-            poolId, scId, MessageLib.UpdateRestrictionMember(actor.toBytes32(), validUntil).serialize()
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            MessageLib.UpdateRestrictionMember(actor.toBytes32(), validUntil).serialize()
         );
     }
 
     // TODO: Price is capped at u64 to test overflows
     function poolManager_updatePricePoolPerShare(uint64 price, uint64 computedAt) public {
-        poolManager.updatePricePoolPerShare(poolId, scId, price, computedAt);
-        poolManager.updatePricePoolPerAsset(poolId, scId, assetId, price, computedAt);
+        poolManager.updatePricePoolPerShare(PoolId.wrap(poolId), ShareClassId.wrap(scId), price, computedAt);
+        poolManager.updatePricePoolPerAsset(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), price, computedAt
+        );
     }
 
     function poolManager_updateShareMetadata(string memory tokenName, string memory tokenSymbol) public {
-        poolManager.updateShareMetadata(poolId, scId, tokenName, tokenSymbol);
+        poolManager.updateShareMetadata(PoolId.wrap(poolId), ShareClassId.wrap(scId), tokenName, tokenSymbol);
     }
 
     function poolManager_freeze() public {
-        poolManager.updateRestriction(poolId, scId, MessageLib.UpdateRestrictionFreeze(actor.toBytes32()).serialize());
+        poolManager.updateRestriction(
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            MessageLib.UpdateRestrictionFreeze(actor.toBytes32()).serialize()
+        );
     }
 
     function poolManager_unfreeze() public {
-        poolManager.updateRestriction(poolId, scId, MessageLib.UpdateRestrictionUnfreeze(actor.toBytes32()).serialize());
+        poolManager.updateRestriction(
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            MessageLib.UpdateRestrictionUnfreeze(actor.toBytes32()).serialize()
+        );
     }
 
     // TODO: Rely / Permissions

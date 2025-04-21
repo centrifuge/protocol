@@ -75,13 +75,13 @@ interface IHubGatewayHandler {
 interface IPoolManagerGatewayHandler {
     /// @notice    New pool details from an existing Centrifuge pool are added.
     /// @dev       The function can only be executed by the gateway contract.
-    function addPool(uint64 poolId) external;
+    function addPool(PoolId poolId) external;
 
     /// @notice     New share class details from an existing Centrifuge pool are added.
     /// @dev        The function can only be executed by the gateway contract.
     function addShareClass(
-        uint64 poolId,
-        bytes16 scId,
+        PoolId poolId,
+        ShareClassId scId,
         string memory tokenName,
         string memory tokenSymbol,
         uint8 decimals,
@@ -91,7 +91,7 @@ interface IPoolManagerGatewayHandler {
 
     /// @notice   Updates the tokenName and tokenSymbol of a share class token
     /// @dev      The function can only be executed by the gateway contract.
-    function updateShareMetadata(uint64 poolId, bytes16 scId, string memory tokenName, string memory tokenSymbol)
+    function updateShareMetadata(PoolId poolId, ShareClassId scId, string memory tokenName, string memory tokenSymbol)
         external;
 
     /// @notice  Updates the price of a share class token, i.e. the factor of pool currency amount per share class token
@@ -100,7 +100,7 @@ interface IPoolManagerGatewayHandler {
     /// @param  scId The share class id
     /// @param  price The price of pool currency per share class token as factor.
     /// @param  computedAt The timestamp when the price was computed
-    function updatePricePoolPerShare(uint64 poolId, bytes16 scId, uint128 price, uint64 computedAt) external;
+    function updatePricePoolPerShare(PoolId poolId, ShareClassId scId, uint128 price, uint64 computedAt) external;
 
     /// @notice  Updates the price of an asset, i.e. the factor of pool currency amount per asset unit
     /// @dev     The function can only be executed by the gateway contract.
@@ -110,9 +110,9 @@ interface IPoolManagerGatewayHandler {
     /// @param  poolPerAsset The price of pool currency per asset unit as factor.
     /// @param  computedAt The timestamp when the price was computed
     function updatePricePoolPerAsset(
-        uint64 poolId,
-        bytes16 scId,
-        uint128 assetId,
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
         uint128 poolPerAsset,
         uint64 computedAt
     ) external;
@@ -121,25 +121,26 @@ interface IPoolManagerGatewayHandler {
     /// @param  poolId The centrifuge pool id
     /// @param  scId The share class id
     /// @param  hook The new hook addres
-    function updateShareHook(uint64 poolId, bytes16 scId, address hook) external;
+    function updateShareHook(PoolId poolId, ShareClassId scId, address hook) external;
 
     /// @notice Updates the restrictions on a share class token for a specific user
     /// @param  poolId The centrifuge pool id
     /// @param  scId The share class id
     /// @param  update The restriction update in the form of a bytes array indicating
     ///                the restriction to be updated, the user to be updated, and a validUntil timestamp.
-    function updateRestriction(uint64 poolId, bytes16 scId, bytes memory update) external;
+    function updateRestriction(PoolId poolId, ShareClassId scId, bytes memory update) external;
 
     /// @notice Mints share class tokens to a recipient
     /// @dev    The function can only be executed internally or by the gateway contract.
-    function handleTransferShares(uint64 poolId, bytes16 scId, address destinationAddress, uint128 amount) external;
+    function handleTransferShares(PoolId poolId, ShareClassId scId, address destinationAddress, uint128 amount)
+        external;
 
     /// @notice Updates the target address. Generic update function from CP to CV
     /// @param  poolId The centrifuge pool id
     /// @param  scId The share class id
     /// @param  target The target address to be called
     /// @param  update The payload to be processed by the target address
-    function updateContract(uint64 poolId, bytes16 scId, address target, bytes memory update) external;
+    function updateContract(PoolId poolId, ShareClassId scId, address target, bytes memory update) external;
 }
 
 /// @notice Interface for CV methods related to async investments called by messages
@@ -152,10 +153,10 @@ interface IInvestmentManagerGatewayHandler {
     /// @dev    The shares in the escrow are reserved for the user and are transferred to the user on deposit
     ///         and mint calls.
     function fulfillDepositRequest(
-        uint64 poolId,
-        bytes16 scId,
+        PoolId poolId,
+        ShareClassId scId,
         address user,
-        uint128 assetId,
+        AssetId assetId,
         uint128 assets,
         uint128 shares
     ) external;
@@ -211,10 +212,10 @@ interface IInvestmentManagerGatewayHandler {
     ///         so there are no more `pendingDepositRequest` and right there the `pendingCancelDepositRequest will be
     ///         deleted.
     function fulfillCancelDepositRequest(
-        uint64 poolId,
-        bytes16 scId,
+        PoolId poolId,
+        ShareClassId scId,
         address user,
-        uint128 assetId,
+        AssetId assetId,
         uint128 assets,
         uint128 fulfillment
     ) external;
@@ -227,10 +228,10 @@ interface IInvestmentManagerGatewayHandler {
     /// @dev    The assets in the escrow are reserved for the user and are transferred to the user on redeem
     ///         and withdraw calls.
     function fulfillRedeemRequest(
-        uint64 poolId,
-        bytes16 scId,
+        PoolId poolId,
+        ShareClassId scId,
         address user,
-        uint128 assetId,
+        AssetId assetId,
         uint128 assets,
         uint128 shares
     ) external;
@@ -241,7 +242,7 @@ interface IInvestmentManagerGatewayHandler {
     ///         partial.
     /// @dev    The shares in the escrow are reserved for the user and are transferred to the user during
     ///         claimCancelRedeemRequest calls.
-    function fulfillCancelRedeemRequest(uint64 poolId, bytes16 scId, address user, uint128 assetId, uint128 shares)
+    function fulfillCancelRedeemRequest(PoolId poolId, ShareClassId scId, address user, AssetId assetId, uint128 shares)
         external;
 
     /// @notice Triggers a redeem request on behalf of the user through Centrifuge governance.
@@ -252,7 +253,7 @@ interface IInvestmentManagerGatewayHandler {
     ///         got fulfilled.
     /// @dev    The user share amount required to fulfill the redeem request has to be locked in escrow,
     ///         even though the asset payout can only happen after epoch execution.
-    function triggerRedeemRequest(uint64 poolId, bytes16 scId, address user, uint128 assetId, uint128 shares)
+    function triggerRedeemRequest(PoolId poolId, ShareClassId scId, address user, AssetId assetId, uint128 shares)
         external;
 }
 

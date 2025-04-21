@@ -101,7 +101,7 @@ contract AsyncRequestsTest is BaseTest {
 
         vm.prank(vault_);
         address actual = asyncRequests.escrow();
-        address expected = poolEscrowFactory.escrow(poolId);
+        address expected = address(poolEscrowFactory.escrow(poolId));
         assertEq(actual, expected, "Escrow address mismatch");
 
         vm.prank(randomUser);
