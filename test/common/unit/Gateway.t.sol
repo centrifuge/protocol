@@ -8,6 +8,9 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {Gateway, IRoot, IGasService, IGateway, MessageProofLib} from "src/common/Gateway.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {TransientArrayLib} from "src/misc/libraries/TransientArrayLib.sol";
+import {TransientBytesLib} from "src/misc/libraries/TransientBytesLib.sol";
+import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
 
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
@@ -102,7 +105,22 @@ contract GatewayExt is Gateway {
     }
 
     function batchLocatorsLength() public view returns (uint256) {
-        return batchLocators.length;
+        return TransientArrayLib.length(BATCH_LOCATORS_SLOT);
+    }
+
+    function batchGasLimit(uint16 centrifugeId, PoolId poolId) public view returns (uint128) {
+        bytes32 slot = keccak256(abi.encode("batchGasLimit", centrifugeId, poolId));
+        return TransientStorageLib.tloadUint128(slot);
+    }
+
+    function batchLocators(uint256 index) public view returns (uint16 centrifugeId, PoolId poolId) {
+        bytes32 locator = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT)[index];
+        (centrifugeId, poolId) = _parseLocator(locator);
+    }
+
+    function outboundBatch(uint16 centrifugeId, PoolId poolId) public view returns (bytes memory) {
+        bytes32 batchSlot = keccak256(abi.encode("outboundBatch", centrifugeId, poolId));
+        return TransientBytesLib.get(batchSlot);
     }
 }
 
