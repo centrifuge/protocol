@@ -893,6 +893,11 @@ contract GatewayTestSend is GatewayTest {
         gateway.send(REMOTE_CENT_ID, new bytes(0));
     }
 
+    function testErrEmptyAdapterSet() public {
+        vm.expectRevert(IGateway.EmptyAdapterSet.selector);
+        gateway.send(REMOTE_CENT_ID, MessageKind.WithPoolA1.asBytes());
+    }
+
     function testErrExceedsMaxBatching() public {
         gateway.startBatching();
         uint256 maxMessages = MAX_BATCH_SIZE / MESSAGE_GAS_LIMIT;
