@@ -6,6 +6,9 @@ import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {Properties} from "../Properties.sol";
 import {vm} from "@chimera/Hevm.sol";
 
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+
 // Dependencies
 import {ERC20} from "src/misc/ERC20.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
@@ -19,7 +22,7 @@ abstract contract PoolManagerFunctions is BaseTargetFunctions, Properties {
     // TODO: Actors / Randomness
     // TODO: Overflow stuff
     function poolManager_handleTransferShares(uint128 amount) public {
-        poolManager.handleTransferShares(poolId, scId, actor, amount);
+        poolManager.handleTransferShares(PoolId.wrap(poolId), ShareClassId.wrap(scId), actor, amount);
         // TF-12 mint share class tokens from user, not tracked in escrow
 
         // Track minting for Global-3

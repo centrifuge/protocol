@@ -86,33 +86,47 @@ contract MessageProcessor is Auth, IMessageProcessor {
             MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
             hub.registerAsset(AssetId.wrap(m.assetId), m.decimals);
         } else if (kind == MessageType.NotifyPool) {
-            poolManager.addPool(MessageLib.deserializeNotifyPool(message).poolId);
+            poolManager.addPool(PoolId.wrap(MessageLib.deserializeNotifyPool(message).poolId));
         } else if (kind == MessageType.NotifyShareClass) {
             MessageLib.NotifyShareClass memory m = MessageLib.deserializeNotifyShareClass(message);
             poolManager.addShareClass(
-                m.poolId, m.scId, m.name, m.symbol.toString(), m.decimals, m.salt, m.hook.toAddress()
+                PoolId.wrap(m.poolId),
+                ShareClassId.wrap(m.scId),
+                m.name,
+                m.symbol.toString(),
+                m.decimals,
+                m.salt,
+                m.hook.toAddress()
             );
         } else if (kind == MessageType.NotifyPricePoolPerShare) {
             MessageLib.NotifyPricePoolPerShare memory m = MessageLib.deserializeNotifyPricePoolPerShare(message);
-            poolManager.updatePricePoolPerShare(m.poolId, m.scId, m.price, m.timestamp);
+            poolManager.updatePricePoolPerShare(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.price, m.timestamp);
         } else if (kind == MessageType.NotifyPricePoolPerAsset) {
             MessageLib.NotifyPricePoolPerAsset memory m = MessageLib.deserializeNotifyPricePoolPerAsset(message);
-            poolManager.updatePricePoolPerAsset(m.poolId, m.scId, m.assetId, m.price, m.timestamp);
+            poolManager.updatePricePoolPerAsset(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.price, m.timestamp
+            );
         } else if (kind == MessageType.UpdateShareClassMetadata) {
             MessageLib.UpdateShareClassMetadata memory m = MessageLib.deserializeUpdateShareClassMetadata(message);
-            poolManager.updateShareMetadata(m.poolId, m.scId, m.name, m.symbol.toString());
+            poolManager.updateShareMetadata(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.name, m.symbol.toString()
+            );
         } else if (kind == MessageType.UpdateShareClassHook) {
             MessageLib.UpdateShareClassHook memory m = MessageLib.deserializeUpdateShareClassHook(message);
-            poolManager.updateShareHook(m.poolId, m.scId, m.hook.toAddress());
+            poolManager.updateShareHook(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.hook.toAddress());
         } else if (kind == MessageType.TransferShares) {
             MessageLib.TransferShares memory m = MessageLib.deserializeTransferShares(message);
-            poolManager.handleTransferShares(m.poolId, m.scId, m.receiver.toAddress(), m.amount);
+            poolManager.handleTransferShares(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.receiver.toAddress(), m.amount
+            );
         } else if (kind == MessageType.UpdateRestriction) {
             MessageLib.UpdateRestriction memory m = MessageLib.deserializeUpdateRestriction(message);
-            poolManager.updateRestriction(m.poolId, m.scId, m.payload);
+            poolManager.updateRestriction(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.payload);
         } else if (kind == MessageType.UpdateContract) {
             MessageLib.UpdateContract memory m = MessageLib.deserializeUpdateContract(message);
-            poolManager.updateContract(m.poolId, m.scId, m.target.toAddress(), m.payload);
+            poolManager.updateContract(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.target.toAddress(), m.payload
+            );
         } else if (kind == MessageType.DepositRequest) {
             MessageLib.DepositRequest memory m = message.deserializeDepositRequest();
             hub.depositRequest(
@@ -136,26 +150,51 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.FulfilledDepositRequest) {
             MessageLib.FulfilledDepositRequest memory m = message.deserializeFulfilledDepositRequest();
             investmentManager.fulfillDepositRequest(
-                m.poolId, m.scId, m.investor.toAddress(), m.assetId, m.assetAmount, m.shareAmount
+                PoolId.wrap(m.poolId),
+                ShareClassId.wrap(m.scId),
+                m.investor.toAddress(),
+                AssetId.wrap(m.assetId),
+                m.assetAmount,
+                m.shareAmount
             );
         } else if (kind == MessageType.FulfilledRedeemRequest) {
             MessageLib.FulfilledRedeemRequest memory m = message.deserializeFulfilledRedeemRequest();
             investmentManager.fulfillRedeemRequest(
-                m.poolId, m.scId, m.investor.toAddress(), m.assetId, m.assetAmount, m.shareAmount
+                PoolId.wrap(m.poolId),
+                ShareClassId.wrap(m.scId),
+                m.investor.toAddress(),
+                AssetId.wrap(m.assetId),
+                m.assetAmount,
+                m.shareAmount
             );
         } else if (kind == MessageType.FulfilledCancelDepositRequest) {
             MessageLib.FulfilledCancelDepositRequest memory m = message.deserializeFulfilledCancelDepositRequest();
             investmentManager.fulfillCancelDepositRequest(
-                m.poolId, m.scId, m.investor.toAddress(), m.assetId, m.cancelledAmount, m.cancelledAmount
+                PoolId.wrap(m.poolId),
+                ShareClassId.wrap(m.scId),
+                m.investor.toAddress(),
+                AssetId.wrap(m.assetId),
+                m.cancelledAmount,
+                m.cancelledAmount
             );
         } else if (kind == MessageType.FulfilledCancelRedeemRequest) {
             MessageLib.FulfilledCancelRedeemRequest memory m = message.deserializeFulfilledCancelRedeemRequest();
             investmentManager.fulfillCancelRedeemRequest(
-                m.poolId, m.scId, m.investor.toAddress(), m.assetId, m.cancelledShares
+                PoolId.wrap(m.poolId),
+                ShareClassId.wrap(m.scId),
+                m.investor.toAddress(),
+                AssetId.wrap(m.assetId),
+                m.cancelledShares
             );
         } else if (kind == MessageType.TriggerRedeemRequest) {
             MessageLib.TriggerRedeemRequest memory m = message.deserializeTriggerRedeemRequest();
-            investmentManager.triggerRedeemRequest(m.poolId, m.scId, m.investor.toAddress(), m.assetId, m.shares);
+            investmentManager.triggerRedeemRequest(
+                PoolId.wrap(m.poolId),
+                ShareClassId.wrap(m.scId),
+                m.investor.toAddress(),
+                AssetId.wrap(m.assetId),
+                m.shares
+            );
         } else if (kind == MessageType.TriggerUpdateHoldingAmount) {
             MessageLib.TriggerUpdateHoldingAmount memory m = message.deserializeTriggerUpdateHoldingAmount();
 
