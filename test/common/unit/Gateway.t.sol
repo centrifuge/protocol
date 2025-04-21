@@ -3,7 +3,8 @@ pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {Auth, IAuth} from "src/misc/Auth.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 import {
     Gateway,
@@ -18,8 +19,6 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {TransientArrayLib} from "src/misc/libraries/TransientArrayLib.sol";
 import {TransientBytesLib} from "src/misc/libraries/TransientBytesLib.sol";
 import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
-
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
 import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
@@ -38,15 +37,15 @@ enum MessageKind {
     Recovery,
     WithPool0,
     WithPoolA1,
-    WithPoolA2Fail,
-    WithPoolA3
+    WithPoolA2,
+    WithPoolAFail
 }
 
 function length(MessageKind kind) pure returns (uint16) {
     if (kind == MessageKind.WithPool0) return 5;
     if (kind == MessageKind.WithPoolA1) return 10;
-    if (kind == MessageKind.WithPoolA2Fail) return 10;
-    if (kind == MessageKind.WithPoolA3) return 15;
+    if (kind == MessageKind.WithPoolA2) return 15;
+    if (kind == MessageKind.WithPoolAFail) return 10;
     return 2;
 }
 
@@ -72,7 +71,7 @@ contract MockProcessor is IMessageProperties {
     }
 
     function handle(uint16 centrifugeId, bytes memory payload) external {
-        if (payload.toUint8(0) == uint8(MessageKind.WithPoolA2Fail) && !shouldNotFail) {
+        if (payload.toUint8(0) == uint8(MessageKind.WithPoolAFail) && !shouldNotFail) {
             revert HandleError();
         }
         processed[centrifugeId].push(payload);
@@ -93,7 +92,7 @@ contract MockProcessor is IMessageProperties {
     function messagePoolId(bytes calldata message) external pure returns (PoolId) {
         if (message.toUint8(0) == uint8(MessageKind.WithPool0)) return POOL_0;
         if (message.toUint8(0) == uint8(MessageKind.WithPoolA1)) return POOL_A;
-        if (message.toUint8(0) == uint8(MessageKind.WithPoolA3)) return POOL_A;
+        if (message.toUint8(0) == uint8(MessageKind.WithPoolA2)) return POOL_A;
         revert("Unreachable: message never asked for pool");
     }
 }
@@ -133,12 +132,17 @@ contract GatewayExt is Gateway {
 // -----------------------------------------
 
 contract GatewayTest is Test {
-    uint16 constant LOCAL_CENTRIFUGE_ID = 23;
-    uint16 constant REMOTE_CENTRIFUGE_ID = 24;
+    uint16 constant LOCAL_CENT_ID = 23;
+    uint16 constant REMOTE_CENT_ID = 24;
 
-    uint256 constant FIRST_ADAPTER_ESTIMATE = 1.5 gwei;
-    uint256 constant SECOND_ADAPTER_ESTIMATE = 1 gwei;
-    uint256 constant THIRD_ADAPTER_ESTIMATE = 0.5 gwei;
+    uint256 constant ADAPTER_ESTIMATE_1 = 1.5 gwei;
+    uint256 constant ADAPTER_ESTIMATE_2 = 1 gwei;
+    uint256 constant ADAPTER_ESTIMATE_3 = 0.5 gwei;
+
+    bytes32 constant ADAPTER_DATA_1 = bytes32("data1");
+    bytes32 constant ADAPTER_DATA_2 = bytes32("data2");
+    bytes32 constant ADAPTER_DATA_3 = bytes32("data3");
+
     uint256 constant MESSAGE_GAS_LIMIT = 10.0 gwei;
     uint256 constant MAX_BATCH_SIZE = 50.0 gwei;
 
@@ -151,11 +155,45 @@ contract GatewayTest is Test {
     IAdapter[] threeAdapters;
 
     address immutable ANY = makeAddr("ANY");
-    address immutable PAYER = makeAddr("PAYER");
+    address immutable REFUND = makeAddr("REFUND");
 
     MockProcessor processor = new MockProcessor();
     GatewayExt gateway =
-        new GatewayExt(LOCAL_CENTRIFUGE_ID, IRoot(address(root)), IGasService(address(gasService)), address(this));
+        new GatewayExt(LOCAL_CENT_ID, IRoot(address(root)), IGasService(address(gasService)), address(this));
+
+    function _mockAdapter(
+        IAdapter adapter,
+        uint16 centrifugeId,
+        bytes memory message,
+        uint256 gasLimit,
+        address refund,
+        uint256 estimate,
+        bytes32 adapterData,
+        bool isPaid
+    ) private {
+        vm.mockCall(
+            address(adapter),
+            abi.encodeWithSelector(IAdapter.estimate.selector, centrifugeId, message, gasLimit),
+            abi.encode(gasLimit + estimate)
+        );
+
+        vm.mockCall(
+            address(adapter),
+            isPaid ? gasLimit + estimate : 0,
+            abi.encodeWithSelector(IAdapter.send.selector, centrifugeId, message, gasLimit, refund),
+            abi.encode(adapterData)
+        );
+    }
+
+    function _mockAdapters(uint16 centrifugeId, bytes memory message, uint256 gasLimit, address refund, bool isPaid)
+        internal
+    {
+        _mockAdapter(batchAdapter, centrifugeId, message, gasLimit, refund, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1, isPaid);
+
+        bytes memory proof = serializeMessageProof(keccak256(message));
+        _mockAdapter(proofAdapter1, centrifugeId, proof, gasLimit, refund, ADAPTER_ESTIMATE_2, ADAPTER_DATA_2, isPaid);
+        _mockAdapter(proofAdapter2, centrifugeId, proof, gasLimit, refund, ADAPTER_ESTIMATE_3, ADAPTER_DATA_3, isPaid);
+    }
 
     function _mockGasService() internal {
         vm.mockCall(
@@ -171,7 +209,7 @@ contract GatewayTest is Test {
     }
 
     function assertVotes(bytes memory message, uint16 r1, uint16 r2, uint16 r3) internal view {
-        uint16[8] memory votes = gateway.votes(REMOTE_CENTRIFUGE_ID, keccak256(message));
+        uint16[8] memory votes = gateway.votes(REMOTE_CENT_ID, keccak256(message));
         assertEq(votes[0], r1);
         assertEq(votes[1], r2);
         assertEq(votes[2], r3);
@@ -189,7 +227,7 @@ contract GatewayTest is Test {
     }
 
     function testConstructor() public view {
-        assertEq(gateway.localCentrifugeId(), LOCAL_CENTRIFUGE_ID);
+        assertEq(gateway.localCentrifugeId(), LOCAL_CENT_ID);
         assertEq(address(gateway.root()), address(root));
         assertEq(address(gateway.gasService()), address(gasService));
 
@@ -231,23 +269,23 @@ contract GatewayTestFileAdapters is GatewayTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.file("unknown", REMOTE_CENTRIFUGE_ID, new IAdapter[](0));
+        gateway.file("unknown", REMOTE_CENT_ID, new IAdapter[](0));
     }
 
     function testErrFileUnrecognizedParam() public {
         vm.expectRevert(IGateway.FileUnrecognizedParam.selector);
-        gateway.file("unknown", REMOTE_CENTRIFUGE_ID, new IAdapter[](0));
+        gateway.file("unknown", REMOTE_CENT_ID, new IAdapter[](0));
     }
 
     function testErrEmptyAdapterFile() public {
         vm.expectRevert(IGateway.EmptyAdapterSet.selector);
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, new IAdapter[](0));
+        gateway.file("adapters", REMOTE_CENT_ID, new IAdapter[](0));
     }
 
     function testErrExceedsMax() public {
         IAdapter[] memory tooMuchAdapters = new IAdapter[](gateway.MAX_ADAPTER_COUNT() + 1);
         vm.expectRevert(IGateway.ExceedsMax.selector);
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, tooMuchAdapters);
+        gateway.file("adapters", REMOTE_CENT_ID, tooMuchAdapters);
     }
 
     function testErrNoDuplicatedAllowed() public {
@@ -256,37 +294,37 @@ contract GatewayTestFileAdapters is GatewayTest {
         duplicatedAdapters[1] = IAdapter(address(10));
 
         vm.expectRevert(IGateway.NoDuplicatesAllowed.selector);
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, duplicatedAdapters);
+        gateway.file("adapters", REMOTE_CENT_ID, duplicatedAdapters);
     }
 
     function testGatewayFileAdapters() public {
         vm.expectEmit();
-        emit IGateway.File("adapters", REMOTE_CENTRIFUGE_ID, threeAdapters);
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeAdapters);
+        emit IGateway.File("adapters", REMOTE_CENT_ID, threeAdapters);
+        gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
 
-        assertEq(gateway.activeSessionId(REMOTE_CENTRIFUGE_ID), 0);
-        assertEq(gateway.quorum(REMOTE_CENTRIFUGE_ID), threeAdapters.length);
+        assertEq(gateway.activeSessionId(REMOTE_CENT_ID), 0);
+        assertEq(gateway.quorum(REMOTE_CENT_ID), threeAdapters.length);
 
         for (uint256 i; i < threeAdapters.length; i++) {
-            IGateway.Adapter memory adapter = gateway.activeAdapters(REMOTE_CENTRIFUGE_ID, threeAdapters[i]);
+            IGateway.Adapter memory adapter = gateway.activeAdapters(REMOTE_CENT_ID, threeAdapters[i]);
 
             assertEq(adapter.id, i + 1);
             assertEq(adapter.quorum, threeAdapters.length);
             assertEq(adapter.activeSessionId, 0);
-            assertEq(address(gateway.adapters(REMOTE_CENTRIFUGE_ID, i)), address(threeAdapters[i]));
+            assertEq(address(gateway.adapters(REMOTE_CENT_ID, i)), address(threeAdapters[i]));
         }
     }
 
     function testGatewayFileAdaptersAdvanceSession() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeAdapters);
-        assertEq(gateway.activeSessionId(REMOTE_CENTRIFUGE_ID), 0);
+        gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
+        assertEq(gateway.activeSessionId(REMOTE_CENT_ID), 0);
 
         // Using another chain uses a different active session counter
-        gateway.file("adapters", LOCAL_CENTRIFUGE_ID, threeAdapters);
-        assertEq(gateway.activeSessionId(LOCAL_CENTRIFUGE_ID), 0);
+        gateway.file("adapters", LOCAL_CENT_ID, threeAdapters);
+        assertEq(gateway.activeSessionId(LOCAL_CENT_ID), 0);
 
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeAdapters);
-        assertEq(gateway.activeSessionId(REMOTE_CENTRIFUGE_ID), 1);
+        gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
+        assertEq(gateway.activeSessionId(REMOTE_CENT_ID), 1);
     }
 }
 
@@ -307,299 +345,299 @@ contract GatewayTestHandle is GatewayTest {
     function testErrPaused() public {
         _mockPause(true);
         vm.expectRevert(IGateway.Paused.selector);
-        gateway.handle(REMOTE_CENTRIFUGE_ID, new bytes(0));
+        gateway.handle(REMOTE_CENT_ID, new bytes(0));
     }
 
     function testErrInvalidAdapter() public {
         vm.expectRevert(IGateway.InvalidAdapter.selector);
-        gateway.handle(REMOTE_CENTRIFUGE_ID, new bytes(0));
+        gateway.handle(REMOTE_CENT_ID, new bytes(0));
     }
 
     function testErrNonProofAdapter() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeAdapters);
+        gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
 
         vm.prank(address(batchAdapter));
         vm.expectRevert(IGateway.NonProofAdapter.selector);
-        gateway.handle(REMOTE_CENTRIFUGE_ID, serializeMessageProof(bytes32("1")));
+        gateway.handle(REMOTE_CENT_ID, serializeMessageProof(bytes32("1")));
     }
 
     function testErrNonProofAdapterWithOneAdapter() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
+        gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
 
         vm.prank(address(batchAdapter));
         vm.expectRevert(IGateway.NonProofAdapter.selector);
-        gateway.handle(REMOTE_CENTRIFUGE_ID, serializeMessageProof(bytes32("1")));
+        gateway.handle(REMOTE_CENT_ID, serializeMessageProof(bytes32("1")));
     }
 
     function testErrNonBatchAdapter() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeAdapters);
+        gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
 
         vm.prank(address(proofAdapter1));
         vm.expectRevert(IGateway.NonBatchAdapter.selector);
-        gateway.handle(REMOTE_CENTRIFUGE_ID, MessageKind.WithPool0.asBytes());
+        gateway.handle(REMOTE_CENT_ID, MessageKind.WithPool0.asBytes());
     }
 
     function testErrEmptyMessage() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeAdapters);
+        gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
 
         vm.prank(address(batchAdapter));
         vm.expectRevert("toUint8_outOfBounds");
-        gateway.handle(REMOTE_CENTRIFUGE_ID, new bytes(0));
+        gateway.handle(REMOTE_CENT_ID, new bytes(0));
     }
 
     function testMessage() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
+        gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
 
         bytes memory batch = MessageKind.WithPool0.asBytes();
 
         vm.prank(address(batchAdapter));
         vm.expectEmit();
-        emit IGateway.ExecuteMessage(REMOTE_CENTRIFUGE_ID, batch);
-        gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
+        emit IGateway.ExecuteMessage(REMOTE_CENT_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, batch);
 
-        assertEq(processor.processed(REMOTE_CENTRIFUGE_ID, 0), batch);
+        assertEq(processor.processed(REMOTE_CENT_ID, 0), batch);
     }
 
     function testMessageFailed() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
+        gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
 
-        bytes memory batch = MessageKind.WithPoolA2Fail.asBytes();
+        bytes memory batch = MessageKind.WithPoolAFail.asBytes();
 
         vm.prank(address(batchAdapter));
         vm.expectEmit();
-        emit IGateway.FailMessage(REMOTE_CENTRIFUGE_ID, batch, abi.encodeWithSignature("HandleError()"));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
+        emit IGateway.FailMessage(REMOTE_CENT_ID, batch, abi.encodeWithSignature("HandleError()"));
+        gateway.handle(REMOTE_CENT_ID, batch);
 
-        assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 0);
-        assertEq(gateway.failedMessages(REMOTE_CENTRIFUGE_ID, keccak256(batch)), 1);
+        assertEq(processor.count(REMOTE_CENT_ID), 0);
+        assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 1);
     }
 
     function testMessageAndProofs() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeAdapters);
+        gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
 
         bytes memory batch = MessageKind.WithPool0.asBytes();
         bytes32 batchHash = keccak256(batch);
         bytes memory proof = serializeMessageProof(batchHash);
-        bytes32 batchId = keccak256(abi.encodePacked(REMOTE_CENTRIFUGE_ID, LOCAL_CENTRIFUGE_ID, batchHash));
-        bytes32 proofId = keccak256(abi.encodePacked(REMOTE_CENTRIFUGE_ID, LOCAL_CENTRIFUGE_ID, batchHash));
+        bytes32 batchId = keccak256(abi.encodePacked(REMOTE_CENT_ID, LOCAL_CENT_ID, batchHash));
+        bytes32 proofId = keccak256(abi.encodePacked(REMOTE_CENT_ID, LOCAL_CENT_ID, batchHash));
 
         vm.prank(address(batchAdapter));
         vm.expectEmit();
-        emit IGateway.ProcessBatch(REMOTE_CENTRIFUGE_ID, batchId, batch, batchAdapter);
-        gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
-        assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 0);
+        emit IGateway.ProcessBatch(REMOTE_CENT_ID, batchId, batch, batchAdapter);
+        gateway.handle(REMOTE_CENT_ID, batch);
+        assertEq(processor.count(REMOTE_CENT_ID), 0);
         assertVotes(batch, 1, 0, 0);
 
         vm.prank(address(proofAdapter1));
         vm.expectEmit();
-        emit IGateway.ProcessProof(REMOTE_CENTRIFUGE_ID, proofId, batchHash, proofAdapter1);
-        gateway.handle(REMOTE_CENTRIFUGE_ID, proof);
-        assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 0);
+        emit IGateway.ProcessProof(REMOTE_CENT_ID, proofId, batchHash, proofAdapter1);
+        gateway.handle(REMOTE_CENT_ID, proof);
+        assertEq(processor.count(REMOTE_CENT_ID), 0);
         assertVotes(batch, 1, 1, 0);
 
         vm.prank(address(proofAdapter2));
         vm.expectEmit();
-        emit IGateway.ProcessProof(REMOTE_CENTRIFUGE_ID, proofId, batchHash, proofAdapter2);
-        gateway.handle(REMOTE_CENTRIFUGE_ID, proof);
-        assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 1);
-        assertEq(processor.processed(REMOTE_CENTRIFUGE_ID, 0), batch);
+        emit IGateway.ProcessProof(REMOTE_CENT_ID, proofId, batchHash, proofAdapter2);
+        gateway.handle(REMOTE_CENT_ID, proof);
+        assertEq(processor.count(REMOTE_CENT_ID), 1);
+        assertEq(processor.processed(REMOTE_CENT_ID, 0), batch);
         assertVotes(batch, 0, 0, 0);
     }
 
     function testSameMessageAndProofs() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeAdapters);
+        gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
 
         bytes memory batch = MessageKind.WithPool0.asBytes();
         bytes memory proof = serializeMessageProof(keccak256(batch));
 
         vm.prank(address(batchAdapter));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, batch);
         vm.prank(address(proofAdapter1));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, proof);
+        gateway.handle(REMOTE_CENT_ID, proof);
         vm.prank(address(proofAdapter2));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, proof);
+        gateway.handle(REMOTE_CENT_ID, proof);
 
         vm.prank(address(batchAdapter));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
-        assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 1);
+        gateway.handle(REMOTE_CENT_ID, batch);
+        assertEq(processor.count(REMOTE_CENT_ID), 1);
         assertVotes(batch, 1, 0, 0);
 
         vm.prank(address(proofAdapter1));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, proof);
-        assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 1);
+        gateway.handle(REMOTE_CENT_ID, proof);
+        assertEq(processor.count(REMOTE_CENT_ID), 1);
         assertVotes(batch, 1, 1, 0);
 
         vm.prank(address(proofAdapter2));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, proof);
-        assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 2);
-        assertEq(processor.processed(REMOTE_CENTRIFUGE_ID, 1), batch);
+        gateway.handle(REMOTE_CENT_ID, proof);
+        assertEq(processor.count(REMOTE_CENT_ID), 2);
+        assertEq(processor.processed(REMOTE_CENT_ID, 1), batch);
         assertVotes(batch, 0, 0, 0);
     }
 
     function testOtherMessageAndProofs() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeAdapters);
+        gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
 
         bytes memory batch = MessageKind.WithPool0.asBytes();
         bytes memory proof = serializeMessageProof(keccak256(batch));
 
         vm.prank(address(batchAdapter));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, batch);
         vm.prank(address(proofAdapter1));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, proof);
+        gateway.handle(REMOTE_CENT_ID, proof);
         vm.prank(address(proofAdapter2));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, proof);
+        gateway.handle(REMOTE_CENT_ID, proof);
 
         bytes memory batch2 = MessageKind.WithPoolA1.asBytes();
         bytes memory proof2 = serializeMessageProof(keccak256(batch2));
 
         vm.prank(address(batchAdapter));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, batch2);
-        assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 1);
+        gateway.handle(REMOTE_CENT_ID, batch2);
+        assertEq(processor.count(REMOTE_CENT_ID), 1);
         assertVotes(batch2, 1, 0, 0);
 
         vm.prank(address(proofAdapter1));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, proof2);
-        assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 1);
+        gateway.handle(REMOTE_CENT_ID, proof2);
+        assertEq(processor.count(REMOTE_CENT_ID), 1);
         assertVotes(batch2, 1, 1, 0);
 
         vm.prank(address(proofAdapter2));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, proof2);
-        assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 2);
-        assertEq(processor.processed(REMOTE_CENTRIFUGE_ID, 1), batch2);
+        gateway.handle(REMOTE_CENT_ID, proof2);
+        assertEq(processor.count(REMOTE_CENT_ID), 2);
+        assertEq(processor.processed(REMOTE_CENT_ID, 1), batch2);
         assertVotes(batch2, 0, 0, 0);
     }
 
     function testMessageAfterProofs() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeAdapters);
+        gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
 
         bytes memory batch = MessageKind.WithPool0.asBytes();
         bytes memory proof = serializeMessageProof(keccak256(batch));
 
         vm.prank(address(proofAdapter1));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, proof);
-        assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 0);
+        gateway.handle(REMOTE_CENT_ID, proof);
+        assertEq(processor.count(REMOTE_CENT_ID), 0);
         assertVotes(batch, 0, 1, 0);
 
         vm.prank(address(proofAdapter2));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, proof);
-        assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 0);
+        gateway.handle(REMOTE_CENT_ID, proof);
+        assertEq(processor.count(REMOTE_CENT_ID), 0);
         assertVotes(batch, 0, 1, 1);
 
         vm.prank(address(batchAdapter));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
-        assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 1);
+        gateway.handle(REMOTE_CENT_ID, batch);
+        assertEq(processor.count(REMOTE_CENT_ID), 1);
         assertVotes(batch, 0, 0, 0);
     }
 
     function testOneFasterAdapter() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeAdapters);
+        gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
 
         bytes memory batch = MessageKind.WithPool0.asBytes();
         bytes memory proof = serializeMessageProof(keccak256(batch));
 
         vm.prank(address(batchAdapter));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, batch);
         vm.prank(address(batchAdapter));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
-        assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 0);
+        gateway.handle(REMOTE_CENT_ID, batch);
+        assertEq(processor.count(REMOTE_CENT_ID), 0);
         assertVotes(batch, 2, 0, 0);
 
         vm.prank(address(proofAdapter1));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, proof);
-        assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 0);
+        gateway.handle(REMOTE_CENT_ID, proof);
+        assertEq(processor.count(REMOTE_CENT_ID), 0);
         assertVotes(batch, 2, 1, 0);
 
         vm.prank(address(proofAdapter2));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, proof);
-        assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 1);
+        gateway.handle(REMOTE_CENT_ID, proof);
+        assertEq(processor.count(REMOTE_CENT_ID), 1);
         assertVotes(batch, 1, 0, 0);
 
         vm.prank(address(proofAdapter1));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, proof);
-        assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 1);
+        gateway.handle(REMOTE_CENT_ID, proof);
+        assertEq(processor.count(REMOTE_CENT_ID), 1);
         assertVotes(batch, 1, 1, 0);
 
         vm.prank(address(proofAdapter2));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, proof);
-        assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 2);
+        gateway.handle(REMOTE_CENT_ID, proof);
+        assertEq(processor.count(REMOTE_CENT_ID), 2);
         assertVotes(batch, 0, 0, 0);
     }
 
     function testVotesAfterNewSession() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeAdapters);
+        gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
 
         bytes memory batch = MessageKind.WithPool0.asBytes();
         bytes memory proof = serializeMessageProof(keccak256(batch));
 
         vm.prank(address(batchAdapter));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, batch);
         vm.prank(address(proofAdapter1));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, proof);
+        gateway.handle(REMOTE_CENT_ID, proof);
 
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, threeAdapters);
+        gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
 
         vm.prank(address(proofAdapter2));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, proof);
-        assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 0);
+        gateway.handle(REMOTE_CENT_ID, proof);
+        assertEq(processor.count(REMOTE_CENT_ID), 0);
         assertVotes(batch, 0, 0, 1);
     }
 
     function testBatchProcessing() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
+        gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
 
         bytes memory message1 = MessageKind.WithPoolA1.asBytes();
-        bytes memory message2 = MessageKind.WithPoolA3.asBytes();
+        bytes memory message2 = MessageKind.WithPoolA2.asBytes();
         bytes memory batch = abi.encodePacked(message1, message2);
 
         vm.prank(address(batchAdapter));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, batch);
 
-        assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 2);
-        assertEq(processor.processed(REMOTE_CENTRIFUGE_ID, 0), message1);
-        assertEq(processor.processed(REMOTE_CENTRIFUGE_ID, 1), message2);
+        assertEq(processor.count(REMOTE_CENT_ID), 2);
+        assertEq(processor.processed(REMOTE_CENT_ID, 0), message1);
+        assertEq(processor.processed(REMOTE_CENT_ID, 1), message2);
     }
 
     function testBatchWithFailingMessages() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
+        gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
 
         bytes memory message1 = MessageKind.WithPoolA1.asBytes();
-        bytes memory message2 = MessageKind.WithPoolA2Fail.asBytes();
-        bytes memory message3 = MessageKind.WithPoolA3.asBytes();
+        bytes memory message2 = MessageKind.WithPoolAFail.asBytes();
+        bytes memory message3 = MessageKind.WithPoolA2.asBytes();
         bytes memory batch = abi.encodePacked(message1, message2, message3);
 
         vm.prank(address(batchAdapter));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, batch);
 
-        assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 2);
-        assertEq(processor.processed(REMOTE_CENTRIFUGE_ID, 0), message1);
-        assertEq(processor.processed(REMOTE_CENTRIFUGE_ID, 1), message3);
+        assertEq(processor.count(REMOTE_CENT_ID), 2);
+        assertEq(processor.processed(REMOTE_CENT_ID, 0), message1);
+        assertEq(processor.processed(REMOTE_CENT_ID, 1), message3);
 
-        assertEq(gateway.failedMessages(REMOTE_CENTRIFUGE_ID, keccak256(message2)), 1);
+        assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(message2)), 1);
     }
 
     function testMultipleSameFailingMessages() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
+        gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
 
-        bytes memory batch = MessageKind.WithPoolA2Fail.asBytes();
+        bytes memory batch = MessageKind.WithPoolAFail.asBytes();
 
         vm.prank(address(batchAdapter));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, batch);
         vm.prank(address(batchAdapter));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, batch);
 
-        assertEq(gateway.failedMessages(REMOTE_CENTRIFUGE_ID, keccak256(batch)), 2);
+        assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 2);
     }
 
     function testBatchWithMultipleSameFailingMessages() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
+        gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
 
-        bytes memory message = MessageKind.WithPoolA2Fail.asBytes();
+        bytes memory message = MessageKind.WithPoolAFail.asBytes();
         bytes memory batch = abi.encodePacked(message, message);
 
         vm.prank(address(batchAdapter));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, batch);
 
-        assertEq(gateway.failedMessages(REMOTE_CENTRIFUGE_ID, keccak256(message)), 2);
+        assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(message)), 2);
     }
 }
 
@@ -607,53 +645,53 @@ contract GatewayTestRetry is GatewayTest {
     function testErrPaused() public {
         _mockPause(true);
         vm.expectRevert(IGateway.Paused.selector);
-        gateway.retry(REMOTE_CENTRIFUGE_ID, bytes(""));
+        gateway.retry(REMOTE_CENT_ID, bytes(""));
     }
 
     function testErrNotFailedMessage() public {
         vm.expectRevert(IGateway.NotFailedMessage.selector);
-        gateway.retry(REMOTE_CENTRIFUGE_ID, bytes("noMessage"));
+        gateway.retry(REMOTE_CENT_ID, bytes("noMessage"));
     }
 
     function testRecoverFailingMessage() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
+        gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
 
-        bytes memory batch = MessageKind.WithPoolA2Fail.asBytes();
+        bytes memory batch = MessageKind.WithPoolAFail.asBytes();
 
         vm.prank(address(batchAdapter));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, batch);
 
         processor.disableFailure();
 
         vm.prank(ANY);
-        emit IGateway.ExecuteMessage(REMOTE_CENTRIFUGE_ID, batch);
-        gateway.retry(REMOTE_CENTRIFUGE_ID, batch);
+        emit IGateway.ExecuteMessage(REMOTE_CENT_ID, batch);
+        gateway.retry(REMOTE_CENT_ID, batch);
 
-        assertEq(gateway.failedMessages(REMOTE_CENTRIFUGE_ID, keccak256(batch)), 0);
-        assertEq(processor.processed(REMOTE_CENTRIFUGE_ID, 0), batch);
+        assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 0);
+        assertEq(processor.processed(REMOTE_CENT_ID, 0), batch);
     }
 
     function testRecoverMultipleFailingMessage() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
+        gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
 
-        bytes memory batch = MessageKind.WithPoolA2Fail.asBytes();
+        bytes memory batch = MessageKind.WithPoolAFail.asBytes();
 
         vm.prank(address(batchAdapter));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, batch);
         vm.prank(address(batchAdapter));
-        gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, batch);
 
         processor.disableFailure();
 
         vm.prank(ANY);
-        gateway.retry(REMOTE_CENTRIFUGE_ID, batch);
+        gateway.retry(REMOTE_CENT_ID, batch);
         vm.prank(ANY);
-        gateway.retry(REMOTE_CENTRIFUGE_ID, batch);
+        gateway.retry(REMOTE_CENT_ID, batch);
 
-        assertEq(processor.count(REMOTE_CENTRIFUGE_ID), 2);
-        assertEq(processor.processed(REMOTE_CENTRIFUGE_ID, 0), batch);
-        assertEq(processor.processed(REMOTE_CENTRIFUGE_ID, 1), batch);
-        assertEq(gateway.failedMessages(REMOTE_CENTRIFUGE_ID, keccak256(batch)), 0);
+        assertEq(processor.count(REMOTE_CENT_ID), 2);
+        assertEq(processor.processed(REMOTE_CENT_ID, 0), batch);
+        assertEq(processor.processed(REMOTE_CENT_ID, 1), batch);
+        assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 0);
     }
 }
 
@@ -662,24 +700,24 @@ contract GatewayTestInitiateRecovery is GatewayTest {
 
     function testErrInvalidAdapter() public {
         vm.expectRevert(IGateway.InvalidAdapter.selector);
-        gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, BATCH_HASH);
+        gateway.initiateMessageRecovery(REMOTE_CENT_ID, batchAdapter, BATCH_HASH);
     }
 
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, BATCH_HASH);
+        gateway.initiateMessageRecovery(REMOTE_CENT_ID, batchAdapter, BATCH_HASH);
     }
 
     function testInitiateRecovery() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
+        gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
 
         vm.expectEmit();
-        emit IGateway.InitiateMessageRecovery(REMOTE_CENTRIFUGE_ID, BATCH_HASH, batchAdapter);
-        gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, BATCH_HASH);
+        emit IGateway.InitiateMessageRecovery(REMOTE_CENT_ID, BATCH_HASH, batchAdapter);
+        gateway.initiateMessageRecovery(REMOTE_CENT_ID, batchAdapter, BATCH_HASH);
 
         assertEq(
-            gateway.recoveries(REMOTE_CENTRIFUGE_ID, batchAdapter, BATCH_HASH),
+            gateway.recoveries(REMOTE_CENT_ID, batchAdapter, BATCH_HASH),
             block.timestamp + gateway.RECOVERY_CHALLENGE_PERIOD()
         );
     }
@@ -691,69 +729,69 @@ contract GatewayTestDisputeRecovery is GatewayTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, BATCH_HASH);
+        gateway.initiateMessageRecovery(REMOTE_CENT_ID, batchAdapter, BATCH_HASH);
     }
 
     function testDisputeRecovery() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
+        gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
 
         vm.expectEmit();
-        emit IGateway.DisputeMessageRecovery(REMOTE_CENTRIFUGE_ID, BATCH_HASH, batchAdapter);
-        gateway.disputeMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, BATCH_HASH);
+        emit IGateway.DisputeMessageRecovery(REMOTE_CENT_ID, BATCH_HASH, batchAdapter);
+        gateway.disputeMessageRecovery(REMOTE_CENT_ID, batchAdapter, BATCH_HASH);
 
-        assertEq(gateway.recoveries(REMOTE_CENTRIFUGE_ID, batchAdapter, BATCH_HASH), 0);
+        assertEq(gateway.recoveries(REMOTE_CENT_ID, batchAdapter, BATCH_HASH), 0);
     }
 }
 
 contract GatewayTestExecuteRecovery is GatewayTest {
     function testErrMessageRecoveryNotInitiated() public {
         vm.expectRevert(IGateway.MessageRecoveryNotInitiated.selector);
-        gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, bytes(""));
+        gateway.executeMessageRecovery(REMOTE_CENT_ID, batchAdapter, bytes(""));
     }
 
     function testErrMessageRecoveryChallengePeriodNotEnded() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
+        gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
 
         bytes memory batch = MessageKind.WithPoolA1.asBytes();
         bytes32 batchHash = keccak256(batch);
 
-        gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, batchHash);
+        gateway.initiateMessageRecovery(REMOTE_CENT_ID, batchAdapter, batchHash);
 
         vm.prank(ANY);
         vm.expectRevert(IGateway.MessageRecoveryChallengePeriodNotEnded.selector);
-        gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, batch);
+        gateway.executeMessageRecovery(REMOTE_CENT_ID, batchAdapter, batch);
     }
 
     function testErrRecoveryMessageRecovered() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
+        gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
 
         bytes memory batch = MessageKind.Recovery.asBytes();
         bytes32 batchHash = keccak256(batch);
 
-        gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, batchHash);
+        gateway.initiateMessageRecovery(REMOTE_CENT_ID, batchAdapter, batchHash);
 
         vm.warp(gateway.RECOVERY_CHALLENGE_PERIOD() + 1);
 
         vm.prank(ANY);
         vm.expectRevert(IGateway.RecoveryMessageRecovered.selector);
-        gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, batch);
+        gateway.executeMessageRecovery(REMOTE_CENT_ID, batchAdapter, batch);
     }
 
     function testExecuteRecovery() public {
-        gateway.file("adapters", REMOTE_CENTRIFUGE_ID, oneAdapter);
+        gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
 
         bytes memory batch = MessageKind.WithPoolA1.asBytes();
         bytes32 batchHash = keccak256(batch);
 
-        gateway.initiateMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, batchHash);
+        gateway.initiateMessageRecovery(REMOTE_CENT_ID, batchAdapter, batchHash);
 
         vm.warp(gateway.RECOVERY_CHALLENGE_PERIOD() + 1);
 
         vm.prank(ANY);
-        emit IGateway.ExecuteMessageRecovery(REMOTE_CENTRIFUGE_ID, batch, batchAdapter);
-        gateway.executeMessageRecovery(REMOTE_CENTRIFUGE_ID, batchAdapter, batch);
+        emit IGateway.ExecuteMessageRecovery(REMOTE_CENT_ID, batch, batchAdapter);
+        gateway.executeMessageRecovery(REMOTE_CENT_ID, batchAdapter, batch);
 
-        assertEq(processor.processed(REMOTE_CENTRIFUGE_ID, 0), batch);
+        assertEq(processor.processed(REMOTE_CENT_ID, 0), batch);
     }
 }
 
@@ -801,21 +839,21 @@ contract GatewayTestPayTransaction is GatewayTest {
         vm.deal(ANY, 100);
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.payTransaction{value: 100}(PAYER);
+        gateway.payTransaction{value: 100}(REFUND);
     }
 
     function testPayTransaction() public {
-        gateway.payTransaction{value: 100}(PAYER);
+        gateway.payTransaction{value: 100}(REFUND);
 
-        assertEq(gateway.transactionPayer(), PAYER);
+        assertEq(gateway.transactionRefund(), REFUND);
         assertEq(gateway.fuel(), 100);
     }
 
     /// forge-config: default.isolate = true
     function testPayTransactionIsTransactional() public {
-        gateway.payTransaction{value: 100}(PAYER);
+        gateway.payTransaction{value: 100}(REFUND);
 
-        assertEq(gateway.transactionPayer(), address(0));
+        assertEq(gateway.transactionRefund(), address(0));
         assertEq(gateway.fuel(), 0);
     }
 }
@@ -839,18 +877,18 @@ contract GatewayTestSend is GatewayTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.send(REMOTE_CENTRIFUGE_ID, new bytes(0));
+        gateway.send(REMOTE_CENT_ID, new bytes(0));
     }
 
     function testErrPaused() public {
         _mockPause(true);
         vm.expectRevert(IGateway.Paused.selector);
-        gateway.send(REMOTE_CENTRIFUGE_ID, new bytes(0));
+        gateway.send(REMOTE_CENT_ID, new bytes(0));
     }
 
     function testErrEmptyMessage() public {
         vm.expectRevert(IGateway.EmptyMessage.selector);
-        gateway.send(REMOTE_CENTRIFUGE_ID, new bytes(0));
+        gateway.send(REMOTE_CENT_ID, new bytes(0));
     }
 
     function testErrExceedsMaxBatching() public {
@@ -858,53 +896,56 @@ contract GatewayTestSend is GatewayTest {
         uint256 maxMessages = MAX_BATCH_SIZE / MESSAGE_GAS_LIMIT;
 
         for (uint256 i; i < maxMessages; i++) {
-            gateway.send(REMOTE_CENTRIFUGE_ID, MessageKind.WithPoolA1.asBytes());
+            gateway.send(REMOTE_CENT_ID, MessageKind.WithPoolA1.asBytes());
         }
 
         vm.expectRevert(IGateway.ExceedsMaxBatchSize.selector);
-        gateway.send(REMOTE_CENTRIFUGE_ID, MessageKind.WithPoolA1.asBytes());
+        gateway.send(REMOTE_CENT_ID, MessageKind.WithPoolA1.asBytes());
     }
 
     function testMessageWasBatched() public {
         bytes memory message = MessageKind.WithPoolA1.asBytes();
 
         gateway.startBatching();
-        gateway.send(REMOTE_CENTRIFUGE_ID, message);
 
-        assertEq(gateway.batchGasLimit(REMOTE_CENTRIFUGE_ID, POOL_A), MESSAGE_GAS_LIMIT);
-        assertEq(gateway.outboundBatch(REMOTE_CENTRIFUGE_ID, POOL_A), message);
+        vm.expectEmit();
+        emit IGateway.PrepareMessage(REMOTE_CENT_ID, POOL_A, message);
+        gateway.send(REMOTE_CENT_ID, message);
+
+        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), MESSAGE_GAS_LIMIT);
+        assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), message);
         assertEq(gateway.batchLocatorsLength(), 1);
 
         (uint16 centrifugeId, PoolId poolId) = gateway.batchLocators(0);
-        assertEq(centrifugeId, REMOTE_CENTRIFUGE_ID);
+        assertEq(centrifugeId, REMOTE_CENT_ID);
         assertEq(poolId.raw(), POOL_A.raw());
     }
 
     function testSecondMessageWasBatchedSamePoolSameChain() public {
         bytes memory message1 = MessageKind.WithPoolA1.asBytes();
-        bytes memory message2 = MessageKind.WithPoolA3.asBytes();
+        bytes memory message2 = MessageKind.WithPoolA2.asBytes();
 
         gateway.startBatching();
-        gateway.send(REMOTE_CENTRIFUGE_ID, message1);
-        gateway.send(REMOTE_CENTRIFUGE_ID, message2);
+        gateway.send(REMOTE_CENT_ID, message1);
+        gateway.send(REMOTE_CENT_ID, message2);
 
-        assertEq(gateway.batchGasLimit(REMOTE_CENTRIFUGE_ID, POOL_A), MESSAGE_GAS_LIMIT * 2);
-        assertEq(gateway.outboundBatch(REMOTE_CENTRIFUGE_ID, POOL_A), abi.encodePacked(message1, message2));
+        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), MESSAGE_GAS_LIMIT * 2);
+        assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), abi.encodePacked(message1, message2));
         assertEq(gateway.batchLocatorsLength(), 1);
     }
 
     function testSecondMessageWasBatchedSamePoolDifferentChain() public {
         bytes memory message1 = MessageKind.WithPoolA1.asBytes();
-        bytes memory message2 = MessageKind.WithPoolA3.asBytes();
+        bytes memory message2 = MessageKind.WithPoolA2.asBytes();
 
         gateway.startBatching();
-        gateway.send(REMOTE_CENTRIFUGE_ID, message1);
-        gateway.send(REMOTE_CENTRIFUGE_ID + 1, message2);
+        gateway.send(REMOTE_CENT_ID, message1);
+        gateway.send(REMOTE_CENT_ID + 1, message2);
 
-        assertEq(gateway.batchGasLimit(REMOTE_CENTRIFUGE_ID, POOL_A), MESSAGE_GAS_LIMIT);
-        assertEq(gateway.batchGasLimit(REMOTE_CENTRIFUGE_ID + 1, POOL_A), MESSAGE_GAS_LIMIT);
-        assertEq(gateway.outboundBatch(REMOTE_CENTRIFUGE_ID, POOL_A), message1);
-        assertEq(gateway.outboundBatch(REMOTE_CENTRIFUGE_ID + 1, POOL_A), message2);
+        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), MESSAGE_GAS_LIMIT);
+        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID + 1, POOL_A), MESSAGE_GAS_LIMIT);
+        assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), message1);
+        assertEq(gateway.outboundBatch(REMOTE_CENT_ID + 1, POOL_A), message2);
         assertEq(gateway.batchLocatorsLength(), 2);
     }
 
@@ -913,13 +954,163 @@ contract GatewayTestSend is GatewayTest {
         bytes memory message2 = MessageKind.WithPool0.asBytes();
 
         gateway.startBatching();
-        gateway.send(REMOTE_CENTRIFUGE_ID, message1);
-        gateway.send(REMOTE_CENTRIFUGE_ID, message2);
+        gateway.send(REMOTE_CENT_ID, message1);
+        gateway.send(REMOTE_CENT_ID, message2);
 
-        assertEq(gateway.batchGasLimit(REMOTE_CENTRIFUGE_ID, POOL_A), MESSAGE_GAS_LIMIT);
-        assertEq(gateway.batchGasLimit(REMOTE_CENTRIFUGE_ID, POOL_0), MESSAGE_GAS_LIMIT);
-        assertEq(gateway.outboundBatch(REMOTE_CENTRIFUGE_ID, POOL_A), message1);
-        assertEq(gateway.outboundBatch(REMOTE_CENTRIFUGE_ID, POOL_0), message2);
+        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), MESSAGE_GAS_LIMIT);
+        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_0), MESSAGE_GAS_LIMIT);
+        assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), message1);
+        assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_0), message2);
         assertEq(gateway.batchLocatorsLength(), 2);
     }
+
+    function testSendMessageNoBatchingUsingDelayPayment() public {
+        gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
+
+        bytes memory message = MessageKind.WithPoolA1.asBytes();
+        bytes32 batchHash = keccak256(message);
+        bytes32 batchId = keccak256(abi.encodePacked(LOCAL_CENT_ID, REMOTE_CENT_ID, batchHash));
+
+        _mockAdapters(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT, address(0), false);
+
+        vm.expectEmit();
+        emit IGateway.PrepareMessage(REMOTE_CENT_ID, POOL_A, message);
+        emit IGateway.SendBatch(REMOTE_CENT_ID, batchId, message, batchAdapter, ADAPTER_DATA_1, address(0), true);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter1, ADAPTER_DATA_2, true);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter2, ADAPTER_DATA_3, true);
+        gateway.send(REMOTE_CENT_ID, message);
+    }
+
+    function testSendMessageUsingTransactionPayment() public {
+        gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
+
+        bytes memory message = MessageKind.WithPoolA1.asBytes();
+        bytes32 batchHash = keccak256(message);
+        bytes32 batchId = keccak256(abi.encodePacked(LOCAL_CENT_ID, REMOTE_CENT_ID, batchHash));
+
+        uint256 payment = MESSAGE_GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3 + 1234;
+        gateway.payTransaction{value: payment}(REFUND);
+
+        _mockAdapters(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT, REFUND, true);
+
+        vm.expectEmit();
+        emit IGateway.SendBatch(REMOTE_CENT_ID, batchId, message, batchAdapter, ADAPTER_DATA_1, REFUND, false);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter1, ADAPTER_DATA_2, false);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter2, ADAPTER_DATA_3, false);
+        gateway.send(REMOTE_CENT_ID, message);
+
+        assertEq(REFUND.balance, 1234);
+        assertEq(gateway.fuel(), 0);
+        assertEq(gateway.transactionRefund(), address(0));
+    }
+}
+
+contract GatewayEndBatchingSend is GatewayTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        gateway.endBatching();
+    }
+
+    function testErrNoBatched() public {
+        vm.expectRevert(IGateway.NoBatched.selector);
+        gateway.endBatching();
+    }
+
+    function testSendTwoMessageBatching() public {
+        gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
+
+        bytes memory message1 = MessageKind.WithPoolA1.asBytes();
+        bytes memory message2 = MessageKind.WithPoolA2.asBytes();
+        bytes memory batch = bytes.concat(message1, message2);
+        bytes32 batchHash = keccak256(batch);
+        bytes32 batchId = keccak256(abi.encodePacked(LOCAL_CENT_ID, REMOTE_CENT_ID, batchHash));
+
+        gateway.startBatching();
+        gateway.send(REMOTE_CENT_ID, message1);
+        gateway.send(REMOTE_CENT_ID, message2);
+
+        _mockAdapters(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT * 2, address(0), false);
+
+        emit IGateway.SendBatch(REMOTE_CENT_ID, batchId, batch, batchAdapter, ADAPTER_DATA_1, address(0), true);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter1, ADAPTER_DATA_2, true);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter2, ADAPTER_DATA_3, true);
+        gateway.endBatching();
+
+        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), 0);
+        assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), new bytes(0));
+        assertEq(gateway.batchLocatorsLength(), 0);
+        assertEq(gateway.isBatching(), false);
+    }
+
+    function testSendTwoMessageBatchingDifferentChainSamePool() public {
+        gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
+        gateway.file("adapters", REMOTE_CENT_ID + 1, threeAdapters);
+
+        bytes memory message1 = MessageKind.WithPoolA1.asBytes();
+        bytes memory message2 = MessageKind.WithPoolA2.asBytes();
+        bytes32 batchHash1 = keccak256(message1);
+        bytes32 batchHash2 = keccak256(message2);
+        bytes32 batchId1 = keccak256(abi.encodePacked(LOCAL_CENT_ID, REMOTE_CENT_ID, batchHash1));
+        bytes32 batchId2 = keccak256(abi.encodePacked(LOCAL_CENT_ID, REMOTE_CENT_ID, batchHash2));
+
+        gateway.startBatching();
+        gateway.send(REMOTE_CENT_ID, message1);
+        gateway.send(REMOTE_CENT_ID + 1, message2);
+
+        _mockAdapters(REMOTE_CENT_ID, message1, MESSAGE_GAS_LIMIT, address(0), false);
+        _mockAdapters(REMOTE_CENT_ID + 1, message2, MESSAGE_GAS_LIMIT, address(0), false);
+
+        emit IGateway.SendBatch(REMOTE_CENT_ID, batchId1, message1, batchAdapter, ADAPTER_DATA_1, address(0), true);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId1, batchHash1, proofAdapter1, ADAPTER_DATA_2, true);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId1, batchHash1, proofAdapter2, ADAPTER_DATA_3, true);
+        emit IGateway.SendBatch(REMOTE_CENT_ID + 1, batchId2, message2, batchAdapter, ADAPTER_DATA_1, address(0), true);
+        emit IGateway.SendProof(REMOTE_CENT_ID + 1, batchId2, batchHash2, proofAdapter1, ADAPTER_DATA_2, true);
+        emit IGateway.SendProof(REMOTE_CENT_ID + 1, batchId2, batchHash2, proofAdapter2, ADAPTER_DATA_3, true);
+        gateway.endBatching();
+
+        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), 0);
+        assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), new bytes(0));
+        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID + 1, POOL_A), 0);
+        assertEq(gateway.outboundBatch(REMOTE_CENT_ID + 1, POOL_A), new bytes(0));
+        assertEq(gateway.batchLocatorsLength(), 0);
+        assertEq(gateway.isBatching(), false);
+    }
+
+    function testSendTwoMessageBatchingSameChainDifferentPool() public {
+        gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
+
+        bytes memory message1 = MessageKind.WithPool0.asBytes();
+        bytes memory message2 = MessageKind.WithPoolA1.asBytes();
+        bytes32 batchHash1 = keccak256(message1);
+        bytes32 batchHash2 = keccak256(message2);
+        bytes32 batchId1 = keccak256(abi.encodePacked(LOCAL_CENT_ID, REMOTE_CENT_ID, batchHash1));
+        bytes32 batchId2 = keccak256(abi.encodePacked(LOCAL_CENT_ID, REMOTE_CENT_ID, batchHash2));
+
+        gateway.startBatching();
+        gateway.send(REMOTE_CENT_ID, message1);
+        gateway.send(REMOTE_CENT_ID, message2);
+
+        // subsidy[pool0] == gateway
+        _mockAdapters(REMOTE_CENT_ID, message1, MESSAGE_GAS_LIMIT, address(gateway), false);
+        _mockAdapters(REMOTE_CENT_ID, message2, MESSAGE_GAS_LIMIT, address(0), false);
+
+        emit IGateway.SendBatch(REMOTE_CENT_ID, batchId1, message1, batchAdapter, ADAPTER_DATA_1, address(0), true);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId1, batchHash1, proofAdapter1, ADAPTER_DATA_2, true);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId1, batchHash1, proofAdapter2, ADAPTER_DATA_3, true);
+        emit IGateway.SendBatch(REMOTE_CENT_ID, batchId2, message2, batchAdapter, ADAPTER_DATA_1, address(0), true);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId2, batchHash2, proofAdapter1, ADAPTER_DATA_2, true);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId2, batchHash2, proofAdapter2, ADAPTER_DATA_3, true);
+        gateway.endBatching();
+
+        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), 0);
+        assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_A), new bytes(0));
+        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_0), 0);
+        assertEq(gateway.outboundBatch(REMOTE_CENT_ID, POOL_0), new bytes(0));
+        assertEq(gateway.batchLocatorsLength(), 0);
+        assertEq(gateway.isBatching(), false);
+    }
+
+    function testCloseTransactionForTransactionPayer() public {}
+    function testCloseTransactionForSubsidizedPool() public {}
 }

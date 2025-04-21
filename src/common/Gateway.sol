@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "forge-std/Test.sol";
-
 import {Auth} from "src/misc/Auth.sol";
 import {ArrayLib} from "src/misc/libraries/ArrayLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
@@ -62,7 +60,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     // Outbound & payments
     bool public transient isBatching;
     uint256 public transient fuel;
-    address public transient transactionPayer;
+    address public transient transactionRefund;
     mapping(PoolId => Funds) public subsidy;
 
     // Adapters
@@ -314,7 +312,7 @@ contract Gateway is Auth, Recoverable, IGateway {
                 batchGasLimit_
             );
 
-            if (transactionPayer != address(0)) {
+            if (transactionRefund != address(0)) {
                 require(consumed <= fuel, NotEnoughTransactionGas());
                 fuel -= consumed;
             } else {
@@ -329,7 +327,7 @@ contract Gateway is Auth, Recoverable, IGateway {
                 centrifugeId,
                 i == PRIMARY_ADAPTER_ID - 1 ? batch : serializeMessageProof(batchHash),
                 batchGasLimit_,
-                transactionPayer != address(0) ? transactionPayer : subsidy[poolId].refund
+                transactionRefund != address(0) ? transactionRefund : subsidy[poolId].refund
             );
 
             if (i == PRIMARY_ADAPTER_ID - 1) {
@@ -339,7 +337,7 @@ contract Gateway is Auth, Recoverable, IGateway {
                     batch,
                     adapters_[i],
                     adapterData,
-                    transactionPayer,
+                    transactionRefund,
                     consumed == 0
                 );
             } else {
@@ -356,10 +354,10 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     function _closeTransaction() internal {
-        if (transactionPayer == address(0)) return;
+        if (transactionRefund == address(0)) return;
 
         if (fuel > 0) {
-            (bool success,) = transactionPayer.call{value: fuel}(new bytes(0));
+            (bool success,) = payable(transactionRefund).call{value: fuel}(new bytes(0));
 
             if (!success) {
                 // If refund fails, move remaining fuel to global pot
@@ -370,7 +368,7 @@ contract Gateway is Auth, Recoverable, IGateway {
             fuel = 0;
         }
 
-        transactionPayer = address(0);
+        transactionRefund = address(0);
     }
 
     function setRefundAddress(PoolId poolId, address refund) public auth {
@@ -386,7 +384,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     /// @inheritdoc IGateway
     function payTransaction(address payer) external payable auth {
-        transactionPayer = payer;
+        transactionRefund = payer;
         fuel += msg.value;
     }
 

@@ -48,7 +48,7 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
         bytes batch,
         IAdapter adapter,
         bytes32 adapterData,
-        address transactionPayer,
+        address refund,
         bool underpaid
     );
     event SendProof(
