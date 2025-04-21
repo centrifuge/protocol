@@ -93,53 +93,20 @@ contract EscrowTestERC6909 is EscrowTestBase {
 }
 
 contract PoolEscrowTestBase is EscrowTestBase {
-    function _testPendingDepositIncrease(uint64 poolId, bytes16 scId, uint256 tokenId) internal {
-        address asset = _asset(tokenId);
-        PoolEscrow escrow = new PoolEscrow(poolId, address(this));
-
-        vm.prank(randomUser);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        escrow.pendingDepositIncrease(scId, asset, tokenId, 100);
-
-        vm.expectEmit();
-        emit IPoolEscrow.PendingDeposit(asset, tokenId, poolId, scId, 100);
-        escrow.pendingDepositIncrease(scId, asset, tokenId, 100);
-    }
-
-    function _testPendingDepositDecrease(uint64 poolId, bytes16 scId, uint256 tokenId) internal {
-        address asset = _asset(tokenId);
-        PoolEscrow escrow = new PoolEscrow(poolId, address(this));
-
-        escrow.pendingDepositIncrease(scId, asset, tokenId, 200);
-
-        vm.prank(randomUser);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        escrow.pendingDepositDecrease(scId, asset, tokenId, 50);
-
-        vm.expectEmit();
-        emit IPoolEscrow.PendingDeposit(asset, tokenId, poolId, scId, 150);
-        escrow.pendingDepositDecrease(scId, asset, tokenId, 50);
-
-        vm.expectRevert(IPoolEscrow.InsufficientPendingDeposit.selector);
-        escrow.pendingDepositDecrease(scId, asset, tokenId, 300);
-    }
-
     function _testDeposit(uint64 poolId, bytes16 scId, uint256 tokenId) internal {
         address asset = _asset(tokenId);
         PoolEscrow escrow = new PoolEscrow(poolId, address(this));
-        escrow.pendingDepositIncrease(scId, asset, tokenId, 500);
 
         _mint(address(escrow), tokenId, 300);
 
         vm.expectRevert(IPoolEscrow.InsufficientDeposit.selector);
         escrow.deposit(scId, asset, tokenId, 500);
 
-        vm.expectRevert(IPoolEscrow.InsufficientPendingDeposit.selector);
+        vm.expectRevert(IPoolEscrow.InsufficientDeposit.selector);
         escrow.deposit(scId, asset, tokenId, 600);
 
         vm.expectEmit();
         emit IPoolEscrow.Deposit(asset, tokenId, poolId, scId, 300);
-        emit IPoolEscrow.PendingDeposit(asset, tokenId, poolId, scId, 200);
         escrow.deposit(scId, asset, tokenId, 300);
 
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 300, "holdings should be 300 after deposit");
@@ -149,12 +116,11 @@ contract PoolEscrowTestBase is EscrowTestBase {
 
         _mint(address(escrow), tokenId, 200);
 
-        vm.expectRevert(IPoolEscrow.InsufficientPendingDeposit.selector);
+        vm.expectRevert(IPoolEscrow.InsufficientDeposit.selector);
         escrow.deposit(scId, asset, tokenId, 201);
 
         vm.expectEmit();
         emit IPoolEscrow.Deposit(asset, tokenId, poolId, scId, 200);
-        emit IPoolEscrow.PendingDeposit(asset, tokenId, poolId, scId, 0);
         escrow.deposit(scId, asset, tokenId, 200);
 
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 500, "holdings should be 500 after deposit");
@@ -174,7 +140,6 @@ contract PoolEscrowTestBase is EscrowTestBase {
 
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 0, "Still zero, nothing is in holdings");
 
-        escrow.pendingDepositIncrease(scId, asset, tokenId, 300);
         _mint(address(escrow), tokenId, 300);
         escrow.deposit(scId, asset, tokenId, 100);
 
@@ -196,7 +161,6 @@ contract PoolEscrowTestBase is EscrowTestBase {
 
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 0, "Still zero, nothing is in holdings");
 
-        escrow.pendingDepositIncrease(scId, asset, tokenId, 300);
         _mint(address(escrow), tokenId, 300);
         escrow.deposit(scId, asset, tokenId, 100);
 
@@ -219,7 +183,6 @@ contract PoolEscrowTestBase is EscrowTestBase {
         PoolEscrow escrow = new PoolEscrow(poolId, address(this));
 
         _mint(address(escrow), tokenId, 1000);
-        escrow.pendingDepositIncrease(scId, asset, tokenId, 1000);
         escrow.deposit(scId, asset, tokenId, 1000);
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 1000, "initial holdings should be 1000");
 
@@ -242,7 +205,6 @@ contract PoolEscrowTestBase is EscrowTestBase {
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 0, "Default available balance should be zero");
 
         _mint(address(escrow), tokenId, 500);
-        escrow.pendingDepositIncrease(scId, asset, tokenId, 500);
 
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 0, "Available balance needs deposit first.");
 
@@ -259,14 +221,6 @@ contract PoolEscrowTestBase is EscrowTestBase {
 
 contract PoolEscrowTestERC20 is PoolEscrowTestBase {
     uint256 tokenId = 0;
-
-    function testPendingDepositIncrease(uint64 poolId, bytes16 scId) public {
-        _testPendingDepositIncrease(poolId, scId, tokenId);
-    }
-
-    function testPendingDepositDecrease(uint64 poolId, bytes16 scId) public {
-        _testPendingDepositDecrease(poolId, scId, tokenId);
-    }
 
     function testDeposit(uint64 poolId, bytes16 scId) public {
         _testDeposit(poolId, scId, tokenId);
@@ -290,18 +244,6 @@ contract PoolEscrowTestERC20 is PoolEscrowTestBase {
 }
 
 contract PoolEscrowTestERC6909 is PoolEscrowTestBase {
-    function testPendingDepositIncrease(uint64 poolId, bytes16 scId, uint8 tokenId_) public {
-        uint256 tokenId = uint256(bound(tokenId_, 2, 18));
-
-        _testPendingDepositIncrease(poolId, scId, tokenId);
-    }
-
-    function testPendingDepositDecrease(uint64 poolId, bytes16 scId, uint8 tokenId_) public {
-        uint256 tokenId = uint256(bound(tokenId_, 2, 18));
-
-        _testPendingDepositDecrease(poolId, scId, tokenId);
-    }
-
     function testDeposit(uint64 poolId, bytes16 scId, uint8 tokenId_) public {
         uint256 tokenId = uint256(bound(tokenId_, 2, 18));
 

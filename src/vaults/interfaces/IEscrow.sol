@@ -33,19 +33,16 @@ interface IEscrow {
     function unapprove(address asset, address spender) external;
 }
 
+// NOTE: I think we can store the holdings like this, to reduce SLOAD and SSTOREs. Since all assets are guaranteed
+// to have at most 18 decimals, uint128 is safe to use.
+struct Holding {
+    uint128 total;
+    uint128 reserved;
+}
+
 /// @title PerPoolEscrow separating funds by pool and share class
 interface IPoolEscrow is IEscrow, IRecoverable {
     // --- Events ---
-    /// @notice Emitted when a deposit will be made in the future
-    /// @param asset The address of the to be deposited asset
-    /// @param tokenId The id of the asset - 0 for ERC20
-    /// @param poolId The id of the pool
-    /// @param scId The id of the share class
-    /// @param value The amount to be deposited
-    event PendingDeposit(
-        address indexed asset, uint256 indexed tokenId, uint64 indexed poolId, bytes16 scId, uint256 value
-    );
-
     /// @notice Emitted when a deposit is made
     /// @param asset The address of the deposited asset
     /// @param tokenId The id of the asset - 0 for ERC20
@@ -71,43 +68,30 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     event Withdraw(address indexed asset, uint256 indexed tokenId, uint64 indexed poolId, bytes16 scId, uint256 value);
 
     // --- Errors ---
-    /// @notice Dispatched when pending deposits are insufficient
-    error InsufficientPendingDeposit();
-
     /// @notice Dispatched when the balance of the escrow did not increase sufficiently
     error InsufficientDeposit();
 
-    /// @notice Dispatched when the the outstanding reserved amount is insufficient for the decrease
+    /// @notice Dispatched when the outstanding reserved amount is insufficient for the decrease
     error InsufficientReservedAmount();
 
     /// @notice Dispatched when the balance of the escrow is insufficient for the withdrawal
     error InsufficientBalance();
 
     // --- Functions ---
-    /// @notice Increases the pending deposit of `value` for `asset` in underlying `poolId` and given `scId`
-    /// @dev MUST be made prior to calling `deposit`
-    /// @param scId The id of the share class
-    /// @param asset The address of the asset to be deposited
-    /// @param tokenId The id of the asset - 0 for ERC20
-    /// @param value The amount to increase
-    function pendingDepositIncrease(bytes16 scId, address asset, uint256 tokenId, uint256 value) external;
-
-    /// @notice Decreases the pending deposit of `value` for `asset` in underlying `poolId` and given `scId`
-    /// @dev MUST fail if `value` is greater than the current pending deposit
-    /// @param scId The id of the share class
-    /// @param asset The address of the asset to be deposited
-    /// @param tokenId The id of the asset - 0 for ERC20
-    /// @param value The amount to decrease
-    function pendingDepositDecrease(bytes16 scId, address asset, uint256 tokenId, uint256 value) external;
-
     /// @notice Deposits `value` of `asset` in underlying `poolId` and given `scId`
-    /// @dev MUST be made after calling `pendingDepositIncrease`. Fails if `value` is greater than the current pending
-    /// deposit
     /// @param scId The id of the share class
     /// @param asset The address of the asset to be deposited
     /// @param tokenId The id of the asset - 0 for ERC20
     /// @param value The amount to deposit
     function deposit(bytes16 scId, address asset, uint256 tokenId, uint256 value) external;
+
+    /// @notice Withdraws `value` of `asset` in underlying `poolId` and given `scId`
+    /// @dev MUST ensure that reserved amounts are not withdrawn
+    /// @param scId The id of the share class
+    /// @param asset The address of the asset to be withdrawn
+    /// @param tokenId The id of the asset - 0 for ERC20
+    /// @param value The amount to withdraw
+    function withdraw(bytes16 scId, address asset, uint256 tokenId, uint256 value) external;
 
     /// @notice Increases the reserved amount of `value` for `asset` in underlying `poolId` and given `scId`
     /// @dev MUST prevent the reserved amount from being withdrawn
@@ -124,14 +108,6 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     /// @param tokenId The id of the asset - 0 for ERC20
     /// @param value The amount to decrease
     function reserveDecrease(bytes16 scId, address asset, uint256 tokenId, uint256 value) external;
-
-    /// @notice Withdraws `value` of `asset` in underlying `poolId` and given `scId`
-    /// @dev MUST ensure that reserved amounts are not withdrawn
-    /// @param scId The id of the share class
-    /// @param asset The address of the asset to be withdrawn
-    /// @param tokenId The id of the asset - 0 for ERC20
-    /// @param value The amount to withdraw
-    function withdraw(bytes16 scId, address asset, uint256 tokenId, uint256 value) external;
 
     /// @notice Provides the available balance of `asset` in underlying `poolId` and given `scId`
     /// @dev MUST return the balance minus the reserved amount

@@ -180,6 +180,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     /// @inheritdoc IBalanceSheetGatewayHandler
     function revokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external auth {
         (address asset, uint256 tokenId) = poolManager.idToAsset(assetId.raw());
+        // NOTE: since escrow.deposit() is not called for shares on requestRedeem, why is this necessary?
         IPoolEscrow(poolEscrowProvider.escrow(poolId.raw())).reserveIncrease(scId.raw(), asset, tokenId, assetAmount);
     }
 
@@ -235,7 +236,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         D18 pricePoolPerAsset
     ) internal {
         IPoolEscrow escrow = IPoolEscrow(poolEscrowProvider.escrow(poolId.raw()));
-        escrow.pendingDepositIncrease(scId.raw(), asset, tokenId, amount);
 
         if (tokenId == 0) {
             SafeTransferLib.safeTransferFrom(asset, provider, address(escrow), amount);

@@ -128,9 +128,6 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         require(state.pendingCancelDepositRequest != true, CancellationIsPending());
 
         state.pendingDepositRequest += assets;
-        IPoolEscrow(poolEscrowProvider.escrow(poolId)).pendingDepositIncrease(
-            scId, vaultDetails.asset, vaultDetails.tokenId, assets
-        );
         sender.sendDepositRequest(poolId, scId, controller.toBytes32(), vaultDetails.assetId, assets);
 
         return true;
