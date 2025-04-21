@@ -33,8 +33,6 @@ interface IEscrow {
     function unapprove(address asset, address spender) external;
 }
 
-// NOTE: I think we can store the holdings like this, to reduce SLOAD and SSTOREs. Since all assets are guaranteed
-// to have at most 18 decimals, uint128 is safe to use.
 struct Holding {
     uint128 total;
     uint128 reserved;
