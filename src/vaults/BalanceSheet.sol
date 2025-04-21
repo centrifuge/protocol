@@ -108,19 +108,19 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     /// @inheritdoc IBalanceSheet
-    function revoke(PoolId poolId, ShareClassId scId, address from, D18 pricePoolPerShare, uint128 shares)
-        external
-        authOrManager(poolId, scId)
-    {
-        _revoke(poolId, scId, from, pricePoolPerShare, shares);
-    }
-
-    /// @inheritdoc IBalanceSheet
     function issue(PoolId poolId, ShareClassId scId, address to, D18 pricePoolPerShare, uint128 shares)
         external
         authOrManager(poolId, scId)
     {
         _issue(poolId, scId, to, pricePoolPerShare, shares);
+    }
+
+    /// @inheritdoc IBalanceSheet
+    function revoke(PoolId poolId, ShareClassId scId, address from, D18 pricePoolPerShare, uint128 shares)
+        external
+        authOrManager(poolId, scId)
+    {
+        _revoke(poolId, scId, from, pricePoolPerShare, shares);
     }
 
     /// --- IBalanceSheetHandler ---
@@ -201,30 +201,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         sender.sendUpdateShares(poolId, scId, from, pricePoolPerShare, shares, false);
     }
 
-    function _withdraw(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        address asset,
-        uint256 tokenId,
-        address receiver,
-        uint128 amount,
-        D18 pricePoolPerAsset
-    ) internal {
-        IPoolEscrow escrow = IPoolEscrow(poolEscrowProvider.escrow(poolId.raw()));
-        escrow.withdraw(scId.raw(), asset, tokenId, amount);
-
-        if (tokenId == 0) {
-            SafeTransferLib.safeTransferFrom(asset, address(escrow), receiver, amount);
-        } else {
-            IERC6909(asset).transferFrom(address(escrow), receiver, tokenId, amount);
-        }
-
-        emit Withdraw(poolId, scId, asset, tokenId, receiver, amount, pricePoolPerAsset, uint64(block.timestamp));
-
-        sender.sendUpdateHoldingAmount(poolId, scId, assetId, receiver, amount, pricePoolPerAsset, false);
-    }
-
     function _deposit(
         PoolId poolId,
         ShareClassId scId,
@@ -247,5 +223,28 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
         escrow.deposit(scId.raw(), asset, tokenId, amount);
         sender.sendUpdateHoldingAmount(poolId, scId, assetId, provider, amount, pricePoolPerAsset, true);
+    }
+
+    function _withdraw(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        address asset,
+        uint256 tokenId,
+        address receiver,
+        uint128 amount,
+        D18 pricePoolPerAsset
+    ) internal {
+        IPoolEscrow escrow = IPoolEscrow(poolEscrowProvider.escrow(poolId.raw()));
+        escrow.withdraw(scId.raw(), asset, tokenId, amount);
+
+        if (tokenId == 0) {
+            SafeTransferLib.safeTransferFrom(asset, address(escrow), receiver, amount);
+        } else {
+            IERC6909(asset).transferFrom(address(escrow), receiver, tokenId, amount);
+        }
+
+        emit Withdraw(poolId, scId, asset, tokenId, receiver, amount, pricePoolPerAsset, uint64(block.timestamp));
+        sender.sendUpdateHoldingAmount(poolId, scId, assetId, receiver, amount, pricePoolPerAsset, false);
     }
 }

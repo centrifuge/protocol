@@ -90,9 +90,10 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
 
     /// @inheritdoc IPoolEscrow
     function withdraw(bytes16 scId, address asset, uint256 tokenId, uint256 value) external auth {
-        require(availableBalanceOf(scId, asset, tokenId) >= value, InsufficientBalance());
+        Holding storage holding_ = holding[scId][asset][tokenId];
+        require(holding_.total - holding_.reserved >= value, InsufficientBalance());
 
-        holding[scId][asset][tokenId].total -= value.toUint128();
+        holding_.total -= value.toUint128();
 
         emit Withdraw(asset, tokenId, poolId, scId, value);
     }
