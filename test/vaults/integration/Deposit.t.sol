@@ -7,6 +7,7 @@ import {d18} from "src/misc/types/D18.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 
 import "test/vaults/BaseTest.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
@@ -73,7 +74,9 @@ contract DepositTest is BaseTest {
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.trancheId();
         vm.expectRevert(IAsyncRequests.NoPendingRequest.selector);
-        asyncRequests.fulfillDepositRequest(poolId, scId, self, assetId, uint128(amount), shares);
+        asyncRequests.fulfillDepositRequest(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), self, AssetId.wrap(assetId), uint128(amount), shares
+        );
 
         // success
         erc20.approve(vault_, amount);
@@ -657,7 +660,9 @@ contract DepositTest is BaseTest {
         assertEq(erc20.balanceOf(address(self)), 0);
 
         vm.expectRevert(IAsyncRequests.NoPendingRequest.selector);
-        asyncRequests.fulfillCancelDepositRequest(poolId, scId, self, assetId, uint128(amount), uint128(amount));
+        asyncRequests.fulfillCancelDepositRequest(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), self, AssetId.wrap(assetId), uint128(amount), uint128(amount)
+        );
 
         // check message was send out to centchain
         vault.cancelDepositRequest(0, self);
