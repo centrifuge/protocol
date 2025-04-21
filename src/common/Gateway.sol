@@ -293,7 +293,7 @@ contract Gateway is Auth, Recoverable, IGateway {
             }
         } else {
             _send(centrifugeId, poolId, message);
-            _closeTransaction();
+            _refundTransaction();
         }
     }
 
@@ -337,7 +337,7 @@ contract Gateway is Auth, Recoverable, IGateway {
                     batch,
                     adapters_[i],
                     adapterData,
-                    transactionRefund,
+                    transactionRefund != address(0) ? transactionRefund : subsidy[poolId].refund,
                     consumed == 0
                 );
             } else {
@@ -353,7 +353,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         }
     }
 
-    function _closeTransaction() internal {
+    function _refundTransaction() internal {
         if (transactionRefund == address(0)) return;
 
         if (fuel > 0) {
@@ -411,7 +411,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         TransientArrayLib.clear(BATCH_LOCATORS_SLOT);
         isBatching = false;
 
-        _closeTransaction();
+        _refundTransaction();
     }
 
     function _encodeLocator(uint16 centrifugeId, PoolId poolId) internal pure returns (bytes32) {
