@@ -1076,6 +1076,8 @@ contract GatewayTestSend is GatewayTest {
 
         _mockAdapters(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT, address(POOL_REFUND), ADAPTER_PAID);
 
+        vm.expectEmit();
+        emit IGateway.SubsidizePool(POOL_A, address(POOL_REFUND), 1);
         gateway.send(REMOTE_CENT_ID, message);
 
         (uint256 value,) = gateway.subsidy(POOL_A);
