@@ -6,14 +6,7 @@ import "forge-std/Test.sol";
 import {Auth, IAuth} from "src/misc/Auth.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
-import {
-    Gateway,
-    IRoot,
-    IGasService,
-    IGateway,
-    serializeMessageProof,
-    deserializeMessageProof
-} from "src/common/Gateway.sol";
+import {Gateway, IRoot, IGasService, IGateway} from "src/common/Gateway.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {TransientArrayLib} from "src/misc/libraries/TransientArrayLib.sol";
@@ -23,6 +16,7 @@ import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
 import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
 import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 
 // -----------------------------------------
 //     MESSAGE MOCKING
@@ -192,7 +186,7 @@ contract GatewayTest is Test {
     {
         _mockAdapter(batchAdapter, centrifugeId, message, gasLimit, refund, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1, isPaid);
 
-        bytes memory proof = serializeMessageProof(keccak256(message));
+        bytes memory proof = MessageProofLib.serializeMessageProof(keccak256(message));
         _mockAdapter(proofAdapter1, centrifugeId, proof, gasLimit, refund, ADAPTER_ESTIMATE_2, ADAPTER_DATA_2, isPaid);
         _mockAdapter(proofAdapter2, centrifugeId, proof, gasLimit, refund, ADAPTER_ESTIMATE_3, ADAPTER_DATA_3, isPaid);
     }
@@ -237,10 +231,6 @@ contract GatewayTest is Test {
         assertEq(refund, address(gateway));
 
         assertEq(gateway.wards(address(this)), 1);
-    }
-
-    function testMessageProof(bytes32 hash_) public pure {
-        assertEq(hash_, deserializeMessageProof(serializeMessageProof(hash_)));
     }
 }
 
@@ -360,7 +350,7 @@ contract GatewayTestHandle is GatewayTest {
 
         vm.prank(address(batchAdapter));
         vm.expectRevert(IGateway.NonProofAdapter.selector);
-        gateway.handle(REMOTE_CENT_ID, serializeMessageProof(bytes32("1")));
+        gateway.handle(REMOTE_CENT_ID, MessageProofLib.serializeMessageProof(bytes32("1")));
     }
 
     function testErrNonProofAdapterWithOneAdapter() public {
@@ -368,7 +358,7 @@ contract GatewayTestHandle is GatewayTest {
 
         vm.prank(address(batchAdapter));
         vm.expectRevert(IGateway.NonProofAdapter.selector);
-        gateway.handle(REMOTE_CENT_ID, serializeMessageProof(bytes32("1")));
+        gateway.handle(REMOTE_CENT_ID, MessageProofLib.serializeMessageProof(bytes32("1")));
     }
 
     function testErrNonBatchAdapter() public {
@@ -419,7 +409,7 @@ contract GatewayTestHandle is GatewayTest {
 
         bytes memory batch = MessageKind.WithPool0.asBytes();
         bytes32 batchHash = keccak256(batch);
-        bytes memory proof = serializeMessageProof(batchHash);
+        bytes memory proof = MessageProofLib.serializeMessageProof(batchHash);
         bytes32 batchId = keccak256(abi.encodePacked(REMOTE_CENT_ID, LOCAL_CENT_ID, batchHash));
         bytes32 proofId = keccak256(abi.encodePacked(REMOTE_CENT_ID, LOCAL_CENT_ID, batchHash));
 
@@ -450,7 +440,7 @@ contract GatewayTestHandle is GatewayTest {
         gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
 
         bytes memory batch = MessageKind.WithPool0.asBytes();
-        bytes memory proof = serializeMessageProof(keccak256(batch));
+        bytes memory proof = MessageProofLib.serializeMessageProof(keccak256(batch));
 
         vm.prank(address(batchAdapter));
         gateway.handle(REMOTE_CENT_ID, batch);
@@ -480,7 +470,7 @@ contract GatewayTestHandle is GatewayTest {
         gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
 
         bytes memory batch = MessageKind.WithPool0.asBytes();
-        bytes memory proof = serializeMessageProof(keccak256(batch));
+        bytes memory proof = MessageProofLib.serializeMessageProof(keccak256(batch));
 
         vm.prank(address(batchAdapter));
         gateway.handle(REMOTE_CENT_ID, batch);
@@ -490,7 +480,7 @@ contract GatewayTestHandle is GatewayTest {
         gateway.handle(REMOTE_CENT_ID, proof);
 
         bytes memory batch2 = MessageKind.WithPoolA1.asBytes();
-        bytes memory proof2 = serializeMessageProof(keccak256(batch2));
+        bytes memory proof2 = MessageProofLib.serializeMessageProof(keccak256(batch2));
 
         vm.prank(address(batchAdapter));
         gateway.handle(REMOTE_CENT_ID, batch2);
@@ -513,7 +503,7 @@ contract GatewayTestHandle is GatewayTest {
         gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
 
         bytes memory batch = MessageKind.WithPool0.asBytes();
-        bytes memory proof = serializeMessageProof(keccak256(batch));
+        bytes memory proof = MessageProofLib.serializeMessageProof(keccak256(batch));
 
         vm.prank(address(proofAdapter1));
         gateway.handle(REMOTE_CENT_ID, proof);
@@ -535,7 +525,7 @@ contract GatewayTestHandle is GatewayTest {
         gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
 
         bytes memory batch = MessageKind.WithPool0.asBytes();
-        bytes memory proof = serializeMessageProof(keccak256(batch));
+        bytes memory proof = MessageProofLib.serializeMessageProof(keccak256(batch));
 
         vm.prank(address(batchAdapter));
         gateway.handle(REMOTE_CENT_ID, batch);
@@ -569,7 +559,7 @@ contract GatewayTestHandle is GatewayTest {
         gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
 
         bytes memory batch = MessageKind.WithPool0.asBytes();
-        bytes memory proof = serializeMessageProof(keccak256(batch));
+        bytes memory proof = MessageProofLib.serializeMessageProof(keccak256(batch));
 
         vm.prank(address(batchAdapter));
         gateway.handle(REMOTE_CENT_ID, batch);

@@ -8,9 +8,9 @@ import {PoolId} from "src/common/types/PoolId.sol";
 
 enum MessageType {
     /// @dev Placeholder for null message type
-    Invalid,
+    _Invalid,
     /// @dev Placeholder for proof message type
-    MessageProof,
+    _MessageProof,
     // -- Gateway messages
     InitiateMessageRecovery,
     DisputeMessageRecovery,

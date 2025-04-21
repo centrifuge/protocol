@@ -6,7 +6,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGuardian, IGateway} from "src/common/Guardian.sol";
-import {serializeMessageProof} from "src/common/Gateway.sol";
+import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 
 import "test/vaults/BaseTest.sol";
 
@@ -253,7 +253,7 @@ contract AdminTest is BaseTest {
         gateway.file("adapters", OTHER_CHAIN_ID, testAdapters);
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
-        bytes memory proof = serializeMessageProof(keccak256(message));
+        bytes memory proof = MessageProofLib.serializeMessageProof(keccak256(message));
 
         // Only send through 2 out of 3 adapters
         _send(adapter1, message);
