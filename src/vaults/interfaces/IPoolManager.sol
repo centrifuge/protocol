@@ -2,6 +2,7 @@
 pragma solidity >=0.5.0;
 
 import {D18, d18} from "src/misc/types/D18.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 /// @dev Centrifuge pools
 struct Pool {
@@ -11,7 +12,7 @@ struct Pool {
 
 /// @dev Each Centrifuge pool is associated to 1 or more shar classes
 struct ShareClassDetails {
-    address shareToken;
+    IShareToken shareToken;
     /// @dev Each share class has an individual price per share class unit in pool denomination (POOL_UNIT/SHARE_UNIT)
     Price pricePoolPerShare;
     /// @dev Each share class can have multiple vaults deployed,
@@ -78,7 +79,7 @@ interface IPoolManager {
     );
     event File(bytes32 indexed what, address factory, bool status);
     event AddPool(uint64 indexed poolId);
-    event AddShareClass(uint64 indexed poolId, bytes16 indexed scId, address token);
+    event AddShareClass(uint64 indexed poolId, bytes16 indexed scId, IShareToken token);
     event DeployVault(
         uint64 indexed poolId,
         bytes16 indexed scId,
@@ -219,7 +220,7 @@ interface IPoolManager {
     /// @param poolId The pool id
     /// @param scId The share class id
     /// @return address The address of the share token
-    function shareToken(uint64 poolId, bytes16 scId) external view returns (address);
+    function shareToken(uint64 poolId, bytes16 scId) external view returns (IShareToken);
 
     /// @notice Function to get the details of a vault
     /// @dev    Reverts if vault does not exist

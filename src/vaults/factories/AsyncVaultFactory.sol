@@ -6,6 +6,7 @@ import {Auth} from "src/misc/Auth.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 /// @title  ERC7540 Vault Factory
 /// @dev    Utility for deploying new vault contracts
@@ -28,7 +29,7 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
         bytes16 scId,
         address asset,
         uint256 tokenId,
-        address token,
+        IShareToken token,
         address, /* escrow */
         address[] calldata wards_
     ) public auth returns (address) {

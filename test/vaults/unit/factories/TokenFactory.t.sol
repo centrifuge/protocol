@@ -4,9 +4,10 @@ pragma solidity 0.8.28;
 import {Root} from "src/common/Root.sol";
 
 import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
-import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
+import {ShareToken} from "src/vaults/token/ShareToken.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
 import {VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 import {BaseTest} from "test/vaults/BaseTest.sol";
 import "forge-std/Test.sol";
@@ -112,7 +113,7 @@ contract FactoryTest is Test {
                             bytes1(0xff),
                             address(tokenFactory),
                             tokenSalt,
-                            keccak256(abi.encodePacked(type(CentrifugeToken).creationCode, abi.encode(decimals)))
+                            keccak256(abi.encodePacked(type(ShareToken).creationCode, abi.encode(decimals)))
                         )
                     )
                 )
@@ -123,7 +124,7 @@ contract FactoryTest is Test {
         tokenWards[0] = address(asyncRequests);
         tokenWards[1] = address(poolManager);
 
-        address token = tokenFactory.newToken(name, symbol, decimals, tokenSalt, tokenWards);
+        IShareToken token = tokenFactory.newToken(name, symbol, decimals, tokenSalt, tokenWards);
 
         assertEq(address(token), predictedAddress);
         assertEq(tokenFactory.getAddress(decimals, tokenSalt), address(token));

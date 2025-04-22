@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
+import {ShareToken} from "src/vaults/token/ShareToken.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
@@ -12,12 +12,12 @@ import {IRestrictedTransfers} from "src/hooks/interfaces/IRestrictedTransfers.so
 
 contract RestrictedTransfersTest is Test {
     MockRoot root;
-    CentrifugeToken token;
+    ShareToken token;
     RestrictedTransfers restrictedTransfers;
 
     function setUp() public {
         root = new MockRoot();
-        token = new CentrifugeToken(18);
+        token = new ShareToken(18);
         restrictedTransfers = new RestrictedTransfers(address(root), address(this));
         token.file("hook", address(restrictedTransfers));
     }

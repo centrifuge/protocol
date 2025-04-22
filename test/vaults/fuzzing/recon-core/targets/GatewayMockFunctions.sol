@@ -13,8 +13,9 @@ import {AssetId} from "src/common/types/AssetId.sol";
 
 // Src Deps | For cycling of values
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {ERC20} from "src/misc/ERC20.sol";
-import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
+import {ShareToken} from "src/vaults/token/ShareToken.sol";
 import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
@@ -41,7 +42,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
     // Basically the real complete setup
     function deployNewTokenPoolAndShare(uint8 decimals, uint256 initialMintPerUsers)
         public
-        returns (address newToken, address newShareToken, address newVault, uint128 newAssetId)
+        returns (address newToken, address newVault, uint128 newAssetId)
     {
         // NOTE: TEMPORARY
         require(!hasDoneADeploy); // This bricks the function for this one for Medusa
@@ -78,7 +79,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
             string memory symbol = "T1";
 
             // TODO: Ask if we should customize decimals and permissions here
-            newShareToken = poolManager_addShareClass(POOL_ID, SHARE_ID, name, symbol, 18, address(restrictedTransfers));
+            poolManager_addShareClass(POOL_ID, SHARE_ID, name, symbol, 18, address(restrictedTransfers));
         }
 
         newVault = poolManager_deployVault(POOL_ID, SHARE_ID, newAssetId);
@@ -101,7 +102,6 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
 
         vault = AsyncVault(newVault);
         assetErc20 = ERC20(newToken);
-        token = CentrifugeToken(newShareToken);
         restrictedTransfers = RestrictedTransfers(address(token.hook()));
 
         scId = SHARE_ID;
@@ -136,8 +136,8 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
         string memory tokenSymbol,
         uint8 decimals,
         address hook
-    ) public returns (address) {
-        address newToken = poolManager.addShareClass(
+    ) public {
+        poolManager.addShareClass(
             PoolId.wrap(poolId),
             ShareClassId.wrap(scId),
             tokenName,
@@ -146,10 +146,6 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
             keccak256(abi.encodePacked(poolId, scId)),
             hook
         );
-
-        shareClassTokens.push(newToken);
-
-        return newToken;
     }
 
     // Step 5

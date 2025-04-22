@@ -199,16 +199,16 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     // --- Internal ---
     function _issue(PoolId poolId, ShareClassId scId, address to, D18 pricePoolPerShare, uint128 shares) internal {
-        address token = poolManager.shareToken(poolId.raw(), scId.raw());
-        IShareToken(token).mint(address(to), shares);
+        IShareToken token = poolManager.shareToken(poolId.raw(), scId.raw());
+        token.mint(address(to), shares);
 
         emit Issue(poolId, scId, to, pricePoolPerShare, shares);
         sender.sendUpdateShares(poolId, scId, to, pricePoolPerShare, shares, true);
     }
 
     function _revoke(PoolId poolId, ShareClassId scId, address from, D18 pricePoolPerShare, uint128 shares) internal {
-        address token = poolManager.shareToken(poolId.raw(), scId.raw());
-        IShareToken(token).burn(address(from), shares);
+        IShareToken token = poolManager.shareToken(poolId.raw(), scId.raw());
+        token.burn(address(from), shares);
 
         emit Revoke(poolId, scId, from, pricePoolPerShare, shares);
         sender.sendUpdateShares(poolId, scId, from, pricePoolPerShare, shares, false);
