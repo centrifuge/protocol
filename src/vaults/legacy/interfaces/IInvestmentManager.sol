@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.5.0;
 
-import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
-
 /// @notice A stripped down version of the Centrifuge V2 investment manager.
 ///
 /// @dev This interface is needed to ensure adapters for legacy vaults are provided with the expected interface.
-interface IInvestmentManager is IRecoverable {
+interface IInvestmentManager {
     /// @notice Documentation see Centrifuge V2 repository.
     function escrow() external view returns (address);
 
