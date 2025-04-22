@@ -8,16 +8,6 @@ pragma solidity 0.8.28;
 library BytesLib {
     error SliceOverflow();
     error SliceOutOfBounds();
-    error SliceToAddressOutOfBounds();
-    error SliceToUint8OutOfBounds();
-    error SliceToUint16OutOfBounds();
-    error SliceToUint32OutOfBounds();
-    error SliceToUint64OutOfBounds();
-    error SliceToUint128OutOfBounds();
-    error SliceToUint256OutOfBounds();
-    error SliceToBytes32OutOfBounds();
-    error SliceToBytes16OutOfBounds();
-    error SliceToBoolOutOfBounds();
 
     function sliceZeroPadded(bytes memory _bytes, uint256 _start, uint256 _length)
         internal
@@ -87,7 +77,7 @@ library BytesLib {
     }
 
     function toAddress(bytes memory _bytes, uint256 _start) internal pure returns (address) {
-        require(_bytes.length >= _start + 20, SliceToAddressOutOfBounds());
+        require(_bytes.length >= _start + 20, SliceOutOfBounds());
         address tempAddress;
 
         assembly {
@@ -98,7 +88,7 @@ library BytesLib {
     }
 
     function toUint8(bytes memory _bytes, uint256 _start) internal pure returns (uint8) {
-        require(_bytes.length >= _start + 1, SliceToUint8OutOfBounds());
+        require(_bytes.length >= _start + 1, SliceOutOfBounds());
         uint8 tempUint;
 
         assembly {
@@ -109,7 +99,7 @@ library BytesLib {
     }
 
     function toUint16(bytes memory _bytes, uint256 _start) internal pure returns (uint16) {
-        require(_bytes.length >= _start + 2, SliceToUint16OutOfBounds());
+        require(_bytes.length >= _start + 2, SliceOutOfBounds());
         uint16 tempUint;
 
         assembly {
@@ -120,7 +110,7 @@ library BytesLib {
     }
 
     function toUint32(bytes memory _bytes, uint256 _start) internal pure returns (uint32) {
-        require(_bytes.length >= _start + 4, SliceToUint32OutOfBounds());
+        require(_bytes.length >= _start + 4, SliceOutOfBounds());
         uint32 tempUint;
 
         assembly {
@@ -131,7 +121,7 @@ library BytesLib {
     }
 
     function toUint64(bytes memory _bytes, uint256 _start) internal pure returns (uint64) {
-        require(_bytes.length >= _start + 8, SliceToUint64OutOfBounds());
+        require(_bytes.length >= _start + 8, SliceOutOfBounds());
         uint64 tempUint;
 
         assembly {
@@ -142,7 +132,7 @@ library BytesLib {
     }
 
     function toUint128(bytes memory _bytes, uint256 _start) internal pure returns (uint128) {
-        require(_bytes.length >= _start + 16, SliceToUint128OutOfBounds());
+        require(_bytes.length >= _start + 16, SliceOutOfBounds());
         uint128 tempUint;
 
         assembly {
@@ -153,7 +143,7 @@ library BytesLib {
     }
 
     function toUint256(bytes memory _bytes, uint256 _start) internal pure returns (uint256) {
-        require(_bytes.length >= _start + 32, SliceToUint256OutOfBounds());
+        require(_bytes.length >= _start + 32, SliceOutOfBounds());
         uint256 tempUint;
 
         assembly {
@@ -164,7 +154,7 @@ library BytesLib {
     }
 
     function toBytes32(bytes memory _bytes, uint256 _start) internal pure returns (bytes32) {
-        require(_bytes.length >= _start + 32, SliceToBytes32OutOfBounds());
+        require(_bytes.length >= _start + 32, SliceOutOfBounds());
         bytes32 tempBytes32;
 
         assembly {
@@ -175,7 +165,7 @@ library BytesLib {
     }
 
     function toBytes16(bytes memory _bytes, uint256 _start) internal pure returns (bytes16) {
-        require(_bytes.length >= _start + 16, SliceToBytes16OutOfBounds());
+        require(_bytes.length >= _start + 16, SliceOutOfBounds());
         bytes16 tempBytes16;
 
         assembly {
@@ -186,7 +176,7 @@ library BytesLib {
     }
 
     function toBool(bytes memory _bytes, uint256 _start) internal pure returns (bool) {
-        require(_bytes.length > _start, SliceToBoolOutOfBounds());
+        require(_bytes.length > _start, SliceOutOfBounds());
         return _bytes[_start] != 0;
     }
 }
