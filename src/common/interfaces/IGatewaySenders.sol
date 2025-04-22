@@ -128,21 +128,21 @@ interface IVaultMessageSender is ILocalCentrifugeId {
         external;
 
     /// @notice Creates and send the message
-    function sendDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, uint128 assetId, uint128 amount)
+    function sendDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId, uint128 amount)
         external;
 
     /// @notice Creates and send the message
-    function sendRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, uint128 assetId, uint128 amount)
+    function sendRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId, uint128 amount)
         external;
 
     /// @notice Creates and send the message
-    function sendCancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, uint128 assetId) external;
+    function sendCancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId) external;
 
     /// @notice Creates and send the message
-    function sendCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, uint128 assetId) external;
+    function sendCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId) external;
 
     /// @notice Creates and send the message
-    function sendRegisterAsset(uint16 centrifugeId, uint128 assetId, uint8 decimals) external;
+    function sendRegisterAsset(uint16 centrifugeId, AssetId assetId, uint8 decimals) external;
 
     /// @notice Creates and send the message
     function sendUpdateHoldingAmount(

@@ -49,7 +49,7 @@ contract MockCentrifugeChain is Test {
                 target: bytes32(bytes20(address(poolManager))),
                 payload: MessageLib.UpdateContractVaultUpdate({
                     vaultOrFactory: bytes32(bytes20(vault)),
-                    assetId: vaultDetails.assetId,
+                    assetId: vaultDetails.assetId.raw(),
                     kind: uint8(VaultUpdateKind.Unlink)
                 }).serialize()
             }).serialize()
@@ -66,7 +66,7 @@ contract MockCentrifugeChain is Test {
                 target: bytes32(bytes20(address(poolManager))),
                 payload: MessageLib.UpdateContractVaultUpdate({
                     vaultOrFactory: bytes32(bytes20(vault)),
-                    assetId: vaultDetails.assetId,
+                    assetId: vaultDetails.assetId.raw(),
                     kind: uint8(VaultUpdateKind.Link)
                 }).serialize()
             }).serialize()
@@ -82,7 +82,7 @@ contract MockCentrifugeChain is Test {
                 scId: scId,
                 target: bytes32(bytes20(address(syncRequests))),
                 payload: MessageLib.UpdateContractSyncDepositMaxReserve({
-                    assetId: vaultDetails.assetId,
+                    assetId: vaultDetails.assetId.raw(),
                     maxReserve: maxReserve
                 }).serialize()
             }).serialize()

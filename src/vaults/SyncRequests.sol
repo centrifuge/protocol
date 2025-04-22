@@ -18,6 +18,7 @@ import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.so
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 
 import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
@@ -74,16 +75,16 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         if (kind == uint8(UpdateContractType.Valuation)) {
             MessageLib.UpdateContractValuation memory m = MessageLib.deserializeUpdateContractValuation(payload);
 
-            require(address(poolManager.shareToken(poolId.raw(), scId.raw())) != address(0), ShareTokenDoesNotExist());
-            (address asset, uint256 tokenId) = poolManager.idToAsset(m.assetId);
+            require(address(poolManager.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
+            (address asset, uint256 tokenId) = poolManager.idToAsset(AssetId.wrap(m.assetId));
 
             setValuation(poolId.raw(), scId.raw(), asset, tokenId, m.valuation.toAddress());
         } else if (kind == uint8(UpdateContractType.SyncDepositMaxReserve)) {
             MessageLib.UpdateContractSyncDepositMaxReserve memory m =
                 MessageLib.deserializeUpdateContractSyncDepositMaxReserve(payload);
 
-            require(address(poolManager.shareToken(poolId.raw(), scId.raw())) != address(0), ShareTokenDoesNotExist());
-            (address asset, uint256 tokenId) = poolManager.idToAsset(m.assetId);
+            require(address(poolManager.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
+            (address asset, uint256 tokenId) = poolManager.idToAsset(AssetId.wrap(m.assetId));
 
             setMaxReserve(poolId.raw(), scId.raw(), asset, tokenId, m.maxReserve);
         } else {
@@ -106,7 +107,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         address token = vault_.share();
         vault[poolId][scId][assetId] = vaultAddr;
 
-        (, uint256 tokenId) = poolManager.idToAsset(assetId);
+        (, uint256 tokenId) = poolManager.idToAsset(AssetId.wrap(assetId));
         maxReserve[poolId][scId][asset_][tokenId] = type(uint128).max;
 
         IAuth(token).rely(vaultAddr);
@@ -133,7 +134,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
         delete vault[poolId][scId][assetId];
 
-        (, uint256 tokenId) = poolManager.idToAsset(assetId);
+        (, uint256 tokenId) = poolManager.idToAsset(AssetId.wrap(assetId));
         delete maxReserve[poolId][scId][asset_][tokenId];
 
         IAuth(token).deny(vaultAddr);
@@ -248,7 +249,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
         D18 priceAssetPerShare_ = _priceAssetPerShare(
-            vault_.poolId(), vault_.scId(), vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId
+            vault_.poolId(), vault_.scId(), vaultDetails.assetId.raw(), vault_.asset(), vaultDetails.tokenId
         );
 
         return super._convertToShares(vault_, vaultDetails, priceAssetPerShare_, assets, MathLib.Rounding.Down);
@@ -265,7 +266,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
         D18 priceAssetPerShare_ = _priceAssetPerShare(
-            vault_.poolId(), vault_.scId(), vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId
+            vault_.poolId(), vault_.scId(), vaultDetails.assetId.raw(), vault_.asset(), vaultDetails.tokenId
         );
 
         return super._convertToAssets(vault_, vaultDetails, priceAssetPerShare_, shares, MathLib.Rounding.Up);
@@ -274,7 +275,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     // --- ISharePriceProvider Overwrites ---
     /// @inheritdoc ISharePriceProvider
     function priceAssetPerShare(uint64 poolId, bytes16 scId, uint128 assetId) public view returns (D18 price) {
-        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
+        (address asset, uint256 tokenId) = poolManager.idToAsset(AssetId.wrap(assetId));
 
         return _priceAssetPerShare(poolId, scId, assetId, asset, tokenId);
     }
@@ -287,11 +288,13 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     {
         IERC7726 valuation_ = valuation[poolId][scId][asset][tokenId];
 
-        (priceData.poolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
+        (priceData.poolPerAsset,) =
+            poolManager.pricePoolPerAsset(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), true);
         priceData.assetPerShare = _priceAssetPerShare(poolId, scId, assetId, asset, tokenId, valuation_);
 
         if (address(valuation_) == address(0)) {
-            (priceData.poolPerShare,) = poolManager.pricePoolPerShare(poolId, scId, true);
+            (priceData.poolPerShare,) =
+                poolManager.pricePoolPerShare(PoolId.wrap(poolId), ShareClassId.wrap(scId), true);
         } else {
             priceData.poolPerShare = priceData.poolPerAsset * priceData.assetPerShare;
         }
@@ -315,7 +318,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         _checkMaxReserve(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, depositAssetAmount);
 
         Prices memory priceData =
-            prices(poolId.raw(), scId.raw(), vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId);
+            prices(poolId.raw(), scId.raw(), vaultDetails.assetId.raw(), vault_.asset(), vaultDetails.tokenId);
 
         // Mint shares for receiver & notify CP about issued shares
         balanceSheet.issue(poolId, scId, receiver, priceData.poolPerShare, shares);
@@ -362,9 +365,11 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         IERC7726 valuation_
     ) internal view returns (D18 price) {
         if (address(valuation_) == address(0)) {
-            (price,) = poolManager.priceAssetPerShare(poolId, scId, assetId, true);
+            (price,) = poolManager.priceAssetPerShare(
+                PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), true
+            );
         } else {
-            IShareToken shareToken = poolManager.shareToken(poolId, scId);
+            IShareToken shareToken = poolManager.shareToken(PoolId.wrap(poolId), ShareClassId.wrap(scId));
 
             uint128 assetUnitAmount = uint128(10 ** VaultPricingLib.getAssetDecimals(asset, tokenId));
             uint128 shareUnitAmount = uint128(10 ** IERC20Metadata(shareToken).decimals());

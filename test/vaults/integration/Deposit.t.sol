@@ -711,13 +711,13 @@ contract DepositTest is BaseTest {
         asset.approve(address(vault), investmentAmount);
         asset.mint(self, investmentAmount);
         vault.requestDeposit(investmentAmount, self, self);
-        uint128 assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
+        AssetId assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
 
         // first trigger executed collectInvest of the first 50% at a price of 1.4
         uint128 assets = 50000000; // 50 * 10**6
         uint128 firstSharePayout = 35714285714285714285; // 50 * 10**18 / 1.4, rounded down
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId(), scId, bytes32(bytes20(self)), assetId, assets, firstSharePayout
+            vault.poolId(), scId, bytes32(bytes20(self)), assetId.raw(), assets, firstSharePayout
         );
 
         (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
@@ -726,7 +726,7 @@ contract DepositTest is BaseTest {
         // second trigger executed collectInvest of the second 50% at a price of 1.2
         uint128 secondSharePayout = 41666666666666666666; // 50 * 10**18 / 1.2, rounded down
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId(), scId, bytes32(bytes20(self)), assetId, assets, secondSharePayout
+            vault.poolId(), scId, bytes32(bytes20(self)), assetId.raw(), assets, secondSharePayout
         );
 
         (,, depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
