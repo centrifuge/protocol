@@ -32,8 +32,7 @@ contract BalanceSheetTest is BaseTest {
         defaultPricePerShare = d18(1, 1);
         defaultTypedShareClassId = ShareClassId.wrap(defaultShareClassId);
 
-        assetId =
-            AssetId.wrap(poolManager.registerAsset{value: 0.1 ether}(OTHER_CHAIN_ID, address(erc20), erc20TokenId));
+        assetId = poolManager.registerAsset{value: 0.1 ether}(OTHER_CHAIN_ID, address(erc20), erc20TokenId);
         poolManager.addPool(POOL_A);
         poolManager.addShareClass(
             POOL_A, defaultTypedShareClassId, "testShareClass", "tsc", defaultDecimals, bytes32(""), restrictedTransfers
@@ -249,7 +248,7 @@ contract BalanceSheetTest is BaseTest {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount);
 
-        IERC20 token = IERC20(poolManager.shareToken(POOL_A.raw(), defaultShareClassId));
+        IERC20 token = IERC20(poolManager.shareToken(POOL_A, defaultTypedShareClassId));
         assertEq(token.balanceOf(address(this)), 0);
 
         vm.expectEmit();
@@ -261,7 +260,7 @@ contract BalanceSheetTest is BaseTest {
 
     function testRevoke() public {
         testIssue();
-        IERC20 token = IERC20(poolManager.shareToken(POOL_A.raw(), defaultShareClassId));
+        IERC20 token = IERC20(poolManager.shareToken(POOL_A, defaultTypedShareClassId));
         assertEq(token.balanceOf(address(this)), defaultAmount);
 
         vm.prank(randomUser);

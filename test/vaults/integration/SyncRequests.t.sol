@@ -176,7 +176,8 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
         D18 priceAssetPerShare = d18(2e18);
 
         (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
-        IShareToken shareToken = poolManager.shareToken(syncVault.poolId(), syncVault.scId());
+        IShareToken shareToken =
+            poolManager.shareToken(PoolId.wrap(syncVault.poolId()), ShareClassId.wrap(syncVault.scId()));
         D18 pricePre = syncRequests.priceAssetPerShare(syncVault.poolId(), syncVault.scId(), assetId);
 
         _setValuation(syncVault, valuation_, 0);
@@ -215,7 +216,8 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
         uint128 multiplier = uint128(bound(multiplier_, 2, 10));
 
         (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
-        IShareToken shareToken = poolManager.shareToken(syncVault.poolId(), syncVault.scId());
+        IShareToken shareToken =
+            poolManager.shareToken(PoolId.wrap(syncVault.poolId()), ShareClassId.wrap(syncVault.scId()));
         D18 pricePre = syncRequests.priceAssetPerShare(syncVault.poolId(), syncVault.scId(), assetId);
 
         _setValuation(syncVault, valuation_, 0);
@@ -251,7 +253,8 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
         D18 priceAssetPerShare = d18(2e18);
 
         (SyncDepositVault syncVault,) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
-        IShareToken shareToken = poolManager.shareToken(syncVault.poolId(), syncVault.scId());
+        IShareToken shareToken =
+            poolManager.shareToken(PoolId.wrap(syncVault.poolId()), ShareClassId.wrap(syncVault.scId()));
         _setValuation(syncVault, valuation_, 0);
 
         // Mock valuation
@@ -277,7 +280,8 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
         D18 priceAssetPerShare = pricePoolPerShare / pricePoolPerAsset;
 
         (SyncDepositVault syncVault,) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
-        IShareToken shareToken = poolManager.shareToken(syncVault.poolId(), syncVault.scId());
+        IShareToken shareToken =
+            poolManager.shareToken(PoolId.wrap(syncVault.poolId()), ShareClassId.wrap(syncVault.scId()));
         _setValuation(syncVault, valuation_, 0);
 
         // Mock valuation

@@ -113,8 +113,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     function _processDepositRequest(address vaultAddr, uint128 assets, address controller) internal returns (bool) {
         IAsyncVault vault_ = IAsyncVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
-        uint64 poolId = vault_.poolId();
-        bytes16 scId = vault_.scId();
+        PoolId poolId = PoolId.wrap(vault_.poolId());
+        ShareClassId scId = ShareClassId.wrap(vault_.scId());
 
         require(poolManager.isLinked(poolId, scId, vaultDetails.asset, vaultAddr), AssetNotAllowed());
 
@@ -126,9 +126,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         require(state.pendingCancelDepositRequest != true, CancellationIsPending());
 
         state.pendingDepositRequest += assets;
-        sender.sendDepositRequest(
-            PoolId.wrap(poolId), ShareClassId.wrap(scId), controller.toBytes32(), vaultDetails.assetId, assets
-        );
+        sender.sendDepositRequest(poolId, scId, controller.toBytes32(), vaultDetails.assetId, assets);
 
         return true;
     }
@@ -144,7 +142,12 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         IAsyncVault vault_ = IAsyncVault(vaultAddr);
 
         // You cannot redeem using a disallowed asset, instead another vault will have to be used
-        require(poolManager.isLinked(vault_.poolId(), vault_.scId(), vault_.asset(), vaultAddr), AssetNotAllowed());
+        require(
+            poolManager.isLinked(
+                PoolId.wrap(vault_.poolId()), ShareClassId.wrap(vault_.scId()), vault_.asset(), vaultAddr
+            ),
+            AssetNotAllowed()
+        );
 
         require(
             _canTransfer(vaultAddr, owner, ESCROW_HOOK_ID, shares)
@@ -342,7 +345,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
             );
         }
 
-        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId.raw());
+        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
         emit TriggerRedeemRequest(poolId.raw(), scId.raw(), user, asset, tokenId, shares);
         IAsyncVault(vault_).onRedeemRequest(user, user, shares);
     }
@@ -460,22 +463,16 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
 
         IAsyncVault vault_ = IAsyncVault(vaultAddr);
-        uint64 poolId = vault_.poolId();
-        bytes16 scId = vault_.scId();
+        PoolId poolId = PoolId.wrap(vault_.poolId());
+        ShareClassId scId = ShareClassId.wrap(vault_.scId());
 
         (D18 pricePoolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, vaultDetails.assetId, true);
-        IPoolEscrow(address(poolEscrowProvider.escrow(poolId))).reserveDecrease(
-            scId, vaultDetails.asset, vaultDetails.tokenId, assets
+        IPoolEscrow(address(poolEscrowProvider.escrow(poolId.raw()))).reserveDecrease(
+            scId.raw(), vaultDetails.asset, vaultDetails.tokenId, assets
         );
 
         balanceSheet.withdraw(
-            PoolId.wrap(poolId),
-            ShareClassId.wrap(scId),
-            vaultDetails.asset,
-            vaultDetails.tokenId,
-            receiver,
-            assets,
-            pricePoolPerAsset
+            poolId, scId, vaultDetails.asset, vaultDetails.tokenId, receiver, assets, pricePoolPerAsset
         );
     }
 

@@ -97,7 +97,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.notifyAssetPrice(poolId, scId, assetId);
 
         // Submit deposit request
-        IShareToken shareToken = IShareToken(poolManager.shareToken(poolId.raw(), scId.raw()));
+        IShareToken shareToken = IShareToken(poolManager.shareToken(poolId, scId));
         IAsyncVault vault = IAsyncVault(shareToken.vault(address(token)));
 
         uint128 investAmount = 1_000_000e6;
@@ -160,7 +160,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.notifyAssetPrice(poolId, scId, assetId);
 
         // Deposit
-        IShareToken shareToken = IShareToken(poolManager.shareToken(poolId.raw(), scId.raw()));
+        IShareToken shareToken = IShareToken(poolManager.shareToken(poolId, scId));
         IAsyncVault vault = IAsyncVault(shareToken.vault(address(token)));
 
         uint128 investAmount = 1_000_000e6;

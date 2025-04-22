@@ -15,6 +15,7 @@ import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {newAssetId} from "src/common/types/AssetId.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 
 // core contracts
 import {AsyncRequests} from "src/vaults/AsyncRequests.sol";
@@ -173,9 +174,9 @@ contract BaseTest is VaultsDeployer, Test {
         uint256 assetTokenId,
         uint16 /* TODO: destinationChain */
     ) public returns (uint64 poolId, address vaultAddress, uint128 assetId) {
-        try poolManager.shareToken(POOL_A.raw(), scId) {}
+        try poolManager.shareToken(POOL_A, ShareClassId.wrap(scId)) {}
         catch {
-            if (poolManager.pools(POOL_A.raw()) == 0) {
+            if (poolManager.pools(POOL_A) == 0) {
                 centrifugeChain.addPool(POOL_A.raw());
             }
             centrifugeChain.addShareClass(POOL_A.raw(), scId, "name", "symbol", shareTokenDecimals, hook);
@@ -183,9 +184,9 @@ contract BaseTest is VaultsDeployer, Test {
         }
 
         try poolManager.assetToId(asset, assetTokenId) {
-            assetId = poolManager.assetToId(asset, assetTokenId);
+            assetId = poolManager.assetToId(asset, assetTokenId).raw();
         } catch {
-            assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, asset, assetTokenId);
+            assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, asset, assetTokenId).raw();
             centrifugeChain.updatePricePoolPerAsset(
                 POOL_A.raw(), scId, assetId, uint128(10 ** 18), uint64(block.timestamp)
             );
@@ -203,7 +204,7 @@ contract BaseTest is VaultsDeployer, Test {
                 kind: uint8(VaultUpdateKind.DeployAndLink)
             }).serialize()
         );
-        vaultAddress = IShareToken(poolManager.shareToken(POOL_A.raw(), scId)).vault(asset);
+        vaultAddress = IShareToken(poolManager.shareToken(POOL_A, ShareClassId.wrap(scId))).vault(asset);
         poolId = POOL_A.raw();
     }
 
@@ -235,7 +236,7 @@ contract BaseTest is VaultsDeployer, Test {
         erc20.approve(_vault, amount); // add allowance
         vault.requestDeposit(amount, _investor, _investor);
         // trigger executed collectInvest
-        uint128 assetId = poolManager.assetToId(address(erc20), erc20TokenId);
+        uint128 assetId = poolManager.assetToId(address(erc20), erc20TokenId).raw();
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId(), vault.scId(), bytes32(bytes20(_investor)), assetId, uint128(amount), uint128(amount)
         );
