@@ -12,8 +12,8 @@ enum MessageType {
     /// @dev Placeholder for proof message type
     _MessageProof,
     // -- Gateway messages
-    InitiateMessageRecovery,
-    DisputeMessageRecovery,
+    InitiateRecovery,
+    DisputeRecovery,
     // -- Root messages
     ScheduleUpgrade,
     CancelUpgrade,
@@ -86,8 +86,8 @@ library MessageLib {
     /// If the message has some dynamic part, will be added later in `messageLength()`.
     // forgefmt: disable-next-item
     uint256 constant MESSAGE_LENGTHS_1 =
-        (67  << uint8(MessageType.InitiateMessageRecovery) * 8) +
-        (67  << uint8(MessageType.DisputeMessageRecovery) * 8) +
+        (67  << uint8(MessageType.InitiateRecovery) * 8) +
+        (67  << uint8(MessageType.DisputeRecovery) * 8) +
         (33  << uint8(MessageType.ScheduleUpgrade) * 8) +
         (33  << uint8(MessageType.CancelUpgrade) * 8) +
         (161 << uint8(MessageType.RecoverTokens) * 8) +
@@ -159,57 +159,41 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //    InitiateMessageRecovery
+    //    InitiateRecovery
     //---------------------------------------
 
-    struct InitiateMessageRecovery {
+    struct InitiateRecovery {
         bytes32 hash;
         bytes32 adapter;
         uint16 centrifugeId;
     }
 
-    function deserializeInitiateMessageRecovery(bytes memory data)
-        internal
-        pure
-        returns (InitiateMessageRecovery memory)
-    {
-        require(messageType(data) == MessageType.InitiateMessageRecovery, UnknownMessageType());
-        return InitiateMessageRecovery({
-            hash: data.toBytes32(1),
-            adapter: data.toBytes32(33),
-            centrifugeId: data.toUint16(65)
-        });
+    function deserializeInitiateRecovery(bytes memory data) internal pure returns (InitiateRecovery memory) {
+        require(messageType(data) == MessageType.InitiateRecovery, UnknownMessageType());
+        return InitiateRecovery({hash: data.toBytes32(1), adapter: data.toBytes32(33), centrifugeId: data.toUint16(65)});
     }
 
-    function serialize(InitiateMessageRecovery memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.InitiateMessageRecovery, t.hash, t.adapter, t.centrifugeId);
+    function serialize(InitiateRecovery memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.InitiateRecovery, t.hash, t.adapter, t.centrifugeId);
     }
 
     //---------------------------------------
-    //    DisputeMessageRecovery
+    //    DisputeRecovery
     //---------------------------------------
 
-    struct DisputeMessageRecovery {
+    struct DisputeRecovery {
         bytes32 hash;
         bytes32 adapter;
         uint16 centrifugeId;
     }
 
-    function deserializeDisputeMessageRecovery(bytes memory data)
-        internal
-        pure
-        returns (DisputeMessageRecovery memory)
-    {
-        require(messageType(data) == MessageType.DisputeMessageRecovery, UnknownMessageType());
-        return DisputeMessageRecovery({
-            hash: data.toBytes32(1),
-            adapter: data.toBytes32(33),
-            centrifugeId: data.toUint16(65)
-        });
+    function deserializeDisputeRecovery(bytes memory data) internal pure returns (DisputeRecovery memory) {
+        require(messageType(data) == MessageType.DisputeRecovery, UnknownMessageType());
+        return DisputeRecovery({hash: data.toBytes32(1), adapter: data.toBytes32(33), centrifugeId: data.toUint16(65)});
     }
 
-    function serialize(DisputeMessageRecovery memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.DisputeMessageRecovery, t.hash, t.adapter, t.centrifugeId);
+    function serialize(DisputeRecovery memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.DisputeRecovery, t.hash, t.adapter, t.centrifugeId);
     }
 
     //---------------------------------------

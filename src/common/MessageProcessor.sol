@@ -65,12 +65,12 @@ contract MessageProcessor is Auth, IMessageProcessor {
     function handle(uint16, bytes calldata message) external auth {
         MessageType kind = message.messageType();
 
-        if (kind == MessageType.InitiateMessageRecovery) {
-            MessageLib.InitiateMessageRecovery memory m = message.deserializeInitiateMessageRecovery();
-            gateway.initiateMessageRecovery(m.centrifugeId, IAdapter(m.adapter.toAddress()), m.hash);
-        } else if (kind == MessageType.DisputeMessageRecovery) {
-            MessageLib.DisputeMessageRecovery memory m = message.deserializeDisputeMessageRecovery();
-            gateway.disputeMessageRecovery(m.centrifugeId, IAdapter(m.adapter.toAddress()), m.hash);
+        if (kind == MessageType.InitiateRecovery) {
+            MessageLib.InitiateRecovery memory m = message.deserializeInitiateRecovery();
+            gateway.initiateRecovery(m.centrifugeId, IAdapter(m.adapter.toAddress()), m.hash);
+        } else if (kind == MessageType.DisputeRecovery) {
+            MessageLib.DisputeRecovery memory m = message.deserializeDisputeRecovery();
+            gateway.disputeRecovery(m.centrifugeId, IAdapter(m.adapter.toAddress()), m.hash);
         } else if (kind == MessageType.ScheduleUpgrade) {
             MessageLib.ScheduleUpgrade memory m = message.deserializeScheduleUpgrade();
             root.scheduleRely(m.target.toAddress());
@@ -275,7 +275,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     /// @inheritdoc IMessageProperties
     function isMessageRecovery(bytes calldata message) external pure returns (bool) {
         uint8 code = message.messageCode();
-        return code == uint8(MessageType.InitiateMessageRecovery) || code == uint8(MessageType.DisputeMessageRecovery);
+        return code == uint8(MessageType.InitiateRecovery) || code == uint8(MessageType.DisputeRecovery);
     }
 
     /// @inheritdoc IMessageProperties

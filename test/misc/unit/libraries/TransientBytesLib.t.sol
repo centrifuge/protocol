@@ -9,11 +9,11 @@ contract TransientBytesLibTest is Test {
         bytes32 key = keccak256(abi.encode("key"));
         vm.assume(key != invalidKey);
 
-        TransientBytesLib.set(key, data1);
+        TransientBytesLib.append(key, data1);
         assertEq(TransientBytesLib.get(key), data1);
 
-        TransientBytesLib.set(key, data2);
-        assertEq(TransientBytesLib.get(key), data2);
+        TransientBytesLib.append(key, data2);
+        assertEq(TransientBytesLib.get(key), bytes.concat(data1, data2));
 
         assertEq(TransientBytesLib.get(invalidKey).length, 0);
     }

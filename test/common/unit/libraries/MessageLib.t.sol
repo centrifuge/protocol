@@ -19,10 +19,10 @@ contract TestMessageProofCompatibility is Test {
 contract TestMessageLibIdentities is Test {
     using MessageLib for *;
 
-    function testInitiateMessageRecovery(bytes32 hash_, bytes32 adapter, uint16 centrifugeId) public pure {
-        MessageLib.InitiateMessageRecovery memory a =
-            MessageLib.InitiateMessageRecovery({hash: hash_, adapter: adapter, centrifugeId: centrifugeId});
-        MessageLib.InitiateMessageRecovery memory b = MessageLib.deserializeInitiateMessageRecovery(a.serialize());
+    function testInitiateRecovery(bytes32 hash_, bytes32 adapter, uint16 centrifugeId) public pure {
+        MessageLib.InitiateRecovery memory a =
+            MessageLib.InitiateRecovery({hash: hash_, adapter: adapter, centrifugeId: centrifugeId});
+        MessageLib.InitiateRecovery memory b = MessageLib.deserializeInitiateRecovery(a.serialize());
 
         assertEq(a.hash, b.hash);
         assertEq(a.adapter, b.adapter);
@@ -31,10 +31,10 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageLength(), a.serialize().length);
     }
 
-    function testDisputeMessageRecovery(bytes32 hash_, bytes32 adapter, uint16 centrifugeId) public pure {
-        MessageLib.DisputeMessageRecovery memory a =
-            MessageLib.DisputeMessageRecovery({hash: hash_, adapter: adapter, centrifugeId: centrifugeId});
-        MessageLib.DisputeMessageRecovery memory b = MessageLib.deserializeDisputeMessageRecovery(a.serialize());
+    function testDisputeRecovery(bytes32 hash_, bytes32 adapter, uint16 centrifugeId) public pure {
+        MessageLib.DisputeRecovery memory a =
+            MessageLib.DisputeRecovery({hash: hash_, adapter: adapter, centrifugeId: centrifugeId});
+        MessageLib.DisputeRecovery memory b = MessageLib.deserializeDisputeRecovery(a.serialize());
 
         assertEq(a.hash, b.hash);
         assertEq(a.adapter, b.adapter);

@@ -142,7 +142,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
         IMessageProcessor processor_ = processor;
         if (processor_.isMessageRecovery(payload)) {
-            require(!isRecovery, RecoveryMessageRecovered());
+            require(!isRecovery, RecoveryPayloadRecovered());
             return processor_.handle(centrifugeId, payload);
         }
 
@@ -155,13 +155,13 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             batchHash = payload.deserializeMessageProof();
             bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, batchHash));
-            emit ProcessProof(centrifugeId, payloadId, batchHash, adapter_);
+            emit HandleProof(centrifugeId, payloadId, batchHash, adapter_);
         } else {
             require(adapter.id == PRIMARY_ADAPTER_ID, NonBatchAdapter());
 
             batchHash = keccak256(payload);
             bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, batchHash));
-            emit ProcessBatch(centrifugeId, payloadId, payload, adapter_);
+            emit HandleBatch(centrifugeId, payloadId, payload, adapter_);
         }
 
         // Special case for gas efficiency
@@ -230,29 +230,29 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGatewayHandler
-    function initiateMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external auth {
+    function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external auth {
         require(_activeAdapters[centrifugeId][adapter].id != 0, InvalidAdapter());
         recoveries[centrifugeId][adapter][payloadHash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
-        emit InitiateMessageRecovery(centrifugeId, payloadHash, adapter);
+        emit InitiateRecovery(centrifugeId, payloadHash, adapter);
     }
 
     /// @inheritdoc IGatewayHandler
-    function disputeMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external auth {
+    function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external auth {
         delete recoveries[centrifugeId][adapter][payloadHash];
-        emit DisputeMessageRecovery(centrifugeId, payloadHash, adapter);
+        emit DisputeRecovery(centrifugeId, payloadHash, adapter);
     }
 
     /// @inheritdoc IGateway
-    function executeMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes calldata payload) external {
+    function executeRecovery(uint16 centrifugeId, IAdapter adapter, bytes calldata payload) external {
         bytes32 payloadHash = keccak256(payload);
         uint256 recovery = recoveries[centrifugeId][adapter][payloadHash];
 
-        require(recovery != 0, MessageRecoveryNotInitiated());
-        require(recovery <= block.timestamp, MessageRecoveryChallengePeriodNotEnded());
+        require(recovery != 0, RecoveryNotInitiated());
+        require(recovery <= block.timestamp, RecoveryChallengePeriodNotEnded());
 
         delete recoveries[centrifugeId][adapter][payloadHash];
         _handle(centrifugeId, payload, adapter, true);
-        emit ExecuteMessageRecovery(centrifugeId, payload, adapter);
+        emit ExecuteRecovery(centrifugeId, payload, adapter);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -278,10 +278,9 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             if (previousMessage.length == 0) {
                 TransientArrayLib.push(BATCH_LOCATORS_SLOT, _encodeLocator(centrifugeId, poolId));
-                TransientBytesLib.set(batchSlot, message);
-            } else {
-                TransientBytesLib.set(batchSlot, bytes.concat(previousMessage, message));
             }
+
+            TransientBytesLib.append(batchSlot, message);
         } else {
             _send(centrifugeId, poolId, message);
             _refundTransaction();

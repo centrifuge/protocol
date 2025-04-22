@@ -15,12 +15,12 @@ abstract contract TargetFunctions is BaseTargetFunctions, Properties, BiasedTarg
     //     routerAggregator.deny(user);
     // }
 
-    function routerAggregator_disputeMessageRecovery(address router, bytes32 messageHash) public {
-        routerAggregator.disputeMessageRecovery(CENTRIFUGE_ID, IAdapter(router), messageHash);
+    function routerAggregator_disputeRecovery(address router, bytes32 messageHash) public {
+        routerAggregator.disputeRecovery(CENTRIFUGE_ID, IAdapter(router), messageHash);
     }
 
-    function routerAggregator_executeMessageRecovery(address router, bytes memory message) public {
-        routerAggregator.executeMessageRecovery(CENTRIFUGE_ID, IAdapter(router), message);
+    function routerAggregator_executeRecovery(address router, bytes memory message) public {
+        routerAggregator.executeRecovery(CENTRIFUGE_ID, IAdapter(router), message);
     }
 
     // @todo: re-enable
