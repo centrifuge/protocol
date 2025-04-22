@@ -181,7 +181,7 @@ contract TestCases is BaseTest {
 
         assertEq(holdings.amount(poolId, scId, USDC_C2), 400 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 400 * poolDecimals);
-        _assertEqAccountValue(poolId, assetAccount,true, 400 * poolDecimals);
+        _assertEqAccountValue(poolId, assetAccount, true, 400 * poolDecimals);
         _assertEqAccountValue(poolId, equityAccount, true, 400 * poolDecimals);
     }
 
