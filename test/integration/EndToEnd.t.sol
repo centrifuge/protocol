@@ -78,7 +78,7 @@ contract TestEndToEnd is Test {
         IGuardian guardian = ch.guardian();
         AssetId usd = deployA.USD();
         vm.prank(address(guardian.safe()));
-        PoolId poolId = guardian.createPool(FM, usd);
+        PoolId poolId = guardian.createPool(1, FM, usd);
 
         vm.startPrank(FM);
         ch.hub().notifyPool{value: GAS}(poolId, cvChainId);

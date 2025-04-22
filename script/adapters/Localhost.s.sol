@@ -54,7 +54,7 @@ contract LocalhostDeployer is FullDeployer {
     }
 
     function _deployAsyncVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
-        PoolId poolId = hub.createPool(msg.sender, USD);
+        PoolId poolId = hub.createPool(1, msg.sender, USD);
         hub.updateManager(poolId, vm.envAddress("ADMIN"), true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
@@ -117,7 +117,7 @@ contract LocalhostDeployer is FullDeployer {
     }
 
     function _deploySyncDepositVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
-        PoolId poolId = hub.createPool(msg.sender, USD);
+        PoolId poolId = hub.createPool(2, msg.sender, USD);
         hub.updateManager(poolId, vm.envAddress("ADMIN"), true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 

@@ -50,8 +50,8 @@ contract Guardian is IGuardian {
 
     // --- Admin actions ---
     /// @inheritdoc IGuardian
-    function createPool(address admin, AssetId currency) external onlySafe returns (PoolId poolId) {
-        return hub.createPool(admin, currency);
+    function createPool(uint48 poolId_, address admin, AssetId currency) external onlySafe returns (PoolId poolId) {
+        return hub.createPool(poolId_, admin, currency);
     }
 
     /// @inheritdoc IGuardian

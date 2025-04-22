@@ -16,7 +16,7 @@ contract TestBatchingAndPayment is BaseTest {
     /// forge-config: default.isolate = true
     function testMultipleMulticallSamePool() public {
         vm.startPrank(ADMIN);
-        PoolId poolA = guardian.createPool(FM, USD);
+        PoolId poolA = guardian.createPool(1, FM, USD);
 
         vm.startPrank(FM);
 
@@ -39,8 +39,8 @@ contract TestBatchingAndPayment is BaseTest {
     function testMultipleMulticallDifferentPools() public {
         vm.startPrank(ADMIN);
 
-        PoolId poolA = guardian.createPool(FM, USD);
-        PoolId poolB = guardian.createPool(FM, USD);
+        PoolId poolA = guardian.createPool(1, FM, USD);
+        PoolId poolB = guardian.createPool(1, FM, USD);
 
         vm.startPrank(FM);
 
