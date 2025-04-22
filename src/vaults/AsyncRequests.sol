@@ -20,6 +20,7 @@ import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IInvestmentManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
@@ -125,7 +126,9 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
         state.pendingDepositRequest += assets;
         balanceSheet.escrow().pendingDepositIncrease(vaultDetails.asset, vaultDetails.tokenId, poolId, scId, assets);
-        sender.sendDepositRequest(poolId, scId, controller.toBytes32(), vaultDetails.assetId, assets);
+        sender.sendDepositRequest(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), controller.toBytes32(), vaultDetails.assetId, assets
+        );
 
         return true;
     }
@@ -168,7 +171,11 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
         sender.sendRedeemRequest(
-            mapPoolId(vault_.poolId()), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId, shares
+            PoolId.wrap(mapPoolId(vault_.poolId())),
+            ShareClassId.wrap(vault_.trancheId()),
+            controller.toBytes32(),
+            vaultDetails.assetId,
+            shares
         );
 
         return true;
@@ -186,7 +193,10 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
         sender.sendCancelDepositRequest(
-            mapPoolId(vault_.poolId()), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId
+            PoolId.wrap(mapPoolId(vault_.poolId())),
+            ShareClassId.wrap(vault_.trancheId()),
+            controller.toBytes32(),
+            vaultDetails.assetId
         );
     }
 
@@ -204,21 +214,24 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
         sender.sendCancelRedeemRequest(
-            mapPoolId(vault_.poolId()), vault_.trancheId(), controller.toBytes32(), vaultDetails.assetId
+            PoolId.wrap(mapPoolId(vault_.poolId())),
+            ShareClassId.wrap(vault_.trancheId()),
+            controller.toBytes32(),
+            vaultDetails.assetId
         );
     }
 
     // -- Gateway handlers --
     /// @inheritdoc IInvestmentManagerGatewayHandler
     function fulfillDepositRequest(
-        uint64 poolId,
-        bytes16 scId,
+        PoolId poolId,
+        ShareClassId scId,
         address user,
-        uint128 assetId,
+        AssetId assetId,
         uint128 assets,
         uint128 shares
     ) public auth {
-        address vault_ = vault[poolId][scId][assetId];
+        address vault_ = vault[poolId.raw()][scId.raw()][assetId.raw()];
 
         AsyncInvestmentState storage state = investments[vault_][user];
         require(state.pendingDepositRequest != 0, NoPendingRequest());
@@ -237,14 +250,14 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
     /// @inheritdoc IInvestmentManagerGatewayHandler
     function fulfillRedeemRequest(
-        uint64 poolId,
-        bytes16 scId,
+        PoolId poolId,
+        ShareClassId scId,
         address user,
-        uint128 assetId,
+        AssetId assetId,
         uint128 assets,
         uint128 shares
     ) public auth {
-        address vault_ = vault[poolId][scId][assetId];
+        address vault_ = vault[poolId.raw()][scId.raw()][assetId.raw()];
 
         AsyncInvestmentState storage state = investments[vault_][user];
         require(state.pendingRedeemRequest != 0, NoPendingRequest());
@@ -266,14 +279,14 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
     /// @inheritdoc IInvestmentManagerGatewayHandler
     function fulfillCancelDepositRequest(
-        uint64 poolId,
-        bytes16 scId,
+        PoolId poolId,
+        ShareClassId scId,
         address user,
-        uint128 assetId,
+        AssetId assetId,
         uint128 assets,
         uint128 fulfillment
     ) public auth {
-        address vault_ = vault[poolId][scId][assetId];
+        address vault_ = vault[poolId.raw()][scId.raw()][assetId.raw()];
 
         AsyncInvestmentState storage state = investments[vault_][user];
         require(state.pendingCancelDepositRequest == true, NoPendingRequest());
@@ -288,11 +301,11 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     }
 
     /// @inheritdoc IInvestmentManagerGatewayHandler
-    function fulfillCancelRedeemRequest(uint64 poolId, bytes16 scId, address user, uint128 assetId, uint128 shares)
+    function fulfillCancelRedeemRequest(PoolId poolId, ShareClassId scId, address user, AssetId assetId, uint128 shares)
         public
         auth
     {
-        address vault_ = vault[poolId][scId][assetId];
+        address vault_ = vault[poolId.raw()][scId.raw()][assetId.raw()];
         AsyncInvestmentState storage state = investments[vault_][user];
         require(state.pendingCancelRedeemRequest == true, NoPendingRequest());
 
@@ -305,12 +318,12 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     }
 
     /// @inheritdoc IInvestmentManagerGatewayHandler
-    function triggerRedeemRequest(uint64 poolId, bytes16 scId, address user, uint128 assetId, uint128 shares)
+    function triggerRedeemRequest(PoolId poolId, ShareClassId scId, address user, AssetId assetId, uint128 shares)
         public
         auth
     {
         require(shares != 0, ShareTokenAmountIsZero());
-        address vault_ = vault[poolId][scId][assetId];
+        address vault_ = vault[poolId.raw()][scId.raw()][assetId.raw()];
 
         // If there's any unclaimed deposits, claim those first
         AsyncInvestmentState storage state = investments[vault_][user];
@@ -338,8 +351,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
             );
         }
 
-        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
-        emit TriggerRedeemRequest(poolId, scId, user, asset, tokenId, shares);
+        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId.raw());
+        emit TriggerRedeemRequest(poolId.raw(), scId.raw(), user, asset, tokenId, shares);
         IAsyncVault(vault_).onRedeemRequest(user, user, shares);
     }
 

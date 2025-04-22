@@ -7,6 +7,7 @@ import {vm} from "@chimera/Hevm.sol";
 import {MockAdapter, IAdapter} from "test/common/mocks/MockAdapter.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 
 abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
     using MessageLib for *;
@@ -44,7 +45,7 @@ abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
     }
 
     function _formatMessageProof(bytes memory message) internal pure returns (bytes memory) {
-        return MessageLib.MessageProof(keccak256(message)).serialize();
+        return MessageProofLib.serializeMessageProof(keccak256(message));
     }
 
     // TODO: Initiate Message Recover
@@ -76,7 +77,7 @@ abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
         // NOTE: Can we recover for self?
         // TODO: CHECK THIS!
         MockAdapter(address(adapters[calledRouterId])).execute(
-            MessageLib.InitiateMessageRecovery({
+            MessageLib.InitiateRecovery({
                 hash: keccak256(message),
                 adapter: bytes32(bytes20(address(adapters[recoverRouterId]))),
                 centrifugeId: 0
@@ -91,7 +92,7 @@ abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
 
         bytes memory message = messages[messageIndex];
         require(recoverMessageTime[keccak256(message)] != 0);
-        routerAggregator.executeMessageRecovery(CENTRIFUGE_ID, router, message);
+        routerAggregator.executeRecovery(CENTRIFUGE_ID, router, message);
 
         messageRecoveredCount[keccak256(message)] += 1;
 
@@ -107,7 +108,7 @@ abstract contract BiasedTargetFunctions is BaseTargetFunctions, Properties {
         IAdapter router = routerAggregator.adapters(CENTRIFUGE_ID, adapterId);
 
         bytes memory message = messages[messageIndex];
-        routerAggregator.disputeMessageRecovery(CENTRIFUGE_ID, router, keccak256(message));
+        routerAggregator.disputeRecovery(CENTRIFUGE_ID, router, keccak256(message));
 
         recoverMessageTime[keccak256(message)] = 0; // Unset time
     }

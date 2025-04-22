@@ -13,11 +13,4 @@ interface IMessageProperties {
 
     /// @notice Inspect the message to return the associated PoolId if any
     function messagePoolId(bytes calldata message) external pure returns (PoolId);
-
-    /// @notice Inspect the message to obtain the hash from a message proof.
-    /// If the message is not a proof, return 0.
-    function messageProofHash(bytes calldata message) external pure returns (bytes32);
-
-    /// @notice Creates an encoded proof message from a hash
-    function createMessageProof(bytes32 hash) external pure returns (bytes memory);
 }
