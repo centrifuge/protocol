@@ -9,18 +9,6 @@ library TransientBytesLib {
     using TransientStorageLib for bytes32;
     using BytesLib for bytes;
 
-    function set(bytes32 key, bytes memory value) internal {
-        uint256 chunks = value.length / 32 + 1;
-
-        bytes32 lengthSlot = keccak256(abi.encodePacked(key, type(uint256).max));
-        lengthSlot.tstore(value.length);
-
-        for (uint256 i = 0; i < chunks; i++) {
-            bytes32 slot = keccak256(abi.encodePacked(key, i));
-            slot.tstore(bytes32(value.sliceZeroPadded(i * 32, 32)));
-        }
-    }
-
     function append(bytes32 key, bytes memory value) internal {
         bytes32 lengthSlot = keccak256(abi.encodePacked(key, type(uint256).max));
         uint256 prevLength = lengthSlot.tloadUint256();
