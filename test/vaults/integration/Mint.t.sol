@@ -21,7 +21,7 @@ contract MintTest is BaseTest {
         root.relyContract(address(shareToken), self); // give self auth permissions
         vm.expectRevert(IHook.TransferBlocked.selector);
         shareToken.mint(investor, amount);
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId(), vault.scId(), investor, type(uint64).max);
 
         // success
         shareToken.mint(investor, amount);

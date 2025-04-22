@@ -35,10 +35,10 @@ contract SyncDepositTestHelper is BaseTest {
         syncVault = SyncDepositVault(syncVault_);
 
         centrifugeChain.updatePricePoolPerShare(
-            syncVault.poolId(), syncVault.trancheId(), pricePoolPerShare.inner(), uint64(block.timestamp)
+            syncVault.poolId(), syncVault.scId(), pricePoolPerShare.inner(), uint64(block.timestamp)
         );
         centrifugeChain.updatePricePoolPerAsset(
-            syncVault.poolId(), syncVault.trancheId(), assetId, pricePoolPerAsset.inner(), uint64(block.timestamp)
+            syncVault.poolId(), syncVault.scId(), assetId, pricePoolPerAsset.inner(), uint64(block.timestamp)
         );
     }
 
@@ -46,7 +46,7 @@ contract SyncDepositTestHelper is BaseTest {
         internal
     {
         PoolId poolId = PoolId.wrap(vault.poolId());
-        ShareClassId scId = ShareClassId.wrap(vault.trancheId());
+        ShareClassId scId = ShareClassId.wrap(vault.scId());
         uint64 timestamp = uint64(block.timestamp);
         uint128 depositAssetAmount = vault.previewMint(shares).toUint128();
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault));
@@ -92,7 +92,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
 
         // Retrieve async vault
         address asyncVault_ =
-            syncVault.asyncRedeemManager().vaultByAssetId(syncVault.poolId(), syncVault.trancheId(), assetId);
+            syncVault.asyncRedeemManager().vaultByAssetId(syncVault.poolId(), syncVault.scId(), assetId);
         assertNotEq(address(syncVault), address(0), "Failed to retrieve async vault");
         AsyncVault asyncVault = AsyncVault(asyncVault_);
 
@@ -114,18 +114,18 @@ contract SyncDepositTest is SyncDepositTestHelper {
         syncVault.deposit(amount, self);
 
         assertEq(syncVault.isPermissioned(self), false);
-        centrifugeChain.updateMember(syncVault.poolId(), syncVault.trancheId(), self, type(uint64).max);
+        centrifugeChain.updateMember(syncVault.poolId(), syncVault.scId(), self, type(uint64).max);
         assertEq(syncVault.isPermissioned(self), true);
 
         // Will fail - above max reserve
         centrifugeChain.updateMaxReserve(
-            syncVault.poolId(), syncVault.trancheId(), address(syncVault), uint128(amount / 2)
+            syncVault.poolId(), syncVault.scId(), address(syncVault), uint128(amount / 2)
         );
 
         vm.expectRevert(ISyncRequests.ExceedsMaxReserve.selector);
         syncVault.deposit(amount, self);
 
-        centrifugeChain.updateMaxReserve(syncVault.poolId(), syncVault.trancheId(), address(syncVault), uint128(amount));
+        centrifugeChain.updateMaxReserve(syncVault.poolId(), syncVault.scId(), address(syncVault), uint128(amount));
 
         _assertDepositEvents(syncVault, shares.toUint128(), pricePoolPerShare, priceAssetPerShare);
         syncVault.deposit(amount, self);

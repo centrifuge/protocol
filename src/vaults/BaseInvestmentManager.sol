@@ -43,7 +43,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
         (D18 priceAssetPerShare,) =
-            poolManager.priceAssetPerShare(mapPoolId(vault_.poolId()), vault_.trancheId(), vaultDetails.assetId, false);
+            poolManager.priceAssetPerShare(mapPoolId(vault_.poolId()), vault_.scId(), vaultDetails.assetId, false);
 
         return _convertToShares(vault_, vaultDetails, priceAssetPerShare, assets, MathLib.Rounding.Down);
     }
@@ -53,7 +53,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
         (D18 priceAssetPerShare,) =
-            poolManager.priceAssetPerShare(mapPoolId(vault_.poolId()), vault_.trancheId(), vaultDetails.assetId, false);
+            poolManager.priceAssetPerShare(mapPoolId(vault_.poolId()), vault_.scId(), vaultDetails.assetId, false);
 
         return _convertToAssets(vault_, vaultDetails, priceAssetPerShare, shares, MathLib.Rounding.Down);
     }
@@ -64,7 +64,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
         (, lastUpdated) =
-            poolManager.priceAssetPerShare(mapPoolId(vault_.poolId()), vault_.trancheId(), vaultDetails.assetId, false);
+            poolManager.priceAssetPerShare(mapPoolId(vault_.poolId()), vault_.scId(), vaultDetails.assetId, false);
     }
 
     function mapPoolId(uint64 poolId) public pure returns (uint64 mappedPoolId) {

@@ -246,7 +246,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
         D18 priceAssetPerShare_ = _priceAssetPerShare(
-            vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId
+            vault_.poolId(), vault_.scId(), vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId
         );
 
         return super._convertToShares(vault_, vaultDetails, priceAssetPerShare_, assets, MathLib.Rounding.Down);
@@ -263,7 +263,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
         D18 priceAssetPerShare_ = _priceAssetPerShare(
-            vault_.poolId(), vault_.trancheId(), vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId
+            vault_.poolId(), vault_.scId(), vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId
         );
 
         return super._convertToAssets(vault_, vaultDetails, priceAssetPerShare_, shares, MathLib.Rounding.Up);
@@ -301,7 +301,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     function _issueShares(address vaultAddr, uint128 shares, address receiver, uint128 depositAssetAmount) internal {
         SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
         uint64 poolId_ = vault_.poolId();
-        bytes16 scId_ = vault_.trancheId();
+        bytes16 scId_ = vault_.scId();
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
 
         PoolId poolId = PoolId.wrap(poolId_);
