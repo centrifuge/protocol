@@ -77,11 +77,11 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
 
     /// @inheritdoc IPoolEscrow
     function deposit(bytes16 scId, address asset, uint256 tokenId, uint256 value) external auth {
-        uint128 prevholding = holding[scId][asset][tokenId].total;
+        uint128 prevTotal = holding[scId][asset][tokenId].total;
 
-        uint256 currentHolding =
+        uint256 currTotal =
             tokenId == 0 ? IERC20(asset).balanceOf(address(this)) : IERC6909(asset).balanceOf(address(this), tokenId);
-        require(currentHolding >= prevholding + value, InsufficientDeposit());
+        require(currTotal >= prevTotal + value, InsufficientDeposit());
 
         holding[scId][asset][tokenId].total += value.toUint128();
 
