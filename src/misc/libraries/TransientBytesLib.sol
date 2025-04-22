@@ -29,16 +29,18 @@ library TransientBytesLib {
         uint256 offset = prevLength % 32;
 
         lengthSlot.tstore(prevLength + value.length);
-        uint256 chunks = (prevLength + value.length) / 32 + 1;
 
         bytes32 joinSlot = keccak256(abi.encodePacked(key, startChunk));
         bytes memory firstPart = abi.encodePacked(joinSlot.tloadBytes32()).sliceZeroPadded(0, offset);
         bytes memory secondPart = value.sliceZeroPadded(0, 32 - offset);
         joinSlot.tstore(bytes32(bytes.concat(firstPart, secondPart)));
 
-        for (uint256 i = startChunk + 1; i < chunks; i++) {
-            bytes32 slot = keccak256(abi.encodePacked(key, i));
-            slot.tstore(bytes32(value.sliceZeroPadded((32 - offset) + i * 32, 32)));
+        uint256 valueOffset = 32 - offset;
+        uint256 chunkIndex = startChunk + 1;
+        for (; valueOffset < value.length; chunkIndex++) {
+            bytes32 slot = keccak256(abi.encodePacked(key, chunkIndex));
+            slot.tstore(bytes32(value.sliceZeroPadded(valueOffset, 32)));
+            valueOffset += 32;
         }
     }
 
