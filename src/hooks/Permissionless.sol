@@ -63,7 +63,7 @@ contract Permissionless is Auth, IFreezable, IHook {
 
     // --- ERC1404 implementation ---
     /// @inheritdoc IHook
-    function checkERC20Transfer(address from, address to, uint256, /* value */ HookData calldata hookData)
+    function checkERC20Transfer(address from, address, /* to */ uint256, /* value */ HookData calldata hookData)
         public
         view
         returns (bool)
