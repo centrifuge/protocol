@@ -180,6 +180,8 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     /// @inheritdoc IBalanceSheetGatewayHandler
     function revokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external auth {
         (address asset, uint256 tokenId) = poolManager.idToAsset(assetId.raw());
+
+        // Lock assets to ensure they are not withdrawn and are available for the redeeming user
         poolEscrowProvider.escrow(poolId.raw()).reserveIncrease(scId.raw(), asset, tokenId, assetAmount);
     }
 
@@ -220,7 +222,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         }
 
         emit Withdraw(poolId, scId, asset, tokenId, receiver, amount, pricePoolPerAsset, uint64(block.timestamp));
-
         sender.sendUpdateHoldingAmount(poolId, scId, assetId, receiver, amount, pricePoolPerAsset, false);
     }
 
@@ -235,7 +236,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         D18 pricePoolPerAsset
     ) internal {
         IPoolEscrow escrow = poolEscrowProvider.escrow(poolId.raw());
-        escrow.pendingDepositIncrease(scId.raw(), asset, tokenId, amount);
 
         if (tokenId == 0) {
             SafeTransferLib.safeTransferFrom(asset, provider, address(escrow), amount);
