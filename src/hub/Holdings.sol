@@ -28,7 +28,7 @@ contract Holdings is Auth, IHoldings {
     /// @inheritdoc IHoldings
     function file(bytes32 what, address data) external auth {
         if (what == "hubRegistry") hubRegistry = IHubRegistry(data);
-        else revert FileUnrecognizedWhat();
+        else revert FileUnrecognizedParam();
 
         emit File(what, data);
     }

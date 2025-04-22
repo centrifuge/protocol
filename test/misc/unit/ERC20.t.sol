@@ -73,7 +73,7 @@ contract ERC20Test is Test {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         token.file("name", newName);
 
-        vm.expectRevert(ERC20.FileUnrecognizedWhat.selector);
+        vm.expectRevert(ERC20.FileUnrecognizedParam.selector);
         token.file("notName", newName);
 
         token.file("name", newName);

@@ -33,8 +33,8 @@ contract TestFile is Test {
         valuation.file("erc6909", address(23));
     }
 
-    function testErrFileUnrecognizedWhat() public {
-        vm.expectRevert(abi.encodeWithSelector(IBaseValuation.FileUnrecognizedWhat.selector));
+    function testErrFileUnrecognizedParam() public {
+        vm.expectRevert(abi.encodeWithSelector(IBaseValuation.FileUnrecognizedParam.selector));
         valuation.file("unrecongnizedWhat", address(23));
     }
 }

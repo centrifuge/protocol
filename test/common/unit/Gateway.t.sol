@@ -373,7 +373,7 @@ contract GatewayTestHandle is GatewayTest {
         gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
 
         vm.prank(address(batchAdapter));
-        vm.expectRevert("toUint8_outOfBounds");
+        vm.expectRevert(BytesLib.SliceOutOfBounds.selector);
         gateway.handle(REMOTE_CENT_ID, new bytes(0));
     }
 

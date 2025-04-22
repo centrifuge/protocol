@@ -17,7 +17,7 @@ abstract contract BaseValuation is Auth, IBaseValuation {
     /// @inheritdoc IBaseValuation
     function file(bytes32 what, address data) external auth {
         if (what == "erc6909") erc6909 = IERC6909Decimals(data);
-        else revert FileUnrecognizedWhat();
+        else revert FileUnrecognizedParam();
 
         emit File(what, data);
     }

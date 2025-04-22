@@ -27,7 +27,6 @@ interface IShareToken is IERC20Metadata, IERC7575Share, IERC1404 {
 
     // --- Errors ---
     error NotAuthorizedOrHook();
-    error FileUnrecognizedParam();
     error ExceedsMaxSupply();
     error RestrictionsFailed();
 
