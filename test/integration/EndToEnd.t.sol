@@ -7,6 +7,7 @@ import {ERC20} from "src/misc/ERC20.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
+import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
@@ -45,10 +46,13 @@ import {LocalAdapter} from "test/integration/adapters/LocalAdapter.sol";
 /// - If sameChain: HUB is in CENTRIFUGE_ID_A and CV is in CENTRIFUGE_ID_A
 /// - If !sameChain: HUB is in CENTRIFUGE_ID_A and CV is in CENTRIFUGE_ID_B
 ///
-/// NOTE: All contracts used needs to be placed in the below struct to avoid external calls each time a contract is
-/// choosen from a deployment. i.e:
+/// NOTE: All contracts used needs to be placed in the below structs to avoid external calls each time a contract is
+/// choosen from a deployment. This has two side effects:
+///   1.
 ///   vm.prank(FM)
 ///   deployA.hub().notifyPool() // Will fail, given prank is used to retriver the hub.
+///
+///   2. It reduces significatily the amount of calls in shown by the debugger.
 
 struct CHub {
     uint16 centrifugeId;
@@ -92,10 +96,11 @@ contract TestEndToEnd is Test {
 
     uint16 constant CENTRIFUGE_ID_A = 5;
     uint16 constant CENTRIFUGE_ID_B = 6;
-    uint64 constant GAS = 100 wei;
+    uint64 constant GAS = 10 wei;
 
     address immutable FM = makeAddr("FM");
     address immutable INVESTOR_A = makeAddr("INVESTOR_A");
+    address immutable ANY = makeAddr("ANY");
 
     uint128 constant INVESTOR_A_AMOUNT = 1_000_000e6;
 
@@ -125,6 +130,8 @@ contract TestEndToEnd is Test {
 
         // Initialize accounts
         vm.deal(FM, 1 ether);
+        vm.deal(INVESTOR_A, 1 ether);
+        vm.deal(ANY, 1 ether);
 
         // We not use the VM chain
         vm.chainId(0xDEAD);
@@ -189,7 +196,7 @@ contract TestEndToEnd is Test {
 
         // Configure Pool
 
-        vm.prank(address(h.guardian.safe()));
+        vm.startPrank(address(h.guardian.safe()));
         poolId = h.guardian.createPool(FM, USD);
 
         scId = h.shareClassManager.previewNextShareClassId(poolId);
@@ -236,9 +243,19 @@ contract TestEndToEnd is Test {
 
         vm.startPrank(INVESTOR_A);
         ERC20(asset).approve(address(vault), INVESTOR_A_AMOUNT);
-        vault.requestDeposit(INVESTOR_A_AMOUNT, msg.sender, INVESTOR_A);
+        vault.requestDeposit(INVESTOR_A_AMOUNT, INVESTOR_A, INVESTOR_A);
 
-        // TODO: Continue investing process
+        vm.startPrank(FM);
+        IERC7726 valuation = h.holdings.valuation(poolId, scId, assetId);
+        h.hub.approveDeposits{value: GAS}(poolId, scId, assetId, INVESTOR_A_AMOUNT, valuation);
+        h.hub.issueShares(poolId, scId, assetId, IDENTITY_PRICE);
+
+        vm.startPrank(ANY);
+        h.hub.claimDeposit{value: GAS}(poolId, scId, assetId, INVESTOR_A.toBytes32());
+
+        //vault.mint(INVESTOR_A_AMOUNT, INVESTOR_A);
+
+        //assertEq(shareToken.balanceOf(INVESTOR_A), INVESTOR_A_AMOUNT);
     }
 
     /// forge-config: default.isolate = true
@@ -252,8 +269,12 @@ contract TestEndToEnd is Test {
 
         vm.startPrank(INVESTOR_A);
         ERC20(asset).approve(address(vault), INVESTOR_A_AMOUNT);
-        vault.deposit(INVESTOR_A_AMOUNT, msg.sender);
+        vault.deposit(INVESTOR_A_AMOUNT, INVESTOR_A);
 
         // TODO: Continue investing process
+        //cv.balanceSheet.approveDeposits(poolId, scId, assetId, INVESTOR_A_AMOUNT);
+        //cv.balanceSheet.issue(poolId, scId, assetId, INVESTOR_A_AMOUNT);
+
+        //vault.mint(INVESTOR_A_AMOUNT, INVESTOR_A);
     }
 }
