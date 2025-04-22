@@ -128,7 +128,7 @@ contract SyncRequestsUnauthorizedTest is SyncRequestsBaseTest {
 
     function testUpdate(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequests.update(0, bytes16(0), bytes(""));
+        syncRequests.update(PoolId.wrap(0), ShareClassId.wrap(0), bytes(""));
     }
 
     function _expectUnauthorized(address caller) internal {
