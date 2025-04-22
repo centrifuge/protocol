@@ -44,7 +44,7 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         legacyVault = legacyVault_;
     }
 
-    /// @dev Check if the msg.sender is the legacyVault
+    /// @dev Check if the msg.sende_r is the legacyVault
     modifier legacy() {
         require(msg.sender == address(legacyVault), NotLegacyVault(msg.sender, address(legacyVault)));
         _;

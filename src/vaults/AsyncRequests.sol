@@ -112,7 +112,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     function _processDepositRequest(address vaultAddr, uint128 assets, address controller) internal returns (bool) {
         IAsyncVault vault_ = IAsyncVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
-        uint64 poolId = mapPoolId(vault_.poolId());
+        uint64 poolId = vault_.poolId();
         bytes16 scId = vault_.scId();
 
         require(poolManager.isLinked(poolId, scId, vaultDetails.asset, vaultAddr), AssetNotAllowed());
@@ -145,7 +145,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
         // You cannot redeem using a disallowed asset, instead another vault will have to be used
         require(
-            poolManager.isLinked(mapPoolId(vault_.poolId()), vault_.scId(), vault_.asset(), vaultAddr),
+            poolManager.isLinked(vault_.poolId(), vault_.scId(), vault_.asset(), vaultAddr),
             AssetNotAllowed()
         );
 
@@ -171,7 +171,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
         sender.sendRedeemRequest(
-            PoolId.wrap(mapPoolId(vault_.poolId())),
+            PoolId.wrap(vault_.poolId()),
             ShareClassId.wrap(vault_.scId()),
             controller.toBytes32(),
             vaultDetails.assetId,
@@ -193,7 +193,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
         sender.sendCancelDepositRequest(
-            PoolId.wrap(mapPoolId(vault_.poolId())),
+            PoolId.wrap(vault_.poolId()),
             ShareClassId.wrap(vault_.scId()),
             controller.toBytes32(),
             vaultDetails.assetId
@@ -214,7 +214,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
         sender.sendCancelRedeemRequest(
-            PoolId.wrap(mapPoolId(vault_.poolId())),
+            PoolId.wrap(vault_.poolId()),
             ShareClassId.wrap(vault_.scId()),
             controller.toBytes32(),
             vaultDetails.assetId
@@ -465,7 +465,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
 
         IAsyncVault vault_ = IAsyncVault(vaultAddr);
-        uint64 poolId = mapPoolId(vault_.poolId());
+        uint64 poolId = vault_.poolId();
         bytes16 scId = vault_.scId();
 
         Prices memory prices =
