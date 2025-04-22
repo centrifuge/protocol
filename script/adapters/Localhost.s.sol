@@ -15,6 +15,7 @@ import {MessageLib, UpdateContractType, VaultUpdateKind} from "src/common/librar
 
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
+import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 
 import {FullDeployer, HubDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
 
@@ -161,7 +162,7 @@ contract LocalhostDeployer is FullDeployer {
 
         // Deposit
         IShareToken shareToken = IShareToken(poolManager.shareToken(poolId, scId));
-        IAsyncVault vault = IAsyncVault(shareToken.vault(address(token)));
+        SyncDepositVault vault = SyncDepositVault(shareToken.vault(address(token)));
 
         uint128 investAmount = 1_000_000e6;
         token.approve(address(vault), investAmount);

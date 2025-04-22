@@ -30,6 +30,9 @@ import {PoolManager} from "src/vaults/PoolManager.sol";
 import {BalanceSheet} from "src/vaults/BalanceSheet.sol";
 import {AsyncRequests} from "src/vaults/AsyncRequests.sol";
 import {SyncRequests} from "src/vaults/SyncRequests.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
+import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 
 import {FullDeployer, HubDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
 import {CommonDeployer, MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
@@ -70,10 +73,8 @@ struct CVaults {
     Gateway gateway;
     // Vaults
     BalanceSheet balanceSheet;
-    AsyncRequests asyncRequests;
-    SyncRequests syncRequests;
     PoolManager poolManager;
-    VaultRouter vaultRouter;
+    VaultRouter router;
     address asyncVaultFactory;
     address syncDepositVaultFactory;
     // Hooks
@@ -96,11 +97,19 @@ contract TestEndToEnd is Test {
     address immutable FM = makeAddr("FM");
     address immutable INVESTOR_A = makeAddr("INVESTOR_A");
 
+    uint128 constant INVESTOR_A_AMOUNT = 1_000_000e6;
+
+    AccountId constant ASSET_ACCOUNT = AccountId.wrap(0x01);
+    AccountId constant EQUITY_ACCOUNT = AccountId.wrap(0x02);
+    AccountId constant LOSS_ACCOUNT = AccountId.wrap(0x03);
+    AccountId constant GAIN_ACCOUNT = AccountId.wrap(0x04);
+
     FullDeployer deployA = new FullDeployer();
     FullDeployer deployB = new FullDeployer();
 
     AssetId USD = deployA.USD();
     CHub h;
+    CVaults cv;
 
     D18 immutable IDENTITY_PRICE = d18(1, 1);
 
@@ -135,7 +144,7 @@ contract TestEndToEnd is Test {
     }
 
     function _deployChain(FullDeployer deploy, uint16 localCentrifugeId, uint16 remoteCentrifugeId, ISafe safeAdmin)
-        public
+        internal
         returns (LocalAdapter adapter)
     {
         deploy.deployFull(localCentrifugeId, safeAdmin, address(deploy), true);
@@ -143,25 +152,20 @@ contract TestEndToEnd is Test {
         adapter = new LocalAdapter(localCentrifugeId, deploy.gateway(), address(deploy));
         deploy.wire(remoteCentrifugeId, adapter, address(deploy));
 
-        vm.startPrank(address(deploy));
-        vm.stopPrank();
-
         deploy.removeFullDeployerAccess(address(deploy));
     }
 
-    function _cv(bool sameChain) public view returns (CVaults memory) {
+    function _setCV(bool sameChain) internal {
         FullDeployer deploy = (sameChain) ? deployA : deployB;
         uint16 centrifugeId = (sameChain) ? CENTRIFUGE_ID_A : CENTRIFUGE_ID_B;
-        return CVaults({
+        cv = CVaults({
             centrifugeId: centrifugeId,
             root: deploy.root(),
             guardian: deploy.guardian(),
             gateway: deploy.gateway(),
             balanceSheet: deploy.balanceSheet(),
-            asyncRequests: deploy.asyncRequests(),
-            syncRequests: deploy.syncRequests(),
             poolManager: deploy.poolManager(),
-            vaultRouter: deploy.vaultRouter(),
+            router: deploy.vaultRouter(),
             restrictedTransfers: deploy.restrictedTransfers(),
             freelyTransferable: deploy.freelyTransferable(),
             asyncVaultFactory: deploy.asyncVaultFactory(),
@@ -169,26 +173,26 @@ contract TestEndToEnd is Test {
         });
     }
 
-    /// forge-config: default.isolate = true
-    function testConfigurePool(bool sameChain) public {
-        CVaults memory cv = _cv(sameChain);
-
+    function _configurePool(address vaultFactory)
+        internal
+        returns (PoolId poolId, ShareClassId scId, AssetId assetId)
+    {
         // Register AssetId
 
-        ERC20 usdc = new ERC20(6);
-        usdc.file("name", "USD Coin");
-        usdc.file("symbol", "USDC");
-        usdc.mint(INVESTOR_A, 10_000_000e6);
+        ERC20 asset = new ERC20(6);
+        asset.file("name", "USD Coin");
+        asset.file("symbol", "USDC");
+        asset.mint(INVESTOR_A, INVESTOR_A_AMOUNT);
 
-        cv.poolManager.registerAsset{value: GAS}(h.centrifugeId, address(usdc), 0);
-        AssetId usdcAssetId = newAssetId(cv.centrifugeId, 1);
+        cv.poolManager.registerAsset{value: GAS}(h.centrifugeId, address(asset), 0);
+        assetId = newAssetId(cv.centrifugeId, 1);
 
         // Configure Pool
 
         vm.prank(address(h.guardian.safe()));
-        PoolId poolId = h.guardian.createPool(FM, USD);
+        poolId = h.guardian.createPool(FM, USD);
 
-        ShareClassId scId = h.shareClassManager.previewNextShareClassId(poolId);
+        scId = h.shareClassManager.previewNextShareClassId(poolId);
 
         vm.startPrank(FM);
         h.hub.setPoolMetadata(poolId, bytes("Testing pool"));
@@ -196,24 +200,17 @@ contract TestEndToEnd is Test {
         h.hub.notifyPool{value: GAS}(poolId, cv.centrifugeId);
         h.hub.notifyShareClass{value: GAS}(poolId, scId, cv.centrifugeId, cv.freelyTransferable.toBytes32());
 
-        h.hub.createAccount(poolId, AccountId.wrap(0x01), true);
-        h.hub.createAccount(poolId, AccountId.wrap(0x02), false);
-        h.hub.createAccount(poolId, AccountId.wrap(0x03), false);
-        h.hub.createAccount(poolId, AccountId.wrap(0x04), false);
+        h.hub.createAccount(poolId, ASSET_ACCOUNT, true);
+        h.hub.createAccount(poolId, EQUITY_ACCOUNT, false);
+        h.hub.createAccount(poolId, LOSS_ACCOUNT, false);
+        h.hub.createAccount(poolId, GAIN_ACCOUNT, false);
         h.hub.createHolding(
-            poolId,
-            scId,
-            usdcAssetId,
-            h.identityValuation,
-            AccountId.wrap(0x01),
-            AccountId.wrap(0x02),
-            AccountId.wrap(0x03),
-            AccountId.wrap(0x04)
+            poolId, scId, assetId, h.identityValuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT
         );
 
         h.hub.updatePricePoolPerShare(poolId, scId, IDENTITY_PRICE, "");
         h.hub.notifySharePrice{value: GAS}(poolId, scId, cv.centrifugeId);
-        h.hub.notifyAssetPrice{value: GAS}(poolId, scId, usdcAssetId);
+        h.hub.notifyAssetPrice{value: GAS}(poolId, scId, assetId);
 
         h.hub.updateContract{value: GAS}(
             poolId,
@@ -221,10 +218,42 @@ contract TestEndToEnd is Test {
             cv.centrifugeId,
             address(cv.poolManager).toBytes32(),
             MessageLib.UpdateContractVaultUpdate({
-                vaultOrFactory: cv.asyncVaultFactory.toBytes32(),
-                assetId: usdcAssetId.raw(),
+                vaultOrFactory: vaultFactory.toBytes32(),
+                assetId: assetId.raw(),
                 kind: uint8(VaultUpdateKind.DeployAndLink)
             }).serialize()
         );
+    }
+
+    /// forge-config: default.isolate = true
+    function testAsyncDeposit(bool sameChain) public {
+        _setCV(sameChain);
+        (PoolId poolId, ShareClassId scId, AssetId assetId) = _configurePool(cv.asyncVaultFactory);
+
+        IShareToken shareToken = IShareToken(cv.poolManager.shareToken(poolId.raw(), scId.raw()));
+        (address asset,) = cv.poolManager.idToAsset(assetId.raw());
+        IAsyncVault vault = IAsyncVault(shareToken.vault(address(asset)));
+
+        vm.startPrank(INVESTOR_A);
+        ERC20(asset).approve(address(vault), INVESTOR_A_AMOUNT);
+        vault.requestDeposit(INVESTOR_A_AMOUNT, msg.sender, INVESTOR_A);
+
+        // TODO: Continue investing process
+    }
+
+    /// forge-config: default.isolate = true
+    function testSyncDeposit(bool sameChain) public {
+        _setCV(sameChain);
+        (PoolId poolId, ShareClassId scId, AssetId assetId) = _configurePool(cv.syncDepositVaultFactory);
+
+        IShareToken shareToken = IShareToken(cv.poolManager.shareToken(poolId.raw(), scId.raw()));
+        (address asset,) = cv.poolManager.idToAsset(assetId.raw());
+        SyncDepositVault vault = SyncDepositVault(shareToken.vault(address(asset)));
+
+        vm.startPrank(INVESTOR_A);
+        ERC20(asset).approve(address(vault), INVESTOR_A_AMOUNT);
+        vault.deposit(INVESTOR_A_AMOUNT, msg.sender);
+
+        // TODO: Continue investing process
     }
 }
