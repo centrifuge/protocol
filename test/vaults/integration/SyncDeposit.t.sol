@@ -42,7 +42,7 @@ contract SyncDepositTestHelper is BaseTest {
         );
     }
 
-    function _assertDepositEvents(SyncDepositVault vault, uint128 shares, D18 pricePoolPerShare, D18 priceAssetPerShare)
+    function _assertDepositEvents(SyncDepositVault vault, uint128 shares, D18 pricePoolPerShare, D18 pricePoolPerAsset)
         internal
     {
         PoolId poolId = PoolId.wrap(vault.poolId());
@@ -56,14 +56,7 @@ contract SyncDepositTestHelper is BaseTest {
 
         vm.expectEmit();
         emit IBalanceSheet.Deposit(
-            poolId,
-            scId,
-            vault.asset(),
-            vaultDetails.tokenId,
-            poolEscrowFactory.escrow(poolId.raw()),
-            depositAssetAmount,
-            priceAssetPerShare,
-            timestamp
+            poolId, scId, vault.asset(), vaultDetails.tokenId, self, depositAssetAmount, pricePoolPerAsset, timestamp
         );
     }
 }
@@ -104,11 +97,6 @@ contract SyncDepositTest is SyncDepositTestHelper {
         assertEq(syncVault.maxDeposit(self), type(uint256).max, "syncVault.maxDeposit(self), type(uint256).max");
         assertEq(syncVault.maxMint(self), type(uint256).max, "syncVault.maxMint(self), type(uint256).max");
 
-        // Will fail - user did not give asset allowance to syncVault
-        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
-        syncVault.deposit(amount, self);
-        erc20.approve(address(syncVault), amount);
-
         // Will fail - user not member: can not send funds
         vm.expectRevert(IHook.TransferBlocked.selector);
         syncVault.deposit(amount, self);
@@ -116,6 +104,11 @@ contract SyncDepositTest is SyncDepositTestHelper {
         assertEq(syncVault.isPermissioned(self), false);
         centrifugeChain.updateMember(syncVault.poolId(), syncVault.trancheId(), self, type(uint64).max);
         assertEq(syncVault.isPermissioned(self), true);
+
+        // Will fail - user did not give asset allowance to syncVault
+        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
+        syncVault.deposit(amount, self);
+        erc20.approve(address(balanceSheet), amount);
 
         // Will fail - above max reserve
         centrifugeChain.updateMaxReserve(
@@ -127,7 +120,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
 
         centrifugeChain.updateMaxReserve(syncVault.poolId(), syncVault.trancheId(), address(syncVault), uint128(amount));
 
-        _assertDepositEvents(syncVault, shares.toUint128(), pricePoolPerShare, priceAssetPerShare);
+        _assertDepositEvents(syncVault, shares.toUint128(), pricePoolPerShare, pricePoolPerAsset);
         syncVault.deposit(amount, self);
         assertEq(erc20.balanceOf(self), 0, "Mismatch in sync deposited amount");
         assertEq(shareToken.balanceOf(self), shares, "Mismatch in amount of sync received shares");

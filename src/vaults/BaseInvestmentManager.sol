@@ -75,7 +75,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         require(success && result.length == 32, SenderNotVault());
 
         uint64 poolId = abi.decode(result, (uint64));
-        return poolEscrowProvider.escrow(poolId);
+        return address(poolEscrowProvider.escrow(poolId));
     }
 
     /// @inheritdoc IBaseInvestmentManager
