@@ -66,7 +66,7 @@ interface IHoldings {
     );
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
-    error FileUnrecognizedWhat();
+    error FileUnrecognizedParam();
 
     /// @notice Item was not found for a required action
     error HoldingNotFound();
