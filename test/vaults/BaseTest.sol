@@ -14,6 +14,7 @@ import {Gateway} from "src/common/Gateway.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {newAssetId} from "src/common/types/AssetId.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 // core contracts
 import {AsyncRequests} from "src/vaults/AsyncRequests.sol";
@@ -194,8 +195,8 @@ contract BaseTest is VaultsDeployer, Test {
 
         // Trigger new vault deployment via UpdateContract
         poolManager.update(
-            POOL_A.raw(),
-            scId,
+            POOL_A,
+            ShareClassId.wrap(scId),
             MessageLib.UpdateContractVaultUpdate({
                 vaultOrFactory: bytes32(bytes20(vaultFactory)),
                 assetId: assetId,

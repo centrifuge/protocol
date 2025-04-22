@@ -1112,7 +1112,7 @@ contract UpdateContractMock is IUpdateContract {
         poolManager = IUpdateContract(poolManager_);
     }
 
-    function update(uint64 poolId, bytes16 scId, bytes calldata payload) public {
+    function update(PoolId poolId, ShareClassId scId, bytes calldata payload) public {
         poolManager.update(poolId, scId, payload);
     }
 }
@@ -1205,7 +1205,7 @@ contract PoolManagerUpdateContract is BaseTest, PoolManagerTestHelper {
     function testUpdateUnauthorized() public {
         vm.prank(makeAddr("unauthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolManager.update(0, bytes16(0), bytes(""));
+        poolManager.update(PoolId.wrap(0), ShareClassId.wrap(0), bytes(""));
     }
 
     function _serializedUpdateContractNewVault(address vaultFactory_) internal view returns (bytes memory payload) {
