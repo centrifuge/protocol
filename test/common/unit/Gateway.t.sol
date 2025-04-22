@@ -415,21 +415,21 @@ contract GatewayTestHandle is GatewayTest {
 
         vm.prank(address(batchAdapter));
         vm.expectEmit();
-        emit IGateway.ProcessBatch(REMOTE_CENT_ID, batchId, batch, batchAdapter);
+        emit IGateway.HandleBatch(REMOTE_CENT_ID, batchId, batch, batchAdapter);
         gateway.handle(REMOTE_CENT_ID, batch);
         assertEq(processor.count(REMOTE_CENT_ID), 0);
         assertVotes(batch, 1, 0, 0);
 
         vm.prank(address(proofAdapter1));
         vm.expectEmit();
-        emit IGateway.ProcessProof(REMOTE_CENT_ID, proofId, batchHash, proofAdapter1);
+        emit IGateway.HandleProof(REMOTE_CENT_ID, proofId, batchHash, proofAdapter1);
         gateway.handle(REMOTE_CENT_ID, proof);
         assertEq(processor.count(REMOTE_CENT_ID), 0);
         assertVotes(batch, 1, 1, 0);
 
         vm.prank(address(proofAdapter2));
         vm.expectEmit();
-        emit IGateway.ProcessProof(REMOTE_CENT_ID, proofId, batchHash, proofAdapter2);
+        emit IGateway.HandleProof(REMOTE_CENT_ID, proofId, batchHash, proofAdapter2);
         gateway.handle(REMOTE_CENT_ID, proof);
         assertEq(processor.count(REMOTE_CENT_ID), 1);
         assertEq(processor.processed(REMOTE_CENT_ID, 0), batch);
@@ -692,21 +692,21 @@ contract GatewayTestInitiateRecovery is GatewayTest {
 
     function testErrInvalidAdapter() public {
         vm.expectRevert(IGateway.InvalidAdapter.selector);
-        gateway.initiateMessageRecovery(REMOTE_CENT_ID, batchAdapter, BATCH_HASH);
+        gateway.initiateRecovery(REMOTE_CENT_ID, batchAdapter, BATCH_HASH);
     }
 
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.initiateMessageRecovery(REMOTE_CENT_ID, batchAdapter, BATCH_HASH);
+        gateway.initiateRecovery(REMOTE_CENT_ID, batchAdapter, BATCH_HASH);
     }
 
     function testInitiateRecovery() public {
         gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
 
         vm.expectEmit();
-        emit IGateway.InitiateMessageRecovery(REMOTE_CENT_ID, BATCH_HASH, batchAdapter);
-        gateway.initiateMessageRecovery(REMOTE_CENT_ID, batchAdapter, BATCH_HASH);
+        emit IGateway.InitiateRecovery(REMOTE_CENT_ID, BATCH_HASH, batchAdapter);
+        gateway.initiateRecovery(REMOTE_CENT_ID, batchAdapter, BATCH_HASH);
 
         assertEq(
             gateway.recoveries(REMOTE_CENT_ID, batchAdapter, BATCH_HASH),
@@ -721,52 +721,52 @@ contract GatewayTestDisputeRecovery is GatewayTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.initiateMessageRecovery(REMOTE_CENT_ID, batchAdapter, BATCH_HASH);
+        gateway.initiateRecovery(REMOTE_CENT_ID, batchAdapter, BATCH_HASH);
     }
 
     function testDisputeRecovery() public {
         gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
 
         vm.expectEmit();
-        emit IGateway.DisputeMessageRecovery(REMOTE_CENT_ID, BATCH_HASH, batchAdapter);
-        gateway.disputeMessageRecovery(REMOTE_CENT_ID, batchAdapter, BATCH_HASH);
+        emit IGateway.DisputeRecovery(REMOTE_CENT_ID, BATCH_HASH, batchAdapter);
+        gateway.disputeRecovery(REMOTE_CENT_ID, batchAdapter, BATCH_HASH);
 
         assertEq(gateway.recoveries(REMOTE_CENT_ID, batchAdapter, BATCH_HASH), 0);
     }
 }
 
 contract GatewayTestExecuteRecovery is GatewayTest {
-    function testErrMessageRecoveryNotInitiated() public {
-        vm.expectRevert(IGateway.MessageRecoveryNotInitiated.selector);
-        gateway.executeMessageRecovery(REMOTE_CENT_ID, batchAdapter, bytes(""));
+    function testErrRecoveryNotInitiated() public {
+        vm.expectRevert(IGateway.RecoveryNotInitiated.selector);
+        gateway.executeRecovery(REMOTE_CENT_ID, batchAdapter, bytes(""));
     }
 
-    function testErrMessageRecoveryChallengePeriodNotEnded() public {
+    function testErrRecoveryChallengePeriodNotEnded() public {
         gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
 
         bytes memory batch = MessageKind.WithPoolA1.asBytes();
         bytes32 batchHash = keccak256(batch);
 
-        gateway.initiateMessageRecovery(REMOTE_CENT_ID, batchAdapter, batchHash);
+        gateway.initiateRecovery(REMOTE_CENT_ID, batchAdapter, batchHash);
 
         vm.prank(ANY);
-        vm.expectRevert(IGateway.MessageRecoveryChallengePeriodNotEnded.selector);
-        gateway.executeMessageRecovery(REMOTE_CENT_ID, batchAdapter, batch);
+        vm.expectRevert(IGateway.RecoveryChallengePeriodNotEnded.selector);
+        gateway.executeRecovery(REMOTE_CENT_ID, batchAdapter, batch);
     }
 
-    function testErrRecoveryMessageRecovered() public {
+    function testErrRecoveryRecovered() public {
         gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
 
         bytes memory batch = MessageKind.Recovery.asBytes();
         bytes32 batchHash = keccak256(batch);
 
-        gateway.initiateMessageRecovery(REMOTE_CENT_ID, batchAdapter, batchHash);
+        gateway.initiateRecovery(REMOTE_CENT_ID, batchAdapter, batchHash);
 
         vm.warp(gateway.RECOVERY_CHALLENGE_PERIOD() + 1);
 
         vm.prank(ANY);
-        vm.expectRevert(IGateway.RecoveryMessageRecovered.selector);
-        gateway.executeMessageRecovery(REMOTE_CENT_ID, batchAdapter, batch);
+        vm.expectRevert(IGateway.RecoveryPayloadRecovered.selector);
+        gateway.executeRecovery(REMOTE_CENT_ID, batchAdapter, batch);
     }
 
     function testExecuteRecovery() public {
@@ -775,13 +775,13 @@ contract GatewayTestExecuteRecovery is GatewayTest {
         bytes memory batch = MessageKind.WithPoolA1.asBytes();
         bytes32 batchHash = keccak256(batch);
 
-        gateway.initiateMessageRecovery(REMOTE_CENT_ID, batchAdapter, batchHash);
+        gateway.initiateRecovery(REMOTE_CENT_ID, batchAdapter, batchHash);
 
         vm.warp(gateway.RECOVERY_CHALLENGE_PERIOD() + 1);
 
         vm.prank(ANY);
-        emit IGateway.ExecuteMessageRecovery(REMOTE_CENT_ID, batch, batchAdapter);
-        gateway.executeMessageRecovery(REMOTE_CENT_ID, batchAdapter, batch);
+        emit IGateway.ExecuteRecovery(REMOTE_CENT_ID, batch, batchAdapter);
+        gateway.executeRecovery(REMOTE_CENT_ID, batchAdapter, batch);
 
         assertEq(processor.processed(REMOTE_CENT_ID, 0), batch);
     }

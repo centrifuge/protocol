@@ -262,24 +262,23 @@ contract AdminTest is BaseTest {
         // Initiate recovery
         _send(
             adapter1,
-            MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32(), OTHER_CHAIN_ID)
-                .serialize()
+            MessageLib.InitiateRecovery(keccak256(proof), address(adapter3).toBytes32(), OTHER_CHAIN_ID).serialize()
         );
 
-        vm.expectRevert(IGateway.MessageRecoveryChallengePeriodNotEnded.selector);
-        gateway.executeMessageRecovery(OTHER_CHAIN_ID, adapter3, proof);
+        vm.expectRevert(IGateway.RecoveryChallengePeriodNotEnded.selector);
+        gateway.executeRecovery(OTHER_CHAIN_ID, adapter3, proof);
 
         vm.prank(makeAddr("unauthorized"));
         vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
-        guardian.disputeMessageRecovery(THIS_CHAIN_ID, OTHER_CHAIN_ID, adapter3, keccak256(proof));
+        guardian.disputeRecovery(THIS_CHAIN_ID, OTHER_CHAIN_ID, adapter3, keccak256(proof));
 
         // Dispute recovery
         vm.prank(address(adminSafe));
-        guardian.disputeMessageRecovery(THIS_CHAIN_ID, OTHER_CHAIN_ID, adapter3, keccak256(proof));
+        guardian.disputeRecovery(THIS_CHAIN_ID, OTHER_CHAIN_ID, adapter3, keccak256(proof));
 
         // Check that recovery is not possible anymore
-        vm.expectRevert(IGateway.MessageRecoveryNotInitiated.selector);
-        gateway.executeMessageRecovery(OTHER_CHAIN_ID, adapter3, proof);
+        vm.expectRevert(IGateway.RecoveryNotInitiated.selector);
+        gateway.executeRecovery(OTHER_CHAIN_ID, adapter3, proof);
     }
 
     function _send(MockAdapter adapter, bytes memory message) internal {
