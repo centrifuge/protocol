@@ -60,14 +60,12 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     /// --- IUpdateContract Implementation ---
-    function update(uint64 poolId_, bytes16 scId_, bytes calldata payload) external auth {
+    function update(PoolId poolId, ShareClassId scId, bytes calldata payload) external auth {
         uint8 kind = uint8(MessageLib.updateContractType(payload));
 
         if (kind == uint8(UpdateContractType.UpdateManager)) {
             MessageLib.UpdateContractUpdateManager memory m = MessageLib.deserializeUpdateContractUpdateManager(payload);
 
-            PoolId poolId = PoolId.wrap(poolId_);
-            ShareClassId scId = ShareClassId.wrap(scId_);
             address who = m.who.toAddress();
 
             manager[poolId][scId][who] = m.canManage;

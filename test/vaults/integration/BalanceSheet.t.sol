@@ -124,8 +124,8 @@ contract BalanceSheetTest is BaseTest {
         emit IBalanceSheet.UpdateManager(POOL_A, defaultTypedShareClassId, randomUser, true);
 
         balanceSheet.update(
-            POOL_A.raw(),
-            defaultShareClassId,
+            POOL_A,
+            defaultTypedShareClassId,
             MessageLib.UpdateContractUpdateManager({who: bytes20(randomUser), canManage: true}).serialize()
         );
 
@@ -137,8 +137,8 @@ contract BalanceSheetTest is BaseTest {
         emit IBalanceSheet.UpdateManager(POOL_A, defaultTypedShareClassId, randomUser, false);
 
         balanceSheet.update(
-            POOL_A.raw(),
-            defaultShareClassId,
+            POOL_A,
+            defaultTypedShareClassId,
             MessageLib.UpdateContractUpdateManager({who: bytes20(randomUser), canManage: false}).serialize()
         );
 

@@ -276,9 +276,9 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     /// @inheritdoc IPoolManagerGatewayHandler
     function updateContract(PoolId poolId, ShareClassId scId, address target, bytes memory update_) public auth {
         if (target == address(this)) {
-            update(poolId.raw(), scId.raw(), update_);
+            update(poolId, scId, update_);
         } else {
-            IUpdateContract(target).update(poolId.raw(), scId.raw(), update_);
+            IUpdateContract(target).update(poolId, scId, update_);
         }
 
         emit UpdateContract(poolId.raw(), scId.raw(), target, update_);
@@ -305,7 +305,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     /// @inheritdoc IUpdateContract
     /// @notice The pool manager either deploys the vault if a factory address is provided or it simply links/unlinks
     /// the vault
-    function update(uint64 poolId, bytes16 scId, bytes memory payload) public auth {
+    function update(PoolId poolId, ShareClassId scId, bytes memory payload) public auth {
         uint8 kind = uint8(MessageLib.updateContractType(payload));
 
         if (kind == uint8(UpdateContractType.VaultUpdate)) {
@@ -314,8 +314,8 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
             if (m.kind == uint8(VaultUpdateKind.DeployAndLink)) {
                 address factory = m.vaultOrFactory.toAddress();
 
-                address vault = deployVault(poolId, scId, m.assetId, factory);
-                linkVault(poolId, scId, m.assetId, vault);
+                address vault = deployVault(poolId.raw(), scId.raw(), m.assetId, factory);
+                linkVault(poolId.raw(), scId.raw(), m.assetId, vault);
             } else {
                 address vault = m.vaultOrFactory.toAddress();
 
@@ -324,9 +324,9 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
                 require(_vaultDetails[vault].asset != address(0), UnknownVault());
 
                 if (m.kind == uint8(VaultUpdateKind.Link)) {
-                    linkVault(poolId, scId, m.assetId, vault);
+                    linkVault(poolId.raw(), scId.raw(), m.assetId, vault);
                 } else if (m.kind == uint8(VaultUpdateKind.Unlink)) {
-                    unlinkVault(poolId, scId, m.assetId, vault);
+                    unlinkVault(poolId.raw(), scId.raw(), m.assetId, vault);
                 } else {
                     revert MalformedVaultUpdateMessage();
                 }
@@ -335,20 +335,20 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
             MessageLib.UpdateContractMaxAssetPriceAge memory m =
                 MessageLib.deserializeUpdateContractMaxAssetPriceAge(payload);
 
-            ShareClassDetails storage shareClass = _shareClass(poolId, scId);
+            ShareClassDetails storage shareClass = _shareClass(poolId.raw(), scId.raw());
             require(m.assetId != 0, UnknownAsset());
 
             (address asset, uint256 tokenId) = idToAsset(m.assetId);
             shareClass.pricePoolPerAsset[asset][tokenId].maxAge = m.maxPriceAge;
-            emit UpdateMaxAssetPriceAge(poolId, scId, asset, tokenId, m.maxPriceAge);
+            emit UpdateMaxAssetPriceAge(poolId.raw(), scId.raw(), asset, tokenId, m.maxPriceAge);
         } else if (kind == uint8(UpdateContractType.MaxSharePriceAge)) {
             MessageLib.UpdateContractMaxSharePriceAge memory m =
                 MessageLib.deserializeUpdateContractMaxSharePriceAge(payload);
 
-            ShareClassDetails storage shareClass = _shareClass(poolId, scId);
+            ShareClassDetails storage shareClass = _shareClass(poolId.raw(), scId.raw());
 
             shareClass.pricePoolPerShare.maxAge = m.maxPriceAge;
-            emit UpdateMaxSharePriceAge(poolId, scId, m.maxPriceAge);
+            emit UpdateMaxSharePriceAge(poolId.raw(), scId.raw(), m.maxPriceAge);
         } else {
             revert UnknownUpdateContractType();
         }
