@@ -130,7 +130,7 @@ contract RestrictedTransfers is Auth, IRestrictedTransfers, IHook {
         emit Unfreeze(token, user);
     }
 
-    /// @inheritdoc IRestrictedTransfers
+    /// @inheritdoc IFreezable
     function isFrozen(address token, address user) public view returns (bool) {
         return uint128(IShareToken(token).hookDataOf(user)).getBit(FREEZE_BIT);
     }
