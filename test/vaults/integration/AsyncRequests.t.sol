@@ -46,7 +46,6 @@ contract AsyncRequestsTest is BaseTest {
         assertEq(address(asyncRequests.sender()), address(messageDispatcher));
         assertEq(address(asyncRequests.poolManager()), address(poolManager));
         assertEq(address(asyncRequests.balanceSheet()), address(balanceSheet));
-        assertEq(address(asyncRequests.sharePriceProvider()), address(syncRequests));
         assertEq(address(asyncRequests.poolEscrowProvider()), address(poolEscrowFactory));
 
         // permissions set correctly
@@ -75,8 +74,6 @@ contract AsyncRequestsTest is BaseTest {
         assertEq(address(asyncRequests.poolManager()), randomUser);
         asyncRequests.file("balanceSheet", randomUser);
         assertEq(address(asyncRequests.balanceSheet()), randomUser);
-        asyncRequests.file("sharePriceProvider", randomUser);
-        assertEq(address(asyncRequests.sharePriceProvider()), randomUser);
         asyncRequests.file("poolEscrowProvider", randomUser);
         assertEq(address(asyncRequests.poolEscrowProvider()), randomUser);
 

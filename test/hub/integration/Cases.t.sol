@@ -174,15 +174,15 @@ contract TestCases is BaseTest {
 
         assertEq(holdings.amount(poolId, scId, USDC_C2), 1000 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 1000 * poolDecimals);
-        assertEq(accounting.accountValue(poolId, equityAccount), int128(1000 * poolDecimals));
-        assertEq(accounting.accountValue(poolId, assetAccount), int128(1000 * poolDecimals));
+        _assertEqAccountValue(poolId, equityAccount, true, 1000 * poolDecimals);
+        _assertEqAccountValue(poolId, assetAccount, true, 1000 * poolDecimals);
 
         cv.updateHoldingAmount(poolId, scId, USDC_C2, 600 * assetDecimals, D18.wrap(1e18), false);
 
         assertEq(holdings.amount(poolId, scId, USDC_C2), 400 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 400 * poolDecimals);
-        assertEq(accounting.accountValue(poolId, assetAccount), int128(400 * poolDecimals));
-        assertEq(accounting.accountValue(poolId, equityAccount), int128(400 * poolDecimals));
+        _assertEqAccountValue(poolId, assetAccount, true, 400 * poolDecimals);
+        _assertEqAccountValue(poolId, equityAccount, true, 400 * poolDecimals);
     }
 
     /// forge-config: default.isolate = true

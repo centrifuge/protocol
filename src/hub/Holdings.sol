@@ -93,7 +93,11 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @inheritdoc IHoldings
-    function update(PoolId poolId, ShareClassId scId, AssetId assetId) external auth returns (int128 diffValue) {
+    function update(PoolId poolId, ShareClassId scId, AssetId assetId)
+        external
+        auth
+        returns (bool isPositive, uint128 diffValue)
+    {
         Holding storage holding_ = holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
@@ -101,13 +105,13 @@ contract Holdings is Auth, IHoldings {
             holding_.assetAmount, assetId.addr(), hubRegistry.currency(poolId).addr()
         ).toUint128();
 
-        diffValue = currentAmountValue > holding_.assetAmountValue
-            ? uint256(currentAmountValue - holding_.assetAmountValue).toInt128()
-            : -uint256(holding_.assetAmountValue - currentAmountValue).toInt128();
+        isPositive = currentAmountValue >= holding_.assetAmountValue;
+        diffValue =
+            isPositive ? currentAmountValue - holding_.assetAmountValue : holding_.assetAmountValue - currentAmountValue;
 
         holding_.assetAmountValue = currentAmountValue;
 
-        emit Update(poolId, scId, assetId, diffValue);
+        emit Update(poolId, scId, assetId, isPositive, diffValue);
     }
 
     /// @inheritdoc IHoldings
