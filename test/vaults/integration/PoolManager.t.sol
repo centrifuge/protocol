@@ -226,7 +226,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.addShareClass(
             PoolId.wrap(poolId), ShareClassId.wrap(scId), tokenName, tokenSymbol, decimals, salt, hook
         );
-        CentrifugeToken shareToken = CentrifugeToken(poolManager.shareToken(poolId, scId));
+        ShareToken shareToken = ShareToken(poolManager.shareToken(poolId, scId));
         assertEq(tokenName, shareToken.name());
         assertEq(tokenSymbol, shareToken.symbol());
         assertEq(decimals, shareToken.decimals());
@@ -258,7 +258,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
             poolManager.addShareClass(
                 PoolId.wrap(poolId), ShareClassId.wrap(scIds[i]), tokenName, tokenSymbol, decimals, bytes32(i), hook
             );
-            CentrifugeToken shareToken = CentrifugeToken(poolManager.shareToken(poolId, scIds[i]));
+            ShareToken shareToken = ShareToken(poolManager.shareToken(poolId, scIds[i]));
             assertEq(tokenName, shareToken.name());
             assertEq(tokenSymbol, shareToken.symbol());
             assertEq(decimals, shareToken.decimals());
@@ -653,7 +653,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         // Remove old vault
         address vaultManager = address(IBaseVault(oldVault_).manager());
         IVaultManager(vaultManager).removeVault(poolId, scId, oldVault_, asset, assetId);
-        assertEq(CentrifugeToken(poolManager.shareToken(poolId, scId)).vault(asset), address(0));
+        assertEq(ShareToken(poolManager.shareToken(poolId, scId)).vault(asset), address(0));
 
         // Deploy new vault
         address newVault = poolManager.deployVault(poolId, scId, assetId, address(newVaultFactory));
@@ -793,7 +793,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         } else {
             assert(!poolManager.isLinked(poolId, scId, asset, vaultAddress));
             // Check Share permissions
-            assertEq(CentrifugeToken(token_).wards(vaultManager), 1);
+            assertEq(ShareToken(token_).wards(vaultManager), 1);
 
             // Check missing link
             assertEq(vault_, address(0), "Share link to vault requires linkVault");
@@ -803,7 +803,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
 
     function _assertShareSetup(address vaultAddress, bool isLinked) private view {
         address token_ = poolManager.shareToken(poolId, scId);
-        CentrifugeToken shareToken = CentrifugeToken(token_);
+        ShareToken shareToken = ShareToken(token_);
 
         assertEq(shareToken.wards(address(poolManager)), 1);
         assertEq(shareToken.wards(address(this)), 0);

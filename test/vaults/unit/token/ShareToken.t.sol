@@ -9,7 +9,7 @@ import {MockRoot} from "test/common/mocks/MockRoot.sol";
 
 import "src/vaults/interfaces/IERC7575.sol";
 import "src/vaults/interfaces/IERC7540.sol";
-import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
+import {ShareToken} from "src/vaults/token/ShareToken.sol";
 
 import "forge-std/Test.sol";
 import {MockRestrictedTransfers} from "test/vaults/mocks/MockRestrictedTransfers.sol";
@@ -21,7 +21,7 @@ interface ERC20Like {
 }
 
 contract ShareTokenTest is Test {
-    CentrifugeToken token;
+    ShareToken token;
     MockRestrictedTransfers restrictedTransfers;
 
     address self;
@@ -32,7 +32,7 @@ contract ShareTokenTest is Test {
 
     function setUp() public {
         self = address(this);
-        token = new CentrifugeToken(18);
+        token = new ShareToken(18);
         token.file("name", "Some Token");
         token.file("symbol", "ST");
 

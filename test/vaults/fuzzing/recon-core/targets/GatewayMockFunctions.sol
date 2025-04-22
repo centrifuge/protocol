@@ -14,7 +14,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 // Src Deps | For cycling of values
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {ERC20} from "src/misc/ERC20.sol";
-import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
+import {ShareToken} from "src/vaults/token/ShareToken.sol";
 import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
@@ -101,7 +101,7 @@ abstract contract GatewayMockFunctions is BaseTargetFunctions, Properties {
 
         vault = AsyncVault(newVault);
         assetErc20 = ERC20(newToken);
-        token = CentrifugeToken(newShareToken);
+        token = ShareToken(newShareToken);
         restrictedTransfers = RestrictedTransfers(address(token.hook()));
 
         scId = SHARE_ID;

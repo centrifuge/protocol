@@ -7,7 +7,7 @@ import {AsyncRequests} from "src/vaults/AsyncRequests.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {Root} from "src/common/Root.sol";
-import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
+import {ShareToken} from "src/vaults/token/ShareToken.sol";
 
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
@@ -35,7 +35,7 @@ abstract contract Setup is BaseSetup, SharedStorage {
     // TODO: CYCLE / Make it work for variable values
     AsyncVault vault;
     ERC20 assetErc20;
-    CentrifugeToken token;
+    ShareToken token;
     address actor = address(this); // TODO: Generalize
     RestrictedTransfers restrictedTransfers;
 

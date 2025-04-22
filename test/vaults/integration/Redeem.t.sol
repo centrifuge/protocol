@@ -247,7 +247,7 @@ contract RedeemTest is BaseTest {
         // should work even if investor is frozen
         centrifugeChain.freeze(poolId, scId, investor); // freeze investor
         assertTrue(
-            !CentrifugeToken(address(vault.share())).checkTransferRestriction(
+            !ShareToken(address(vault.share())).checkTransferRestriction(
                 investor, address(poolEscrowFactory.escrow(vault.poolId())), amount
             )
         );
@@ -325,7 +325,7 @@ contract RedeemTest is BaseTest {
         // should work even if investor is frozen
         centrifugeChain.freeze(poolId, scId, investor); // freeze investor
         assertTrue(
-            !CentrifugeToken(address(vault.share())).checkTransferRestriction(
+            !ShareToken(address(vault.share())).checkTransferRestriction(
                 investor, address(poolEscrowFactory.escrow(vault.poolId())), amount
             )
         );

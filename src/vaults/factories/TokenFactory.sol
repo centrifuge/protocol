@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
+import {ShareToken} from "src/vaults/token/ShareToken.sol";
 import {ITokenFactory} from "src/vaults/interfaces/factories/ITokenFactory.sol";
 import {Auth} from "src/misc/Auth.sol";
 
@@ -24,7 +24,7 @@ contract TokenFactory is Auth, ITokenFactory {
         bytes32 salt,
         address[] calldata tokenWards
     ) public auth returns (address) {
-        CentrifugeToken token = new CentrifugeToken{salt: salt}(decimals);
+        ShareToken token = new ShareToken{salt: salt}(decimals);
 
         token.file("name", name);
         token.file("symbol", symbol);
@@ -46,7 +46,7 @@ contract TokenFactory is Auth, ITokenFactory {
                 bytes1(0xff),
                 address(this),
                 salt,
-                keccak256(abi.encodePacked(type(CentrifugeToken).creationCode, abi.encode(decimals)))
+                keccak256(abi.encodePacked(type(ShareToken).creationCode, abi.encode(decimals)))
             )
         );
 

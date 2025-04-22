@@ -15,7 +15,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 // Src Deps | For cycling of values
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {ERC20} from "src/misc/ERC20.sol";
-import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
+import {ShareToken} from "src/vaults/token/ShareToken.sol";
 import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
 
 /// @dev Separate the 5 Callbacks that go from Gateway to AsyncRequests
