@@ -66,24 +66,24 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
     /// --- IUpdateContract ---
     /// @inheritdoc IUpdateContract
-    function update(uint64 poolId, bytes16 scId, bytes memory payload) external auth {
+    function update(PoolId poolId, ShareClassId scId, bytes memory payload) external auth {
         uint8 kind = uint8(MessageLib.updateContractType(payload));
 
         if (kind == uint8(UpdateContractType.Valuation)) {
             MessageLib.UpdateContractValuation memory m = MessageLib.deserializeUpdateContractValuation(payload);
 
-            require(poolManager.shareToken(poolId, scId) != address(0), ShareTokenDoesNotExist());
+            require(poolManager.shareToken(poolId.raw(), scId.raw()) != address(0), ShareTokenDoesNotExist());
             (address asset, uint256 tokenId) = poolManager.idToAsset(m.assetId);
 
-            setValuation(poolId, scId, asset, tokenId, m.valuation.toAddress());
+            setValuation(poolId.raw(), scId.raw(), asset, tokenId, m.valuation.toAddress());
         } else if (kind == uint8(UpdateContractType.SyncDepositMaxReserve)) {
             MessageLib.UpdateContractSyncDepositMaxReserve memory m =
                 MessageLib.deserializeUpdateContractSyncDepositMaxReserve(payload);
 
-            require(poolManager.shareToken(poolId, scId) != address(0), ShareTokenDoesNotExist());
+            require(poolManager.shareToken(poolId.raw(), scId.raw()) != address(0), ShareTokenDoesNotExist());
             (address asset, uint256 tokenId) = poolManager.idToAsset(m.assetId);
 
-            setMaxReserve(poolId, scId, asset, tokenId, m.maxReserve);
+            setMaxReserve(poolId.raw(), scId.raw(), asset, tokenId, m.maxReserve);
         } else {
             revert UnknownUpdateContractType();
         }
