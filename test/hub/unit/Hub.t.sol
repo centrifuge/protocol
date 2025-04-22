@@ -95,10 +95,10 @@ contract TestMainMethodsChecks is TestCommon {
         hub.notifyPool(POOL_A, 0);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.notifyShareClass(POOL_A, 0, ShareClassId.wrap(0), bytes32(""));
+        hub.notifyShareClass(POOL_A, ShareClassId.wrap(0), 0, bytes32(""));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.notifySharePrice(POOL_A, 0, ShareClassId.wrap(0));
+        hub.notifySharePrice(POOL_A, ShareClassId.wrap(0), 0);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.notifyAssetPrice(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0));
@@ -125,10 +125,10 @@ contract TestMainMethodsChecks is TestCommon {
         hub.revokeShares(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateRestriction(POOL_A, 0, ShareClassId.wrap(0), bytes(""));
+        hub.updateRestriction(POOL_A, ShareClassId.wrap(0), 0, bytes(""));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateContract(POOL_A, 0, ShareClassId.wrap(0), bytes32(0), bytes(""));
+        hub.updateContract(POOL_A, ShareClassId.wrap(0), 0, bytes32(0), bytes(""));
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.updatePricePoolPerShare(POOL_A, ShareClassId.wrap(0), D18.wrap(0), bytes(""));
@@ -178,7 +178,7 @@ contract TestNotifyShareClass is TestCommon {
 
         vm.prank(ADMIN);
         vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
-        hub.notifyShareClass(POOL_A, 23, SC_A, bytes32(""));
+        hub.notifyShareClass(POOL_A, SC_A, 23, bytes32(""));
     }
 }
 

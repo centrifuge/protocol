@@ -1,4 +1,9 @@
 {
+<<<<<<< HEAD
   "fulfillDepositRequest": "943228",
   "requestDeposit": "472208"
+=======
+  "fulfillDepositRequest": "920202",
+  "requestDeposit": "472006"
+>>>>>>> 9143423a (base pool configuration)
 }
