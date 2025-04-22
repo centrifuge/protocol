@@ -39,9 +39,18 @@ interface IBalanceSheet {
     // --- Errors ---
     error FileUnrecognizedParam();
 
-    // Overloaded increase
     function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address provider, uint128 amount)
         external;
+
+    function deposit(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        address provider,
+        uint128 amount,
+        D18 pricePoolPerAsset
+    ) external;
 
     function withdraw(
         PoolId poolId,
@@ -52,11 +61,25 @@ interface IBalanceSheet {
         uint128 amount
     ) external;
 
+    function withdraw(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        address receiver,
+        uint128 amount,
+        D18 pricePoolPerAsset
+    ) external;
+
     function transferSharesFrom(PoolId poolId, ShareClassId scId, address from, address to, uint256 amount) external;
 
     function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external;
 
     function revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) external;
+
+    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares, D18 pricePoolPerShare) external;
+
+    function revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares, D18 pricePoolPerShare) external;
 
     function escrow() external view returns (IPerPoolEscrow);
 }

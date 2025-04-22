@@ -308,9 +308,10 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         ShareClassId scId = ShareClassId.wrap(scId_);
 
         _checkMaxReserve(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, depositAssetAmount);
+        Prices memory priceData = prices(poolId_, scId_, vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId);
 
         // Mint shares for receiver & notify CP about issued shares
-        balanceSheet.issue(poolId, scId, receiver, shares);
+        balanceSheet.issue(poolId, scId, receiver, shares, priceData.poolPerShare);
 
         balanceSheet.deposit(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, escrow, depositAssetAmount);
     }

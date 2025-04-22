@@ -97,6 +97,20 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     /// @inheritdoc IBalanceSheet
+    function deposit(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        address provider,
+        uint128 amount,
+        D18 price
+    ) external authOrManager(poolId, scId) {
+        AssetId assetId = AssetId.wrap(poolManager.assetToId(asset, tokenId));
+        _deposit(poolId, scId, assetId, asset, tokenId, provider, amount, price);
+    }
+
+    /// @inheritdoc IBalanceSheet
     function withdraw(
         PoolId poolId,
         ShareClassId scId,
@@ -111,6 +125,21 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     /// @inheritdoc IBalanceSheet
+    function withdraw(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        address receiver,
+        uint128 amount,
+        D18 price
+    ) external authOrManager(poolId, scId) {
+        AssetId assetId = AssetId.wrap(poolManager.assetToId(asset, tokenId));
+
+        _withdraw(poolId, scId, assetId, asset, tokenId, receiver, amount, price);
+    }
+
+    /// @inheritdoc IBalanceSheet
     function revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares)
         external
         authOrManager(poolId, scId)
@@ -119,8 +148,24 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     /// @inheritdoc IBalanceSheet
+    function revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares, D18 price)
+        external
+        authOrManager(poolId, scId)
+    {
+        _revoke(poolId, scId, from, shares, price);
+    }
+
+    /// @inheritdoc IBalanceSheet
     function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external authOrManager(poolId, scId) {
         _issue(poolId, scId, to, shares);
+    }
+
+    /// @inheritdoc IBalanceSheet
+    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares, D18 price)
+        external
+        authOrManager(poolId, scId)
+    {
+        _issue(poolId, scId, to, shares, price);
     }
 
     /// @inheritdoc IBalanceSheet
@@ -192,22 +237,30 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     // --- Internal ---
     function _issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) internal {
+        (D18 price,) = poolManager.pricePoolPerShare(poolId.raw(), scId.raw(), false);
+        _issue(poolId, scId, to, shares, price);
+    }
+
+    function _issue(PoolId poolId, ShareClassId scId, address to, uint128 shares, D18 price) internal {
         address token = poolManager.shareToken(poolId.raw(), scId.raw());
         IShareToken(token).mint(address(to), shares);
 
         queuedShareIssuances[poolId][scId] += shares;
 
-        (D18 price,) = poolManager.pricePoolPerShare(poolId.raw(), scId.raw(), false);
         emit Issue(poolId, scId, to, price, shares);
     }
 
     function _revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) internal {
+        (D18 price,) = poolManager.pricePoolPerShare(poolId.raw(), scId.raw(), false);
+        _revoke(poolId, scId, from, shares, price);
+    }
+
+    function _revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares, D18 price) internal {
         address token = poolManager.shareToken(poolId.raw(), scId.raw());
         IShareToken(token).burn(address(from), shares);
 
         queuedShareRevocations[poolId][scId] += shares;
 
-        (D18 price,) = poolManager.pricePoolPerShare(poolId.raw(), scId.raw(), false);
         emit Revoke(poolId, scId, from, price, shares);
     }
 
@@ -220,6 +273,20 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         address receiver,
         uint128 amount
     ) internal {
+        (D18 price,) = poolManager.pricePoolPerAsset(poolId.raw(), scId.raw(), assetId.raw(), false);
+        _withdraw(poolId, scId, assetId, asset, tokenId, receiver, amount, price);
+    }
+
+    function _withdraw(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        address asset,
+        uint256 tokenId,
+        address receiver,
+        uint128 amount,
+        D18 price
+    ) internal {
         escrow.withdraw(asset, tokenId, poolId.raw(), scId.raw(), amount);
 
         if (tokenId == 0) {
@@ -228,7 +295,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             IERC6909(asset).transferFrom(address(escrow), receiver, tokenId, amount);
         }
 
-        (D18 price,) = poolManager.pricePoolPerAsset(poolId.raw(), scId.raw(), assetId.raw(), false);
         emit Withdraw(poolId, scId, asset, tokenId, receiver, amount, price, uint64(block.timestamp));
 
         queuedAssetWithdraws[poolId][scId][assetId] += amount;
@@ -243,6 +309,20 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         address provider,
         uint128 amount
     ) internal {
+        (D18 price,) = poolManager.pricePoolPerAsset(poolId.raw(), scId.raw(), assetId.raw(), false);
+        _deposit(poolId, scId, assetId, asset, tokenId, provider, amount, price);
+    }
+
+    function _deposit(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        address asset,
+        uint256 tokenId,
+        address provider,
+        uint128 amount,
+        D18 price
+    ) internal {
         escrow.pendingDepositIncrease(asset, tokenId, poolId.raw(), scId.raw(), amount);
 
         if (tokenId == 0) {
@@ -254,7 +334,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         escrow.deposit(asset, tokenId, poolId.raw(), scId.raw(), amount);
         queuedAssetDeposits[poolId][scId][assetId] += amount;
 
-        (D18 price,) = poolManager.pricePoolPerAsset(poolId.raw(), scId.raw(), assetId.raw(), false);
         emit Deposit(poolId, scId, asset, tokenId, provider, amount, price, uint64(block.timestamp));
     }
 
