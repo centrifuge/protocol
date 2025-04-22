@@ -135,7 +135,7 @@ contract PoolEscrowTestBase is EscrowTestBase {
         escrow.reserveIncrease(scId, asset, tokenId, 100);
 
         vm.expectEmit();
-        emit IPoolEscrow.Reserve(asset, tokenId, poolId, scId, 100);
+        emit IPoolEscrow.IncreaseReserve(asset, tokenId, poolId, scId, 100, 100);
         escrow.reserveIncrease(scId, asset, tokenId, 100);
 
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 0, "Still zero, nothing is in holdings");
@@ -173,7 +173,7 @@ contract PoolEscrowTestBase is EscrowTestBase {
         escrow.reserveDecrease(scId, asset, tokenId, 200);
 
         vm.expectEmit();
-        emit IPoolEscrow.Reserve(asset, tokenId, poolId, scId, 0);
+        emit IPoolEscrow.DecreaseReserve(asset, tokenId, poolId, scId, 100, 0);
         escrow.reserveDecrease(scId, asset, tokenId, 100);
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 300, "300 - 0 = 300");
     }

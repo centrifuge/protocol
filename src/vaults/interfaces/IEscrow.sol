@@ -54,8 +54,32 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     /// @param tokenId The id of the asset - 0 for ERC20
     /// @param poolId The id of the pool
     /// @param scId The id of the share class
-    /// @param value The amount reserved
-    event Reserve(address indexed asset, uint256 indexed tokenId, uint64 indexed poolId, bytes16 scId, uint256 value);
+    /// @param value The delta amount reserved
+    /// @param value The new absolute amount reserved
+    event IncreaseReserve(
+        address indexed asset,
+        uint256 indexed tokenId,
+        uint64 indexed poolId,
+        bytes16 scId,
+        uint256 delta,
+        uint256 value
+    );
+
+    /// @notice Emitted when an amount is unreserved
+    /// @param asset The address of the reserved asset
+    /// @param tokenId The id of the asset - 0 for ERC20
+    /// @param poolId The id of the pool
+    /// @param scId The id of the share class
+    /// @param value The delta amount unreserved
+    /// @param value The new absolute amount reserved
+    event DecreaseReserve(
+        address indexed asset,
+        uint256 indexed tokenId,
+        uint64 indexed poolId,
+        bytes16 scId,
+        uint256 delta,
+        uint256 value
+    );
 
     /// @notice Emitted when a withdraw is made
     /// @param asset The address of the withdrawn asset

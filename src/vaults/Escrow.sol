@@ -103,9 +103,7 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
         uint128 newValue = holding[scId][asset][tokenId].reserved + value.toUint128();
         holding[scId][asset][tokenId].reserved = newValue;
 
-        // NOTE: think we should either include the delta here, or emit 2 separate events IncreaseReserve and
-        // DecreaseReserve
-        emit Reserve(asset, tokenId, poolId, scId, newValue);
+        emit IncreaseReserve(asset, tokenId, poolId, scId, value, newValue);
     }
 
     /// @inheritdoc IPoolEscrow
@@ -117,7 +115,7 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
         uint128 newValue = prevValue - value_;
         holding[scId][asset][tokenId].reserved = newValue;
 
-        emit Reserve(asset, tokenId, poolId, scId, newValue);
+        emit DecreaseReserve(asset, tokenId, poolId, scId, value, newValue);
     }
 
     /// @inheritdoc IPoolEscrow
