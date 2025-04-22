@@ -118,9 +118,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
         assertEq(syncVault.isPermissioned(self), true);
 
         // Will fail - above max reserve
-        centrifugeChain.updateMaxReserve(
-            syncVault.poolId(), syncVault.scId(), address(syncVault), uint128(amount / 2)
-        );
+        centrifugeChain.updateMaxReserve(syncVault.poolId(), syncVault.scId(), address(syncVault), uint128(amount / 2));
 
         vm.expectRevert(ISyncRequests.ExceedsMaxReserve.selector);
         syncVault.deposit(amount, self);

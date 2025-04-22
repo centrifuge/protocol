@@ -25,9 +25,7 @@ contract RedeemTest is BaseTest {
         IShareToken shareToken = IShareToken(address(vault.share()));
 
         deposit(vault_, self, amount); // deposit funds first
-        centrifugeChain.updatePricePoolPerShare(
-            vault.poolId(), vault.scId(), defaultPrice, uint64(block.timestamp)
-        );
+        centrifugeChain.updatePricePoolPerShare(vault.poolId(), vault.scId(), defaultPrice, uint64(block.timestamp));
 
         // will fail - zero deposit not allowed
         vm.expectRevert(IAsyncRequests.ZeroAmountNotAllowed.selector);
@@ -102,9 +100,7 @@ contract RedeemTest is BaseTest {
         IShareToken shareToken = IShareToken(address(vault.share()));
 
         deposit(vault_, self, amount); // deposit funds first
-        centrifugeChain.updatePricePoolPerShare(
-            vault.poolId(), vault.scId(), defaultPrice, uint64(block.timestamp)
-        );
+        centrifugeChain.updatePricePoolPerShare(vault.poolId(), vault.scId(), defaultPrice, uint64(block.timestamp));
 
         vault.requestRedeem(amount, address(this), address(this));
         assertEq(shareToken.balanceOf(address(escrow)), amount);

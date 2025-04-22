@@ -63,8 +63,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
-        (, lastUpdated) =
-            poolManager.priceAssetPerShare(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
+        (, lastUpdated) = poolManager.priceAssetPerShare(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
     }
 
     function _convertToShares(

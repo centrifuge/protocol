@@ -144,10 +144,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         IAsyncVault vault_ = IAsyncVault(vaultAddr);
 
         // You cannot redeem using a disallowed asset, instead another vault will have to be used
-        require(
-            poolManager.isLinked(vault_.poolId(), vault_.scId(), vault_.asset(), vaultAddr),
-            AssetNotAllowed()
-        );
+        require(poolManager.isLinked(vault_.poolId(), vault_.scId(), vault_.asset(), vaultAddr), AssetNotAllowed());
 
         require(
             _canTransfer(vaultAddr, owner, address(escrow), shares)
@@ -193,10 +190,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
         sender.sendCancelDepositRequest(
-            PoolId.wrap(vault_.poolId()),
-            ShareClassId.wrap(vault_.scId()),
-            controller.toBytes32(),
-            vaultDetails.assetId
+            PoolId.wrap(vault_.poolId()), ShareClassId.wrap(vault_.scId()), controller.toBytes32(), vaultDetails.assetId
         );
     }
 
@@ -214,10 +208,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
         sender.sendCancelRedeemRequest(
-            PoolId.wrap(vault_.poolId()),
-            ShareClassId.wrap(vault_.scId()),
-            controller.toBytes32(),
-            vaultDetails.assetId
+            PoolId.wrap(vault_.poolId()), ShareClassId.wrap(vault_.scId()), controller.toBytes32(), vaultDetails.assetId
         );
     }
 

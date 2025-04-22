@@ -150,9 +150,7 @@ contract OperatorTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
 
         deposit(vault_, investor, amount); // deposit funds first
-        centrifugeChain.updatePricePoolPerShare(
-            vault.poolId(), vault.scId(), defaultPrice, uint64(block.timestamp)
-        );
+        centrifugeChain.updatePricePoolPerShare(vault.poolId(), vault.scId(), defaultPrice, uint64(block.timestamp));
 
         vm.prank(operator);
         vm.expectRevert(IERC20.InsufficientAllowance.selector);
