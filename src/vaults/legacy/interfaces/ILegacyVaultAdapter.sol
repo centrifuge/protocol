@@ -7,5 +7,4 @@ interface ILegacyVaultAdapter {
     error NotLegacyTrancheId(bytes16 providedTrancheId, bytes16 legacyTrancheId);
     error NotLegacyAsset(address providedAsset, address legacyAsset);
     error NotLegacyShare(address providedShare, address legacyShare);
-
 }

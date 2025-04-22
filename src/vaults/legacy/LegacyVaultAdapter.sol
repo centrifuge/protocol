@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IERC7540Vault} from "src/vaults/legacy/interfaces/IERC7540.sol";
+import {IERC7540} from "src/vaults/legacy/interfaces/IERC7540.sol";
 import {IInvestmentManager} from "src/vaults/legacy/interfaces/IInvestmentManager.sol";
 import {ILegacyVaultAdapter} from "src/vaults/legacy/interfaces/ILegacyVaultAdapter.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
@@ -19,10 +19,10 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
 
     uint64 public immutable legacyPoolId;
     bytes16 public immutable legacyTrancheId;
-    IERC7540Vault public immutable legacyVault;
+    IERC7540 public immutable legacyVault;
 
     constructor(
-        IERC7540Vault legacyVault_,
+        IERC7540 legacyVault_,
         uint64 poolId,
         uint64 legacyPoolId_,
         bytes16 scId,
@@ -33,7 +33,9 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         address manager
     ) AsyncVault(poolId, scId, asset, LEGACY_TOKEN_ID, token, root, manager) {
         require(legacyVault_.poolId() == legacyPoolId_, NotLegacyPoolId(legacyPoolId_, legacyVault_.poolId()));
-        require(legacyVault_.trancheId() == legacyTrancheId_, NotLegacyTrancheId(legacyTrancheId_, legacyVault_.trancheId()));
+        require(
+            legacyVault_.trancheId() == legacyTrancheId_, NotLegacyTrancheId(legacyTrancheId_, legacyVault_.trancheId())
+        );
         require(legacyVault_.asset() == asset, NotLegacyAsset(asset, legacyVault_.asset()));
         require(legacyVault_.share() == token, NotLegacyShare(token, legacyVault_.share()));
 
@@ -69,17 +71,17 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         legacy
         returns (bool)
     {
-        return  asyncManager().requestRedeem(address(this), shares, receiver, owner, source);
+        return asyncManager().requestRedeem(address(this), shares, receiver, owner, source);
     }
 
     /// @inheritdoc IInvestmentManager
     function cancelDepositRequest(address, /* vault */ address owner, address source) public legacy {
-        return  asyncManager().cancelDepositRequest(address(this), owner, source);
+        return asyncManager().cancelDepositRequest(address(this), owner, source);
     }
 
     /// @inheritdoc IInvestmentManager
     function cancelRedeemRequest(address, /* vault */ address owner, address source) public legacy {
-        return  asyncManager().cancelRedeemRequest(address(this), owner, source);
+        return asyncManager().cancelRedeemRequest(address(this), owner, source);
     }
 
     // --- IInvestmentManager - View functions ---
@@ -95,52 +97,52 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
 
     /// @inheritdoc IInvestmentManager
     function maxDeposit(address, /* vault */ address user) public view returns (uint256 assets) {
-        assets =  asyncManager().maxDeposit(address(this), user);
+        assets = asyncManager().maxDeposit(address(this), user);
     }
 
     /// @inheritdoc IInvestmentManager
     function maxMint(address, /* vault */ address user) public view returns (uint256 shares) {
-        shares =  asyncManager().maxMint(address(this), user);
+        shares = asyncManager().maxMint(address(this), user);
     }
 
     /// @inheritdoc IInvestmentManager
     function maxWithdraw(address, /* vault */ address user) public view returns (uint256 assets) {
-        assets =  asyncManager().maxWithdraw(address(this), user);
+        assets = asyncManager().maxWithdraw(address(this), user);
     }
 
     /// @inheritdoc IInvestmentManager
     function maxRedeem(address, /* vault */ address user) public view returns (uint256 shares) {
-        shares =  asyncManager().maxRedeem(address(this), user);
+        shares = asyncManager().maxRedeem(address(this), user);
     }
 
     /// @inheritdoc IInvestmentManager
     function pendingDepositRequest(address, /* vault */ address user) public view returns (uint256 assets) {
-        assets =  asyncManager().pendingDepositRequest(address(this), user);
+        assets = asyncManager().pendingDepositRequest(address(this), user);
     }
 
     /// @inheritdoc IInvestmentManager
     function pendingRedeemRequest(address, /* vault */ address user) public view returns (uint256 shares) {
-        shares =  asyncManager().pendingRedeemRequest(address(this), user);
+        shares = asyncManager().pendingRedeemRequest(address(this), user);
     }
 
     /// @inheritdoc IInvestmentManager
     function pendingCancelDepositRequest(address, /* vault */ address user) public view returns (bool isPending) {
-        isPending =  asyncManager().pendingCancelDepositRequest(address(this), user);
+        isPending = asyncManager().pendingCancelDepositRequest(address(this), user);
     }
 
     /// @inheritdoc IInvestmentManager
     function pendingCancelRedeemRequest(address, /* vault */ address user) public view returns (bool isPending) {
-        isPending =  asyncManager().pendingCancelRedeemRequest(address(this), user);
+        isPending = asyncManager().pendingCancelRedeemRequest(address(this), user);
     }
 
     /// @inheritdoc IInvestmentManager
     function claimableCancelDepositRequest(address, /* vault */ address user) public view returns (uint256 assets) {
-        assets =  asyncManager().claimableCancelDepositRequest(address(this), user);
+        assets = asyncManager().claimableCancelDepositRequest(address(this), user);
     }
 
     /// @inheritdoc IInvestmentManager
     function claimableCancelRedeemRequest(address, /* vault */ address user) public view returns (uint256 shares) {
-        shares =  asyncManager().claimableCancelRedeemRequest(address(this), user);
+        shares = asyncManager().claimableCancelRedeemRequest(address(this), user);
     }
 
     /// @inheritdoc IInvestmentManager
@@ -155,7 +157,7 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         legacy
         returns (uint256 shares)
     {
-        shares =  asyncManager().deposit(address(this), assets, receiver, owner);
+        shares = asyncManager().deposit(address(this), assets, receiver, owner);
     }
 
     /// @inheritdoc IInvestmentManager
@@ -164,7 +166,7 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         legacy
         returns (uint256 assets)
     {
-        assets =  asyncManager().mint(address(this), shares, receiver, owner);
+        assets = asyncManager().mint(address(this), shares, receiver, owner);
     }
 
     /// @inheritdoc IInvestmentManager
@@ -173,7 +175,7 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         legacy
         returns (uint256 assets)
     {
-        assets =  asyncManager().redeem(address(this), shares, receiver, owner);
+        assets = asyncManager().redeem(address(this), shares, receiver, owner);
     }
 
     /// @inheritdoc IInvestmentManager
@@ -182,7 +184,7 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         legacy
         returns (uint256 shares)
     {
-        shares =  asyncManager().withdraw(address(this),assets, receiver, owner);
+        shares = asyncManager().withdraw(address(this), assets, receiver, owner);
     }
 
     /// @inheritdoc IInvestmentManager
@@ -191,7 +193,7 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         legacy
         returns (uint256 assets)
     {
-        assets =  asyncManager().claimCancelDepositRequest(address(this), receiver, owner);
+        assets = asyncManager().claimCancelDepositRequest(address(this), receiver, owner);
     }
 
     /// @inheritdoc IInvestmentManager
@@ -200,6 +202,6 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         legacy
         returns (uint256 shares)
     {
-        shares =  asyncManager().claimCancelRedeemRequest(address(this), receiver, owner);
+        shares = asyncManager().claimCancelRedeemRequest(address(this), receiver, owner);
     }
 }
