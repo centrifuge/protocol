@@ -34,7 +34,8 @@ import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDeposi
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
-import {IPerPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
+import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
+import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 
 /// @title  Sync Investment Manager
 /// @notice This is the main contract vaults interact with for
@@ -53,13 +54,14 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     mapping(uint64 poolId => mapping(bytes16 scId => mapping(address asset => mapping(uint256 tokenId => IERC7726))))
         public valuation;
 
-    constructor(address root_, address escrow_, address deployer) BaseInvestmentManager(root_, escrow_, deployer) {}
+    constructor(address root_, address deployer) BaseInvestmentManager(root_, deployer) {}
 
     // --- Administration ---
     /// @inheritdoc IBaseInvestmentManager
     function file(bytes32 what, address data) external override(IBaseInvestmentManager, BaseInvestmentManager) auth {
         if (what == "poolManager") poolManager = IPoolManager(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
+        else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -153,7 +155,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     {
         assets = previewMint(vaultAddr, owner, shares);
 
-        _issueShares(vaultAddr, shares.toUint128(), receiver, 0);
+        _issueShares(vaultAddr, shares.toUint128(), receiver, owner, assets.toUint128());
     }
 
     /// @inheritdoc IDepositManager
@@ -165,7 +167,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         require(maxDeposit(vaultAddr, owner) >= assets, ExceedsMaxDeposit());
         shares = previewDeposit(vaultAddr, owner, assets);
 
-        _issueShares(vaultAddr, shares.toUint128(), receiver, assets.toUint128());
+        _issueShares(vaultAddr, shares.toUint128(), receiver, owner, assets.toUint128());
     }
 
     /// @inheritdoc ISyncRequests
@@ -298,24 +300,31 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     /// --- Internal methods ---
     /// @dev Issues shares to the receiver and instruct the Balance Sheet Manager to react on the issuance and the
     /// updated holding
-    function _issueShares(address vaultAddr, uint128 shares, address receiver, uint128 depositAssetAmount) internal {
+    function _issueShares(
+        address vaultAddr,
+        uint128 shares,
+        address receiver,
+        address owner,
+        uint128 depositAssetAmount
+    ) internal {
         SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
-        uint64 poolId_ = vault_.poolId();
-        bytes16 scId_ = vault_.scId();
+        PoolId poolId = PoolId.wrap(vault_.poolId());
+        ShareClassId scId = ShareClassId.wrap(vault_.scId());
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
-
-        PoolId poolId = PoolId.wrap(poolId_);
-        ShareClassId scId = ShareClassId.wrap(scId_);
 
         _checkMaxReserve(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, depositAssetAmount);
 
-        Prices memory priceData = prices(poolId_, scId_, vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId);
+        Prices memory priceData =
+            prices(poolId.raw(), scId.raw(), vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId);
 
         // Mint shares for receiver & notify CP about issued shares
         balanceSheet.issue(poolId, scId, receiver, priceData.poolPerShare, shares);
 
-        balanceSheet.deposit(
-            poolId, scId, vaultDetails.asset, vaultDetails.tokenId, escrow, depositAssetAmount, priceData.poolPerAsset
+        // Notice deposit of shares and notify CP about holding update
+        // NOTE: Does not transfer shares from escrow to owner and assumes that to be handled elsewhere, i.e. in
+        // SyncDepositVault.{mint, deposit}
+        balanceSheet.noteDeposit(
+            poolId, scId, vaultDetails.asset, vaultDetails.tokenId, owner, depositAssetAmount, priceData.poolPerAsset
         );
     }
 
@@ -326,7 +335,8 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         uint256 tokenId,
         uint128 depositAssetAmount
     ) internal view {
-        uint256 availableBalance = IPerPoolEscrow(escrow).availableBalanceOf(asset, tokenId, poolId.raw(), scId.raw());
+        uint256 availableBalance =
+            poolEscrowProvider.escrow(poolId.raw()).availableBalanceOf(scId.raw(), asset, tokenId);
         require(
             availableBalance + depositAssetAmount <= maxReserve[poolId.raw()][scId.raw()][asset][tokenId],
             ExceedsMaxReserve()

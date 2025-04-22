@@ -18,6 +18,7 @@ import {IAsyncRedeemVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 
@@ -27,6 +28,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
 
     IRoot public immutable root;
     IBaseInvestmentManager public manager;
+    IPoolEscrowProvider internal _poolEscrowProvider;
 
     /// @inheritdoc IBaseVault
     uint64 public immutable poolId;
@@ -35,7 +37,6 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
 
     /// @inheritdoc IERC7575
     address public immutable asset;
-
     uint256 internal immutable tokenId;
 
     /// @inheritdoc IERC7575
@@ -66,7 +67,8 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         uint256 tokenId_,
         address token_,
         address root_,
-        address manager_
+        address manager_,
+        IPoolEscrowProvider poolEscrowProvider_
     ) Auth(msg.sender) {
         poolId = poolId_;
         scId = scId_;
@@ -75,7 +77,9 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         share = token_;
         _shareDecimals = IERC20Metadata(share).decimals();
         root = IRoot(root_);
+        // TODO: Redundant due to filing?
         manager = IBaseInvestmentManager(manager_);
+        _poolEscrowProvider = poolEscrowProvider_;
 
         nameHash = keccak256(bytes("Centrifuge"));
         versionHash = keccak256(bytes("1"));
@@ -86,6 +90,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     // --- Administration ---
     function file(bytes32 what, address data) external auth {
         if (what == "manager") manager = IBaseInvestmentManager(data);
+        else if (what == "poolEscrowProvider") _poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -219,7 +224,7 @@ abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
             asyncRedeemManager.requestRedeem(address(this), shares, controller, owner, sender), RequestRedeemFailed()
         );
 
-        address escrow = asyncRedeemManager.escrow();
+        address escrow = address(_poolEscrowProvider.escrow(poolId));
         try IShareToken(share).authTransferFrom(sender, owner, escrow, shares) returns (bool) {}
         catch {
             // Support share class tokens that block authTransferFrom. In this case ERC20 approval needs to be set
@@ -348,8 +353,10 @@ abstract contract BaseSyncDepositVault is BaseVault {
 
     /// @inheritdoc IERC7575
     function deposit(uint256 assets, address receiver) external returns (uint256 shares) {
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, syncDepositManager.escrow(), assets);
         shares = syncDepositManager.deposit(address(this), assets, receiver, msg.sender);
+        // NOTE: For security reasons, transfer must stay at end of call despite the fact that it logically should
+        // happen before depositing in the manager
+        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(_poolEscrowProvider.escrow(poolId)), assets);
         emit Deposit(receiver, msg.sender, assets, shares);
     }
 
@@ -366,7 +373,8 @@ abstract contract BaseSyncDepositVault is BaseVault {
     /// @inheritdoc IERC7575
     function mint(uint256 shares, address receiver) public returns (uint256 assets) {
         assets = syncDepositManager.mint(address(this), shares, receiver, msg.sender);
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, syncDepositManager.escrow(), assets);
+        // NOTE: For security reasons, transfer must stay at end of call
+        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(_poolEscrowProvider.escrow(poolId)), assets);
         emit Deposit(receiver, msg.sender, assets, shares);
     }
 

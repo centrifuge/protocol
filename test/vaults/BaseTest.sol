@@ -134,12 +134,12 @@ contract BaseTest is VaultsDeployer, Test {
         vm.label(address(vaultRouter), "VaultRouter");
         vm.label(address(gasService), "GasService");
         vm.label(address(mockedGasService), "MockGasService");
-        vm.label(address(escrow), "Escrow");
         vm.label(address(routerEscrow), "RouterEscrow");
         vm.label(address(guardian), "Guardian");
         vm.label(address(poolManager.tokenFactory()), "TokenFactory");
         vm.label(address(asyncVaultFactory), "AsyncVaultFactory");
         vm.label(address(syncDepositVaultFactory), "SyncDepositVaultFactory");
+        vm.label(address(poolEscrowFactory), "PoolEscrowFactory");
 
         // Exclude predeployed contracts from invariant tests by default
         excludeContract(address(root));
@@ -155,12 +155,12 @@ contract BaseTest is VaultsDeployer, Test {
         excludeContract(address(adapter1));
         excludeContract(address(adapter2));
         excludeContract(address(adapter3));
-        excludeContract(address(escrow));
         excludeContract(address(routerEscrow));
         excludeContract(address(guardian));
         excludeContract(address(poolManager.tokenFactory()));
         excludeContract(address(asyncVaultFactory));
         excludeContract(address(syncDepositVaultFactory));
+        excludeContract(address(poolEscrowFactory));
     }
 
     // helpers

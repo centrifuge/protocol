@@ -14,6 +14,7 @@ import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 
 import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
 import {ERC20} from "src/misc/ERC20.sol";
+import {PoolEscrowFactory} from "src/vaults/factories/PoolEscrowFactory.sol";
 
 // Mocks
 import {IRoot} from "src/common/interfaces/IRoot.sol";
@@ -26,10 +27,10 @@ abstract contract Setup is BaseSetup, SharedStorage {
     AsyncVaultFactory vaultFactory;
     TokenFactory tokenFactory;
 
-    // Handled //
-    Escrow public escrow; // NOTE: Restriction Manager will query it
+    // Handled
     AsyncRequests asyncRequests;
     PoolManager poolManager;
+    PoolEscrowFactory poolEscrowFactory;
 
     // TODO: CYCLE / Make it work for variable values
     AsyncVault vault;
@@ -62,33 +63,32 @@ abstract contract Setup is BaseSetup, SharedStorage {
 
         // Dependencies
         tokenFactory = new TokenFactory(address(this), address(this));
-        escrow = new Escrow(address(address(this)));
         root = new Root(48 hours, address(this));
         restrictedTransfers = new RestrictedTransfers(address(root), address(this));
+        poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
 
-        root.endorse(address(escrow));
-
-        asyncRequests = new AsyncRequests(address(root), address(escrow), address(this));
-        vaultFactory = new AsyncVaultFactory(address(this), address(asyncRequests), address(this));
+        asyncRequests = new AsyncRequests(address(root), address(this));
+        vaultFactory = new AsyncVaultFactory(address(this), address(asyncRequests), poolEscrowFactory, address(this));
 
         address[] memory vaultFactories = new address[](1);
         vaultFactories[0] = address(vaultFactory);
 
-        poolManager = new PoolManager(address(escrow), address(tokenFactory), vaultFactories, address(this));
+        poolManager = new PoolManager(address(tokenFactory), vaultFactories, address(this));
 
         asyncRequests.file("poolManager", address(poolManager));
+        asyncRequests.file("poolEscrowProvider", address(poolEscrowFactory));
         asyncRequests.rely(address(poolManager));
         asyncRequests.rely(address(vaultFactory));
 
         restrictedTransfers.rely(address(poolManager));
 
-        // Setup Escrow Permissions
-        escrow.rely(address(asyncRequests));
-        escrow.rely(address(poolManager));
-
         // Permissions on factories
         vaultFactory.rely(address(poolManager));
         tokenFactory.rely(address(poolManager));
+        poolEscrowFactory.rely(address(poolManager));
+
+        poolEscrowFactory.file("poolManager", address(poolManager));
+        poolEscrowFactory.file("asyncRequests", address(asyncRequests));
 
         // TODO: Cycling of:
         // Actors and ERC7540 Vaults

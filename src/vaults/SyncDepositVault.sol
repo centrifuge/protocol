@@ -4,6 +4,8 @@ pragma solidity 0.8.28;
 import {BaseVault, AsyncRedeemVault, BaseSyncDepositVault} from "src/vaults/BaseVaults.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
+import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
+
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 
@@ -22,9 +24,10 @@ contract SyncDepositVault is BaseSyncDepositVault, AsyncRedeemVault {
         address token_,
         address root_,
         address syncDepositManager_,
-        address asyncRedeemManager_
+        address asyncRedeemManager_,
+        IPoolEscrowProvider poolEscrowProvider_
     )
-        BaseVault(poolId_, scId_, asset_, tokenId_, token_, root_, syncDepositManager_)
+        BaseVault(poolId_, scId_, asset_, tokenId_, token_, root_, syncDepositManager_, poolEscrowProvider_)
         BaseSyncDepositVault(syncDepositManager_)
         AsyncRedeemVault(asyncRedeemManager_)
     {}

@@ -10,7 +10,7 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {UpdateRestrictionType, MessageLib} from "src/common/libraries/MessageLib.sol";
 
 import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
-import {IHook, HookData} from "src/vaults/interfaces/token/IHook.sol";
+import {IHook, HookData, ESCROW_HOOK_ID} from "src/vaults/interfaces/token/IHook.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 import {IRestrictedTransfers} from "src/hooks/interfaces/IRestrictedTransfers.sol";
@@ -34,11 +34,9 @@ contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
     uint8 public constant FREEZE_BIT = 0;
 
     IRoot public immutable root;
-    address public immutable escrow;
 
-    constructor(address root_, address escrow_, address deployer) Auth(deployer) {
+    constructor(address root_, address deployer) Auth(deployer) {
         root = IRoot(root_);
-        escrow = escrow_;
     }
 
     // --- Callback from share token ---
@@ -82,12 +80,12 @@ contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
             return false;
         }
 
-        if (from == address(0) && to == escrow) {
+        if (from == address(0) && to == ESCROW_HOOK_ID) {
             // Deposit request fulfillment
             return true;
         }
 
-        if (to == escrow && fromHookData >> 64 < block.timestamp) {
+        if (to == ESCROW_HOOK_ID && fromHookData >> 64 < block.timestamp) {
             // Destination is escrow, so it's a redemption request, and the user is not a member
             return false;
         }
