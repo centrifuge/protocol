@@ -9,6 +9,7 @@ import "forge-std/Test.sol";
 import {MockRoot} from "test/common/mocks/MockRoot.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 import {IRestrictedTransfers} from "src/hooks/interfaces/IRestrictedTransfers.sol";
+import {IFreezable} from "src/hooks/interfaces/IFreezable.sol";
 
 contract RestrictedTransfersTest is Test {
     MockRoot root;
@@ -54,7 +55,7 @@ contract RestrictedTransfersTest is Test {
     }
 
     function testFreezingZeroAddress() public {
-        vm.expectRevert(IRestrictedTransfers.CannotFreezeZeroAddress.selector);
+        vm.expectRevert(IFreezable.CannotFreezeZeroAddress.selector);
         restrictedTransfers.freeze(address(token), address(0));
         assertEq(restrictedTransfers.isFrozen(address(token), address(0)), false);
     }
