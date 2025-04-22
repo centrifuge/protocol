@@ -90,7 +90,21 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         D18 pricePoolPerAsset
     ) external authOrManager(poolId, scId) {
         AssetId assetId = AssetId.wrap(poolManager.assetToId(asset, tokenId));
-        _deposit(poolId, scId, assetId, asset, tokenId, provider, amount, pricePoolPerAsset);
+        _deposit(poolId, scId, assetId, asset, tokenId, provider, amount, pricePoolPerAsset, true);
+    }
+
+    /// @inheritdoc IBalanceSheet
+    function noteDeposit(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        address provider,
+        uint128 amount,
+        D18 pricePoolPerAsset
+    ) external authOrManager(poolId, scId) {
+        AssetId assetId = AssetId.wrap(poolManager.assetToId(asset, tokenId));
+        _deposit(poolId, scId, assetId, asset, tokenId, provider, amount, pricePoolPerAsset, false);
     }
 
     /// @inheritdoc IBalanceSheet
@@ -135,7 +149,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     ) external auth {
         (address asset, uint256 tokenId) = poolManager.idToAsset(assetId.raw());
 
-        _deposit(poolId, scId, assetId, asset, tokenId, provider, amount, priceAssetPerShare);
+        _deposit(poolId, scId, assetId, asset, tokenId, provider, amount, priceAssetPerShare, true);
     }
 
     /// @inheritdoc IBalanceSheetGatewayHandler
@@ -233,14 +247,17 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         uint256 tokenId,
         address provider,
         uint128 amount,
-        D18 pricePoolPerAsset
+        D18 pricePoolPerAsset,
+        bool executeTransfer
     ) internal {
         IPoolEscrow escrow = poolEscrowProvider.escrow(poolId.raw());
 
-        if (tokenId == 0) {
-            SafeTransferLib.safeTransferFrom(asset, provider, address(escrow), amount);
-        } else {
-            IERC6909(asset).transferFrom(provider, address(escrow), tokenId, amount);
+        if (executeTransfer) {
+            if (tokenId == 0) {
+                SafeTransferLib.safeTransferFrom(asset, provider, address(escrow), amount);
+            } else {
+                IERC6909(asset).transferFrom(provider, address(escrow), tokenId, amount);
+            }
         }
 
         emit Deposit(poolId, scId, asset, tokenId, provider, amount, pricePoolPerAsset, uint64(block.timestamp));

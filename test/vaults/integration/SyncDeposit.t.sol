@@ -97,6 +97,11 @@ contract SyncDepositTest is SyncDepositTestHelper {
         assertEq(syncVault.maxDeposit(self), type(uint256).max, "syncVault.maxDeposit(self), type(uint256).max");
         assertEq(syncVault.maxMint(self), type(uint256).max, "syncVault.maxMint(self), type(uint256).max");
 
+        // Will fail - user did not give asset allowance to syncVault
+        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
+        syncVault.deposit(amount, self);
+        erc20.approve(address(syncVault), amount);
+
         // Will fail - user not member: can not send funds
         vm.expectRevert(IHook.TransferBlocked.selector);
         syncVault.deposit(amount, self);
@@ -104,11 +109,6 @@ contract SyncDepositTest is SyncDepositTestHelper {
         assertEq(syncVault.isPermissioned(self), false);
         centrifugeChain.updateMember(syncVault.poolId(), syncVault.trancheId(), self, type(uint64).max);
         assertEq(syncVault.isPermissioned(self), true);
-
-        // Will fail - user did not give asset allowance to syncVault
-        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
-        syncVault.deposit(amount, self);
-        erc20.approve(address(balanceSheet), amount);
 
         // Will fail - above max reserve
         centrifugeChain.updateMaxReserve(

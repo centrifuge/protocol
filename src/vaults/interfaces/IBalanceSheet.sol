@@ -37,8 +37,19 @@ interface IBalanceSheet {
     // --- Errors ---
     error FileUnrecognizedParam();
 
-    // Overloaded increase
+    /// @notice Overloaded increase with asset transfer
     function deposit(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        address provider,
+        uint128 amount,
+        D18 pricePoolPerAsset
+    ) external;
+
+    /// @notice Overloaded increase without asset transfer
+    function noteDeposit(
         PoolId poolId,
         ShareClassId scId,
         address asset,

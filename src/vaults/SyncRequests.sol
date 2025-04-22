@@ -320,8 +320,10 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         // Mint shares for receiver & notify CP about issued shares
         balanceSheet.issue(poolId, scId, receiver, priceData.poolPerShare, shares);
 
-        // Deposit shares from owner into escrow & notify CP about holding update
-        balanceSheet.deposit(
+        // Notice deposit of shares and notify CP about holding update
+        // NOTE: Does not transfer shares from escrow to owner and assumes that to be handled elsewhere, i.e. in
+        // SyncDepositVault.{mint, deposit}
+        balanceSheet.noteDeposit(
             poolId, scId, vaultDetails.asset, vaultDetails.tokenId, owner, depositAssetAmount, priceData.poolPerAsset
         );
     }
