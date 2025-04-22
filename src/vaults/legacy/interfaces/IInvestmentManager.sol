@@ -26,36 +26,31 @@ interface IInvestmentManager {
     function cancelRedeemRequest(address vault, address owner, address source) external;
 
     // --- View functions ---
-    /// @notice Converts the assets value to share decimals.
+    /// @notice Documentation see Centrifuge V2 repository.
     function convertToShares(address vault, uint256 _assets) external view returns (uint256 shares);
 
-    /// @notice Converts the shares value to assets decimals.
+    /// @notice Documentation see Centrifuge V2 repository.
     function convertToAssets(address vault, uint256 _shares) external view returns (uint256 assets);
 
-    /// @notice Returns the max amount of assets based on the unclaimed amount of shares after at least one successful
-    ///         deposit order fulfillment on Centrifuge.
+    /// @notice Documentation see Centrifuge V2 repository.
     function maxDeposit(address vault, address user) external view returns (uint256);
 
-    /// @notice Returns the max amount of shares a user can claim after at least one successful deposit order
-    ///         fulfillment on Centrifuge.
+    /// @notice Documentation see Centrifuge V2 repository.
     function maxMint(address vault, address user) external view returns (uint256 shares);
 
-    /// @notice Returns the max amount of assets a user can claim after at least one successful redeem order fulfillment
-    ///         on Centrifuge.
+    /// @notice Documentation see Centrifuge V2 repository.
     function maxWithdraw(address vault, address user) external view returns (uint256 assets);
 
-    /// @notice Returns the max amount of shares based on the unclaimed number of assets after at least one successful
-    ///         redeem order fulfillment on Centrifuge.
+    /// @notice Documentation see Centrifuge V2 repository.
     function maxRedeem(address vault, address user) external view returns (uint256 shares);
 
-    /// @notice Indicates whether a user has pending deposit requests and returns the total deposit request asset
-    /// request value.
+    /// @notice Documentation see Centrifuge V2 repository.
     function pendingDepositRequest(address vault, address user) external view returns (uint256 assets);
 
-    /// @notice Indicates whether a user has pending redeem requests and returns the total share request value.
+    /// @notice Documentation see Centrifuge V2 repository.
     function pendingRedeemRequest(address vault, address user) external view returns (uint256 shares);
 
-    /// @notice Indicates whether a user has pending deposit request cancellations.
+    /// @notice Documentation see Centrifuge V2 repository.
     function pendingCancelDepositRequest(address vault, address user) external view returns (bool isPending);
 
     /// @notice Documentation see Centrifuge V2 repository.
