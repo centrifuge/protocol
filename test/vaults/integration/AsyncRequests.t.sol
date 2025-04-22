@@ -93,19 +93,4 @@ contract AsyncRequestsTest is BaseTest {
         assertEq(harness.calculatePrice(address(0), 1, 0), 0);
         assertEq(harness.calculatePrice(address(0), 0, 1), 0);
     }
-
-    // --- Legacy support ---
-    function testEscrow(address randomUser) public {
-        (uint64 poolId, address vault_,) = deploySimpleVault(VaultKind.Async);
-        vm.assume(randomUser != vault_);
-
-        vm.prank(vault_);
-        address actual = asyncRequests.escrow();
-        address expected = address(poolEscrowFactory.escrow(poolId));
-        assertEq(actual, expected, "Escrow address mismatch");
-
-        vm.prank(randomUser);
-        vm.expectRevert(IBaseInvestmentManager.SenderNotVault.selector);
-        asyncRequests.escrow();
-    }
 }

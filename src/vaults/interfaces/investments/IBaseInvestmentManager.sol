@@ -26,12 +26,4 @@ interface IBaseInvestmentManager {
 
     /// @notice Returns the PoolManager contract address.
     function poolManager() external view returns (IPoolManager poolManager);
-
-    /// @notice Returns the escrow contract address for the corresponding vault
-    ///
-    /// @dev NOTE: MUST only be called from vaults in order to derive the pool id.
-    /// @dev This naming MUST NOT change due to requirements of legacy vaults (v2)
-    ///
-    /// @return escrow The address of the escrow contract for this vault
-    function escrow() external view returns (address escrow);
 }

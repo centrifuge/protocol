@@ -28,9 +28,6 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
 
     IRoot public immutable root;
     IBaseInvestmentManager public manager;
-    /// @dev NOTE: MUST NOT BE USED EXTERNALLY IN PRODUCTION.
-    /// @dev Not backwards compatible with legacy v2 vaults which rely escrow retrieval via asyncRequests.escrow()
-    /// @dev To save gas, v3 vaults rely on poolEscrowProvider.escrow(poolId)
     IPoolEscrowProvider internal _poolEscrowProvider;
 
     /// @inheritdoc IBaseVault
@@ -93,7 +90,6 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     // --- Administration ---
     function file(bytes32 what, address data) external auth {
         if (what == "manager") manager = IBaseInvestmentManager(data);
-        /// @dev NOT supported in legacy v2 vaults
         else if (what == "poolEscrowProvider") _poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
