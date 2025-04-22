@@ -33,7 +33,6 @@ contract TestCases is BaseTest {
             poolId,
             scId,
             USDC_C2,
-            identityValuation,
             AccountId.wrap(0x01),
             AccountId.wrap(0x02),
             AccountId.wrap(0x03),
@@ -43,7 +42,6 @@ contract TestCases is BaseTest {
             poolId,
             scId,
             EUR_STABLE_C2,
-            transientValuation,
             AccountId.wrap(0x05),
             AccountId.wrap(0x02),
             AccountId.wrap(0x03),
@@ -95,10 +93,8 @@ contract TestCases is BaseTest {
 
         cv.requestDeposit(poolId, scId, USDC_C2, INVESTOR, INVESTOR_AMOUNT);
 
-        IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
-
         vm.startPrank(FM);
-        hub.approveDeposits(poolId, scId, USDC_C2, APPROVED_INVESTOR_AMOUNT, valuation);
+        hub.approveDeposits(poolId, scId, USDC_C2, APPROVED_INVESTOR_AMOUNT, identityValuation);
         hub.issueShares(poolId, scId, USDC_C2, NAV_PER_SHARE);
         vm.stopPrank();
 
@@ -131,13 +127,13 @@ contract TestCases is BaseTest {
 
         cv.requestRedeem(poolId, scId, USDC_C2, INVESTOR, SHARE_AMOUNT);
 
-        IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
-        uint128 revokedAssetAmount =
-            NAV_PER_SHARE.mulUint128(uint128(valuation.getQuote(APPROVED_SHARE_AMOUNT, USD.addr(), USDC_C2.addr())));
+        uint128 revokedAssetAmount = NAV_PER_SHARE.mulUint128(
+            uint128(ConversionLib.convertWithPrice(APPROVED_SHARE_AMOUNT, 18, /*USD*/ 6, /*USDC_C2*/ IDENTITY_PRICE))
+        );
 
         vm.startPrank(FM);
         hub.approveRedeems(poolId, scId, USDC_C2, APPROVED_SHARE_AMOUNT);
-        hub.revokeShares(poolId, scId, USDC_C2, NAV_PER_SHARE, valuation);
+        hub.revokeShares(poolId, scId, USDC_C2, NAV_PER_SHARE, identityValuation);
         vm.stopPrank();
 
         vm.prank(ANY);
@@ -200,19 +196,17 @@ contract TestCases is BaseTest {
         assertEq(totalIssuance2, 55);
     }
 
+    /// forge-config: default.isolate = true
     function testNotifyPricePoolPerShare() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation();
         D18 sharePrice = d18(100, 1);
         D18 identityPrice = d18(1, 1);
         D18 poolPerEurPrice = d18(4, 1);
-        AssetId poolCurrency = hubRegistry.currency(poolId);
-
-        transientValuation.setPrice(EUR_STABLE_C2.addr(), poolCurrency.addr(), poolPerEurPrice);
 
         vm.startPrank(FM);
         hub.updatePricePoolPerShare(poolId, scId, sharePrice, "");
-        hub.notifyAssetPrice{value: GAS}(poolId, scId, EUR_STABLE_C2);
-        hub.notifyAssetPrice{value: GAS}(poolId, scId, USDC_C2);
+        hub.notifyAssetPrice{value: GAS}(poolId, scId, EUR_STABLE_C2, IDENTITY_PRICE);
+        hub.notifyAssetPrice{value: GAS}(poolId, scId, USDC_C2, IDENTITY_PRICE);
         hub.notifySharePrice{value: GAS}(poolId, CHAIN_CV, scId);
         vm.stopPrank();
 

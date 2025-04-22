@@ -8,6 +8,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
+import {ConversionLib} from "src/misc/libraries/ConversionLib.sol";
 
 import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
@@ -46,6 +47,7 @@ contract BaseTest is HubDeployer, Test {
     uint128 constant APPROVED_INVESTOR_AMOUNT = INVESTOR_AMOUNT / 5;
     uint128 constant APPROVED_SHARE_AMOUNT = SHARE_AMOUNT / 5;
     D18 immutable NAV_PER_SHARE = d18(2, 1);
+    D18 immutable IDENTITY_PRICE = d18(1, 1);
 
     uint64 constant GAS = 100 wei;
 
@@ -69,7 +71,6 @@ contract BaseTest is HubDeployer, Test {
         vm.deal(FM, 1 ether);
 
         // Label contracts & actors (for debugging)
-        vm.label(address(transientValuation), "TransientValuation");
         vm.label(address(identityValuation), "IdentityValuation");
         vm.label(address(hubRegistry), "HubRegistry");
         vm.label(address(accounting), "Accounting");

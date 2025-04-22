@@ -8,7 +8,6 @@ import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {Multicall, IMulticall} from "src/misc/Multicall.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
-import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {MessageLib, UpdateContractType, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
@@ -36,7 +35,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     IHubRegistry public hubRegistry;
     IPoolMessageSender public sender;
     IShareClassManager public shareClassManager;
-    ITransientValuation public transientValuation;
 
     constructor(
         IShareClassManager shareClassManager_,
@@ -44,7 +42,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         IAccounting accounting_,
         IHoldings holdings_,
         IGateway gateway_,
-        ITransientValuation transientValuation_,
         address deployer
     ) Auth(deployer) {
         shareClassManager = shareClassManager_;
@@ -52,7 +49,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         accounting = accounting_;
         holdings = holdings_;
         gateway = gateway_;
-        transientValuation = transientValuation_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -173,18 +169,17 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId) public payable {
+    function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId, D18 price) public payable {
         _protectedAndPaid(poolId);
 
         AssetId poolCurrency = hubRegistry.currency(poolId);
-        // NOTE: We assume symmetric prices are provided by holdings valuation
-        IERC7726 valuation = holdings.valuation(poolId, scId, assetId);
 
         // Retrieve amount of 1 asset unit in pool currency
         uint128 assetUnitAmount = (10 ** hubRegistry.decimals(assetId.raw())).toUint128();
         uint128 poolUnitAmount = (10 ** hubRegistry.decimals(poolCurrency.raw())).toUint128();
-        uint128 poolAmountPerAsset =
-            valuation.getQuote(assetUnitAmount, assetId.addr(), poolCurrency.addr()).toUint128();
+        uint128 poolAmountPerAsset = ConversionLib.convertWithPrice(
+            assetUnitAmount, hubRegistry.decimals(assetId.raw()), hubRegistry.decimals(poolCurrency.raw()), price
+        ).toUint128();
 
         // Retrieve price by normalizing by pool denomination
         D18 pricePoolPerAsset = d18(poolAmountPerAsset, poolUnitAmount);
@@ -310,7 +305,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        IERC7726 valuation,
         AccountId assetAccount,
         AccountId equityAccount,
         AccountId lossAccount,
@@ -331,7 +325,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         accounts[2] = HoldingAccount(lossAccount, uint8(AccountType.Loss));
         accounts[3] = HoldingAccount(gainAccount, uint8(AccountType.Gain));
 
-        holdings.create(poolId, scId, assetId, valuation, false, accounts);
+        holdings.create(poolId, scId, assetId, false, accounts);
     }
 
     /// @inheritdoc IHub
@@ -339,7 +333,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        IERC7726 valuation,
         AccountId expenseAccount,
         AccountId liabilityAccount
     ) external payable {
@@ -355,16 +348,16 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         accounts[0] = HoldingAccount(expenseAccount, uint8(AccountType.Expense));
         accounts[1] = HoldingAccount(liabilityAccount, uint8(AccountType.Liability));
 
-        holdings.create(poolId, scId, assetId, valuation, true, accounts);
+        holdings.create(poolId, scId, assetId, true, accounts);
     }
 
     /// @inheritdoc IHub
-    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) public payable {
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 price) public payable {
         _protected(poolId);
 
         accounting.unlock(poolId);
 
-        (bool isPositive, uint128 diff) = holdings.update(poolId, scId, assetId);
+        (bool isPositive, uint128 diff) = holdings.update(poolId, scId, assetId, price);
 
         // NOTE: Safe a diff=0 update gas cost
         if (isPositive && diff > 0) {
@@ -386,16 +379,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         }
 
         accounting.lock();
-    }
-
-    /// @inheritdoc IHub
-    function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation)
-        external
-        payable
-    {
-        _protected(poolId);
-
-        holdings.updateValuation(poolId, scId, assetId, valuation);
     }
 
     /// @inheritdoc IHub
@@ -501,19 +484,16 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
         accounting.unlock(poolId);
 
-        address poolCurrency = hubRegistry.currency(poolId).addr();
-        transientValuation.setPrice(assetId.addr(), poolCurrency, pricePoolPerAsset);
-
         bool isLiability = holdings.isLiability(poolId, scId, assetId);
         AccountType debitAccountType = isLiability ? AccountType.Expense : AccountType.Asset;
         AccountType creditAccountType = isLiability ? AccountType.Liability : AccountType.Equity;
 
         if (isIncrease) {
-            uint128 value = holdings.increase(poolId, scId, assetId, transientValuation, amount);
+            uint128 value = holdings.increase(poolId, scId, assetId, pricePoolPerAsset, amount);
             accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), value);
             accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), value);
         } else {
-            uint128 value = holdings.decrease(poolId, scId, assetId, transientValuation, amount);
+            uint128 value = holdings.decrease(poolId, scId, assetId, pricePoolPerAsset, amount);
             accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), value);
             accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), value);
         }

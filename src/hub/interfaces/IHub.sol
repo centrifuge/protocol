@@ -91,7 +91,7 @@ interface IHub {
     /// @dev The receiving chainId is derived from the provided assetId
     /// @param scId Identifier of the share class
     /// @param assetId Identifier of the asset
-    function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
+    function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId, D18 price) external payable;
 
     /// @notice Attach custom data to a pool
     function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable;
@@ -180,7 +180,6 @@ interface IHub {
     /// e.g.: The equity, loss, and gain account can be the same account.
     /// They can also be shared across assets.
     /// e.g.: All assets can use the same equity account.
-    /// @param valuation Used to transform between payment assets and pool currency
     /// @param assetAccount Used to track the asset value
     /// @param equityAccount Used to track the equity value
     /// @param lossAccount Used to track the loss value
@@ -189,7 +188,6 @@ interface IHub {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        IERC7726 valuation,
         AccountId assetAccount,
         AccountId equityAccount,
         AccountId lossAccount,
@@ -199,26 +197,18 @@ interface IHub {
     /// @notice Create a new liablity associated to the asset in a share class.
     /// It will register the different accounts used for holdings.
     /// The accounts have to be created beforehand.
-    /// @param valuation Used to transform between the holding asset and pool currency
     /// @param expenseAccount Used to track the expense value
     /// @param liabilityAccount Used to track the liability value
     function createLiability(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        IERC7726 valuation,
         AccountId expenseAccount,
         AccountId liabilityAccount
     ) external payable;
 
-    /// @notice Updates the pool currency value of this holding based of the associated valuation.
-    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
-
-    /// @notice Updates the valuation used by a holding
-    /// @param valuation Used to transform between the holding asset and pool currency
-    function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation)
-        external
-        payable;
+    /// @notice Updates the pool currency value of this holding based on the associated price.
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 price) external payable;
 
     /// @notice Set an account of a holding
     function setHoldingAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId)

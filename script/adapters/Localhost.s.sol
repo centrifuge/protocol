@@ -58,7 +58,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.updateManager(poolId, vm.envAddress("ADMIN"), true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
-        D18 navPerShare = d18(1, 1);
+        D18 identityPrice = d18(1, 1);
 
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, "Tokenized MMF", "MMF", bytes32(bytes("1")), bytes(""));
@@ -73,7 +73,6 @@ contract LocalhostDeployer is FullDeployer {
             poolId,
             scId,
             assetId,
-            identityValuation,
             AccountId.wrap(0x01),
             AccountId.wrap(0x02),
             AccountId.wrap(0x03),
@@ -92,9 +91,9 @@ contract LocalhostDeployer is FullDeployer {
             }).serialize()
         );
 
-        hub.updatePricePoolPerShare(poolId, scId, navPerShare, "");
+        hub.updatePricePoolPerShare(poolId, scId, identityPrice, "");
         hub.notifySharePrice(poolId, centrifugeId, scId);
-        hub.notifyAssetPrice(poolId, scId, assetId);
+        hub.notifyAssetPrice(poolId, scId, assetId, identityPrice);
 
         // Submit deposit request
         IShareToken shareToken = IShareToken(poolManager.shareToken(poolId.raw(), scId.raw()));
@@ -105,10 +104,8 @@ contract LocalhostDeployer is FullDeployer {
         vault.requestDeposit(investAmount, msg.sender, msg.sender);
 
         // Fulfill deposit request
-        IERC7726 valuation = holdings.valuation(poolId, scId, assetId);
-
-        hub.approveDeposits(poolId, scId, assetId, investAmount, valuation);
-        hub.issueShares(poolId, scId, assetId, navPerShare);
+        hub.approveDeposits(poolId, scId, assetId, investAmount, identityValuation);
+        hub.issueShares(poolId, scId, assetId, identityPrice);
 
         hub.claimDeposit(poolId, scId, assetId, bytes32(bytes20(msg.sender)));
 
@@ -121,7 +118,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.updateManager(poolId, vm.envAddress("ADMIN"), true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
-        D18 navPerShare = d18(1, 1);
+        D18 identityPrice = d18(1, 1);
 
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, "RWA Portfolio", "RWA", bytes32(bytes("2")), bytes(""));
@@ -136,7 +133,6 @@ contract LocalhostDeployer is FullDeployer {
             poolId,
             scId,
             assetId,
-            identityValuation,
             AccountId.wrap(0x01),
             AccountId.wrap(0x02),
             AccountId.wrap(0x03),
@@ -155,9 +151,9 @@ contract LocalhostDeployer is FullDeployer {
             }).serialize()
         );
 
-        hub.updatePricePoolPerShare(poolId, scId, navPerShare, "");
+        hub.updatePricePoolPerShare(poolId, scId, identityPrice, "");
         hub.notifySharePrice(poolId, centrifugeId, scId);
-        hub.notifyAssetPrice(poolId, scId, assetId);
+        hub.notifyAssetPrice(poolId, scId, assetId, identityPrice);
 
         // Deposit
         IShareToken shareToken = IShareToken(poolManager.shareToken(poolId.raw(), scId.raw()));

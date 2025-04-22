@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.5.0;
 
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
+import {D18} from "src/misc/types/D18.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -11,8 +11,8 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 struct Holding {
     uint128 assetAmount;
     uint128 assetAmountValue;
-    IERC7726 valuation; // Used for existence
     bool isLiability;
+    bool existence;
 }
 
 struct HoldingAccount {
@@ -26,32 +26,17 @@ interface IHoldings {
 
     /// @notice Emitted when a holding is created
     event Create(
-        PoolId indexed,
-        ShareClassId indexed scId,
-        AssetId indexed assetId,
-        IERC7726 valuation,
-        bool isLiability,
-        HoldingAccount[] accounts
+        PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, bool isLiability, HoldingAccount[] accounts
     );
 
     /// @notice Emitted when a holding is increased
     event Increase(
-        PoolId indexed,
-        ShareClassId indexed scId,
-        AssetId indexed assetId,
-        IERC7726 valuation,
-        uint128 amount,
-        uint128 increasedValue
+        PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, uint128 amount, uint128 increasedValue
     );
 
     /// @notice Emitted when a holding is decreased
     event Decrease(
-        PoolId indexed,
-        ShareClassId indexed scId,
-        AssetId indexed assetId,
-        IERC7726 valuation,
-        uint128 amount,
-        uint128 decreasedValue
+        PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, uint128 amount, uint128 decreasedValue
     );
 
     /// @notice Emitted when the holding is updated
@@ -59,8 +44,8 @@ interface IHoldings {
         PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, bool isPositive, uint128 diffValue
     );
 
-    /// @notice Emitted when a holding valuation is updated
-    event UpdateValuation(PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, IERC7726 valuation);
+    /// @notice Emitted when a holding is updated
+    event UpdateValuation(PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId);
 
     /// @notice Emitted when an account is for a holding is set
     event SetAccountId(
@@ -88,37 +73,33 @@ interface IHoldings {
     /// @param data New value given to the `what` parameter
     function file(bytes32 what, address data) external;
 
-    /// @notice Creates a new holding in a pool using a valuation
+    /// @notice Creates a new holding in a pool
     function create(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        IERC7726 valuation,
         bool isLiability,
         HoldingAccount[] memory accounts
     ) external;
 
     /// @notice Increments the amount of a holding and updates the value for that increment.
     /// @return value The value the holding has increment.
-    function increase(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount)
+    function increase(PoolId poolId, ShareClassId scId, AssetId assetId, D18 price, uint128 amount)
         external
         returns (uint128 value);
 
     /// @notice Decrements the amount of a holding and updates the value for that decrement.
     /// @return value The value the holding has decrement.
-    function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount)
+    function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, D18 price, uint128 amount)
         external
         returns (uint128 value);
 
-    /// @notice Reset the value of a holding using the current valuation.
+    /// @notice Reset the value of a holding using the current price.
     /// @return isPositive Indicates whether the diffValue is positive or negative
-    /// @return diffValue The difference in value after the new valuation.
-    function update(PoolId poolId, ShareClassId scId, AssetId assetId)
+    /// @return diffValue The difference in value after the new price.
+    function update(PoolId poolId, ShareClassId scId, AssetId assetId, D18 price)
         external
         returns (bool isPositive, uint128 diffValue);
-
-    /// @notice Updates the valuation method used for this holding.
-    function updateValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation) external;
 
     /// @notice Sets an account id for an specific kind
     function setAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId)
@@ -129,9 +110,6 @@ interface IHoldings {
 
     /// @notice Returns the amount of this holding.
     function amount(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (uint128 amount);
-
-    /// @notice Returns the valuation method used for this holding.
-    function valuation(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (IERC7726);
 
     /// @notice Returns if the holding is a liability
     function isLiability(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool);

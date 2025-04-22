@@ -2,7 +2,6 @@
 pragma solidity 0.8.28;
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {TransientValuation} from "src/misc/TransientValuation.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 
 import {ISafe} from "src/common/Guardian.sol";
@@ -31,7 +30,6 @@ contract HubDeployer is CommonDeployer {
     Hub public hub;
 
     // Utilities
-    TransientValuation public transientValuation;
     IdentityValuation public identityValuation;
 
     // Data
@@ -41,12 +39,11 @@ contract HubDeployer is CommonDeployer {
         deployCommon(centrifugeId, adminSafe_, deployer, isTests);
 
         hubRegistry = new HubRegistry(deployer);
-        transientValuation = new TransientValuation(hubRegistry, deployer);
         identityValuation = new IdentityValuation(hubRegistry, deployer);
         accounting = new Accounting(deployer);
         holdings = new Holdings(hubRegistry, deployer);
         shareClassManager = new ShareClassManager(hubRegistry, deployer);
-        hub = new Hub(shareClassManager, hubRegistry, accounting, holdings, gateway, transientValuation, deployer);
+        hub = new Hub(shareClassManager, hubRegistry, accounting, holdings, gateway, deployer);
 
         _poolsRegister();
         _poolsRely();
@@ -60,7 +57,6 @@ contract HubDeployer is CommonDeployer {
         register("holdings", address(holdings));
         register("shareClassManager", address(shareClassManager));
         register("hub", address(hub));
-        register("transientValuation", address(transientValuation));
         register("identityValuation", address(identityValuation));
     }
 
@@ -84,7 +80,6 @@ contract HubDeployer is CommonDeployer {
         holdings.rely(address(root));
         shareClassManager.rely(address(root));
         hub.rely(address(root));
-        transientValuation.rely(address(root));
         identityValuation.rely(address(root));
     }
 
@@ -110,7 +105,6 @@ contract HubDeployer is CommonDeployer {
         shareClassManager.deny(deployer);
         hub.deny(deployer);
 
-        transientValuation.deny(deployer);
         identityValuation.deny(deployer);
     }
 }
