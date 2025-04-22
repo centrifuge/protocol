@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
@@ -10,7 +11,7 @@ import {Recoverable} from "src/misc/Recoverable.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 
-import {IPoolEscrow, IEscrow} from "src/vaults/interfaces/IEscrow.sol";
+import {Holding, IPoolEscrow, IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 
 contract Escrow is Auth, IEscrow {
     constructor(address deployer) Auth(deployer) {}
@@ -61,12 +62,12 @@ contract Escrow is Auth, IEscrow {
 /// @notice Escrow contract that holds assets for a specific pool separated by share classes.
 ///         Only wards can approve funds to be taken out.
 contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
-    /// @dev The underlying pool id
-    uint64 immutable poolId;
+    using MathLib for uint256;
 
-    mapping(bytes16 scId => mapping(address asset => mapping(uint256 tokenId => uint256))) internal reservedAmount;
-    mapping(bytes16 scId => mapping(address asset => mapping(uint256 tokenId => uint256))) internal pendingDeposit;
-    mapping(bytes16 scId => mapping(address asset => mapping(uint256 tokenId => uint256))) internal holding;
+    /// @dev The underlying pool id
+    uint64 public immutable poolId;
+
+    mapping(bytes16 scId => mapping(address asset => mapping(uint256 tokenId => Holding))) public holding;
 
     constructor(uint64 poolId_, address deployer) Escrow(deployer) {
         poolId = poolId_;
@@ -75,88 +76,52 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
     receive() external payable {}
 
     /// @inheritdoc IPoolEscrow
-    function pendingDepositIncrease(bytes16 scId, address asset, uint256 tokenId, uint256 value)
-        external
-        override
-        auth
-    {
-        uint256 newValue = pendingDeposit[scId][asset][tokenId] + value;
-        pendingDeposit[scId][asset][tokenId] = newValue;
-
-        emit PendingDeposit(asset, tokenId, poolId, scId, newValue);
-    }
-
-    /// @inheritdoc IPoolEscrow
-    function pendingDepositDecrease(bytes16 scId, address asset, uint256 tokenId, uint256 value)
-        external
-        override
-        auth
-    {
-        require(pendingDeposit[scId][asset][tokenId] >= value, InsufficientPendingDeposit());
-
-        uint256 newValue = pendingDeposit[scId][asset][tokenId] - value;
-        pendingDeposit[scId][asset][tokenId] = newValue;
-
-        emit PendingDeposit(asset, tokenId, poolId, scId, newValue);
-    }
-
-    /// @inheritdoc IPoolEscrow
     function deposit(bytes16 scId, address asset, uint256 tokenId, uint256 value) external auth {
-        require(pendingDeposit[scId][asset][tokenId] >= value, InsufficientPendingDeposit());
+        uint128 prevholding = holding[scId][asset][tokenId].total;
 
-        uint256 prevholding = holding[scId][asset][tokenId];
-        if (tokenId == 0) {
-            uint256 curholding = IERC20(asset).balanceOf(address(this));
-            require(curholding >= prevholding + value, InsufficientDeposit());
-        } else {
-            uint256 curholding = IERC6909(asset).balanceOf(address(this), tokenId);
-            require(curholding >= prevholding + value, InsufficientDeposit());
-        }
+        uint256 currentHolding =
+            tokenId == 0 ? IERC20(asset).balanceOf(address(this)) : IERC6909(asset).balanceOf(address(this), tokenId);
+        require(currentHolding >= prevholding + value, InsufficientDeposit());
 
-        uint256 newPending = pendingDeposit[scId][asset][tokenId] - value;
-        pendingDeposit[scId][asset][tokenId] = newPending;
-        holding[scId][asset][tokenId] += value;
+        holding[scId][asset][tokenId].total += value.toUint128();
 
         emit Deposit(asset, tokenId, poolId, scId, value);
-        emit PendingDeposit(asset, tokenId, poolId, scId, newPending);
-    }
-
-    /// @inheritdoc IPoolEscrow
-    function reserveIncrease(bytes16 scId, address asset, uint256 tokenId, uint256 value) external auth {
-        uint256 newValue = reservedAmount[scId][asset][tokenId] + value;
-        reservedAmount[scId][asset][tokenId] = newValue;
-
-        emit Reserve(asset, tokenId, poolId, scId, newValue);
-    }
-
-    /// @inheritdoc IPoolEscrow
-    function reserveDecrease(bytes16 scId, address asset, uint256 tokenId, uint256 value) external auth {
-        require(reservedAmount[scId][asset][tokenId] >= value, InsufficientReservedAmount());
-
-        uint256 newValue = reservedAmount[scId][asset][tokenId] - value;
-        reservedAmount[scId][asset][tokenId] = newValue;
-
-        emit Reserve(asset, tokenId, poolId, scId, newValue);
     }
 
     /// @inheritdoc IPoolEscrow
     function withdraw(bytes16 scId, address asset, uint256 tokenId, uint256 value) external auth {
-        require(availableBalanceOf(scId, asset, tokenId) >= value, InsufficientBalance());
+        Holding storage holding_ = holding[scId][asset][tokenId];
+        require(holding_.total - holding_.reserved >= value, InsufficientBalance());
 
-        holding[scId][asset][tokenId] -= value;
+        holding_.total -= value.toUint128();
 
         emit Withdraw(asset, tokenId, poolId, scId, value);
     }
 
     /// @inheritdoc IPoolEscrow
-    function availableBalanceOf(bytes16 scId, address asset, uint256 tokenId) public view returns (uint256) {
-        uint256 holding_ = holding[scId][asset][tokenId];
-        uint256 reservedAmount_ = reservedAmount[scId][asset][tokenId];
+    function reserveIncrease(bytes16 scId, address asset, uint256 tokenId, uint256 value) external auth {
+        uint128 newValue = holding[scId][asset][tokenId].reserved + value.toUint128();
+        holding[scId][asset][tokenId].reserved = newValue;
 
-        if (holding_ < reservedAmount_) {
-            return 0;
-        } else {
-            return holding_ - reservedAmount_;
-        }
+        emit IncreaseReserve(asset, tokenId, poolId, scId, value, newValue);
+    }
+
+    /// @inheritdoc IPoolEscrow
+    function reserveDecrease(bytes16 scId, address asset, uint256 tokenId, uint256 value) external auth {
+        uint128 prevValue = holding[scId][asset][tokenId].reserved;
+        uint128 value_ = value.toUint128();
+        require(prevValue >= value_, InsufficientReservedAmount());
+
+        uint128 newValue = prevValue - value_;
+        holding[scId][asset][tokenId].reserved = newValue;
+
+        emit DecreaseReserve(asset, tokenId, poolId, scId, value, newValue);
+    }
+
+    /// @inheritdoc IPoolEscrow
+    function availableBalanceOf(bytes16 scId, address asset, uint256 tokenId) public view returns (uint256) {
+        Holding storage holding_ = holding[scId][asset][tokenId];
+        if (holding_.total < holding_.reserved) return 0;
+        return holding_.total - holding_.reserved;
     }
 }
