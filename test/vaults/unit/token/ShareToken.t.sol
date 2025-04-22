@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
+import {ERC20} from "src/misc/ERC20.sol";
 
 import {MockRoot} from "test/common/mocks/MockRoot.sol";
 
@@ -44,7 +45,7 @@ contract ShareTokenTest is Test {
         address hook = makeAddr("hook");
 
         // fail: unrecognized param
-        vm.expectRevert(IShareToken.FileUnrecognizedParam.selector);
+        vm.expectRevert(ERC20.FileUnrecognizedParam.selector);
         token.file("random", hook);
 
         // success

@@ -44,7 +44,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
         (D18 priceAssetPerShare,) =
-            poolManager.priceAssetPerShare(mapPoolId(vault_.poolId()), vault_.trancheId(), vaultDetails.assetId, false);
+            poolManager.priceAssetPerShare(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
 
         return _convertToShares(vault_, vaultDetails, priceAssetPerShare, assets, MathLib.Rounding.Down);
     }
@@ -54,7 +54,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
         (D18 priceAssetPerShare,) =
-            poolManager.priceAssetPerShare(mapPoolId(vault_.poolId()), vault_.trancheId(), vaultDetails.assetId, false);
+            poolManager.priceAssetPerShare(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
 
         return _convertToAssets(vault_, vaultDetails, priceAssetPerShare, shares, MathLib.Rounding.Down);
     }
@@ -64,8 +64,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
-        (, lastUpdated) =
-            poolManager.priceAssetPerShare(mapPoolId(vault_.poolId()), vault_.trancheId(), vaultDetails.assetId, false);
+        (, lastUpdated) = poolManager.priceAssetPerShare(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
     }
 
     /// @inheritdoc IBaseInvestmentManager
@@ -76,14 +75,6 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
 
         uint64 poolId = abi.decode(result, (uint64));
         return address(poolEscrowProvider.escrow(poolId));
-    }
-
-    /// @inheritdoc IBaseInvestmentManager
-    function mapPoolId(uint64 poolId) public pure returns (uint64 mappedPoolId) {
-        // TODO: update v2CentrifugeId and add all pools before deployment
-        uint16 v2CentrifugeId = 1;
-        if (poolId == 4139607887) return newPoolId(v2CentrifugeId, 1).raw();
-        return poolId;
     }
 
     function _convertToShares(

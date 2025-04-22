@@ -25,30 +25,28 @@ contract RedeemTest is BaseTest {
         IShareToken shareToken = IShareToken(address(vault.share()));
 
         deposit(vault_, self, amount); // deposit funds first
-        centrifugeChain.updatePricePoolPerShare(
-            vault.poolId(), vault.trancheId(), defaultPrice, uint64(block.timestamp)
-        );
+        centrifugeChain.updatePricePoolPerShare(vault.poolId(), vault.scId(), defaultPrice, uint64(block.timestamp));
 
         // will fail - zero deposit not allowed
         vm.expectRevert(IAsyncRequests.ZeroAmountNotAllowed.selector);
         vault.requestRedeem(0, self, self);
 
         // will fail - investment asset not allowed
-        centrifugeChain.unlinkVault(vault.poolId(), vault.trancheId(), vault_);
+        centrifugeChain.unlinkVault(vault.poolId(), vault.scId(), vault_);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vault.requestRedeem(amount, address(this), address(this));
 
         // will fail - cannot fulfill if there is no pending redeem request
         uint128 assets = uint128((amount * 10 ** 18) / defaultPrice);
         uint64 poolId = vault.poolId();
-        bytes16 scId = vault.trancheId();
+        bytes16 scId = vault.scId();
         vm.expectRevert(IAsyncRequests.NoPendingRequest.selector);
         asyncRequests.fulfillRedeemRequest(
             PoolId.wrap(poolId), ShareClassId.wrap(scId), self, AssetId.wrap(assetId), assets, uint128(amount)
         );
 
         // success
-        centrifugeChain.linkVault(vault.poolId(), vault.trancheId(), vault_);
+        centrifugeChain.linkVault(vault.poolId(), vault.scId(), vault_);
         vault.requestRedeem(amount, address(this), address(this));
         assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), amount);
         assertEq(vault.pendingRedeemRequest(0, self), amount);
@@ -60,7 +58,7 @@ contract RedeemTest is BaseTest {
 
         // trigger executed collectRedeem
         centrifugeChain.isFulfilledRedeemRequest(
-            vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), assetId, assets, uint128(amount)
+            vault.poolId(), vault.scId(), bytes32(bytes20(self)), assetId, assets, uint128(amount)
         );
 
         // assert withdraw & redeem values adjusted
@@ -75,7 +73,7 @@ contract RedeemTest is BaseTest {
         vault.redeem(amount / 2, self, self); // redeem half the amount to own wallet
 
         // can also redeem to another user on the memberlist
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId(), vault.scId(), investor, type(uint64).max);
         vault.redeem(amount / 2, investor, self); // redeem half the amount to investor wallet
 
         assertEq(shareToken.balanceOf(self), 0);
@@ -102,9 +100,7 @@ contract RedeemTest is BaseTest {
         IShareToken shareToken = IShareToken(address(vault.share()));
 
         deposit(vault_, self, amount); // deposit funds first
-        centrifugeChain.updatePricePoolPerShare(
-            vault.poolId(), vault.trancheId(), defaultPrice, uint64(block.timestamp)
-        );
+        centrifugeChain.updatePricePoolPerShare(vault.poolId(), vault.scId(), defaultPrice, uint64(block.timestamp));
 
         vault.requestRedeem(amount, address(this), address(this));
         assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), amount);
@@ -113,7 +109,7 @@ contract RedeemTest is BaseTest {
         // trigger executed collectRedeem
         uint128 assets = uint128((amount * 10 ** 18) / defaultPrice);
         centrifugeChain.isFulfilledRedeemRequest(
-            vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), assetId, assets, uint128(amount)
+            vault.poolId(), vault.scId(), bytes32(bytes20(self)), assetId, assets, uint128(amount)
         );
 
         // assert withdraw & redeem values adjusted
@@ -126,7 +122,7 @@ contract RedeemTest is BaseTest {
         vault.withdraw(amount / 2, self, self); // redeem half the amount to own wallet
 
         // can also withdraw to another user on the memberlist
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId(), vault.scId(), investor, type(uint64).max);
         vault.withdraw(amount / 2, investor, self); // redeem half the amount to investor wallet
 
         assertTrue(shareToken.balanceOf(self) <= 1);
@@ -178,11 +174,11 @@ contract RedeemTest is BaseTest {
         vault.requestRedeem(amount, address(this), address(this));
 
         // will fail - user not member
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, uint64(block.timestamp));
+        centrifugeChain.updateMember(vault.poolId(), vault.scId(), self, uint64(block.timestamp));
         vm.warp(block.timestamp + 1);
         vm.expectRevert(IAsyncRequests.TransferNotAllowed.selector);
         vault.cancelRedeemRequest(0, self);
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId(), vault.scId(), self, type(uint64).max);
 
         assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), amount);
         assertEq(shareToken.balanceOf(self), amount);
@@ -192,7 +188,7 @@ contract RedeemTest is BaseTest {
 
         MessageLib.CancelRedeemRequest memory m = adapter1.values_bytes("send").deserializeCancelRedeemRequest();
         assertEq(m.poolId, vault.poolId());
-        assertEq(m.scId, vault.trancheId());
+        assertEq(m.scId, vault.scId());
         assertEq(m.investor, bytes32(bytes20(self)));
         assertEq(m.assetId, assetId);
 
@@ -206,7 +202,7 @@ contract RedeemTest is BaseTest {
         vault.requestRedeem(amount, address(this), address(this));
 
         centrifugeChain.isFulfilledCancelRedeemRequest(
-            vault.poolId(), vault.trancheId(), self.toBytes32(), assetId, uint128(amount)
+            vault.poolId(), vault.scId(), self.toBytes32(), assetId, uint128(amount)
         );
 
         assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), amount);
@@ -227,7 +223,7 @@ contract RedeemTest is BaseTest {
         deposit(vault_, investor, amount, false); // request and execute deposit, but don't claim
         assertEq(vault.maxMint(investor), amount);
         uint64 poolId = vault.poolId();
-        bytes16 scId = vault.trancheId();
+        bytes16 scId = vault.scId();
 
         vm.prank(investor);
         vault.mint(amount / 2, investor); // investor mints half of the amount
@@ -265,7 +261,7 @@ contract RedeemTest is BaseTest {
         assertEq(vault.maxMint(investor), 0);
 
         centrifugeChain.isFulfilledRedeemRequest(
-            vault.poolId(), vault.trancheId(), bytes32(bytes20(investor)), assetId, uint128(amount), uint128(amount)
+            vault.poolId(), vault.scId(), bytes32(bytes20(investor)), assetId, uint128(amount), uint128(amount)
         );
 
         vm.expectRevert(IAsyncRequests.ExceedsMaxRedeem.selector);
@@ -283,7 +279,7 @@ contract RedeemTest is BaseTest {
         deposit(vault_, investor, amount, false); // request and execute deposit, but don't claim
         assertEq(vault.maxMint(investor), amount);
         uint64 poolId = vault.poolId();
-        bytes16 scId = vault.trancheId();
+        bytes16 scId = vault.scId();
 
         vm.prank(investor);
         vault.mint(amount, investor); // investor mints half of the amount
@@ -318,7 +314,7 @@ contract RedeemTest is BaseTest {
         deposit(vault_, investor, amount, false); // request and execute deposit, but don't claim
         assertEq(vault.maxMint(investor), amount);
         uint64 poolId = vault.poolId();
-        bytes16 scId = vault.trancheId();
+        bytes16 scId = vault.scId();
 
         // Fail - Redeem amount too big
         vm.expectRevert(IERC20.InsufficientBalance.selector);
@@ -350,7 +346,7 @@ contract RedeemTest is BaseTest {
         assertEq(vault.maxMint(investor), 0);
 
         centrifugeChain.isFulfilledRedeemRequest(
-            vault.poolId(), vault.trancheId(), bytes32(bytes20(investor)), assetId, uint128(amount), uint128(amount)
+            vault.poolId(), vault.scId(), bytes32(bytes20(investor)), assetId, uint128(amount), uint128(amount)
         );
 
         vm.expectRevert(IAsyncRequests.ExceedsMaxRedeem.selector);
@@ -363,7 +359,7 @@ contract RedeemTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
         uint64 poolId = vault.poolId();
-        bytes16 scId = vault.trancheId();
+        bytes16 scId = vault.scId();
         ERC20 asset = ERC20(address(vault.asset()));
         centrifugeChain.updatePricePoolPerShare(poolId, scId, 1000000000000000000, uint64(block.timestamp));
 

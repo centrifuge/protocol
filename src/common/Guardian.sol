@@ -97,19 +97,19 @@ contract Guardian is IGuardian {
     }
 
     /// @inheritdoc IGuardian
-    function initiateMessageRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
+    function initiateRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
         external
         onlySafe
     {
-        sender.sendInitiateMessageRecovery(centrifugeId, adapterCentrifugeId, address(adapter).toBytes32(), hash);
+        sender.sendInitiateRecovery(centrifugeId, adapterCentrifugeId, address(adapter).toBytes32(), hash);
     }
 
     /// @inheritdoc IGuardian
-    function disputeMessageRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
+    function disputeRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
         external
         onlySafe
     {
-        sender.sendDisputeMessageRecovery(centrifugeId, adapterCentrifugeId, address(adapter).toBytes32(), hash);
+        sender.sendDisputeRecovery(centrifugeId, adapterCentrifugeId, address(adapter).toBytes32(), hash);
     }
 
     // --- Helpers ---

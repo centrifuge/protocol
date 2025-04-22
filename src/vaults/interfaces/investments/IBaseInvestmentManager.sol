@@ -34,7 +34,4 @@ interface IBaseInvestmentManager {
     ///
     /// @return escrow The address of the escrow contract for this vault
     function escrow() external view returns (address escrow);
-
-    /// @notice Wrapper call for pool ids necessary due to legacy v2 vaults with pre-existing pool ids.
-    function mapPoolId(uint64 poolId) external pure returns (uint64 mappedPoolId);
 }

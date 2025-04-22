@@ -62,8 +62,8 @@ contract TestFile is TestCommon {
         holdings.file("hubRegistry", newHubRegistryAddr);
     }
 
-    function testErrFileUnrecognizedWhat() public {
-        vm.expectRevert(abi.encodeWithSelector(IHoldings.FileUnrecognizedWhat.selector));
+    function testErrFileUnrecognizedParam() public {
+        vm.expectRevert(abi.encodeWithSelector(IHoldings.FileUnrecognizedParam.selector));
         holdings.file("unrecongnizedWhat", newHubRegistryAddr);
     }
 }

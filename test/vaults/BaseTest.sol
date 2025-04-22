@@ -229,14 +229,14 @@ contract BaseTest is VaultsDeployer, Test {
     function deposit(address _vault, address _investor, uint256 amount, bool claimDeposit) public {
         AsyncVault vault = AsyncVault(_vault);
         erc20.mint(_investor, amount);
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), _investor, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId(), vault.scId(), _investor, type(uint64).max);
         vm.startPrank(_investor);
         erc20.approve(_vault, amount); // add allowance
         vault.requestDeposit(amount, _investor, _investor);
         // trigger executed collectInvest
         uint128 assetId = poolManager.assetToId(address(erc20), erc20TokenId);
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId(), vault.trancheId(), bytes32(bytes20(_investor)), assetId, uint128(amount), uint128(amount)
+            vault.poolId(), vault.scId(), bytes32(bytes20(_investor)), assetId, uint128(amount), uint128(amount)
         );
 
         if (claimDeposit) {

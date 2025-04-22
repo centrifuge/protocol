@@ -61,16 +61,16 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
         bytes32 adapterData,
         bool underpaid
     );
-    event ProcessBatch(uint16 indexed centrifugeId, bytes32 payloadId, bytes batch, IAdapter adapter);
-    event ProcessProof(uint16 indexed centrifugeId, bytes32 payloadId, bytes32 batchHash, IAdapter adapter);
+    event HandleBatch(uint16 indexed centrifugeId, bytes32 payloadId, bytes batch, IAdapter adapter);
+    event HandleProof(uint16 indexed centrifugeId, bytes32 payloadId, bytes32 batchHash, IAdapter adapter);
     event ExecuteMessage(uint16 indexed centrifugeId, bytes message);
     event FailMessage(uint16 indexed centrifugeId, bytes message, bytes error);
 
     event RecoverMessage(IAdapter adapter, bytes message);
     event RecoverProof(IAdapter adapter, bytes32 batchHash);
-    event InitiateMessageRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
-    event DisputeMessageRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
-    event ExecuteMessageRecovery(uint16 centrifugeId, bytes message, IAdapter adapter);
+    event InitiateRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
+    event DisputeRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
+    event ExecuteRecovery(uint16 centrifugeId, bytes message, IAdapter adapter);
 
     event File(bytes32 indexed what, uint16 centrifugeId, IAdapter[] adapters);
     event File(bytes32 indexed what, address addr);
@@ -100,7 +100,7 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     error InvalidAdapter();
 
     /// @notice Dispatched when the gateway tries to recover a recovery message, which is not allowed.
-    error RecoveryMessageRecovered();
+    error RecoveryPayloadRecovered();
 
     /// @notice Dispatched when the gateway tries to handle a proof from a non proof adapter.
     error NonProofAdapter();
@@ -109,10 +109,10 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     error NonBatchAdapter();
 
     /// @notice Dispatched when a recovery message is executed without being initiated.
-    error MessageRecoveryNotInitiated();
+    error RecoveryNotInitiated();
 
     /// @notice Dispatched when a recovery message is executed without waiting the challenge period.
-    error MessageRecoveryChallengePeriodNotEnded();
+    error RecoveryChallengePeriodNotEnded();
 
     /// @notice Dispatched when a the gateway tries to send an empty message.
     error EmptyMessage();
@@ -171,7 +171,7 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @param  centrifugeId Chain where the adapter is configured for
     /// @param  adapter Adapter's address that the recovery is targeting
     /// @param  message Hash of the message to be recovered
-    function executeMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes calldata message) external;
+    function executeRecovery(uint16 centrifugeId, IAdapter adapter, bytes calldata message) external;
 
     // --- Helpers ---
     /// @notice A view method of the current quorum.abi

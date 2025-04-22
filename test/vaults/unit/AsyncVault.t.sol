@@ -20,7 +20,7 @@ contract AsyncVaultTest is BaseTest {
         // values set correctly
         assertEq(address(vault.manager()), address(asyncRequests));
         assertEq(vault.asset(), address(erc20));
-        assertEq(vault.trancheId(), scId);
+        assertEq(vault.scId(), scId);
         address token = poolManager.shareToken(poolId, scId);
         assertEq(address(vault.share()), token);
 

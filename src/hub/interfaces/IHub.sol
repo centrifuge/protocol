@@ -46,7 +46,7 @@ interface IHub {
     event File(bytes32 what, address addr);
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
-    error FileUnrecognizedWhat();
+    error FileUnrecognizedParam();
 
     /// @notice Dispatched when the pool is already unlocked.
     /// It means when calling to `execute()` inside `execute()`.
