@@ -177,7 +177,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
         address[] memory vaultFactories = new address[](1);
         vaultFactories[0] = address(vaultFactory);
         poolManager = new PoolManager(address(escrow), address(tokenFactory), vaultFactories, address(this));
-        messageDispatcher = new MockMessageDispatcher(poolManager, asyncRequests, root, CENTIFUGE_CHAIN_ID); 
+        messageDispatcher = new MockMessageDispatcher(CENTIFUGE_CHAIN_ID, root, address(gateway), address(this), address(this)); 
 
         // set dependencies
         asyncRequests.file("sender", address(messageDispatcher));
@@ -243,6 +243,10 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
 
         // set dependencies
         hub.file("sender", address(messageDispatcher));
+        messageDispatcher.file("hub", address(hub)); 
+        messageDispatcher.file("poolManager", address(poolManager));
+        messageDispatcher.file("investmentManager", address(asyncRequests));
+        messageDispatcher.file("balanceSheet", address(balanceSheet));
     }
 
 
