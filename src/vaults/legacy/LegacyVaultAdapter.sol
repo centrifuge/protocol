@@ -51,7 +51,7 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
     }
 
     // --- IInvestmentManager impl ---
-    function escrow() public view returns (address) {
+    function escrow() public pure returns (address) {
         // TODO: actually use the `IEscrowProvider` from the manager?
         return address(0);
     }
