@@ -77,15 +77,12 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
 
     /// @inheritdoc IPoolEscrow
     function deposit(bytes16 scId, address asset, uint256 tokenId, uint256 value) external auth {
-        uint128 prevTotal = holding[scId][asset][tokenId].total;
+        _deposit(scId, asset, tokenId, value, true);
+    }
 
-        uint256 currTotal =
-            tokenId == 0 ? IERC20(asset).balanceOf(address(this)) : IERC6909(asset).balanceOf(address(this), tokenId);
-        require(currTotal >= prevTotal + value, InsufficientDeposit());
-
-        holding[scId][asset][tokenId].total += value.toUint128();
-
-        emit Deposit(asset, tokenId, poolId, scId, value);
+    /// @inheritdoc IPoolEscrow
+    function noteDeposit(bytes16 scId, address asset, uint256 tokenId, uint256 value) external auth {
+        _deposit(scId, asset, tokenId, value, false);
     }
 
     /// @inheritdoc IPoolEscrow
@@ -123,5 +120,21 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
         Holding storage holding_ = holding[scId][asset][tokenId];
         if (holding_.total < holding_.reserved) return 0;
         return holding_.total - holding_.reserved;
+    }
+
+    function _deposit(bytes16 scId, address asset, uint256 tokenId, uint256 value, bool checkSufficiency) internal {
+        uint128 holding_ = holding[scId][asset][tokenId].total;
+
+        // Leave out check for deposits which transfer funds post escrow.deposit due to security concerns
+        if (checkSufficiency) {
+            uint256 balance = tokenId == 0
+                ? IERC20(asset).balanceOf(address(this))
+                : IERC6909(asset).balanceOf(address(this), tokenId);
+            require(balance >= holding_ + value, InsufficientDeposit());
+        }
+
+        holding[scId][asset][tokenId].total += value.toUint128();
+
+        emit Deposit(asset, tokenId, poolId, scId, value);
     }
 }

@@ -353,8 +353,10 @@ abstract contract BaseSyncDepositVault is BaseVault {
 
     /// @inheritdoc IERC7575
     function deposit(uint256 assets, address receiver) external returns (uint256 shares) {
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(_poolEscrowProvider.escrow(poolId)), assets);
         shares = syncDepositManager.deposit(address(this), assets, receiver, msg.sender);
+        // NOTE: For security reasons, transfer must stay at end of call despite the fact that it logically should
+        // happen before depositing in the manager
+        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(_poolEscrowProvider.escrow(poolId)), assets);
         emit Deposit(receiver, msg.sender, assets, shares);
     }
 
@@ -371,6 +373,7 @@ abstract contract BaseSyncDepositVault is BaseVault {
     /// @inheritdoc IERC7575
     function mint(uint256 shares, address receiver) public returns (uint256 assets) {
         assets = syncDepositManager.mint(address(this), shares, receiver, msg.sender);
+        // NOTE: For security reasons, transfer must stay at end of call
         SafeTransferLib.safeTransferFrom(asset, msg.sender, address(_poolEscrowProvider.escrow(poolId)), assets);
         emit Deposit(receiver, msg.sender, assets, shares);
     }

@@ -248,21 +248,25 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         address provider,
         uint128 amount,
         D18 pricePoolPerAsset,
-        bool executeTransfer
+        bool preDepositTransfer
     ) internal {
         IPoolEscrow escrow = poolEscrowProvider.escrow(poolId.raw());
 
-        if (executeTransfer) {
+        if (preDepositTransfer) {
             if (tokenId == 0) {
                 SafeTransferLib.safeTransferFrom(asset, provider, address(escrow), amount);
             } else {
                 IERC6909(asset).transferFrom(provider, address(escrow), tokenId, amount);
             }
         }
-
         emit Deposit(poolId, scId, asset, tokenId, provider, amount, pricePoolPerAsset, uint64(block.timestamp));
 
-        escrow.deposit(scId.raw(), asset, tokenId, amount);
+        // Do escrow balance sufficiency check only if we executed the transfer
+        if (preDepositTransfer) {
+            escrow.deposit(scId.raw(), asset, tokenId, amount);
+        } else {
+            escrow.noteDeposit(scId.raw(), asset, tokenId, amount);
+        }
         sender.sendUpdateHoldingAmount(poolId, scId, assetId, provider, amount, pricePoolPerAsset, true);
     }
 }

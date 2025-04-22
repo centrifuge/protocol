@@ -101,11 +101,26 @@ interface IPoolEscrow is IEscrow, IRecoverable {
 
     // --- Functions ---
     /// @notice Deposits `value` of `asset` in underlying `poolId` and given `scId`
+    ///
+    /// @dev NOTE: Must ensure balance sufficiency, i.e. that the depositing amount does not exceed the balance of
+    /// escrow
+    ///
     /// @param scId The id of the share class
     /// @param asset The address of the asset to be deposited
     /// @param tokenId The id of the asset - 0 for ERC20
     /// @param value The amount to deposit
     function deposit(bytes16 scId, address asset, uint256 tokenId, uint256 value) external;
+
+    /// @notice Notices the deposit of `value` of `asset` in underlying `poolId` and given `scId`
+    ///
+    /// @dev NOTE: Assumes to not perform sufficiency checks in order to support scenarios in which the actual transfer
+    /// occurs after noting a deposit for security reasons.
+    ///
+    /// @param scId The id of the share class
+    /// @param asset The address of the asset to be deposited
+    /// @param tokenId The id of the asset - 0 for ERC20
+    /// @param value The amount to deposit
+    function noteDeposit(bytes16 scId, address asset, uint256 tokenId, uint256 value) external;
 
     /// @notice Withdraws `value` of `asset` in underlying `poolId` and given `scId`
     /// @dev MUST ensure that reserved amounts are not withdrawn
