@@ -18,7 +18,7 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 /// @title  Centrifuge Token
 /// @notice Extension of ERC20 + ERC1404,
 ///         integrating an external hook optionally for ERC20 callbacks and ERC1404 checks.
-contract CentrifugeToken is ERC20, IShareToken {
+contract ShareToken is ERC20, IShareToken {
     using MathLib for uint256;
 
     mapping(address => Balance) private balances;

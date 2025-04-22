@@ -8,6 +8,8 @@ import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+
 /// -----------------------------------------------------
 ///  Common Handlers
 /// -----------------------------------------------------
@@ -87,7 +89,7 @@ interface IPoolManagerGatewayHandler {
         uint8 decimals,
         bytes32 salt,
         address hook
-    ) external returns (address);
+    ) external;
 
     /// @notice   Updates the tokenName and tokenSymbol of a share class token
     /// @dev      The function can only be executed by the gateway contract.

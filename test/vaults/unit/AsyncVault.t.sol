@@ -21,8 +21,8 @@ contract AsyncVaultTest is BaseTest {
         assertEq(address(vault.manager()), address(asyncRequests));
         assertEq(vault.asset(), address(erc20));
         assertEq(vault.scId(), scId);
-        address token = poolManager.shareToken(poolId, scId);
-        assertEq(address(vault.share()), token);
+        IShareToken token = poolManager.shareToken(PoolId.wrap(poolId), ShareClassId.wrap(scId));
+        assertEq(address(vault.share()), address(token));
 
         // permissions set correctly
         assertEq(vault.wards(address(root)), 1);

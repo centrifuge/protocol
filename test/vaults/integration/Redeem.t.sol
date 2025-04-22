@@ -247,7 +247,7 @@ contract RedeemTest is BaseTest {
         // should work even if investor is frozen
         centrifugeChain.freeze(poolId, scId, investor); // freeze investor
         assertTrue(
-            !CentrifugeToken(address(vault.share())).checkTransferRestriction(
+            !ShareToken(address(vault.share())).checkTransferRestriction(
                 investor, address(poolEscrowFactory.escrow(vault.poolId())), amount
             )
         );
@@ -325,7 +325,7 @@ contract RedeemTest is BaseTest {
         // should work even if investor is frozen
         centrifugeChain.freeze(poolId, scId, investor); // freeze investor
         assertTrue(
-            !CentrifugeToken(address(vault.share())).checkTransferRestriction(
+            !ShareToken(address(vault.share())).checkTransferRestriction(
                 investor, address(poolEscrowFactory.escrow(vault.poolId())), amount
             )
         );
@@ -415,7 +415,7 @@ contract RedeemTest is BaseTest {
     function partialRedeem(bytes16 scId, AsyncVault vault, ERC20 asset) public {
         IShareToken shareToken = IShareToken(address(vault.share()));
 
-        uint128 assetId = poolManager.assetToId(address(asset), erc20TokenId);
+        AssetId assetId = poolManager.assetToId(address(asset), erc20TokenId);
         uint256 totalShares = shareToken.balanceOf(self);
         uint256 redeemAmount = 50000000000000000000;
         assertTrue(redeemAmount <= totalShares);
@@ -428,7 +428,7 @@ contract RedeemTest is BaseTest {
         uint128 firstCurrencyPayout = 27500000; // (25000000000000000000/10**18) * 10**6 * 1.1
 
         centrifugeChain.isFulfilledRedeemRequest(
-            vault.poolId(), scId, bytes32(bytes20(self)), assetId, firstCurrencyPayout, firstShareRedeem
+            vault.poolId(), scId, bytes32(bytes20(self)), assetId.raw(), firstCurrencyPayout, firstShareRedeem
         );
 
         assertEq(vault.maxRedeem(self), firstShareRedeem);
@@ -439,7 +439,7 @@ contract RedeemTest is BaseTest {
         // second trigger executed collectRedeem of the second 25 share class tokens at a price of 1.3
         uint128 secondCurrencyPayout = 32500000; // (25000000000000000000/10**18) * 10**6 * 1.3
         centrifugeChain.isFulfilledRedeemRequest(
-            vault.poolId(), scId, bytes32(bytes20(self)), assetId, secondCurrencyPayout, secondShareRedeem
+            vault.poolId(), scId, bytes32(bytes20(self)), assetId.raw(), secondCurrencyPayout, secondShareRedeem
         );
 
         (,,, redeemPrice,,,,,,) = asyncRequests.investments(address(vault), self);

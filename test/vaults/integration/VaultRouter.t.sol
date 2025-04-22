@@ -257,10 +257,10 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: fuel}(address(vault2), amount2, self, self);
 
         // trigger - deposit order fulfillment
-        uint128 assetId1 = poolManager.assetToId(address(erc20X), erc20TokenId);
-        uint128 assetId2 = poolManager.assetToId(address(erc20Y), erc20TokenId);
-        (uint128 sharePayout1) = fulfillDepositRequest(vault1, assetId1, amount1, self);
-        (uint128 sharePayout2) = fulfillDepositRequest(vault2, assetId2, amount2, self);
+        AssetId assetId1 = poolManager.assetToId(address(erc20X), erc20TokenId);
+        AssetId assetId2 = poolManager.assetToId(address(erc20Y), erc20TokenId);
+        (uint128 sharePayout1) = fulfillDepositRequest(vault1, assetId1.raw(), amount1, self);
+        (uint128 sharePayout2) = fulfillDepositRequest(vault2, assetId2.raw(), amount2, self);
 
         assertEq(vault1.maxMint(self), sharePayout1);
         assertEq(vault2.maxMint(self), sharePayout2);
@@ -298,10 +298,10 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: fuel}(address(vault1), amount1, self, self);
         vaultRouter.requestDeposit{value: fuel}(address(vault2), amount2, self, self);
 
-        uint128 assetId1 = poolManager.assetToId(address(erc20X), erc20TokenId);
-        uint128 assetId2 = poolManager.assetToId(address(erc20Y), erc20TokenId);
-        (uint128 sharePayout1) = fulfillDepositRequest(vault1, assetId1, amount1, self);
-        (uint128 sharePayout2) = fulfillDepositRequest(vault2, assetId2, amount2, self);
+        AssetId assetId1 = poolManager.assetToId(address(erc20X), erc20TokenId);
+        AssetId assetId2 = poolManager.assetToId(address(erc20Y), erc20TokenId);
+        (uint128 sharePayout1) = fulfillDepositRequest(vault1, assetId1.raw(), amount1, self);
+        (uint128 sharePayout2) = fulfillDepositRequest(vault2, assetId2.raw(), amount2, self);
         vaultRouter.claimDeposit(address(vault1), self, self);
         vaultRouter.claimDeposit(address(vault2), self, self);
 
@@ -310,8 +310,8 @@ contract VaultRouterTest is BaseTest {
         IShareToken(address(vault2.share())).approve(address(vaultRouter), sharePayout2);
         vaultRouter.requestRedeem{value: fuel}(address(vault1), sharePayout1, self, self);
         vaultRouter.requestRedeem{value: fuel}(address(vault2), sharePayout2, self, self);
-        (uint128 assetPayout1) = fulfillRedeemRequest(vault1, assetId1, sharePayout1, self);
-        (uint128 assetPayout2) = fulfillRedeemRequest(vault2, assetId2, sharePayout2, self);
+        (uint128 assetPayout1) = fulfillRedeemRequest(vault1, assetId1.raw(), sharePayout1, self);
+        (uint128 assetPayout2) = fulfillRedeemRequest(vault2, assetId2.raw(), sharePayout2, self);
         assertApproxEqAbs(IShareToken(address(vault1.share())).balanceOf(self), 0, 1);
         assertApproxEqAbs(IShareToken(address(vault2.share())).balanceOf(self), 0, 1);
         assertApproxEqAbs(
@@ -429,10 +429,10 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.multicall{value: gas * calls.length}(calls);
 
         // trigger - deposit order fulfillment
-        uint128 assetId1 = poolManager.assetToId(address(erc20X), erc20TokenId);
-        uint128 assetId2 = poolManager.assetToId(address(erc20Y), erc20TokenId);
-        (uint128 sharePayout1) = fulfillDepositRequest(vault1, assetId1, amount1, self);
-        (uint128 sharePayout2) = fulfillDepositRequest(vault2, assetId2, amount2, self);
+        AssetId assetId1 = poolManager.assetToId(address(erc20X), erc20TokenId);
+        AssetId assetId2 = poolManager.assetToId(address(erc20Y), erc20TokenId);
+        (uint128 sharePayout1) = fulfillDepositRequest(vault1, assetId1.raw(), amount1, self);
+        (uint128 sharePayout2) = fulfillDepositRequest(vault2, assetId2.raw(), amount2, self);
 
         assertEq(vault1.maxMint(self), sharePayout1);
         assertEq(vault2.maxMint(self), sharePayout2);

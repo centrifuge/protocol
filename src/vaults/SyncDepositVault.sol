@@ -5,6 +5,7 @@ import {BaseVault, AsyncRedeemVault, BaseSyncDepositVault} from "src/vaults/Base
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/vaults/interfaces/IERC7575.sol";
@@ -21,7 +22,7 @@ contract SyncDepositVault is BaseSyncDepositVault, AsyncRedeemVault {
         bytes16 scId_,
         address asset_,
         uint256 tokenId_,
-        address token_,
+        IShareToken token_,
         address root_,
         address syncDepositManager_,
         address asyncRedeemManager_,

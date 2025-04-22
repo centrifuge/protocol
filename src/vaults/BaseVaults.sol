@@ -19,6 +19,7 @@ import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedee
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 
@@ -37,7 +38,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
 
     /// @inheritdoc IERC7575
     address public immutable asset;
-    uint256 internal immutable tokenId;
+    uint256 public immutable tokenId;
 
     /// @inheritdoc IERC7575
     address public immutable share;
@@ -65,7 +66,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         bytes16 scId_,
         address asset_,
         uint256 tokenId_,
-        address token_,
+        IShareToken token_,
         address root_,
         address manager_,
         IPoolEscrowProvider poolEscrowProvider_
@@ -74,7 +75,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         scId = scId_;
         asset = asset_;
         tokenId = tokenId_;
-        share = token_;
+        share = address(token_);
         _shareDecimals = IERC20Metadata(share).decimals();
         root = IRoot(root_);
         // TODO: Redundant due to filing?

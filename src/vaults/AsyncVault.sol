@@ -8,6 +8,7 @@ import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {BaseVault, AsyncRedeemVault} from "src/vaults/BaseVaults.sol";
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import "src/vaults/interfaces/IERC7540.sol";
 import "src/vaults/interfaces/IERC7575.sol";
 
@@ -27,7 +28,7 @@ contract AsyncVault is AsyncRedeemVault, IAsyncVault {
         bytes16 scId_,
         address asset_,
         uint256 tokenId_,
-        address token_,
+        IShareToken token_,
         address root_,
         address manager_,
         IPoolEscrowProvider poolEscrowProvider

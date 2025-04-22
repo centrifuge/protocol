@@ -12,6 +12,8 @@ import {Recoverable} from "src/misc/Recoverable.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageDispatcher} from "src/common/interfaces/IMessageDispatcher.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
@@ -273,7 +275,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     // --- View Methods ---
     /// @inheritdoc IVaultRouter
     function getVault(uint64 poolId, bytes16 scId, address asset) external view returns (address) {
-        return IShareToken(IPoolManager(poolManager).shareToken(poolId, scId)).vault(asset);
+        return IPoolManager(poolManager).shareToken(PoolId.wrap(poolId), ShareClassId.wrap(scId)).vault(asset);
     }
 
     /// @inheritdoc IVaultRouter

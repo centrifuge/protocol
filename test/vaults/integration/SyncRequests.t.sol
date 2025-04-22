@@ -176,13 +176,14 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
         D18 priceAssetPerShare = d18(2e18);
 
         (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
-        address shareToken = poolManager.shareToken(syncVault.poolId(), syncVault.scId());
+        IShareToken shareToken =
+            poolManager.shareToken(PoolId.wrap(syncVault.poolId()), ShareClassId.wrap(syncVault.scId()));
         D18 pricePre = syncRequests.priceAssetPerShare(syncVault.poolId(), syncVault.scId(), assetId);
 
         _setValuation(syncVault, valuation_, 0);
 
         // Change priceAssetPerShare
-        uint256 shareUnitAmount = 10 ** IERC20Metadata(shareToken).decimals();
+        uint256 shareUnitAmount = 10 ** shareToken.decimals();
         priceAssetPerShare = d18(4e18);
         pricePoolPerShare = d18(20e18);
         uint256 assetPerShareAmount = priceAssetPerShare.mulUint256(shareUnitAmount);
@@ -215,13 +216,14 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
         uint128 multiplier = uint128(bound(multiplier_, 2, 10));
 
         (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
-        address shareToken = poolManager.shareToken(syncVault.poolId(), syncVault.scId());
+        IShareToken shareToken =
+            poolManager.shareToken(PoolId.wrap(syncVault.poolId()), ShareClassId.wrap(syncVault.scId()));
         D18 pricePre = syncRequests.priceAssetPerShare(syncVault.poolId(), syncVault.scId(), assetId);
 
         _setValuation(syncVault, valuation_, 0);
 
         // Change priceAssetPerShare
-        uint256 shareUnitAmount = 10 ** IERC20Metadata(shareToken).decimals();
+        uint256 shareUnitAmount = 10 ** shareToken.decimals();
         uint256 assetUnitAmount = 10 ** VaultPricingLib.getAssetDecimals(syncVault.asset(), 0);
         priceAssetPerShare = d18(priceAssetPerShare.inner() * multiplier);
         uint256 assetPerShareAmount = priceAssetPerShare.mulUint256(shareUnitAmount);
@@ -251,11 +253,12 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
         D18 priceAssetPerShare = d18(2e18);
 
         (SyncDepositVault syncVault,) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
-        address shareToken = poolManager.shareToken(syncVault.poolId(), syncVault.scId());
+        IShareToken shareToken =
+            poolManager.shareToken(PoolId.wrap(syncVault.poolId()), ShareClassId.wrap(syncVault.scId()));
         _setValuation(syncVault, valuation_, 0);
 
         // Mock valuation
-        uint256 shareUnitAmount = 10 ** IERC20Metadata(shareToken).decimals();
+        uint256 shareUnitAmount = 10 ** shareToken.decimals();
         vm.mockCall(
             address(valuation_),
             abi.encodeWithSelector(IERC7726.getQuote.selector, shareUnitAmount, shareToken, syncVault.asset()),
@@ -277,7 +280,8 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
         D18 priceAssetPerShare = pricePoolPerShare / pricePoolPerAsset;
 
         (SyncDepositVault syncVault,) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
-        address shareToken = poolManager.shareToken(syncVault.poolId(), syncVault.scId());
+        IShareToken shareToken =
+            poolManager.shareToken(PoolId.wrap(syncVault.poolId()), ShareClassId.wrap(syncVault.scId()));
         _setValuation(syncVault, valuation_, 0);
 
         // Mock valuation

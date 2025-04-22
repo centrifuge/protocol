@@ -83,6 +83,6 @@ contract TestEndToEnd is Test {
         vm.startPrank(FM);
         ch.hub().notifyPool{value: GAS}(poolId, cvChainId);
 
-        assert(cv.poolManager().pools(poolId.raw()) != 0);
+        assert(cv.poolManager().pools(poolId) != 0);
     }
 }
