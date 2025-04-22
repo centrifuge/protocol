@@ -1,15 +1,7 @@
 {
-<<<<<<< HEAD
   "claimDeposit": "1192216",
   "enable": "60975",
   "lockDepositRequest": "92339",
   "requestDeposit": "563450",
   "requestRedeem": "2101898"
-=======
-  "claimDeposit": "1152962",
-  "enable": "60953",
-  "lockDepositRequest": "92339",
-  "requestDeposit": "593279",
-  "requestRedeem": "2110857"
->>>>>>> 9143423a (base pool configuration)
 }

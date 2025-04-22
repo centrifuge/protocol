@@ -47,12 +47,14 @@ import {LocalAdapter} from "test/integration/adapters/LocalAdapter.sol";
 /// - If !sameChain: HUB is in CENTRIFUGE_ID_A and CV is in CENTRIFUGE_ID_B
 ///
 /// NOTE: All contracts used needs to be placed in the below structs to avoid external calls each time a contract is
-/// choosen from a deployment. This has two side effects:
+/// chosen from a deployment. If not, it has two side effects:
 ///   1.
 ///   vm.prank(FM)
 ///   deployA.hub().notifyPool() // Will fail, given prank is used to retriver the hub.
 ///
-///   2. It reduces significatily the amount of calls in shown by the debugger.
+///   2. It increases significatily the amount of calls shown by the debugger.
+///
+/// By using these structs we avoid both "issues".
 
 struct CHub {
     uint16 centrifugeId;
@@ -237,8 +239,8 @@ contract TestEndToEnd is Test {
         _setCV(sameChain);
         (PoolId poolId, ShareClassId scId, AssetId assetId) = _configurePool(cv.asyncVaultFactory);
 
-        IShareToken shareToken = IShareToken(cv.poolManager.shareToken(poolId.raw(), scId.raw()));
-        (address asset,) = cv.poolManager.idToAsset(assetId.raw());
+        IShareToken shareToken = IShareToken(cv.poolManager.shareToken(poolId, scId));
+        (address asset,) = cv.poolManager.idToAsset(assetId);
         IAsyncVault vault = IAsyncVault(shareToken.vault(address(asset)));
 
         vm.startPrank(INVESTOR_A);
@@ -263,8 +265,8 @@ contract TestEndToEnd is Test {
         _setCV(sameChain);
         (PoolId poolId, ShareClassId scId, AssetId assetId) = _configurePool(cv.syncDepositVaultFactory);
 
-        IShareToken shareToken = IShareToken(cv.poolManager.shareToken(poolId.raw(), scId.raw()));
-        (address asset,) = cv.poolManager.idToAsset(assetId.raw());
+        IShareToken shareToken = IShareToken(cv.poolManager.shareToken(poolId, scId));
+        (address asset,) = cv.poolManager.idToAsset(assetId);
         SyncDepositVault vault = SyncDepositVault(shareToken.vault(address(asset)));
 
         vm.startPrank(INVESTOR_A);
