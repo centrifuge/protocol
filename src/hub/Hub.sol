@@ -69,7 +69,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         else if (what == "shareClassManager") shareClassManager = IShareClassManager(data);
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "accounting") accounting = IAccounting(data);
-        else revert FileUnrecognizedWhat();
+        else revert FileUnrecognizedParam();
 
         emit File(what, data);
     }
