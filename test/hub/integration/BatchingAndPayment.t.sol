@@ -40,7 +40,7 @@ contract TestBatchingAndPayment is BaseTest {
         vm.startPrank(ADMIN);
 
         PoolId poolA = guardian.createPool(1, FM, USD);
-        PoolId poolB = guardian.createPool(1, FM, USD);
+        PoolId poolB = guardian.createPool(2, FM, USD);
 
         vm.startPrank(FM);
 
