@@ -299,8 +299,7 @@ interface IBaseVault is IERC7540Operator, IERC7741, IERC7714, IERC7575, IRecover
     function poolId() external view returns (uint64);
 
     /// @notice Identifier of the share class of the Centrifuge pool
-    /// @dev    IMPORTANT: Name is trancheId to be backwards compatible
-    function trancheId() external view returns (bytes16);
+    function scId() external view returns (bytes16);
 
     /// @notice Set msg.sender as operator of owner, to `approved` status
     /// @dev    MUST be called by endorsed sender

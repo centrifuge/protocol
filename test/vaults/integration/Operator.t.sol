@@ -18,11 +18,11 @@ contract OperatorTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
 
-        centrifugeChain.updatePricePoolPerShare(vault.poolId(), vault.trancheId(), price, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(vault.poolId(), vault.scId(), price, uint64(block.timestamp));
 
         erc20.mint(investor, amount);
 
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId(), vault.scId(), investor, type(uint64).max);
         vm.prank(investor);
         erc20.approve(vault_, amount);
 
@@ -45,7 +45,7 @@ contract OperatorTest is BaseTest {
         assertEq(vault.pendingDepositRequest(0, operator), 0);
 
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId(), vault.trancheId(), bytes32(bytes20(investor)), assetId, uint128(amount), uint128(amount)
+            vault.poolId(), vault.scId(), bytes32(bytes20(investor)), assetId, uint128(amount), uint128(amount)
         );
 
         vm.prank(operator);
@@ -72,11 +72,11 @@ contract OperatorTest is BaseTest {
         address operator = makeAddr("operator");
         AsyncVault vault = AsyncVault(vault_);
 
-        centrifugeChain.updatePricePoolPerShare(vault.poolId(), vault.trancheId(), price, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(vault.poolId(), vault.scId(), price, uint64(block.timestamp));
 
         erc20.mint(controller, amount);
 
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), controller, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId(), vault.scId(), controller, type(uint64).max);
         vm.prank(controller);
         erc20.approve(vault_, amount);
 
@@ -150,9 +150,7 @@ contract OperatorTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
 
         deposit(vault_, investor, amount); // deposit funds first
-        centrifugeChain.updatePricePoolPerShare(
-            vault.poolId(), vault.trancheId(), defaultPrice, uint64(block.timestamp)
-        );
+        centrifugeChain.updatePricePoolPerShare(vault.poolId(), vault.scId(), defaultPrice, uint64(block.timestamp));
 
         vm.prank(operator);
         vm.expectRevert(IERC20.InsufficientAllowance.selector);
@@ -169,7 +167,7 @@ contract OperatorTest is BaseTest {
         assertEq(vault.pendingRedeemRequest(0, operator), 0);
 
         centrifugeChain.isFulfilledRedeemRequest(
-            vault.poolId(), vault.trancheId(), bytes32(bytes20(investor)), assetId, uint128(amount), uint128(amount)
+            vault.poolId(), vault.scId(), bytes32(bytes20(investor)), assetId, uint128(amount), uint128(amount)
         );
 
         vm.prank(operator);
@@ -197,11 +195,11 @@ contract OperatorTest is BaseTest {
         address operator = makeAddr("operator");
         AsyncVault vault = AsyncVault(vault_);
 
-        centrifugeChain.updatePricePoolPerShare(vault.poolId(), vault.trancheId(), price, uint64(block.timestamp));
+        centrifugeChain.updatePricePoolPerShare(vault.poolId(), vault.scId(), price, uint64(block.timestamp));
 
         erc20.mint(controller, amount);
 
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), controller, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId(), vault.scId(), controller, type(uint64).max);
         vm.prank(controller);
         erc20.approve(vault_, amount);
 

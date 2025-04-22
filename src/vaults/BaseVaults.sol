@@ -31,12 +31,11 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     /// @inheritdoc IBaseVault
     uint64 public immutable poolId;
     /// @inheritdoc IBaseVault
-    bytes16 public immutable trancheId;
+    bytes16 public immutable scId;
 
     /// @inheritdoc IERC7575
     address public immutable asset;
-    /// @dev NOTE: Should never be used in production in any external contract as there will be old vaults without this
-    /// storage. Instead, refer to poolManager.vaultDetails(vault).
+
     uint256 internal immutable tokenId;
 
     /// @inheritdoc IERC7575
@@ -70,7 +69,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         address manager_
     ) Auth(msg.sender) {
         poolId = poolId_;
-        trancheId = scId_;
+        scId = scId_;
         asset = asset_;
         tokenId = tokenId_;
         share = token_;

@@ -54,7 +54,7 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.enable(vault_);
         vm.expectRevert(IAsyncRequests.TransferNotAllowed.selector);
         vaultRouter.requestDeposit{value: 1 wei}(vault_, amount, self, self);
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId(), vault.scId(), self, type(uint64).max);
 
         uint256 gas = estimateGas() + GAS_BUFFER;
 
@@ -152,7 +152,7 @@ contract VaultRouterTest is BaseTest {
 
         erc20.mint(self, amount);
         erc20.approve(address(vaultRouter), amount);
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId(), vault.scId(), self, type(uint64).max);
         vaultRouter.enableLockDepositRequest(vault_, amount);
 
         uint256 fuel = estimateGas();
@@ -200,7 +200,7 @@ contract VaultRouterTest is BaseTest {
         vm.label(vault_, "vault");
         erc20.mint(self, amount);
         erc20.approve(vault_, amount);
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId(), vault.scId(), self, type(uint64).max);
         if (snap) {
             vm.startSnapshotGas("VaultRouter", "enable");
         }
@@ -350,7 +350,7 @@ contract VaultRouterTest is BaseTest {
 
         erc20.mint(self, amount);
         erc20.approve(address(vaultRouter), amount);
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId(), vault.scId(), self, type(uint64).max);
         vaultRouter.enable(address(vault_));
         if (snap) {
             vm.startSnapshotGas("VaultRouter", "lockDepositRequest");
@@ -384,7 +384,7 @@ contract VaultRouterTest is BaseTest {
         vm.label(vault_, "vault");
         erc20.mint(self, amount);
         erc20.approve(vault_, amount);
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId(), vault.scId(), self, type(uint64).max);
         vaultRouter.enable(vault_);
 
         uint256 fuel = estimateGas();
@@ -452,7 +452,7 @@ contract VaultRouterTest is BaseTest {
 
         address investor = makeAddr("investor");
         vm.deal(investor, 10 ether);
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId(), vault.scId(), investor, type(uint64).max);
 
         erc20.mint(investor, amount);
         vm.startPrank(investor);
@@ -488,7 +488,7 @@ contract VaultRouterTest is BaseTest {
         vm.label(vault_, "vault");
 
         address investor = makeAddr("investor");
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId(), vault.scId(), investor, type(uint64).max);
         vaultRouter.enable(vault_);
 
         erc20.mint(investor, amount);
@@ -518,7 +518,7 @@ contract VaultRouterTest is BaseTest {
         vm.label(vault_, "vault");
 
         address investor = makeAddr("investor");
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId(), vault.scId(), investor, type(uint64).max);
         vaultRouter.enable(vault_);
 
         erc20.mint(investor, amount);
@@ -558,7 +558,7 @@ contract VaultRouterTest is BaseTest {
         uint256 fuel = 2 * estimateGas();
 
         // Anyone else can execute the request and claim the deposit
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId(), vault.scId(), investor, type(uint64).max);
         vaultRouter.executeLockedDepositRequest{value: fuel}(vault_, investor);
         (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, investor);
 
@@ -676,7 +676,7 @@ contract VaultRouterTest is BaseTest {
 
         erc20.mint(self, amount);
 
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId(), vault.scId(), self, type(uint64).max);
         erc20.approve(vault_, amount);
         vaultRouter.enable(vault_);
 
@@ -707,7 +707,7 @@ contract VaultRouterTest is BaseTest {
         assertApproxEqAbs(sharePayout, amount / 2, 2);
 
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId(), vault.trancheId(), bytes32(bytes20(user)), assetId, uint128(amount), sharePayout
+            vault.poolId(), vault.scId(), bytes32(bytes20(user)), assetId, uint128(amount), sharePayout
         );
     }
 
@@ -720,7 +720,7 @@ contract VaultRouterTest is BaseTest {
         assertApproxEqAbs(assetPayout, amount * 2, 2);
 
         centrifugeChain.isFulfilledRedeemRequest(
-            vault.poolId(), vault.trancheId(), bytes32(bytes20(user)), assetId, assetPayout, uint128(amount)
+            vault.poolId(), vault.scId(), bytes32(bytes20(user)), assetId, assetPayout, uint128(amount)
         );
     }
 
@@ -747,8 +747,8 @@ contract VaultRouterTest is BaseTest {
         erc20X.approve(address(vault1_), amount1);
         erc20Y.approve(address(vault2_), amount2);
 
-        centrifugeChain.updateMember(vault1.poolId(), vault1.trancheId(), self, type(uint64).max);
-        centrifugeChain.updateMember(vault2.poolId(), vault2.trancheId(), self, type(uint64).max);
+        centrifugeChain.updateMember(vault1.poolId(), vault1.scId(), self, type(uint64).max);
+        centrifugeChain.updateMember(vault2.poolId(), vault2.scId(), self, type(uint64).max);
     }
 
     function testReentrancyCheck(uint256 amount) public {
