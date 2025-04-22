@@ -28,235 +28,235 @@ import {OpType} from "../BeforeAfter.sol";
  */
 abstract contract VaultCallbackTargets is BaseTargetFunctions, Properties {
     /// @dev Callback to requestDeposit
-    function asyncRequests_fulfillDepositRequest(
-        uint128 currencyPayout,
-        uint128 tokenPayout,
-        uint128 /*decreaseByAmount*/,
-        uint256 investorEntropy
-    ) public updateGhostsWithType(OpType.ADMIN) {
-        address investor = _getRandomActor(investorEntropy);
+    // function asyncRequests_fulfillDepositRequest(
+    //     uint128 currencyPayout,
+    //     uint128 tokenPayout,
+    //     uint128 /*decreaseByAmount*/,
+    //     uint256 investorEntropy
+    // ) public updateGhostsWithType(OpType.ADMIN) {
+    //     address investor = _getRandomActor(investorEntropy);
 
-        /// === CLAMP `currencyPayout` === ///
-        {
-            (
-                /*uint128 maxMint*/
-                ,
-                /*uint128 maxWithdraw*/
-                ,
-                /*uint256 depositPrice*/
-                ,
-                /*uint256 redeemPrice*/
-                ,
-                uint128 pendingDepositRequest,
-                /*uint128 pendingRedeemRequest*/
-                ,
-                /*uint128 claimableCancelDepositRequest*/
-                ,
-                /*uint128 claimableCancelRedeemRequest*/
-                ,
-                /*bool pendingCancelDepositRequest*/
-                ,
-                /*bool pendingCancelRedeemRequest*/
-            ) = asyncRequests.investments(address(vault), investor);
+    //     /// === CLAMP `currencyPayout` === ///
+    //     {
+    //         (
+    //             /*uint128 maxMint*/
+    //             ,
+    //             /*uint128 maxWithdraw*/
+    //             ,
+    //             /*uint256 depositPrice*/
+    //             ,
+    //             /*uint256 redeemPrice*/
+    //             ,
+    //             uint128 pendingDepositRequest,
+    //             /*uint128 pendingRedeemRequest*/
+    //             ,
+    //             /*uint128 claimableCancelDepositRequest*/
+    //             ,
+    //             /*uint128 claimableCancelRedeemRequest*/
+    //             ,
+    //             /*bool pendingCancelDepositRequest*/
+    //             ,
+    //             /*bool pendingCancelRedeemRequest*/
+    //         ) = asyncRequests.investments(address(vault), investor);
 
-            /// @audit DANGEROUS TODO: Clamp so we ensure we never give remaining above what was sent, fully trusted
-            /// value
-            // remainingInvestOrder %=
-            // Need to cap currencyPayout by the amount in the escrow?
-            // TO ASK Should currency payout be capped to the amount?
-            if (pendingDepositRequest == 0) {
-                /// @audit NOTHING REQUESTED = WE STOP
-                return;
-            } else {
-                // TODO(@hieronx): revisit clamps here
-                currencyPayout %= pendingDepositRequest; // Needs to be capped at this value
-            }
-        }
+    //         /// @audit DANGEROUS TODO: Clamp so we ensure we never give remaining above what was sent, fully trusted
+    //         /// value
+    //         // remainingInvestOrder %=
+    //         // Need to cap currencyPayout by the amount in the escrow?
+    //         // TO ASK Should currency payout be capped to the amount?
+    //         if (pendingDepositRequest == 0) {
+    //             /// @audit NOTHING REQUESTED = WE STOP
+    //             return;
+    //         } else {
+    //             // TODO(@hieronx): revisit clamps here
+    //             currencyPayout %= pendingDepositRequest; // Needs to be capped at this value
+    //         }
+    //     }
 
-        asyncRequests.fulfillDepositRequest(poolId, scId, investor, assetId, currencyPayout, tokenPayout);
+    //     asyncRequests.fulfillDepositRequest(poolId, scId, investor, assetId, currencyPayout, tokenPayout);
 
-        balanceSheet.approvedDeposits(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), currencyPayout);
-        // E-2 | Global-1
-        sumOfFullfilledDeposits[address(token)] += tokenPayout;
+    //     balanceSheet.approvedDeposits(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), currencyPayout);
+    //     // E-2 | Global-1
+    //     sumOfFullfilledDeposits[address(token)] += tokenPayout;
 
-        // Track mint
-        executedInvestments[address(token)] += tokenPayout;
+    //     // Track mint
+    //     executedInvestments[address(token)] += tokenPayout;
 
-        __globals();
-    }
+    //     __globals();
+    // }
 
-    /// @dev Callback to requestRedeem
-    function asyncRequests_fulfillRedeemRequest(uint128 currencyPayout, uint128 tokenPayout, uint256 investorEntropy) public  updateGhostsWithType(OpType.ADMIN) {
-        address investor = _getRandomActor(investorEntropy);
+    // /// @dev Callback to requestRedeem
+    // function asyncRequests_fulfillRedeemRequest(uint128 currencyPayout, uint128 tokenPayout, uint256 investorEntropy) public  updateGhostsWithType(OpType.ADMIN) {
+    //     address investor = _getRandomActor(investorEntropy);
 
-        /// === CLAMP `tokenPayout` === ///
-        {
-            (
-                /*uint128 maxMint*/
-                ,
-                /*uint128 maxWithdraw*/
-                ,
-                /*uint256 depositPrice*/
-                ,
-                /*uint256 redeemPrice*/
-                ,
-                /*uint128 pendingDepositRequest*/
-                ,
-                uint128 pendingRedeemRequest,
-                /*uint128 claimableCancelDepositRequest*/
-                ,
-                /*uint128 claimableCancelRedeemRequest*/
-                ,
-                /*bool pendingCancelDepositRequest*/
-                ,
-                /*bool pendingCancelRedeemRequest*/
-            ) = asyncRequests.investments(address(vault), investor);
+    //     /// === CLAMP `tokenPayout` === ///
+    //     {
+    //         (
+    //             /*uint128 maxMint*/
+    //             ,
+    //             /*uint128 maxWithdraw*/
+    //             ,
+    //             /*uint256 depositPrice*/
+    //             ,
+    //             /*uint256 redeemPrice*/
+    //             ,
+    //             /*uint128 pendingDepositRequest*/
+    //             ,
+    //             uint128 pendingRedeemRequest,
+    //             /*uint128 claimableCancelDepositRequest*/
+    //             ,
+    //             /*uint128 claimableCancelRedeemRequest*/
+    //             ,
+    //             /*bool pendingCancelDepositRequest*/
+    //             ,
+    //             /*bool pendingCancelRedeemRequest*/
+    //         ) = asyncRequests.investments(address(vault), investor);
 
-            /// @audit DANGEROUS TODO: Clamp so we ensure we never give remaining above what was sent, fully trusted
-            /// value
-            // remainingInvestOrder %=
-            // Need to cap currencyPayout by the amount in the escrow?
-            // TO ASK Should currency payout be capped to the amount?
-            if (pendingRedeemRequest == 0) {
-                /// @audit NOTHING REQUESTED = WE STOP
-                return;
-            } else {
-                // TODO(@hieronx): revisit clamps here
-                tokenPayout %= pendingRedeemRequest; // Needs to be capped at this value
-                    // remainingRedeemOrder = pendingRedeemRequest - tokenPayout; /// @audit Replaced by
-                    // decreaseByAmount
-            }
-        }
+    //         /// @audit DANGEROUS TODO: Clamp so we ensure we never give remaining above what was sent, fully trusted
+    //         /// value
+    //         // remainingInvestOrder %=
+    //         // Need to cap currencyPayout by the amount in the escrow?
+    //         // TO ASK Should currency payout be capped to the amount?
+    //         if (pendingRedeemRequest == 0) {
+    //             /// @audit NOTHING REQUESTED = WE STOP
+    //             return;
+    //         } else {
+    //             // TODO(@hieronx): revisit clamps here
+    //             tokenPayout %= pendingRedeemRequest; // Needs to be capped at this value
+    //                 // remainingRedeemOrder = pendingRedeemRequest - tokenPayout; /// @audit Replaced by
+    //                 // decreaseByAmount
+    //         }
+    //     }
 
-        // TODO: Re check
-        // // TODO: test_invariant_asyncVault_10_w_recon
-        MockERC20(_getAsset()).mint(address(escrow), currencyPayout);
-        mintedByCurrencyPayout[_getAsset()] += currencyPayout;
-        // /// @audit We mint payout here which has to be paid by the borrowers
-        // // END TODO test_invariant_asyncVault_10_w_recon
+    //     // TODO: Re check
+    //     // // TODO: test_invariant_asyncVault_10_w_recon
+    //     MockERC20(_getAsset()).mint(address(escrow), currencyPayout);
+    //     mintedByCurrencyPayout[_getAsset()] += currencyPayout;
+    //     // /// @audit We mint payout here which has to be paid by the borrowers
+    //     // // END TODO test_invariant_asyncVault_10_w_recon
 
-        asyncRequests.fulfillRedeemRequest(poolId, scId, investor, assetId, currencyPayout, tokenPayout);
+    //     asyncRequests.fulfillRedeemRequest(poolId, scId, investor, assetId, currencyPayout, tokenPayout);
 
-        balanceSheet.revokedShares(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), currencyPayout);
+    //     balanceSheet.revokedShares(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), currencyPayout);
 
-        sumOfClaimedRequests[address(token)] += tokenPayout;
+    //     sumOfClaimedRequests[address(token)] += tokenPayout;
 
-        // NOTE: Currency moves from escrow to user escrow, we do not track that at this time
+    //     // NOTE: Currency moves from escrow to user escrow, we do not track that at this time
 
-        // Track burn
-        executedRedemptions[address(token)] += tokenPayout;
+    //     // Track burn
+    //     executedRedemptions[address(token)] += tokenPayout;
 
-        __globals();
-    }
+    //     __globals();
+    // }
 
-    uint256 totalCurrencyPayout;
+    // uint256 totalCurrencyPayout;
 
-    /// @dev Callback to `cancelDepositRequest`
-    /// @dev NOTE: Share -> decreaseByAmount is linear!
-    function asyncRequests_fulfillCancelDepositRequest(uint128 currencyPayout, uint256 investorEntropy) public  updateGhostsWithType(OpType.ADMIN) {
-        /// === CLAMP `currencyPayout` === ///
-        address investor = _getRandomActor(investorEntropy);
+    // /// @dev Callback to `cancelDepositRequest`
+    // /// @dev NOTE: Share -> decreaseByAmount is linear!
+    // function asyncRequests_fulfillCancelDepositRequest(uint128 currencyPayout, uint256 investorEntropy) public  updateGhostsWithType(OpType.ADMIN) {
+    //     /// === CLAMP `currencyPayout` === ///
+    //     address investor = _getRandomActor(investorEntropy);
 
-        // Require that the investor has created a deposit request
-        require(vault.pendingCancelDepositRequest(0, investor));
-        {
-            (
-                /*uint128 maxMint*/
-                ,
-                /*uint128 maxWithdraw*/
-                ,
-                /*uint256 depositPrice*/
-                ,
-                /*uint256 redeemPrice*/
-                ,
-                uint128 pendingDepositRequest,
-                /*uint128 pendingRedeemRequest*/
-                ,
-                /*uint128 claimableCancelDepositRequest*/
-                ,
-                /*uint128 claimableCancelRedeemRequest*/
-                ,
-                /*bool pendingCancelDepositRequest*/
-                ,
-                /*bool pendingCancelRedeemRequest*/
-            ) = asyncRequests.investments(address(vault), investor);
+    //     // Require that the investor has created a deposit request
+    //     require(vault.pendingCancelDepositRequest(0, investor));
+    //     {
+    //         (
+    //             /*uint128 maxMint*/
+    //             ,
+    //             /*uint128 maxWithdraw*/
+    //             ,
+    //             /*uint256 depositPrice*/
+    //             ,
+    //             /*uint256 redeemPrice*/
+    //             ,
+    //             uint128 pendingDepositRequest,
+    //             /*uint128 pendingRedeemRequest*/
+    //             ,
+    //             /*uint128 claimableCancelDepositRequest*/
+    //             ,
+    //             /*uint128 claimableCancelRedeemRequest*/
+    //             ,
+    //             /*bool pendingCancelDepositRequest*/
+    //             ,
+    //             /*bool pendingCancelRedeemRequest*/
+    //         ) = asyncRequests.investments(address(vault), investor);
 
-            /// @audit DANGEROUS TODO: Clamp so we ensure we never give remaining above what was sent, fully trusted
-            /// value
-            // remainingInvestOrder %=
-            // Need to cap currencyPayout by the amount in the escrow?
-            // TO ASK Should currency payout be capped to the amount?
-            if (pendingDepositRequest == 0) {
-                /// @audit NOTHING REQUESTED = WE STOP
-                return;
-            } else {
-                currencyPayout %= pendingDepositRequest + 1; // Needs to be capped at this value
-                totalCurrencyPayout += currencyPayout;
-                /// @audit TODO Remove totalCurrencyPayout
-            }
-        }
-        // Need to cap remainingInvestOrder by the shares?
+    //         /// @audit DANGEROUS TODO: Clamp so we ensure we never give remaining above what was sent, fully trusted
+    //         /// value
+    //         // remainingInvestOrder %=
+    //         // Need to cap currencyPayout by the amount in the escrow?
+    //         // TO ASK Should currency payout be capped to the amount?
+    //         if (pendingDepositRequest == 0) {
+    //             /// @audit NOTHING REQUESTED = WE STOP
+    //             return;
+    //         } else {
+    //             currencyPayout %= pendingDepositRequest + 1; // Needs to be capped at this value
+    //             totalCurrencyPayout += currencyPayout;
+    //             /// @audit TODO Remove totalCurrencyPayout
+    //         }
+    //     }
+    //     // Need to cap remainingInvestOrder by the shares?
 
-        // TODO: Would they set the order to a higher value?
-        asyncRequests.fulfillCancelDepositRequest(poolId, scId, investor, assetId, currencyPayout, currencyPayout);
-        /// @audit Reduced by: currencyPayout
+    //     // TODO: Would they set the order to a higher value?
+    //     asyncRequests.fulfillCancelDepositRequest(poolId, scId, investor, assetId, currencyPayout, currencyPayout);
+    //     /// @audit Reduced by: currencyPayout
 
-        cancelDepositCurrencyPayout[_getAsset()] += currencyPayout;
+    //     cancelDepositCurrencyPayout[_getAsset()] += currencyPayout;
 
-        __globals();
-    }
+    //     __globals();
+    // }
 
-    /// @dev Callback to `cancelRedeemRequest`
-    /// @dev NOTE: Share -> decreaseByAmount is linear!
-    function asyncRequests_fulfillCancelRedeemRequest(uint128 tokenPayout, uint256 investorEntropy) public  updateGhostsWithType(OpType.ADMIN) {
-        // Require that the actor has done the request
+    // /// @dev Callback to `cancelRedeemRequest`
+    // /// @dev NOTE: Share -> decreaseByAmount is linear!
+    // function asyncRequests_fulfillCancelRedeemRequest(uint128 tokenPayout, uint256 investorEntropy) public  updateGhostsWithType(OpType.ADMIN) {
+    //     // Require that the actor has done the request
 
-        /// === CLAMP `tokenPayout` === ///
-        address investor = _getRandomActor(investorEntropy);
-        require(vault.pendingCancelRedeemRequest(0, investor));
+    //     /// === CLAMP `tokenPayout` === ///
+    //     address investor = _getRandomActor(investorEntropy);
+    //     require(vault.pendingCancelRedeemRequest(0, investor));
 
-        {
-            (
-                /*uint128 maxMint*/
-                ,
-                /*uint128 maxWithdraw*/
-                ,
-                /*uint256 depositPrice*/
-                ,
-                /*uint256 redeemPrice*/
-                ,
-                /*uint128 pendingDepositRequest*/
-                ,
-                uint128 pendingRedeemRequest,
-                /*uint128 claimableCancelDepositRequest*/
-                ,
-                /*uint128 claimableCancelRedeemRequest*/
-                ,
-                /*bool pendingCancelDepositRequest*/
-                ,
-                /*bool pendingCancelRedeemRequest*/
-            ) = asyncRequests.investments(address(vault), investor);
+    //     {
+    //         (
+    //             /*uint128 maxMint*/
+    //             ,
+    //             /*uint128 maxWithdraw*/
+    //             ,
+    //             /*uint256 depositPrice*/
+    //             ,
+    //             /*uint256 redeemPrice*/
+    //             ,
+    //             /*uint128 pendingDepositRequest*/
+    //             ,
+    //             uint128 pendingRedeemRequest,
+    //             /*uint128 claimableCancelDepositRequest*/
+    //             ,
+    //             /*uint128 claimableCancelRedeemRequest*/
+    //             ,
+    //             /*bool pendingCancelDepositRequest*/
+    //             ,
+    //             /*bool pendingCancelRedeemRequest*/
+    //         ) = asyncRequests.investments(address(vault), investor);
 
-            /// @audit DANGEROUS TODO: Clamp so we ensure we never give remaining above what was sent, fully trusted
-            /// value
-            // remainingInvestOrder %=
-            // Need to cap currencyPayout by the amount in the escrow?
-            // TO ASK Should currency payout be capped to the amount?
-            if (pendingRedeemRequest == 0) {
-                /// @audit NOTHING REQUESTED = WE STOP
-                return;
-            } else {
-                tokenPayout %= pendingRedeemRequest + 1; // Needs to be capped at this value
-            }
-        }
+    //         /// @audit DANGEROUS TODO: Clamp so we ensure we never give remaining above what was sent, fully trusted
+    //         /// value
+    //         // remainingInvestOrder %=
+    //         // Need to cap currencyPayout by the amount in the escrow?
+    //         // TO ASK Should currency payout be capped to the amount?
+    //         if (pendingRedeemRequest == 0) {
+    //             /// @audit NOTHING REQUESTED = WE STOP
+    //             return;
+    //         } else {
+    //             tokenPayout %= pendingRedeemRequest + 1; // Needs to be capped at this value
+    //         }
+    //     }
 
-        asyncRequests.fulfillCancelRedeemRequest(poolId, scId, investor, assetId, tokenPayout);
-        /// @audit tokenPayout
+    //     asyncRequests.fulfillCancelRedeemRequest(poolId, scId, investor, assetId, tokenPayout);
+    //     /// @audit tokenPayout
 
-        cancelRedeemShareTokenPayout[address(token)] += tokenPayout;
+    //     cancelRedeemShareTokenPayout[address(token)] += tokenPayout;
 
-        __globals();
-    }
+    //     __globals();
+    // }
 
     // NOTE: TODO: We should remove this and consider a separate test, if we go by the FSM
     // FSM -> depps

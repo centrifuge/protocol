@@ -32,7 +32,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         
         vault_requestDeposit(1e18, 0);
 
-        asyncRequests_fulfillDepositRequest(1e18 - 1, 1e18, 0, 0);
+        // asyncRequests_fulfillDepositRequest(1e18 - 1, 1e18, 0, 0);
 
         vault_deposit(1e18 - 1);
     }
@@ -45,7 +45,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         
         vault_requestDeposit(1e18, 0);
 
-        asyncRequests_fulfillDepositRequest(1e18 - 1, 1e18, 0, 0);
+        // asyncRequests_fulfillDepositRequest(1e18 - 1, 1e18, 0, 0);
 
         vault_deposit(1e18 - 1);
 
@@ -86,7 +86,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         poolManager_updatePricePoolPerShare(1,1525005619);
 
-        asyncRequests_fulfillDepositRequest(0,1000154974352403727,0,0);
+        // asyncRequests_fulfillDepositRequest(0,1000154974352403727,0,0);
 
         property_totalAssets_solvency();
     }
@@ -104,7 +104,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         vault_cancelDepositRequest();
 
-        asyncRequests_fulfillCancelDepositRequest(1,0);
+        // asyncRequests_fulfillCancelDepositRequest(1,0);
 
         add_new_asset(0);
 

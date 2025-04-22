@@ -3,14 +3,15 @@ pragma solidity ^0.8.0;
 
 // Chimera deps
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
+import {vm} from "@chimera/Hevm.sol";
 import {console2} from "forge-std/console2.sol";
 
 // Recon Helpers
 import {Panic} from "@recon/Panic.sol";
+import {MockERC20} from "@recon/MockERC20.sol";
 
 // Dependencies
 import {Hub} from "src/hub/Hub.sol";
-
 // Interfaces
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 
@@ -46,7 +47,7 @@ abstract contract HubTargets is
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
     /// @dev Property: after successfully calling claimDeposit for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
-    function hub_claimDeposit(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint) public updateGhosts asActor {
+    function hub_claimDeposit(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
@@ -54,8 +55,16 @@ abstract contract HubTargets is
         
         (, uint32 lastUpdateBefore) = shareClassManager.depositRequest(scId, assetId, investor);
         (,, uint32 latestIssuance,) = shareClassManager.epochPointers(scId, assetId);
+        uint256 assetBalanceBefore = MockERC20(vault.asset()).balanceOf(_getActor());
 
+        vm.prank(_getActor());
         hub.claimDeposit(poolId, scId, assetId, investor);
+
+        uint256 assetBalanceAfter = MockERC20(vault.asset()).balanceOf(_getActor());
+        uint256 assetClaimed = assetBalanceAfter - assetBalanceBefore;
+        // NOTE: making this callback here because after the call to sendFulfilledDepositRequest, the admin would call this so this is like a form of clamping since we don't want to over approve
+        // TODO: extract this into a separate handler that can be called separately only for the amount claimed here
+        balanceSheet.approvedDeposits(poolId, scId, assetId, uint128(assetClaimed));
 
         (, uint32 lastUpdateAfter) = shareClassManager.depositRequest(scId, assetId, investor);
         uint32 epochId = shareClassManager.epochId(poolId);
@@ -82,7 +91,15 @@ abstract contract HubTargets is
         AssetId assetId = AssetId.wrap(assetIdAsUint);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
         
+        uint256 assetBalanceBefore = MockERC20(vault.asset()).balanceOf(_getActor());
+
+        vm.prank(_getActor());
         hub.claimRedeem(poolId, scId, assetId, investor);
+
+        uint256 assetBalanceAfter = MockERC20(vault.asset()).balanceOf(_getActor());
+        uint256 assetClaimed = assetBalanceAfter - assetBalanceBefore;
+        // TODO: extract this into a separate handler that can be called separately only for the amount claimed here
+        balanceSheet.revokedShares(poolId, scId, assetId, uint128(assetClaimed));
 
         (, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, investor);
         uint32 epochId = shareClassManager.epochId(poolId);
