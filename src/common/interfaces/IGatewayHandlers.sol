@@ -13,17 +13,17 @@ import {PoolId} from "src/common/types/PoolId.sol";
 /// -----------------------------------------------------
 /// @notice Interface for Gateway methods called by messages
 interface IGatewayHandler {
-    /// @notice Initialize the recovery of a message.
+    /// @notice Initialize the recovery of a payload.
     /// @param  centrifugeId Chain where the adapter is configured for
     /// @param  adapter Adapter that the recovery was targeting
-    /// @param  messageHash Hash of the message being disputed
-    function initiateMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 messageHash) external;
+    /// @param  payloadHash Hash of the payload being disputed
+    function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external;
 
-    /// @notice Cancel the recovery of a message.
+    /// @notice Cancel the recovery of a payload.
     /// @param  centrifugeId Chain where the adapter is configured for
     /// @param  adapter Adapter that the recovery was targeting
-    /// @param  messageHash Hash of the message being disputed
-    function disputeMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 messageHash) external;
+    /// @param  payloadHash Hash of the payload being disputed
+    function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external;
 }
 
 /// -----------------------------------------------------

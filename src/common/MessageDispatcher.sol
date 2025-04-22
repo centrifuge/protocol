@@ -370,33 +370,33 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IRootMessageSender
-    function sendInitiateMessageRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, bytes32 adapter, bytes32 hash)
+    function sendInitiateRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, bytes32 adapter, bytes32 hash)
         external
         auth
     {
         if (centrifugeId == localCentrifugeId) {
-            gateway.initiateMessageRecovery(adapterCentrifugeId, IAdapter(adapter.toAddress()), hash);
+            gateway.initiateRecovery(adapterCentrifugeId, IAdapter(adapter.toAddress()), hash);
         } else {
             gateway.send(
                 centrifugeId,
-                MessageLib.InitiateMessageRecovery({hash: hash, adapter: adapter, centrifugeId: adapterCentrifugeId})
-                    .serialize()
+                MessageLib.InitiateRecovery({hash: hash, adapter: adapter, centrifugeId: adapterCentrifugeId}).serialize(
+                )
             );
         }
     }
 
     /// @inheritdoc IRootMessageSender
-    function sendDisputeMessageRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, bytes32 adapter, bytes32 hash)
+    function sendDisputeRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, bytes32 adapter, bytes32 hash)
         external
         auth
     {
         if (centrifugeId == localCentrifugeId) {
-            gateway.disputeMessageRecovery(adapterCentrifugeId, IAdapter(adapter.toAddress()), hash);
+            gateway.disputeRecovery(adapterCentrifugeId, IAdapter(adapter.toAddress()), hash);
         } else {
             gateway.send(
                 centrifugeId,
-                MessageLib.DisputeMessageRecovery({hash: hash, adapter: adapter, centrifugeId: adapterCentrifugeId})
-                    .serialize()
+                MessageLib.DisputeRecovery({hash: hash, adapter: adapter, centrifugeId: adapterCentrifugeId}).serialize(
+                )
             );
         }
     }
