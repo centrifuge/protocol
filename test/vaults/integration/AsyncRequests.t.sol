@@ -17,7 +17,7 @@ interface VaultLike {
 }
 
 contract AsyncRequestsHarness is AsyncRequests {
-    constructor(address root, address escrow, address deployer) AsyncRequests(root, escrow, deployer) {}
+    constructor(address root, address deployer) AsyncRequests(root, deployer) {}
 
     function calculatePrice(address vault, uint128 assets, uint128 shares) external view returns (uint256 price) {
         if (vault == address(0)) {
@@ -40,11 +40,13 @@ contract AsyncRequestsTest is BaseTest {
         );
 
         // redeploying within test to increase coverage
-        new AsyncRequests(address(root), address(escrow), address(this));
+        new AsyncRequests(address(root), address(this));
 
         // values set correctly
-        assertEq(address(asyncRequests.escrow()), address(escrow));
+        assertEq(address(asyncRequests.sender()), address(messageDispatcher));
         assertEq(address(asyncRequests.poolManager()), address(poolManager));
+        assertEq(address(asyncRequests.balanceSheet()), address(balanceSheet));
+        assertEq(address(asyncRequests.poolEscrowProvider()), address(poolEscrowFactory));
 
         // permissions set correctly
         assertEq(asyncRequests.wards(address(root)), 1);
@@ -72,6 +74,8 @@ contract AsyncRequestsTest is BaseTest {
         assertEq(address(asyncRequests.poolManager()), randomUser);
         asyncRequests.file("balanceSheet", randomUser);
         assertEq(address(asyncRequests.balanceSheet()), randomUser);
+        asyncRequests.file("poolEscrowProvider", randomUser);
+        assertEq(address(asyncRequests.poolEscrowProvider()), randomUser);
 
         // remove self from wards
         asyncRequests.deny(self);
@@ -82,7 +86,7 @@ contract AsyncRequestsTest is BaseTest {
 
     // --- Price calculations ---
     function testPrice() public {
-        AsyncRequestsHarness harness = new AsyncRequestsHarness(address(root), address(escrow), address(this));
+        AsyncRequestsHarness harness = new AsyncRequestsHarness(address(root), address(this));
         assertEq(harness.calculatePrice(address(0), 1, 0), 0);
         assertEq(harness.calculatePrice(address(0), 0, 1), 0);
     }

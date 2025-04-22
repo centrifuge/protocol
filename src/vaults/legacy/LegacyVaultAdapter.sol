@@ -4,6 +4,8 @@ pragma solidity 0.8.28;
 import {IERC7540} from "src/vaults/legacy/interfaces/IERC7540.sol";
 import {IInvestmentManager} from "src/vaults/legacy/interfaces/IInvestmentManager.sol";
 import {ILegacyVaultAdapter} from "src/vaults/legacy/interfaces/ILegacyVaultAdapter.sol";
+import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
+
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 
 /// @title  LegacyVaultAdapter
@@ -30,8 +32,9 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         address asset,
         address token,
         address root,
-        address manager
-    ) AsyncVault(poolId, scId, asset, LEGACY_TOKEN_ID, token, root, manager) {
+        address manager,
+        IPoolEscrowProvider poolEscrowProvider
+    ) AsyncVault(poolId, scId, asset, LEGACY_TOKEN_ID, token, root, manager, poolEscrowProvider) {
         require(legacyVault_.poolId() == legacyPoolId_, NotLegacyPoolId(legacyPoolId_, legacyVault_.poolId()));
         require(
             legacyVault_.trancheId() == legacyTrancheId_, NotLegacyTrancheId(legacyTrancheId_, legacyVault_.trancheId())
@@ -51,9 +54,8 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
     }
 
     // --- IInvestmentManager impl ---
-    function escrow() public pure returns (address) {
-        // TODO: actually use the `IEscrowProvider` from the manager?
-        return address(0);
+    function escrow() public view returns (address) {
+        return address(_poolEscrowProvider.escrow(poolId));
     }
 
     /// @inheritdoc IInvestmentManager

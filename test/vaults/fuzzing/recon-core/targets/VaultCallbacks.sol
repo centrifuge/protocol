@@ -121,7 +121,7 @@ abstract contract VaultCallbacks is BaseTargetFunctions, Properties {
 
         // TODO: Re check
         // // TODO: test_invariant_asyncVault_10_w_recon
-        assetErc20.mint(address(escrow), currencyPayout);
+        assetErc20.mint(address(poolEscrowFactory.escrow(poolId)), currencyPayout);
         mintedByCurrencyPayout[address(assetErc20)] += currencyPayout;
         // /// @audit We mint payout here which has to be paid by the borrowers
         // // END TODO test_invariant_asyncVault_10_w_recon
