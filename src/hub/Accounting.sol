@@ -104,16 +104,24 @@ contract Accounting is Auth, IAccounting {
     }
 
     /// @inheritdoc IAccounting
-    function accountValue(PoolId poolId, AccountId account) public view returns (int128) {
+    function accountValue(PoolId poolId, AccountId account) public view returns (bool /* isPositive */, uint128) {
         Account storage acc = accounts[poolId][account];
         require(acc.lastUpdated != 0, AccountDoesNotExist());
 
         if (acc.isDebitNormal) {
             // For debit-normal accounts: Value = Total Debit - Total Credit
-            return int128(acc.totalDebit) - int128(acc.totalCredit);
+            if (acc.totalDebit >= acc.totalCredit) {
+                return (true, acc.totalDebit - acc.totalCredit);
+            } else {
+                return (false, acc.totalCredit - acc.totalDebit);
+            }
         } else {
             // For credit-normal accounts: Value = Total Credit - Total Debit
-            return int128(acc.totalCredit) - int128(acc.totalDebit);
+            if (acc.totalCredit >= acc.totalDebit) {
+                return (true, acc.totalCredit - acc.totalDebit);
+            } else {
+                return (false, acc.totalDebit - acc.totalCredit);
+            }
         }
     }
 

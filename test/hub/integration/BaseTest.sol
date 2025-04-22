@@ -84,4 +84,10 @@ contract BaseTest is HubDeployer, Test {
         // We should not use the block ChainID
         vm.chainId(0xDEAD);
     }
+
+    function _assertEqAccountValue(PoolId poolId, AccountId accountId, bool expectedIsPositive, uint128 expectedValue) internal view {
+        (bool isPositive, uint128 value) = accounting.accountValue(poolId, accountId);
+        assertEq(isPositive, expectedIsPositive, "Mismatch: Accounting.accountValue - isPositive");
+        assertEq(value, expectedValue, "Mismatch: Accounting.accountValue - value");
+    }
 }
