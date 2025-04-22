@@ -183,13 +183,13 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         uint8 decimals,
         bytes32 salt,
         address hook
-    ) public auth returns (address) {
+    ) public auth {
         require(decimals >= MIN_DECIMALS, TooFewDecimals());
         require(decimals <= MAX_DECIMALS, TooManyDecimals());
         require(isPoolActive(poolId.raw()), InvalidPool());
 
         Pool storage pool = pools[poolId.raw()];
-        require(pool.shareClasses[scId.raw()].shareToken == address(0), ShareClassAlreadyRegistered());
+        require(address(pool.shareClasses[scId.raw()].shareToken) == address(0), ShareClassAlreadyRegistered());
 
         // Hook can be address zero if the share token is fully permissionless and has no custom logic
         require(hook == address(0) || _isValidHook(hook), InvalidHook());
@@ -199,10 +199,10 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         // BalanceSheet needs this in order to mint shares
         tokenWards[1] = balanceSheet;
 
-        address shareToken_ = tokenFactory.newToken(name, symbol, decimals, salt, tokenWards);
+        IShareToken shareToken_ = tokenFactory.newToken(name, symbol, decimals, salt, tokenWards);
 
         if (hook != address(0)) {
-            IShareToken(shareToken_).file("hook", hook);
+            shareToken_.file("hook", hook);
         }
 
         pool.shareClasses[scId.raw()].shareToken = shareToken_;
@@ -214,8 +214,6 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         }
 
         emit AddShareClass(poolId.raw(), scId.raw(), shareToken_);
-
-        return shareToken_;
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
@@ -419,9 +417,9 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     }
 
     /// @inheritdoc IPoolManager
-    function shareToken(uint64 poolId, bytes16 scId) public view returns (address) {
+    function shareToken(uint64 poolId, bytes16 scId) public view returns (IShareToken) {
         ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
-        require(shareClass.shareToken != address(0), UnknownToken());
+        require(address(shareClass.shareToken) != address(0), UnknownToken());
         return shareClass.shareToken;
     }
 
@@ -517,7 +515,9 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
     /// @dev Sets up approval permissions for pool, i.e. the pool escrow, the base vault manager and potentially a
     /// secondary manager (in case of partially sync vault)
-    function _approvePool(address vault, uint64 poolId, address shareToken_, address asset, uint256 tokenId) internal {
+    function _approvePool(address vault, uint64 poolId, IShareToken shareToken_, address asset, uint256 tokenId)
+        internal
+    {
         IPoolEscrow escrow = IPoolEscrow(address(poolEscrowFactory.escrow(poolId)));
 
         // Give pool manager infinite approval for asset
@@ -539,12 +539,16 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     }
 
     /// @dev Sets up approval permissions for the given vault manager
-    function _approveManager(IPoolEscrow escrow, address manager, address shareToken_, address asset, uint256 tokenId)
-        internal
-    {
-        IAuth(shareToken_).rely(manager);
+    function _approveManager(
+        IPoolEscrow escrow,
+        address manager,
+        IShareToken shareToken_,
+        address asset,
+        uint256 tokenId
+    ) internal {
+        IAuth(address(shareToken_)).rely(manager);
 
-        escrow.approveMax(shareToken_, manager);
+        escrow.approveMax(address(shareToken_), manager);
         escrow.approveMax(asset, tokenId, manager);
     }
 
@@ -572,6 +576,6 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
     function _shareClass(uint64 poolId, bytes16 scId) internal view returns (ShareClassDetails storage shareClass) {
         shareClass = pools[poolId].shareClasses[scId];
-        require(shareClass.shareToken != address(0), ShareTokenDoesNotExist());
+        require(address(shareClass.shareToken) != address(0), ShareTokenDoesNotExist());
     }
 }

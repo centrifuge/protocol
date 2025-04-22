@@ -74,7 +74,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         if (kind == uint8(UpdateContractType.Valuation)) {
             MessageLib.UpdateContractValuation memory m = MessageLib.deserializeUpdateContractValuation(payload);
 
-            require(poolManager.shareToken(poolId.raw(), scId.raw()) != address(0), ShareTokenDoesNotExist());
+            require(address(poolManager.shareToken(poolId.raw(), scId.raw())) != address(0), ShareTokenDoesNotExist());
             (address asset, uint256 tokenId) = poolManager.idToAsset(m.assetId);
 
             setValuation(poolId.raw(), scId.raw(), asset, tokenId, m.valuation.toAddress());
@@ -82,7 +82,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
             MessageLib.UpdateContractSyncDepositMaxReserve memory m =
                 MessageLib.deserializeUpdateContractSyncDepositMaxReserve(payload);
 
-            require(poolManager.shareToken(poolId.raw(), scId.raw()) != address(0), ShareTokenDoesNotExist());
+            require(address(poolManager.shareToken(poolId.raw(), scId.raw())) != address(0), ShareTokenDoesNotExist());
             (address asset, uint256 tokenId) = poolManager.idToAsset(m.assetId);
 
             setMaxReserve(poolId.raw(), scId.raw(), asset, tokenId, m.maxReserve);
@@ -364,11 +364,12 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         if (address(valuation_) == address(0)) {
             (price,) = poolManager.priceAssetPerShare(poolId, scId, assetId, true);
         } else {
-            address shareToken = poolManager.shareToken(poolId, scId);
+            IShareToken shareToken = poolManager.shareToken(poolId, scId);
 
             uint128 assetUnitAmount = uint128(10 ** VaultPricingLib.getAssetDecimals(asset, tokenId));
             uint128 shareUnitAmount = uint128(10 ** IERC20Metadata(shareToken).decimals());
-            uint128 assetAmountPerShareUnit = valuation_.getQuote(shareUnitAmount, shareToken, asset).toUint128();
+            uint128 assetAmountPerShareUnit =
+                valuation_.getQuote(shareUnitAmount, address(shareToken), asset).toUint128();
 
             // Retrieve price by normalizing by asset denomination
             price = d18(assetAmountPerShareUnit, assetUnitAmount);

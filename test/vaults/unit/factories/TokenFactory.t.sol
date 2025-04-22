@@ -7,6 +7,7 @@ import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 import {ShareToken} from "src/vaults/token/ShareToken.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
 import {VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 import {BaseTest} from "test/vaults/BaseTest.sol";
 import "forge-std/Test.sol";
@@ -123,7 +124,7 @@ contract FactoryTest is Test {
         tokenWards[0] = address(asyncRequests);
         tokenWards[1] = address(poolManager);
 
-        address token = tokenFactory.newToken(name, symbol, decimals, tokenSalt, tokenWards);
+        IShareToken token = tokenFactory.newToken(name, symbol, decimals, tokenSalt, tokenWards);
 
         assertEq(address(token), predictedAddress);
         assertEq(tokenFactory.getAddress(decimals, tokenSalt), address(token));

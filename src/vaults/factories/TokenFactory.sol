@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {Auth} from "src/misc/Auth.sol";
+
 import {ShareToken} from "src/vaults/token/ShareToken.sol";
 import {ITokenFactory} from "src/vaults/interfaces/factories/ITokenFactory.sol";
-import {Auth} from "src/misc/Auth.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 /// @title  Share Token Factory
 /// @dev    Utility for deploying new share class token contracts
@@ -23,7 +25,7 @@ contract TokenFactory is Auth, ITokenFactory {
         uint8 decimals,
         bytes32 salt,
         address[] calldata tokenWards
-    ) public auth returns (address) {
+    ) public auth returns (IShareToken) {
         ShareToken token = new ShareToken{salt: salt}(decimals);
 
         token.file("name", name);
@@ -36,7 +38,7 @@ contract TokenFactory is Auth, ITokenFactory {
         }
         token.deny(address(this));
 
-        return address(token);
+        return token;
     }
 
     /// @inheritdoc ITokenFactory

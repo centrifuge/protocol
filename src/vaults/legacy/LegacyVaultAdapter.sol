@@ -5,7 +5,7 @@ import {IERC7540} from "src/vaults/legacy/interfaces/IERC7540.sol";
 import {IInvestmentManager} from "src/vaults/legacy/interfaces/IInvestmentManager.sol";
 import {ILegacyVaultAdapter} from "src/vaults/legacy/interfaces/ILegacyVaultAdapter.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
-
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 
 /// @title  LegacyVaultAdapter
@@ -30,7 +30,7 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         bytes16 scId,
         bytes16 legacyTrancheId_,
         address asset,
-        address token,
+        IShareToken token,
         address root,
         address manager,
         IPoolEscrowProvider poolEscrowProvider
@@ -40,7 +40,7 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
             legacyVault_.trancheId() == legacyTrancheId_, NotLegacyTrancheId(legacyTrancheId_, legacyVault_.trancheId())
         );
         require(legacyVault_.asset() == asset, NotLegacyAsset(asset, legacyVault_.asset()));
-        require(legacyVault_.share() == token, NotLegacyShare(token, legacyVault_.share()));
+        require(legacyVault_.share() == address(token), NotLegacyShare(address(token), legacyVault_.share()));
 
         legacyPoolId = legacyPoolId_;
         legacyTrancheId = legacyTrancheId_;

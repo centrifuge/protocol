@@ -226,7 +226,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.addShareClass(
             PoolId.wrap(poolId), ShareClassId.wrap(scId), tokenName, tokenSymbol, decimals, salt, hook
         );
-        ShareToken shareToken = ShareToken(poolManager.shareToken(poolId, scId));
+        IShareToken shareToken = poolManager.shareToken(poolId, scId);
         assertEq(tokenName, shareToken.name());
         assertEq(tokenSymbol, shareToken.symbol());
         assertEq(decimals, shareToken.decimals());
@@ -258,7 +258,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
             poolManager.addShareClass(
                 PoolId.wrap(poolId), ShareClassId.wrap(scIds[i]), tokenName, tokenSymbol, decimals, bytes32(i), hook
             );
-            ShareToken shareToken = ShareToken(poolManager.shareToken(poolId, scIds[i]));
+            IShareToken shareToken = poolManager.shareToken(poolId, scIds[i]);
             assertEq(tokenName, shareToken.name());
             assertEq(tokenSymbol, shareToken.symbol());
             assertEq(decimals, shareToken.decimals());
@@ -388,7 +388,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         validUntil = uint64(bound(validUntil, block.timestamp, type(uint64).max));
         (, address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
-        IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
+        IShareToken shareToken = IShareToken(AsyncVault(vault_).share());
 
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.scId();
@@ -417,7 +417,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         AsyncVault vault = AsyncVault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 scId = vault.scId();
-        IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
+        IShareToken shareToken = IShareToken(AsyncVault(vault_).share());
         uint64 validUntil = uint64(block.timestamp + 7 days);
         address secondUser = makeAddr("secondUser");
 
@@ -653,7 +653,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         // Remove old vault
         address vaultManager = address(IBaseVault(oldVault_).manager());
         IVaultManager(vaultManager).removeVault(poolId, scId, oldVault_, asset, assetId);
-        assertEq(ShareToken(poolManager.shareToken(poolId, scId)).vault(asset), address(0));
+        assertEq(poolManager.shareToken(poolId, scId).vault(asset), address(0));
 
         // Deploy new vault
         address newVault = poolManager.deployVault(poolId, scId, assetId, address(newVaultFactory));
@@ -763,7 +763,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         view
     {
         address vaultManager = address(IBaseVault(vaultAddress).manager());
-        address token_ = poolManager.shareToken(poolId, scId);
+        IShareToken token_ = poolManager.shareToken(poolId, scId);
         address vault_ = IShareToken(token_).vault(asset);
 
         assert(poolManager.isPoolActive(poolId));
@@ -785,7 +785,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
             assertEq(vault.asset(), asset, "asset mismatch");
             assertEq(vault.poolId(), poolId, "poolId mismatch");
             assertEq(vault.scId(), scId, "scId mismatch");
-            assertEq(address(vault.share()), token_, "share class token mismatch");
+            assertEq(address(vault.share()), address(token_), "share class token mismatch");
 
             assertEq(vault.wards(address(asyncRequests)), 1);
             assertEq(vault.wards(address(this)), 0);
@@ -793,7 +793,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         } else {
             assert(!poolManager.isLinked(poolId, scId, asset, vaultAddress));
             // Check Share permissions
-            assertEq(ShareToken(token_).wards(vaultManager), 1);
+            assertEq(ShareToken(address(token_)).wards(vaultManager), 1);
 
             // Check missing link
             assertEq(vault_, address(0), "Share link to vault requires linkVault");
@@ -802,8 +802,8 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
     }
 
     function _assertShareSetup(address vaultAddress, bool isLinked) private view {
-        address token_ = poolManager.shareToken(poolId, scId);
-        ShareToken shareToken = ShareToken(token_);
+        IShareToken token_ = poolManager.shareToken(poolId, scId);
+        ShareToken shareToken = ShareToken(address(token_));
 
         assertEq(shareToken.wards(address(poolManager)), 1);
         assertEq(shareToken.wards(address(this)), 0);
@@ -822,7 +822,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
     function _assertAllowance(address vaultAddress, address asset, uint256 tokenId) private view {
         address vaultManager = address(IBaseVault(vaultAddress).manager());
         address escrow_ = address(poolEscrowFactory.escrow(poolId));
-        address token_ = poolManager.shareToken(poolId, scId);
+        IShareToken token_ = poolManager.shareToken(poolId, scId);
 
         assertEq(
             IERC20(token_).allowance(escrow_, vaultManager),

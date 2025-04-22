@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+
 interface IVaultFactory {
     /// @notice Deploys new vault for `poolId`, `scId` and `asset`.
     ///
@@ -17,7 +19,7 @@ interface IVaultFactory {
         bytes16 scId,
         address asset,
         uint256 tokenId,
-        address token,
+        IShareToken token,
         address escrow,
         address[] calldata wards_
     ) external returns (address);
