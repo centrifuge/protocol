@@ -280,7 +280,7 @@ contract Gateway is Auth, Recoverable, IGateway {
                 TransientArrayLib.push(BATCH_LOCATORS_SLOT, _encodeLocator(centrifugeId, poolId));
                 TransientBytesLib.set(batchSlot, message);
             } else {
-                TransientBytesLib.set(batchSlot, bytes.concat(previousMessage, message));
+                TransientBytesLib.append(batchSlot, message);
             }
         } else {
             _send(centrifugeId, poolId, message);
