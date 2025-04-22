@@ -166,7 +166,6 @@ contract VaultsDeployer is CommonDeployer {
         asyncRequests.file("poolManager", address(poolManager));
         asyncRequests.file("sender", address(messageDispatcher));
         asyncRequests.file("balanceSheet", address(balanceSheet));
-        asyncRequests.file("sharePriceProvider", address(syncRequests));
 
         syncRequests.file("poolManager", address(poolManager));
         syncRequests.file("balanceSheet", address(balanceSheet));

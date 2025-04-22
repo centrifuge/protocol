@@ -29,7 +29,6 @@ import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedee
 import {IAsyncDepositManager} from "src/vaults/interfaces/investments/IAsyncDepositManager.sol";
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
 import {IRedeemManager} from "src/vaults/interfaces/investments/IRedeemManager.sol";
-import {ISharePriceProvider, Prices} from "src/vaults/interfaces/investments/ISharePriceProvider.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
@@ -48,7 +47,6 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
     IVaultMessageSender public sender;
     IBalanceSheet public balanceSheet;
-    ISharePriceProvider public sharePriceProvider;
 
     mapping(address vault => mapping(address investor => AsyncInvestmentState)) public investments;
     mapping(uint64 poolId => mapping(bytes16 scId => mapping(uint128 assetId => address vault))) public vault;
@@ -60,7 +58,6 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "poolManager") poolManager = IPoolManager(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
-        else if (what == "sharePriceProvider") sharePriceProvider = ISharePriceProvider(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -459,8 +456,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         uint64 poolId = vault_.poolId();
         bytes16 scId = vault_.scId();
 
-        Prices memory prices =
-            sharePriceProvider.prices(poolId, scId, vaultDetails.assetId, vaultDetails.asset, vaultDetails.tokenId);
+        (D18 pricePoolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, vaultDetails.assetId, true);
         balanceSheet.escrow().reserveDecrease(vaultDetails.asset, vaultDetails.tokenId, poolId, scId, assets);
 
         balanceSheet.withdraw(
@@ -470,7 +466,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
             vaultDetails.tokenId,
             receiver,
             assets,
-            prices.poolPerAsset
+            pricePoolPerAsset
         );
     }
 
