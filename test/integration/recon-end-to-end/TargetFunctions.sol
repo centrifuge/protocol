@@ -96,8 +96,8 @@ abstract contract TargetFunctions is
 
         {
             _assetId = poolManager_registerAsset(address(_token), 0);
+            console2.log("assetId", _assetId);
 
-            console2.log("poolManager_registerAsset completes");
             hub_registerAsset(_assetId);
         }
 
@@ -120,6 +120,7 @@ abstract contract TargetFunctions is
 
         // 4. Deploy new vault and register it
         _vault = poolManager_deployVault(_poolId.raw(), _scId, _assetId);
+        poolManager_linkVault(_poolId.raw(), _scId, _assetId, _vault);
         asyncRequests.rely(address(_vault));
 
         // 5. approve and mint initial amount of underlying asset to all actors

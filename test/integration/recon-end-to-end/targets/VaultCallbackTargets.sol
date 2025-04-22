@@ -71,11 +71,8 @@ abstract contract VaultCallbackTargets is BaseTargetFunctions, Properties {
                 // TODO(@hieronx): revisit clamps here
                 currencyPayout %= pendingDepositRequest; // Needs to be capped at this value
             }
-            console2.log("pendingDepositRequest in fulfillDepositRequest", pendingDepositRequest);
-
         }
 
-        console2.log("currencyPayout in fulfillDepositRequest", currencyPayout);
         asyncRequests.fulfillDepositRequest(poolId, scId, investor, assetId, currencyPayout, tokenPayout);
 
         balanceSheet.approvedDeposits(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), currencyPayout);

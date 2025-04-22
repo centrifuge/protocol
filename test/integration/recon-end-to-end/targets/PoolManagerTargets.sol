@@ -90,22 +90,28 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
         return (newToken, scId);
     }
 
-    // Step 4
+    // Step 4 - deploy the pool
     function poolManager_deployVault(uint64 poolId, bytes16 scId, uint128 assetId) public asAdmin returns (address) {
-        return poolManager.deployVault(poolId, scId, assetId, address(vaultFactory));
+        address vault = poolManager.deployVault(poolId, scId, assetId, address(vaultFactory));
+        vaults.push(vault);
+
+        return vault;
     }
 
-    // Step 5 deploy the pool
-    function poolManager_deployVault_clamped(uint64 poolId, bytes16 scId, uint128 assetId) public  asAdmin returns (address) {
-        address newVault = poolManager.deployVault(poolId, scId, assetId, address(vaultFactory));
-        poolManager.linkVault(poolId, scId, assetId, newVault);
-
-        vaults.push(newVault);
-
-        return newVault;
+    function poolManager_deployVault_clamped() public asAdmin returns (address) {
+        return poolManager_deployVault(poolId, scId, assetId);
     }
 
-    // Extra 6 - Remove liquidity Pool
+    // Step 5 - link the vault
+    function poolManager_linkVault(uint64 poolId, bytes16 scId, uint128 assetId, address vault) public  asAdmin {
+        poolManager.linkVault(poolId, scId, assetId, vault);
+    }
+
+    function poolManager_linkVault_clamped() public asAdmin {
+        poolManager_linkVault(poolId, scId, assetId, address(vault));
+    }
+
+    // Extra 6 - remove the vault
     function poolManager_unlinkVault(uint64 poolId, bytes16 scId, uint128 assetId) public asAdmin{
         poolManager.unlinkVault(poolId, scId, assetId, vaults[0]);
     }
