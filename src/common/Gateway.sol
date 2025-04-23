@@ -54,6 +54,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     uint256 public transient fuel;
     address public transient transactionRefund;
     mapping(PoolId => Funds) public subsidy;
+    mapping(uint16 centrifugeId => mapping(bytes32 batchHash => uint256)) public underpaid;
 
     // Adapters
     mapping(uint16 centrifugeId => IAdapter[]) public adapters;
@@ -313,7 +314,9 @@ contract Gateway is Auth, Recoverable, IGateway {
                 if (consumed <= subsidy[poolId].value) {
                     subsidy[poolId].value -= uint96(consumed);
                 } else {
-                    consumed = 0;
+                    underpaid[centrifugeId][batchHash]++;
+                    emit UnderpaidBatch(centrifugeId, batch);
+                    return;
                 }
             }
 
@@ -331,8 +334,7 @@ contract Gateway is Auth, Recoverable, IGateway {
                     batch,
                     adapters_[i],
                     adapterData,
-                    transactionRefund != address(0) ? transactionRefund : address(subsidy[poolId].refund),
-                    consumed == 0
+                    transactionRefund != address(0) ? transactionRefund : address(subsidy[poolId].refund)
                 );
             } else {
                 emit SendProof(
@@ -340,11 +342,21 @@ contract Gateway is Auth, Recoverable, IGateway {
                     keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, batchHash)),
                     batchHash,
                     adapters_[i],
-                    adapterData,
-                    consumed == 0
+                    adapterData
                 );
             }
         }
+    }
+
+    function repay(uint16 centrifugeId, bytes memory batch) external pauseable {
+        bytes32 batchHash = keccak256(batch);
+        require(underpaid[centrifugeId][batchHash] > 0, NotFailedMessage());
+
+        PoolId poolId = processor.messagePoolId(batch);
+        _send(centrifugeId, poolId, batch);
+        underpaid[centrifugeId][batchHash]--;
+
+        emit RepayBatch(centrifugeId, batch);
     }
 
     function _refundTransaction() internal {

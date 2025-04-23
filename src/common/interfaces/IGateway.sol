@@ -44,22 +44,18 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
 
     // --- Events ---
     event PrepareMessage(uint16 indexed centrifugeId, PoolId poolId, bytes message);
+    event UnderpaidBatch(uint16 indexed centrifugeId, bytes batch);
+    event RepayBatch(uint16 indexed centrifugeId, bytes batch);
     event SendBatch(
         uint16 indexed centrifugeId,
         bytes32 payloadId,
         bytes batch,
         IAdapter adapter,
         bytes32 adapterData,
-        address refund,
-        bool underpaid
+        address refund
     );
     event SendProof(
-        uint16 indexed centrifugeId,
-        bytes32 payloadId,
-        bytes32 batchHash,
-        IAdapter adapter,
-        bytes32 adapterData,
-        bool underpaid
+        uint16 indexed centrifugeId, bytes32 payloadId, bytes32 batchHash, IAdapter adapter, bytes32 adapterData
     );
     event HandleBatch(uint16 indexed centrifugeId, bytes32 payloadId, bytes batch, IAdapter adapter);
     event HandleProof(uint16 indexed centrifugeId, bytes32 payloadId, bytes32 batchHash, IAdapter adapter);
