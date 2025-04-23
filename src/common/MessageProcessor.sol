@@ -219,7 +219,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.TriggerSubmitQueuedShares) {
             MessageLib.TriggerSubmitQueuedShares memory m = message.deserializeTriggerSubmitQueuedShares();
             balanceSheet.submitQueuedShares(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId));
-        } else if (kind == MessageType.EnableAssetsQueue) {
+        } else if (kind == MessageType.TriggerSubmitQueuedAssets) {
             MessageLib.TriggerSubmitQueuedAssets memory m = message.deserializeTriggerSubmitQueuedAssets();
             balanceSheet.submitQueuedAssets(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId));
         } else if (kind == MessageType.EnableSharesQueue) {
