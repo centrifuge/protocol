@@ -117,8 +117,8 @@ interface IShareClassManager {
         D18 navPoolPerShare,
         D18 navAssetPerShare,
         uint128 revokedShareAmount,
-        uint128 depositAssetAmount,
-        uint128 depositPoolAmount
+        uint128 revokedAssetAmount,
+        uint128 revokedPoolAmount
     );
     event RemoteRevokeShares(PoolId indexed poolId, ShareClassId indexed scId, uint128 revokedAssetAmount);
     event ClaimDeposit(
@@ -127,7 +127,7 @@ interface IShareClassManager {
         uint32 epoch,
         bytes32 investor,
         AssetId indexed depositAssetId,
-        uint128 approvedAssetAmount,
+        uint128 paymentAssetAmount,
         uint128 pendingAssetAmount,
         uint128 claimedShareAmount,
         uint64 issuedAt
@@ -138,7 +138,7 @@ interface IShareClassManager {
         uint32 epoch,
         bytes32 investor,
         AssetId indexed payoutAssetId,
-        uint128 approvedShareAmount,
+        uint128 paymentShareAmount,
         uint128 pendingShareAmount,
         uint128 claimedAssetAmount,
         uint64 revokedAt
@@ -171,9 +171,9 @@ interface IShareClassManager {
     );
 
     /// Errors
-    error NonInsequenceEpoch(uint32 providedEpoch, uint32 nowEpoch);
+    error EpochNotInSequence(uint32 providedEpoch, uint32 nowEpoch);
     error NoOrderFound();
-    error NotEnoughPending();
+    error InsufficientPending();
     error ApprovalRequired();
     error IssuanceRequired();
     error AlreadyIssued();
@@ -328,14 +328,14 @@ interface IShareClassManager {
     /// @param investor Centrifuge Vault address of the recipient of the claimed share class tokens
     /// @param depositAssetId Identifier of the asset which the investor used for their deposit request
     /// @return payoutShareAmount Amount of shares which the investor receives
-    /// @return depositAssetAmount Amount of deposit asset which was taken as payment
+    /// @return paymentAssetAmount Amount of deposit asset which was taken as payment
     /// @return cancelledAssetAmount Amount of deposit asset which was cancelled due to being queued
     /// @return canClaimAgain Whether another call to claimRedeem is needed until investor has fully claimed investments
     function claimDeposit(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
         external
         returns (
             uint128 payoutShareAmount,
-            uint128 depositAssetAmount,
+            uint128 paymentAssetAmount,
             uint128 cancelledAssetAmount,
             bool canClaimAgain
         );
@@ -349,14 +349,14 @@ interface IShareClassManager {
     /// @param payoutAssetId Identifier of the asset which the investor requested to receive back for their redeemed
     /// shares
     /// @return payoutAssetAmount Amount of payout amount which the investor receives
-    /// @return depositShareAmount Amount of shares which the investor redeemed
+    /// @return paymentShareAmount Amount of shares which the investor redeemed
     /// @return cancelledShareAmount Amount of shares which were cancelled due to being queued
     /// @return canClaimAgain Whether another call to claimRedeem is needed until investor has fully claimed redemptions
     function claimRedeem(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
         external
         returns (
             uint128 payoutAssetAmount,
-            uint128 depositShareAmount,
+            uint128 paymentShareAmount,
             uint128 cancelledShareAmount,
             bool canClaimAgain
         );
