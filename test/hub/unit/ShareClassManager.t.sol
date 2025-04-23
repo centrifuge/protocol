@@ -378,6 +378,20 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
         assertEq(totalIssuance_, 0, "TotalIssuance should be reset");
         assertEq(navPerShareMetric.inner(), 0, "navPerShare metric should not be updated");
     }
+
+    function testMaxDepositClaims() public {
+        assertEq(shareClass.maxDepositClaims(scId, investor, USDC), 0);
+
+        shareClass.requestDeposit(poolId, scId, 1, investor, USDC);
+        assertEq(shareClass.maxDepositClaims(scId, investor, USDC), 0);
+    }
+
+    function testMaxRedeemClaims() public {
+        assertEq(shareClass.maxRedeemClaims(scId, investor, USDC), 0);
+
+        shareClass.requestRedeem(poolId, scId, 1, investor, USDC);
+        assertEq(shareClass.maxRedeemClaims(scId, investor, USDC), 0);
+    }
 }
 
 ///@dev Contains all deposit related tests which are expected to succeed and don't make use of transient storage
@@ -578,9 +592,6 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
     }
 
     function testFullClaimDepositSingleEpoch() public {
-        vm.expectRevert(IShareClassManager.NoOrderFound.selector);
-        shareClass.claimDeposit(poolId, scId, investor, USDC);
-
         uint128 approvedAmountUsdc = 100 * DENO_USDC;
         uint128 depositAmountUsdc = approvedAmountUsdc;
         uint128 approvedPool = _intoPoolAmount(USDC, approvedAmountUsdc);
@@ -624,10 +635,6 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
         uint128 fuzzDepositAmountUsdc,
         uint128 fuzzApprovedAmountUsdc
     ) public {
-        // TODO: Test separately
-        vm.expectRevert(IShareClassManager.NoOrderFound.selector);
-        shareClass.claimDeposit(poolId, scId, investor, USDC);
-
         D18 navPoolPerShare = d18(uint128(bound(navPoolPerShare_, 1e14, type(uint128).max / 1e18)));
         (uint128 depositAmountUsdc, uint128 approvedAmountUsdc,) =
             _deposit(fuzzDepositAmountUsdc, fuzzApprovedAmountUsdc);
@@ -757,6 +764,8 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
 
             assertEq(issuedDepositAmountUsdc, epochApprovedAmountUsdc, "Mismatch: issued deposit amount");
         }
+
+        assertEq(shareClass.maxDepositClaims(scId, investor, USDC), epochs);
 
         for (uint256 i = 0; i < epochs; i++) {
             (uint128 payout, uint128 payment, uint128 cancelled, bool canClaimAgain) =
@@ -1229,6 +1238,8 @@ contract ShareClassManagerRedeemsNonTransientTest is ShareClassManagerBaseTest {
             totalAssets += revokedAssetAmount;
             assertEq(revokedShares, epochApprovedShares, "Mismatch: revoked shares");
         }
+
+        assertEq(shareClass.maxRedeemClaims(scId, investor, USDC), epochs);
 
         for (uint256 i = 0; i < epochs; i++) {
             (uint128 payout, uint128 payment, uint128 cancelled, bool canClaimAgain) =
@@ -1973,5 +1984,70 @@ contract ShareClassManagerRevertsTest is ShareClassManagerBaseTest {
     function testUpdateMetadataInvalidSalt() public {
         vm.expectRevert(IShareClassManager.InvalidSalt.selector);
         shareClass.updateMetadata(poolId, scId, SC_NAME, SC_SYMBOL, bytes32(0), bytes(""));
+    }
+
+    function testApproveDepositEpochNotInSequence() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.EpochNotInSequence.selector, 3, 1));
+        shareClass.approveDeposits(poolId, scId, USDC, 3, 0, d18(0));
+    }
+
+    function testApproveRedeemEpochNotInSequence() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.EpochNotInSequence.selector, 3, 1));
+        shareClass.approveRedeems(poolId, scId, USDC, 3, 0, d18(0));
+    }
+
+    function testIssueSharesEpochNotInSequence() public {
+        shareClass.requestDeposit(poolId, scId, 1000, investor, USDC);
+        shareClass.approveDeposits(poolId, scId, USDC, 1, 500, d18(1e18));
+        shareClass.approveDeposits(poolId, scId, USDC, 2, 500, d18(1e18));
+
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.EpochNotInSequence.selector, 2, 1));
+        shareClass.issueShares(poolId, scId, USDC, 2, d18(0));
+    }
+
+    function testRevokeSharesEpochNotInSequence() public {
+        _mockTotalIssuance(1000);
+        shareClass.requestRedeem(poolId, scId, 1000, investor, USDC);
+        shareClass.approveRedeems(poolId, scId, USDC, 1, 500, d18(1e18));
+        shareClass.approveRedeems(poolId, scId, USDC, 2, 500, d18(1e18));
+
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.EpochNotInSequence.selector, 2, 1));
+        shareClass.revokeShares(poolId, scId, USDC, 2, d18(0));
+    }
+
+    function testClaimDepositEpochNotFound() public {
+        vm.expectRevert(IShareClassManager.NoOrderFound.selector);
+        shareClass.claimDeposit(poolId, scId, investor, USDC);
+    }
+
+    function testClaimRedeemEpochNotFound() public {
+        vm.expectRevert(IShareClassManager.NoOrderFound.selector);
+        shareClass.claimRedeem(poolId, scId, investor, USDC);
+    }
+
+    function testClaimDepositIssuanceRequired() public {
+        _mockTotalIssuance(1000);
+        shareClass.requestDeposit(poolId, scId, 1000, investor, USDC);
+        shareClass.approveDeposits(poolId, scId, USDC, 1, 500, d18(1e18));
+        shareClass.issueShares(poolId, scId, USDC, 1, d18(1e18));
+
+        bytes32 investor2 = bytes32("investor2");
+        shareClass.requestDeposit(poolId, scId, 1000, investor2, USDC);
+
+        vm.expectRevert(IShareClassManager.IssuanceRequired.selector);
+        shareClass.claimDeposit(poolId, scId, investor2, USDC);
+    }
+
+    function testClaimRedeemRevocationRequired() public {
+        _mockTotalIssuance(1000);
+        shareClass.requestRedeem(poolId, scId, 1000, investor, USDC);
+        shareClass.approveRedeems(poolId, scId, USDC, 1, 500, d18(1e18));
+        shareClass.revokeShares(poolId, scId, USDC, 1, d18(1e18));
+
+        bytes32 investor2 = bytes32("investor2");
+        shareClass.requestRedeem(poolId, scId, 1000, investor2, USDC);
+
+        vm.expectRevert(IShareClassManager.RevocationRequired.selector);
+        shareClass.claimRedeem(poolId, scId, investor2, USDC);
     }
 }

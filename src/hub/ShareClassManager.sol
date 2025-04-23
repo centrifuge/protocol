@@ -471,7 +471,6 @@ contract ShareClassManager is Auth, IShareClassManager {
         emit UpdateMetadata(poolId, scId_, name, symbol, salt);
     }
 
-    // TODO: Test
     /// @inheritdoc IShareClassManager
     function increaseShareClassIssuance(PoolId poolId, ShareClassId scId_, uint128 amount) external auth {
         require(exists(poolId, scId_), ShareClassNotFound());
@@ -482,7 +481,6 @@ contract ShareClassManager is Auth, IShareClassManager {
         emit RemoteIssueShares(poolId, scId_, amount);
     }
 
-    // TODO: Test
     /// @inheritdoc IShareClassManager
     function decreaseShareClassIssuance(PoolId poolId, ShareClassId scId_, uint128 amount) external auth {
         require(exists(poolId, scId_), ShareClassNotFound());
@@ -509,31 +507,26 @@ contract ShareClassManager is Auth, IShareClassManager {
         return shareClassIds[poolId][scId_];
     }
 
-    // TODO: Test
     /// @inheritdoc IShareClassManager
     function nowDepositEpoch(ShareClassId scId_, AssetId depositAssetId) public view returns (uint32) {
         return depositEpochId[scId_][depositAssetId] + 1;
     }
 
-    // TODO: Test
     /// @inheritdoc IShareClassManager
     function nowIssueEpoch(ShareClassId scId_, AssetId depositAssetId) public view returns (uint32) {
         return issueEpochId[scId_][depositAssetId] + 1;
     }
 
-    // TODO: Test
     /// @inheritdoc IShareClassManager
     function nowRedeemEpoch(ShareClassId scId_, AssetId depositAssetId) public view returns (uint32) {
         return redeemEpochId[scId_][depositAssetId] + 1;
     }
 
-    // TODO: Test
     /// @inheritdoc IShareClassManager
     function nowRevokeEpoch(ShareClassId scId_, AssetId depositAssetId) public view returns (uint32) {
         return revokeEpochId[scId_][depositAssetId] + 1;
     }
 
-    // TODO: Test
     /// @inheritdoc IShareClassManager
     function maxDepositClaims(ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
         public
@@ -543,7 +536,6 @@ contract ShareClassManager is Auth, IShareClassManager {
         return _maxClaims(depositRequest[scId_][depositAssetId][investor], depositEpochId[scId_][depositAssetId]);
     }
 
-    // TODO: Test
     /// @inheritdoc IShareClassManager
     function maxRedeemClaims(ShareClassId scId_, bytes32 investor, AssetId payoutAssetId)
         public
