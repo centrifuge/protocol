@@ -3,15 +3,20 @@ pragma solidity >=0.5.0;
 
 import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
+import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 
 import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
+import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
+import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
+import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
 
 /// @notice Account types used by Hub
 enum AccountType {
@@ -55,6 +60,14 @@ interface IHub {
     /// @notice Dispatched when the pool can not be unlocked by the caller
     error NotManager();
 
+    function gateway() external view returns (IGateway);
+    function holdings() external view returns (IHoldings);
+    function accounting() external view returns (IAccounting);
+    function hubRegistry() external view returns (IHubRegistry);
+    function sender() external view returns (IPoolMessageSender);
+    function shareClassManager() external view returns (IShareClassManager);
+    function transientValuation() external view returns (ITransientValuation);
+
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
     /// Accepts a `bytes32` representation of 'hubRegistry', 'assetRegistry', 'accounting', 'holdings', 'gateway' and '
@@ -64,7 +77,7 @@ interface IHub {
     /// @notice Creates a new pool. `msg.sender` will be the admin of the created pool.
     /// @param currency The pool currency. Usually an AssetId identifying by a ISO4217 code.
     /// @return PoolId The id of the new pool.
-    function createPool(address admin, AssetId currency) external payable returns (PoolId);
+    function createPool(uint48 poolId, address admin, AssetId currency) external payable returns (PoolId);
 
     /// @notice Claim a deposit for an investor address located in the chain where the asset belongs
     function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external payable;

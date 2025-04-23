@@ -32,8 +32,10 @@ import {BalanceSheet} from "src/vaults/BalanceSheet.sol";
 import {AsyncRequests} from "src/vaults/AsyncRequests.sol";
 import {SyncRequests} from "src/vaults/SyncRequests.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
+import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
+import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
 
 import {FullDeployer, HubDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
 import {CommonDeployer, MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
@@ -81,8 +83,8 @@ struct CVaults {
     BalanceSheet balanceSheet;
     PoolManager poolManager;
     VaultRouter router;
-    address asyncVaultFactory;
-    address syncDepositVaultFactory;
+    AsyncVaultFactory asyncVaultFactory;
+    SyncDepositVaultFactory syncDepositVaultFactory;
     // Hooks
     address restrictedTransfers;
     address freelyTransferable;
@@ -199,7 +201,7 @@ contract TestEndToEnd is Test {
         // Configure Pool
 
         vm.startPrank(address(h.guardian.safe()));
-        poolId = h.guardian.createPool(FM, USD);
+        poolId = h.guardian.createPool(1, FM, USD);
 
         scId = h.shareClassManager.previewNextShareClassId(poolId);
 
@@ -237,7 +239,7 @@ contract TestEndToEnd is Test {
     /// forge-config: default.isolate = true
     function testAsyncDeposit(bool sameChain) public {
         _setCV(sameChain);
-        (PoolId poolId, ShareClassId scId, AssetId assetId) = _configurePool(cv.asyncVaultFactory);
+        (PoolId poolId, ShareClassId scId, AssetId assetId) = _configurePool(address(cv.asyncVaultFactory));
 
         IShareToken shareToken = IShareToken(cv.poolManager.shareToken(poolId, scId));
         (address asset,) = cv.poolManager.idToAsset(assetId);
@@ -263,7 +265,7 @@ contract TestEndToEnd is Test {
     /// forge-config: default.isolate = true
     function testSyncDeposit(bool sameChain) public {
         _setCV(sameChain);
-        (PoolId poolId, ShareClassId scId, AssetId assetId) = _configurePool(cv.syncDepositVaultFactory);
+        (PoolId poolId, ShareClassId scId, AssetId assetId) = _configurePool(address(cv.syncDepositVaultFactory));
 
         IShareToken shareToken = IShareToken(cv.poolManager.shareToken(poolId, scId));
         (address asset,) = cv.poolManager.idToAsset(assetId);

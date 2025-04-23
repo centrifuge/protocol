@@ -2,10 +2,13 @@
 pragma solidity >=0.5.0;
 
 import {D18, d18} from "src/misc/types/D18.sol";
-import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
+
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 /// @dev Centrifuge pools
 struct Pool {
@@ -21,7 +24,7 @@ struct ShareClassDetails {
     /// @dev Each share class can have multiple vaults deployed,
     ///      multiple vaults can be linked to the same asset.
     ///      A vault in this storage DOES NOT mean the vault can be used
-    mapping(address asset => mapping(uint256 tokenId => address[])) vaults;
+    mapping(address asset => mapping(uint256 tokenId => IBaseVault[])) vaults;
     /// @dev For each share class, we store the price per pool unit in asset denomination (POOL_UNIT/ASSET_UNIT)
     mapping(address asset => mapping(uint256 tokenId => Price)) pricePoolPerAsset;
 }
@@ -88,8 +91,8 @@ interface IPoolManager {
         ShareClassId indexed scId,
         address indexed asset,
         uint256 tokenId,
-        address factory,
-        address vault
+        IVaultFactory factory,
+        IBaseVault vault
     );
     event PriceUpdate(
         PoolId indexed poolId,
@@ -110,10 +113,10 @@ interface IPoolManager {
     );
     event UpdateContract(PoolId indexed poolId, ShareClassId indexed scId, address target, bytes payload);
     event LinkVault(
-        PoolId indexed poolId, ShareClassId indexed scId, address indexed asset, uint256 tokenId, address vault
+        PoolId indexed poolId, ShareClassId indexed scId, address indexed asset, uint256 tokenId, IBaseVault vault
     );
     event UnlinkVault(
-        PoolId indexed poolId, ShareClassId indexed scId, address indexed asset, uint256 tokenId, address vault
+        PoolId indexed poolId, ShareClassId indexed scId, address indexed asset, uint256 tokenId, IBaseVault vault
     );
     event UpdateMaxSharePriceAge(PoolId indexed poolId, ShareClassId indexed scId, uint64 maxPriceAge);
     event UpdateMaxAssetPriceAge(
@@ -198,9 +201,9 @@ interface IPoolManager {
     /// @param assetId The asset id for which we want to deploy a vault
     /// @param factory The address of the corresponding vault factory
     /// @return address The address of the deployed vault
-    function deployVault(PoolId poolId, ShareClassId scId, AssetId assetId, address factory)
+    function deployVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVaultFactory factory)
         external
-        returns (address);
+        returns (IBaseVault);
 
     /// @notice Links a deployed vault to the given pool, share class and asset.
     ///
@@ -208,7 +211,7 @@ interface IPoolManager {
     /// @param scId The share class id
     /// @param assetId The asset id for which we want to deploy a vault
     /// @param vault The address of the deployed vault
-    function linkVault(PoolId poolId, ShareClassId scId, AssetId assetId, address vault) external;
+    function linkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IBaseVault vault) external;
 
     /// @notice Removes the link between a vault and the given pool, share class and asset.
     ///
@@ -216,7 +219,7 @@ interface IPoolManager {
     /// @param scId The share class id
     /// @param assetId The asset id for which we want to deploy a vault
     /// @param vault The address of the deployed vault
-    function unlinkVault(PoolId poolId, ShareClassId scId, AssetId assetId, address vault) external;
+    function unlinkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IBaseVault vault) external;
 
     /// @notice Returns whether the given pool id is active
     function isPoolActive(PoolId poolId) external view returns (bool);
@@ -234,7 +237,7 @@ interface IPoolManager {
     ///
     /// @param vault The address of the vault to be checked for
     /// @return details The details of the vault including the underlying asset address, token id, asset id
-    function vaultDetails(address vault) external view returns (VaultDetails memory details);
+    function vaultDetails(IBaseVault vault) external view returns (VaultDetails memory details);
 
     /// @notice Checks whether a given asset-vault pair is eligible for investing into a share class of a pool
     ///
@@ -243,7 +246,7 @@ interface IPoolManager {
     /// @param asset The address of the asset
     /// @param vault The address of the vault
     /// @return bool Whether vault is to a share class
-    function isLinked(PoolId poolId, ShareClassId scId, address asset, address vault) external view returns (bool);
+    function isLinked(PoolId poolId, ShareClassId scId, address asset, IBaseVault vault) external view returns (bool);
 
     /// @notice Returns the price per share for a given pool, share class, asset, and asset id. The provided price is
     /// defined as ASSET_UNIT/SHARE_UNIT.

@@ -13,8 +13,6 @@ import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 contract HubRegistry is Auth, IHubRegistry {
     using MathLib for uint256;
 
-    uint48 public latestId;
-
     mapping(AssetId => uint8) internal _decimals;
 
     mapping(PoolId => bytes) public metadata;
@@ -34,16 +32,16 @@ contract HubRegistry is Auth, IHubRegistry {
     }
 
     /// @inheritdoc IHubRegistry
-    function registerPool(address manager_, uint16 centrifugeId, AssetId currency_)
+    function registerPool(uint48 poolId_, address manager_, uint16 centrifugeId, AssetId currency_)
         external
         auth
         returns (PoolId poolId)
     {
         require(manager_ != address(0), EmptyAccount());
         require(!currency_.isNull(), EmptyCurrency());
-        require(currency[poolId].isNull(), PoolAlreadyRegistered());
 
-        poolId = newPoolId(centrifugeId, ++latestId);
+        poolId = newPoolId(centrifugeId, poolId_);
+        require(currency[poolId].isNull(), PoolAlreadyRegistered());
 
         manager[poolId][manager_] = true;
         currency[poolId] = currency_;

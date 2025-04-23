@@ -182,10 +182,10 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     /// @inheritdoc IBalanceSheetGatewayHandler
     function approvedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external auth {
         (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
-        Prices memory prices = sharePriceProvider.prices(poolId.raw(), scId.raw(), assetId.raw(), asset, tokenId);
+        Prices memory prices = sharePriceProvider.prices(poolId, scId, assetId, asset, tokenId);
 
-        IPoolEscrow escrow = poolEscrowProvider.escrow(poolId.raw());
-        escrow.deposit(scId.raw(), asset, tokenId, assetAmount);
+        IPoolEscrow escrow = poolEscrowProvider.escrow(poolId);
+        escrow.deposit(scId, asset, tokenId, assetAmount);
         sender.sendUpdateHoldingAmount(poolId, scId, assetId, address(escrow), assetAmount, prices.poolPerAsset, true);
     }
 
@@ -194,7 +194,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
 
         // Lock assets to ensure they are not withdrawn and are available for the redeeming user
-        poolEscrowProvider.escrow(poolId.raw()).reserveIncrease(scId.raw(), asset, tokenId, assetAmount);
+        poolEscrowProvider.escrow(poolId).reserveIncrease(scId, asset, tokenId, assetAmount);
     }
 
     // --- Internal ---
@@ -224,8 +224,8 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         uint128 amount,
         D18 pricePoolPerAsset
     ) internal {
-        IPoolEscrow escrow = poolEscrowProvider.escrow(poolId.raw());
-        escrow.withdraw(scId.raw(), asset, tokenId, amount);
+        IPoolEscrow escrow = poolEscrowProvider.escrow(poolId);
+        escrow.withdraw(scId, asset, tokenId, amount);
 
         if (tokenId == 0) {
             SafeTransferLib.safeTransferFrom(asset, address(escrow), receiver, amount);
@@ -248,7 +248,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         D18 pricePoolPerAsset,
         bool preDepositTransfer
     ) internal {
-        IPoolEscrow escrow = poolEscrowProvider.escrow(poolId.raw());
+        IPoolEscrow escrow = poolEscrowProvider.escrow(poolId);
 
         if (preDepositTransfer) {
             if (tokenId == 0) {
@@ -261,9 +261,9 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
         // Do escrow balance sufficiency check only if we executed the transfer
         if (preDepositTransfer) {
-            escrow.deposit(scId.raw(), asset, tokenId, amount);
+            escrow.deposit(scId, asset, tokenId, amount);
         } else {
-            escrow.noteDeposit(scId.raw(), asset, tokenId, amount);
+            escrow.noteDeposit(scId, asset, tokenId, amount);
         }
         sender.sendUpdateHoldingAmount(poolId, scId, assetId, provider, amount, pricePoolPerAsset, true);
     }

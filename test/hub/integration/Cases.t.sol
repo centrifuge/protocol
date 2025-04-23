@@ -15,7 +15,7 @@ contract TestCases is BaseTest {
         cv.registerAsset(EUR_STABLE_C2, 12);
 
         vm.prank(ADMIN);
-        poolId = guardian.createPool(FM, USD);
+        poolId = guardian.createPool(1, FM, USD);
 
         scId = shareClassManager.previewNextShareClassId(poolId);
 

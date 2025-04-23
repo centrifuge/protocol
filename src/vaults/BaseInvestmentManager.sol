@@ -13,11 +13,11 @@ import {Recoverable} from "src/misc/Recoverable.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentManager {
     using MathLib for uint256;
@@ -41,35 +41,28 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
 
     // --- View functions ---
     /// @inheritdoc IBaseInvestmentManager
-    function convertToShares(address vaultAddr, uint256 assets) public view virtual returns (uint256 shares) {
-        IBaseVault vault_ = IBaseVault(vaultAddr);
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-        (D18 priceAssetPerShare,) = poolManager.priceAssetPerShare(
-            PoolId.wrap(vault_.poolId()), ShareClassId.wrap(vault_.scId()), vaultDetails.assetId, false
-        );
+    function convertToShares(IBaseVault vault_, uint256 assets) public view virtual returns (uint256 shares) {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        (D18 priceAssetPerShare,) =
+            poolManager.priceAssetPerShare(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
 
         return _convertToShares(vault_, vaultDetails, priceAssetPerShare, assets, MathLib.Rounding.Down);
     }
 
     /// @inheritdoc IBaseInvestmentManager
-    function convertToAssets(address vaultAddr, uint256 shares) public view virtual returns (uint256 assets) {
-        IBaseVault vault_ = IBaseVault(vaultAddr);
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-        (D18 priceAssetPerShare,) = poolManager.priceAssetPerShare(
-            PoolId.wrap(vault_.poolId()), ShareClassId.wrap(vault_.scId()), vaultDetails.assetId, false
-        );
+    function convertToAssets(IBaseVault vault_, uint256 shares) public view virtual returns (uint256 assets) {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        (D18 priceAssetPerShare,) =
+            poolManager.priceAssetPerShare(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
 
         return _convertToAssets(vault_, vaultDetails, priceAssetPerShare, shares, MathLib.Rounding.Down);
     }
 
     /// @inheritdoc IBaseInvestmentManager
-    function priceLastUpdated(address vaultAddr) public view virtual returns (uint64 lastUpdated) {
-        IBaseVault vault_ = IBaseVault(vaultAddr);
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
+    function priceLastUpdated(IBaseVault vault_) public view virtual returns (uint64 lastUpdated) {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
 
-        (, lastUpdated) = poolManager.priceAssetPerShare(
-            PoolId.wrap(vault_.poolId()), ShareClassId.wrap(vault_.scId()), vaultDetails.assetId, false
-        );
+        (, lastUpdated) = poolManager.priceAssetPerShare(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
     }
 
     function _convertToShares(
