@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IVault} from "src/vaults/legacy/interfaces/IVault.sol";
+import {ILegacyVault} from "src/vaults/legacy/interfaces/ILegacyVault.sol";
 import {IInvestmentManager} from "src/vaults/legacy/interfaces/IInvestmentManager.sol";
 import {ILegacyVaultAdapter} from "src/vaults/legacy/interfaces/ILegacyVaultAdapter.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
@@ -14,7 +14,8 @@ import {AsyncVault} from "src/vaults/AsyncVault.sol";
 /// @title  LegacyVaultAdapter
 /// @notice An adapter connecting legacy ERC-7540 vaults from Centrifuge V2 to Centrifuge V3.
 ///
-/// @dev This adapter acts as an `IInvestmentManager` for a single legacy `IVault` vault from Centrifuge V2. At the
+/// @dev This adapter acts as an `IInvestmentManager` for a single legacy `ILegacyVault` vault from Centrifuge V2. At
+/// the
 /// same time it acts like a new `IAsyncVault` for the `IAsyncRequests` manager of Centrifuge V3. The adapter needs to
 /// be deployed per legacy vault and allows a seamless interaction between Centrifuge V2 vaults and Centrifuge V3
 /// infrastructure. Thereby, allowing to migrate existing vaults to the new system.
@@ -24,10 +25,10 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
 
     uint64 public immutable legacyPoolId;
     bytes16 public immutable legacyTrancheId;
-    IVault public immutable legacyVault;
+    ILegacyVault public immutable legacyVault;
 
     constructor(
-        IVault legacyVault_,
+        ILegacyVault legacyVault_,
         PoolId poolId,
         uint64 legacyPoolId_,
         ShareClassId scId,
