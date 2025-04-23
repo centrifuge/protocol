@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {BaseVault, AsyncRedeemVault, BaseSyncDepositVault} from "src/vaults/BaseVaults.sol";
+import "src/misc/interfaces/IERC7540.sol";
+import "src/misc/interfaces/IERC7575.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+
+import {BaseVault, AsyncRedeemVault, BaseSyncDepositVault} from "src/vaults/BaseVaults.sol";
 import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-
-import "src/vaults/interfaces/IERC7540.sol";
-import "src/vaults/interfaces/IERC7575.sol";
 
 /// @title  SyncDepositVault
 /// @notice Partially (a)synchronous Tokenized Vault implementation with synchronous deposits and asynchronous

@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import "test/vaults/BaseTest.sol";
+
+import "src/misc/interfaces/IERC7575.sol";
+import "src/misc/interfaces/IERC7540.sol";
+import "src/misc/interfaces/IERC20.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
-import "src/misc/interfaces/IERC20.sol";
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 
-import "test/vaults/BaseTest.sol";
-import "src/vaults/interfaces/IERC7575.sol";
-import "src/vaults/interfaces/IERC7540.sol";
+import {IBaseVault, IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";

@@ -32,7 +32,7 @@ import {IRedeemManager} from "src/vaults/interfaces/investments/IRedeemManager.s
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IAsyncVault, IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IAsyncVault, IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";

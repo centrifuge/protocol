@@ -4,7 +4,7 @@ pragma solidity >=0.5.0;
 /// @notice A stripped down version of the Centrifuge V2 ERC-7540 vault.
 ///
 /// @dev This interface is needed to ensure adapters for legacy vaults are provided with the expected interface.
-interface IERC7540 {
+interface IVault {
     /// @notice Documentation see Centrifuge V2 repository.
     function poolId() external view returns (uint64);
 

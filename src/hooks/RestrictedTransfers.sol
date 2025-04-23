@@ -5,13 +5,13 @@ import {Auth} from "src/misc/Auth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BitmapLib} from "src/misc/libraries/BitmapLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {IERC165} from "src/misc/interfaces/IERC7575.sol";
 
 import {UpdateRestrictionType, MessageLib} from "src/common/libraries/MessageLib.sol";
-
 import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+
 import {IHook, HookData, ESCROW_HOOK_ID} from "src/vaults/interfaces/token/IHook.sol";
-import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 import {IRestrictedTransfers} from "src/hooks/interfaces/IRestrictedTransfers.sol";
 

@@ -1,16 +1,21 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import "src/misc/interfaces/IERC7540.sol";
+import "src/misc/interfaces/IERC7575.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+
+import {IAsyncRedeemVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {BaseVault, AsyncRedeemVault} from "src/vaults/BaseVaults.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import "src/vaults/interfaces/IERC7540.sol";
-import "src/vaults/interfaces/IERC7575.sol";
 
 /// @title  AsyncVault
 /// @notice Asynchronous Tokenized Vault standard implementation for Centrifuge pools

@@ -14,7 +14,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {MessageLib, UpdateContractType, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 import {FullDeployer, HubDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
 

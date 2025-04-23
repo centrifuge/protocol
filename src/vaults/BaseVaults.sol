@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import "src/misc/interfaces/IERC7540.sol";
+import "src/misc/interfaces/IERC7575.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import {EIP712Lib} from "src/misc/libraries/EIP712Lib.sol";
@@ -13,17 +15,14 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
-import {IERC7575} from "src/vaults/interfaces/IERC7575.sol";
+import {IBaseVault, IAsyncRedeemVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IERC7575} from "src/misc/interfaces/IERC7575.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IAsyncRedeemVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import "src/vaults/interfaces/IERC7540.sol";
-import "src/vaults/interfaces/IERC7575.sol";
 
 abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
