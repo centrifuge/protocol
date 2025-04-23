@@ -10,6 +10,7 @@ import {ILegacyVaultAdapter} from "src/vaults/legacy/interfaces/ILegacyVaultAdap
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
+import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 
 /// @title  LegacyVaultAdapter
 /// @notice An adapter connecting legacy ERC-7540 vaults from Centrifuge V2 to Centrifuge V3.
@@ -36,7 +37,7 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         address asset,
         IShareToken token,
         address root,
-        address manager,
+        IAsyncRedeemManager manager,
         IPoolEscrowProvider poolEscrowProvider
     ) AsyncVault(poolId, scId, asset, LEGACY_TOKEN_ID, token, root, manager, poolEscrowProvider) {
         require(legacyVault_.poolId() == legacyPoolId_, NotLegacyPoolId(legacyPoolId_, legacyVault_.poolId()));

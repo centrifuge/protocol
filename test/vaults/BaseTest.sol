@@ -28,6 +28,7 @@ import {ShareToken} from "src/vaults/token/ShareToken.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
 import {VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
+import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 
 // scripts
 import {VaultsDeployer} from "script/VaultsDeployer.s.sol";
@@ -199,7 +200,7 @@ contract BaseTest is VaultsDeployer, Test {
             POOL_A,
             ShareClassId.wrap(scId),
             MessageLib.UpdateContractVaultUpdate({
-                vaultOrFactory: bytes32(bytes20(vaultFactory)),
+                vaultOrFactory: vaultFactory,
                 assetId: assetId,
                 kind: uint8(VaultUpdateKind.DeployAndLink)
             }).serialize()
@@ -269,7 +270,7 @@ contract BaseTest is VaultsDeployer, Test {
     }
 
     function _vaultKindToVaultFactory(VaultKind vaultKind) internal view returns (bytes32 vaultFactoryBytes) {
-        address vaultFactory;
+        IVaultFactory vaultFactory;
 
         if (vaultKind == VaultKind.Async) {
             vaultFactory = asyncVaultFactory;
@@ -279,7 +280,7 @@ contract BaseTest is VaultsDeployer, Test {
             revert("BaseTest/unsupported-vault-kind");
         }
 
-        return bytes32(bytes20(vaultFactory));
+        return bytes32(bytes20(address(vaultFactory)));
     }
 
     // assumptions

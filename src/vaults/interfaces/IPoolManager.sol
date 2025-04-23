@@ -2,10 +2,12 @@
 pragma solidity >=0.5.0;
 
 import {D18, d18} from "src/misc/types/D18.sol";
-import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
+
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 
 /// @dev Centrifuge pools
 struct Pool {
@@ -88,7 +90,7 @@ interface IPoolManager {
         ShareClassId indexed scId,
         address indexed asset,
         uint256 tokenId,
-        address factory,
+        IVaultFactory factory,
         address vault
     );
     event PriceUpdate(
@@ -198,7 +200,7 @@ interface IPoolManager {
     /// @param assetId The asset id for which we want to deploy a vault
     /// @param factory The address of the corresponding vault factory
     /// @return address The address of the deployed vault
-    function deployVault(PoolId poolId, ShareClassId scId, AssetId assetId, address factory)
+    function deployVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVaultFactory factory)
         external
         returns (address);
 

@@ -8,6 +8,8 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
+import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
+import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
@@ -15,20 +17,20 @@ import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 /// @dev    Utility for deploying new vault contracts
 contract SyncDepositVaultFactory is Auth, IVaultFactory {
     address public immutable root;
-    address public immutable syncRequests;
-    address public immutable asyncRequests;
+    ISyncDepositManager public immutable syncDepositManager;
+    IAsyncRedeemManager public immutable asyncRedeemManager;
     IPoolEscrowProvider public immutable poolEscrowProvider;
 
     constructor(
         address root_,
-        address syncRequests_,
-        address asyncRequests_,
+        ISyncDepositManager syncDepositManager_,
+        IAsyncRedeemManager asyncRedeemManager_,
         IPoolEscrowProvider poolEscrowProvider_,
         address deployer
     ) Auth(deployer) {
         root = root_;
-        syncRequests = syncRequests_;
-        asyncRequests = asyncRequests_;
+        syncDepositManager = syncDepositManager_;
+        asyncRedeemManager = asyncRedeemManager_;
         poolEscrowProvider = poolEscrowProvider_;
     }
 
@@ -39,15 +41,15 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
         address asset,
         uint256 tokenId,
         IShareToken token,
-        address, /* escrow */
         address[] calldata wards_
     ) public auth returns (address) {
         SyncDepositVault vault = new SyncDepositVault(
-            poolId, scId, asset, tokenId, token, root, syncRequests, asyncRequests, poolEscrowProvider
+            poolId, scId, asset, tokenId, token, root, syncDepositManager, asyncRedeemManager, poolEscrowProvider
         );
 
         vault.rely(root);
-        vault.rely(syncRequests);
+        vault.rely(address(syncDepositManager));
+        vault.rely(address(asyncRedeemManager));
 
         uint256 wardsCount = wards_.length;
         for (uint256 i; i < wardsCount; i++) {

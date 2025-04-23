@@ -12,6 +12,8 @@ import {BaseVault, AsyncRedeemVault, BaseSyncDepositVault} from "src/vaults/Base
 import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
+import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 
 /// @title  SyncDepositVault
 /// @notice Partially (a)synchronous Tokenized Vault implementation with synchronous deposits and asynchronous
@@ -27,8 +29,8 @@ contract SyncDepositVault is BaseSyncDepositVault, AsyncRedeemVault {
         uint256 tokenId_,
         IShareToken token_,
         address root_,
-        address syncDepositManager_,
-        address asyncRedeemManager_,
+        ISyncDepositManager syncDepositManager_,
+        IAsyncRedeemManager asyncRedeemManager_,
         IPoolEscrowProvider poolEscrowProvider_
     )
         BaseVault(poolId_, scId_, asset_, tokenId_, token_, root_, syncDepositManager_, poolEscrowProvider_)

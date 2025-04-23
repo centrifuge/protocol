@@ -17,7 +17,7 @@ contract PoolEscrowFactory is IPoolEscrowFactory, Auth {
     address public balanceSheet;
     address public asyncRequests;
 
-    mapping(PoolId poolId => address) public escrows;
+    mapping(PoolId poolId => IPoolEscrow) public escrows;
 
     constructor(address root_, address deployer) Auth(deployer) {
         root = root_;
@@ -35,7 +35,7 @@ contract PoolEscrowFactory is IPoolEscrowFactory, Auth {
 
     /// @inheritdoc IPoolEscrowFactory
     function newEscrow(PoolId poolId) public auth returns (IPoolEscrow) {
-        require(escrows[poolId] == address(0), EscrowAlreadyDeployed());
+        require(address(escrows[poolId]) == address(0), EscrowAlreadyDeployed());
         PoolEscrow escrow_ = new PoolEscrow{salt: bytes32(uint256(poolId.raw()))}(poolId, address(this));
 
         escrow_.rely(root);
@@ -46,7 +46,7 @@ contract PoolEscrowFactory is IPoolEscrowFactory, Auth {
 
         escrow_.deny(address(this));
 
-        escrows[poolId] = address(escrow_);
+        escrows[poolId] = escrow_;
 
         emit DeployPoolEscrow(poolId, address(escrow_));
         return IPoolEscrow(escrow_);
@@ -64,7 +64,7 @@ contract PoolEscrowFactory is IPoolEscrowFactory, Auth {
     }
 
     /// @inheritdoc IPoolEscrowProvider
-    function deployedEscrow(PoolId poolId) external view returns (address) {
+    function deployedEscrow(PoolId poolId) external view returns (IPoolEscrow) {
         return escrows[poolId];
     }
 }

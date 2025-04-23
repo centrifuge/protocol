@@ -5,6 +5,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 
 interface IVaultFactory {
     /// @notice Deploys new vault for `poolId`, `scId` and `asset`.
@@ -15,7 +16,6 @@ interface IVaultFactory {
     /// @param asset Token id of the underlying asset that is getting deposited inside the pool. I.e. zero if asset
     /// corresponds to ERC20 or non-zero if asset corresponds to ERC6909.
     /// @param token Address of the share class token that is getting issues against the deposited asset.
-    /// @param escrow An intermediary contract that holds a temporary funds until request is fulfilled.
     /// @param wards_ Address which can call methods behind authorized only.
     function newVault(
         PoolId poolId,
@@ -23,7 +23,6 @@ interface IVaultFactory {
         address asset,
         uint256 tokenId,
         IShareToken token,
-        address escrow,
         address[] calldata wards_
     ) external returns (address);
 }

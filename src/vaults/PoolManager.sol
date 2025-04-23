@@ -63,17 +63,17 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     uint64 internal _assetCounter;
 
     mapping(PoolId poolId => Pool) public pools;
-    mapping(address factory => bool) public vaultFactory;
+    mapping(IVaultFactory factory => bool) public vaultFactory;
 
     mapping(address => VaultDetails) internal _vaultDetails;
     mapping(AssetId assetId => AssetIdKey) internal _idToAsset;
     mapping(address asset => mapping(uint256 tokenId => AssetId assetId)) internal _assetToId;
 
-    constructor(address tokenFactory_, address[] memory vaultFactories, address deployer) Auth(deployer) {
-        tokenFactory = ITokenFactory(tokenFactory_);
+    constructor(ITokenFactory tokenFactory_, IVaultFactory[] memory vaultFactories, address deployer) Auth(deployer) {
+        tokenFactory = tokenFactory_;
 
         for (uint256 i = 0; i < vaultFactories.length; i++) {
-            address factory = vaultFactories[i];
+            IVaultFactory factory = vaultFactories[i];
             vaultFactory[factory] = true;
         }
     }
@@ -92,7 +92,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
     function file(bytes32 what, address factory, bool status) external auth {
         if (what == "vaultFactory") {
-            vaultFactory[factory] = status;
+            vaultFactory[IVaultFactory(factory)] = status;
         } else {
             revert FileUnrecognizedParam();
         }
@@ -208,7 +208,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         pool.shareClasses[scId].shareToken = shareToken_;
 
         // Deploy new escrow only on first added share class for pool
-        if (poolEscrowFactory.deployedEscrow(poolId) == address(0)) {
+        if (address(poolEscrowFactory.deployedEscrow(poolId)) == address(0)) {
             IPoolEscrow escrow = poolEscrowFactory.newEscrow(poolId);
             gateway.setRefundAddress(PoolId.wrap(poolId.raw()), escrow);
         }
@@ -310,7 +310,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
             MessageLib.UpdateContractVaultUpdate memory m = MessageLib.deserializeUpdateContractVaultUpdate(payload);
 
             if (m.kind == uint8(VaultUpdateKind.DeployAndLink)) {
-                address factory = m.vaultOrFactory.toAddress();
+                IVaultFactory factory = IVaultFactory(m.vaultOrFactory.toAddress());
 
                 address vault = deployVault(poolId, scId, AssetId.wrap(m.assetId), factory);
                 linkVault(poolId, scId, AssetId.wrap(m.assetId), vault);
@@ -354,7 +354,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
     // --- Public functions ---
     /// @inheritdoc IPoolManager
-    function deployVault(PoolId poolId, ShareClassId scId, AssetId assetId, address factory)
+    function deployVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVaultFactory factory)
         public
         auth
         returns (address)
@@ -367,9 +367,8 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
         // Deploy vault
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
-        address escrow = address(poolEscrowFactory.escrow(poolId));
         address vault = IVaultFactory(factory).newVault(
-            poolId, scId, assetIdKey.asset, assetIdKey.tokenId, shareClass.shareToken, escrow, vaultWards
+            poolId, scId, assetIdKey.asset, assetIdKey.tokenId, shareClass.shareToken, vaultWards
         );
 
         // Check whether asset is an ERC20 token wrapper

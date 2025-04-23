@@ -139,7 +139,7 @@ contract SyncRequestsUnauthorizedTest is SyncRequestsBaseTest {
 
     function _expectUnauthorized(address caller) internal {
         vm.assume(
-            caller != address(root) && caller != address(poolManager) && caller != syncDepositVaultFactory
+            caller != address(root) && caller != address(poolManager) && caller != address(syncDepositVaultFactory)
                 && caller != address(this)
         );
 
