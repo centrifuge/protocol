@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
 import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 interface IAsyncDepositManager is IDepositManager, IVaultManager {
     /// @notice Requests assets deposit. Vaults have to request investments from Centrifuge before
@@ -14,7 +15,7 @@ interface IAsyncDepositManager is IDepositManager, IVaultManager {
     ///         owner to the escrow, even though the share payout can only happen after epoch execution.
     ///         The receiver becomes the owner of deposit request fulfillment.
     /// @param  source Deprecated
-    function requestDeposit(address vaultAddr, uint256 assets, address receiver, address owner, address source)
+    function requestDeposit(IBaseVault vault, uint256 assets, address receiver, address owner, address source)
         external
         returns (bool);
 
@@ -28,7 +29,7 @@ interface IAsyncDepositManager is IDepositManager, IVaultManager {
     /// @dev    The cancellation request might fail in case the pending deposit order already got fulfilled on
     ///         Centrifuge.
     /// @param  source Deprecated
-    function cancelDepositRequest(address vaultAddr, address owner, address source) external;
+    function cancelDepositRequest(IBaseVault vault, address owner, address source) external;
 
     /// @notice Processes owner's deposit request cancellation after the epoch has been executed on the corresponding CP
     /// instance and the
@@ -36,18 +37,18 @@ interface IAsyncDepositManager is IDepositManager, IVaultManager {
     ///         Assets are transferred from the escrow to the receiver.
     /// @dev    The assets required to fulfill the claim have already been reserved for the owner in escrow on
     ///         fulfillCancelDepositRequest.
-    function claimCancelDepositRequest(address vaultAddr, address receiver, address owner)
+    function claimCancelDepositRequest(IBaseVault vault, address receiver, address owner)
         external
         returns (uint256 assets);
 
     /// @notice Indicates whether a user has pending deposit requests and returns the total deposit request asset
     /// request value.
-    function pendingDepositRequest(address vaultAddr, address user) external view returns (uint256 assets);
+    function pendingDepositRequest(IBaseVault vault, address user) external view returns (uint256 assets);
 
     /// @notice Indicates whether a user has pending deposit request cancellations.
-    function pendingCancelDepositRequest(address vaultAddr, address user) external view returns (bool isPending);
+    function pendingCancelDepositRequest(IBaseVault vault, address user) external view returns (bool isPending);
 
     /// @notice Indicates whether a user has claimable deposit request cancellation and returns the total claim
     ///         value in assets.
-    function claimableCancelDepositRequest(address vaultAddr, address user) external view returns (uint256 assets);
+    function claimableCancelDepositRequest(IBaseVault vault, address user) external view returns (uint256 assets);
 }

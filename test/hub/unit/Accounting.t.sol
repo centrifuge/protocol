@@ -46,6 +46,15 @@ contract AccountingTest is Test {
         }
     }
 
+    function _assertEqValue(PoolId poolId, AccountId accountId, bool expectedIsPositive, uint128 expectedValue)
+        internal
+        view
+    {
+        (bool isPositive, uint128 value) = accounting.accountValue(poolId, accountId);
+        assertEq(isPositive, expectedIsPositive, "Mismatch: Accounting.accountValue - isPositive");
+        assertEq(value, expectedValue, "Mismatch: Accounting.accountValue - value");
+    }
+
     function testAccount() public {
         vm.expectEmit();
         emit IAccounting.CreateAccount(POOL_B, CASH_ACCOUNT, true);
@@ -75,10 +84,10 @@ contract AccountingTest is Test {
         accounting.addCredit(CASH_ACCOUNT, 250);
         accounting.lock();
 
-        assertEq(accounting.accountValue(POOL_A, CASH_ACCOUNT), 250);
-        assertEq(accounting.accountValue(POOL_A, EQUITY_ACCOUNT), 500);
-        assertEq(accounting.accountValue(POOL_A, BOND1_INVESTMENT_ACCOUNT), 245);
-        assertEq(accounting.accountValue(POOL_A, FEES_EXPENSE_ACCOUNT), 5);
+        _assertEqValue(POOL_A, CASH_ACCOUNT, true, 250);
+        _assertEqValue(POOL_A, EQUITY_ACCOUNT, true, 500);
+        _assertEqValue(POOL_A, BOND1_INVESTMENT_ACCOUNT, true, 245);
+        _assertEqValue(POOL_A, FEES_EXPENSE_ACCOUNT, true, 5);
     }
 
     function testPoolIsolation() public {
@@ -95,10 +104,10 @@ contract AccountingTest is Test {
         accounting.addCredit(EQUITY_ACCOUNT, 120);
         accounting.lock();
 
-        assertEq(accounting.accountValue(POOL_A, CASH_ACCOUNT), 500);
-        assertEq(accounting.accountValue(POOL_A, EQUITY_ACCOUNT), 500);
-        assertEq(accounting.accountValue(POOL_B, CASH_ACCOUNT), 120);
-        assertEq(accounting.accountValue(POOL_B, EQUITY_ACCOUNT), 120);
+        _assertEqValue(POOL_A, CASH_ACCOUNT, true, 500);
+        _assertEqValue(POOL_A, EQUITY_ACCOUNT, true, 500);
+        _assertEqValue(POOL_B, CASH_ACCOUNT, true, 120);
+        _assertEqValue(POOL_B, EQUITY_ACCOUNT, true, 120);
     }
 
     function testUnequalDebitsAndCredits(uint128 v) public {

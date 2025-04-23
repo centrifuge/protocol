@@ -13,14 +13,12 @@ import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 contract HubRegistry is Auth, IHubRegistry {
     using MathLib for uint256;
 
-    uint48 public latestId;
-
     mapping(AssetId => uint8) internal _decimals;
 
     mapping(PoolId => bytes) public metadata;
     mapping(PoolId => AssetId) public currency;
     mapping(bytes32 => address) public dependency;
-    mapping(PoolId => mapping(address => bool)) public isAdmin;
+    mapping(PoolId => mapping(address => bool)) public manager;
 
     constructor(address deployer) Auth(deployer) {}
 
@@ -34,31 +32,31 @@ contract HubRegistry is Auth, IHubRegistry {
     }
 
     /// @inheritdoc IHubRegistry
-    function registerPool(address admin_, uint16 centrifugeId, AssetId currency_)
+    function registerPool(uint48 poolId_, address manager_, uint16 centrifugeId, AssetId currency_)
         external
         auth
         returns (PoolId poolId)
     {
-        require(admin_ != address(0), EmptyAdmin());
+        require(manager_ != address(0), EmptyAccount());
         require(!currency_.isNull(), EmptyCurrency());
+
+        poolId = newPoolId(centrifugeId, poolId_);
         require(currency[poolId].isNull(), PoolAlreadyRegistered());
 
-        poolId = newPoolId(centrifugeId, ++latestId);
-
-        isAdmin[poolId][admin_] = true;
+        manager[poolId][manager_] = true;
         currency[poolId] = currency_;
 
-        emit NewPool(poolId, admin_, currency_);
+        emit NewPool(poolId, manager_, currency_);
     }
 
     /// @inheritdoc IHubRegistry
-    function updateAdmin(PoolId poolId, address admin_, bool canManage) external auth {
+    function updateManager(PoolId poolId, address manager_, bool canManage) external auth {
         require(exists(poolId), NonExistingPool(poolId));
-        require(admin_ != address(0), EmptyAdmin());
+        require(manager_ != address(0), EmptyAccount());
 
-        isAdmin[poolId][admin_] = canManage;
+        manager[poolId][manager_] = canManage;
 
-        emit UpdateAdmin(poolId, admin_, canManage);
+        emit UpdateManager(poolId, manager_, canManage);
     }
 
     /// @inheritdoc IHubRegistry

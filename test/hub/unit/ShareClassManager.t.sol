@@ -529,8 +529,7 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
         );
     }
 
-    function testFullClaimDepositSingleEpoch(
-    ) public {
+    function testFullClaimDepositSingleEpoch() public {
         vm.expectRevert(IShareClassManager.NoOrderFound.selector);
         shareClass.claimDeposit(poolId, scId, investor, USDC);
 
@@ -545,7 +544,7 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
         vm.expectRevert(IShareClassManager.IssuanceRequired.selector);
         shareClass.claimDeposit(poolId, scId, investor, USDC);
 
-        D18 navPoolPerShare = d18(11,10);
+        D18 navPoolPerShare = d18(11, 10);
         (uint128 issuedShareAmount,,) = shareClass.issueShares(poolId, scId, USDC, _nowIssue(USDC), navPoolPerShare);
 
         vm.expectEmit();
@@ -561,7 +560,7 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
             block.timestamp.toUint64()
         );
         (uint128 payoutShareAmount, uint128 depositAssetAmount, uint128 cancelledAssetAmount, bool canClaimAgain) =
-                            shareClass.claimDeposit(poolId, scId, investor, USDC);
+            shareClass.claimDeposit(poolId, scId, investor, USDC);
 
         assertEq(issuedShareAmount, payoutShareAmount, "Mismatch: payoutShareAmount");
         assertEq(approvedAmountUsdc, depositAssetAmount, "Mismatch: depositAssetAmount");

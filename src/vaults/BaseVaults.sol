@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import "src/misc/interfaces/IERC7540.sol";
+import "src/misc/interfaces/IERC7575.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import {EIP712Lib} from "src/misc/libraries/EIP712Lib.sol";
@@ -10,16 +12,17 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
-import {IERC7575} from "src/vaults/interfaces/IERC7575.sol";
+import {IBaseVault, IAsyncRedeemVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IERC7575} from "src/misc/interfaces/IERC7575.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IAsyncRedeemVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
-import "src/vaults/interfaces/IERC7540.sol";
-import "src/vaults/interfaces/IERC7575.sol";
+import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
@@ -27,17 +30,16 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
 
     IRoot public immutable root;
     IBaseInvestmentManager public manager;
+    IPoolEscrowProvider internal _poolEscrowProvider;
 
     /// @inheritdoc IBaseVault
-    uint64 public immutable poolId;
+    PoolId public immutable poolId;
     /// @inheritdoc IBaseVault
-    bytes16 public immutable trancheId;
+    ShareClassId public immutable scId;
 
     /// @inheritdoc IERC7575
     address public immutable asset;
-    /// @dev NOTE: Should never be used in production in any external contract as there will be old vaults without this
-    /// storage. Instead, refer to poolManager.vaultDetails(vault).
-    uint256 internal immutable tokenId;
+    uint256 public immutable tokenId;
 
     /// @inheritdoc IERC7575
     address public immutable share;
@@ -61,22 +63,25 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     event File(bytes32 indexed what, address data);
 
     constructor(
-        uint64 poolId_,
-        bytes16 scId_,
+        PoolId poolId_,
+        ShareClassId scId_,
         address asset_,
         uint256 tokenId_,
-        address token_,
+        IShareToken token_,
         address root_,
-        address manager_
+        IBaseInvestmentManager manager_,
+        IPoolEscrowProvider poolEscrowProvider_
     ) Auth(msg.sender) {
         poolId = poolId_;
-        trancheId = scId_;
+        scId = scId_;
         asset = asset_;
         tokenId = tokenId_;
-        share = token_;
+        share = address(token_);
         _shareDecimals = IERC20Metadata(share).decimals();
         root = IRoot(root_);
-        manager = IBaseInvestmentManager(manager_);
+        // TODO: Redundant due to filing?
+        manager = manager_;
+        _poolEscrowProvider = poolEscrowProvider_;
 
         nameHash = keccak256(bytes("Centrifuge"));
         versionHash = keccak256(bytes("1"));
@@ -87,6 +92,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     // --- Administration ---
     function file(bytes32 what, address data) external auth {
         if (what == "manager") manager = IBaseInvestmentManager(data);
+        else if (what == "poolEscrowProvider") _poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -168,14 +174,14 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     /// @notice     The calculation is based on the token price from the most recent epoch retrieved from Centrifuge.
     ///             The actual conversion MAY change between order submission and execution.
     function convertToShares(uint256 assets) public view returns (uint256 shares) {
-        shares = manager.convertToShares(address(this), assets);
+        shares = manager.convertToShares(this, assets);
     }
 
     /// @inheritdoc IERC7575
     /// @notice     The calculation is based on the token price from the most recent epoch retrieved from Centrifuge.
     ///             The actual conversion MAY change between order submission and execution.
     function convertToAssets(uint256 shares) public view returns (uint256 assets) {
-        assets = manager.convertToAssets(address(this), shares);
+        assets = manager.convertToAssets(this, shares);
     }
 
     // --- Helpers ---
@@ -186,7 +192,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
 
     /// @notice Returns timestamp of the last share price update.
     function priceLastUpdated() external view returns (uint64) {
-        return manager.priceLastUpdated(address(this));
+        return manager.priceLastUpdated(this);
     }
 
     /// @inheritdoc IERC7714
@@ -203,8 +209,8 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
 abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     IAsyncRedeemManager public asyncRedeemManager;
 
-    constructor(address asyncRequests_) {
-        asyncRedeemManager = IAsyncRedeemManager(asyncRequests_);
+    constructor(IAsyncRedeemManager asyncRequests_) {
+        asyncRedeemManager = asyncRequests_;
     }
 
     // --- ERC-7540 methods ---
@@ -216,11 +222,9 @@ abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
         // the sender is the owner, to bypass the allowance check
         address sender = isOperator[owner][msg.sender] ? owner : msg.sender;
 
-        require(
-            asyncRedeemManager.requestRedeem(address(this), shares, controller, owner, sender), RequestRedeemFailed()
-        );
+        require(asyncRedeemManager.requestRedeem(this, shares, controller, owner, sender), RequestRedeemFailed());
 
-        address escrow = asyncRedeemManager.escrow();
+        address escrow = address(_poolEscrowProvider.escrow(poolId));
         try IShareToken(share).authTransferFrom(sender, owner, escrow, shares) returns (bool) {}
         catch {
             // Support share class tokens that block authTransferFrom. In this case ERC20 approval needs to be set
@@ -233,7 +237,7 @@ abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
 
     /// @inheritdoc IERC7540Redeem
     function pendingRedeemRequest(uint256, address controller) public view returns (uint256 pendingShares) {
-        pendingShares = asyncRedeemManager.pendingRedeemRequest(address(this), controller);
+        pendingShares = asyncRedeemManager.pendingRedeemRequest(this, controller);
     }
 
     /// @inheritdoc IERC7540Redeem
@@ -245,18 +249,18 @@ abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     /// @inheritdoc IERC7540CancelRedeem
     function cancelRedeemRequest(uint256, address controller) external {
         _validateController(controller);
-        asyncRedeemManager.cancelRedeemRequest(address(this), controller, msg.sender);
+        asyncRedeemManager.cancelRedeemRequest(this, controller, msg.sender);
         emit CancelRedeemRequest(controller, REQUEST_ID, msg.sender);
     }
 
     /// @inheritdoc IERC7540CancelRedeem
     function pendingCancelRedeemRequest(uint256, address controller) public view returns (bool isPending) {
-        isPending = asyncRedeemManager.pendingCancelRedeemRequest(address(this), controller);
+        isPending = asyncRedeemManager.pendingCancelRedeemRequest(this, controller);
     }
 
     /// @inheritdoc IERC7540CancelRedeem
     function claimableCancelRedeemRequest(uint256, address controller) public view returns (uint256 claimableShares) {
-        claimableShares = asyncRedeemManager.claimableCancelRedeemRequest(address(this), controller);
+        claimableShares = asyncRedeemManager.claimableCancelRedeemRequest(this, controller);
     }
 
     /// @inheritdoc IERC7540CancelRedeem
@@ -265,7 +269,7 @@ abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
         returns (uint256 shares)
     {
         _validateController(controller);
-        shares = asyncRedeemManager.claimCancelRedeemRequest(address(this), receiver, controller);
+        shares = asyncRedeemManager.claimCancelRedeemRequest(this, receiver, controller);
         emit CancelRedeemClaim(receiver, controller, REQUEST_ID, msg.sender, shares);
     }
 
@@ -274,7 +278,7 @@ abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     /// @notice     DOES NOT support controller != msg.sender since shares are already transferred on requestRedeem
     function withdraw(uint256 assets, address receiver, address controller) public returns (uint256 shares) {
         _validateController(controller);
-        shares = asyncRedeemManager.withdraw(address(this), assets, receiver, controller);
+        shares = asyncRedeemManager.withdraw(this, assets, receiver, controller);
         emit Withdraw(msg.sender, receiver, controller, assets, shares);
     }
 
@@ -284,7 +288,7 @@ abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     ///             It is recommended to use withdraw() to claim redemption requests instead.
     function redeem(uint256 shares, address receiver, address controller) external returns (uint256 assets) {
         _validateController(controller);
-        assets = asyncRedeemManager.redeem(address(this), shares, receiver, controller);
+        assets = asyncRedeemManager.redeem(this, shares, receiver, controller);
         emit Withdraw(msg.sender, receiver, controller, assets, shares);
     }
 
@@ -310,12 +314,12 @@ abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
 
     /// @inheritdoc IERC7575
     function maxWithdraw(address controller) public view returns (uint256 maxAssets) {
-        maxAssets = asyncRedeemManager.maxWithdraw(address(this), controller);
+        maxAssets = asyncRedeemManager.maxWithdraw(this, controller);
     }
 
     /// @inheritdoc IERC7575
     function maxRedeem(address controller) public view returns (uint256 maxShares) {
-        maxShares = asyncRedeemManager.maxRedeem(address(this), controller);
+        maxShares = asyncRedeemManager.maxRedeem(this, controller);
     }
 
     /// @dev Preview functions for ERC-7540 vaults revert
@@ -332,42 +336,45 @@ abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
 abstract contract BaseSyncDepositVault is BaseVault {
     ISyncDepositManager public syncDepositManager;
 
-    constructor(address syncRequests_) {
-        syncDepositManager = ISyncDepositManager(syncRequests_);
+    constructor(ISyncDepositManager syncRequests_) {
+        syncDepositManager = syncRequests_;
     }
 
     // --- ERC-4626 methods ---
     /// @inheritdoc IERC7575
     function maxDeposit(address owner) public view returns (uint256 maxAssets) {
-        maxAssets = syncDepositManager.maxDeposit(address(this), owner);
+        maxAssets = syncDepositManager.maxDeposit(this, owner);
     }
 
     /// @inheritdoc IERC7575
     function previewDeposit(uint256 assets) external view override returns (uint256 shares) {
-        shares = syncDepositManager.previewDeposit(address(this), msg.sender, assets);
+        shares = syncDepositManager.previewDeposit(this, msg.sender, assets);
     }
 
     /// @inheritdoc IERC7575
     function deposit(uint256 assets, address receiver) external returns (uint256 shares) {
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, syncDepositManager.escrow(), assets);
-        shares = syncDepositManager.deposit(address(this), assets, receiver, msg.sender);
+        shares = syncDepositManager.deposit(this, assets, receiver, msg.sender);
+        // NOTE: For security reasons, transfer must stay at end of call despite the fact that it logically should
+        // happen before depositing in the manager
+        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(_poolEscrowProvider.escrow(poolId)), assets);
         emit Deposit(receiver, msg.sender, assets, shares);
     }
 
     /// @inheritdoc IERC7575
     function maxMint(address owner) public view returns (uint256 maxShares) {
-        maxShares = syncDepositManager.maxMint(address(this), owner);
+        maxShares = syncDepositManager.maxMint(this, owner);
     }
 
     /// @inheritdoc IERC7575
     function previewMint(uint256 shares) external view returns (uint256 assets) {
-        assets = syncDepositManager.previewMint(address(this), msg.sender, shares);
+        assets = syncDepositManager.previewMint(this, msg.sender, shares);
     }
 
     /// @inheritdoc IERC7575
     function mint(uint256 shares, address receiver) public returns (uint256 assets) {
-        assets = syncDepositManager.mint(address(this), shares, receiver, msg.sender);
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, syncDepositManager.escrow(), assets);
+        assets = syncDepositManager.mint(this, shares, receiver, msg.sender);
+        // NOTE: For security reasons, transfer must stay at end of call
+        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(_poolEscrowProvider.escrow(poolId)), assets);
         emit Deposit(receiver, msg.sender, assets, shares);
     }
 

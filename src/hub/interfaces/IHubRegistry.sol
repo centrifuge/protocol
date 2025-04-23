@@ -9,8 +9,8 @@ import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 
 interface IHubRegistry is IERC6909Decimals {
     event NewAsset(AssetId indexed assetId, uint8 decimals);
-    event NewPool(PoolId poolId, address indexed admin, AssetId indexed currency);
-    event UpdateAdmin(PoolId indexed poolId, address indexed admin, bool canManage);
+    event NewPool(PoolId poolId, address indexed manager, AssetId indexed currency);
+    event UpdateManager(PoolId indexed poolId, address indexed manager, bool canManage);
     event SetMetadata(PoolId indexed poolId, bytes metadata);
     event UpdateDependency(bytes32 indexed what, address dependency);
     event UpdateCurrency(PoolId indexed poolId, AssetId currency);
@@ -18,7 +18,7 @@ interface IHubRegistry is IERC6909Decimals {
     error NonExistingPool(PoolId id);
     error AssetAlreadyRegistered();
     error PoolAlreadyRegistered();
-    error EmptyAdmin();
+    error EmptyAccount();
     error EmptyCurrency();
     error EmptyShareClassManager();
     error AssetNotFound();
@@ -28,10 +28,12 @@ interface IHubRegistry is IERC6909Decimals {
 
     /// @notice Register a new pool.
     /// @return PoolId Id to identify the new pool.
-    function registerPool(address admin, uint16 centrifugeId, AssetId currency) external returns (PoolId);
+    function registerPool(uint48 poolId, address manager, uint16 centrifugeId, AssetId currency)
+        external
+        returns (PoolId);
 
-    /// @notice allow/disallow an address as an admin for the pool
-    function updateAdmin(PoolId poolId, address newAdmin, bool canManage) external;
+    /// @notice allow/disallow an address as a manager for the pool
+    function updateManager(PoolId poolId, address newManager, bool canManage) external;
 
     /// @notice sets metadata for this pool
     function setMetadata(PoolId poolId, bytes calldata metadata) external;
@@ -51,8 +53,8 @@ interface IHubRegistry is IERC6909Decimals {
     /// @notice returns the dependency used in the system
     function dependency(bytes32 what) external view returns (address);
 
-    /// @notice returns the existence of an admin
-    function isAdmin(PoolId poolId, address admin) external view returns (bool);
+    /// @notice returns whether the account is a manager
+    function manager(PoolId poolId, address who) external view returns (bool);
 
     /// @notice returns the decimals for an asset
     function decimals(AssetId assetId) external view returns (uint8);

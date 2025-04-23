@@ -16,7 +16,7 @@ contract TestCases is BaseTest {
         cv.registerAsset(EUR_STABLE_C2, 12);
 
         vm.prank(ADMIN);
-        poolId = guardian.createPool(FM, USD);
+        poolId = guardian.createPool(1, FM, USD);
 
         scId = shareClassManager.previewNextShareClassId(poolId);
 
@@ -24,7 +24,7 @@ contract TestCases is BaseTest {
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
         hub.notifyPool{value: GAS}(poolId, CHAIN_CV);
-        hub.notifyShareClass{value: GAS}(poolId, CHAIN_CV, scId, SC_HOOK);
+        hub.notifyShareClass{value: GAS}(poolId, scId, CHAIN_CV, SC_HOOK);
         hub.createAccount(poolId, AccountId.wrap(0x01), true);
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
         hub.createAccount(poolId, AccountId.wrap(0x03), false);
@@ -52,8 +52,8 @@ contract TestCases is BaseTest {
         );
         hub.updateContract{value: GAS}(
             poolId,
-            CHAIN_CV,
             scId,
+            CHAIN_CV,
             bytes32("target"),
             MessageLib.UpdateContractVaultUpdate({
                 vaultOrFactory: bytes32("factory"),
@@ -97,7 +97,7 @@ contract TestCases is BaseTest {
         cv.requestDeposit(poolId, scId, USDC_C2, INVESTOR, INVESTOR_AMOUNT);
 
         vm.startPrank(FM);
-        hub.approveDeposits(
+        hub.approveDeposits{value: GAS}(
             poolId, scId, USDC_C2, shareClassManager.nowDepositEpoch(scId, USDC_C2), APPROVED_INVESTOR_AMOUNT
         );
         hub.issueShares(poolId, scId, USDC_C2, shareClassManager.nowIssueEpoch(scId, USDC_C2), NAV_PER_SHARE);
@@ -149,7 +149,9 @@ contract TestCases is BaseTest {
         hub.approveRedeems(
             poolId, scId, USDC_C2, shareClassManager.nowRedeemEpoch(scId, USDC_C2), APPROVED_SHARE_AMOUNT
         );
-        hub.revokeShares(poolId, scId, USDC_C2, shareClassManager.nowRevokeEpoch(scId, USDC_C2), NAV_PER_SHARE);
+        hub.revokeShares{value: GAS}(
+            poolId, scId, USDC_C2, shareClassManager.nowRevokeEpoch(scId, USDC_C2), NAV_PER_SHARE
+        );
         vm.stopPrank();
 
         vm.prank(ANY);
@@ -188,15 +190,15 @@ contract TestCases is BaseTest {
 
         assertEq(holdings.amount(poolId, scId, USDC_C2), 1000 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 1000 * poolDecimals);
-        assertEq(accounting.accountValue(poolId, equityAccount), int128(1000 * poolDecimals));
-        assertEq(accounting.accountValue(poolId, assetAccount), int128(1000 * poolDecimals));
+        _assertEqAccountValue(poolId, equityAccount, true, 1000 * poolDecimals);
+        _assertEqAccountValue(poolId, assetAccount, true, 1000 * poolDecimals);
 
         cv.updateHoldingAmount(poolId, scId, USDC_C2, 600 * assetDecimals, D18.wrap(1e18), false);
 
         assertEq(holdings.amount(poolId, scId, USDC_C2), 400 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 400 * poolDecimals);
-        assertEq(accounting.accountValue(poolId, assetAccount), int128(400 * poolDecimals));
-        assertEq(accounting.accountValue(poolId, equityAccount), int128(400 * poolDecimals));
+        _assertEqAccountValue(poolId, assetAccount, true, 400 * poolDecimals);
+        _assertEqAccountValue(poolId, equityAccount, true, 400 * poolDecimals);
     }
 
     /// forge-config: default.isolate = true
@@ -227,7 +229,7 @@ contract TestCases is BaseTest {
         hub.updatePricePerShare(poolId, scId, sharePrice);
         hub.notifyAssetPrice{value: GAS}(poolId, scId, EUR_STABLE_C2);
         hub.notifyAssetPrice{value: GAS}(poolId, scId, USDC_C2);
-        hub.notifySharePrice{value: GAS}(poolId, CHAIN_CV, scId);
+        hub.notifySharePrice{value: GAS}(poolId, scId, CHAIN_CV);
         vm.stopPrank();
 
         assertEq(cv.messageCount(), 3);

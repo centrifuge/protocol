@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
+import {IERC165} from "src/misc/interfaces/IERC7575.sol";
 
 struct HookData {
     bytes16 from;
@@ -13,6 +13,10 @@ string constant SUCCESS_MESSAGE = "transfer-allowed";
 
 uint8 constant ERROR_CODE_ID = 1;
 string constant ERROR_MESSAGE = "transfer-blocked";
+
+/// @dev Magic address denoting a transfer to the escrow
+/// @dev Solely used for gas saving since escrow is per pool
+address constant ESCROW_HOOK_ID = address(uint160(uint8(0xce)));
 
 /// @notice Hook interface to customize share token behaviour
 /// @dev    To detect specific system actions:
