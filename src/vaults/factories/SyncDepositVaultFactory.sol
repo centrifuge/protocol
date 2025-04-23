@@ -3,6 +3,9 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
@@ -31,8 +34,8 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
 
     /// @inheritdoc IVaultFactory
     function newVault(
-        uint64 poolId,
-        bytes16 scId,
+        PoolId poolId,
+        ShareClassId scId,
         address asset,
         uint256 tokenId,
         IShareToken token,

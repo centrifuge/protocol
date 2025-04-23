@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.5.0;
 
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+
 enum VaultKind {
     /// @dev Refers to AsyncVault
     Async,
@@ -15,13 +19,16 @@ enum VaultKind {
 /// @dev Must be implemented by all vault managers
 interface IVaultManager {
     /// @notice Adds new vault for `poolId`, `scId` and `asset`.
-    function addVault(uint64 poolId, bytes16 scId, address vault, address asset, uint128 assetId) external;
+    function addVault(PoolId poolId, ShareClassId scId, address vault, address asset, AssetId assetId) external;
 
     /// @notice Removes `vault` from `who`'s authorized callers
-    function removeVault(uint64 poolId, bytes16 scId, address vault, address asset, uint128 assetId) external;
+    function removeVault(PoolId poolId, ShareClassId scId, address vault, address asset, AssetId assetId) external;
 
     /// @notice Returns the address of the vault for a given pool, share class and asset
-    function vaultByAssetId(uint64 poolId, bytes16 scId, uint128 assetId) external view returns (address vaultAddr);
+    function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId)
+        external
+        view
+        returns (address vaultAddr);
 
     /// @notice Checks whether the vault is partially (a)synchronous and if so returns the address of the secondary
     /// manager.

@@ -54,7 +54,7 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.enable(vault_);
         vm.expectRevert(IAsyncRequests.TransferNotAllowed.selector);
         vaultRouter.requestDeposit{value: 1 wei}(vault_, amount, self, self);
-        centrifugeChain.updateMember(vault.poolId(), vault.scId(), self, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
 
         uint256 gas = estimateGas() + GAS_BUFFER;
 
@@ -99,7 +99,7 @@ contract VaultRouterTest is BaseTest {
         assertEq(vault.maxMint(self), sharePayout);
         assertEq(vault.maxDeposit(self), amount);
         IShareToken shareToken = IShareToken(address(vault.share()));
-        assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), sharePayout);
+        assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId().raw()))), sharePayout);
 
         if (snap) {
             vm.startSnapshotGas("VaultRouter", "claimDeposit");
@@ -110,8 +110,8 @@ contract VaultRouterTest is BaseTest {
         }
         assertApproxEqAbs(shareToken.balanceOf(self), sharePayout, 1);
         assertApproxEqAbs(shareToken.balanceOf(self), sharePayout, 1);
-        assertApproxEqAbs(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), 0, 1);
-        assertApproxEqAbs(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), amount, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId().raw()))), 0, 1);
+        assertApproxEqAbs(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId().raw()))), amount, 1);
     }
 
     function testEnableDisableVaults() public {
@@ -152,7 +152,7 @@ contract VaultRouterTest is BaseTest {
 
         erc20.mint(self, amount);
         erc20.approve(address(vaultRouter), amount);
-        centrifugeChain.updateMember(vault.poolId(), vault.scId(), self, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
         vaultRouter.enableLockDepositRequest(vault_, amount);
 
         uint256 fuel = estimateGas();
@@ -170,14 +170,14 @@ contract VaultRouterTest is BaseTest {
         assertEq(vault.maxMint(self), sharePayout);
         assertEq(vault.maxDeposit(self), amount);
         IShareToken shareToken = IShareToken(address(vault.share()));
-        assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), sharePayout);
+        assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId().raw()))), sharePayout);
 
         // Any address should be able to call claimDeposit for an investor
         vm.prank(randomUser);
         vaultRouter.claimDeposit(vault_, self, self);
         assertApproxEqAbs(shareToken.balanceOf(self), sharePayout, 1);
-        assertApproxEqAbs(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), 0, 1);
-        assertApproxEqAbs(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), amount, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId().raw()))), 0, 1);
+        assertApproxEqAbs(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId().raw()))), amount, 1);
     }
 
     /// forge-config: default.isolate = true
@@ -200,7 +200,7 @@ contract VaultRouterTest is BaseTest {
         vm.label(vault_, "vault");
         erc20.mint(self, amount);
         erc20.approve(vault_, amount);
-        centrifugeChain.updateMember(vault.poolId(), vault.scId(), self, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
         if (snap) {
             vm.startSnapshotGas("VaultRouter", "enable");
         }
@@ -233,11 +233,11 @@ contract VaultRouterTest is BaseTest {
         }
         (uint128 assetPayout) = fulfillRedeemRequest(vault, assetId, sharePayout, self);
         assertApproxEqAbs(shareToken.balanceOf(self), 0, 1);
-        assertApproxEqAbs(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), 0, 1);
-        assertApproxEqAbs(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), assetPayout, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId().raw()))), 0, 1);
+        assertApproxEqAbs(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId().raw()))), assetPayout, 1);
         assertApproxEqAbs(erc20.balanceOf(self), 0, 1);
         vaultRouter.claimRedeem(vault_, self, self);
-        assertApproxEqAbs(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), 0, 1);
+        assertApproxEqAbs(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId().raw()))), 0, 1);
         assertApproxEqAbs(erc20.balanceOf(self), assetPayout, 1);
     }
 
@@ -268,17 +268,17 @@ contract VaultRouterTest is BaseTest {
         assertEq(vault2.maxDeposit(self), amount2);
         IShareToken shareToken1 = IShareToken(address(vault1.share()));
         IShareToken shareToken2 = IShareToken(address(vault2.share()));
-        assertEq(shareToken1.balanceOf(address(poolEscrowFactory.escrow(vault1.poolId()))), sharePayout1);
-        assertEq(shareToken2.balanceOf(address(poolEscrowFactory.escrow(vault2.poolId()))), sharePayout2);
+        assertEq(shareToken1.balanceOf(address(poolEscrowFactory.escrow(vault1.poolId().raw()))), sharePayout1);
+        assertEq(shareToken2.balanceOf(address(poolEscrowFactory.escrow(vault2.poolId().raw()))), sharePayout2);
 
         vaultRouter.claimDeposit(address(vault1), self, self);
         vaultRouter.claimDeposit(address(vault2), self, self);
         assertApproxEqAbs(shareToken1.balanceOf(self), sharePayout1, 1);
         assertApproxEqAbs(shareToken2.balanceOf(self), sharePayout2, 1);
-        assertApproxEqAbs(shareToken1.balanceOf(address(poolEscrowFactory.escrow(vault1.poolId()))), 0, 1);
-        assertApproxEqAbs(shareToken2.balanceOf(address(poolEscrowFactory.escrow(vault2.poolId()))), 0, 1);
-        assertApproxEqAbs(erc20X.balanceOf(address(poolEscrowFactory.escrow(vault1.poolId()))), amount1, 1);
-        assertApproxEqAbs(erc20Y.balanceOf(address(poolEscrowFactory.escrow(vault2.poolId()))), amount2, 1);
+        assertApproxEqAbs(shareToken1.balanceOf(address(poolEscrowFactory.escrow(vault1.poolId().raw()))), 0, 1);
+        assertApproxEqAbs(shareToken2.balanceOf(address(poolEscrowFactory.escrow(vault2.poolId().raw()))), 0, 1);
+        assertApproxEqAbs(erc20X.balanceOf(address(poolEscrowFactory.escrow(vault1.poolId().raw()))), amount1, 1);
+        assertApproxEqAbs(erc20Y.balanceOf(address(poolEscrowFactory.escrow(vault2.poolId().raw()))), amount2, 1);
     }
 
     function testRouterRedeemFromMultipleVaults(uint256 amount1, uint256 amount2) public {
@@ -315,21 +315,25 @@ contract VaultRouterTest is BaseTest {
         assertApproxEqAbs(IShareToken(address(vault1.share())).balanceOf(self), 0, 1);
         assertApproxEqAbs(IShareToken(address(vault2.share())).balanceOf(self), 0, 1);
         assertApproxEqAbs(
-            IShareToken(address(vault1.share())).balanceOf(address(poolEscrowFactory.escrow(vault1.poolId()))), 0, 1
+            IShareToken(address(vault1.share())).balanceOf(address(poolEscrowFactory.escrow(vault1.poolId().raw()))),
+            0,
+            1
         );
         assertApproxEqAbs(
-            IShareToken(address(vault2.share())).balanceOf(address(poolEscrowFactory.escrow(vault2.poolId()))), 0, 1
+            IShareToken(address(vault2.share())).balanceOf(address(poolEscrowFactory.escrow(vault2.poolId().raw()))),
+            0,
+            1
         );
-        assertApproxEqAbs(erc20X.balanceOf(address(poolEscrowFactory.escrow(vault1.poolId()))), assetPayout1, 1);
-        assertApproxEqAbs(erc20Y.balanceOf(address(poolEscrowFactory.escrow(vault2.poolId()))), assetPayout2, 1);
+        assertApproxEqAbs(erc20X.balanceOf(address(poolEscrowFactory.escrow(vault1.poolId().raw()))), assetPayout1, 1);
+        assertApproxEqAbs(erc20Y.balanceOf(address(poolEscrowFactory.escrow(vault2.poolId().raw()))), assetPayout2, 1);
         assertApproxEqAbs(erc20X.balanceOf(self), 0, 1);
         assertApproxEqAbs(erc20Y.balanceOf(self), 0, 1);
 
         // claim redeem
         vaultRouter.claimRedeem(address(vault1), self, self);
         vaultRouter.claimRedeem(address(vault2), self, self);
-        assertApproxEqAbs(erc20X.balanceOf(address(poolEscrowFactory.escrow(vault1.poolId()))), 0, 1);
-        assertApproxEqAbs(erc20Y.balanceOf(address(poolEscrowFactory.escrow(vault2.poolId()))), 0, 1);
+        assertApproxEqAbs(erc20X.balanceOf(address(poolEscrowFactory.escrow(vault1.poolId().raw()))), 0, 1);
+        assertApproxEqAbs(erc20Y.balanceOf(address(poolEscrowFactory.escrow(vault2.poolId().raw()))), 0, 1);
         assertApproxEqAbs(erc20X.balanceOf(self), assetPayout1, 1);
         assertApproxEqAbs(erc20Y.balanceOf(self), assetPayout2, 1);
     }
@@ -354,7 +358,7 @@ contract VaultRouterTest is BaseTest {
 
         erc20.mint(self, amount);
         erc20.approve(address(vaultRouter), amount);
-        centrifugeChain.updateMember(vault.poolId(), vault.scId(), self, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
         vaultRouter.enable(address(vault_));
         if (snap) {
             vm.startSnapshotGas("VaultRouter", "lockDepositRequest");
@@ -375,7 +379,7 @@ contract VaultRouterTest is BaseTest {
         assertEq(vault.maxMint(self), sharePayout);
         assertEq(vault.maxDeposit(self), amount);
         IShareToken shareToken = IShareToken(address(vault.share()));
-        assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), sharePayout);
+        assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId().raw()))), sharePayout);
     }
 
     function testMulticallingDepositClaimAndRequestRedeem(uint256 amount) public {
@@ -388,7 +392,7 @@ contract VaultRouterTest is BaseTest {
         vm.label(vault_, "vault");
         erc20.mint(self, amount);
         erc20.approve(vault_, amount);
-        centrifugeChain.updateMember(vault.poolId(), vault.scId(), self, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
         vaultRouter.enable(vault_);
 
         uint256 fuel = estimateGas();
@@ -406,8 +410,8 @@ contract VaultRouterTest is BaseTest {
 
         (uint128 assetPayout) = fulfillRedeemRequest(vault, assetId, sharePayout, self);
         assertApproxEqAbs(shareToken.balanceOf(self), 0, 1);
-        assertApproxEqAbs(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), 0, 1);
-        assertApproxEqAbs(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), assetPayout, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId().raw()))), 0, 1);
+        assertApproxEqAbs(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId().raw()))), assetPayout, 1);
         assertApproxEqAbs(erc20.balanceOf(self), 0, 1);
     }
 
@@ -440,8 +444,8 @@ contract VaultRouterTest is BaseTest {
         assertEq(vault2.maxDeposit(self), amount2);
         IShareToken shareToken1 = IShareToken(address(vault1.share()));
         IShareToken shareToken2 = IShareToken(address(vault2.share()));
-        assertEq(shareToken1.balanceOf(address(poolEscrowFactory.escrow(vault1.poolId()))), sharePayout1);
-        assertEq(shareToken2.balanceOf(address(poolEscrowFactory.escrow(vault2.poolId()))), sharePayout2);
+        assertEq(shareToken1.balanceOf(address(poolEscrowFactory.escrow(vault1.poolId().raw()))), sharePayout1);
+        assertEq(shareToken2.balanceOf(address(poolEscrowFactory.escrow(vault2.poolId().raw()))), sharePayout2);
     }
 
     function testLockAndExecuteDepositRequest(uint256 amount) public {
@@ -456,7 +460,7 @@ contract VaultRouterTest is BaseTest {
 
         address investor = makeAddr("investor");
         vm.deal(investor, 10 ether);
-        centrifugeChain.updateMember(vault.poolId(), vault.scId(), investor, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), investor, type(uint64).max);
 
         erc20.mint(investor, amount);
         vm.startPrank(investor);
@@ -478,7 +482,7 @@ contract VaultRouterTest is BaseTest {
         assertEq(vault.maxMint(investor), sharePayout);
         assertEq(vault.maxDeposit(investor), amount);
         IShareToken shareToken = IShareToken(address(vault.share()));
-        assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), sharePayout);
+        assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId().raw()))), sharePayout);
     }
 
     function testWrapAndUnwrap(uint256 amount) public {
@@ -492,7 +496,7 @@ contract VaultRouterTest is BaseTest {
         vm.label(vault_, "vault");
 
         address investor = makeAddr("investor");
-        centrifugeChain.updateMember(vault.poolId(), vault.scId(), investor, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), investor, type(uint64).max);
         vaultRouter.enable(vault_);
 
         erc20.mint(investor, amount);
@@ -522,7 +526,7 @@ contract VaultRouterTest is BaseTest {
         vm.label(vault_, "vault");
 
         address investor = makeAddr("investor");
-        centrifugeChain.updateMember(vault.poolId(), vault.scId(), investor, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), investor, type(uint64).max);
         vaultRouter.enable(vault_);
 
         erc20.mint(investor, amount);
@@ -562,7 +566,7 @@ contract VaultRouterTest is BaseTest {
         uint256 fuel = 2 * estimateGas();
 
         // Anyone else can execute the request and claim the deposit
-        centrifugeChain.updateMember(vault.poolId(), vault.scId(), investor, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), investor, type(uint64).max);
         vaultRouter.executeLockedDepositRequest{value: fuel}(vault_, investor);
         (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, investor);
 
@@ -578,12 +582,12 @@ contract VaultRouterTest is BaseTest {
 
         // Anyone else claims the redeem
         (uint128 assetPayout) = fulfillRedeemRequest(vault, assetId, sharePayout, investor);
-        assertEq(wrapper.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), assetPayout);
+        assertEq(wrapper.balanceOf(address(poolEscrowFactory.escrow(vault.poolId().raw()))), assetPayout);
         assertEq(erc20.balanceOf(address(investor)), 0);
         vaultRouter.claimRedeem(vault_, investor, investor);
 
         // Token was immediately unwrapped
-        assertEq(wrapper.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), 0);
+        assertEq(wrapper.balanceOf(address(poolEscrowFactory.escrow(vault.poolId().raw()))), 0);
         assertEq(erc20.balanceOf(investor), assetPayout);
     }
 
@@ -680,7 +684,7 @@ contract VaultRouterTest is BaseTest {
 
         erc20.mint(self, amount);
 
-        centrifugeChain.updateMember(vault.poolId(), vault.scId(), self, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
         erc20.approve(vault_, amount);
         vaultRouter.enable(vault_);
 
@@ -711,7 +715,7 @@ contract VaultRouterTest is BaseTest {
         assertApproxEqAbs(sharePayout, amount / 2, 2);
 
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId(), vault.scId(), bytes32(bytes20(user)), assetId, uint128(amount), sharePayout
+            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(user)), assetId, uint128(amount), sharePayout
         );
     }
 
@@ -724,7 +728,7 @@ contract VaultRouterTest is BaseTest {
         assertApproxEqAbs(assetPayout, amount * 2, 2);
 
         centrifugeChain.isFulfilledRedeemRequest(
-            vault.poolId(), vault.scId(), bytes32(bytes20(user)), assetId, assetPayout, uint128(amount)
+            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(user)), assetId, assetPayout, uint128(amount)
         );
     }
 
@@ -751,8 +755,8 @@ contract VaultRouterTest is BaseTest {
         erc20X.approve(address(vault1_), amount1);
         erc20Y.approve(address(vault2_), amount2);
 
-        centrifugeChain.updateMember(vault1.poolId(), vault1.scId(), self, type(uint64).max);
-        centrifugeChain.updateMember(vault2.poolId(), vault2.scId(), self, type(uint64).max);
+        centrifugeChain.updateMember(vault1.poolId().raw(), vault1.scId().raw(), self, type(uint64).max);
+        centrifugeChain.updateMember(vault2.poolId().raw(), vault2.scId().raw(), self, type(uint64).max);
     }
 
     function testReentrancyCheck(uint256 amount) public {

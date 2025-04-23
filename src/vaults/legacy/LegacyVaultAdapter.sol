@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+
 import {IERC7540} from "src/vaults/legacy/interfaces/IERC7540.sol";
 import {IInvestmentManager} from "src/vaults/legacy/interfaces/IInvestmentManager.sol";
 import {ILegacyVaultAdapter} from "src/vaults/legacy/interfaces/ILegacyVaultAdapter.sol";
@@ -25,9 +28,9 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
 
     constructor(
         IERC7540 legacyVault_,
-        uint64 poolId,
+        PoolId poolId,
         uint64 legacyPoolId_,
-        bytes16 scId,
+        ShareClassId scId,
         bytes16 legacyTrancheId_,
         address asset,
         IShareToken token,
@@ -55,7 +58,7 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
 
     // --- IInvestmentManager impl ---
     function escrow() public view returns (address) {
-        return address(_poolEscrowProvider.escrow(poolId));
+        return address(_poolEscrowProvider.escrow(poolId.raw()));
     }
 
     /// @inheritdoc IInvestmentManager

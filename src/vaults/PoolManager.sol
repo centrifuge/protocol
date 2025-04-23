@@ -369,7 +369,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
         address escrow = address(poolEscrowFactory.escrow(poolId.raw()));
         address vault = IVaultFactory(factory).newVault(
-            poolId.raw(), scId.raw(), assetIdKey.asset, assetIdKey.tokenId, shareClass.shareToken, escrow, vaultWards
+            poolId, scId, assetIdKey.asset, assetIdKey.tokenId, shareClass.shareToken, escrow, vaultWards
         );
 
         // Check whether asset is an ERC20 token wrapper
@@ -393,7 +393,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
         IBaseInvestmentManager manager = IBaseVault(vault).manager();
-        IVaultManager(address(manager)).addVault(poolId.raw(), scId.raw(), vault, assetIdKey.asset, assetId.raw());
+        IVaultManager(address(manager)).addVault(poolId, scId, vault, assetIdKey.asset, assetId);
 
         _vaultDetails[vault].isLinked = true;
 
@@ -407,7 +407,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
         IBaseInvestmentManager manager = IBaseVault(vault).manager();
-        IVaultManager(address(manager)).removeVault(poolId.raw(), scId.raw(), vault, assetIdKey.asset, assetId.raw());
+        IVaultManager(address(manager)).removeVault(poolId, scId, vault, assetIdKey.asset, assetId);
 
         _vaultDetails[vault].isLinked = false;
 

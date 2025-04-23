@@ -18,8 +18,8 @@ import "src/vaults/interfaces/IERC7575.sol";
 ///         against asset deposits based on the current share price.
 contract SyncDepositVault is BaseSyncDepositVault, AsyncRedeemVault {
     constructor(
-        uint64 poolId_,
-        bytes16 scId_,
+        PoolId poolId_,
+        ShareClassId scId_,
         address asset_,
         uint256 tokenId_,
         IShareToken token_,
