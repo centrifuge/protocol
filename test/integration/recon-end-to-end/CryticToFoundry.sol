@@ -16,7 +16,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     /// === SANITY CHECKS === ///
     function test_shortcut_deployNewTokenPoolAndShare_deposit() public {
-        shortcut_deployNewTokenPoolAndShare(18, 12);
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false);
 
         poolManager_updatePricePoolPerShare(1e18, type(uint64).max);
         poolManager_updateMember(type(uint64).max);
@@ -25,7 +25,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     function test_vault_deposit_and_fulfill() public {
-        shortcut_deployNewTokenPoolAndShare(18, 12);
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false);
 
         poolManager_updatePricePoolPerShare(1e18, type(uint64).max);
         poolManager_updateMember(type(uint64).max);
@@ -38,7 +38,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     function test_vault_deposit_and_redeem() public {
-        shortcut_deployNewTokenPoolAndShare(18, 12);
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false);
 
         poolManager_updatePricePoolPerShare(1e18, type(uint64).max);
         poolManager_updateMember(type(uint64).max);
@@ -58,7 +58,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     function test_shortcut_deployNewTokenPoolAndShare_change_price() public {
-        shortcut_deployNewTokenPoolAndShare(18, 0);
+        shortcut_deployNewTokenPoolAndShare(18, 0, false, false);
 
         poolManager_updatePricePoolPerShare(1e18, type(uint64).max);
         poolManager_updateMember(type(uint64).max);
@@ -67,7 +67,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     function test_shortcut_deployNewTokenPoolAndShare_only() public {
-        shortcut_deployNewTokenPoolAndShare(18, 12);
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false);
     }
 
     /// === REPRODUCERS === ///
@@ -76,7 +76,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     // but the assets haven't actually been transferred to the vault yet which only happens after calling AsyncVault::deposit
     function test_property_totalAssets_solvency_2() public {
 
-        shortcut_deployNewTokenPoolAndShare(2, 0);
+        shortcut_deployNewTokenPoolAndShare(2, 0, false, false);
 
         poolManager_updatePricePoolPerShare(1,0);
 
@@ -94,7 +94,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     // forge test --match-test test_property_global_5_inductive_0 -vvv 
     function test_property_global_5_inductive_0() public {
 
-        shortcut_deployNewTokenPoolAndShare(2, 0);
+        shortcut_deployNewTokenPoolAndShare(2, 0, false, false);
 
         poolManager_updateMember(1525186875);
 

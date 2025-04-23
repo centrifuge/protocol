@@ -13,6 +13,8 @@ import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
+
 // Component
 import {ShareTokenTargets} from "./targets/ShareTokenTargets.sol";
 import {RestrictedTransfersTargets} from "./targets/RestrictedTransfersTargets.sol";
@@ -69,7 +71,7 @@ abstract contract TargetFunctions is
     /// === Shortcut Functions === ///
     /// @dev This is the main system setup function done like this to explore more possible states
     /// @dev Deploy new asset, add asset to pool, deploy share class, deploy vault
-    function shortcut_deployNewTokenPoolAndShare(uint8 decimals, uint256 salt)
+    function shortcut_deployNewTokenPoolAndShare(uint8 decimals, uint256 salt, bool isIdentityValuation, bool isDebitNormal)
         public
         returns (address _token, address _shareToken, address _vault, uint128 _assetId, bytes16 _scId)
     {
@@ -118,12 +120,26 @@ abstract contract TargetFunctions is
             (_shareToken,) = poolManager_addShareClass(_poolId.raw(), _scId, 18, address(restrictedTransfers));
         }
 
-        // 4. Deploy new vault and register it
+        // 4. Create accounts and holding
+        {
+            IERC7726 valuation = isIdentityValuation ? 
+                        IERC7726(address(identityValuation)) : 
+                        IERC7726(address(transientValuation));
+                        
+            hub_createAccount(_poolId.raw(), ASSET_ACCOUNT, isDebitNormal);
+            hub_createAccount(_poolId.raw(), EQUITY_ACCOUNT, isDebitNormal);
+            hub_createAccount(_poolId.raw(), LOSS_ACCOUNT, isDebitNormal);
+            hub_createAccount(_poolId.raw(), GAIN_ACCOUNT, isDebitNormal);
+            
+            hub_createHolding(_poolId.raw(), _scId, valuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT);
+        }
+
+        // 5. Deploy new vault and register it
         _vault = poolManager_deployVault(_poolId.raw(), _scId, _assetId);
         poolManager_linkVault(_poolId.raw(), _scId, _assetId, _vault);
         asyncRequests.rely(address(_vault));
 
-        // 5. approve and mint initial amount of underlying asset to all actors
+        // 6. approve and mint initial amount of underlying asset to all actors
         address[] memory approvals = new address[](2);
         approvals[0] = address(poolManager);
         approvals[1] = address(vault);
