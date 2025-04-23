@@ -274,8 +274,8 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
 
     // --- View Methods ---
     /// @inheritdoc IVaultRouter
-    function getVault(uint64 poolId, bytes16 scId, address asset) external view returns (address) {
-        return IPoolManager(poolManager).shareToken(PoolId.wrap(poolId), ShareClassId.wrap(scId)).vault(asset);
+    function getVault(PoolId poolId, ShareClassId scId, address asset) external view returns (address) {
+        return IPoolManager(poolManager).shareToken(poolId, scId).vault(asset);
     }
 
     /// @inheritdoc IVaultRouter

@@ -3,6 +3,9 @@ pragma solidity >=0.5.0;
 
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+
 interface IVaultRouter is IMulticall {
     // --- Events ---
     event LockDepositRequest(
@@ -176,7 +179,7 @@ interface IVaultRouter is IMulticall {
 
     // --- View Methods ---
     /// @notice Check IPoolManager.getVault
-    function getVault(uint64 poolId, bytes16 scId, address asset) external view returns (address);
+    function getVault(PoolId poolId, ShareClassId scId, address asset) external view returns (address);
 
     /// @notice Check IGateway.estimate
     ///         If the destination and source chain ID are the same, this will always return 0.

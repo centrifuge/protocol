@@ -7,6 +7,9 @@ import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+
 import {Escrow, PoolEscrow} from "src/vaults/Escrow.sol";
 import {IEscrow, IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 
@@ -93,7 +96,7 @@ contract EscrowTestERC6909 is EscrowTestBase {
 }
 
 contract PoolEscrowTestBase is EscrowTestBase {
-    function _testDeposit(uint64 poolId, bytes16 scId, uint256 tokenId) internal {
+    function _testDeposit(PoolId poolId, ShareClassId scId, uint256 tokenId) internal {
         address asset = _asset(tokenId);
         PoolEscrow escrow = new PoolEscrow(poolId, address(this));
 
@@ -126,7 +129,7 @@ contract PoolEscrowTestBase is EscrowTestBase {
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 500, "holdings should be 500 after deposit");
     }
 
-    function _testNoteDeposit(uint64 poolId, bytes16 scId, uint256 tokenId) internal {
+    function _testNoteDeposit(PoolId poolId, ShareClassId scId, uint256 tokenId) internal {
         address asset = _asset(tokenId);
         PoolEscrow escrow = new PoolEscrow(poolId, address(this));
 
@@ -137,7 +140,7 @@ contract PoolEscrowTestBase is EscrowTestBase {
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 300, "holdings should be 300 after noting deposit");
     }
 
-    function _testReserveIncrease(uint64 poolId, bytes16 scId, uint256 tokenId) internal {
+    function _testReserveIncrease(PoolId poolId, ShareClassId scId, uint256 tokenId) internal {
         address asset = _asset(tokenId);
         PoolEscrow escrow = new PoolEscrow(poolId, address(this));
 
@@ -160,7 +163,7 @@ contract PoolEscrowTestBase is EscrowTestBase {
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 200, "300 - 100 = 200");
     }
 
-    function _testReserveDecrease(uint64 poolId, bytes16 scId, uint256 tokenId) internal {
+    function _testReserveDecrease(PoolId poolId, ShareClassId scId, uint256 tokenId) internal {
         address asset = _asset(tokenId);
         PoolEscrow escrow = new PoolEscrow(poolId, address(this));
 
@@ -189,7 +192,7 @@ contract PoolEscrowTestBase is EscrowTestBase {
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 300, "300 - 0 = 300");
     }
 
-    function _testWithdraw(uint64 poolId, bytes16 scId, uint256 tokenId) internal {
+    function _testWithdraw(PoolId poolId, ShareClassId scId, uint256 tokenId) internal {
         address asset = _asset(tokenId);
         PoolEscrow escrow = new PoolEscrow(poolId, address(this));
 
@@ -209,7 +212,7 @@ contract PoolEscrowTestBase is EscrowTestBase {
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 0);
     }
 
-    function _testAvailableBalanceOf(uint64 poolId, bytes16 scId, uint256 tokenId) internal {
+    function _testAvailableBalanceOf(PoolId poolId, ShareClassId scId, uint256 tokenId) internal {
         address asset = _asset(tokenId);
         PoolEscrow escrow = new PoolEscrow(poolId, address(this));
 
@@ -233,35 +236,35 @@ contract PoolEscrowTestBase is EscrowTestBase {
 contract PoolEscrowTestERC20 is PoolEscrowTestBase {
     uint256 tokenId = 0;
 
-    function testDeposit(uint64 poolId, bytes16 scId) public {
+    function testDeposit(PoolId poolId, ShareClassId scId) public {
         _testDeposit(poolId, scId, tokenId);
     }
 
-    function testNoteDeposit(uint64 poolId, bytes16 scId) public {
+    function testNoteDeposit(PoolId poolId, ShareClassId scId) public {
         _testNoteDeposit(poolId, scId, tokenId);
 
         assertEq(erc20.balanceOf(address(escrow)), 0, "Escrow should not hold any tokens after noting");
     }
 
-    function testReserveIncrease(uint64 poolId, bytes16 scId) public {
+    function testReserveIncrease(PoolId poolId, ShareClassId scId) public {
         _testReserveIncrease(poolId, scId, tokenId);
     }
 
-    function testReserveDecrease(uint64 poolId, bytes16 scId) public {
+    function testReserveDecrease(PoolId poolId, ShareClassId scId) public {
         _testReserveDecrease(poolId, scId, tokenId);
     }
 
-    function testWithdraw(uint64 poolId, bytes16 scId) public {
+    function testWithdraw(PoolId poolId, ShareClassId scId) public {
         _testWithdraw(poolId, scId, tokenId);
     }
 
-    function testAvailableBalanceOf(uint64 poolId, bytes16 scId) public {
+    function testAvailableBalanceOf(PoolId poolId, ShareClassId scId) public {
         _testAvailableBalanceOf(poolId, scId, tokenId);
     }
 }
 
 contract PoolEscrowTestERC6909 is PoolEscrowTestBase {
-    function testDeposit(uint64 poolId, bytes16 scId, uint8 tokenId_) public {
+    function testDeposit(PoolId poolId, ShareClassId scId, uint8 tokenId_) public {
         uint256 tokenId = uint256(bound(tokenId_, 2, 18));
 
         _testDeposit(poolId, scId, tokenId);
@@ -269,31 +272,31 @@ contract PoolEscrowTestERC6909 is PoolEscrowTestBase {
         assertEq(erc6909.balanceOf(address(escrow), tokenId), 0, "Escrow should not hold any tokens after noting");
     }
 
-    function testNoteDeposit(uint64 poolId, bytes16 scId, uint8 tokenId_) public {
+    function testNoteDeposit(PoolId poolId, ShareClassId scId, uint8 tokenId_) public {
         uint256 tokenId = uint256(bound(tokenId_, 2, 18));
 
         _testNoteDeposit(poolId, scId, tokenId);
     }
 
-    function testReserveIncrease(uint64 poolId, bytes16 scId, uint8 tokenId_) public {
+    function testReserveIncrease(PoolId poolId, ShareClassId scId, uint8 tokenId_) public {
         uint256 tokenId = uint256(bound(tokenId_, 2, 18));
 
         _testReserveIncrease(poolId, scId, tokenId);
     }
 
-    function testReserveDecrease(uint64 poolId, bytes16 scId, uint8 tokenId_) public {
+    function testReserveDecrease(PoolId poolId, ShareClassId scId, uint8 tokenId_) public {
         uint256 tokenId = uint256(bound(tokenId_, 2, 18));
 
         _testReserveDecrease(poolId, scId, tokenId);
     }
 
-    function testWithdraw(uint64 poolId, bytes16 scId, uint8 tokenId_) public {
+    function testWithdraw(PoolId poolId, ShareClassId scId, uint8 tokenId_) public {
         uint256 tokenId = uint256(bound(tokenId_, 2, 18));
 
         _testWithdraw(poolId, scId, tokenId);
     }
 
-    function testAvailableBalanceOf(uint64 poolId, bytes16 scId, uint8 tokenId_) public {
+    function testAvailableBalanceOf(PoolId poolId, ShareClassId scId, uint8 tokenId_) public {
         uint256 tokenId = uint256(bound(tokenId_, 2, 18));
 
         _testAvailableBalanceOf(poolId, scId, tokenId);

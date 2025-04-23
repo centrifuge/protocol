@@ -10,6 +10,7 @@ import {d18} from "src/misc/types/D18.sol";
 import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {SyncRequests} from "src/vaults/SyncRequests.sol";
@@ -118,7 +119,7 @@ contract MockCentrifugeChain is Test {
     ///
     /// @dev Implicitly called by addShareClass
     function updateMemberPoolEscrow(uint64 poolId, bytes16 scId) public {
-        address escrow = address(poolManager.poolEscrowFactory().escrow(poolId));
+        address escrow = address(poolManager.poolEscrowFactory().escrow(PoolId.wrap(poolId)));
         updateMember(poolId, scId, escrow, type(uint64).max);
     }
 

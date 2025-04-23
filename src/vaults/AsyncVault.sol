@@ -52,9 +52,9 @@ contract AsyncVault is AsyncRedeemVault, IAsyncVault {
         );
 
         if (tokenId == 0) {
-            SafeTransferLib.safeTransferFrom(asset, owner, address(_poolEscrowProvider.escrow(poolId.raw())), assets);
+            SafeTransferLib.safeTransferFrom(asset, owner, address(_poolEscrowProvider.escrow(poolId)), assets);
         } else {
-            IERC6909(asset).transferFrom(owner, address(_poolEscrowProvider.escrow(poolId.raw())), tokenId, assets);
+            IERC6909(asset).transferFrom(owner, address(_poolEscrowProvider.escrow(poolId)), tokenId, assets);
         }
 
         emit DepositRequest(controller, owner, REQUEST_ID, msg.sender, assets);
