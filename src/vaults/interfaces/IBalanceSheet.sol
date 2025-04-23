@@ -7,12 +7,10 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
-import {IPerPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
-
 interface IBalanceSheet {
     // --- Events ---
     event File(bytes32 indexed what, address data);
-    event Permission(PoolId indexed poolId, ShareClassId indexed scId, address contractAddr, bool allowed);
+    event UpdateManager(PoolId indexed poolId, ShareClassId indexed scId, address who, bool canManage);
     event Withdraw(
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -39,8 +37,19 @@ interface IBalanceSheet {
     // --- Errors ---
     error FileUnrecognizedParam();
 
-    // Overloaded increase
+    /// @notice Overloaded increase with asset transfer
     function deposit(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        address provider,
+        uint128 amount,
+        D18 pricePoolPerAsset
+    ) external;
+
+    /// @notice Overloaded increase without asset transfer
+    function noteDeposit(
         PoolId poolId,
         ShareClassId scId,
         address asset,
@@ -63,6 +72,4 @@ interface IBalanceSheet {
     function issue(PoolId poolId, ShareClassId scId, address to, D18 pricePoolPerShare, uint128 shares) external;
 
     function revoke(PoolId poolId, ShareClassId scId, address from, D18 pricePoolPerShare, uint128 shares) external;
-
-    function escrow() external view returns (IPerPoolEscrow);
 }

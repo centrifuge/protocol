@@ -119,7 +119,7 @@ contract AssetShareConversionTest is BaseTest {
         (uint64 poolId, address vault_, uint128 assetId) =
             deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, restrictedTransfers, scId, address(asset), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
-        IShareToken(address(AsyncVault(vault_).share()));
+        IShareToken(address(vault.share()));
 
         assertEq(vault.priceLastUpdated(), block.timestamp);
         assertEq(vault.pricePerShare(), 1e6);
@@ -127,7 +127,7 @@ contract AssetShareConversionTest is BaseTest {
         assertEq(vault.priceLastUpdated(), uint64(block.timestamp));
         assertEq(vault.pricePerShare(), 1.2e6);
 
-        poolManager.unlinkVault(poolId, scId, assetId, address(vault));
+        poolManager.unlinkVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), vault);
 
         assertEq(vault.priceLastUpdated(), uint64(block.timestamp));
         assertEq(vault.pricePerShare(), 1.2e6);

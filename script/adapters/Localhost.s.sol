@@ -15,7 +15,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {MessageLib, UpdateContractType, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 import {FullDeployer, HubDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
 
@@ -56,8 +56,8 @@ contract LocalhostDeployer is FullDeployer {
     }
 
     function _deployAsyncVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
-        PoolId poolId = hub.createPool(msg.sender, USD);
-        hub.allowPoolAdmin(poolId, vm.envAddress("ADMIN"), true);
+        PoolId poolId = hub.createPool(1, msg.sender, USD);
+        hub.updateManager(poolId, vm.envAddress("ADMIN"), true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
         D18 navPerShare = d18(1, 1);
@@ -99,7 +99,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.notifyAssetPrice(poolId, scId, assetId);
 
         // Submit deposit request
-        IShareToken shareToken = IShareToken(poolManager.shareToken(poolId.raw(), scId.raw()));
+        IShareToken shareToken = IShareToken(poolManager.shareToken(poolId, scId));
         IAsyncVault vault = IAsyncVault(shareToken.vault(address(token)));
 
         uint128 investAmount = 1_000_000e6;
@@ -118,8 +118,8 @@ contract LocalhostDeployer is FullDeployer {
     }
 
     function _deploySyncDepositVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
-        PoolId poolId = hub.createPool(msg.sender, USD);
-        hub.allowPoolAdmin(poolId, vm.envAddress("ADMIN"), true);
+        PoolId poolId = hub.createPool(2, msg.sender, USD);
+        hub.updateManager(poolId, vm.envAddress("ADMIN"), true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
         D18 navPerShare = d18(1, 1);
@@ -161,7 +161,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.notifyAssetPrice(poolId, scId, assetId);
 
         // Deposit
-        IShareToken shareToken = IShareToken(poolManager.shareToken(poolId.raw(), scId.raw()));
+        IShareToken shareToken = IShareToken(poolManager.shareToken(poolId, scId));
         IAsyncVault vault = IAsyncVault(shareToken.vault(address(token)));
 
         uint128 investAmount = 1_000_000e6;

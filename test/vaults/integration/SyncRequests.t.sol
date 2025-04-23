@@ -14,6 +14,7 @@ import {SyncRequests} from "src/vaults/SyncRequests.sol";
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 import "test/vaults/BaseTest.sol";
 
@@ -34,18 +35,22 @@ contract SyncRequestsBaseTest is BaseTest {
         syncVault = SyncDepositVault(syncVault_);
 
         centrifugeChain.updatePricePoolPerShare(
-            syncVault.poolId(), syncVault.trancheId(), pricePoolPerShare.inner(), uint64(block.timestamp)
+            syncVault.poolId().raw(), syncVault.scId().raw(), pricePoolPerShare.inner(), uint64(block.timestamp)
         );
         centrifugeChain.updatePricePoolPerAsset(
-            syncVault.poolId(), syncVault.trancheId(), assetId, pricePoolPerAsset.inner(), uint64(block.timestamp)
+            syncVault.poolId().raw(),
+            syncVault.scId().raw(),
+            assetId,
+            pricePoolPerAsset.inner(),
+            uint64(block.timestamp)
         );
     }
 
     function _setValuation(SyncDepositVault vault, address valuation_, uint256 tokenId) internal {
         vm.expectEmit();
-        emit ISyncRequests.SetValuation(vault.poolId(), vault.trancheId(), vault.asset(), tokenId, valuation_);
-        syncRequests.setValuation(vault.poolId(), vault.trancheId(), vault.asset(), tokenId, valuation_);
-        assertEq(address(syncRequests.valuation(vault.poolId(), vault.trancheId(), vault.asset(), tokenId)), valuation_);
+        emit ISyncRequests.SetValuation(vault.poolId(), vault.scId(), vault.asset(), tokenId, valuation_);
+        syncRequests.setValuation(vault.poolId(), vault.scId(), vault.asset(), tokenId, valuation_);
+        assertEq(address(syncRequests.valuation(vault.poolId(), vault.scId(), vault.asset(), tokenId)), valuation_);
     }
 }
 
@@ -57,12 +62,12 @@ contract SyncRequestsTest is SyncRequestsBaseTest {
         _assumeUnauthorizedCaller(nonWard);
 
         // redeploying within test to increase coverage
-        new SyncRequests(address(root), address(escrow));
+        new SyncRequests(address(root), address(this));
 
         // values set correctly
-        assertEq(address(syncRequests.escrow()), address(escrow));
         assertEq(address(syncRequests.poolManager()), address(poolManager));
         assertEq(address(syncRequests.balanceSheet()), address(balanceSheet));
+        assertEq(address(syncRequests.poolEscrowProvider()), address(poolEscrowFactory));
 
         // permissions set correctly
         assertEq(syncRequests.wards(address(root)), 1);
@@ -86,6 +91,8 @@ contract SyncRequestsTest is SyncRequestsBaseTest {
         assertEq(address(syncRequests.poolManager()), randomUser);
         syncRequests.file("balanceSheet", randomUser);
         assertEq(address(syncRequests.balanceSheet()), randomUser);
+        syncRequests.file("poolEscrowProvider", randomUser);
+        assertEq(address(syncRequests.balanceSheet()), randomUser);
 
         // remove self from wards
         syncRequests.deny(self);
@@ -103,37 +110,39 @@ contract SyncRequestsUnauthorizedTest is SyncRequestsBaseTest {
 
     function testAddVaultUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequests.addVault(0, bytes16(0), address(0), address(0), 0);
+        syncRequests.addVault(PoolId.wrap(0), ShareClassId.wrap(0), IBaseVault(address(0)), address(0), AssetId.wrap(0));
     }
 
     function testRemoveVaultUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequests.removeVault(0, bytes16(0), address(0), address(0), 0);
+        syncRequests.removeVault(
+            PoolId.wrap(0), ShareClassId.wrap(0), IBaseVault(address(0)), address(0), AssetId.wrap(0)
+        );
     }
 
     function testDepositUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequests.deposit(address(0), 0, address(0), address(0));
+        syncRequests.deposit(IBaseVault(address(0)), 0, address(0), address(0));
     }
 
     function testMintUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequests.mint(address(0), 0, address(0), address(0));
+        syncRequests.mint(IBaseVault(address(0)), 0, address(0), address(0));
     }
 
     function testSetValuationUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequests.setValuation(0, bytes16(0), address(0), 0, address(0));
+        syncRequests.setValuation(PoolId.wrap(0), ShareClassId.wrap(0), address(0), 0, address(0));
     }
 
     function testUpdate(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequests.update(0, bytes16(0), bytes(""));
+        syncRequests.update(PoolId.wrap(0), ShareClassId.wrap(0), bytes(""));
     }
 
     function _expectUnauthorized(address caller) internal {
         vm.assume(
-            caller != address(root) && caller != address(poolManager) && caller != syncDepositVaultFactory
+            caller != address(root) && caller != address(poolManager) && caller != address(syncDepositVaultFactory)
                 && caller != address(this)
         );
 
@@ -151,7 +160,7 @@ contract SyncRequestsPrices is SyncRequestsBaseTest {
         (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
 
         Prices memory prices =
-            syncRequests.prices(syncVault.poolId(), syncVault.trancheId(), assetId, syncVault.asset(), 0);
+            syncRequests.prices(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault.asset(), 0);
         assertEq(prices.assetPerShare.inner(), priceAssetPerShare.inner(), "priceAssetPerShare mismatch");
         assertEq(prices.poolPerShare.inner(), pricePoolPerShare.inner(), "pricePoolPerShare mismatch");
         assertEq(prices.poolPerAsset.inner(), pricePoolPerAsset.inner(), "pricePoolPerAsset mismatch");
@@ -175,13 +184,13 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
         D18 priceAssetPerShare = d18(2e18);
 
         (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
-        address shareToken = poolManager.shareToken(syncVault.poolId(), syncVault.trancheId());
-        D18 pricePre = syncRequests.priceAssetPerShare(syncVault.poolId(), syncVault.trancheId(), assetId);
+        IShareToken shareToken = poolManager.shareToken(syncVault.poolId(), syncVault.scId());
+        D18 pricePre = syncRequests.priceAssetPerShare(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId));
 
         _setValuation(syncVault, valuation_, 0);
 
         // Change priceAssetPerShare
-        uint256 shareUnitAmount = 10 ** IERC20Metadata(shareToken).decimals();
+        uint256 shareUnitAmount = 10 ** shareToken.decimals();
         priceAssetPerShare = d18(4e18);
         pricePoolPerShare = d18(20e18);
         uint256 assetPerShareAmount = priceAssetPerShare.mulUint256(shareUnitAmount);
@@ -194,8 +203,8 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
         );
 
         Prices memory prices =
-            syncRequests.prices(syncVault.poolId(), syncVault.trancheId(), assetId, syncVault.asset(), 0);
-        D18 pricePost = syncRequests.priceAssetPerShare(syncVault.poolId(), syncVault.trancheId(), assetId);
+            syncRequests.prices(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault.asset(), 0);
+        D18 pricePost = syncRequests.priceAssetPerShare(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId));
         assertEq(prices.assetPerShare.inner(), priceAssetPerShare.inner(), "priceAssetPerShare mismatch");
         assertEq(prices.assetPerShare.inner(), pricePost.inner(), "priceAssetPerShare vs pricePost mismatch");
         assertNotEq(prices.assetPerShare.inner(), pricePre.inner());
@@ -215,13 +224,13 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
         uint128 multiplier = uint128(bound(multiplier_, 2, 10));
 
         (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
-        address shareToken = poolManager.shareToken(syncVault.poolId(), syncVault.trancheId());
-        D18 pricePre = syncRequests.priceAssetPerShare(syncVault.poolId(), syncVault.trancheId(), assetId);
+        IShareToken shareToken = poolManager.shareToken(syncVault.poolId(), syncVault.scId());
+        D18 pricePre = syncRequests.priceAssetPerShare(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId));
 
         _setValuation(syncVault, valuation_, 0);
 
         // Change priceAssetPerShare
-        uint256 shareUnitAmount = 10 ** IERC20Metadata(shareToken).decimals();
+        uint256 shareUnitAmount = 10 ** shareToken.decimals();
         uint256 assetUnitAmount = 10 ** VaultPricingLib.getAssetDecimals(syncVault.asset(), 0);
         priceAssetPerShare = d18(priceAssetPerShare.inner() * multiplier);
         uint256 assetPerShareAmount = priceAssetPerShare.mulUint256(shareUnitAmount);
@@ -235,8 +244,8 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
         );
 
         Prices memory prices =
-            syncRequests.prices(syncVault.poolId(), syncVault.trancheId(), assetId, syncVault.asset(), 0);
-        D18 pricePost = syncRequests.priceAssetPerShare(syncVault.poolId(), syncVault.trancheId(), assetId);
+            syncRequests.prices(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault.asset(), 0);
+        D18 pricePost = syncRequests.priceAssetPerShare(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId));
         assertEq(
             prices.assetPerShare.inner(), priceAssetPerShare.inner(), "assetPerShare vs priceAssetPerShare mismatch"
         );
@@ -252,11 +261,11 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
         D18 priceAssetPerShare = d18(2e18);
 
         (SyncDepositVault syncVault,) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
-        address shareToken = poolManager.shareToken(syncVault.poolId(), syncVault.trancheId());
+        IShareToken shareToken = poolManager.shareToken(syncVault.poolId(), syncVault.scId());
         _setValuation(syncVault, valuation_, 0);
 
         // Mock valuation
-        uint256 shareUnitAmount = 10 ** IERC20Metadata(shareToken).decimals();
+        uint256 shareUnitAmount = 10 ** shareToken.decimals();
         vm.mockCall(
             address(valuation_),
             abi.encodeWithSelector(IERC7726.getQuote.selector, shareUnitAmount, shareToken, syncVault.asset()),
@@ -265,10 +274,10 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
 
         uint256 shares = shareUnitAmount;
         uint256 assets = priceAssetPerShare.mulUint256(shares);
-        assertEq(syncRequests.convertToAssets(address(syncVault), shares), assets, "convertToAssets mismatch");
-        assertEq(syncRequests.previewMint(address(syncVault), address(0), shares), assets, "previewMint mismatch");
-        assertEq(syncRequests.convertToShares(address(syncVault), assets), shares, "convertToShares mismatch");
-        assertEq(syncRequests.previewDeposit(address(syncVault), address(0), assets), shares, "previewDeposit mismatch");
+        assertEq(syncRequests.convertToAssets(syncVault, shares), assets, "convertToAssets mismatch");
+        assertEq(syncRequests.previewMint(syncVault, address(0), shares), assets, "previewMint mismatch");
+        assertEq(syncRequests.convertToShares(syncVault, assets), shares, "convertToShares mismatch");
+        assertEq(syncRequests.previewDeposit(syncVault, address(0), assets), shares, "previewDeposit mismatch");
     }
 
     function testFuzzedConversionWithValuationERC20(uint128 pricePoolPerShare_, uint128 pricePoolPerAsset_) public {
@@ -278,7 +287,7 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
         D18 priceAssetPerShare = pricePoolPerShare / pricePoolPerAsset;
 
         (SyncDepositVault syncVault,) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
-        address shareToken = poolManager.shareToken(syncVault.poolId(), syncVault.trancheId());
+        IShareToken shareToken = poolManager.shareToken(syncVault.poolId(), syncVault.scId());
         _setValuation(syncVault, valuation_, 0);
 
         // Mock valuation
@@ -291,9 +300,9 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
 
         uint256 shares = shareUnitAmount;
         uint256 assets = priceAssetPerShare.mulUint256(shares);
-        assertEq(syncRequests.convertToAssets(address(syncVault), shares), assets, "convertToAssets mismatch");
-        assertEq(syncRequests.previewMint(address(syncVault), address(0), shares), assets, "previewMint mismatch");
-        assertEq(syncRequests.convertToShares(address(syncVault), assets), shares, "convertToShares mismatch");
-        assertEq(syncRequests.previewDeposit(address(syncVault), address(0), assets), shares, "previewDeposit mismatch");
+        assertEq(syncRequests.convertToAssets(syncVault, shares), assets, "convertToAssets mismatch");
+        assertEq(syncRequests.previewMint(syncVault, address(0), shares), assets, "previewMint mismatch");
+        assertEq(syncRequests.convertToShares(syncVault, assets), shares, "convertToShares mismatch");
+        assertEq(syncRequests.previewDeposit(syncVault, address(0), assets), shares, "previewDeposit mismatch");
     }
 }

@@ -5,17 +5,18 @@ import {Auth} from "src/misc/Auth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {BitmapLib} from "src/misc/libraries/BitmapLib.sol";
+import {IERC165} from "src/misc/interfaces/IERC7575.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {UpdateRestrictionType, MessageLib} from "src/common/libraries/MessageLib.sol";
 
-import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
-import {IHook, HookData} from "src/vaults/interfaces/token/IHook.sol";
+import {IHook, HookData, ESCROW_HOOK_ID} from "src/vaults/interfaces/token/IHook.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
+import {IFreezable} from "src/hooks/interfaces/IFreezable.sol";
 import {IRestrictedTransfers} from "src/hooks/interfaces/IRestrictedTransfers.sol";
 
-/// @title  Restricted Redemptions
+/// @title  Freely Transferable
 /// @notice Hook implementation that:
 ///         * Allows any non-frozen account to receive tokens and transfer tokens
 ///         * Requires accounts to be added as a member before submitting a redemption request
@@ -34,11 +35,9 @@ contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
     uint8 public constant FREEZE_BIT = 0;
 
     IRoot public immutable root;
-    address public immutable escrow;
 
-    constructor(address root_, address escrow_, address deployer) Auth(deployer) {
+    constructor(address root_, address deployer) Auth(deployer) {
         root = IRoot(root_);
-        escrow = escrow_;
     }
 
     // --- Callback from share token ---
@@ -82,12 +81,12 @@ contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
             return false;
         }
 
-        if (from == address(0) && to == escrow) {
+        if (from == address(0) && to == ESCROW_HOOK_ID) {
             // Deposit request fulfillment
             return true;
         }
 
-        if (to == escrow && fromHookData >> 64 < block.timestamp) {
+        if (to == ESCROW_HOOK_ID && fromHookData >> 64 < block.timestamp) {
             // Destination is escrow, so it's a redemption request, and the user is not a member
             return false;
         }
@@ -114,7 +113,7 @@ contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
         }
     }
 
-    /// @inheritdoc IRestrictedTransfers
+    /// @inheritdoc IFreezable
     function freeze(address token, address user) public auth {
         require(user != address(0), CannotFreezeZeroAddress());
         require(!root.endorsed(user), EndorsedUserCannotBeFrozen());
@@ -125,7 +124,7 @@ contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
         emit Freeze(token, user);
     }
 
-    /// @inheritdoc IRestrictedTransfers
+    /// @inheritdoc IFreezable
     function unfreeze(address token, address user) public auth {
         uint128 hookData = uint128(IShareToken(token).hookDataOf(user));
         IShareToken(token).setHookData(user, bytes16(hookData.setBit(FREEZE_BIT, false)));
@@ -133,7 +132,7 @@ contract FreelyTransferable is Auth, IRestrictedTransfers, IHook {
         emit Unfreeze(token, user);
     }
 
-    /// @inheritdoc IRestrictedTransfers
+    /// @inheritdoc IFreezable
     function isFrozen(address token, address user) public view returns (bool) {
         return uint128(IShareToken(token).hookDataOf(user)).getBit(FREEZE_BIT);
     }

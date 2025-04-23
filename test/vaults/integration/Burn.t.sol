@@ -15,7 +15,7 @@ contract BurnTest is BaseTest {
         IShareToken shareToken = IShareToken(address(vault.share()));
         root.relyContract(address(shareToken), self); // give self auth permissions
         // add investor as member
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), investor, type(uint64).max);
 
         shareToken.mint(investor, amount);
         root.denyContract(address(shareToken), self); // remove auth permissions from self

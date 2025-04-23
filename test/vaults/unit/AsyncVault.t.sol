@@ -2,10 +2,14 @@
 pragma solidity 0.8.28;
 
 import "test/vaults/BaseTest.sol";
-import "src/vaults/interfaces/IERC7575.sol";
-import "src/vaults/interfaces/IERC7540.sol";
+
+import "src/misc/interfaces/IERC7575.sol";
+import "src/misc/interfaces/IERC7540.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
+
+import {IBaseVault, IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
+
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 
 contract AsyncVaultTest is BaseTest {
@@ -20,9 +24,9 @@ contract AsyncVaultTest is BaseTest {
         // values set correctly
         assertEq(address(vault.manager()), address(asyncRequests));
         assertEq(vault.asset(), address(erc20));
-        assertEq(vault.trancheId(), scId);
-        address token = poolManager.shareToken(poolId, scId);
-        assertEq(address(vault.share()), token);
+        assertEq(vault.scId().raw(), scId);
+        IShareToken token = poolManager.shareToken(PoolId.wrap(poolId), ShareClassId.wrap(scId));
+        assertEq(address(vault.share()), address(token));
 
         // permissions set correctly
         assertEq(vault.wards(address(root)), 1);
@@ -40,6 +44,7 @@ contract AsyncVaultTest is BaseTest {
 
         root.relyContract(vault_, self);
         vault.file("manager", self);
+        vault.file("poolEscrowProvider", self);
 
         vm.expectRevert(IBaseVault.FileUnrecognizedParam.selector);
         vault.file("random", self);

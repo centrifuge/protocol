@@ -5,19 +5,19 @@ import {Auth} from "src/misc/Auth.sol";
 
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
-import {TransientStorage} from "src/misc/libraries/TransientStorage.sol";
+import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
+import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
 
 /// @notice In a transaction there can be multiple journal entries for different pools,
 /// which can be interleaved. We want entries for the same pool to share the same journal ID.
 /// So we're keeping a journal ID per pool in transient storage.
 library TransientJournal {
     function journalId(PoolId poolId) internal view returns (uint256) {
-        return TransientStorage.tloadUint256(keccak256(abi.encode("journalId", poolId)));
+        return TransientStorageLib.tloadUint256(keccak256(abi.encode("journalId", poolId)));
     }
 
     function setJournalId(PoolId poolId, uint256 value) internal {
-        TransientStorage.tstore(keccak256(abi.encode("journalId", poolId)), value);
+        TransientStorageLib.tstore(keccak256(abi.encode("journalId", poolId)), value);
     }
 }
 
@@ -58,6 +58,17 @@ contract Accounting is Auth, IAccounting {
     }
 
     /// @inheritdoc IAccounting
+    function addJournal(JournalEntry[] memory debits, JournalEntry[] memory credits) external {
+        for (uint256 i; i < debits.length; i++) {
+            addDebit(debits[i].accountId, debits[i].value);
+        }
+
+        for (uint256 i; i < credits.length; i++) {
+            addCredit(credits[i].accountId, credits[i].value);
+        }
+    }
+
+    /// @inheritdoc IAccounting
     function unlock(PoolId poolId) external auth {
         require(PoolId.unwrap(_currentPoolId) == 0, AccountingAlreadyUnlocked());
         debited = 0;
@@ -93,16 +104,24 @@ contract Accounting is Auth, IAccounting {
     }
 
     /// @inheritdoc IAccounting
-    function accountValue(PoolId poolId, AccountId account) public view returns (int128) {
+    function accountValue(PoolId poolId, AccountId account) public view returns (bool /* isPositive */, uint128) {
         Account storage acc = accounts[poolId][account];
         require(acc.lastUpdated != 0, AccountDoesNotExist());
 
         if (acc.isDebitNormal) {
             // For debit-normal accounts: Value = Total Debit - Total Credit
-            return int128(acc.totalDebit) - int128(acc.totalCredit);
+            if (acc.totalDebit >= acc.totalCredit) {
+                return (true, acc.totalDebit - acc.totalCredit);
+            } else {
+                return (false, acc.totalCredit - acc.totalDebit);
+            }
         } else {
             // For credit-normal accounts: Value = Total Credit - Total Debit
-            return int128(acc.totalCredit) - int128(acc.totalDebit);
+            if (acc.totalCredit >= acc.totalDebit) {
+                return (true, acc.totalCredit - acc.totalDebit);
+            } else {
+                return (false, acc.totalDebit - acc.totalCredit);
+            }
         }
     }
 

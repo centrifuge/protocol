@@ -5,17 +5,18 @@ import {Auth} from "src/misc/Auth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BitmapLib} from "src/misc/libraries/BitmapLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {IERC165} from "src/misc/interfaces/IERC7575.sol";
 
 import {UpdateRestrictionType, MessageLib} from "src/common/libraries/MessageLib.sol";
-
 import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IHook, HookData} from "src/vaults/interfaces/token/IHook.sol";
-import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 
+import {IHook, HookData, ESCROW_HOOK_ID} from "src/vaults/interfaces/token/IHook.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+
+import {IFreezable} from "src/hooks/interfaces/IFreezable.sol";
 import {IRestrictedTransfers} from "src/hooks/interfaces/IRestrictedTransfers.sol";
 
-/// @title  Restriction Manager
+/// @title  Restriction Transfers
 /// @notice Hook implementation that:
 ///         * Requires adding accounts to the memberlist before they can receive tokens
 ///         * Supports freezing accounts which blocks transfers both to and from them
@@ -67,13 +68,13 @@ contract RestrictedTransfers is Auth, IRestrictedTransfers, IHook {
         view
         returns (bool)
     {
-        if (uint128(hookData.from).getBit(FREEZE_BIT) == true && !root.endorsed(from)) {
+        if (uint128(hookData.from).getBit(FREEZE_BIT) == true && !root.endorsed(from) && from != ESCROW_HOOK_ID) {
             // Source is frozen and not endorsed
             return false;
         }
 
-        if (root.endorsed(to) || to == address(0)) {
-            // Destination is endorsed and source was already checked, so the transfer is allowed
+        if (root.endorsed(to) || to == address(0) || to == ESCROW_HOOK_ID) {
+            // Destination is endorsed or escrow and source was already checked, so the transfer is allowed
             return true;
         }
 
@@ -110,7 +111,7 @@ contract RestrictedTransfers is Auth, IRestrictedTransfers, IHook {
         }
     }
 
-    /// @inheritdoc IRestrictedTransfers
+    /// @inheritdoc IFreezable
     function freeze(address token, address user) public auth {
         require(user != address(0), CannotFreezeZeroAddress());
         require(!root.endorsed(user), EndorsedUserCannotBeFrozen());
@@ -121,7 +122,7 @@ contract RestrictedTransfers is Auth, IRestrictedTransfers, IHook {
         emit Freeze(token, user);
     }
 
-    /// @inheritdoc IRestrictedTransfers
+    /// @inheritdoc IFreezable
     function unfreeze(address token, address user) public auth {
         uint128 hookData = uint128(IShareToken(token).hookDataOf(user));
         IShareToken(token).setHookData(user, bytes16(hookData.setBit(FREEZE_BIT, false)));
@@ -129,7 +130,7 @@ contract RestrictedTransfers is Auth, IRestrictedTransfers, IHook {
         emit Unfreeze(token, user);
     }
 
-    /// @inheritdoc IRestrictedTransfers
+    /// @inheritdoc IFreezable
     function isFrozen(address token, address user) public view returns (bool) {
         return uint128(IShareToken(token).hookDataOf(user)).getBit(FREEZE_BIT);
     }
