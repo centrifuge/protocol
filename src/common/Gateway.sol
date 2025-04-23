@@ -289,48 +289,57 @@ contract Gateway is Auth, Recoverable, IGateway {
         }
     }
 
-    function _send(uint16 centrifugeId, PoolId poolId, bytes memory batch) private {
-        bytes32 batchHash = keccak256(batch);
+    function _send(uint16 centrifugeId, PoolId poolId, bytes memory batch) internal returns (bool succeeded) {
         IAdapter[] memory adapters_ = adapters[centrifugeId];
         require(adapters[centrifugeId].length != 0, EmptyAdapterSet());
 
-        uint128 batchGasLimit_ =
-            (isBatching) ? _gasLimitSlot(centrifugeId, poolId).tloadUint128() : gasService.gasLimit(centrifugeId, batch);
+        SendData memory data = SendData(keccak256(batch), (isBatching) ? _gasLimitSlot(centrifugeId, poolId).tloadUint128() : gasService.gasLimit(centrifugeId, batch), bytes32(""), new uint256[](MAX_ADAPTER_COUNT));
+        data.payloadId = keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, data.batchHash));
 
+        // Estimate gas usage
+        uint256 total;
         for (uint256 i; i < adapters_.length; i++) {
-            uint256 consumed = adapters_[i].estimate(
+            data.gasCost[i] = adapters_[i].estimate(
                 centrifugeId,
-                i == PRIMARY_ADAPTER_ID - 1 ? batch : batchHash.serializeMessageProof(),
-                batchGasLimit_
+                i == PRIMARY_ADAPTER_ID - 1 ? batch : data.batchHash.serializeMessageProof(),
+                data.batchGasLimit
             );
 
-            if (transactionRefund != address(0)) {
-                require(consumed <= fuel, NotEnoughTransactionGas());
-                fuel -= consumed;
-            } else {
-                if (consumed > subsidy[poolId].value) {
-                    _requestPoolFunding(poolId);
-                }
-                if (consumed <= subsidy[poolId].value) {
-                    subsidy[poolId].value -= uint96(consumed);
-                } else {
-                    underpaid[centrifugeId][batchHash]++;
-                    emit UnderpaidBatch(centrifugeId, batch);
-                    return;
-                }
+            total += data.gasCost[i];
+        }
+
+        // Ensure sufficient funds are available
+        if (transactionRefund != address(0)) {
+            require(total <= fuel, NotEnoughTransactionGas());
+            fuel -= total;
+        } else {
+            if (total > subsidy[poolId].value) {
+                _requestPoolFunding(poolId);
             }
 
-            bytes32 adapterData = adapters_[i].send{value: consumed}(
+            if (total <= subsidy[poolId].value) {
+                subsidy[poolId].value -= uint96(total);
+            } else {
+                underpaid[centrifugeId][data.batchHash]++;
+                emit UnderpaidBatch(centrifugeId, batch);
+                return false;
+            }
+        }
+        delete total;
+
+        // Send batch and proofs
+        for (uint256 i; i < adapters_.length; i++) {
+            bytes32 adapterData = adapters_[i].send{value: data.gasCost[i]}(
                 centrifugeId,
-                i == PRIMARY_ADAPTER_ID - 1 ? batch : batchHash.serializeMessageProof(),
-                batchGasLimit_,
+                i == PRIMARY_ADAPTER_ID - 1 ? batch : data.batchHash.serializeMessageProof(),
+                data.batchGasLimit,
                 transactionRefund != address(0) ? transactionRefund : address(subsidy[poolId].refund)
             );
 
             if (i == PRIMARY_ADAPTER_ID - 1) {
                 emit SendBatch(
                     centrifugeId,
-                    keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, batchHash)),
+                    data.payloadId,
                     batch,
                     adapters_[i],
                     adapterData,
@@ -339,21 +348,26 @@ contract Gateway is Auth, Recoverable, IGateway {
             } else {
                 emit SendProof(
                     centrifugeId,
-                    keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, batchHash)),
-                    batchHash,
+                    data.payloadId,
+                    data.batchHash,
                     adapters_[i],
                     adapterData
                 );
             }
         }
+
+        return true;
     }
 
-    function repay(uint16 centrifugeId, bytes memory batch) external pauseable {
+    /// @inheritdoc IGateway
+    function repay(uint16 centrifugeId, bytes memory batch) external payable pauseable {
         bytes32 batchHash = keccak256(batch);
-        require(underpaid[centrifugeId][batchHash] > 0, NotFailedMessage());
+        require(underpaid[centrifugeId][batchHash] > 0, NotUnderpaidBatch());
 
         PoolId poolId = processor.messagePoolId(batch);
-        _send(centrifugeId, poolId, batch);
+        if (msg.value > 0) this.subsidizePool{value: msg.value}(poolId);
+
+        require(_send(centrifugeId, poolId, batch), InsufficientFundsForRepayment());
         underpaid[centrifugeId][batchHash]--;
 
         emit RepayBatch(centrifugeId, batch);
@@ -390,11 +404,13 @@ contract Gateway is Auth, Recoverable, IGateway {
         }
     }
 
+    /// @inheritdoc IGateway
     function setRefundAddress(PoolId poolId, IRecoverable refund) public auth {
         subsidy[poolId].refund = refund;
         emit SetRefundAddress(poolId, refund);
     }
 
+    /// @inheritdoc IGateway
     function subsidizePool(PoolId poolId) public payable {
         require(address(subsidy[poolId].refund) != address(0), RefundAddressNotSet());
         _subsidizePool(poolId, msg.sender, msg.value);

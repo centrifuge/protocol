@@ -42,6 +42,14 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
         IRecoverable refund;
     }
 
+    // Used to bypass stack too deep issue
+    struct SendData {
+        bytes32 batchHash;
+        uint128 batchGasLimit;
+        bytes32 payloadId;
+        uint256[] gasCost;
+    }
+
     // --- Events ---
     event PrepareMessage(uint16 indexed centrifugeId, PoolId poolId, bytes message);
     event UnderpaidBatch(uint16 indexed centrifugeId, bytes batch);
@@ -120,6 +128,12 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @notice Dispatched when a message that has not failed is retried.
     error NotFailedMessage();
 
+    /// @notice Dispatched when a batch that has not been underpaid is repaid.
+    error NotUnderpaidBatch();
+
+    /// @notice Dispatched when a batch is repaid with insufficient funds.
+    error InsufficientFundsForRepayment();
+
     /// @notice Dispatched when a message is added to a batch that causes it to exceed the max batch size.
     error ExceedsMaxBatchSize();
 
@@ -139,6 +153,9 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @param  what The name of the variable to be updated.
     /// @param  data New address.
     function file(bytes32 what, address data) external;
+
+    /// @notice Repay an underpaid batch. Send unused funds to subsidy pot of the pool.
+    function repay(uint16 centrifugeId, bytes memory batch) external payable;
 
     /// @notice Set the refund address for message associated to a poolId
     function setRefundAddress(PoolId poolId, IRecoverable refund) external;

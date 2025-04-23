@@ -987,18 +987,29 @@ contract GatewayTestSend is GatewayTest {
         bytes memory message = MessageKind.WithPoolA1.asBytes();
         bytes32 batchHash = keccak256(message);
         bytes32 batchId = keccak256(abi.encodePacked(LOCAL_CENT_ID, REMOTE_CENT_ID, batchHash));
+        gateway.setRefundAddress(POOL_A, POOL_REFUND);
 
         _mockAdapters(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT, address(0), !ADAPTER_PAID);
 
         vm.expectEmit();
         emit IGateway.PrepareMessage(REMOTE_CENT_ID, POOL_A, message);
         vm.expectEmit();
-        emit IGateway.SendBatch(REMOTE_CENT_ID, batchId, message, batchAdapter, ADAPTER_DATA_1, address(0), true);
-        vm.expectEmit();
-        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter1, ADAPTER_DATA_2, true);
-        vm.expectEmit();
-        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter2, ADAPTER_DATA_3, true);
+        emit IGateway.UnderpaidBatch(REMOTE_CENT_ID, message);
         gateway.send(REMOTE_CENT_ID, message);
+
+        vm.expectRevert(IGateway.InsufficientFundsForRepayment.selector);
+        gateway.repay(REMOTE_CENT_ID, message);
+
+        uint256 payment = MESSAGE_GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3 + 1234;
+        gateway.subsidizePool{value: payment}(POOL_A);
+
+        vm.expectEmit();
+        emit IGateway.SendBatch(REMOTE_CENT_ID, batchId, message, batchAdapter, ADAPTER_DATA_1, address(0));
+        vm.expectEmit();
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter1, ADAPTER_DATA_2);
+        vm.expectEmit();
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter2, ADAPTER_DATA_3);
+        gateway.repay(REMOTE_CENT_ID, message);
     }
 
     function testSendMessageUsingSubsidizedPoolPayment() public {
@@ -1017,13 +1028,11 @@ contract GatewayTestSend is GatewayTest {
         vm.expectEmit();
         emit IGateway.PrepareMessage(REMOTE_CENT_ID, POOL_A, message);
         vm.expectEmit();
-        emit IGateway.SendBatch(
-            REMOTE_CENT_ID, batchId, message, batchAdapter, ADAPTER_DATA_1, address(POOL_REFUND), false
-        );
+        emit IGateway.SendBatch(REMOTE_CENT_ID, batchId, message, batchAdapter, ADAPTER_DATA_1, address(POOL_REFUND));
         vm.expectEmit();
-        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter1, ADAPTER_DATA_2, false);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter1, ADAPTER_DATA_2);
         vm.expectEmit();
-        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter2, ADAPTER_DATA_3, false);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter2, ADAPTER_DATA_3);
         gateway.send(REMOTE_CENT_ID, message);
 
         (uint256 value,) = gateway.subsidy(POOL_A);
@@ -1048,13 +1057,11 @@ contract GatewayTestSend is GatewayTest {
         vm.expectEmit();
         emit IGateway.PrepareMessage(REMOTE_CENT_ID, POOL_A, message);
         vm.expectEmit();
-        emit IGateway.SendBatch(
-            REMOTE_CENT_ID, batchId, message, batchAdapter, ADAPTER_DATA_1, address(POOL_REFUND), false
-        );
+        emit IGateway.SendBatch(REMOTE_CENT_ID, batchId, message, batchAdapter, ADAPTER_DATA_1, address(POOL_REFUND));
         vm.expectEmit();
-        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter1, ADAPTER_DATA_2, false);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter1, ADAPTER_DATA_2);
         vm.expectEmit();
-        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter2, ADAPTER_DATA_3, true);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter2, ADAPTER_DATA_3);
         gateway.send(REMOTE_CENT_ID, message);
 
         (uint256 value,) = gateway.subsidy(POOL_A);
@@ -1099,11 +1106,11 @@ contract GatewayTestSend is GatewayTest {
         vm.expectEmit();
         emit IGateway.PrepareMessage(REMOTE_CENT_ID, POOL_A, message);
         vm.expectEmit();
-        emit IGateway.SendBatch(REMOTE_CENT_ID, batchId, message, batchAdapter, ADAPTER_DATA_1, TRANSIENT_REFUND, false);
+        emit IGateway.SendBatch(REMOTE_CENT_ID, batchId, message, batchAdapter, ADAPTER_DATA_1, TRANSIENT_REFUND);
         vm.expectEmit();
-        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter1, ADAPTER_DATA_2, false);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter1, ADAPTER_DATA_2);
         vm.expectEmit();
-        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter2, ADAPTER_DATA_3, false);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter2, ADAPTER_DATA_3);
         gateway.send(REMOTE_CENT_ID, message);
 
         assertEq(TRANSIENT_REFUND.balance, 1234);
@@ -1140,11 +1147,11 @@ contract GatewayTestEndBatching is GatewayTest {
         _mockAdapters(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT * 2, address(0), !ADAPTER_PAID);
 
         vm.expectEmit();
-        emit IGateway.SendBatch(REMOTE_CENT_ID, batchId, batch, batchAdapter, ADAPTER_DATA_1, address(0), true);
+        emit IGateway.SendBatch(REMOTE_CENT_ID, batchId, batch, batchAdapter, ADAPTER_DATA_1, address(0));
         vm.expectEmit();
-        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter1, ADAPTER_DATA_2, true);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter1, ADAPTER_DATA_2);
         vm.expectEmit();
-        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter2, ADAPTER_DATA_3, true);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter2, ADAPTER_DATA_3);
         gateway.endBatching();
 
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), 0);
@@ -1172,17 +1179,17 @@ contract GatewayTestEndBatching is GatewayTest {
         _mockAdapters(REMOTE_CENT_ID + 1, message2, MESSAGE_GAS_LIMIT, address(0), !ADAPTER_PAID);
 
         vm.expectEmit();
-        emit IGateway.SendBatch(REMOTE_CENT_ID, batchId1, message1, batchAdapter, ADAPTER_DATA_1, address(0), true);
+        emit IGateway.SendBatch(REMOTE_CENT_ID, batchId1, message1, batchAdapter, ADAPTER_DATA_1, address(0));
         vm.expectEmit();
-        emit IGateway.SendProof(REMOTE_CENT_ID, batchId1, batchHash1, proofAdapter1, ADAPTER_DATA_2, true);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId1, batchHash1, proofAdapter1, ADAPTER_DATA_2);
         vm.expectEmit();
-        emit IGateway.SendProof(REMOTE_CENT_ID, batchId1, batchHash1, proofAdapter2, ADAPTER_DATA_3, true);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId1, batchHash1, proofAdapter2, ADAPTER_DATA_3);
         vm.expectEmit();
-        emit IGateway.SendBatch(REMOTE_CENT_ID + 1, batchId2, message2, batchAdapter, ADAPTER_DATA_1, address(0), true);
+        emit IGateway.SendBatch(REMOTE_CENT_ID + 1, batchId2, message2, batchAdapter, ADAPTER_DATA_1, address(0));
         vm.expectEmit();
-        emit IGateway.SendProof(REMOTE_CENT_ID + 1, batchId2, batchHash2, proofAdapter1, ADAPTER_DATA_2, true);
+        emit IGateway.SendProof(REMOTE_CENT_ID + 1, batchId2, batchHash2, proofAdapter1, ADAPTER_DATA_2);
         vm.expectEmit();
-        emit IGateway.SendProof(REMOTE_CENT_ID + 1, batchId2, batchHash2, proofAdapter2, ADAPTER_DATA_3, true);
+        emit IGateway.SendProof(REMOTE_CENT_ID + 1, batchId2, batchHash2, proofAdapter2, ADAPTER_DATA_3);
         gateway.endBatching();
 
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), 0);
@@ -1212,19 +1219,17 @@ contract GatewayTestEndBatching is GatewayTest {
         _mockAdapters(REMOTE_CENT_ID, message2, MESSAGE_GAS_LIMIT, address(0), !ADAPTER_PAID);
 
         vm.expectEmit();
-        emit IGateway.SendBatch(
-            REMOTE_CENT_ID, batchId1, message1, batchAdapter, ADAPTER_DATA_1, address(gateway), true
-        );
+        emit IGateway.SendBatch(REMOTE_CENT_ID, batchId1, message1, batchAdapter, ADAPTER_DATA_1, address(gateway));
         vm.expectEmit();
-        emit IGateway.SendProof(REMOTE_CENT_ID, batchId1, batchHash1, proofAdapter1, ADAPTER_DATA_2, true);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId1, batchHash1, proofAdapter1, ADAPTER_DATA_2);
         vm.expectEmit();
-        emit IGateway.SendProof(REMOTE_CENT_ID, batchId1, batchHash1, proofAdapter2, ADAPTER_DATA_3, true);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId1, batchHash1, proofAdapter2, ADAPTER_DATA_3);
         vm.expectEmit();
-        emit IGateway.SendBatch(REMOTE_CENT_ID, batchId2, message2, batchAdapter, ADAPTER_DATA_1, address(0), true);
+        emit IGateway.SendBatch(REMOTE_CENT_ID, batchId2, message2, batchAdapter, ADAPTER_DATA_1, address(0));
         vm.expectEmit();
-        emit IGateway.SendProof(REMOTE_CENT_ID, batchId2, batchHash2, proofAdapter1, ADAPTER_DATA_2, true);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId2, batchHash2, proofAdapter1, ADAPTER_DATA_2);
         vm.expectEmit();
-        emit IGateway.SendProof(REMOTE_CENT_ID, batchId2, batchHash2, proofAdapter2, ADAPTER_DATA_3, true);
+        emit IGateway.SendProof(REMOTE_CENT_ID, batchId2, batchHash2, proofAdapter2, ADAPTER_DATA_3);
         gateway.endBatching();
 
         assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), 0);
