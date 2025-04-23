@@ -217,7 +217,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
         escrow.rely(address(balanceSheet));
         balanceSheet.rely(address(asyncRequests));
         balanceSheet.rely(address(syncRequests));
-
+        balanceSheet.rely(address(messageDispatcher));
         // Permissions on factories
         vaultFactory.rely(address(poolManager));
         tokenFactory.rely(address(poolManager));
@@ -250,6 +250,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
         holdings.rely(address(hub));
         shareClassManager.rely(address(hub));
         hub.rely(address(hub));
+        hub.rely(address(messageDispatcher));
         shareClassManager.rely(address(this));
 
         // set dependencies

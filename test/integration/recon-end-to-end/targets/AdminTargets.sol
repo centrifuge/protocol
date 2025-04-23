@@ -32,6 +32,8 @@ abstract contract AdminTargets is
     BaseTargetFunctions,
     Properties
 {
+    event InterestingCoverageLog();
+
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
 
     /// === STATE FUNCTIONS === ///
@@ -337,6 +339,11 @@ abstract contract AdminTargets is
                 eq(lastUpdate, epochId, "lastUpdate is not equal to epochId"); 
                 gte(totalPendingDeposit, totalPendingUserDeposit, "total pending deposit is less than sum of pending user deposit amounts"); 
             }
+
+            // state space enrichment
+            if(amount > 0) {
+                emit InterestingCoverageLog();
+            }
         } catch (bytes memory reason) {
             // precondition: check that it wasn't an overflow because we only care about underflow
             uint128 pendingDeposit = shareClassManager.pendingDeposit(scId, depositAssetId);
@@ -368,6 +375,11 @@ abstract contract AdminTargets is
             uint32 epochId = shareClassManager.epochId(poolId);
 
             eq(lastUpdate, epochId, "lastUpdate is not equal to epochId after redeemRequest");
+
+            // state space enrichment   
+            if(amount > 0) {
+                emit InterestingCoverageLog();
+            }
         } catch {}
     }  
 
@@ -511,6 +523,24 @@ abstract contract AdminTargets is
     function hub_updateJournal(uint64 poolIdAsUint, JournalEntry[] memory debits, JournalEntry[] memory credits) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         hub.updateJournal(poolId, debits, credits);
+    }
+
+    function hub_updateJournal_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint8 accountEntropy, uint128 amount) public updateGhosts {
+        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
+        
+        JournalEntry[] memory debits = new JournalEntry[](1);
+        debits[0] = JournalEntry({
+            value: amount,
+            accountId: Helpers.getRandomAccountId(createdAccountIds, accountEntropy)
+        });
+        JournalEntry[] memory credits = new JournalEntry[](1);
+        credits[0] = JournalEntry({
+            value: amount,
+            accountId: Helpers.getRandomAccountId(createdAccountIds, accountEntropy)
+        });
+
+        hub_updateJournal(poolId.raw(), debits, credits);
     }
 
     function hub_increaseShareIssuance(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 pricePerShare, uint128 amount) public updateGhosts {

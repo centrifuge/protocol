@@ -31,9 +31,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         poolManager_updateMember(type(uint64).max);
         
         vault_requestDeposit(1e18, 0);
-
-        // asyncRequests_fulfillDepositRequest(1e18 - 1, 1e18, 0, 0);
-
         vault_deposit(1e18 - 1);
     }
 

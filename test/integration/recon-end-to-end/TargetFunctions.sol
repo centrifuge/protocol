@@ -98,9 +98,6 @@ abstract contract TargetFunctions is
 
         {
             _assetId = poolManager_registerAsset(address(_token), 0);
-            console2.log("assetId", _assetId);
-
-            hub_registerAsset(_assetId);
         }
 
         // 2. Deploy new pool and register it
@@ -112,10 +109,12 @@ abstract contract TargetFunctions is
 
         // 3. Deploy new share class and register it
         {
-            hub_addShareClass(_poolId.raw(), salt);
-
+            // have to get share class like this because addShareClass doesn't return it
             ShareClassId scIdTemp = shareClassManager.previewNextShareClassId(_poolId);
             _scId = scIdTemp.raw();
+
+            hub_addShareClass(_poolId.raw(), salt);
+
             // TODO: Should we customize decimals and permissions here?
             (_shareToken,) = poolManager_addShareClass(_poolId.raw(), _scId, 18, address(restrictedTransfers));
         }
@@ -136,6 +135,7 @@ abstract contract TargetFunctions is
 
         // 5. Deploy new vault and register it
         _vault = poolManager_deployVault(_poolId.raw(), _scId, _assetId);
+        console2.log("after deploy vault");
         poolManager_linkVault(_poolId.raw(), _scId, _assetId, _vault);
         asyncRequests.rely(address(_vault));
 
@@ -151,7 +151,10 @@ abstract contract TargetFunctions is
 
         // NOTE: Add to storage so these can be clamped in other functions
         scId = _scId;
+        console2.log("scId");
+        console2.logBytes16(scId);
         poolId = _poolId.raw();
+        console2.log("poolId", poolId);
         assetId = _assetId;
     }
 
