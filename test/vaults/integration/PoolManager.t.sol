@@ -657,7 +657,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.transferShares{value: defaultGas}(
             OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount
         );
-        assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(poolId.raw()))), 0);
+        assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(poolId))), 0);
     }
 
     function testLinkVaultInvalidShare(PoolId poolId, ShareClassId scId) public {
@@ -751,7 +751,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
 
     function _assertAllowance(address vaultAddress, address asset, uint256 tokenId) private view {
         address vaultManager = address(IBaseVault(vaultAddress).manager());
-        address escrow_ = address(poolEscrowFactory.escrow(poolId.raw()));
+        address escrow_ = address(poolEscrowFactory.escrow(poolId));
         IShareToken token_ = poolManager.shareToken(poolId, scId);
 
         assertEq(
@@ -956,7 +956,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         assertEq(assetId.raw(), defaultAssetId);
 
         // Allowance is set during vault deployment
-        assertEq(erc20.allowance(address(poolEscrowFactory.escrow(POOL_A.raw())), address(poolManager)), 0);
+        assertEq(erc20.allowance(address(poolEscrowFactory.escrow(POOL_A)), address(poolManager)), 0);
         _assertAssetRegistered(asset, assetId, 0, 1);
     }
 
@@ -1005,7 +1005,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         assertEq(assetId.raw(), defaultAssetId);
 
         // Allowance is set during vault deployment
-        assertEq(erc6909.allowance(address(poolEscrowFactory.escrow(POOL_A.raw())), address(poolManager), tokenId), 0);
+        assertEq(erc6909.allowance(address(poolEscrowFactory.escrow(POOL_A)), address(poolManager), tokenId), 0);
         _assertAssetRegistered(asset, assetId, tokenId, 1);
     }
 

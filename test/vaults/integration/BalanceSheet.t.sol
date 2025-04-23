@@ -50,7 +50,7 @@ contract BalanceSheetTest is BaseTest {
                 .serialize()
         );
         // Manually set necessary escrow allowance which are naturally part of poolManager.addVault
-        IPoolEscrow escrow = poolEscrowFactory.escrow(POOL_A.raw());
+        IPoolEscrow escrow = poolEscrowFactory.escrow(POOL_A);
         vm.prank(address(poolManager));
         escrow.approveMax(address(erc20), erc20TokenId, address(balanceSheet));
     }
@@ -205,11 +205,9 @@ contract BalanceSheetTest is BaseTest {
 
         // Ensure no balance transfer occurred but escrow holding was incremented nevertheless
         assertEq(erc20.balanceOf(address(this)), 0);
-        assertEq(erc20.balanceOf(address(poolEscrowFactory.escrow(POOL_A.raw()))), 0);
+        assertEq(erc20.balanceOf(address(poolEscrowFactory.escrow(POOL_A))), 0);
         assertEq(
-            poolEscrowFactory.escrow(POOL_A.raw()).availableBalanceOf(
-                defaultTypedShareClassId.raw(), address(erc20), erc20TokenId
-            ),
+            poolEscrowFactory.escrow(POOL_A).availableBalanceOf(defaultTypedShareClassId, address(erc20), erc20TokenId),
             defaultAmount
         );
     }

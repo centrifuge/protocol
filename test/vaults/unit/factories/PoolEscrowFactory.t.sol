@@ -5,6 +5,9 @@ import "forge-std/Test.sol";
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+
 import {IPoolEscrowProvider, IPoolEscrowFactory} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {PoolEscrow} from "src/vaults/Escrow.sol";
 import {PoolEscrowFactory} from "src/vaults/factories/PoolEscrowFactory.sol";
@@ -28,26 +31,26 @@ contract PoolEscrowFactoryTest is Test {
         factory.file("asyncRequests", asyncRequests);
     }
 
-    function testEscrows(uint64 poolId) public {
+    function testEscrows(PoolId poolId) public {
         assertEq(address(factory.deployedEscrow(poolId)), address(0), "Escrow should not exist yet");
         address escrow = address(factory.newEscrow(poolId));
         assertEq(address(factory.deployedEscrow(poolId)), escrow, "Escrow address mismatch");
     }
 
-    function testDeployEscrowAtDeterministicAddress(uint64 poolId) public {
+    function testDeployEscrowAtDeterministicAddress(PoolId poolId) public {
         address expectedEscrow = address(factory.escrow(poolId));
         address actual = address(factory.newEscrow(poolId));
 
         assertEq(expectedEscrow, actual, "Escrow address mismatch");
     }
 
-    function testDeployEscrowTwiceReverts(uint64 poolId) public {
+    function testDeployEscrowTwiceReverts(PoolId poolId) public {
         factory.newEscrow(poolId);
         vm.expectRevert(IPoolEscrowFactory.EscrowAlreadyDeployed.selector);
         factory.newEscrow(poolId);
     }
 
-    function testEscrowHasCorrectPermissions(uint64 poolId, address nonWard) public {
+    function testEscrowHasCorrectPermissions(PoolId poolId, address nonWard) public {
         vm.assume(
             nonWard != root && nonWard != gateway && nonWard != poolManager && nonWard != balanceSheet
                 && nonWard != asyncRequests

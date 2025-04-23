@@ -9,6 +9,7 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 
 import {Holding, IPoolEscrow, IEscrow} from "src/vaults/interfaces/IEscrow.sol";
@@ -65,28 +66,28 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
     using MathLib for uint256;
 
     /// @dev The underlying pool id
-    uint64 public immutable poolId;
+    PoolId public immutable poolId;
 
-    mapping(bytes16 scId => mapping(address asset => mapping(uint256 tokenId => Holding))) public holding;
+    mapping(ShareClassId scId => mapping(address asset => mapping(uint256 tokenId => Holding))) public holding;
 
-    constructor(uint64 poolId_, address deployer) Escrow(deployer) {
+    constructor(PoolId poolId_, address deployer) Escrow(deployer) {
         poolId = poolId_;
     }
 
     receive() external payable {}
 
     /// @inheritdoc IPoolEscrow
-    function deposit(bytes16 scId, address asset, uint256 tokenId, uint256 value) external auth {
+    function deposit(ShareClassId scId, address asset, uint256 tokenId, uint256 value) external auth {
         _deposit(scId, asset, tokenId, value, true);
     }
 
     /// @inheritdoc IPoolEscrow
-    function noteDeposit(bytes16 scId, address asset, uint256 tokenId, uint256 value) external auth {
+    function noteDeposit(ShareClassId scId, address asset, uint256 tokenId, uint256 value) external auth {
         _deposit(scId, asset, tokenId, value, false);
     }
 
     /// @inheritdoc IPoolEscrow
-    function withdraw(bytes16 scId, address asset, uint256 tokenId, uint256 value) external auth {
+    function withdraw(ShareClassId scId, address asset, uint256 tokenId, uint256 value) external auth {
         Holding storage holding_ = holding[scId][asset][tokenId];
         require(holding_.total - holding_.reserved >= value, InsufficientBalance());
 
@@ -96,7 +97,7 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
     }
 
     /// @inheritdoc IPoolEscrow
-    function reserveIncrease(bytes16 scId, address asset, uint256 tokenId, uint256 value) external auth {
+    function reserveIncrease(ShareClassId scId, address asset, uint256 tokenId, uint256 value) external auth {
         uint128 newValue = holding[scId][asset][tokenId].reserved + value.toUint128();
         holding[scId][asset][tokenId].reserved = newValue;
 
@@ -104,7 +105,7 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
     }
 
     /// @inheritdoc IPoolEscrow
-    function reserveDecrease(bytes16 scId, address asset, uint256 tokenId, uint256 value) external auth {
+    function reserveDecrease(ShareClassId scId, address asset, uint256 tokenId, uint256 value) external auth {
         uint128 prevValue = holding[scId][asset][tokenId].reserved;
         uint128 value_ = value.toUint128();
         require(prevValue >= value_, InsufficientReservedAmount());
@@ -116,13 +117,15 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
     }
 
     /// @inheritdoc IPoolEscrow
-    function availableBalanceOf(bytes16 scId, address asset, uint256 tokenId) public view returns (uint256) {
+    function availableBalanceOf(ShareClassId scId, address asset, uint256 tokenId) public view returns (uint256) {
         Holding storage holding_ = holding[scId][asset][tokenId];
         if (holding_.total < holding_.reserved) return 0;
         return holding_.total - holding_.reserved;
     }
 
-    function _deposit(bytes16 scId, address asset, uint256 tokenId, uint256 value, bool checkSufficiency) internal {
+    function _deposit(ShareClassId scId, address asset, uint256 tokenId, uint256 value, bool checkSufficiency)
+        internal
+    {
         uint128 holding_ = holding[scId][asset][tokenId].total;
 
         // Leave out check for deposits which transfer funds post escrow.deposit due to security concerns

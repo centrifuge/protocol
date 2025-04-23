@@ -208,8 +208,8 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         pool.shareClasses[scId].shareToken = shareToken_;
 
         // Deploy new escrow only on first added share class for pool
-        if (poolEscrowFactory.deployedEscrow(poolId.raw()) == address(0)) {
-            IPoolEscrow escrow = poolEscrowFactory.newEscrow(poolId.raw());
+        if (poolEscrowFactory.deployedEscrow(poolId) == address(0)) {
+            IPoolEscrow escrow = poolEscrowFactory.newEscrow(poolId);
             gateway.setRefundAddress(PoolId.wrap(poolId.raw()), escrow);
         }
 
@@ -221,7 +221,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         public
         auth
     {
-        IShareToken shareToken_ = IShareToken(shareToken(poolId, scId));
+        IShareToken shareToken_ = shareToken(poolId, scId);
 
         require(
             keccak256(bytes(shareToken_.name())) != keccak256(bytes(name))
@@ -367,7 +367,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
         // Deploy vault
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
-        address escrow = address(poolEscrowFactory.escrow(poolId.raw()));
+        address escrow = address(poolEscrowFactory.escrow(poolId));
         address vault = IVaultFactory(factory).newVault(
             poolId, scId, assetIdKey.asset, assetIdKey.tokenId, shareClass.shareToken, escrow, vaultWards
         );
@@ -522,7 +522,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     function _approvePool(address vault, PoolId poolId, IShareToken shareToken_, address asset, uint256 tokenId)
         internal
     {
-        IPoolEscrow escrow = poolEscrowFactory.escrow(poolId.raw());
+        IPoolEscrow escrow = poolEscrowFactory.escrow(poolId);
 
         // Give pool manager infinite approval for asset
         // in the escrow to transfer to the user on transfer
