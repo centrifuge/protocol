@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 interface IVaultFactory {
@@ -15,8 +18,8 @@ interface IVaultFactory {
     /// @param escrow An intermediary contract that holds a temporary funds until request is fulfilled.
     /// @param wards_ Address which can call methods behind authorized only.
     function newVault(
-        uint64 poolId,
-        bytes16 scId,
+        PoolId poolId,
+        ShareClassId scId,
         address asset,
         uint256 tokenId,
         IShareToken token,

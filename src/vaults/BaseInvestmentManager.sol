@@ -44,9 +44,8 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
     function convertToShares(address vaultAddr, uint256 assets) public view virtual returns (uint256 shares) {
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-        (D18 priceAssetPerShare,) = poolManager.priceAssetPerShare(
-            PoolId.wrap(vault_.poolId()), ShareClassId.wrap(vault_.scId()), vaultDetails.assetId, false
-        );
+        (D18 priceAssetPerShare,) =
+            poolManager.priceAssetPerShare(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
 
         return _convertToShares(vault_, vaultDetails, priceAssetPerShare, assets, MathLib.Rounding.Down);
     }
@@ -55,9 +54,8 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
     function convertToAssets(address vaultAddr, uint256 shares) public view virtual returns (uint256 assets) {
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
-        (D18 priceAssetPerShare,) = poolManager.priceAssetPerShare(
-            PoolId.wrap(vault_.poolId()), ShareClassId.wrap(vault_.scId()), vaultDetails.assetId, false
-        );
+        (D18 priceAssetPerShare,) =
+            poolManager.priceAssetPerShare(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
 
         return _convertToAssets(vault_, vaultDetails, priceAssetPerShare, shares, MathLib.Rounding.Down);
     }
@@ -67,9 +65,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         IBaseVault vault_ = IBaseVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
-        (, lastUpdated) = poolManager.priceAssetPerShare(
-            PoolId.wrap(vault_.poolId()), ShareClassId.wrap(vault_.scId()), vaultDetails.assetId, false
-        );
+        (, lastUpdated) = poolManager.priceAssetPerShare(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
     }
 
     function _convertToShares(

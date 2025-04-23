@@ -52,7 +52,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     IBalanceSheet public balanceSheet;
 
     mapping(address vault => mapping(address investor => AsyncInvestmentState)) public investments;
-    mapping(uint64 poolId => mapping(bytes16 scId => mapping(uint128 assetId => address vault))) public vault;
+    mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => address vault))) public vault;
 
     constructor(address root_, address deployer) BaseInvestmentManager(root_, deployer) {}
 
@@ -68,7 +68,10 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
     // --- IVaultManager ---
     /// @inheritdoc IVaultManager
-    function addVault(uint64 poolId, bytes16 scId, address vaultAddr, address asset_, uint128 assetId) public auth {
+    function addVault(PoolId poolId, ShareClassId scId, address vaultAddr, address asset_, AssetId assetId)
+        public
+        auth
+    {
         IAsyncVault vault_ = IAsyncVault(vaultAddr);
         address token = vault_.share();
 
@@ -82,7 +85,10 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     }
 
     /// @inheritdoc IVaultManager
-    function removeVault(uint64 poolId, bytes16 scId, address vaultAddr, address asset_, uint128 assetId) public auth {
+    function removeVault(PoolId poolId, ShareClassId scId, address vaultAddr, address asset_, AssetId assetId)
+        public
+        auth
+    {
         IAsyncVault vault_ = IAsyncVault(vaultAddr);
         address token = vault_.share();
 
@@ -113,8 +119,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     function _processDepositRequest(address vaultAddr, uint128 assets, address controller) internal returns (bool) {
         IAsyncVault vault_ = IAsyncVault(vaultAddr);
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
-        PoolId poolId = PoolId.wrap(vault_.poolId());
-        ShareClassId scId = ShareClassId.wrap(vault_.scId());
+        PoolId poolId = vault_.poolId();
+        ShareClassId scId = vault_.scId();
 
         require(poolManager.isLinked(poolId, scId, vaultDetails.asset, vaultAddr), AssetNotAllowed());
 
@@ -142,12 +148,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         IAsyncVault vault_ = IAsyncVault(vaultAddr);
 
         // You cannot redeem using a disallowed asset, instead another vault will have to be used
-        require(
-            poolManager.isLinked(
-                PoolId.wrap(vault_.poolId()), ShareClassId.wrap(vault_.scId()), vault_.asset(), vaultAddr
-            ),
-            AssetNotAllowed()
-        );
+        require(poolManager.isLinked(vault_.poolId(), vault_.scId(), vault_.asset(), vaultAddr), AssetNotAllowed());
 
         require(
             _canTransfer(vaultAddr, owner, ESCROW_HOOK_ID, shares)
@@ -170,13 +171,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         state.pendingRedeemRequest = state.pendingRedeemRequest + shares;
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
-        sender.sendRedeemRequest(
-            PoolId.wrap(vault_.poolId()),
-            ShareClassId.wrap(vault_.scId()),
-            controller.toBytes32(),
-            vaultDetails.assetId,
-            shares
-        );
+        sender.sendRedeemRequest(vault_.poolId(), vault_.scId(), controller.toBytes32(), vaultDetails.assetId, shares);
 
         return true;
     }
@@ -192,9 +187,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
-        sender.sendCancelDepositRequest(
-            PoolId.wrap(vault_.poolId()), ShareClassId.wrap(vault_.scId()), controller.toBytes32(), vaultDetails.assetId
-        );
+        sender.sendCancelDepositRequest(vault_.poolId(), vault_.scId(), controller.toBytes32(), vaultDetails.assetId);
     }
 
     /// @inheritdoc IAsyncRedeemManager
@@ -210,9 +203,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
 
-        sender.sendCancelRedeemRequest(
-            PoolId.wrap(vault_.poolId()), ShareClassId.wrap(vault_.scId()), controller.toBytes32(), vaultDetails.assetId
-        );
+        sender.sendCancelRedeemRequest(vault_.poolId(), vault_.scId(), controller.toBytes32(), vaultDetails.assetId);
     }
 
     // -- Gateway handlers --
@@ -225,7 +216,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         uint128 assets,
         uint128 shares
     ) public auth {
-        address vault_ = vault[poolId.raw()][scId.raw()][assetId.raw()];
+        address vault_ = vault[poolId][scId][assetId];
 
         AsyncInvestmentState storage state = investments[vault_][user];
         require(state.pendingDepositRequest != 0, NoPendingRequest());
@@ -251,7 +242,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         uint128 assets,
         uint128 shares
     ) public auth {
-        address vault_ = vault[poolId.raw()][scId.raw()][assetId.raw()];
+        address vault_ = vault[poolId][scId][assetId];
 
         AsyncInvestmentState storage state = investments[vault_][user];
         require(state.pendingRedeemRequest != 0, NoPendingRequest());
@@ -280,7 +271,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         uint128 assets,
         uint128 fulfillment
     ) public auth {
-        address vault_ = vault[poolId.raw()][scId.raw()][assetId.raw()];
+        address vault_ = vault[poolId][scId][assetId];
 
         AsyncInvestmentState storage state = investments[vault_][user];
         require(state.pendingCancelDepositRequest == true, NoPendingRequest());
@@ -299,7 +290,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         public
         auth
     {
-        address vault_ = vault[poolId.raw()][scId.raw()][assetId.raw()];
+        address vault_ = vault[poolId][scId][assetId];
         AsyncInvestmentState storage state = investments[vault_][user];
         require(state.pendingCancelRedeemRequest == true, NoPendingRequest());
 
@@ -317,7 +308,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         auth
     {
         require(shares != 0, ShareTokenAmountIsZero());
-        address vault_ = vault[poolId.raw()][scId.raw()][assetId.raw()];
+        address vault_ = vault[poolId][scId][assetId];
 
         // If there's any unclaimed deposits, claim those first
         AsyncInvestmentState storage state = investments[vault_][user];
@@ -394,7 +385,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         if (sharesDown > 0) {
             require(
                 IERC20(vault_.share()).transferFrom(
-                    address(poolEscrowProvider.escrow(vault_.poolId())), receiver, sharesDown
+                    address(poolEscrowProvider.escrow(vault_.poolId().raw())), receiver, sharesDown
                 ),
                 ShareTokenTransferFailed()
             );
@@ -463,8 +454,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
 
         IAsyncVault vault_ = IAsyncVault(vaultAddr);
-        PoolId poolId = PoolId.wrap(vault_.poolId());
-        ShareClassId scId = ShareClassId.wrap(vault_.scId());
+        PoolId poolId = vault_.poolId();
+        ShareClassId scId = vault_.scId();
 
         (D18 pricePoolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, vaultDetails.assetId, true);
         IPoolEscrow(address(poolEscrowProvider.escrow(poolId.raw()))).reserveDecrease(
@@ -495,7 +486,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         if (assets > 0) {
             VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
 
-            address escrow = address(poolEscrowProvider.escrow(IAsyncVault(vaultAddr).poolId()));
+            address escrow = address(poolEscrowProvider.escrow(IAsyncVault(vaultAddr).poolId().raw()));
             if (vaultDetails.tokenId == 0) {
                 SafeTransferLib.safeTransferFrom(vaultDetails.asset, escrow, receiver, assets);
             } else {
@@ -518,7 +509,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         if (shares > 0) {
             require(
                 IERC20(vault_.share()).transferFrom(
-                    address(poolEscrowProvider.escrow(vault_.poolId())), receiver, shares
+                    address(poolEscrowProvider.escrow(vault_.poolId().raw())), receiver, shares
                 ),
                 ShareTokenTransferFailed()
             );
@@ -593,7 +584,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     }
 
     /// @inheritdoc IVaultManager
-    function vaultByAssetId(uint64 poolId, bytes16 scId, uint128 assetId) public view returns (address) {
+    function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (address) {
         return vault[poolId][scId][assetId];
     }
 

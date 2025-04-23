@@ -10,6 +10,8 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IERC7575} from "src/vaults/interfaces/IERC7575.sol";
@@ -32,9 +34,9 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     IPoolEscrowProvider internal _poolEscrowProvider;
 
     /// @inheritdoc IBaseVault
-    uint64 public immutable poolId;
+    PoolId public immutable poolId;
     /// @inheritdoc IBaseVault
-    bytes16 public immutable scId;
+    ShareClassId public immutable scId;
 
     /// @inheritdoc IERC7575
     address public immutable asset;
@@ -62,8 +64,8 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     event File(bytes32 indexed what, address data);
 
     constructor(
-        uint64 poolId_,
-        bytes16 scId_,
+        PoolId poolId_,
+        ShareClassId scId_,
         address asset_,
         uint256 tokenId_,
         IShareToken token_,
@@ -225,7 +227,7 @@ abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
             asyncRedeemManager.requestRedeem(address(this), shares, controller, owner, sender), RequestRedeemFailed()
         );
 
-        address escrow = address(_poolEscrowProvider.escrow(poolId));
+        address escrow = address(_poolEscrowProvider.escrow(poolId.raw()));
         try IShareToken(share).authTransferFrom(sender, owner, escrow, shares) returns (bool) {}
         catch {
             // Support share class tokens that block authTransferFrom. In this case ERC20 approval needs to be set
@@ -357,7 +359,7 @@ abstract contract BaseSyncDepositVault is BaseVault {
         shares = syncDepositManager.deposit(address(this), assets, receiver, msg.sender);
         // NOTE: For security reasons, transfer must stay at end of call despite the fact that it logically should
         // happen before depositing in the manager
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(_poolEscrowProvider.escrow(poolId)), assets);
+        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(_poolEscrowProvider.escrow(poolId.raw())), assets);
         emit Deposit(receiver, msg.sender, assets, shares);
     }
 
@@ -375,7 +377,7 @@ abstract contract BaseSyncDepositVault is BaseVault {
     function mint(uint256 shares, address receiver) public returns (uint256 assets) {
         assets = syncDepositManager.mint(address(this), shares, receiver, msg.sender);
         // NOTE: For security reasons, transfer must stay at end of call
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(_poolEscrowProvider.escrow(poolId)), assets);
+        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(_poolEscrowProvider.escrow(poolId.raw())), assets);
         emit Deposit(receiver, msg.sender, assets, shares);
     }
 

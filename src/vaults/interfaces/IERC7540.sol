@@ -3,6 +3,9 @@ pragma solidity >=0.5.0;
 
 import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+
 import {IERC7575, IERC165} from "src/vaults/interfaces/IERC7575.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
@@ -296,10 +299,10 @@ interface IBaseVault is IERC7540Operator, IERC7741, IERC7714, IERC7575, IRecover
     error TransferFromFailed();
 
     /// @notice Identifier of the Centrifuge pool
-    function poolId() external view returns (uint64);
+    function poolId() external view returns (PoolId);
 
     /// @notice Identifier of the share class of the Centrifuge pool
-    function scId() external view returns (bytes16);
+    function scId() external view returns (ShareClassId);
 
     /// @notice Set msg.sender as operator of owner, to `approved` status
     /// @dev    MUST be called by endorsed sender

@@ -24,8 +24,8 @@ import "src/vaults/interfaces/IERC7575.sol";
 ///         and/or assets from the pools.
 contract AsyncVault is AsyncRedeemVault, IAsyncVault {
     constructor(
-        uint64 poolId_,
-        bytes16 scId_,
+        PoolId poolId_,
+        ShareClassId scId_,
         address asset_,
         uint256 tokenId_,
         IShareToken token_,
@@ -52,9 +52,9 @@ contract AsyncVault is AsyncRedeemVault, IAsyncVault {
         );
 
         if (tokenId == 0) {
-            SafeTransferLib.safeTransferFrom(asset, owner, address(_poolEscrowProvider.escrow(poolId)), assets);
+            SafeTransferLib.safeTransferFrom(asset, owner, address(_poolEscrowProvider.escrow(poolId.raw())), assets);
         } else {
-            IERC6909(asset).transferFrom(owner, address(_poolEscrowProvider.escrow(poolId)), tokenId, assets);
+            IERC6909(asset).transferFrom(owner, address(_poolEscrowProvider.escrow(poolId.raw())), tokenId, assets);
         }
 
         emit DepositRequest(controller, owner, REQUEST_ID, msg.sender, assets);
