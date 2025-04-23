@@ -13,11 +13,11 @@ import {Recoverable} from "src/misc/Recoverable.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentManager {
     using MathLib for uint256;

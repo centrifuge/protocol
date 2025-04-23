@@ -11,6 +11,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {Recoverable, IRecoverable} from "src/misc/Recoverable.sol";
+import {IERC165} from "src/misc/interfaces/IERC7575.sol";
 
 import {VaultUpdateKind, MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
@@ -21,7 +22,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
-import {IBaseVault, IAsyncRedeemVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IBaseVault, IAsyncRedeemVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
@@ -39,7 +40,6 @@ import {
     IPoolManager
 } from "src/vaults/interfaces/IPoolManager.sol";
 import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
-import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
 import {PoolEscrow} from "src/vaults/Escrow.sol";
 
 /// @title  Pool Manager

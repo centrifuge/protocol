@@ -2,10 +2,14 @@
 pragma solidity 0.8.28;
 
 import "test/vaults/BaseTest.sol";
-import "src/vaults/interfaces/IERC7575.sol";
-import "src/vaults/interfaces/IERC7540.sol";
+
+import "src/misc/interfaces/IERC7575.sol";
+import "src/misc/interfaces/IERC7540.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
+
+import {IBaseVault, IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
+
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 
 contract AsyncVaultTest is BaseTest {

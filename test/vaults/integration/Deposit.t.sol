@@ -4,17 +4,17 @@ pragma solidity 0.8.28;
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {d18} from "src/misc/types/D18.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 import "test/vaults/BaseTest.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
-import {IBaseVault, IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IBaseVault, IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 contract DepositTest is BaseTest {
     using MessageLib for *;

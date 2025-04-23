@@ -6,7 +6,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 

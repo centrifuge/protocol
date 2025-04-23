@@ -19,7 +19,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
-import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";

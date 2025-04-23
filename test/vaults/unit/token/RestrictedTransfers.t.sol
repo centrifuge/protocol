@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import "forge-std/Test.sol";
+
+import {MockRoot} from "test/common/mocks/MockRoot.sol";
+
+import {IERC165} from "src/misc/interfaces/IERC7575.sol";
+
 import {ShareToken} from "src/vaults/token/ShareToken.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
-import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
-import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
-import "forge-std/Test.sol";
-import {MockRoot} from "test/common/mocks/MockRoot.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
+
+import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
 import {IRestrictedTransfers} from "src/hooks/interfaces/IRestrictedTransfers.sol";
 import {IFreezable} from "src/hooks/interfaces/IFreezable.sol";
 

@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IERC165} from "forge-std/interfaces/IERC165.sol";
+import {IERC7540Redeem} from "src/misc/interfaces/IERC7540.sol";
 
 import {Auth} from "src/misc/Auth.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
@@ -22,7 +23,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 
 import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IERC7540Redeem, IAsyncRedeemVault, IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IAsyncRedeemVault, IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
