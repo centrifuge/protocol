@@ -45,14 +45,14 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
 
     constructor(
         address escrow_,
-        address gateway_,
-        address poolManager_,
+        IGateway gateway_,
+        IPoolManager poolManager_,
         IMessageDispatcher messageDispatcher_,
         address deployer
     ) Auth(deployer) {
         escrow = IEscrow(escrow_);
-        gateway = IGateway(gateway_);
-        poolManager = IPoolManager(poolManager_);
+        gateway = gateway_;
+        poolManager = poolManager_;
         messageDispatcher = messageDispatcher_;
     }
 

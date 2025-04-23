@@ -69,7 +69,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         uint256 tokenId_,
         IShareToken token_,
         address root_,
-        address manager_,
+        IBaseInvestmentManager manager_,
         IPoolEscrowProvider poolEscrowProvider_
     ) Auth(msg.sender) {
         poolId = poolId_;
@@ -80,7 +80,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         _shareDecimals = IERC20Metadata(share).decimals();
         root = IRoot(root_);
         // TODO: Redundant due to filing?
-        manager = IBaseInvestmentManager(manager_);
+        manager = manager_;
         _poolEscrowProvider = poolEscrowProvider_;
 
         nameHash = keccak256(bytes("Centrifuge"));
@@ -209,8 +209,8 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
 abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     IAsyncRedeemManager public asyncRedeemManager;
 
-    constructor(address asyncRequests_) {
-        asyncRedeemManager = IAsyncRedeemManager(asyncRequests_);
+    constructor(IAsyncRedeemManager asyncRequests_) {
+        asyncRedeemManager = asyncRequests_;
     }
 
     // --- ERC-7540 methods ---
@@ -338,8 +338,8 @@ abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
 abstract contract BaseSyncDepositVault is BaseVault {
     ISyncDepositManager public syncDepositManager;
 
-    constructor(address syncRequests_) {
-        syncDepositManager = ISyncDepositManager(syncRequests_);
+    constructor(ISyncDepositManager syncRequests_) {
+        syncDepositManager = syncRequests_;
     }
 
     // --- ERC-4626 methods ---

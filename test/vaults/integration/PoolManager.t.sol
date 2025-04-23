@@ -87,8 +87,8 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
                 && nonWard != address(gateway)
         );
 
-        address[] memory vaultFactories = new address[](1);
-        vaultFactories[0] = address(asyncVaultFactory);
+        IVaultFactory[] memory vaultFactories = new IVaultFactory[](1);
+        vaultFactories[0] = asyncVaultFactory;
 
         // redeploying within test to increase coverage
         new PoolManager(tokenFactory, vaultFactories, address(this));
@@ -136,15 +136,15 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.file("poolEscrowFactory", newPoolEscrowFactory);
         assertEq(address(poolManager.poolEscrowFactory()), newPoolEscrowFactory);
 
-        address newVaultFactory = makeAddr("newVaultFactory");
+        IVaultFactory newVaultFactory = IVaultFactory(makeAddr("newVaultFactory"));
         assertEq(poolManager.vaultFactory(newVaultFactory), false);
-        poolManager.file("vaultFactory", newVaultFactory, true);
+        poolManager.file("vaultFactory", address(newVaultFactory), true);
         assertEq(poolManager.vaultFactory(newVaultFactory), true);
         assertEq(poolManager.vaultFactory(asyncVaultFactory), true);
 
         vm.expectEmit();
-        emit IPoolManager.File("vaultFactory", newVaultFactory, false);
-        poolManager.file("vaultFactory", newVaultFactory, false);
+        emit IPoolManager.File("vaultFactory", address(newVaultFactory), false);
+        poolManager.file("vaultFactory", address(newVaultFactory), false);
         assertEq(poolManager.vaultFactory(newVaultFactory), false);
 
         address newEscrow = makeAddr("newEscrow");
@@ -579,7 +579,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         address asset = address(oldVault.asset());
 
         AsyncVaultFactory newVaultFactory =
-            new AsyncVaultFactory(address(root), address(asyncRequests), poolEscrowFactory, address(this));
+            new AsyncVaultFactory(address(root), asyncRequests, poolEscrowFactory, address(this));
 
         // rewire factory contracts
         newVaultFactory.rely(address(poolManager));
@@ -592,7 +592,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assertEq(poolManager.shareToken(poolId, scId).vault(asset), address(0));
 
         // Deploy new vault
-        address newVault = poolManager.deployVault(poolId, scId, AssetId.wrap(assetId), address(newVaultFactory));
+        address newVault = poolManager.deployVault(poolId, scId, AssetId.wrap(assetId), newVaultFactory);
         assert(oldVault_ != newVault);
     }
 
@@ -903,13 +903,13 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         setUpPoolAndShare(poolId_, decimals_, tokenName_, tokenSymbol_, scId_);
 
         vm.expectRevert(IPoolManager.InvalidFactory.selector);
-        poolManager.deployVault(poolId, scId, AssetId.wrap(defaultAssetId), address(0));
+        poolManager.deployVault(poolId, scId, AssetId.wrap(defaultAssetId), IVaultFactory(address(0)));
     }
 
     function testDeployVaultUnauthorized() public {
         vm.prank(makeAddr("unauthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolManager.deployVault(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), address(0));
+        poolManager.deployVault(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), IVaultFactory(address(0)));
     }
 }
 
@@ -1129,7 +1129,7 @@ contract PoolManagerUpdateContract is BaseTest, PoolManagerTestHelper {
     ) public {
         setUpPoolAndShare(poolId_, decimals_, tokenName_, tokenSymbol_, scId_);
         registerAssetErc20();
-        bytes memory vaultUpdate = _serializedUpdateContractNewVault(address(1));
+        bytes memory vaultUpdate = _serializedUpdateContractNewVault(IVaultFactory(address(1)));
 
         vm.expectRevert(IPoolManager.InvalidFactory.selector);
         poolManager.updateContract(poolId, scId, address(poolManager), vaultUpdate);
@@ -1174,9 +1174,13 @@ contract PoolManagerUpdateContract is BaseTest, PoolManagerTestHelper {
         poolManager.update(PoolId.wrap(0), ShareClassId.wrap(0), bytes(""));
     }
 
-    function _serializedUpdateContractNewVault(address vaultFactory_) internal view returns (bytes memory payload) {
+    function _serializedUpdateContractNewVault(IVaultFactory vaultFactory_)
+        internal
+        view
+        returns (bytes memory payload)
+    {
         return MessageLib.UpdateContractVaultUpdate({
-            vaultOrFactory: bytes32(bytes20(vaultFactory_)),
+            vaultOrFactory: bytes32(bytes20(address(vaultFactory_))),
             assetId: assetIdErc20.raw(),
             kind: uint8(VaultUpdateKind.DeployAndLink)
         }).serialize();

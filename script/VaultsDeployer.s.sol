@@ -19,6 +19,7 @@ import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {PoolEscrowFactory} from "src/vaults/factories/PoolEscrowFactory.sol";
+import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 
 import "forge-std/Script.sol";
 import {CommonDeployer} from "script/CommonDeployer.s.sol";
@@ -31,9 +32,9 @@ contract VaultsDeployer is CommonDeployer {
     PoolEscrowFactory public poolEscrowFactory;
     Escrow public routerEscrow;
     VaultRouter public vaultRouter;
-    address public asyncVaultFactory;
-    address public syncDepositVaultFactory;
-    address public tokenFactory;
+    AsyncVaultFactory public asyncVaultFactory;
+    SyncDepositVaultFactory public syncDepositVaultFactory;
+    TokenFactory public tokenFactory;
 
     // Hooks
     address public restrictedTransfers;
@@ -44,25 +45,20 @@ contract VaultsDeployer is CommonDeployer {
 
         poolEscrowFactory = new PoolEscrowFactory{salt: SALT}(address(root), deployer);
         routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow2"))}(deployer);
-        tokenFactory = address(new TokenFactory{salt: SALT}(address(root), deployer));
+        tokenFactory = new TokenFactory{salt: SALT}(address(root), deployer);
 
         asyncRequests = new AsyncRequests(address(root), deployer);
         syncRequests = new SyncRequests(address(root), deployer);
-        asyncVaultFactory =
-            address(new AsyncVaultFactory(address(root), address(asyncRequests), poolEscrowFactory, deployer));
-        syncDepositVaultFactory = address(
-            new SyncDepositVaultFactory(
-                address(root), address(syncRequests), address(asyncRequests), poolEscrowFactory, deployer
-            )
-        );
-        address[] memory vaultFactories = new address[](2);
+        asyncVaultFactory = new AsyncVaultFactory(address(root), asyncRequests, poolEscrowFactory, deployer);
+        syncDepositVaultFactory =
+            new SyncDepositVaultFactory(address(root), syncRequests, asyncRequests, poolEscrowFactory, deployer);
+        IVaultFactory[] memory vaultFactories = new IVaultFactory[](2);
         vaultFactories[0] = asyncVaultFactory;
         vaultFactories[1] = syncDepositVaultFactory;
 
         poolManager = new PoolManager(tokenFactory, vaultFactories, deployer);
         balanceSheet = new BalanceSheet(deployer);
-        vaultRouter =
-            new VaultRouter(address(routerEscrow), address(gateway), address(poolManager), messageDispatcher, deployer);
+        vaultRouter = new VaultRouter(address(routerEscrow), gateway, poolManager, messageDispatcher, deployer);
 
         // Hooks
         restrictedTransfers = address(new RestrictedTransfers{salt: SALT}(address(root), deployer));
