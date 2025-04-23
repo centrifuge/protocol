@@ -718,4 +718,30 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
+
+    function testEnableSharesQueue(uint64 poolId, bytes16 scId, bool enabled) public pure {
+        MessageLib.EnableSharesQueue memory a =
+            MessageLib.EnableSharesQueue({poolId: poolId, scId: scId, enabled: enabled});
+        MessageLib.EnableSharesQueue memory b = MessageLib.deserializeEnableSharesQueue(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.enabled, b.enabled);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+    }
+
+    function testEnableAssetsQueue(uint64 poolId, bytes16 scId, bool enabled) public pure {
+        MessageLib.EnableAssetsQueue memory a =
+            MessageLib.EnableAssetsQueue({poolId: poolId, scId: scId, enabled: enabled});
+        MessageLib.EnableAssetsQueue memory b = MessageLib.deserializeEnableAssetsQueue(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.enabled, b.enabled);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+    }
 }

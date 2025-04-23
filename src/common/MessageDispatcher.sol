@@ -355,6 +355,30 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
+    /// @inheritdoc IPoolMessageSender
+    function sendEnableAssetsQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external auth {
+        if (centrifugeId == localCentrifugeId) {
+            balanceSheet.enableAssetsQueue(poolId, scId, enabled);
+        } else {
+            gateway.send(
+                centrifugeId,
+                MessageLib.EnableAssetsQueue({poolId: poolId.raw(), scId: scId.raw(), enabled: enabled}).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendEnableSharesQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external auth {
+        if (centrifugeId == localCentrifugeId) {
+            balanceSheet.enableSharesQueue(poolId, scId, enabled);
+        } else {
+            gateway.send(
+                centrifugeId,
+                MessageLib.EnableSharesQueue({poolId: poolId.raw(), scId: scId.raw(), enabled: enabled}).serialize()
+            );
+        }
+    }
+
     /// @inheritdoc IRootMessageSender
     function sendScheduleUpgrade(uint16 centrifugeId, bytes32 target) external auth {
         if (centrifugeId == localCentrifugeId) {
