@@ -587,13 +587,13 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.file("vaultFactory", address(newVaultFactory), true);
 
         // Remove old vault
-        address vaultManager = address(IBaseVault(oldVault_).manager());
-        IVaultManager(vaultManager).removeVault(poolId, scId, oldVault_, asset, AssetId.wrap(assetId));
+        address vaultManager = address(oldVault.manager());
+        IVaultManager(vaultManager).removeVault(poolId, scId, oldVault, asset, AssetId.wrap(assetId));
         assertEq(poolManager.shareToken(poolId, scId).vault(asset), address(0));
 
         // Deploy new vault
-        address newVault = poolManager.deployVault(poolId, scId, AssetId.wrap(assetId), newVaultFactory);
-        assert(oldVault_ != newVault);
+        IBaseVault newVault = poolManager.deployVault(poolId, scId, AssetId.wrap(assetId), newVaultFactory);
+        assert(oldVault_ != address(newVault));
     }
 
     function testPoolManagerCannotTransferSharesOnAccountRestrictions(uint128 amount) public {
@@ -662,24 +662,24 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
     function testLinkVaultInvalidShare(PoolId poolId, ShareClassId scId) public {
         vm.expectRevert(IPoolManager.ShareTokenDoesNotExist.selector);
-        poolManager.linkVault(poolId, scId, AssetId.wrap(defaultAssetId), address(0));
+        poolManager.linkVault(poolId, scId, AssetId.wrap(defaultAssetId), IBaseVault(address(0)));
     }
 
     function testUnlinkVaultInvalidShare(PoolId poolId, ShareClassId scId) public {
         vm.expectRevert(IPoolManager.ShareTokenDoesNotExist.selector);
-        poolManager.unlinkVault(poolId, scId, AssetId.wrap(defaultAssetId), address(0));
+        poolManager.unlinkVault(poolId, scId, AssetId.wrap(defaultAssetId), IBaseVault(address(0)));
     }
 
     function testLinkVaultUnauthorized(PoolId poolId, ShareClassId scId) public {
         vm.prank(makeAddr("unauthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolManager.linkVault(poolId, scId, AssetId.wrap(defaultAssetId), address(0));
+        poolManager.linkVault(poolId, scId, AssetId.wrap(defaultAssetId), IBaseVault(address(0)));
     }
 
     function testUnlinkVaultUnauthorized(PoolId poolId, ShareClassId scId) public {
         vm.prank(makeAddr("unauthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        poolManager.unlinkVault(poolId, scId, AssetId.wrap(defaultAssetId), address(0));
+        poolManager.unlinkVault(poolId, scId, AssetId.wrap(defaultAssetId), IBaseVault(address(0)));
     }
 }
 
@@ -698,7 +698,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
 
         assert(poolManager.isPoolActive(poolId));
 
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddress);
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(IBaseVault(vaultAddress));
         assertEq(assetId.raw(), vaultDetails.assetId.raw(), "vault assetId mismatch");
         assertEq(asset, vaultDetails.asset, "vault asset mismatch");
         assertEq(tokenId, vaultDetails.tokenId, "vault asset mismatch");
@@ -706,7 +706,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         assertEq(isLinked, vaultDetails.isLinked, "vault isLinked mismatch");
 
         if (isLinked) {
-            assert(poolManager.isLinked(poolId, scId, asset, vaultAddress));
+            assert(poolManager.isLinked(poolId, scId, asset, IBaseVault(vaultAddress)));
 
             // check vault state
             assertEq(vaultAddress, vault_, "vault address mismatch");
@@ -721,7 +721,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
             assertEq(vault.wards(address(this)), 0);
             assertEq(asyncRequests.wards(vaultAddress), 1);
         } else {
-            assert(!poolManager.isLinked(poolId, scId, asset, vaultAddress));
+            assert(!poolManager.isLinked(poolId, scId, asset, IBaseVault(vaultAddress)));
             // Check Share permissions
             assertEq(ShareToken(address(token_)).wards(vaultManager), 1);
 
@@ -818,10 +818,10 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         // Check event except for vault address which cannot be known
         AssetId assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, asset, erc20TokenId);
         vm.expectEmit(true, true, true, false);
-        emit IPoolManager.DeployVault(poolId, scId, asset, erc20TokenId, asyncVaultFactory, address(0));
-        address vaultAddress = poolManager.deployVault(poolId, scId, assetId, asyncVaultFactory);
+        emit IPoolManager.DeployVault(poolId, scId, asset, erc20TokenId, asyncVaultFactory, IBaseVault(address(0)));
+        IBaseVault vault = poolManager.deployVault(poolId, scId, assetId, asyncVaultFactory);
 
-        _assertDeployedVault(vaultAddress, assetId, asset, erc20TokenId, false);
+        _assertDeployedVault(address(vault), assetId, asset, erc20TokenId, false);
     }
 
     function testDeployVaultWithLinkERC20(
@@ -836,13 +836,13 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         address asset = address(erc20);
 
         AssetId assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, asset, erc20TokenId);
-        address vaultAddress = poolManager.deployVault(poolId, scId, assetId, asyncVaultFactory);
+        IBaseVault vault = poolManager.deployVault(poolId, scId, assetId, asyncVaultFactory);
 
         vm.expectEmit(true, true, true, false);
-        emit IPoolManager.LinkVault(poolId, scId, asset, erc20TokenId, vaultAddress);
-        poolManager.linkVault(poolId, scId, assetId, vaultAddress);
+        emit IPoolManager.LinkVault(poolId, scId, asset, erc20TokenId, vault);
+        poolManager.linkVault(poolId, scId, assetId, vault);
 
-        _assertDeployedVault(vaultAddress, assetId, asset, erc20TokenId, true);
+        _assertDeployedVault(address(vault), assetId, asset, erc20TokenId, true);
     }
 
     function testDeployVaultWithoutLinkERC6909(
@@ -860,10 +860,10 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         // Check event except for vault address which cannot be known
         AssetId assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, asset, tokenId);
         vm.expectEmit(true, true, true, false);
-        emit IPoolManager.DeployVault(poolId, scId, asset, tokenId, asyncVaultFactory, address(0));
-        address vaultAddress = poolManager.deployVault(poolId, scId, assetId, asyncVaultFactory);
+        emit IPoolManager.DeployVault(poolId, scId, asset, tokenId, asyncVaultFactory, IBaseVault(address(0)));
+        IBaseVault vault = poolManager.deployVault(poolId, scId, assetId, asyncVaultFactory);
 
-        _assertDeployedVault(vaultAddress, assetId, asset, tokenId, false);
+        _assertDeployedVault(address(vault), assetId, asset, tokenId, false);
     }
 
     function testDeployVaultWithLinkERC6909(
@@ -879,13 +879,13 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         address asset = address(new MockERC6909());
 
         AssetId assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, asset, tokenId);
-        address vaultAddress = poolManager.deployVault(poolId, scId, assetId, asyncVaultFactory);
+        IBaseVault vault = poolManager.deployVault(poolId, scId, assetId, asyncVaultFactory);
 
         vm.expectEmit(true, true, true, false);
-        emit IPoolManager.LinkVault(poolId, scId, asset, tokenId, vaultAddress);
-        poolManager.linkVault(poolId, scId, assetId, vaultAddress);
+        emit IPoolManager.LinkVault(poolId, scId, asset, tokenId, vault);
+        poolManager.linkVault(poolId, scId, assetId, vault);
 
-        _assertDeployedVault(vaultAddress, assetId, asset, tokenId, true);
+        _assertDeployedVault(address(vault), assetId, asset, tokenId, true);
     }
 
     function testDeploVaultInvalidShare(PoolId poolId, ShareClassId scId) public {

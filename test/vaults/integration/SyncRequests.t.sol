@@ -14,6 +14,7 @@ import {SyncRequests} from "src/vaults/SyncRequests.sol";
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 import "test/vaults/BaseTest.sol";
 
@@ -109,22 +110,24 @@ contract SyncRequestsUnauthorizedTest is SyncRequestsBaseTest {
 
     function testAddVaultUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequests.addVault(PoolId.wrap(0), ShareClassId.wrap(0), address(0), address(0), AssetId.wrap(0));
+        syncRequests.addVault(PoolId.wrap(0), ShareClassId.wrap(0), IBaseVault(address(0)), address(0), AssetId.wrap(0));
     }
 
     function testRemoveVaultUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequests.removeVault(PoolId.wrap(0), ShareClassId.wrap(0), address(0), address(0), AssetId.wrap(0));
+        syncRequests.removeVault(
+            PoolId.wrap(0), ShareClassId.wrap(0), IBaseVault(address(0)), address(0), AssetId.wrap(0)
+        );
     }
 
     function testDepositUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequests.deposit(address(0), 0, address(0), address(0));
+        syncRequests.deposit(IBaseVault(address(0)), 0, address(0), address(0));
     }
 
     function testMintUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequests.mint(address(0), 0, address(0), address(0));
+        syncRequests.mint(IBaseVault(address(0)), 0, address(0), address(0));
     }
 
     function testSetValuationUnauthorized(address nonWard) public {
@@ -271,10 +274,10 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
 
         uint256 shares = shareUnitAmount;
         uint256 assets = priceAssetPerShare.mulUint256(shares);
-        assertEq(syncRequests.convertToAssets(address(syncVault), shares), assets, "convertToAssets mismatch");
-        assertEq(syncRequests.previewMint(address(syncVault), address(0), shares), assets, "previewMint mismatch");
-        assertEq(syncRequests.convertToShares(address(syncVault), assets), shares, "convertToShares mismatch");
-        assertEq(syncRequests.previewDeposit(address(syncVault), address(0), assets), shares, "previewDeposit mismatch");
+        assertEq(syncRequests.convertToAssets(syncVault, shares), assets, "convertToAssets mismatch");
+        assertEq(syncRequests.previewMint(syncVault, address(0), shares), assets, "previewMint mismatch");
+        assertEq(syncRequests.convertToShares(syncVault, assets), shares, "convertToShares mismatch");
+        assertEq(syncRequests.previewDeposit(syncVault, address(0), assets), shares, "previewDeposit mismatch");
     }
 
     function testFuzzedConversionWithValuationERC20(uint128 pricePoolPerShare_, uint128 pricePoolPerAsset_) public {
@@ -297,9 +300,9 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
 
         uint256 shares = shareUnitAmount;
         uint256 assets = priceAssetPerShare.mulUint256(shares);
-        assertEq(syncRequests.convertToAssets(address(syncVault), shares), assets, "convertToAssets mismatch");
-        assertEq(syncRequests.previewMint(address(syncVault), address(0), shares), assets, "previewMint mismatch");
-        assertEq(syncRequests.convertToShares(address(syncVault), assets), shares, "convertToShares mismatch");
-        assertEq(syncRequests.previewDeposit(address(syncVault), address(0), assets), shares, "previewDeposit mismatch");
+        assertEq(syncRequests.convertToAssets(syncVault, shares), assets, "convertToAssets mismatch");
+        assertEq(syncRequests.previewMint(syncVault, address(0), shares), assets, "previewMint mismatch");
+        assertEq(syncRequests.convertToShares(syncVault, assets), shares, "convertToShares mismatch");
+        assertEq(syncRequests.previewDeposit(syncVault, address(0), assets), shares, "previewDeposit mismatch");
     }
 }

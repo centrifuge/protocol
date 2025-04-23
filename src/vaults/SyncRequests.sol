@@ -50,7 +50,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
     IBalanceSheet public balanceSheet;
 
-    mapping(PoolId => mapping(ShareClassId scId => mapping(AssetId assetId => address))) public vault;
+    mapping(PoolId => mapping(ShareClassId scId => mapping(AssetId assetId => IBaseVault))) public vault;
     mapping(PoolId => mapping(ShareClassId scId => mapping(address asset => mapping(uint256 tokenId => uint128))))
         public maxReserve;
     mapping(PoolId => mapping(ShareClassId scId => mapping(address asset => mapping(uint256 tokenId => IERC7726))))
@@ -95,81 +95,78 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
     // --- IVaultManager ---
     /// @inheritdoc IVaultManager
-    function addVault(PoolId poolId, ShareClassId scId, address vaultAddr, address asset_, AssetId assetId)
+    function addVault(PoolId poolId, ShareClassId scId, IBaseVault vault_, address asset_, AssetId assetId)
         external
         override
         auth
     {
-        SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
-
         require(vault_.asset() == asset_, AssetMismatch());
-        require(vault[poolId][scId][assetId] == address(0), VaultAlreadyExists());
+        require(address(vault[poolId][scId][assetId]) == address(0), VaultAlreadyExists());
 
         address token = vault_.share();
-        vault[poolId][scId][assetId] = vaultAddr;
+        vault[poolId][scId][assetId] = vault_;
 
         (, uint256 tokenId) = poolManager.idToAsset(assetId);
         maxReserve[poolId][scId][asset_][tokenId] = type(uint128).max;
 
-        IAuth(token).rely(vaultAddr);
-        IShareToken(token).updateVault(vault_.asset(), vaultAddr);
-        rely(vaultAddr);
+        IAuth(token).rely(address(vault_));
+        IShareToken(token).updateVault(vault_.asset(), address(vault_));
+        rely(address(vault_));
 
-        (VaultKind vaultKind_, address secondaryManager) = vaultKind(vaultAddr);
+        (VaultKind vaultKind_, address secondaryManager) = vaultKind(vault_);
         if (vaultKind_ == VaultKind.SyncDepositAsyncRedeem) {
-            IVaultManager(secondaryManager).addVault(poolId, scId, vaultAddr, asset_, assetId);
+            IVaultManager(secondaryManager).addVault(poolId, scId, vault_, asset_, assetId);
         }
     }
 
     /// @inheritdoc IVaultManager
-    function removeVault(PoolId poolId, ShareClassId scId, address vaultAddr, address asset_, AssetId assetId)
+    function removeVault(PoolId poolId, ShareClassId scId, IBaseVault vault_, address asset_, AssetId assetId)
         external
         override
         auth
     {
-        SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
         address token = vault_.share();
 
         require(vault_.asset() == asset_, AssetMismatch());
-        require(vault[poolId][scId][assetId] != address(0), VaultDoesNotExist());
+        require(address(vault[poolId][scId][assetId]) != address(0), VaultDoesNotExist());
 
         delete vault[poolId][scId][assetId];
 
         (, uint256 tokenId) = poolManager.idToAsset(assetId);
         delete maxReserve[poolId][scId][asset_][tokenId];
 
-        IAuth(token).deny(vaultAddr);
+        IAuth(token).deny(address(vault_));
         IShareToken(token).updateVault(vault_.asset(), address(0));
-        deny(vaultAddr);
+        deny(address(vault_));
 
-        (VaultKind vaultKind_, address secondaryManager) = vaultKind(vaultAddr);
+        (VaultKind vaultKind_, address secondaryManager) = vaultKind(vault_);
         if (vaultKind_ == VaultKind.SyncDepositAsyncRedeem) {
-            IVaultManager(secondaryManager).removeVault(poolId, scId, vaultAddr, asset_, assetId);
+            IVaultManager(secondaryManager).removeVault(poolId, scId, vault_, asset_, assetId);
         }
     }
 
     // --- IDepositManager Writes ---
     /// @inheritdoc IDepositManager
-    function mint(address vaultAddr, uint256 shares, address receiver, address owner)
+    function mint(IBaseVault vault_, uint256 shares, address receiver, address owner)
         external
         auth
         returns (uint256 assets)
     {
-        assets = previewMint(vaultAddr, owner, shares);
+        assets = previewMint(vault_, owner, shares);
 
-        _issueShares(vaultAddr, shares.toUint128(), receiver, owner, assets.toUint128());
+        _issueShares(vault_, shares.toUint128(), receiver, owner, assets.toUint128());
     }
 
     /// @inheritdoc IDepositManager
-    function deposit(address vaultAddr, uint256 assets, address receiver, address owner)
+    function deposit(IBaseVault vault_, uint256 assets, address receiver, address owner)
         external
         auth
         returns (uint256 shares)
     {
-        require(maxDeposit(vaultAddr, owner) >= assets, ExceedsMaxDeposit());
-        shares = previewDeposit(vaultAddr, owner, assets);
+        require(maxDeposit(vault_, owner) >= assets, ExceedsMaxDeposit());
+        shares = previewDeposit(vault_, owner, assets);
 
-        _issueShares(vaultAddr, shares.toUint128(), receiver, owner, assets.toUint128());
+        _issueShares(vault_, shares.toUint128(), receiver, owner, assets.toUint128());
     }
 
     /// @inheritdoc ISyncRequests
@@ -194,46 +191,46 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
     // --- ISyncDepositManager Reads ---
     /// @inheritdoc ISyncDepositManager
-    function previewMint(address vaultAddr, address, /* sender */ uint256 shares)
+    function previewMint(IBaseVault vault_, address, /* sender */ uint256 shares)
         public
         view
         returns (uint256 assets)
     {
-        return convertToAssets(vaultAddr, shares);
+        return convertToAssets(vault_, shares);
     }
 
     /// @inheritdoc ISyncDepositManager
-    function previewDeposit(address vaultAddr, address, /* sender */ uint256 assets)
+    function previewDeposit(IBaseVault vault_, address, /* sender */ uint256 assets)
         public
         view
         returns (uint256 shares)
     {
-        return convertToShares(vaultAddr, assets);
+        return convertToShares(vault_, assets);
     }
 
     // --- IDepositManager Reads ---
     /// @inheritdoc IDepositManager
-    function maxMint(address, /* vaultAddr */ address /* owner */ ) public pure returns (uint256) {
+    function maxMint(IBaseVault, /* vault_ */ address /* owner */ ) public pure returns (uint256) {
         // TODO(follow-up PR): implement rate limit
         return type(uint256).max;
     }
 
     /// @inheritdoc IDepositManager
-    function maxDeposit(address, /* vaultAddr */ address /* owner */ ) public pure returns (uint256) {
+    function maxDeposit(IBaseVault, /* vault_ */ address /* owner */ ) public pure returns (uint256) {
         // TODO(follow-up PR): implement rate limit
         return type(uint256).max;
     }
 
     // --- IVaultManager Views ---
     /// @inheritdoc IVaultManager
-    function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (address) {
+    function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (IBaseVault) {
         return vault[poolId][scId][assetId];
     }
 
     /// @inheritdoc IVaultManager
-    function vaultKind(address vaultAddr) public view returns (VaultKind, address) {
-        if (IERC165(vaultAddr).supportsInterface(type(IERC7540Redeem).interfaceId)) {
-            return (VaultKind.SyncDepositAsyncRedeem, address(IAsyncRedeemVault(vaultAddr).asyncRedeemManager()));
+    function vaultKind(IBaseVault vault_) public view returns (VaultKind, address) {
+        if (IERC165(address(vault_)).supportsInterface(type(IERC7540Redeem).interfaceId)) {
+            return (VaultKind.SyncDepositAsyncRedeem, address(IAsyncRedeemVault(address(vault_)).asyncRedeemManager()));
         } else {
             return (VaultKind.Sync, address(0));
         }
@@ -241,14 +238,13 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
     // --- IBaseInvestmentManager Overwrites ---
     /// @inheritdoc IBaseInvestmentManager
-    function convertToShares(address vaultAddr, uint256 assets)
+    function convertToShares(IBaseVault vault_, uint256 assets)
         public
         view
         override(IBaseInvestmentManager, BaseInvestmentManager)
         returns (uint256 shares)
     {
-        IBaseVault vault_ = IBaseVault(vaultAddr);
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
         D18 priceAssetPerShare_ = _priceAssetPerShare(
             vault_.poolId(), vault_.scId(), vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId
         );
@@ -258,14 +254,13 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
     // --- IBaseInvestmentManager Overwrites ---
     /// @inheritdoc IBaseInvestmentManager
-    function convertToAssets(address vaultAddr, uint256 shares)
+    function convertToAssets(IBaseVault vault_, uint256 shares)
         public
         view
         override(IBaseInvestmentManager, BaseInvestmentManager)
         returns (uint256 assets)
     {
-        IBaseVault vault_ = IBaseVault(vaultAddr);
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
         D18 priceAssetPerShare_ = _priceAssetPerShare(
             vault_.poolId(), vault_.scId(), vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId
         );
@@ -303,16 +298,15 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     /// @dev Issues shares to the receiver and instruct the Balance Sheet Manager to react on the issuance and the
     /// updated holding
     function _issueShares(
-        address vaultAddr,
+        IBaseVault vault_,
         uint128 shares,
         address receiver,
         address owner,
         uint128 depositAssetAmount
     ) internal {
-        SyncDepositVault vault_ = SyncDepositVault(vaultAddr);
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vaultAddr);
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
 
         _checkMaxReserve(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, depositAssetAmount);
 

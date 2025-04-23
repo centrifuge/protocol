@@ -65,7 +65,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     mapping(PoolId poolId => Pool) public pools;
     mapping(IVaultFactory factory => bool) public vaultFactory;
 
-    mapping(address => VaultDetails) internal _vaultDetails;
+    mapping(IBaseVault => VaultDetails) internal _vaultDetails;
     mapping(AssetId assetId => AssetIdKey) internal _idToAsset;
     mapping(address asset => mapping(uint256 tokenId => AssetId assetId)) internal _assetToId;
 
@@ -312,10 +312,10 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
             if (m.kind == uint8(VaultUpdateKind.DeployAndLink)) {
                 IVaultFactory factory = IVaultFactory(m.vaultOrFactory.toAddress());
 
-                address vault = deployVault(poolId, scId, AssetId.wrap(m.assetId), factory);
+                IBaseVault vault = deployVault(poolId, scId, AssetId.wrap(m.assetId), factory);
                 linkVault(poolId, scId, AssetId.wrap(m.assetId), vault);
             } else {
-                address vault = m.vaultOrFactory.toAddress();
+                IBaseVault vault = IBaseVault(m.vaultOrFactory.toAddress());
 
                 // Needed as safeguard against non-validated vaults
                 // I.e. we only accept vaults that have been deployed by the pool manager
@@ -357,7 +357,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     function deployVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVaultFactory factory)
         public
         auth
-        returns (address)
+        returns (IBaseVault)
     {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
         require(vaultFactory[factory], InvalidFactory());
@@ -367,7 +367,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
         // Deploy vault
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
-        address vault = IVaultFactory(factory).newVault(
+        IBaseVault vault = IVaultFactory(factory).newVault(
             poolId, scId, assetIdKey.asset, assetIdKey.tokenId, shareClass.shareToken, vaultWards
         );
 
@@ -386,12 +386,12 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     }
 
     /// @inheritdoc IPoolManager
-    function linkVault(PoolId poolId, ShareClassId scId, AssetId assetId, address vault) public auth {
+    function linkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IBaseVault vault) public auth {
         _shareClass(poolId, scId);
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
-        IBaseInvestmentManager manager = IBaseVault(vault).manager();
+        IBaseInvestmentManager manager = vault.manager();
         IVaultManager(address(manager)).addVault(poolId, scId, vault, assetIdKey.asset, assetId);
 
         _vaultDetails[vault].isLinked = true;
@@ -400,12 +400,12 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     }
 
     /// @inheritdoc IPoolManager
-    function unlinkVault(PoolId poolId, ShareClassId scId, AssetId assetId, address vault) public auth {
+    function unlinkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IBaseVault vault) public auth {
         _shareClass(poolId, scId);
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
-        IBaseInvestmentManager manager = IBaseVault(vault).manager();
+        IBaseInvestmentManager manager = vault.manager();
         IVaultManager(address(manager)).removeVault(poolId, scId, vault, assetIdKey.asset, assetId);
 
         _vaultDetails[vault].isLinked = false;
@@ -427,13 +427,13 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     }
 
     /// @inheritdoc IPoolManager
-    function vaultDetails(address vault) public view returns (VaultDetails memory details) {
+    function vaultDetails(IBaseVault vault) public view returns (VaultDetails memory details) {
         details = _vaultDetails[vault];
         require(details.asset != address(0), UnknownVault());
     }
 
     /// @inheritdoc IPoolManager
-    function isLinked(PoolId, /* poolId */ ShareClassId, /* scId */ address, /* asset */ address vault)
+    function isLinked(PoolId, /* poolId */ ShareClassId, /* scId */ address, /* asset */ IBaseVault vault)
         public
         view
         returns (bool)
@@ -518,7 +518,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
     /// @dev Sets up approval permissions for pool, i.e. the pool escrow, the base vault manager and potentially a
     /// secondary manager (in case of partially sync vault)
-    function _approvePool(address vault, PoolId poolId, IShareToken shareToken_, address asset, uint256 tokenId)
+    function _approvePool(IBaseVault vault, PoolId poolId, IShareToken shareToken_, address asset, uint256 tokenId)
         internal
     {
         IPoolEscrow escrow = poolEscrowFactory.escrow(poolId);
@@ -531,7 +531,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         // in the escrow to transfer to the user on transfer
         escrow.approveMax(asset, tokenId, balanceSheet);
 
-        address manager = address(IBaseVault(vault).manager());
+        address manager = address(vault.manager());
         _approveManager(escrow, manager, shareToken_, asset, tokenId);
 
         // For sync deposit & async redeem vault, also repeat above for async manager (base manager is sync one)

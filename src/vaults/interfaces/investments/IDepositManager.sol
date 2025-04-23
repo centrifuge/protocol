@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 interface IDepositManager is IBaseInvestmentManager {
     /// @notice Processes owner's asset deposit after the epoch has been executed on the corresponding CP instance and
@@ -13,7 +14,7 @@ interface IDepositManager is IBaseInvestmentManager {
     ///         The shares required to fulfill the deposit have already been minted and transferred to the escrow on
     ///         fulfillDepositRequest.
     ///         Receiver has to pass all the share token restrictions in order to receive the shares.
-    function deposit(address vaultAddr, uint256 assets, address receiver, address owner)
+    function deposit(IBaseVault vault, uint256 assets, address receiver, address owner)
         external
         returns (uint256 shares);
 
@@ -26,15 +27,15 @@ interface IDepositManager is IBaseInvestmentManager {
     ///         The shares required to fulfill the mint have already been minted and transferred to the escrow on
     ///         fulfillDepositRequest.
     ///         Receiver has to pass all the share token restrictions in order to receive the shares.
-    function mint(address vaultAddr, uint256 shares, address receiver, address owner)
+    function mint(IBaseVault vault, uint256 shares, address receiver, address owner)
         external
         returns (uint256 assets);
 
     /// @notice Returns the max amount of assets based on the unclaimed amount of shares after at least one successful
     ///         deposit order fulfillment on the corresponding CP instance.
-    function maxDeposit(address vaultAddr, address user) external view returns (uint256);
+    function maxDeposit(IBaseVault vault, address user) external view returns (uint256);
 
     /// @notice Returns the max amount of shares a user can claim after at least one successful deposit order
     ///         fulfillment on the corresponding CP instance.
-    function maxMint(address vaultAddr, address user) external view returns (uint256 shares);
+    function maxMint(IBaseVault vault, address user) external view returns (uint256 shares);
 }

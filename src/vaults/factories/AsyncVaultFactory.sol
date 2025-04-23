@@ -11,6 +11,7 @@ import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 /// @title  ERC7540 Vault Factory
 /// @dev    Utility for deploying new vault contracts
@@ -38,7 +39,7 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
         uint256 tokenId,
         IShareToken token,
         address[] calldata wards_
-    ) public auth returns (address) {
+    ) public auth returns (IBaseVault) {
         AsyncVault vault =
             new AsyncVault(poolId, scId, asset, tokenId, token, root, asyncRedeemManager, poolEscrowProvider);
 
@@ -50,6 +51,6 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
         }
 
         vault.deny(address(this));
-        return address(vault);
+        return vault;
     }
 }
