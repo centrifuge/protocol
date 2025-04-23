@@ -54,7 +54,13 @@ abstract contract AdminTargets is
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId paymentAssetId = AssetId.wrap(paymentAssetIdAsUint);
+        uint128 pendingDepositBefore = shareClassManager.pendingDeposit(scId, paymentAssetId);
+        
         hub.approveDeposits(poolId, scId, paymentAssetId, maxApproval, valuation);
+
+        uint128 pendingDepositAfter = shareClassManager.pendingDeposit(scId, paymentAssetId);
+        uint128 approvedAssetAmount = pendingDepositBefore - pendingDepositAfter;
+        approvedDeposits += approvedAssetAmount;
     }
 
     function hub_approveDeposits_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 maxApproval, bool isIdentityValuation) public {
@@ -69,7 +75,13 @@ abstract contract AdminTargets is
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId payoutAssetId = AssetId.wrap(assetIdAsUint);
+        uint128 pendingRedeemBefore = shareClassManager.pendingRedeem(scId, payoutAssetId);
+        
         hub.approveRedeems(poolId, scId, payoutAssetId, maxApproval);
+
+        uint128 pendingRedeemAfter = shareClassManager.pendingRedeem(scId, payoutAssetId);
+        uint128 approvedAssetAmount = pendingRedeemBefore - pendingRedeemAfter;
+        approvedRedemptions += approvedAssetAmount;
     }
 
     function hub_approveRedeems_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 maxApproval) public {
@@ -195,14 +207,10 @@ abstract contract AdminTargets is
     /// @notice admin is the tester contract (address(this)) so we leave out an explicit prank directly before the call to the target function
     
     function hub_registerAsset(uint128 assetIdAsUint) public updateGhosts {
-        console2.log("inside hub_registerAsset");
         AssetId assetId_ = AssetId.wrap(assetIdAsUint); 
-        console2.log("here 0");
         uint8 decimals = MockERC20(_getAsset()).decimals();
 
-        console2.log("here 1");
         hub.registerAsset(assetId_, decimals);
-        console2.log("here 2");
     }  
 
     /// @dev Property: after successfully calling requestDeposit for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
@@ -218,6 +226,9 @@ abstract contract AdminTargets is
             (uint128 pending, uint32 lastUpdate) = shareClassManager.depositRequest(scId, depositAssetId, investor);
             uint32 epochId = shareClassManager.epochId(poolId);
             (uint32 latestApproval,,,) = shareClassManager.epochPointers(scId, depositAssetId);
+
+            // ghost tracking
+            requestDeposited[_getActor()] += amount;
 
             address[] memory _actors = _getActors();
             uint128 totalPendingDeposit = shareClassManager.pendingDeposit(scId, depositAssetId);
@@ -257,12 +268,14 @@ abstract contract AdminTargets is
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
         try hub.redeemRequest(poolId, scId, investor, payoutAssetId, amount) {
+            // ghost tracking
+            requestRedeeemed[_getActor()] += amount;
+
             (, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, payoutAssetId, investor);
             uint32 epochId = shareClassManager.epochId(poolId);
 
             eq(lastUpdate, epochId, "lastUpdate is not equal to epochId after redeemRequest");
-        } catch {
-        }
+        } catch {}
     }  
 
     function hub_redeemRequest_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 amount) public updateGhosts {
@@ -287,13 +300,16 @@ abstract contract AdminTargets is
         (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.depositRequest(scId, depositAssetId, investor);
         (uint32 latestApproval,,,) = shareClassManager.epochPointers(scId, depositAssetId);
         try hub.cancelDepositRequest(poolId, scId, investor, depositAssetId) {
-            (uint128 pending, uint32 lastUpdate) = shareClassManager.depositRequest(scId, depositAssetId, investor);
+            (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.depositRequest(scId, depositAssetId, investor);
             uint32 epochId = shareClassManager.epochId(poolId);
+
+            // update ghosts
+            cancelledDeposits[_getActor()] += (pendingBefore - pendingAfter);
 
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
             if(Helpers.canMutate(lastUpdateBefore, pendingBefore, latestApproval)) {
-                eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId");
-                eq(pending, 0, "pending is not zero");
+                eq(lastUpdateAfter, epochId, "lastUpdate is not equal to current epochId");
+                eq(pendingAfter, 0, "pending is not zero");
             }
         } catch (bytes memory reason) {
             uint32 epochId = shareClassManager.epochId(poolId);
@@ -320,12 +336,17 @@ abstract contract AdminTargets is
         AssetId payoutAssetId = newAssetId(isoCode);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
 
+        (uint128 pendingBefore,) = shareClassManager.redeemRequest(scId, payoutAssetId, investor);
+
         try hub.cancelRedeemRequest(poolId, scId, investor, payoutAssetId) {
-            (uint128 pending, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, payoutAssetId, investor);
+            (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.redeemRequest(scId, payoutAssetId, investor);
             uint32 epochId = shareClassManager.epochId(poolId);
 
-            eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId after cancelRedeemRequest");
-            eq(pending, 0, "pending is not zero after cancelRedeemRequest");
+            // update ghosts
+            cancelledRedemptions[_getActor()] += (pendingBefore - pendingAfter);
+
+            eq(lastUpdateAfter, epochId, "lastUpdate is not equal to current epochId after cancelRedeemRequest");
+            eq(pendingAfter, 0, "pending is not zero after cancelRedeemRequest");
         } catch (bytes memory reason) {
             uint32 epochId = shareClassManager.epochId(poolId);
             uint128 previousRedeemApproved;
@@ -409,44 +430,5 @@ abstract contract AdminTargets is
         PoolId poolId = Helpers.getRandomPoolId(createdPools, poolEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         hub.decreaseShareIssuance(poolId, scId, D18.wrap(pricePerShare), amount);
-    }
-
-    // === ShareClassManager === //
-
-    function shareClassManager_claimDepositUntilEpoch(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint32 endEpochId) public updateGhosts asAdmin {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        ShareClassId shareClassId_ = ShareClassId.wrap(scIdAsBytes);
-        bytes32 investor = Helpers.addressToBytes32(_getActor());
-        AssetId depositAssetId = AssetId.wrap(assetIdAsUint);
-
-        shareClassManager.claimDepositUntilEpoch(poolId, shareClassId_, investor, depositAssetId, endEpochId);
-    }
-
-    function shareClassManager_claimRedeemUntilEpoch(uint64 poolIdAsUint, bytes16 scIdAsBytes, bytes32 investor, uint128 assetIdAsUint, uint32 endEpochId) public updateGhosts asAdmin {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        ShareClassId shareClassId_ = ShareClassId.wrap(scIdAsBytes);
-        AssetId payoutAssetId = AssetId.wrap(assetIdAsUint);
-        shareClassManager.claimRedeemUntilEpoch(poolId, shareClassId_, investor, payoutAssetId, endEpochId);
-    }
-
-    function shareClassManager_issueSharesUntilEpoch(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 navPerShare, uint32 endEpochId) public updateGhosts asAdmin {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        ShareClassId shareClassId_ = ShareClassId.wrap(scIdAsBytes);
-        AssetId depositAssetId = AssetId.wrap(assetIdAsUint);
-        shareClassManager.issueSharesUntilEpoch(poolId, shareClassId_, depositAssetId, D18.wrap(navPerShare), endEpochId);
-    }
-
-    function shareClassManager_revokeSharesUntilEpoch(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, D18 navPerShare, IERC7726 valuation, uint32 endEpochId) public updateGhosts asAdmin {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        ShareClassId shareClassId_ = ShareClassId.wrap(scIdAsBytes);
-        AssetId payoutAssetId = AssetId.wrap(assetIdAsUint);
-        shareClassManager.revokeSharesUntilEpoch(poolId, shareClassId_, payoutAssetId, navPerShare, valuation, endEpochId);
-    }
-
-    function shareClassManager_updateMetadata(uint64 poolIdAsUint, bytes16 scIdAsBytes, string memory name, string memory symbol, bytes32 salt) public updateGhosts asActor {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        ShareClassId shareClassId_ = ShareClassId.wrap(scIdAsBytes);
-        bytes memory data = "not-used";
-        shareClassManager.updateMetadata(poolId, shareClassId_, name, symbol, salt, data);
     }
 }

@@ -55,16 +55,21 @@ abstract contract HubTargets is
         
         (, uint32 lastUpdateBefore) = shareClassManager.depositRequest(scId, assetId, investor);
         (,, uint32 latestIssuance,) = shareClassManager.epochPointers(scId, assetId);
-        uint256 assetBalanceBefore = MockERC20(vault.asset()).balanceOf(_getActor());
+        (,,,,uint128 pendingDepositBefore,, uint128 claimableCancelDepositRequestBefore,,,) = asyncRequests.investments(address(vault), _getActor());
 
         vm.prank(_getActor());
         hub.claimDeposit(poolId, scId, assetId, investor);
 
-        uint256 assetBalanceAfter = MockERC20(vault.asset()).balanceOf(_getActor());
-        uint256 assetClaimed = assetBalanceAfter - assetBalanceBefore;
+        (,,,,uint128 pendingDepositAfter,, uint128 claimableCancelDepositRequestAfter,,,) = asyncRequests.investments(address(vault), _getActor());
+        uint128 paymentAssetAmount = pendingDepositBefore - pendingDepositAfter;
+        uint128 cancelledAmount = claimableCancelDepositRequestAfter - claimableCancelDepositRequestBefore;
+        // ghost tracking
+        depositProcessed[_getActor()] += paymentAssetAmount;
+        cancelledDeposits[_getActor()] += cancelledAmount;
+
         // NOTE: making this callback here because after the call to sendFulfilledDepositRequest, the admin would call this so this is like a form of clamping since we don't want to over approve
         // TODO: extract this into a separate handler that can be called separately only for the amount claimed here
-        balanceSheet.approvedDeposits(poolId, scId, assetId, uint128(assetClaimed));
+        balanceSheet.approvedDeposits(poolId, scId, assetId, paymentAssetAmount);
 
         (, uint32 lastUpdateAfter) = shareClassManager.depositRequest(scId, assetId, investor);
         uint32 epochId = shareClassManager.epochId(poolId);
@@ -91,15 +96,21 @@ abstract contract HubTargets is
         AssetId assetId = AssetId.wrap(assetIdAsUint);
         bytes32 investor = Helpers.addressToBytes32(_getActor());
         
-        uint256 assetBalanceBefore = MockERC20(vault.asset()).balanceOf(_getActor());
+        (,,,,,uint128 pendingRedeemRequestBefore,, uint128 claimableCancelRedeemRequestBefore,,) = asyncRequests.investments(address(vault), _getActor());
 
         vm.prank(_getActor());
         hub.claimRedeem(poolId, scId, assetId, investor);
 
-        uint256 assetBalanceAfter = MockERC20(vault.asset()).balanceOf(_getActor());
-        uint256 assetClaimed = assetBalanceAfter - assetBalanceBefore;
+        (,,,,,uint128 pendingRedeemRequestAfter,, uint128 claimableCancelRedeemRequestAfter,,) = asyncRequests.investments(address(vault), _getActor());
+        uint128 paymentShareAmount = pendingRedeemRequestBefore - pendingRedeemRequestAfter;
+        uint128 cancelledShareAmount = claimableCancelRedeemRequestAfter - claimableCancelRedeemRequestBefore;
+        
+        // ghost tracking
+        redemptionsProcessed[_getActor()] += paymentShareAmount;
+        cancelledRedemptions[_getActor()] += cancelledShareAmount;
+
         // TODO: extract this into a separate handler that can be called separately only for the amount claimed here
-        balanceSheet.revokedShares(poolId, scId, assetId, uint128(assetClaimed));
+        balanceSheet.revokedShares(poolId, scId, assetId, paymentShareAmount);
 
         (, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, investor);
         uint32 epochId = shareClassManager.epochId(poolId);

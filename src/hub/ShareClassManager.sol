@@ -23,7 +23,6 @@ import {
     QueuedOrder,
     RequestType
 } from "src/hub/interfaces/IShareClassManager.sol";
-import {console2} from "forge-std/console2.sol";
 
 contract ShareClassManager is Auth, IShareClassManager {
     using MathLib for *;
@@ -391,7 +390,6 @@ contract ShareClassManager is Auth, IShareClassManager {
                 userOrder.pending,
                 claimableShareAmount
             );
-            console2.log("end of claimDeposit loop");
         }
         userOrder.lastUpdate = endEpochId + 1;
 
@@ -722,7 +720,6 @@ contract ShareClassManager is Auth, IShareClassManager {
 
         // We must only update either queued or pending
         if (_updateQueued(poolId, scId_, amount, isIncrement, investor, assetId, userOrder, queued, requestType)) {
-            console2.log("returns early");
             return 0;
         }
 
@@ -809,7 +806,6 @@ contract ShareClassManager is Auth, IShareClassManager {
         QueuedOrder memory queued
     ) private {
         uint128 pendingTotal = pendingDeposit[scId_][assetId];
-        console2.log("amount to update pendingDeposit", amount);
         pendingDeposit[scId_][assetId] = isIncrement ? pendingTotal + amount : pendingTotal - amount;
         pendingTotal = pendingDeposit[scId_][assetId];
 

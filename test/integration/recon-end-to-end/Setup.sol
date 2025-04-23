@@ -124,6 +124,17 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
     uint32 internal LOSS_ACCOUNT = 3;
     uint32 internal GAIN_ACCOUNT = 4;
 
+    /// === GHOST === ///
+    mapping (address => uint256) requestDeposited;
+    mapping (address => uint256) depositProcessed;
+    mapping (address => uint256) cancelledDeposits;
+
+    mapping (address => uint256) requestRedeeemed;
+    mapping (address => uint256) redemptionsProcessed;
+    mapping (address => uint256) cancelledRedemptions;
+
+    uint256 approvedDeposits;
+    uint256 approvedRedemptions;
 
     modifier asAdmin {
         vm.prank(address(this));

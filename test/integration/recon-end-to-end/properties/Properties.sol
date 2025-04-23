@@ -5,8 +5,11 @@ import {Asserts} from "@chimera/Asserts.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 import {console2} from "forge-std/console2.sol";
 
-import {BeforeAfter} from "../BeforeAfter.sol";
-import {AsyncVaultCentrifugeProperties} from "./AsyncVaultCentrifugeProperties.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {BeforeAfter} from "test/integration/recon-end-to-end/BeforeAfter.sol";
+import {AsyncVaultCentrifugeProperties} from "test/integration/recon-end-to-end/properties/AsyncVaultCentrifugeProperties.sol";
+import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
 
 abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProperties {
     event DebugWithString(string, uint256);
@@ -385,6 +388,114 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         return systemAddresses;
     }
 
+    function property_soundness_processed_deposits() public {
+        address[] memory actors = _getActors();
+
+        for(uint256 i; i < actors.length; i++) {
+            gte(requestDeposited[actors[i]], depositProcessed[actors[i]], "property_soundness_processed_deposits Actor Requests must be gte than processed amounts");
+        }
+    }
+
+    function property_soundness_processed_redemptions() public {
+        address[] memory actors = _getActors();
+
+
+        for(uint256 i; i < actors.length; i++) {
+            gte(requestRedeeemed[actors[i]], redemptionsProcessed[actors[i]], "property_soundness_processed_redemptions Actor Requests must be gte than processed amounts");
+        }
+    }
+
+    function property_cancelled_soundness() public {
+        address[] memory actors = _getActors();
+
+
+        for(uint256 i; i < actors.length; i++) {
+            gte(requestDeposited[actors[i]], cancelledDeposits[actors[i]], "property_cancelled_soundness Actor Requests must be gte than cancelled amounts");
+        }
+    }
+
+    function property_cancelled_and_processed_deposits_soundness() public {
+        address[] memory actors = _getActors();
+
+
+        for(uint256 i; i < actors.length; i++) {
+            gte(requestDeposited[actors[i]], cancelledDeposits[actors[i]] + depositProcessed[actors[i]], "property_cancelled_and_processed_deposits_soundness Actor Requests must be gte than cancelled + processed amounts");
+        }
+    }
+
+    function property_cancelled_and_processed_redemptions_soundness() public {
+        address[] memory actors = _getActors();
+
+
+        for(uint256 i; i < actors.length; i++) {
+            gte(requestRedeeemed[actors[i]], cancelledRedemptions[actors[i]] + redemptionsProcessed[actors[i]], "property_cancelled_and_processed_redemptions_soundness Actor Requests must be gte than cancelled + processed amounts");
+        }
+    }
+
+
+    function property_solvency_deposit_requests() public {
+        address[] memory actors = _getActors();
+        uint256 totalDeposits;
+
+
+        for(uint256 i; i < actors.length; i++) {
+            totalDeposits += requestDeposited[actors[i]];
+        }
+
+
+        gte(totalDeposits, approvedDeposits, "Total Deposits must always be less than totalDeposits");
+    }
+
+    function property_solvency_redemption_requests() public {
+        address[] memory actors = _getActors();
+        uint256 totalRedemptions;
+
+
+        for(uint256 i; i < actors.length; i++) {
+            totalRedemptions += requestRedeeemed[actors[i]];
+        }
+
+
+        gte(totalRedemptions, approvedRedemptions, "Total Redemptions must always be less than approvedRedemptions");
+    }
+
+    function property_actor_pending_and_queued_deposits() public {
+        // Pending + Queued = Deposited?
+        address[] memory actors = _getActors();
+
+
+        for(uint256 i; i < actors.length; i++) {
+            (uint128 pending, ) = shareClassManager.depositRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), Helpers.addressToBytes32(actors[i]));
+            (, uint128 queued) = shareClassManager.queuedDepositRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), Helpers.addressToBytes32(actors[i]));
+
+
+            // user order pending
+            // user order amount
+
+
+            // NOTE: We are missign the cancellation part, we're assuming that won't matter but idk
+            eq(requestDeposited[actors[i]] - cancelledDeposits[actors[i]] - depositProcessed[actors[i]], pending + queued, "property_actor_pending_and_queued_deposits");
+        }
+    }
+
+    function property_actor_pending_and_queued_redemptions() public {
+        // Pending + Queued = Deposited?
+        address[] memory actors = _getActors();
+
+        for(uint256 i; i < actors.length; i++) {
+            (uint128 pending, ) = shareClassManager.redeemRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), Helpers.addressToBytes32(actors[i]));
+            (, uint128 queued) = shareClassManager.queuedRedeemRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), Helpers.addressToBytes32(actors[i]));
+
+            // user order pending
+            // user order amount
+
+            // NOTE: We are missign the cancellation part, we're assuming that won't matter but idk
+            eq(requestRedeeemed[actors[i]] - cancelledRedemptions[actors[i]] - redemptionsProcessed[actors[i]], pending + queued, "property_actor_pending_and_queued_redemptions");
+        }
+    }
+
+    
+    /// === HELPERS === ///
     /// @dev Can we donate to this address?
     /// We explicitly preventing donations since we check for exact balances
     function _canDonate(address to) internal view returns (bool) {
