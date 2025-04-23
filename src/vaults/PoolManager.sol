@@ -265,7 +265,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
     /// @inheritdoc IPoolManagerGatewayHandler
     function updateRestriction(PoolId poolId, ShareClassId scId, bytes memory update_) public auth {
-        IShareToken shareToken_ = IShareToken(shareToken(poolId, scId));
+        IShareToken shareToken_ = shareToken(poolId, scId);
         address hook = shareToken_.hook();
         require(hook != address(0), InvalidHook());
         IHook(hook).updateRestriction(address(shareToken_), update_);
@@ -284,7 +284,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
     /// @inheritdoc IPoolManagerGatewayHandler
     function updateShareHook(PoolId poolId, ShareClassId scId, address hook) public auth {
-        IShareToken shareToken_ = IShareToken(shareToken(poolId, scId));
+        IShareToken shareToken_ = shareToken(poolId, scId);
         require(hook != shareToken_.hook(), OldHook());
         shareToken_.file("hook", hook);
     }
@@ -294,7 +294,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         public
         auth
     {
-        IShareToken shareToken_ = IShareToken(shareToken(poolId, scId));
+        IShareToken shareToken_ = shareToken(poolId, scId);
 
         shareToken_.mint(destinationAddress, amount);
     }

@@ -52,7 +52,7 @@ contract VaultRouterTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
-        assertEq(vaultRouter.getVault(vault.poolId().raw(), vault.scId().raw(), address(erc20)), vault_);
+        assertEq(vaultRouter.getVault(vault.poolId(), vault.scId(), address(erc20)), vault_);
     }
 
     function testRequestDeposit() public {
