@@ -204,7 +204,7 @@ contract DepositTest is BaseTest {
             poolId, vault.scId().raw(), bytes32(bytes20(self)), assetId, assets, firstSharePayout
         );
 
-        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
+        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(vault, self);
         assertEq(depositPrice, 1400000000000000000);
 
         // second trigger executed collectInvest of the second 50% at a price of 1.2
@@ -213,7 +213,7 @@ contract DepositTest is BaseTest {
             poolId, vault.scId().raw(), bytes32(bytes20(self)), assetId, assets, secondSharePayout
         );
 
-        (,, depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
+        (,, depositPrice,,,,,,,) = asyncRequests.investments(vault, self);
         assertEq(depositPrice, 1292307679384615384);
 
         // assert deposit & mint values adjusted
@@ -477,7 +477,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), firstSharePayout);
 
         // deposit price should be ~1.2*10**18
-        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
+        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(vault, self);
         assertEq(depositPrice, 1200000000000000000);
 
         // trigger executed collectInvest of the second 50% at a price of 1.4
@@ -507,7 +507,7 @@ contract DepositTest is BaseTest {
         );
 
         // redeem price should now be ~1.5*10**18.
-        (,,, uint256 redeemPrice,,,,,,) = asyncRequests.investments(address(vault), self);
+        (,,, uint256 redeemPrice,,,,,,) = asyncRequests.investments(vault, self);
         assertEq(redeemPrice, 1492615384615384615);
     }
 
@@ -538,7 +538,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), firstSharePayout);
 
         // deposit price should be ~1.2*10**18
-        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
+        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(vault, self);
         assertEq(depositPrice, 1200000019200000307);
 
         // trigger executed collectInvest of the second 50% at a price of 1.4
@@ -571,7 +571,7 @@ contract DepositTest is BaseTest {
         );
 
         // redeem price should now be ~1.5*10**18.
-        (,,, uint256 redeemPrice,,,,,,) = asyncRequests.investments(address(vault), self);
+        (,,, uint256 redeemPrice,,,,,,) = asyncRequests.investments(vault, self);
         assertEq(redeemPrice, 1492615411252828877);
 
         // collect the asset
@@ -614,7 +614,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), shares);
 
         // lp price is set to the deposit price
-        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
+        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(vault, self);
         assertEq(depositPrice, 1200000000000000000);
     }
 
@@ -653,7 +653,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), shares);
 
         // lp price is set to the deposit price
-        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
+        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(vault, self);
         assertEq(depositPrice, 1200000000000000000);
     }
 
@@ -732,7 +732,7 @@ contract DepositTest is BaseTest {
             vault.poolId().raw(), scId, bytes32(bytes20(self)), assetId.raw(), assets, firstSharePayout
         );
 
-        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
+        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(vault, self);
         assertEq(depositPrice, 1400000000000000000);
 
         // second trigger executed collectInvest of the second 50% at a price of 1.2
@@ -741,7 +741,7 @@ contract DepositTest is BaseTest {
             vault.poolId().raw(), scId, bytes32(bytes20(self)), assetId.raw(), assets, secondSharePayout
         );
 
-        (,, depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
+        (,, depositPrice,,,,,,,) = asyncRequests.investments(vault, self);
         assertEq(depositPrice, 1292307679384615384);
 
         // assert deposit & mint values adjusted

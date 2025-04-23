@@ -5,6 +5,7 @@ import {IInvestmentManagerGatewayHandler} from "src/common/interfaces/IGatewayHa
 
 import {IAsyncDepositManager} from "src/vaults/interfaces/investments/IAsyncDepositManager.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 /// @dev Vault requests and deposit/redeem bookkeeping per user
 struct AsyncInvestmentState {
@@ -48,7 +49,7 @@ interface IAsyncRequests is IAsyncDepositManager, IAsyncRedeemManager, IInvestme
     error ExceedsRedeemLimits();
 
     /// @notice Returns the investment state
-    function investments(address vaultAddr, address investor)
+    function investments(IBaseVault vaultAddr, address investor)
         external
         view
         returns (

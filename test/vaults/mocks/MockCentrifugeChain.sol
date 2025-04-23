@@ -15,6 +15,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {SyncRequests} from "src/vaults/SyncRequests.sol";
 import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 interface AdapterLike {
     function execute(bytes memory _message) external;
@@ -41,7 +42,7 @@ contract MockCentrifugeChain is Test {
     }
 
     function unlinkVault(uint64 poolId, bytes16 scId, address vault) public {
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(IBaseVault(vault));
 
         execute(
             MessageLib.UpdateContract({
@@ -58,7 +59,7 @@ contract MockCentrifugeChain is Test {
     }
 
     function linkVault(uint64 poolId, bytes16 scId, address vault) public {
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(IBaseVault(vault));
 
         execute(
             MessageLib.UpdateContract({
@@ -75,7 +76,7 @@ contract MockCentrifugeChain is Test {
     }
 
     function updateMaxReserve(uint64 poolId, bytes16 scId, address vault, uint128 maxReserve) public {
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(IBaseVault(vault));
 
         execute(
             MessageLib.UpdateContract({

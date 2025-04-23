@@ -20,6 +20,7 @@ import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 contract SyncDepositTestHelper is BaseTest {
     using CastLib for *;
@@ -53,7 +54,7 @@ contract SyncDepositTestHelper is BaseTest {
         ShareClassId scId = vault.scId();
         uint64 timestamp = uint64(block.timestamp);
         uint128 depositAssetAmount = vault.previewMint(shares).toUint128();
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault));
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
 
         vm.expectEmit();
         emit IBalanceSheet.Issue(poolId, scId, self, pricePoolPerShare, shares);
@@ -88,10 +89,10 @@ contract SyncDepositTest is SyncDepositTestHelper {
         IShareToken shareToken = IShareToken(address(syncVault.share()));
 
         // Retrieve async vault
-        address asyncVault_ =
+        IBaseVault asyncVault_ =
             syncVault.asyncRedeemManager().vaultByAssetId(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId));
         assertNotEq(address(syncVault), address(0), "Failed to retrieve async vault");
-        AsyncVault asyncVault = AsyncVault(asyncVault_);
+        AsyncVault asyncVault = AsyncVault(address(asyncVault_));
 
         // Check price and max amounts
         uint256 shares = syncVault.previewDeposit(amount);

@@ -12,6 +12,7 @@ import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedee
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 /// @title  Sync Vault Factory
 /// @dev    Utility for deploying new vault contracts
@@ -42,7 +43,7 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
         uint256 tokenId,
         IShareToken token,
         address[] calldata wards_
-    ) public auth returns (address) {
+    ) public auth returns (IBaseVault) {
         SyncDepositVault vault = new SyncDepositVault(
             poolId, scId, asset, tokenId, token, root, syncDepositManager, asyncRedeemManager, poolEscrowProvider
         );
@@ -57,6 +58,6 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
         }
 
         vault.deny(address(this));
-        return address(vault);
+        return vault;
     }
 }

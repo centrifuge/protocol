@@ -41,9 +41,8 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
 
     // --- View functions ---
     /// @inheritdoc IBaseInvestmentManager
-    function convertToShares(address vaultAddr, uint256 assets) public view virtual returns (uint256 shares) {
-        IBaseVault vault_ = IBaseVault(vaultAddr);
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
+    function convertToShares(IBaseVault vault_, uint256 assets) public view virtual returns (uint256 shares) {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
         (D18 priceAssetPerShare,) =
             poolManager.priceAssetPerShare(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
 
@@ -51,9 +50,8 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
     }
 
     /// @inheritdoc IBaseInvestmentManager
-    function convertToAssets(address vaultAddr, uint256 shares) public view virtual returns (uint256 assets) {
-        IBaseVault vault_ = IBaseVault(vaultAddr);
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
+    function convertToAssets(IBaseVault vault_, uint256 shares) public view virtual returns (uint256 assets) {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
         (D18 priceAssetPerShare,) =
             poolManager.priceAssetPerShare(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
 
@@ -61,9 +59,8 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
     }
 
     /// @inheritdoc IBaseInvestmentManager
-    function priceLastUpdated(address vaultAddr) public view virtual returns (uint64 lastUpdated) {
-        IBaseVault vault_ = IBaseVault(vaultAddr);
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault_));
+    function priceLastUpdated(IBaseVault vault_) public view virtual returns (uint64 lastUpdated) {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
 
         (, lastUpdated) = poolManager.priceAssetPerShare(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
     }

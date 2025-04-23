@@ -382,7 +382,7 @@ contract RedeemTest is BaseTest {
             poolId.raw(), scId.raw(), bytes32(bytes20(self)), assetId, uint128(investmentAmount), shares
         );
 
-        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(address(vault), self);
+        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(vault, self);
         assertEq(depositPrice, 1000000000000000000);
 
         // assert deposit & mint values adjusted
@@ -407,7 +407,7 @@ contract RedeemTest is BaseTest {
             poolId.raw(), scId.raw(), bytes32(bytes20(self)), assetId, assets, shares / 2
         );
 
-        (,,, uint256 redeemPrice,,,,,,) = asyncRequests.investments(address(vault), self);
+        (,,, uint256 redeemPrice,,,,,,) = asyncRequests.investments(vault, self);
         assertEq(redeemPrice, 1500000000000000000);
 
         // trigger second executed collectRedeem at a price of 1.0
@@ -418,7 +418,7 @@ contract RedeemTest is BaseTest {
             poolId.raw(), scId.raw(), bytes32(bytes20(self)), assetId, assets, shares / 2
         );
 
-        (,,, redeemPrice,,,,,,) = asyncRequests.investments(address(vault), self);
+        (,,, redeemPrice,,,,,,) = asyncRequests.investments(vault, self);
         assertEq(redeemPrice, 1250000000000000000);
     }
 
@@ -448,7 +448,7 @@ contract RedeemTest is BaseTest {
 
         assertEq(vault.maxRedeem(self), firstShareRedeem);
 
-        (,,, uint256 redeemPrice,,,,,,) = asyncRequests.investments(address(vault), self);
+        (,,, uint256 redeemPrice,,,,,,) = asyncRequests.investments(vault, self);
         assertEq(redeemPrice, 1100000000000000000);
 
         // second trigger executed collectRedeem of the second 25 share class tokens at a price of 1.3
@@ -462,7 +462,7 @@ contract RedeemTest is BaseTest {
             secondShareRedeem
         );
 
-        (,,, redeemPrice,,,,,,) = asyncRequests.investments(address(vault), self);
+        (,,, redeemPrice,,,,,,) = asyncRequests.investments(vault, self);
         assertEq(redeemPrice, 1200000000000000000);
 
         assertApproxEqAbs(vault.maxWithdraw(self), firstCurrencyPayout + secondCurrencyPayout, 2);

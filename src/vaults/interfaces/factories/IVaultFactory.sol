@@ -6,6 +6,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 interface IVaultFactory {
     /// @notice Deploys new vault for `poolId`, `scId` and `asset`.
@@ -24,5 +25,5 @@ interface IVaultFactory {
         uint256 tokenId,
         IShareToken token,
         address[] calldata wards_
-    ) external returns (address);
+    ) external returns (IBaseVault);
 }
