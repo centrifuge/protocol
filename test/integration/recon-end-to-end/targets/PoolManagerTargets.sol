@@ -66,6 +66,10 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
         assetIdToAssetAddress[assetId] = assetAddress;
     }
 
+    function poolManager_registerAsset_clamped() public  asAdmin {
+        poolManager_registerAsset(_getAsset(), 0);
+    }
+
     // Step 2
     function poolManager_addPool(uint64 poolId) public  asAdmin {
         poolManager.addPool(poolId);

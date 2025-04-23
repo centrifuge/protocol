@@ -141,6 +141,12 @@ contract MockMessageDispatcher {
         );
     }
 
+    function sendUpdateRestriction(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes calldata payload)
+        external
+    {
+        poolManager.updateRestriction(poolId.raw(), scId.raw(), payload);
+    }
+
     function sendUpdateContract(
         uint16 chainId,
         PoolId poolId,
