@@ -171,6 +171,10 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         Pool storage pool = pools[poolId];
         require(pool.createdAt == 0, PoolAlreadyAdded());
         pool.createdAt = block.timestamp;
+
+        IPoolEscrow escrow = poolEscrowFactory.newEscrow(poolId);
+        gateway.setRefundAddress(PoolId.wrap(poolId.raw()), escrow);
+
         emit AddPool(poolId);
     }
 
@@ -206,12 +210,6 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         }
 
         pool.shareClasses[scId].shareToken = shareToken_;
-
-        // Deploy new escrow only on first added share class for pool
-        if (address(poolEscrowFactory.deployedEscrow(poolId)) == address(0)) {
-            IPoolEscrow escrow = poolEscrowFactory.newEscrow(poolId);
-            gateway.setRefundAddress(PoolId.wrap(poolId.raw()), escrow);
-        }
 
         emit AddShareClass(poolId, scId, shareToken_);
     }
