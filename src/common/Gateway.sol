@@ -293,7 +293,14 @@ contract Gateway is Auth, Recoverable, IGateway {
         IAdapter[] memory adapters_ = adapters[centrifugeId];
         require(adapters[centrifugeId].length != 0, EmptyAdapterSet());
 
-        SendData memory data = SendData(keccak256(batch), (isBatching) ? _gasLimitSlot(centrifugeId, poolId).tloadUint128() : gasService.gasLimit(centrifugeId, batch), bytes32(""), new uint256[](MAX_ADAPTER_COUNT));
+        SendData memory data = SendData({
+            batchHash: keccak256(batch),
+            batchGasLimit: (isBatching)
+                ? _gasLimitSlot(centrifugeId, poolId).tloadUint128()
+                : gasService.gasLimit(centrifugeId, batch),
+            payloadId: bytes32(""),
+            gasCost: new uint256[](MAX_ADAPTER_COUNT)
+        });
         data.payloadId = keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, data.batchHash));
 
         // Estimate gas usage
