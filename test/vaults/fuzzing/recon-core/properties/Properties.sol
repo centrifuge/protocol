@@ -218,17 +218,18 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // functions permanently reverting
         
         uint256 ghostBalOfEscrow;
+        address asset = vault.asset();
         // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
-        uint256 balOfEscrow = MockERC20(address(vault.asset())).balanceOf(address(escrow)) - tokenBalanceOfEscrowAtFork; // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
+        uint256 balOfEscrow = MockERC20(address(asset)).balanceOf(address(escrow)) - tokenBalanceOfEscrowAtFork; // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
         unchecked {
             // Deposit Requests + Transfers In
             /// @audit Minted by Asset Payouts by Investors
             ghostBalOfEscrow = (
-                mintedByCurrencyPayout[_getAsset()] + sumOfDepositRequests[_getAsset()]
-                    + sumOfTransfersIn[_getAsset()]
+                mintedByCurrencyPayout[asset] + sumOfDepositRequests[asset]
+                    + sumOfTransfersIn[asset]
                 // Minus Claimed Redemptions and TransfersOut
-                - sumOfClaimedRedemptions[_getAsset()] - sumOfClaimedDepositCancelations[_getAsset()]
-                    - sumOfTransfersOut[_getAsset()]
+                - sumOfClaimedRedemptions[asset] - sumOfClaimedDepositCancelations[asset]
+                    - sumOfTransfersOut[asset]
             );
         }
         eq(balOfEscrow, ghostBalOfEscrow, "balOfEscrow != ghostBalOfEscrow");
