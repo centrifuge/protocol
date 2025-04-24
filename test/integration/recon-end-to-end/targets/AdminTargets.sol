@@ -21,6 +21,7 @@ import {AccountId} from "src/common/types/AccountId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {D18} from "src/misc/types/D18.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 // Test Utils
 import {BeforeAfter, OpType} from "test/integration/recon-end-to-end/BeforeAfter.sol";
@@ -32,6 +33,8 @@ abstract contract AdminTargets is
     BaseTargetFunctions,
     Properties
 {
+    using CastLib for *;
+
     event InterestingCoverageLog();
 
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
@@ -315,7 +318,7 @@ abstract contract AdminTargets is
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId depositAssetId = hubRegistry.currency(poolId);
-        bytes32 investor = Helpers.addressToBytes32(_getActor());
+        bytes32 investor = _getActor().toBytes32();
 
         try hub.depositRequest(poolId, scId, investor, depositAssetId, amount) {
             (uint128 pending, uint32 lastUpdate) = shareClassManager.depositRequest(scId, depositAssetId, investor);
@@ -330,7 +333,7 @@ abstract contract AdminTargets is
             uint128 totalPendingUserDeposit = 0;
             for (uint256 k = 0; k < _actors.length; k++) {
                 address actor = _actors[k];
-                (uint128 pendingUserDeposit,) = shareClassManager.depositRequest(scId, depositAssetId, Helpers.addressToBytes32(actor));
+                (uint128 pendingUserDeposit,) = shareClassManager.depositRequest(scId, depositAssetId, actor.toBytes32());
                 totalPendingUserDeposit += pendingUserDeposit;
             }
 
@@ -365,7 +368,7 @@ abstract contract AdminTargets is
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId payoutAssetId = AssetId.wrap(assetIdAsUint);
-        bytes32 investor = Helpers.addressToBytes32(_getActor());
+        bytes32 investor = _getActor().toBytes32();
 
         try hub.redeemRequest(poolId, scId, investor, payoutAssetId, amount) {
             // ghost tracking
@@ -400,7 +403,7 @@ abstract contract AdminTargets is
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId depositAssetId = hubRegistry.currency(poolId);
-        bytes32 investor = Helpers.addressToBytes32(_getActor());
+        bytes32 investor = _getActor().toBytes32();
 
         (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.depositRequest(scId, depositAssetId, investor);
         (uint32 latestApproval,,,) = shareClassManager.epochPointers(scId, depositAssetId);
@@ -445,7 +448,7 @@ abstract contract AdminTargets is
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId payoutAssetId = hubRegistry.currency(poolId);
-        bytes32 investor = Helpers.addressToBytes32(_getActor());
+        bytes32 investor = _getActor().toBytes32();
 
         (uint128 pendingBefore,) = shareClassManager.redeemRequest(scId, payoutAssetId, investor);
 
@@ -525,9 +528,8 @@ abstract contract AdminTargets is
         hub.updateJournal(poolId, debits, credits);
     }
 
-    function hub_updateJournal_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint8 accountEntropy, uint128 amount) public updateGhosts {
+    function hub_updateJournal_clamped(uint64 poolIdEntropy, uint8 accountEntropy, uint128 amount) public updateGhosts {
         PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
-        ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         
         JournalEntry[] memory debits = new JournalEntry[](1);
         debits[0] = JournalEntry({

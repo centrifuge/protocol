@@ -19,6 +19,7 @@ import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 // Test Utils
 import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
@@ -29,6 +30,7 @@ abstract contract HubTargets is
     BaseTargetFunctions,
     Properties
 {
+    using CastLib for *;
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
 
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
@@ -51,7 +53,7 @@ abstract contract HubTargets is
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
-        bytes32 investor = Helpers.addressToBytes32(_getActor());
+        bytes32 investor = _getActor().toBytes32();
         
         (, uint32 lastUpdateBefore) = shareClassManager.depositRequest(scId, assetId, investor);
         (,, uint32 latestIssuance,) = shareClassManager.epochPointers(scId, assetId);
@@ -66,10 +68,6 @@ abstract contract HubTargets is
         // ghost tracking
         depositProcessed[_getActor()] += paymentAssetAmount;
         cancelledDeposits[_getActor()] += cancelledAmount;
-
-        // NOTE: making this callback here because after the call to sendFulfilledDepositRequest, the admin would call this so this is like a form of clamping since we don't want to over approve
-        // TODO: extract this into a separate handler that can be called separately only for the amount claimed here
-        balanceSheet.approvedDeposits(poolId, scId, assetId, paymentAssetAmount);
 
         (, uint32 lastUpdateAfter) = shareClassManager.depositRequest(scId, assetId, investor);
         uint32 epochId = shareClassManager.epochId(poolId);
@@ -94,7 +92,7 @@ abstract contract HubTargets is
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
-        bytes32 investor = Helpers.addressToBytes32(_getActor());
+        bytes32 investor = _getActor().toBytes32();
         
         (,,,,,uint128 pendingRedeemRequestBefore,, uint128 claimableCancelRedeemRequestBefore,,) = asyncRequests.investments(address(vault), _getActor());
 
@@ -108,9 +106,6 @@ abstract contract HubTargets is
         // ghost tracking
         redemptionsProcessed[_getActor()] += paymentShareAmount;
         cancelledRedemptions[_getActor()] += cancelledShareAmount;
-
-        // TODO: extract this into a separate handler that can be called separately only for the amount claimed here
-        balanceSheet.revokedShares(poolId, scId, assetId, paymentShareAmount);
 
         (, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, investor);
         uint32 epochId = shareClassManager.epochId(poolId);

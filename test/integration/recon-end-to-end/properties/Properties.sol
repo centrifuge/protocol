@@ -7,11 +7,13 @@ import {console2} from "forge-std/console2.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
+
 import {BeforeAfter} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {AsyncVaultCentrifugeProperties} from "test/integration/recon-end-to-end/properties/AsyncVaultCentrifugeProperties.sol";
-import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
 
 abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProperties {
+    using CastLib for *;
     event DebugWithString(string, uint256);
     event DebugNumber(uint256);
 
@@ -465,8 +467,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
 
         for(uint256 i; i < actors.length; i++) {
-            (uint128 pending, ) = shareClassManager.depositRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), Helpers.addressToBytes32(actors[i]));
-            (, uint128 queued) = shareClassManager.queuedDepositRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), Helpers.addressToBytes32(actors[i]));
+            (uint128 pending, ) = shareClassManager.depositRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), actors[i].toBytes32());
+            (, uint128 queued) = shareClassManager.queuedDepositRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), actors[i].toBytes32());
 
 
             // user order pending
@@ -483,8 +485,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address[] memory actors = _getActors();
 
         for(uint256 i; i < actors.length; i++) {
-            (uint128 pending, ) = shareClassManager.redeemRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), Helpers.addressToBytes32(actors[i]));
-            (, uint128 queued) = shareClassManager.queuedRedeemRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), Helpers.addressToBytes32(actors[i]));
+            (uint128 pending, ) = shareClassManager.redeemRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), actors[i].toBytes32());
+            (, uint128 queued) = shareClassManager.queuedRedeemRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), actors[i].toBytes32());
 
             // user order pending
             // user order amount

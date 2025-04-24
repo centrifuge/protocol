@@ -26,7 +26,7 @@ library Helpers {
 
     function getRandomShareClassIdForPool(IShareClassManager shareClassManager, PoolId poolId, uint32 scEntropy) internal view returns (ShareClassId) {
         uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
-        uint32 randomIndex = scEntropy % shareClassCount;
+        uint32 randomIndex = scEntropy % (shareClassCount + 1);
         if(randomIndex == 0) {
             // the first share class is never assigned
             randomIndex = 1;

@@ -9,12 +9,12 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {EpochPointers, UserOrder} from "src/hub/interfaces/IShareClassManager.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 import {AsyncInvestmentState} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 
 import {Ghosts} from "./helpers/Ghosts.sol";
 import {Setup} from "./Setup.sol";
-import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
 
 enum OpType {
     GENERIC, // generic operations can be performed by both users and admins
@@ -89,7 +89,7 @@ abstract contract BeforeAfter is Ghosts {
                 (, _before.ghostHolding[poolId][scId][assetId],,) = holdings.holding(poolId, scId, assetId);
                 // loop over all actors
                 for (uint256 k = 0; k < _actors.length; k++) {
-                    bytes32 actor = Helpers.addressToBytes32(_actors[k]);
+                    bytes32 actor = CastLib.toBytes32(_actors[k]);
                     (uint128 pendingRedeem, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, actor);
                     _before.ghostRedeemRequest[scId][assetId][actor] = UserOrder({pending: pendingRedeem, lastUpdate: lastUpdate});
                 }
@@ -132,7 +132,7 @@ abstract contract BeforeAfter is Ghosts {
                 (, _after.ghostHolding[poolId][scId][assetId],,) = holdings.holding(poolId, scId, assetId);
                 // loop over all actors
                 for (uint256 k = 0; k < _actors.length; k++) {
-                    bytes32 actor = Helpers.addressToBytes32(_actors[k]);
+                    bytes32 actor = CastLib.toBytes32(_actors[k]);
                     (uint128 pendingRedeem, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, actor);
                     _after.ghostRedeemRequest[scId][assetId][actor] = UserOrder({pending: pendingRedeem, lastUpdate: lastUpdate});
                 }

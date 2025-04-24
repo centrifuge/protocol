@@ -13,6 +13,8 @@ import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
 // Component
@@ -135,7 +137,6 @@ abstract contract TargetFunctions is
 
         // 5. Deploy new vault and register it
         _vault = poolManager_deployVault(_poolId.raw(), _scId, _assetId);
-        console2.log("after deploy vault");
         poolManager_linkVault(_poolId.raw(), _scId, _assetId, _vault);
         asyncRequests.rely(address(_vault));
 
@@ -151,11 +152,20 @@ abstract contract TargetFunctions is
 
         // NOTE: Add to storage so these can be clamped in other functions
         scId = _scId;
-        console2.log("scId");
-        console2.logBytes16(scId);
         poolId = _poolId.raw();
-        console2.log("poolId", poolId);
         assetId = _assetId;
+    }
+
+    /// === Transient Valuation === ///
+    function transientValuation_setPrice(address base, address quote, uint128 price) public {
+        transientValuation.setPrice(base, quote, D18.wrap(price));
+    }
+
+    // set the price of the asset in the transient valuation for a given pool
+    function transientValuation_setPrice_clamped(uint64 poolId, uint128 price) public {
+        AssetId assetId = hubRegistry.currency(PoolId.wrap(poolId));
+
+        transientValuation.setPrice(address(assetId.addr()), address(assetId.addr()), D18.wrap(price));
     }
 
     /// === Permission Functions === ///

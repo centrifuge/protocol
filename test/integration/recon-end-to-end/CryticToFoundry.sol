@@ -31,7 +31,16 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         poolManager_updateMember(type(uint64).max);
         
         vault_requestDeposit(1e18, 0);
-        vault_deposit(1e18 - 1);
+
+        transientValuation_setPrice_clamped(poolId, 1e18);
+
+        hub_approveDeposits(poolId, scId, assetId, 1e18, transientValuation);
+        hub_issueShares(poolId, scId, assetId, 1e18);
+       
+        // need to call claimDeposit first to mint the shares
+        hub_claimDeposit_clamped(poolId, 0);
+
+        vault_deposit(1e18);
     }
 
     function test_vault_deposit_and_redeem() public {
@@ -42,11 +51,9 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         
         vault_requestDeposit(1e18, 0);
 
-        // asyncRequests_fulfillDepositRequest(1e18 - 1, 1e18, 0, 0);
-
         vault_deposit(1e18 - 1);
 
-        // vault_requestRedeem(1e18 - 1, 0);
+        vault_requestRedeem(1e18 - 1, 0);
 
         // asyncRequests_fulfillRedeemRequest(1e18, 1e18 - 1, 0);
 
