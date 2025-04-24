@@ -56,17 +56,17 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     event RepayBatch(uint16 indexed centrifugeId, bytes batch);
     event SendBatch(
         uint16 indexed centrifugeId,
-        bytes32 payloadId,
+        bytes32 indexed payloadId,
         bytes batch,
         IAdapter adapter,
         bytes32 adapterData,
         address refund
     );
     event SendProof(
-        uint16 indexed centrifugeId, bytes32 payloadId, bytes32 batchHash, IAdapter adapter, bytes32 adapterData
+        uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes32 batchHash, IAdapter adapter, bytes32 adapterData
     );
-    event HandleBatch(uint16 indexed centrifugeId, bytes32 payloadId, bytes batch, IAdapter adapter);
-    event HandleProof(uint16 indexed centrifugeId, bytes32 payloadId, bytes32 batchHash, IAdapter adapter);
+    event HandleBatch(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes batch, IAdapter adapter);
+    event HandleProof(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes32 batchHash, IAdapter adapter);
     event ExecuteMessage(uint16 indexed centrifugeId, bytes message);
     event FailMessage(uint16 indexed centrifugeId, bytes message, bytes error);
 
