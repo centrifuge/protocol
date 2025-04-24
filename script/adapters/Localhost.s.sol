@@ -60,8 +60,6 @@ contract LocalhostDeployer is FullDeployer {
         hub.updateManager(poolId, vm.envAddress("ADMIN"), true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
-        D18 navPerShare = d18(1, 1);
-
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, "Tokenized MMF", "MMF", bytes32(bytes("1")), bytes(""));
         hub.notifyPool(poolId, centrifugeId);
@@ -94,7 +92,7 @@ contract LocalhostDeployer is FullDeployer {
             }).serialize()
         );
 
-        hub.updatePricePerShare(poolId, scId, navPerShare);
+        hub.updatePricePerShare(poolId, scId, d18(1, 1));
         hub.notifySharePrice(poolId, centrifugeId, scId);
         hub.notifyAssetPrice(poolId, scId, assetId);
 
@@ -102,19 +100,50 @@ contract LocalhostDeployer is FullDeployer {
         IShareToken shareToken = IShareToken(poolManager.shareToken(poolId, scId));
         IAsyncVault vault = IAsyncVault(shareToken.vault(address(token)));
 
-        uint128 investAmount = 1_000_000e6;
-        token.approve(address(vault), investAmount);
-        vault.requestDeposit(investAmount, msg.sender, msg.sender);
+        token.approve(address(vault), 1_000_000e6);
+        vault.requestDeposit(1_000_000e6, msg.sender, msg.sender);
 
         // Fulfill deposit request
-        hub.approveDeposits(poolId, scId, assetId, shareClassManager.nowDepositEpoch(scId, assetId), investAmount);
-        hub.issueShares(poolId, scId, assetId, shareClassManager.nowIssueEpoch(scId, assetId), navPerShare);
+        hub.approveDeposits(poolId, scId, assetId, shareClassManager.nowDepositEpoch(scId, assetId), 1_000_000e6);
+        hub.issueShares(poolId, scId, assetId, shareClassManager.nowIssueEpoch(scId, assetId), d18(1, 1));
 
         uint32 maxClaims = shareClassManager.maxDepositClaims(scId, msg.sender.toBytes32(), assetId);
         hub.claimDeposit(poolId, scId, assetId, msg.sender.toBytes32(), maxClaims);
 
         // Claim deposit request
-        vault.mint(investAmount, msg.sender);
+        vault.mint(1_000_000e18, msg.sender);
+
+        // Withdraw principal
+        balanceSheet.withdraw(poolId, scId, address(token), 0, msg.sender, 1_000_000e6, d18(1, 1));
+
+        // Update price, deposit principal + yield
+        hub.updatePricePerShare(poolId, scId, d18(11, 10));
+        hub.notifySharePrice(poolId, centrifugeId, scId);
+        hub.notifyAssetPrice(poolId, scId, assetId);
+
+        token.approve(address(balanceSheet), 1_100_000e18);
+        balanceSheet.deposit(poolId, scId, address(token), 0, msg.sender, 1_100_000e6, d18(11, 10));
+
+        // Make sender a member to submit redeem request
+        hub.updateRestriction(
+            poolId,
+            centrifugeId,
+            scId,
+            MessageLib.UpdateRestrictionMember({user: bytes32(bytes20(msg.sender)), validUntil: type(uint64).max})
+                .serialize()
+        );
+
+        // Submit redeem request
+        vault.requestRedeem(1_000_000e18, msg.sender, msg.sender);
+
+        // Fulfill redeem request
+        hub.approveRedeems(poolId, scId, assetId, shareClassManager.nowRedeemEpoch(scId, assetId), 1_000_000e18);
+        hub.revokeShares(poolId, scId, assetId, shareClassManager.nowRevokeEpoch(scId, assetId), d18(11, 10));
+
+        hub.claimRedeem(poolId, scId, assetId, bytes32(bytes20(msg.sender)), 1);
+
+        // Claim redeem request
+        vault.withdraw(1_100_000e6, msg.sender, msg.sender);
     }
 
     function _deploySyncDepositVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
