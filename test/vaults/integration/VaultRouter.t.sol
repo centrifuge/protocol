@@ -58,6 +58,7 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: 1 wei}(vault, amount, self, self);
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
 
+        uint256 preBalance = address(gateway).balance;
         uint256 gas = estimateGas() + GAS_BUFFER;
 
         vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
@@ -78,7 +79,7 @@ contract VaultRouterTest is BaseTest {
             vm.stopSnapshotGas();
         }
 
-        assertEq(address(gateway).balance, GAS_BUFFER, "Gateway balance mismatch");
+        assertEq(address(gateway).balance, preBalance + GAS_BUFFER, "Gateway balance mismatch");
         for (uint8 i; i < testAdapters.length; i++) {
             MockAdapter adapter = MockAdapter(address(testAdapters[i]));
             uint256[] memory payCalls = adapter.callsWithValue("send");
