@@ -6,7 +6,7 @@ import {console2} from "forge-std/console2.sol";
 
 // Libraries
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 // Interfaces
 import {AccountType} from "src/hub/interfaces/IHub.sol";
 
@@ -87,7 +87,7 @@ abstract contract Properties is BeforeAfter, Asserts {
                 for (uint256 k = 0; k < _actors.length; k++) {
                     address actor = _actors[k];
 
-                    (uint128 pendingUserRedeemCurrent,) = shareClassManager.redeemRequest(scId, assetId, Helpers.addressToBytes32(actor));
+                    (uint128 pendingUserRedeemCurrent,) = shareClassManager.redeemRequest(scId, assetId, CastLib.toBytes32(actor));
                     totalPendingUserRedeem += pendingUserRedeemCurrent;
                     
                     // pendingUserRedeem hasn't changed if the claimableAssetAmountPrevious is 0, so we can use it to calculate the claimableAssetAmount from the previous epoch 
@@ -373,7 +373,7 @@ abstract contract Properties is BeforeAfter, Asserts {
 
                 // loop over all actors
                 for (uint256 k = 0; k < _actors.length; k++) {
-                    bytes32 actor = Helpers.addressToBytes32(_actors[k]);
+                    bytes32 actor = CastLib.toBytes32(_actors[k]);
                     // precondition: pending has changed 
                     if (_before.ghostRedeemRequest[scId][assetId][actor].pending != _after.ghostRedeemRequest[scId][assetId][actor].pending) {
                         console2.log("pending before", _before.ghostRedeemRequest[scId][assetId][actor].pending);
@@ -452,7 +452,7 @@ abstract contract Properties is BeforeAfter, Asserts {
                     address actor = _actors[k];
                     
                     // we claim via shareClassManager directly here because PoolRouter doesn't return the payoutShareAmount
-                    (uint128 payoutShareAmount, uint128 payoutAssetAmount,) = shareClassManager.claimDeposit(poolId, scId, Helpers.addressToBytes32(actor), assetId);
+                    (uint128 payoutShareAmount, uint128 payoutAssetAmount,) = shareClassManager.claimDeposit(poolId, scId, CastLib.toBytes32(actor), assetId);
                     totalPayoutShareAmount += payoutShareAmount;
                     totalPayoutAssetAmount += payoutAssetAmount;
                 }
@@ -505,7 +505,7 @@ abstract contract Properties is BeforeAfter, Asserts {
                 for (uint256 k = 0; k < _actors.length; k++) {
                     address actor = _actors[k];
                     // we claim via shareClassManager directly here because PoolRouter doesn't return the payoutAssetAmount
-                    (uint128 payoutAssetAmount, uint128 paymentShareAmount,) = shareClassManager.claimRedeem(poolId, scId, Helpers.addressToBytes32(actor), assetId);
+                    (uint128 payoutAssetAmount, uint128 paymentShareAmount,) = shareClassManager.claimRedeem(poolId, scId, CastLib.toBytes32(actor), assetId);
                     totalPayoutAssetAmount += payoutAssetAmount;
                     totalPaymentShareAmount += paymentShareAmount;
                 }

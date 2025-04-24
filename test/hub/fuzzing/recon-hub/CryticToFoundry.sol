@@ -12,7 +12,7 @@ import {D18, d18} from "src/misc/types/D18.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
-
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {TargetFunctions} from "./TargetFunctions.sol";
 import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
 
@@ -148,7 +148,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     function test_calling_claimDeposit_directly() public {
         (poolId, scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
 
-        shareClassManager.claimDeposit(poolId, scId, Helpers.addressToBytes32(address(this)), assetId);
+        shareClassManager.claimDeposit(poolId, scId, CastLib.toBytes32(address(this)), assetId);
     }
 
     function test_shortcut_create_pool_and_update_holding_amount_increase() public {

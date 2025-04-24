@@ -10,6 +10,7 @@ import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 // Recon Utils
 import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
@@ -70,7 +71,7 @@ abstract contract BeforeAfter is Setup {
                 (, _before.ghostHolding[poolId][scId][assetId],,) = holdings.holding(poolId, scId, assetId);
                 // loop over all actors
                 for (uint256 k = 0; k < _actors.length; k++) {
-                    bytes32 actor = Helpers.addressToBytes32(_actors[k]);
+                    bytes32 actor = CastLib.toBytes32(_actors[k]);
                     (uint128 pendingRedeem, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, actor);
                     _before.ghostRedeemRequest[scId][assetId][actor] = UserOrder({pending: pendingRedeem, lastUpdate: lastUpdate});
                 }
@@ -105,7 +106,7 @@ abstract contract BeforeAfter is Setup {
                 (, _after.ghostHolding[poolId][scId][assetId],,) = holdings.holding(poolId, scId, assetId);
                 // loop over all actors
                 for (uint256 k = 0; k < _actors.length; k++) {
-                    bytes32 actor = Helpers.addressToBytes32(_actors[k]);
+                    bytes32 actor = CastLib.toBytes32(_actors[k]);
                     (uint128 pendingRedeem, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, actor);
                     _after.ghostRedeemRequest[scId][assetId][actor] = UserOrder({pending: pendingRedeem, lastUpdate: lastUpdate});
                 }

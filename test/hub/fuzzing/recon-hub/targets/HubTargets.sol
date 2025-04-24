@@ -10,6 +10,7 @@ import {Panic} from "@recon/Panic.sol";
 
 // Dependencies
 import {Hub} from "src/hub/Hub.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 // Interfaces
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
@@ -51,7 +52,7 @@ abstract contract HubTargets is
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
-        bytes32 investor = Helpers.addressToBytes32(_getActor());
+        bytes32 investor = CastLib.toBytes32(_getActor());
         
         (, uint32 lastUpdateBefore) = shareClassManager.depositRequest(scId, assetId, investor);
         (,, uint32 latestIssuance,) = shareClassManager.epochPointers(scId, assetId);
@@ -81,7 +82,7 @@ abstract contract HubTargets is
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
-        bytes32 investor = Helpers.addressToBytes32(_getActor());
+        bytes32 investor = CastLib.toBytes32(_getActor());
         
         hub.claimRedeem(poolId, scId, assetId, investor);
 

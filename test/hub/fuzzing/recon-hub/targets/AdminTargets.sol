@@ -20,7 +20,7 @@ import {AccountId} from "src/common/types/AccountId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {D18} from "src/misc/types/D18.sol";
-
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 // Test Utils
 import {BeforeAfter, OpType} from "../BeforeAfter.sol";
 import {Properties} from "../Properties.sol";
@@ -210,7 +210,7 @@ abstract contract AdminTargets is
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId depositAssetId = hubRegistry.currency(poolId);
-        bytes32 investor = Helpers.addressToBytes32(_getActor());
+        bytes32 investor = CastLib.toBytes32(_getActor());
 
         try hub.depositRequest(poolId, scId, investor, depositAssetId, amount) {
             deposited = true;
@@ -224,7 +224,7 @@ abstract contract AdminTargets is
             uint128 totalPendingUserDeposit = 0;
             for (uint256 k = 0; k < _actors.length; k++) {
                 address actor = _actors[k];
-                (uint128 pendingUserDeposit,) = shareClassManager.depositRequest(scId, depositAssetId, Helpers.addressToBytes32(actor));
+                (uint128 pendingUserDeposit,) = shareClassManager.depositRequest(scId, depositAssetId, CastLib.toBytes32(actor));
                 totalPendingUserDeposit += pendingUserDeposit;
             }
 
@@ -254,7 +254,7 @@ abstract contract AdminTargets is
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId payoutAssetId = AssetId.wrap(assetIdAsUint);
-        bytes32 investor = Helpers.addressToBytes32(_getActor());
+        bytes32 investor = CastLib.toBytes32(_getActor());
 
         try hub.redeemRequest(poolId, scId, investor, payoutAssetId, amount) {
             (, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, payoutAssetId, investor);
@@ -282,7 +282,7 @@ abstract contract AdminTargets is
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId depositAssetId = newAssetId(isoCode);
-        bytes32 investor = Helpers.addressToBytes32(_getActor());
+        bytes32 investor = CastLib.toBytes32(_getActor());
 
         (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.depositRequest(scId, depositAssetId, investor);
         (uint32 latestApproval,,,) = shareClassManager.epochPointers(scId, depositAssetId);
@@ -318,7 +318,7 @@ abstract contract AdminTargets is
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId payoutAssetId = newAssetId(isoCode);
-        bytes32 investor = Helpers.addressToBytes32(_getActor());
+        bytes32 investor = CastLib.toBytes32(_getActor());
 
         try hub.cancelRedeemRequest(poolId, scId, investor, payoutAssetId) {
             (uint128 pending, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, payoutAssetId, investor);
@@ -416,7 +416,7 @@ abstract contract AdminTargets is
     function shareClassManager_claimDepositUntilEpoch(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint32 endEpochId) public updateGhosts asAdmin {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId shareClassId_ = ShareClassId.wrap(scIdAsBytes);
-        bytes32 investor = Helpers.addressToBytes32(_getActor());
+        bytes32 investor = CastLib.toBytes32(_getActor());
         AssetId depositAssetId = AssetId.wrap(assetIdAsUint);
 
         shareClassManager.claimDepositUntilEpoch(poolId, shareClassId_, investor, depositAssetId, endEpochId);
