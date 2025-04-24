@@ -6,7 +6,6 @@ import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {ShareClassIdTest} from "../../../test/common/types/ShareClassId.t.sol";
 
 struct EpochRedeemAmounts {
     /// @dev Amount of shares pending to be redeemed at time of epoch

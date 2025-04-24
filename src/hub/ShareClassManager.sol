@@ -663,7 +663,8 @@ contract ShareClassManager is Auth, IShareClassManager {
 
         cancelledAmount = isIncrement ? 0 : amount;
         // NOTE: If we decrease the pending, we decrease usually by the full amount
-        userOrder.pending = isIncrement ? userOrder.pending + amount : 0;
+        //       We keep subtraction of amount over setting to zero on purpose to not limit future higher level logic
+        userOrder.pending = isIncrement ? userOrder.pending + amount : userOrder.pending - amount;
 
         userOrder.lastUpdate =
             requestType == RequestType.Deposit ? nowDepositEpoch(scId_, assetId) : nowRedeemEpoch(scId_, assetId);
