@@ -102,8 +102,9 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     /// @dev Property: user can always deposit an amount between 1 and maxDeposit have > 0 assets and are approved
     /// @dev Property: maxDeposit should decrease by the amount deposited
     /// @dev Property: depositing maxDeposit leaves a user with 0 orders
+    /// @dev Property: depositing maxDeposit doesn't mint more than maxMint shares
     function asyncVault_maxDeposit(uint64 poolEntropy, uint32 scEntropy, uint256 depositAmount) public  {
-        uint256 maxDepositBefore = vault.maxDeposit(address(this));
+        uint256 maxDepositBefore = vault.maxDeposit(_getActor());
         require(maxDepositBefore > 0, "must be able to deposit");
 
         depositAmount = between(depositAmount, 1, maxDepositBefore);
@@ -112,19 +113,22 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
         (uint32 latestDepositApproval,,,) = shareClassManager.epochPointers(scId, assetId);
+        (uint128 maxMint,,,,,,,,,) = asyncRequests.investments(address(vault), _getActor());
     
         vm.prank(_getActor());
-        try vault.deposit(depositAmount, _getActor()) {
-            uint256 maxDepositAfter = vault.maxDeposit(address(this));
+        try vault.deposit(depositAmount, _getActor()) returns (uint256 shares) {
+            uint256 maxDepositAfter = vault.maxDeposit(_getActor());
             uint256 difference = maxDepositBefore - depositAmount;
             
             t(difference == maxDepositAfter, "rounding error in maxDeposit");
             
             if(depositAmount == maxDepositBefore) {
-                (,,,,,, uint128 claimableCancelDepositRequest,,,) = asyncRequests.investments(address(vault), _getActor());
+                (,,,, uint128 pendingDepositRequest,,,,,) = asyncRequests.investments(address(vault), _getActor());
                 (uint256 pendingDeposit, ) = shareClassManager.depositRequest(scId, assetId, _getActor().toBytes32());
-                eq(claimableCancelDepositRequest, 0, "claimableCancelDepositRequest should be 0 after maxDeposit");
+                
+                eq(pendingDepositRequest, 0, "claimableCancelDepositRequest should be 0 after maxDeposit");
                 eq(pendingDeposit, 0, "pendingDeposit should be 0 after maxDeposit");
+                lte(shares, maxMint, "shares minted surpass maxMint");
             }
         }
         catch {
@@ -132,10 +136,13 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         }
     }
 
-    /// @dev user can always maxMint if they have > 0 assets and are approved
-    /// @dev user can always mint an amount between 1 and maxMint have > 0 assets and are approved
+    /// @dev Property: user can always maxMint if they have > 0 assets and are approved
+    /// @dev Property: user can always mint an amount between 1 and maxMint have > 0 assets and are approved
+    /// @dev Property: maxMint should be 0 after using maxMint as mintAmount
+    /// @dev Property: minting maxMint should not mint more than maxDeposit shares
     function asyncVault_maxMint(uint64 poolEntropy, uint32 scEntropy, uint256 mintAmount) public  {
-        uint256 maxMintBefore = vault.maxMint(address(this));
+        uint256 maxMintBefore = vault.maxMint(_getActor());
+        uint256 maxDepositBefore = vault.maxDeposit(_getActor());
         require(maxMintBefore > 0, "must be able to mint");
 
         mintAmount = between(mintAmount, 1, maxMintBefore);
@@ -146,10 +153,20 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         (uint32 latestDepositApproval,,,) = shareClassManager.epochPointers(scId, assetId);
     
         vm.prank(_getActor());
-        try vault.mint(mintAmount, _getActor()) {
-            uint256 maxMintAfter = vault.maxMint(address(this));
+        try vault.mint(mintAmount, _getActor()) returns (uint256 assets) {
+            uint256 maxMintAfter = vault.maxMint(_getActor());
             uint256 difference = maxMintBefore - mintAmount;
             t(difference == maxMintAfter, "rounding error in maxMint");
+            uint256 shares = vault.convertToShares(assets);
+
+            if(mintAmount == maxMintBefore) {
+                (uint128 maxMint,,,,,,,,,) = asyncRequests.investments(address(vault), _getActor());
+                uint256 maxMintVaultAfter = vault.maxMint(_getActor());
+
+                eq(maxMint, 0, "maxMint in request should be 0 after maxMint");
+                eq(maxMintVaultAfter, 0, "maxMint in vault should be 0 after maxMint");
+                lte(shares, maxDepositBefore, "shares minted surpass maxMint");
+            }
         }
         catch {
             t(latestDepositApproval < mintAmount, "reverts on mint for approved amount");
@@ -159,7 +176,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     /// @dev user can always maxWithdraw if they have > 0 shares and are approved
     /// @dev user can always withdraw an amount between 1 and maxWithdraw have > 0 shares and are approved
     function asyncVault_maxWithdraw(uint64 poolEntropy, uint32 scEntropy, uint256 withdrawAmount) public  {
-        uint256 maxWithdrawBefore = vault.maxWithdraw(address(this));
+        uint256 maxWithdrawBefore = vault.maxWithdraw(_getActor());
         require(maxWithdrawBefore > 0, "must be able to withdraw");
 
         withdrawAmount = between(withdrawAmount, 1, maxWithdrawBefore);
@@ -170,10 +187,21 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         (,uint32 latestRedeemApproval,,) = shareClassManager.epochPointers(scId, assetId);
     
         vm.prank(_getActor());
-        try vault.withdraw(withdrawAmount, _getActor(), _getActor()) {
-            uint256 maxWithdrawAfter = vault.maxWithdraw(address(this));
+        try vault.withdraw(withdrawAmount, _getActor(), _getActor()) returns (uint256 shares) {
+            uint256 maxWithdrawAfter = vault.maxWithdraw(_getActor());
             uint256 difference = maxWithdrawBefore - withdrawAmount;
+            uint256 assets = vault.convertToAssets(shares);
+            
             t(difference == maxWithdrawAfter, "rounding error in maxWithdraw");
+            
+            if(withdrawAmount == maxWithdrawBefore) {
+                (,,,,, uint128 pendingWithdrawRequest,,,,) = asyncRequests.investments(address(vault), _getActor());
+                (uint256 pendingWithdraw, ) = shareClassManager.redeemRequest(scId, assetId, _getActor().toBytes32());
+
+                eq(pendingWithdrawRequest, 0, "pendingWithdrawRequest should be 0 after maxWithdraw");
+                eq(pendingWithdraw, 0, "pendingWithdraw should be 0 after maxWithdraw");
+                lte(assets, maxWithdrawBefore, "shares withdrawn surpass maxWithdraw");
+            }
         }
         catch {
             t(latestRedeemApproval < withdrawAmount, "reverts on withdraw for approved amount");
@@ -182,8 +210,9 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
 
     /// @dev user can always maxRedeem if they have > 0 shares and are approved
     /// @dev user can always redeem an amount between 1 and maxRedeem have > 0 shares and are approved
+    /// @dev Property: redeeming maxRedeem leaves user with 0 pending redeem requests
     function asyncVault_maxRedeem(uint64 poolEntropy, uint32 scEntropy, uint256 redeemAmount) public  {
-        uint256 maxRedeemBefore = vault.maxRedeem(address(this));
+        uint256 maxRedeemBefore = vault.maxRedeem(_getActor());
         require(maxRedeemBefore > 0, "must be able to redeem");
 
         redeemAmount = between(redeemAmount, 1, maxRedeemBefore);
@@ -194,10 +223,21 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         (,uint32 latestRedeemApproval,,) = shareClassManager.epochPointers(scId, assetId);
     
         vm.prank(_getActor());
-        try vault.redeem(redeemAmount, _getActor(), _getActor()) {
-            uint256 maxRedeemAfter = vault.maxRedeem(address(this));
+        try vault.redeem(redeemAmount, _getActor(), _getActor()) returns (uint256 assets) {
+            uint256 maxRedeemAfter = vault.maxRedeem(_getActor());
             uint256 difference = maxRedeemBefore - redeemAmount;
+            uint256 shares = vault.convertToShares(assets);
+
             t(difference == maxRedeemAfter, "rounding error in maxRedeem");
+            
+            if(redeemAmount == maxRedeemBefore) {
+                (,,,,, uint128 pendingRedeemRequest,,,,) = asyncRequests.investments(address(vault), _getActor());
+                (uint256 pendingRedeem, ) = shareClassManager.redeemRequest(scId, assetId, _getActor().toBytes32());
+
+                eq(pendingRedeemRequest, 0, "pendingRedeemRequest should be 0 after maxRedeem");
+                eq(pendingRedeem, 0, "pendingRedeem should be 0 after maxRedeem");
+                lte(shares, maxRedeemBefore, "shares redeemed surpass maxRedeem");
+            }
         }
         catch {
             t(latestRedeemApproval < redeemAmount, "reverts on redeem for approved amount");
